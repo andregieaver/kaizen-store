@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { KNOWN_COOKIES } from "./cookie-consent";
+import { KNOWN_COOKIES } from "./known-cookies";
 import { FINDING_CODES } from "./data-job";
 import type { AddressContext } from "./redirect-path";
 import {

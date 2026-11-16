@@ -11,7 +11,6 @@ import {
   isExitIntent,
   keyFromHash,
   keyFromLink,
-  mayRemember,
   modalDomId,
   modalHash,
   rememberClose,
@@ -21,6 +20,7 @@ import {
   type RowModal,
   type ScrollIntentState,
 } from "@/lib/page-modal";
+import { mayRemember } from "@/lib/cookie-consent";
 
 /**
  * A modal in a page (D121): a row in a native `<dialog>`, closed until a

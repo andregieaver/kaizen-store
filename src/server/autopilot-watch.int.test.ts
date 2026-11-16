@@ -1,0 +1,127 @@
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
+vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
+
+const { closeDb, db } = await import("@/db/client");
+const { watchAutopilotChanges, watchedChanges } = await import("./autopilot-watch");
+const { newStore } = await import("./inventory-test-support");
+
+type Row = Record<string, unknown>;
+
+/**
+ * Watch and roll back (`docs/100-day-challenge.md` F4) on real stores: a price the autopilot raised, after which nobody buys though the same
+ * hours of the weeks before sold well, is set back and the verdict kept once; a code on a store with too little traffic is judged quiet when its
+ * watch ends; a store that counts no visits is not watched.
+ */
+
+let busy: Awaited<ReturnType<typeof newStore>>;
+let quiet: Awaited<ReturnType<typeof newStore>>;
+let blind: Awaited<ReturnType<typeof newStore>>;
+const SKU = "DEMO-MUG-WHITE";
+
+/** `n` visitors first seen in the hour that starts `hoursAgo` hours ago. */
+async function visitors(storeId: string, hoursAgo: number, n: number) {
+  await db().execute(sql`
+    insert into commerce.visits (store_id, day, visitor, device, channel, landing_path, first_seen, last_seen)
+    select ${storeId}::uuid, (now() - make_interval(hours => ${hoursAgo}))::date, substr(md5(random()::text || g::text), 1, 24), 'mobile', 'direct', '/',
+      now() - make_interval(hours => ${hoursAgo}) + make_interval(secs => g), now() - make_interval(hours => ${hoursAgo}) + make_interval(secs => g)
+    from generate_series(1, ${n}) g
+  `);
+}
+
+/** `n` paid orders placed in the hour that starts `hoursAgo` hours ago. */
+async function orders(storeId: string, hoursAgo: number, n: number) {
+  for (let i = 0; i < n; i++) {
+    const number = `W-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const [o] = await db().execute<Row>(sql`
+      insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor,
+        total_minor, billing_address, shipping_address, placed_at)
+      values (${storeId}::uuid, ${number}, 'NO', 'NOK', 'nb-NO', 'buyer@example.com', 'paid', 19900, 0, 0, 3980, 19900, '{}'::jsonb, '{}'::jsonb,
+        now() - make_interval(hours => ${hoursAgo}) + make_interval(secs => ${i + 1}))
+      returning id
+    `);
+    await db().execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, kaizen_fee_minor, currency, status)
+      values (${storeId}::uuid, ${String(o.id)}::uuid, 'stripe', ${`pi_${number}`}, 'acct_watch', 19900, 0, 'NOK', 'captured')
+    `);
+  }
+}
+
+/** An autopilot change as the tool runner keeps it, `hoursAgo` hours ago, with the entries its tool wrote just before. */
+async function change(s: typeof busy, tool: string, args: Record<string, unknown>, hoursAgo: number, before: { action: string; target?: string; details: unknown; changes?: unknown }[] = []) {
+  for (const b of before) {
+    await db().execute(sql`
+      insert into commerce.audit_log (store_id, account_id, action, details, target_type, target_id, changes, acted_by, created_at)
+      values (${s.storeId}::uuid, ${s.accountId}::uuid, ${b.action}, ${JSON.stringify(b.details)}::jsonb, 'product', ${b.target ?? null}, ${JSON.stringify(b.changes ?? null)}::jsonb,
+        'autopilot', now() - ${hoursAgo} * interval '1 hour' - interval '1 second')
+    `);
+  }
+  await db().execute(sql`
+    insert into commerce.audit_log (store_id, account_id, action, details, acted_by, created_at)
+    values (${s.storeId}::uuid, ${s.accountId}::uuid, ${`store.assistant.${tool}`}, ${JSON.stringify({ args })}::jsonb, 'autopilot', now() - ${hoursAgo} * interval '1 hour')
+  `);
+}
+
+const priceNow = async (storeId: string) =>
+  Number(
+    (
+      await db().execute<Row>(sql`
+        select p.amount_minor from commerce.prices p join commerce.product_variants v on v.id = p.variant_id
+        where v.store_id = ${storeId}::uuid and v.sku = ${SKU} and p.market_code = 'NO' and p.valid_to is null
+      `)
+    )[0]?.amount_minor,
+  );
+
+beforeAll(async () => {
+  busy = await newStore("watch-busy");
+  quiet = await newStore("watch-quiet");
+  blind = await newStore("watch-blind");
+  for (const s of [busy, quiet, blind]) await db().execute(sql`update commerce.stores set status = 'active', visit_counting = ${s !== blind} where id = ${s.storeId}::uuid`);
+  // The busy store: in the same eight hours of each of the four weeks before, 100 visitors and 10 orders; since the change, 200 visitors and none.
+  for (let week = 1; week <= 4; week++) {
+    for (let h = 1; h <= 8; h++) await visitors(busy.storeId, week * 168 + h, h <= 4 ? 13 : 12);
+    await orders(busy.storeId, week * 168 + 4, 10);
+  }
+  for (let h = 1; h <= 8; h++) await visitors(busy.storeId, h, 25);
+  // The autopilot raised the mug from 199 to 299 kr eight and a half hours ago.
+  const [v] = await db().execute<Row>(sql`select v.id, v.product_id from commerce.product_variants v where v.store_id = ${busy.storeId}::uuid and v.sku = ${SKU}`);
+  await db().execute(sql`select commerce.set_price(${String(v.id)}::uuid, 'NO', 19900)`);
+  await db().execute(sql`select commerce.set_price(${String(v.id)}::uuid, 'NO', 29900)`);
+  await change(busy, "set_prices", { product: "mug", changes: [{ sku: SKU, prices: { NO: "299" } }] }, 8.5, [
+    { action: "product.price_changed", target: String(v.product_id), details: { sku: SKU, market: "NO", currency: "NOK" }, changes: { priceMinor: { from: 19900, to: 29900 } } },
+  ]);
+  await change(quiet, "create_discount", { code: "QUIET10", percent: 10 }, 49);
+  await change(blind, "create_campaign", { name: "Blind sale" }, 7);
+});
+
+afterAll(closeDb);
+
+describe("watch and roll back (F4)", () => {
+  it("sets a price back after a clear fall, keeps the verdict once, and judges quiet changes when their watch ends", async () => {
+    const run = await watchAutopilotChanges({ everyRun: true });
+    expect(run.reverted).toBeGreaterThanOrEqual(1);
+    expect(await priceNow(busy.storeId)).toBe(19900);
+    const [verdict] = await watchedChanges(busy.storeId);
+    expect(verdict).toMatchObject({ tool: "set_prices", verdict: "fall", undone: [`${SKU} in NO back to its price before`] });
+    expect(verdict.words).toContain("A clear fall in conversion");
+    expect(await watchedChanges(quiet.storeId)).toEqual([expect.objectContaining({ tool: "create_discount", verdict: "too_little", undone: [] })]);
+    expect(await watchedChanges(blind.storeId)).toEqual([expect.objectContaining({ verdict: "not_watched", words: expect.stringContaining("Visit counting is off") })]);
+    // Judged once: the next hour finds nothing new on these stores.
+    await watchAutopilotChanges({ everyRun: true });
+    expect(await watchedChanges(busy.storeId)).toHaveLength(1);
+  });
+
+  it("leaves a price someone changed since alone", async () => {
+    const [v] = await db().execute<Row>(sql`select v.id, v.product_id from commerce.product_variants v where v.store_id = ${busy.storeId}::uuid and v.sku = ${SKU}`);
+    await db().execute(sql`select commerce.set_price(${String(v.id)}::uuid, 'NO', 34900)`);
+    await change(busy, "set_prices", { product: "mug", changes: [{ sku: SKU, prices: { NO: "299" } }] }, 8.2, [
+      { action: "product.price_changed", target: String(v.product_id), details: { sku: SKU, market: "NO", currency: "NOK" }, changes: { priceMinor: { from: 19900, to: 29900 } } },
+    ]);
+    await watchAutopilotChanges({ everyRun: true });
+    expect(await priceNow(busy.storeId)).toBe(34900);
+    expect((await watchedChanges(busy.storeId))[0]).toMatchObject({ verdict: "fall", undone: [] });
+  });
+});

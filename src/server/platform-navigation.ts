@@ -26,7 +26,7 @@ import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 
 import { audit, type Account } from "./auth";
 import { ownMenus, standardMenusInput } from "./navigation";
-import { listPublishedPages } from "./pages";
+import { publishedPageIndex, type PublishedPageEntry } from "./pages";
 import { siteTerms } from "./taxonomy";
 import type { SaveResult } from "./settings";
 
@@ -135,15 +135,13 @@ export async function getPlatformFonts(): Promise<SiteFonts> {
 export async function getPlatformChrome(): Promise<PlatformChrome> {
   const [settings, pages, terms, articles, blogTerms] = await Promise.all([
     loadSettings(),
-    listPublishedPages(),
+    publishedPageIndex(),
     siteTerms(null, "page"),
-    listPublishedPages(null, "article"),
+    publishedPageIndex(null, "article"),
     siteTerms(null, "article"),
   ]);
   // A page's title in each other language it is written in (D312 P4), for menus drawn in that language.
-  const titles = (content: (typeof pages)[number]["content"]) =>
-    Object.fromEntries(Object.entries(content.translations ?? {}).flatMap(([locale, texts]) => (typeof texts.title === "string" && texts.title ? [[locale, texts.title]] : [])));
-  const byId = (list: typeof pages) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.content.title, titles: titles(p.content) }]));
+  const byId = (list: PublishedPageEntry[]) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.title, titles: p.titles }]));
   return {
     ...settings,
     pages: byId(pages),

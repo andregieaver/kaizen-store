@@ -3,13 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { ROLE_TEMPLATES, canOpenPath, type PermissionHolder } from "./permissions";
-import { AFTER_SALE_ADMIN_PATHS, FEATURE_IDS, isAfterSaleAdminPath, type FeatureRequirement } from "./store-features";
+import { ROLE_TEMPLATES, canOpenPath, permissionOfPath, type PermissionHolder } from "./permissions";
+import { AFTER_SALE_ADMIN_PATHS, FEATURE_IDS, isAfterSaleAdminPath, requirementMet, type FeatureRequirement } from "./store-features";
 import { NAV_ICON_NAMES } from "@/components/admin/nav-icons";
 
 import { ACCOUNT_ITEMS } from "./owner-nav";
 import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
-import { HOME_PATHS, STORE_SECTIONS, advancedIn, sectionOf, sectionPaths, storeAreas, storeSections, storeTabs } from "./store-nav";
+import { HOME_PATHS, STORE_SECTIONS, advancedIn, sectionOf, sectionPaths, storeAreas, storeNav, storeSections, storeTabs } from "./store-nav";
 
 const ROOT = "src/app/admin/(gated)/[store]";
 const ALL = { features: [...FEATURE_IDS] };
@@ -105,22 +105,22 @@ describe("the store admin's sections (D147)", () => {
   it("leaves the online shop's sections and pages out of a website, and opens a section on what is left (D178 step 5)", () => {
     const website = { features: [] as string[] };
     const tabs = storeTabs("/admin/s", website);
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Products", "Customers", "Marketing", "Analytics", "Website", "Support", "Settings"]);
+    // Products has only Custom fields left, a page its tab does not stand for, so it is not in the menu (the round 4 fix).
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Customers", "Marketing", "Analytics", "Website", "Support", "Settings"]);
     // Orders is not in the menu (reached from Home while an order can still be withdrawn from or returned).
     expect(tabs.map((t) => t.href)).not.toContain("/admin/s/orders");
     // A section whose main page is hidden opens on the first page it has left.
     const href = (label: string) => tabs.find((t) => t.label === label)!.href;
-    expect(href("Products")).toBe("/admin/s/fields");
     expect(href("Customers")).toBe("/admin/s/privacy");
     // Since Marketing is in groups (code review step 0.11), Email comes before the site's own tools: a website opens it on Broadcasts.
-    expect(href("Marketing")).toBe("/admin/s/broadcasts");
+    expect(href("Marketing")).toBe("/admin/s/marketing");
     expect(href("Analytics")).toBe("/admin/s/analytics/traffic");
     expect(storeTabs("/admin/s", NONE).find((t) => t.label === "Products")!.href).toBe("/admin/s/products");
     const paths = storeSections(website).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));
     for (const path of ["/products", "/inventory", "/product-layouts", "/customers", "/customer-groups", "/wishlists", "/campaigns", "/discounts", "/recommendations", "/cart-reminders", "/analytics", "/analytics/finance", "/analytics/tax", "/settings/payments", "/settings/shipping", "/settings/orders", "/settings/returns", "/settings/tax", "/settings/invoices", "/search"]) {
       expect(paths, path).not.toContain(path);
     }
-    for (const path of ["/fields", "/privacy", "/experiments", "/analytics/traffic", "/analytics/settings", "/pages", "/settings/legal", "/settings/features", "/integrations", "/chat"]) {
+    for (const path of ["/privacy", "/experiments", "/analytics/traffic", "/analytics/settings", "/pages", "/settings/legal", "/settings/features", "/integrations", "/chat"]) {
       expect(paths, path).toContain(path);
     }
     // The pages of what was sold that stay reachable are the shop's in the map and the menu, and are pages the map knows.
@@ -297,5 +297,55 @@ describe("Kaizena Flow's own store (D466)", () => {
     const website = paths({ features: ["languages", "sales"] });
     expect(website.filter((p) => !house.includes(p))).toEqual(["/settings/close", "/billing"]);
     expect(house).toEqual(expect.arrayContaining(["/customers", "/subscribers", "/broadcasts", "/segments", "/deals", "/privacy", "/redirects", "/staging", "/staff"]));
+  });
+});
+
+describe("the menu's cost (bloat review step 0.17)", () => {
+  it("asks once per menu item", () => {
+    const asked: string[] = [];
+    storeNav("/admin/x", ALL, (path) => {
+      asked.push(path);
+      return true;
+    });
+    const expected = STORE_SECTIONS.filter((s) => requirementMet(ALL, s.feature))
+      .flatMap((s) => s.groups.flatMap((g) => g.items))
+      .filter((i) => requirementMet(ALL, i.feature)).length;
+    // 110 asks on 12 November 2026, 220 before.
+    expect(asked.length).toBe(expected);
+    expect(new Set(asked).size).toBe(asked.length);
+  });
+
+  it("the memoised lookup is fast", () => {
+    const canOpen = (path: string) => permissionOfPath(path, "read") !== "owner";
+    storeNav("/admin/x", ALL, canOpen);
+    const runs = 20;
+    const start = performance.now();
+    for (let i = 0; i < runs; i += 1) storeNav("/admin/x", ALL, canOpen);
+    // Under 2 ms a build measured locally on 14 November 2026; 125 ms before this step. 20 ms is a margin for a loaded CI runner.
+    expect((performance.now() - start) / runs).toBeLessThan(20);
+  });
+
+  it("storeNav equals the two it replaces, for every role", () => {
+    const holders: PermissionHolder[] = [
+      { role: "owner" },
+      { role: "admin" },
+      ...(Object.keys(ROLE_TEMPLATES) as (keyof typeof ROLE_TEMPLATES)[]).map((key): PermissionHolder => ({ role: "admin", permissions: ROLE_TEMPLATES[key].permissions })),
+    ];
+    const counts = { support: 3 };
+    for (const holder of holders) {
+      const canOpen = (path: string) => canOpenPath(holder, path);
+      const nav = storeNav("/admin/s", ALL, canOpen, counts);
+      expect(nav.tabs).toEqual(storeTabs("/admin/s", ALL, canOpen, counts));
+      expect(nav.areas).toEqual(storeAreas("/admin/s", ALL, canOpen));
+    }
+  });
+
+  it("the memo keeps read and write apart", () => {
+    for (const page of ADMIN_PAGES.filter((p) => p.area === "store")) {
+      const read = permissionOfPath(page.path, "read");
+      const write = permissionOfPath(page.path, "write");
+      if (read?.endsWith(":read")) expect(write, page.path).toBe(read.replace(/:read$/, ":write"));
+      else expect(write, page.path).toBe(read);
+    }
   });
 });

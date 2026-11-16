@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   answersByField,
+  readAnswers,
+  answerText,
   applyCheckoutRules,
   cleanAnswers,
+  fieldAsked,
   movedTo,
   pricedBy,
   rulesOnOffer,
+  shownField,
+  slipAnswers,
   wordsIn,
   type CheckoutFacts,
   type CheckoutField,
@@ -234,5 +239,156 @@ describe("moving a question (movedTo)", () => {
 
   it("gives null for a question that is not in the list", () => {
     expect(movedTo(ids, "x", 0)).toBeNull();
+  });
+});
+
+describe("a tick list's answers (task 3)", () => {
+  const words = (text: string) => ({ text, byLocale: {} });
+  const allergies: CheckoutField = {
+    id: "f1",
+    kind: "checklist",
+    required: true,
+    label: words("Allergies"),
+    help: null,
+    sensitive: true,
+    options: [
+      { id: "milk", label: words("Milk") },
+      { id: "nuts", label: words("Nuts") },
+      { id: "none", label: words("None of these"), none: true },
+    ],
+  };
+
+  it("keeps the options ticked among its own, in its order and the store's words, with the shopper's consent", () => {
+    const { answers, missing } = cleanAnswers([allergies], { f1: { options: ["nuts", "milk", "gone"], consent: true } });
+    expect(missing).toEqual([]);
+    expect(answers).toEqual([{ fieldId: "f1", label: "Allergies", kind: "checklist", answer: ["Milk", "Nuts"], optionIds: ["milk", "nuts"], consent: true }]);
+    expect(answerText(answers[0], "yes", "no")).toBe("Milk, Nuts");
+  });
+
+  it("refuses a sensitive answer without consent, and needs none for None of these, which clears the others", () => {
+    expect(cleanAnswers([allergies], { f1: { options: ["milk"], consent: false } })).toEqual({ answers: [], missing: ["f1"] });
+    expect(cleanAnswers([allergies], { f1: { options: ["milk", "none"], consent: false } }).answers).toEqual([
+      { fieldId: "f1", label: "Allergies", kind: "checklist", answer: ["None of these"], optionIds: ["none"], consent: false },
+    ]);
+  });
+
+  it("asks a required list for at least one option, and lets an optional one be left empty", () => {
+    expect(cleanAnswers([allergies], { f1: { options: [], consent: true } }).missing).toEqual(["f1"]);
+    expect(cleanAnswers([{ ...allergies, required: false }], {})).toEqual({ answers: [], missing: [] });
+  });
+
+  it("reads back from the order what it kept, and gives the cart back the ids it showed", () => {
+    const kept = cleanAnswers([allergies], { f1: { options: ["milk"], consent: true } }).answers;
+    const stored = JSON.parse(JSON.stringify(kept));
+    expect(readAnswers(stored)).toEqual(kept);
+    expect(answersByField(stored)).toEqual({ f1: { options: ["milk"], consent: true } });
+    expect(readAnswers([{ fieldId: "f1", label: "Allergies", kind: "checklist", answer: "Milk" }])).toEqual([]);
+  });
+
+  it("prints every answer on a packing slip, but not a sensitive one on a gift's, which its recipient reads", () => {
+    const note = { fieldId: "f2", label: "Door code", kind: "text" as const, answer: "1234" };
+    const ticked = cleanAnswers([allergies], { f1: { options: ["milk"], consent: true } }).answers;
+    const none = cleanAnswers([allergies], { f1: { options: ["none"], consent: false } }).answers;
+    const stored = JSON.parse(JSON.stringify([...ticked, note]));
+    expect(slipAnswers(stored, false)).toEqual([...ticked, note]);
+    expect(slipAnswers(stored, true)).toEqual([note]);
+    // None of these says nothing about health: it stays on a gift's slip.
+    expect(slipAnswers(JSON.parse(JSON.stringify(none)), true)).toEqual(none);
+  });
+});
+
+describe("a dropdown, a choice of one and longer text (task 4)", () => {
+  const words = (text: string) => ({ text, byLocale: {} });
+  const size: CheckoutField = {
+    id: "f1",
+    kind: "select",
+    required: true,
+    label: words("Size"),
+    help: null,
+    options: [
+      { id: "s", label: words("Small") },
+      { id: "m", label: words("Medium") },
+    ],
+  };
+  const diet: CheckoutField = { ...size, id: "f2", kind: "radio", required: false, label: words("Diet"), sensitive: true, options: [{ id: "v", label: words("Vegan") }, { id: "h", label: words("Halal") }] };
+  const note: CheckoutField = { id: "f3", kind: "textarea", required: true, label: words("Delivery notes"), help: null };
+
+  it("keeps one option among its own, by id as the dropdown sends it or as a list, in the store's words", () => {
+    const choice = { fieldId: "f1", label: "Size", kind: "choice", answer: "Medium", optionId: "m", consent: false };
+    expect(cleanAnswers([size], { f1: "m" })).toEqual({ answers: [choice], missing: [] });
+    expect(cleanAnswers([size], { f1: { options: ["m", "s"], consent: false } }).answers).toEqual([choice]);
+    // Choose (no answer) or an option it does not have: a required one stops the order.
+    expect(cleanAnswers([size], { f1: "" }).missing).toEqual(["f1"]);
+    expect(cleanAnswers([size], { f1: "xl" }).missing).toEqual(["f1"]);
+    expect(answerText(choice as never, "yes", "no")).toBe("Medium");
+  });
+
+  it("asks a sensitive choice for the shopper's consent once an option is chosen, and nothing of an optional one left empty", () => {
+    expect(cleanAnswers([diet], {})).toEqual({ answers: [], missing: [] });
+    expect(cleanAnswers([diet], { f2: { options: ["h"], consent: false } }).missing).toEqual(["f2"]);
+    const kept = cleanAnswers([diet], { f2: { options: ["h"], consent: true } }).answers;
+    expect(kept).toEqual([{ fieldId: "f2", label: "Diet", kind: "choice", answer: "Halal", optionId: "h", consent: true }]);
+    // Read back from the order and given to the cart again; a gift's slip leaves it out.
+    const stored = JSON.parse(JSON.stringify(kept));
+    expect(readAnswers(stored)).toEqual(kept);
+    expect(answersByField(stored)).toEqual({ f2: { options: ["h"], consent: true } });
+    expect(slipAnswers(stored, true)).toEqual([]);
+  });
+
+  it("keeps longer text's lines, with at most one empty line in a row, and other control characters as spaces", () => {
+    const typed = "Ring  the bell\r\n\r\n\r\n\tGate is blue\u0007 \nThanks";
+    expect(cleanAnswers([note], { f3: typed }).answers).toEqual([{ fieldId: "f3", label: "Delivery notes", kind: "text", answer: "Ring the bell\n\nGate is blue\nThanks" }]);
+    expect(cleanAnswers([note], { f3: " \n \n" }).missing).toEqual(["f3"]);
+    expect((cleanAnswers([note], { f3: "a".repeat(2500) }).answers[0] as { answer: string }).answer).toHaveLength(2000);
+  });
+});
+
+describe("a number, a date, an email and a phone (task 4)", () => {
+  const words = (text: string) => ({ text, byLocale: {} });
+  const guests: CheckoutField = { id: "n", kind: "number", required: true, label: words("Guests"), help: null, bounds: { min: 1, max: 40 } };
+  const when: CheckoutField = { id: "d", kind: "date", required: false, label: words("Wanted on"), help: null, bounds: { min: 2, max: 30 } };
+  const mail: CheckoutField = { id: "e", kind: "email", required: false, label: words("Gift recipient's email"), help: null };
+  const tel: CheckoutField = { id: "p", kind: "phone", required: false, label: words("Recipient's phone"), help: null };
+  const ctx = { today: "2026-12-30", country: "NO" };
+  const answer = (f: CheckoutField, typed: unknown) => cleanAnswers([f], { [f.id]: typed }, ctx);
+
+  it("keeps a whole number within its lowest and highest, and stops one outside them or not whole", () => {
+    expect(answer(guests, " 12 ").answers).toEqual([{ fieldId: "n", label: "Guests", kind: "text", answer: "12" }]);
+    expect(answer(guests, 12).answers[0]?.answer).toBe("12");
+    for (const wrong of ["0", "41", "2.5", "12 people", "1e3"]) expect(answer(guests, wrong).missing, wrong).toEqual(["n"]);
+    expect(answer(guests, "").missing).toEqual(["n"]);
+  });
+
+  it("keeps a day between its earliest and latest, counted from the store's today across a year's end", () => {
+    expect(answer(when, "2027-01-01").answers[0]?.answer).toBe("2027-01-01");
+    expect(answer(when, "2027-01-29").answers[0]?.answer).toBe("2027-01-29");
+    for (const wrong of ["2026-12-31", "2027-01-30", "2027-02-30", "1/1/2027"]) expect(answer(when, wrong).missing, wrong).toEqual(["d"]);
+    // An optional one left empty is no answer; one given wrong stops the order.
+    expect(answer(when, "")).toEqual({ answers: [], missing: [] });
+    expect(shownField(when, "en", "2026-12-30")).toMatchObject({ min: "2027-01-01", max: "2027-01-29" });
+    expect(shownField(guests, "en")).toMatchObject({ min: "1", max: "40" });
+  });
+
+  it("keeps an email address of the shape and a phone in international form, read in the basket's country", () => {
+    expect(answer(mail, " anna@example.no ").answers[0]?.answer).toBe("anna@example.no");
+    for (const wrong of ["anna", "anna@example", "an na@example.no"]) expect(answer(mail, wrong).missing, wrong).toEqual(["e"]);
+    expect(answer(tel, "912 34 567").answers[0]?.answer).toBe("+4791234567");
+    expect(answer(tel, "+46 70 123 45 67").answers[0]?.answer).toBe("+46701234567");
+    expect(answer(tel, "call me").missing).toEqual(["p"]);
+  });
+});
+
+describe("a question asked only for some baskets (task 4)", () => {
+  const facts: CheckoutFacts = { country: "NO", currency: "NOK", totalMinor: 50_000, weightGrams: 800, productIds: ["cake"], termIds: ["bakery"], tierIds: [] };
+
+  it("is asked always without conditions, and only when every condition holds with them", () => {
+    expect(fieldAsked({}, null)).toBe(true);
+    expect(fieldAsked({ conditions: [] }, facts)).toBe(true);
+    const cakeInNorway = { conditions: [{ kind: "product", op: "has", ids: ["cake"] }, { kind: "country", op: "is", countries: ["NO"] }] as CheckoutField["conditions"] };
+    expect(fieldAsked(cakeInNorway, facts)).toBe(true);
+    expect(fieldAsked(cakeInNorway, { ...facts, country: "SE" })).toBe(false);
+    expect(fieldAsked(cakeInNorway, { ...facts, productIds: ["mug"] })).toBe(false);
+    // Without a basket to hold them against, a question with conditions is not asked.
+    expect(fieldAsked(cakeInNorway, null)).toBe(false);
   });
 });

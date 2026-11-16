@@ -33,6 +33,7 @@ export async function InstallPreviewView({
   here,
   banner,
   words,
+  bare = false,
 }: {
   base: Store;
   preview: InstallPreview;
@@ -43,6 +44,8 @@ export async function InstallPreviewView({
   /** The bar's first line: what this is, and a way back where there is one. */
   banner: (shown: { page: { id: string; title: string } | null; product: boolean }) => ReactNode;
   words: { pagesLabel: string; aProduct: string; noProduct: string; noPage: string };
+  /** Round 3 (D603): the page alone, without the bar, for the Website hub's picture of the front page. */
+  bare?: boolean;
 }) {
   const market = base.markets[0];
   if (!market) return null;
@@ -65,6 +68,7 @@ export async function InstallPreviewView({
 
   return (
     <div className="flex min-h-screen flex-col">
+{!bare && (
       <div role="status" className="sticky top-0 z-50 flex flex-col gap-1.5 bg-foreground px-4 py-2 text-xs text-background">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">{banner({ page: wantsProduct || !chosen ? null : { id: chosen.id, title: chosen.title }, product: wantsProduct })}</p>
         <nav aria-label={words.pagesLabel} className="flex flex-wrap gap-x-3 gap-y-1">
@@ -78,6 +82,7 @@ export async function InstallPreviewView({
           </Link>
         </nav>
       </div>
+      )}
       {/* Nothing in the preview can be clicked, focused or submitted. */}
       <div
         inert

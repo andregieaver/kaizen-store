@@ -4,11 +4,12 @@
  */
 
 export type ShortcutGroup = "everywhere" | "builder" | "writing";
-export type ShortcutAction = "assistant" | "sheet" | "save" | "undo" | "redo" | "find" | "sizes" | "send";
+export type ShortcutAction = "finder" | "assistant" | "sheet" | "save" | "undo" | "redo" | "find" | "sizes" | "send";
 
 /** `mod` is Cmd on a Mac and Ctrl elsewhere. */
 export const SHORTCUTS: readonly { group: ShortcutGroup; action: ShortcutAction; keys: readonly string[] }[] = [
-  { group: "everywhere", action: "assistant", keys: ["mod", "K"] },
+  { group: "everywhere", action: "finder", keys: ["mod", "K"] },
+  { group: "everywhere", action: "assistant", keys: ["mod", "J"] },
   { group: "everywhere", action: "sheet", keys: ["?"] },
   { group: "builder", action: "save", keys: ["mod", "S"] },
   { group: "builder", action: "undo", keys: ["mod", "Z"] },

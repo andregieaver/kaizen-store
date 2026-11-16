@@ -9,6 +9,8 @@ import { twoStepRequired } from "@/server/team";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { MoreMenu } from "@/components/admin/orders/order-folds";
 
 import {
   assignRoleAction,
@@ -31,6 +33,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
   await ensureStoreRoles(store.id, account.id);
   const [members, roles, required] = await Promise.all([listStaff(store.id), listStoreRoles(store.id), twoStepRequired(store.id)]);
   const active = members.filter((m) => !m.disabled);
+  const withTwoStep = active.filter((m) => m.hasTwoStep).length;
   const slug = store.slug;
   const lang = adminLangOf(account.adminLocale);
   const words = adminText(lang, "staff");
@@ -38,18 +41,31 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* Round 8 (D626): who works here in a sentence; Roles and the activity log under More; Invite is the one button. */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <PageHeader
           title={w.title}
-          description={w.description}
+          meta={[
+            <span key="people">
+              <span className="text-ink">{countWords(active.length, w.sentence.people, { store: store.name })}</span>
+              {withTwoStep === 0 ? w.sentence.none : withTwoStep === active.length ? w.sentence.all : fillWords(w.sentence.some, { with: withTwoStep, n: active.length })}
+            </span>,
+          ]}
         />
         <div className="flex gap-2">
-          <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
-            {w.roles}
-          </Link>
-          <Link href={`/admin/${slug}/activity`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
-            {w.activity}
-          </Link>
+          <MoreMenu label={w.more}>
+            <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm hover:bg-sunken">
+              {w.roles}
+            </Link>
+            <Link href={`/admin/${slug}/activity`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm hover:bg-sunken">
+              {w.activity}
+            </Link>
+          </MoreMenu>
+          {!store.house && (
+            <a href="#invite" className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+              {w.inviteButton}
+            </a>
+          )}
         </div>
       </div>
 
@@ -73,13 +89,6 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
         />
       </section>
 
-      <TwoStepRequirement
-        required={required}
-        withIt={active.filter((m) => m.hasTwoStep).length}
-        total={active.length}
-        action={setTwoStepRequirementAction.bind(null, slug)}
-        words={words}
-      />
 
       {/* Kaizena Flow's own store (D466): its team is the platform admins, kept in step by the database; nobody is invited here. */}
       {store.house ? (
@@ -92,6 +101,14 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
       ) : (
         <InviteForms roles={roles} words={words} actions={{ staff: inviteStaffAction.bind(null, slug), collaborator: inviteCollaboratorAction.bind(null, slug) }} />
       )}
+
+      <TwoStepRequirement
+        required={required}
+        withIt={withTwoStep}
+        total={active.length}
+        action={setTwoStepRequirementAction.bind(null, slug)}
+        words={words}
+      />
     </div>
   );
 }

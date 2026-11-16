@@ -6,16 +6,16 @@ import { ROLE_TEMPLATES, isPermissionKey, type PermissionHolder } from "./permis
 
 /** The tools that change something: the table must ask a `write` (or the owner) for each, and a `read` for none. */
 const CHANGING = new Set([
-  "save_segment", "create_transfer",
+  "save_segment", "create_transfer", "cancel_purchase", "request_purchase",
   "draft_store", "draft_header_footer", "use_header_footer", "draft_workflow",
-  "add_order_note", "mark_order_sent", "cancel_booking", "archive_product", "refund_order", "approve_return", "decline_return", "create_discount",
+  "add_order_note", "mark_order_sent", "cancel_booking", "archive_product", "refund_order", "cancel_order", "create_purchase_order", "answer_supplier_order", "approve_return", "decline_return", "create_discount",
   "set_discount_active", "create_campaign", "set_campaign_active", "set_recommendations", "add_recommendation_rule", "remove_recommendation_rule",
   "set_bonus_program", "adjust_customer_credits", "set_affiliate_program", "block_affiliate", "create_field_group", "set_fields", "email_customer",
   "resend_order_email", "set_stock", "set_backorder", "post_to_slack", "draft_experiment", "start_experiment", "stop_experiment", "apply_winner", "unpublish_page", "add_redirect",
   "save_search_synonym", "save_search_rule", "delete_search_merchandising", "set_market_price_rule", "save_producer_registration", "save_checkout_question", "moderate_blog_comment", "schedule_article", "schedule_site_change",
   "save_entry", "publish_entry", "unpublish_entry", "save_content_type",
   "tag_orders", "archive_orders", "create_draft_order", "send_draft_order", "set_draft_prices", "decline_quote", "set_price_display", "set_quote_requests", "set_feature",
-  "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",
+  "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "write_email_automation", "tell_customer_about_order", "carry_out_address_change", "draft_text_message", "send_text_message", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",
   "add_support_note", "reply_to_support", "end_support_conversation",
   "invite_staff", "change_staff_role", "remove_staff", "change_plan", "end_plan", "change_order", "propose_exchange", "process_exchange", "log_time", "issue_work_invoice",
   "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category",

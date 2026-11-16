@@ -12,6 +12,14 @@ export const shellNb: ShellMessages = {
     checkingSession: "Sjekker økten din …",
     skipToContent: "Hopp til innhold",
   },
+  finder: {
+    open: "Søk i administrasjonen",
+    placeholder: "Søk etter sider og oppgaver, som refusjon eller frakt",
+    hint: "Skriv en side eller en oppgave. Alle sider finnes her, også i enkel visning.",
+    none: "Ingenting passer «{query}». Prøv et annet ord, eller spør KI-assistenten.",
+    results: "Sider",
+    close: "Lukk",
+  },
   loading: {
     page: "Laster siden…",
     activityLog: "Laster aktivitetsloggen…",
@@ -62,6 +70,7 @@ export const shellNb: ShellMessages = {
     builder: "Sidebyggeren",
     writing: "Når du skriver en melding",
     keys: {
+      finder: "Søk i administrasjonen",
       assistant: "Åpne KI-assistenten",
       sheet: "Vis denne listen",
       save: "Lagre utkastet",

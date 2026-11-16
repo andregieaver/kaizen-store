@@ -4,10 +4,11 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
-import { useId, useOptimistic, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useId, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type CheckoutFieldKind, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
+import { allergenQuestion } from "@/lib/checkout-presets";
+import { CHECKOUT_FIELD_KINDS, CONDITION_KINDS, EFFECT_KINDS, hasBounds, hasOptions, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
@@ -41,10 +42,32 @@ export type RuleView = {
   skips: { reason: string; count: number; since: string }[];
 };
 
-export type FieldView = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; enabled: boolean };
+export type FieldView = {
+  id: string;
+  kind: CheckoutFieldKind;
+  required: boolean;
+  label: Words;
+  help: Words | null;
+  enabled: boolean;
+  width: FieldWidth;
+  options?: ChecklistOption[];
+  sensitive: boolean;
+  bounds?: { min?: number; max?: number };
+  conditions?: RuleCondition[];
+};
 
 export type RuleInputView = { name: string; conditions: RuleCondition[]; effect: RuleEffect };
-export type FieldInputView = { kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null };
+export type FieldInputView = {
+  kind: CheckoutFieldKind;
+  required: boolean;
+  label: Words;
+  help: Words | null;
+  width: FieldWidth;
+  options?: { id?: string; label: Words; none?: boolean }[];
+  sensitive?: boolean;
+  bounds?: { min?: number; max?: number };
+  conditions?: RuleCondition[];
+};
 
 export type CheckoutRuleActions = {
   saveRule: (id: string | null, input: RuleInputView) => AsyncSaved;
@@ -144,6 +167,129 @@ function WordsField({ value, onChange, label, locales, max }: { value: Words; on
   );
 }
 
+/**
+ * Conditions that must all hold (D357): a checkout rule's, and a question's (task 4). Each names a country, the basket's value or weight,
+ * products, categories, tags or customer groups; none means always.
+ */
+function ConditionsEditor({
+  conditions,
+  onChange,
+  choices,
+  legend,
+  none,
+}: {
+  conditions: RuleCondition[];
+  onChange: (next: RuleCondition[]) => void;
+  choices: RuleChoices;
+  legend: string;
+  none: string;
+}) {
+  const w = useAdminText("shipping").checkoutRules;
+  const setConditions = onChange;
+  const setCondition = (i: number, next: RuleCondition) => setConditions(conditions.map((c, j) => (j === i ? next : c)));
+  const pools: Record<"product" | "category" | "tag" | "group", Choice[]> = {
+    product: choices.products,
+    category: choices.categories,
+    tag: choices.tags,
+    group: choices.groups,
+  };
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-body-strong text-ink">{legend}</legend>
+      {conditions.length === 0 && <p className="text-sm text-muted">{none}</p>}
+      {conditions.map((c, i) => (
+        <div key={i} className="flex flex-wrap items-start gap-2 rounded-panel border border-line p-2">
+          <span className="min-h-10 content-center text-sm">{w.conditionKinds[c.kind]}</span>
+          {c.kind === "country" && (
+            <>
+              <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "is" | "is_not" })} className={FIELD}>
+                <option value="is">{w.ops.is}</option>
+                <option value="is_not">{w.ops.is_not}</option>
+              </select>
+              <Many choices={choices.countries} chosen={c.countries} onChange={(countries) => setCondition(i, { ...c, countries })} label={w.conditionKinds.country} />
+            </>
+          )}
+          {c.kind === "total" && (
+            <>
+              <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
+                <option value="at_least">{w.ops.at_least}</option>
+                <option value="below">{w.ops.below}</option>
+              </select>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={c.amountMinor / 100}
+                onChange={(e) => setCondition(i, { ...c, amountMinor: Math.max(0, Math.round(Number(e.target.value) * 100)) })}
+                className={`${FIELD} w-32`}
+                aria-label={w.conditionKinds.total}
+              />
+              <select value={c.currency} onChange={(e) => setCondition(i, { ...c, currency: e.target.value })} className={FIELD} aria-label={w.conditionKinds.total}>
+                {choices.currencies.map((cur) => (
+                  <option key={cur} value={cur}>
+                    {cur}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {c.kind === "weight" && (
+            <>
+              <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
+                <option value="at_least">{w.ops.at_least}</option>
+                <option value="below">{w.ops.below}</option>
+              </select>
+              <input
+                type="number"
+                min={0}
+                value={c.grams}
+                onChange={(e) => setCondition(i, { ...c, grams: Math.max(0, Math.round(Number(e.target.value))) })}
+                className={`${FIELD} w-32`}
+                aria-label={w.conditionKinds.weight}
+              />
+              <span className="min-h-10 content-center text-sm">{w.grams}</span>
+            </>
+          )}
+          {(c.kind === "product" || c.kind === "category" || c.kind === "tag" || c.kind === "group") && (
+            <>
+              <select
+                value={c.op}
+                onChange={(e) => setCondition(i, { ...c, op: e.target.value } as RuleCondition)}
+                className={FIELD}
+              >
+                {(c.kind === "group" ? (["is", "is_not"] as const) : (["has", "has_not"] as const)).map((op) => (
+                  <option key={op} value={op}>
+                    {w.ops[op]}
+                  </option>
+                ))}
+              </select>
+              <Many choices={pools[c.kind]} chosen={c.ids} onChange={(ids) => setCondition(i, { ...c, ids } as RuleCondition)} label={w.conditionKinds[c.kind]} />
+            </>
+          )}
+          <Button type="button" kind="quiet" onClick={() => setConditions(conditions.filter((_, j) => j !== i))}>
+            {w.remove}
+          </Button>
+        </div>
+      ))}
+      {conditions.length < 10 && (
+        <select
+          value=""
+          onChange={(e) => e.target.value && setConditions([...conditions, blankCondition(e.target.value as RuleCondition["kind"], choices)])}
+          className={`${FIELD} self-start`}
+          aria-label={w.addCondition}
+        >
+          <option value="">{w.addCondition}</option>
+          {CONDITION_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {w.conditionKinds[k]}
+            </option>
+          ))}
+        </select>
+      )}
+    </fieldset>
+  );
+}
+
 /** Makes or changes a rule: when (all conditions), then (one effect). Saved off. */
 export function RuleEditor({
   start,
@@ -162,13 +308,6 @@ export function RuleEditor({
   const [name, setName] = useState(start?.name ?? "");
   const [conditions, setConditions] = useState<RuleCondition[]>(start?.conditions ?? []);
   const [effect, setEffect] = useState<RuleEffect>(start?.effect ?? blankEffect("hide_shipping"));
-  const setCondition = (i: number, next: RuleCondition) => setConditions(conditions.map((c, j) => (j === i ? next : c)));
-  const pools: Record<"product" | "category" | "tag" | "group", Choice[]> = {
-    product: choices.products,
-    category: choices.categories,
-    tag: choices.tags,
-    group: choices.groups,
-  };
 
   return (
     <form
@@ -189,99 +328,7 @@ export function RuleEditor({
         {w.name}
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required className={FIELD} />
       </label>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-body-strong text-ink">{w.when}</legend>
-        {conditions.length === 0 && <p className="text-sm text-muted">{w.always}</p>}
-        {conditions.map((c, i) => (
-          <div key={i} className="flex flex-wrap items-start gap-2 rounded-panel border border-line p-2">
-            <span className="min-h-10 content-center text-sm">{w.conditionKinds[c.kind]}</span>
-            {c.kind === "country" && (
-              <>
-                <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "is" | "is_not" })} className={FIELD}>
-                  <option value="is">{w.ops.is}</option>
-                  <option value="is_not">{w.ops.is_not}</option>
-                </select>
-                <Many choices={choices.countries} chosen={c.countries} onChange={(countries) => setCondition(i, { ...c, countries })} label={w.conditionKinds.country} />
-              </>
-            )}
-            {c.kind === "total" && (
-              <>
-                <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
-                  <option value="at_least">{w.ops.at_least}</option>
-                  <option value="below">{w.ops.below}</option>
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={c.amountMinor / 100}
-                  onChange={(e) => setCondition(i, { ...c, amountMinor: Math.max(0, Math.round(Number(e.target.value) * 100)) })}
-                  className={`${FIELD} w-32`}
-                  aria-label={w.conditionKinds.total}
-                />
-                <select value={c.currency} onChange={(e) => setCondition(i, { ...c, currency: e.target.value })} className={FIELD} aria-label={w.conditionKinds.total}>
-                  {choices.currencies.map((cur) => (
-                    <option key={cur} value={cur}>
-                      {cur}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-            {c.kind === "weight" && (
-              <>
-                <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
-                  <option value="at_least">{w.ops.at_least}</option>
-                  <option value="below">{w.ops.below}</option>
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  value={c.grams}
-                  onChange={(e) => setCondition(i, { ...c, grams: Math.max(0, Math.round(Number(e.target.value))) })}
-                  className={`${FIELD} w-32`}
-                  aria-label={w.conditionKinds.weight}
-                />
-                <span className="min-h-10 content-center text-sm">{w.grams}</span>
-              </>
-            )}
-            {(c.kind === "product" || c.kind === "category" || c.kind === "tag" || c.kind === "group") && (
-              <>
-                <select
-                  value={c.op}
-                  onChange={(e) => setCondition(i, { ...c, op: e.target.value } as RuleCondition)}
-                  className={FIELD}
-                >
-                  {(c.kind === "group" ? (["is", "is_not"] as const) : (["has", "has_not"] as const)).map((op) => (
-                    <option key={op} value={op}>
-                      {w.ops[op]}
-                    </option>
-                  ))}
-                </select>
-                <Many choices={pools[c.kind]} chosen={c.ids} onChange={(ids) => setCondition(i, { ...c, ids } as RuleCondition)} label={w.conditionKinds[c.kind]} />
-              </>
-            )}
-            <Button type="button" kind="quiet" onClick={() => setConditions(conditions.filter((_, j) => j !== i))}>
-              {w.remove}
-            </Button>
-          </div>
-        ))}
-        {conditions.length < 10 && (
-          <select
-            value=""
-            onChange={(e) => e.target.value && setConditions([...conditions, blankCondition(e.target.value as RuleCondition["kind"], choices)])}
-            className={`${FIELD} self-start`}
-            aria-label={w.addCondition}
-          >
-            <option value="">{w.addCondition}</option>
-            {CONDITION_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {w.conditionKinds[k]}
-              </option>
-            ))}
-          </select>
-        )}
-      </fieldset>
+      <ConditionsEditor conditions={conditions} onChange={setConditions} choices={choices} legend={w.when} none={w.always} />
       <fieldset className="flex flex-col gap-2">
         <legend className="text-body-strong text-ink">{w.then}</legend>
         <select value={effect.kind} onChange={(e) => setEffect(blankEffect(e.target.value as RuleEffect["kind"]))} className={`${FIELD} self-start`} aria-label={w.then}>
@@ -415,16 +462,53 @@ function DeleteAsk({ ask, pending, onDelete, onKeep }: { ask: string; pending: b
 }
 
 /** The rules in the order they are read, each with its switch, place and what kept it out lately. */
-export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleView[]; choices: RuleChoices; canWrite: boolean; actions: CheckoutRuleActions }) {
+export function RuleList({
+  rules,
+  choices,
+  canWrite,
+  actions,
+  examples = [],
+}: {
+  rules: RuleView[];
+  choices: RuleChoices;
+  canWrite: boolean;
+  actions: CheckoutRuleActions;
+  /** Rules a shop really writes, offered while it has none (round 7, D624): each opens the editor filled in, saved off as any rule. */
+  examples?: { label: string; start: RuleInputView }[];
+}) {
   const w = useAdminText("shipping").checkoutRules;
   const [editing, setEditing] = useState<string | null>(null);
+  const [preset, setPreset] = useState<RuleInputView | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [pending, run] = useTransition();
   return (
-    <Card title={w.rules} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newRule}</Button> : undefined}>
+    <Card
+      title={w.rules}
+      aside={
+        canWrite && editing !== "new" ? (
+          <Button kind={rules.length === 0 && examples.length > 0 ? "link" : "strong"} onClick={() => { setPreset(null); setEditing("new"); }}>
+            {w.newRule}
+          </Button>
+        ) : undefined
+      }
+    >
+      {canWrite && rules.length === 0 && editing !== "new" && examples.length > 0 && (
+        <>
+          <p className="mb-2 text-sm text-muted">{w.examplesStart}</p>
+          <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
+            {examples.map((example) => (
+              <li key={example.label}>
+                <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
+                  {example.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {editing === "new" && (
         <div className="mb-4 flex flex-col gap-2">
-          <RuleEditor start={null} choices={choices} save={actions.saveRule} onDone={() => setEditing(null)} />
+          <RuleEditor start={preset ? { ...preset, id: null } : null} choices={choices} save={actions.saveRule} onDone={() => { setEditing(null); setPreset(null); }} />
           <p className="text-sm text-muted">{w.savedOff}</p>
         </div>
       )}
@@ -490,7 +574,22 @@ export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleVie
   );
 }
 
-function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null; locales: Choice[]; save: CheckoutRuleActions["saveField"]; onDone: () => void }) {
+function FieldEditor({
+  start,
+  choices,
+  locales,
+  mainLocale,
+  save,
+  onDone,
+}: {
+  start: FieldView | null;
+  /** What a question's conditions may name (task 4): the rule editor's own choices. */
+  choices: RuleChoices;
+  locales: Choice[];
+  mainLocale: string;
+  save: CheckoutRuleActions["saveField"];
+  onDone: () => void;
+}) {
   const w = useAdminText("shipping").checkoutRules;
   const [pending, run] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -498,6 +597,24 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
   const [required, setRequired] = useState(start?.required ?? false);
   const [label, setLabel] = useState<Words>(start?.label ?? EMPTY_WORDS);
   const [help, setHelp] = useState<Words>(start?.help ?? EMPTY_WORDS);
+  // How wide the cart draws it (task 2): Lisa's step away, open from the start only when the question is already half width.
+  const [width, setWidth] = useState<FieldWidth>(start?.width ?? "full");
+  // When it is asked (task 4): the checkout rules' conditions, under Customise with the width; open from the start when it has some.
+  const [conditions, setConditions] = useState<RuleCondition[]>(start?.conditions ?? []);
+  const [customise, setCustomise] = useState(start?.width === "half" || (start?.conditions?.length ?? 0) > 0);
+  // A tick list's options and whether it asks the shopper's explicit consent (task 3).
+  const [options, setOptions] = useState<{ id?: string; label: Words; none?: boolean }[]>(start?.options ?? []);
+  const [sensitive, setSensitive] = useState(start?.sensitive ?? false);
+  // A number's lowest and highest value, or a date's earliest and latest day from today (task 4), as typed ("" is no limit).
+  const [bounds, setBounds] = useState({ min: start?.bounds?.min?.toString() ?? "", max: start?.bounds?.max?.toString() ?? "" });
+  const useAllergens = () => {
+    const preset = allergenQuestion([mainLocale, ...locales.map((l) => l.id)]);
+    setKind("checklist");
+    if (!label.text.trim()) setLabel(preset.label);
+    if (!help.text.trim()) setHelp(preset.help);
+    setOptions(preset.options);
+    setSensitive(true);
+  };
   return (
     <form
       aria-busy={pending}
@@ -505,7 +622,12 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
       onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
-          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null });
+          // A dropdown or a choice of one has no None of these: a tick list's turned into one loses that mark (task 4).
+          const kept = options.filter((o) => o.label.text.trim()).map((o) => (kind === "checklist" ? o : { ...o, none: undefined }));
+          const list = hasOptions(kind) ? { options: kept, sensitive } : { sensitive: false };
+          const whole = (s: string) => (s.trim() === "" ? undefined : Number(s));
+          const limits = hasBounds(kind) ? { bounds: { min: whole(bounds.min), max: whole(bounds.max) } } : {};
+          const saved = await save(start?.id || null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list, ...limits, conditions });
           if (saved.ok) {
             setProblems([]);
             onDone();
@@ -515,8 +637,11 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
     >
       <div className="flex flex-wrap gap-3">
         <select value={kind} onChange={(e) => setKind(e.target.value as CheckoutFieldKind)} className={FIELD} aria-label={w.question}>
-          <option value="text">{w.fieldKinds.text}</option>
-          <option value="checkbox">{w.fieldKinds.checkbox}</option>
+          {CHECKOUT_FIELD_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {w.fieldKinds[k]}
+            </option>
+          ))}
         </select>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} className="size-4" />
@@ -525,6 +650,109 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
       </div>
       <WordsField value={label} onChange={setLabel} label={w.question} locales={locales} max={80} />
       <WordsField value={help} onChange={setHelp} label={w.help} locales={locales} max={200} />
+      {hasOptions(kind) && (
+        <fieldset className="flex flex-col gap-3 rounded-panel bg-sunken p-3 text-sm">
+          <legend className="sr-only">{kind === "checklist" ? w.options : w.choices}</legend>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-medium">{kind === "checklist" ? w.options : w.choices}</span>
+            {kind === "checklist" && (
+              <Button type="button" kind="secondary" size="dense" onClick={useAllergens}>
+                {w.useAllergens}
+              </Button>
+            )}
+          </div>
+          {options.length === 0 && <p className="text-muted">{kind === "checklist" ? w.noOptions : w.noChoices}</p>}
+          <ol className="flex flex-col gap-3">
+            {options.map((o, i) => (
+              <li key={o.id ?? `new-${i}`} className="flex flex-col gap-1">
+                <WordsField
+                  value={o.label}
+                  onChange={(next) => setOptions(options.map((x, j) => (j === i ? { ...x, label: next } : x)))}
+                  label={fillWords(w.optionN, { n: String(i + 1) })}
+                  locales={locales}
+                  max={80}
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  {kind === "checklist" && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={o.none === true}
+                        onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, none: e.target.checked } : e.target.checked ? { ...x, none: false } : x)))}
+                        className="size-4"
+                      />
+                      {w.optionNone}
+                    </label>
+                  )}
+                  <Button type="button" kind="quiet" size="dense" onClick={() => setOptions(options.filter((_, j) => j !== i))}>
+                    {w.removeOption}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div>
+            <Button type="button" kind="link" onClick={() => setOptions([...options, { label: { text: "", byLocale: {} } }])}>
+              {w.addOption}
+            </Button>
+          </div>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" checked={sensitive} onChange={(e) => setSensitive(e.target.checked)} className="mt-0.5 size-4" />
+            <span>
+              {w.sensitive}
+              <span className="block text-muted">{w.sensitiveHint}</span>
+            </span>
+          </label>
+        </fieldset>
+      )}
+      {hasBounds(kind) && (
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <div className="flex flex-wrap gap-3">
+            {(["min", "max"] as const).map((end) => (
+              <label key={end} className="flex flex-col gap-1">
+                {kind === "date" ? (end === "min" ? w.earliest : w.latest) : end === "min" ? w.lowest : w.highest}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={kind === "date" ? 0 : undefined}
+                  max={kind === "date" ? 730 : undefined}
+                  value={bounds[end]}
+                  onChange={(e) => setBounds({ ...bounds, [end]: e.target.value })}
+                  className={`${FIELD} w-40`}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-muted">{kind === "date" ? w.dateHint : w.numberHint}</p>
+        </fieldset>
+      )}
+      {customise && (
+        <div className="flex flex-col gap-1">
+          <ConditionsEditor conditions={conditions} onChange={setConditions} choices={choices} legend={w.askedWhen} none={w.askedAlways} />
+          <p className="text-sm text-muted">{w.askedWhenHint}</p>
+        </div>
+      )}
+      {customise ? (
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">{w.width}</legend>
+          {(["full", "half"] as const).map((choice) => (
+            <label key={choice} className="flex items-start gap-2">
+              <input type="radio" name="width" value={choice} checked={width === choice} onChange={() => setWidth(choice)} className="mt-0.5 size-4" />
+              <span>
+                {w.widths[choice]}
+                <span className="block text-muted">{w.widthHints[choice]}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <div>
+          <Button type="button" kind="link" onClick={() => setCustomise(true)}>
+            {w.customise}
+          </Button>
+        </div>
+      )}
       {problems.length > 0 && (
         <ul className="text-sm text-danger-text" role="alert">
           {problems.map((p) => (
@@ -544,14 +772,70 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
   );
 }
 
+/** Where the questions are on the page, for the checkout's preview to bring them into view. */
+export const QUESTIONS_ID = "checkout-questions";
+const OPEN_QUESTION = "kaizen:open-checkout-question";
+
+/** Opens a question in the list below, or a new one (`"new"`): the preview's links ask this, so a second press works too. */
+export function openCheckoutQuestion(target: string): void {
+  window.dispatchEvent(new CustomEvent(OPEN_QUESTION, { detail: target }));
+}
+
 /**
  * The questions the checkout asks, in the order the cart asks them: each dragged by its handle (or moved with the keyboard on it, or with its
  * up and down buttons), shown in its new place at once and saved as it is dropped.
  */
-export function FieldList({ fields, locales, canWrite, actions }: { fields: FieldView[]; locales: Choice[]; canWrite: boolean; actions: CheckoutRuleActions }) {
+export function FieldList({
+  fields,
+  choices,
+  locales,
+  mainLocale,
+  canWrite,
+  actions,
+  examples = [],
+}: {
+  /** Questions a shop really asks, offered while it asks none (round 7, D624): each opens the editor filled in. */
+  examples?: { label: string; start: FieldInputView }[];
+  fields: FieldView[];
+  /** What a question's conditions may name (task 4). */
+  choices: RuleChoices;
+  locales: Choice[];
+  /** The store's main locale, for ready-made words (the allergen list). */
+  mainLocale: string;
+  canWrite: boolean;
+  actions: CheckoutRuleActions;
+}) {
   const w = useAdminText("shipping").checkoutRules;
+  const [preset, setPreset] = useState<FieldInputView | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
+  // The checkout's preview opens a question here (`openCheckoutQuestion()`), or a new one; so does a link to #question-{id} or #question-new.
+  // The latest list, read by the listeners below, so they are added once and a refreshed list (after a save) never reopens a question.
+  const known = useRef({ canWrite, ids: fields.map((f) => f.id) });
+  useEffect(() => {
+    known.current = { canWrite, ids: fields.map((f) => f.id) };
+  }, [canWrite, fields]);
+  useEffect(() => {
+    const open = (target: string) => {
+      const { canWrite: may, ids } = known.current;
+      if (may && target === "new") {
+        setPreset(null);
+        setEditing("new");
+      } else if (may && ids.includes(target)) setEditing(target);
+      requestAnimationFrame(() => document.getElementById(QUESTIONS_ID)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
+    const fromHash = () => {
+      if (window.location.hash.startsWith("#question-")) open(window.location.hash.slice("#question-".length));
+    };
+    const fromPreview = (e: Event) => open(String((e as CustomEvent<string>).detail));
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    window.addEventListener(OPEN_QUESTION, fromPreview);
+    return () => {
+      window.removeEventListener("hashchange", fromHash);
+      window.removeEventListener(OPEN_QUESTION, fromPreview);
+    };
+  }, []);
   const [pending, run] = useTransition();
   const [shown, moveShown] = useOptimistic(fields, (now: FieldView[], { id, to }: { id: string; to: number }) => {
     const order = movedTo(
@@ -583,7 +867,7 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
   const rows = shown.map((f, i) =>
     editing === f.id ? (
       <li key={f.id} className="py-3">
-        <FieldEditor start={f} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
+        <FieldEditor start={f} choices={choices} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
       </li>
     ) : (
       <FieldRowView
@@ -631,10 +915,44 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
     ),
   );
   return (
-    <Card title={w.fields} description={w.fieldsHint} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newField}</Button> : undefined}>
+    <div id={QUESTIONS_ID} className="scroll-mt-4">
+    <Card
+      title={w.fields}
+      description={shown.length === 0 && examples.length > 0 && editing !== "new" ? undefined : w.fieldsHint}
+      aside={
+        canWrite && editing !== "new" ? (
+          <Button kind={shown.length === 0 && examples.length > 0 ? "link" : "strong"} onClick={() => { setPreset(null); setEditing("new"); }}>
+            {w.newField}
+          </Button>
+        ) : undefined
+      }
+    >
+      {canWrite && shown.length === 0 && editing !== "new" && examples.length > 0 && (
+        <>
+          <p className="mb-2 text-sm text-muted">{w.examplesStart}</p>
+          <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
+            {examples.map((example) => (
+              <li key={example.label}>
+                <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
+                  {example.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {editing === "new" && (
-        <div className="mb-4">
-          <FieldEditor start={null} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
+        <div className="mb-4 flex flex-col gap-2">
+          {/* The rule on sensitive questions (GDPR article 9) is said where a question is written (round 7). */}
+          {examples.length > 0 && <p className="text-sm text-muted">{w.fieldsHint}</p>}
+          <FieldEditor
+            start={preset ? { id: "", enabled: true, sensitive: false, ...preset, options: undefined } : null}
+            choices={choices}
+            locales={locales}
+            mainLocale={mainLocale}
+            save={actions.saveField}
+            onDone={() => { setEditing(null); setPreset(null); }}
+          />
         </div>
       )}
       {shown.length === 0 ? (
@@ -663,6 +981,7 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
         </DndContext>
       )}
     </Card>
+    </div>
   );
 }
 
@@ -690,7 +1009,15 @@ function FieldRowView({ field, sortable, after, children }: { field: FieldView; 
           <GripVertical aria-hidden className="size-4" />
         </button>
       )}
-      <RowLead title={field.label.text} sub={`${w.fieldKinds[field.kind]} · ${field.required ? w.required : w.optional}`} />
+      <RowLead
+        title={field.label.text}
+        sub={[
+          w.fieldKinds[field.kind],
+          field.required ? w.required : w.optional,
+          ...(field.width === "half" ? [w.widths.half] : []),
+          ...((field.conditions?.length ?? 0) > 0 ? [w.someBaskets] : []),
+        ].join(" · ")}
+      />
       <Chip signal={field.enabled ? "positive" : "neutral"} dot>
         {field.enabled ? w.on : w.off}
       </Chip>

@@ -120,8 +120,9 @@ export async function supportToolsFor(ctx: SupportToolContext): Promise<SupportT
   const offered: SupportTool[] = [];
   for (const tool of SUPPORT_TOOLS) {
     if (!FIRST_LINE_TOOLS.has(tool.name) || !(await needsMet(tool.needs, facts, false))) continue;
-    // By email nobody is signed in and nothing can be pressed: those tools are left out, and orders go to a person.
-    if (ctx.email && (NOT_BY_EMAIL.has(tool.name) || tool.needs.signedIn)) continue;
+    // By email nothing can be pressed: those tools are left out. A customer's own orders are read only when the sender's address is theirs
+    // (`customer`, B1); otherwise orders go to a person.
+    if (ctx.email && (NOT_BY_EMAIL.has(tool.name) || (tool.needs.signedIn && !ctx.customer))) continue;
     // Proposals only of the kinds the desk allows (none: not offered).
     if (tool.name === "propose_action" && allowedKinds(ctx.settings).length === 0) continue;
     offered.push(tool);
@@ -153,7 +154,7 @@ export async function runTool(ctx: SupportToolContext, name: string, args: Recor
     case "check_code":
       return checkCode(ctx, String(args.code));
     case "request_staff_action": {
-      const kept = await requestStaffAction(ctx, String(args.kind), typeof args.number === "string" ? args.number : undefined, String(args.details));
+      const kept = await requestStaffAction(ctx, String(args.kind), typeof args.number === "string" ? args.number : undefined, String(args.details), args.address);
       return { result: json(kept.result), ...(kept.actionId ? { action: kept.actionId } : {}) };
     }
   }

@@ -8,6 +8,28 @@ import type { Widen } from "./common.en";
  */
 export const legalEn = {
   pages: {
+    round: {
+      leadNoTerms: "None of your legal pages is chosen, so checkout shows no terms.",
+      leadNone: "None of your legal pages is chosen.",
+      leadSome: "{chosen} of your {total} legal pages are chosen.",
+      leadAll: "All your legal pages are chosen.",
+      leadRest: "Start from drafts written from your store's details; read and fill them in before you publish.",
+      makeAll: { one: "Make the missing draft", many: "Make all {n} drafts" },
+      makeAllText: "{names}, as drafts. No lawyer has checked them: read every sentence.",
+      makeAllButton: "Make the drafts",
+      made: { one: "One draft was made. It is not published: open it under Pages, read it and fill it in.", many: "{n} drafts were made. They are not published: open each under Pages, read it and fill it in." },
+      missingLine: { one: "One detail is missing from the drafts: {list}.", many: "{n} details are missing from the drafts: {list}." },
+      fillIn: "Fill them in",
+      yours: "Your legal pages",
+      noPage: "No page yet",
+      draftWaiting: "A draft is waiting: {title}",
+      choose: "Choose",
+      change: "Change",
+      aiOff: "Off · it can write and keep these pages for you",
+      aiCannot: "Not available for this store",
+      atCheckout: "At checkout",
+      notNeededShort: "not needed while the shop is off",
+    },
     title: "Legal pages",
     description:
       "The texts a shop is expected to show: its terms, how it handles personal data, how returns and delivery work, the right to withdraw and who the business is. Start from a draft, make it yours, publish it, and choose it here.",

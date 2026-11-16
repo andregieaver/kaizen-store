@@ -84,6 +84,9 @@ test("the orders list shows each order's number, customer, states and total on a
 
 test("an order shows its items' quantity and total without scrolling sideways", async ({ page }) => {
   await page.goto(`/admin/${STORE}/orders/${orderId}`);
+  // While the order waits to be packed the items and totals are folded (round 6, D620): open them.
+  const fold = page.locator("details:not([open]) > summary", { hasText: "Items and totals" });
+  if ((await fold.count()) > 0) await fold.click();
   const items = page.getByRole("region", { name: "Items" });
   const line = items.getByRole("row").filter({ hasText: "Ullgenser i merinoull" });
   await expect(line.getByRole("cell", { name: "3", exact: true })).toBeVisible();

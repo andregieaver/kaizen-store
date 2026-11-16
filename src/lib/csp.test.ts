@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   CSP_ENFORCE,
   CSP_REPORT_PATH,
   PERMISSIONS_POLICY,
+  PUBLIC_FILE_HEADERS,
   SITE_HEADERS,
   adminFrameHeaders,
   baseRouteHeaders,
@@ -177,5 +181,14 @@ describe("the site-wide Report-Only policy (D389, SEC-05)", () => {
     expect(policy["frame-src"]).toEqual(expect.arrayContaining(["https://www.youtube-nocookie.com", "https://player.vimeo.com"]));
     expect(policy["object-src"]).toEqual(["'none'"]);
     expect(policy["frame-ancestors"]).toBeUndefined();
+  });
+});
+
+describe("public files (bloat review step 0.32)", () => {
+  it("public files with a fixed address are kept a day", () => {
+    expect(PUBLIC_FILE_HEADERS).toHaveLength(1);
+    expect(PUBLIC_FILE_HEADERS[0].source).toBe("/:folder(flags|demo|kaizen)/:path*");
+    expect(PUBLIC_FILE_HEADERS[0].headers).toEqual([{ key: "Cache-Control", value: "public, max-age=86400" }]);
+    expect(readFileSync(join(process.cwd(), "next.config.ts"), "utf8")).toContain("...PUBLIC_FILE_HEADERS");
   });
 });

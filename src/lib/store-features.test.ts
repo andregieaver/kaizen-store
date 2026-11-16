@@ -20,9 +20,9 @@ import {
   isFeatureId,
   missingNeeds,
   normaliseFeatures,
-  requirementLabel,
   requirementMet,
 } from "./store-features";
+import { requirementLabel } from "./feature-labels";
 import { featureBlockers, featureRows, featureWarnings } from "./feature-words";
 
 const money = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency}`;

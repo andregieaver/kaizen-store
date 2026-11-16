@@ -193,8 +193,9 @@ describe("the Autopilot page's buttons", () => {
     expect(await autonomyFor(store.id)).toEqual({
       paused: false,
       levels: { website: "tell" },
-      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5, customerEmailsPerWeek: 3, adRaisePercent: 25 },
+      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5, customerEmailsPerWeek: 3, adRaisePercent: 25, marginFloorPercent: null, purchasePerOrder: null, purchaseMonthly: null },
       planning: { continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 },
+      challenge: null,
     });
     // Keeping going (D328): the switch and its choices; an unknown start choice is read as asking first.
     await pageActions.saveSettings(owner, form({ running: "on", keep_going: "on", plan_starts: "auto", review_days: "3", plans_per_week: "2", discount_percent: "15", price_change_percent: "5" }));

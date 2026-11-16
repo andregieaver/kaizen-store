@@ -33,7 +33,8 @@ import {
 } from "@/lib/setup-tools";
 import { methodInput } from "@/lib/shipping-methods-schema";
 import { storeDetailsInput } from "@/lib/store-details";
-import { featureOffText, featureOn } from "@/lib/store-features";
+import { featureOn } from "@/lib/store-features";
+import { featureOffText } from "@/lib/feature-labels";
 
 import type { Account, Membership } from "./auth";
 import { catalogTag } from "./catalog";

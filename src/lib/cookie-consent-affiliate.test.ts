@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { affiliateCookie } from "./affiliates";
-import { CONSENT_CHANGED_EVENT, KNOWN_COOKIES, cookiePurpose, declaredCookies, knownCookie } from "./cookie-consent";
+import { CONSENT_CHANGED_EVENT } from "./cookie-consent";
+import { KNOWN_COOKIES, cookiePurpose, declaredCookies, knownCookie } from "./known-cookies";
 
 const STORE = "0f8fad5b-d9cb-469f-a165-70867728950e";
 

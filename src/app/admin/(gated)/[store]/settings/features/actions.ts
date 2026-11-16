@@ -37,3 +37,18 @@ export async function saveBookingSettingsAction(storeSlug: string, _state: FormS
   refreshFeatureTags(member.store);
   return { status: "ok", messages: [adminText(adminLangOf(member.account.adminLocale), "settings").common.saved] };
 }
+
+/**
+ * Switches a feature on from the page it serves (round 12, D637: Gift cards, Reviews), as a form: on never needs a confirmation, and an owner
+ * alone may do it, as on the Features page.
+ */
+export async function switchOnFromPageAction(storeSlug: string, feature: "gift_cards" | "reviews"): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return problems([adminText(await actionAdminLang(), "settings").features.actions.onlyOwners]);
+  const lang = adminLangOf(member.account.adminLocale);
+  const words = { features: { s: adminText(lang, "settings").features, c: adminText(lang, "common").features }, locale: ADMIN_LANG_FACTS[lang].locale };
+  const result = await setFeature(member, feature, true, { words });
+  if (!result.ok) return problems(result.problems);
+  refresh();
+  return { status: "ok", messages: [] };
+}

@@ -9,6 +9,7 @@ import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
+import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -18,7 +19,7 @@ import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
-import { storeAreas, storeTabs } from "@/lib/store-nav";
+import { storeNav } from "@/lib/store-nav";
 import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
@@ -38,6 +39,7 @@ import {
   pageHereAction,
   saveSkillAction,
 } from "./assistant/actions";
+import { findStorePagesAction } from "./finder-actions";
 
 /**
  * Tools drawn in the `workspace` layout (D230): the page editor (a page's own address, or a new page, D53) and the media library use the
@@ -89,8 +91,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const trialPaused = open ? await pausedAfter(store.id) : null;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "shell");
-  const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
-  const areas: NavArea[] = storeAreas(base, store, canOpen);
+  const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
   // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
   return (
     <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
@@ -106,6 +107,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         }
         actions={
           <>
+            {/* The page finder (round 1): any page by name, ⌘K. */}
+            <PageFinder find={findStorePagesAction.bind(null, store.slug)} words={w.finder} />
             {/* Basic or Advanced (D454), from every page; on phones it is in the menu. */}
             <div className="hidden md:block">
               <AdminViewToggle compact />
@@ -115,6 +118,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
                 <AiManagerLauncher
                   area="store"
+                  noticePlace={store.id}
                   base={`${base}/assistant`}
                   siteName={store.name}
                   settingsHref={`${base}/settings/ai`}

@@ -330,6 +330,33 @@ export const notificationsEn = {
     },
   },
   integrations: {
+    /** The hub drawn for Homer (round 6, D620): what is connected, a good start, then every service as rows by what it does. */
+    hub: {
+      none: "Nothing is connected yet.",
+      some: { one: "{n} service is connected", many: "{n} services are connected" },
+      problems: { one: ", and {n} needs a look.", many: ", and {n} need a look." },
+      end: ".",
+      startHint: " Most shops start with a carrier and their accounting.",
+      find: "Find a service",
+      search: "Search",
+      connectedTitle: "Connected",
+      startTitle: "A good start for your shop",
+      allTitle: "Every service",
+      show: "Show",
+      groups: { all: "All", delivery: "Delivery", accounting: "Accounting", sell: "Sell elsewhere", pages: "On your pages", automate: "Automate" },
+      inYourCountries: "Delivery in your countries",
+      otherCarriers: { one: "{n} more carrier, for other countries", many: "{n} more carriers, for other countries" },
+      nothingMatches: "Nothing matches “{q}”.",
+      clear: "Show every service",
+      carrierText: "Delivery choices at checkout with real prices; labels printed from the order.",
+      accountingName: "Fiken or Tripletex",
+      accountingText: "Every invoice and credit note goes straight into your accounts; no exports at the month's end.",
+      reviewsText: "Your rating and reviews from Google on your pages, kept up to date.",
+      connectNamed: "Connect {name}",
+      chooseAccounting: "Choose your accounting",
+      showReviews: "Show your reviews",
+      endpointsName: "Your own endpoints",
+    },
     /** eBay as a sales channel (D555). */
     ebay: {
       title: "eBay",

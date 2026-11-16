@@ -14,6 +14,7 @@ import {
   actionExpiry,
   isCustomerAction,
   readActionArgs,
+  requestAddress,
   type CustomerActionKind,
   type StaffRequestKind,
 } from "@/lib/support-actions";
@@ -293,9 +294,14 @@ export async function proposeAction(ctx: ActionContext, kind: string, rawArgs: u
 }
 
 /** `request_staff_action`: a request a person at the store decides; the summary is code's, the details the AI's words for the staff. */
-export async function requestStaffAction(ctx: ActionContext, kind: string, number: string | undefined, details: string): Promise<ToolAnswer> {
+export async function requestStaffAction(ctx: ActionContext, kind: string, number: string | undefined, details: string, address?: unknown): Promise<ToolAnswer> {
   if (!(STAFF_REQUEST_KINDS as readonly string[]).includes(kind)) return { result: { error: "invalid" } };
-  const args = readActionArgs(kind, number ? { orderNumber: number } : {});
+  // A new address goes with an address change only (B3, D640): kept as fields, so code can carry it out as the customer wrote it.
+  const newAddress = kind === "change_address" && address ? requestAddress.safeParse(address) : null;
+  if (newAddress && !newAddress.success) {
+    return { result: { error: "address_incomplete", note: "Ask the customer for the full new address: name, street, postal code and city." } };
+  }
+  const args = readActionArgs(kind, { ...(number ? { orderNumber: number } : {}), ...(newAddress?.success ? { address: newAddress.data } : {}) });
   if (!args) return { result: { error: "needs_order_number", note: "Ask the customer which order it is about." } };
   const s = words(ctx.site).summary;
   const base = { refund: s.refund, cancel_order: s.cancelOrder, change_address: s.changeAddress } as Record<string, (n: string) => string>;

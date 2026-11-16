@@ -5,7 +5,36 @@ import type { CartBonus } from "@/lib/bonus";
 
 // The checkout's server reads are replaced by one open order; what is tested is how the credits are drawn (D130).
 vi.mock("server-only", () => ({}));
-vi.mock("../cart/bonus", () => ({ readCartBonus: async () => bonusNow }));
+// One render's memo, as in src/server/request-shared.test.ts: React's cache() does nothing outside a server render. Off, every call is read
+// again (what a bare test render does); the cases that hold a render to one summary turn `render.on` on.
+const render = vi.hoisted(() => ({ on: false, resets: [] as (() => void)[] }));
+vi.mock("react", async (original) => ({
+  ...(await original<typeof import("react")>()),
+  cache: <T>(make: () => T) => {
+    let made: T | undefined;
+    let has = false;
+    render.resets.push(() => {
+      has = false;
+      made = undefined;
+    });
+    return () => (render.on ? (has ? (made as T) : ((has = true), (made = make()))) : make());
+  },
+}));
+// The credits are the cart summary's now: ./bonus is never asked (bloat review step 0.22).
+const readCartBonus = vi.fn(async () => bonusNow);
+vi.mock("../cart/bonus", () => ({ readCartBonus: () => readCartBonus() }));
+// requestCartSummary() as the real one is shaped: one summary per render for a store and a market; `summaryWork` counts the times it is worked out.
+const summaryWork = vi.fn();
+vi.mock("@/server/cart-summary", async () => {
+  const { perRequest } = await import("@/server/request-memo");
+  return {
+    requestCartSummary: (store: { id: string }, market: { slug: string }) =>
+      perRequest(`cart-summary:${store.id}:${market.slug}`, async () => {
+        summaryWork();
+        return { cart: { lines: [{}] }, summary: bonusNow ? { bonus: bonusNow } : null };
+      }),
+  };
+});
 vi.mock("./actions", () => ({
   checkoutCreditsAction: async () => ({ status: "idle", message: "" }),
   checkoutCodeAction: async () => undefined,
@@ -39,7 +68,15 @@ vi.mock("@/components/checkout-form", () => ({
 }));
 vi.mock("@/components/line-thumbnail", () => ({ LineThumbnail: () => null }));
 const deliveryNow = vi.hoisted(() => ({ options: null as null | { postalCode: string | null; options: unknown[] } }));
-vi.mock("@/server/delivery-choice", () => ({ deliveryView: async () => deliveryNow.options }));
+// The real deliveryView() asks for the render's summary only when a delivery choice is on; the stand-in asks as that one does.
+const deliveryChoiceOn = vi.hoisted(() => ({ on: true }));
+vi.mock("@/server/delivery-choice", () => ({
+  deliveryView: async (_shop: unknown, _cartId: string, _label: string, known?: () => Promise<unknown>) => {
+    if (!deliveryChoiceOn.on) return null;
+    await known?.();
+    return deliveryNow.options;
+  },
+}));
 vi.mock("@/components/delivery-choice", () => ({ DeliveryChoice: () => "DELIVERY-CHOICE" }));
 
 import { stripeAppearance } from "@/lib/checkout-appearance";
@@ -53,7 +90,7 @@ import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutPay
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
-const store = { id: "s1", slug: "demo", name: "Demo", theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION } as Store;
+const store = { id: "s1", slug: "demo", name: "Demo", features: ["shop", "bonus"], theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION, checkoutContact: { phone: "off", name: "off" } } as Store;
 
 const order = (over: Record<string, unknown> = {}) => ({
   id: "o1",
@@ -116,6 +153,10 @@ const words = (markup: string) =>
     .replace(/\s+/g, " ");
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  render.on = false;
+  render.resets.forEach((reset) => reset());
+  deliveryChoiceOn.on = true;
   bonusNow = bonus();
   getOrder.mockResolvedValue(order({ bonus: { usedMinor: 1500, earnedMinor: 0, availableAt: null } }));
 });
@@ -204,6 +245,33 @@ describe("the checkout's credits piece", () => {
     expect(page).not.toContain("Use bonus credits");
     bonusNow = bonus();
     expect(words(renderToString(await Checkout({ store, market })))).toContain(t("en").bonus.useHeading);
+  });
+});
+
+describe("the checkout's reads of the cart summary (bloat review step 0.22)", () => {
+  const shopOnly = { ...store, features: ["shop"] } as Store;
+
+  it("reads no credits and works no summary out for a store without Bonus, and draws nothing for them", async () => {
+    deliveryChoiceOn.on = false;
+    expect(renderToString((await CheckoutCredits({ store: shopOnly, market })) ?? null)).toBe("");
+    const page = words(renderToString(await Checkout({ store: shopOnly, market })));
+    expect(page).not.toContain("Use bonus credits");
+    expect(readCartBonus).not.toHaveBeenCalled();
+    expect(summaryWork).not.toHaveBeenCalled();
+  });
+
+  it("works the summary out once for the credits and the delivery choice together, and not at all through ./bonus", async () => {
+    render.on = true;
+    deliveryNow.options = { postalCode: null, options: [{ id: "flat" }] };
+    getOrder.mockResolvedValue(order({ ships: true, shippingMinor: 9900 }));
+    expect(renderToString((await CheckoutCredits({ store, market })) ?? null)).toContain("<form");
+    expect(renderToString((await CheckoutDelivery({ store, market })) ?? null)).toContain("DELIVERY-CHOICE");
+    expect(summaryWork).toHaveBeenCalledTimes(1);
+    expect(readCartBonus).not.toHaveBeenCalled();
+    // The whole checkout of the next render asks once too.
+    render.resets.forEach((reset) => reset());
+    renderToString(await Checkout({ store, market }));
+    expect(summaryWork).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -434,25 +502,42 @@ describe("the checkout's look (D337)", () => {
   });
 });
 
-describe("the driver's phone for local delivery (D237)", () => {
+describe("contact details on the checkout page (D357, D237)", () => {
   beforeEach(() => {
     stripeNow.key = "pk_test_1";
     termsNow.display = null;
     formNow.props = null;
   });
 
-  it("asks it on the page for a local delivery, in the market's country, since Stripe's form on our page draws no phone field", async () => {
+  it("asks the driver's phone, required, for a local delivery, even when the store asks nothing, since Stripe's form on our page draws no phone field", async () => {
     getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "local" }));
     renderToString(await CheckoutPayment({ store, market }));
-    const words = t("en").deliveryOptions.driverPhone;
-    expect(formNow.props!.phone).toEqual({ country: "IE", labels: { label: words.label, hint: words.hint, problem: words.problem } });
+    const driver = t("en").deliveryOptions.driverPhone;
+    expect(formNow.props!.contact).toMatchObject({
+      store: "demo",
+      market: "ie",
+      country: "IE",
+      asked: { phone: "required", name: "off" },
+      driver: true,
+      labels: { driverPhone: driver.label, driverHint: driver.hint, phoneProblem: driver.problem },
+    });
   });
 
-  it("asks none for an order sent by post or collected", async () => {
+  it("asks nothing when the store asks nothing and the order is sent by post or collected", async () => {
     for (const deliveryMethod of ["ship", "pickup"]) {
       getOrder.mockResolvedValue(order({ ships: true, deliveryMethod }));
       renderToString(await CheckoutPayment({ store, market }));
-      expect(formNow.props!.phone, deliveryMethod).toBeNull();
+      expect(formNow.props!.contact, deliveryMethod).toBeNull();
     }
+  });
+
+  it("asks what the store chose: the phone of every order, the name when nothing goes to an address", async () => {
+    const asking = { ...store, checkoutContact: { phone: "optional", name: "required" } } as Store;
+    getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "ship" }));
+    renderToString(await CheckoutPayment({ store: asking, market }));
+    expect(formNow.props!.contact).toMatchObject({ asked: { phone: "optional", name: "off" }, driver: false, labels: { phoneProblem: t("en").checkoutContact.phoneProblem } });
+    getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "pickup" }));
+    renderToString(await CheckoutPayment({ store: asking, market }));
+    expect(formNow.props!.contact).toMatchObject({ asked: { phone: "optional", name: "required" } });
   });
 });

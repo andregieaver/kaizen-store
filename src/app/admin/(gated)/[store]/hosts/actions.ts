@@ -8,7 +8,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { inviteHost, setHostDisabled, updateHost } from "@/server/hosts";
-import { featureOffText, featureOn } from "@/lib/store-features";
+import { featureOn } from "@/lib/store-features";
+import { featureOffText } from "@/lib/feature-labels";
 
 /** Hosts are part of Stays and rentals (D178): nothing about them changes while it is switched off, whatever a stale page sends. */
 const BOOKINGS_OFF: FormState = { status: "error", messages: [featureOffText("bookings")] };

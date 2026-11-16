@@ -334,8 +334,8 @@ describe("settingsFromForm", () => {
   const kept = { paymentFeeBps: 290, paymentFeeFixedMinor: 200, shippingCostMinor: 6000, fixedCostsMonthlyMinor: 2_500_000, ltvLifespanYears: 4 };
 
   it("lays the costs form over what is kept, leaving the lifetime as it is", () => {
-    const input = settingsFromForm({ paymentFeePercent: "3,2", paymentFeeFixed: "", shippingCost: "55", fixedCostsMonthly: "1 000" }, kept, "NOK");
-    expect(input).toEqual({ paymentFeePercent: "3,2", paymentFeeFixed: "", shippingCost: "55", fixedCostsMonthly: "1 000", ltvLifespanYears: 4 });
+    const input = settingsFromForm({ paymentFeePercent: "3,2", paymentFeeFixed: "", shippingCost: "55", handlingCost: "20", fixedCostsMonthly: "1 000" }, kept, "NOK");
+    expect(input).toEqual({ paymentFeePercent: "3,2", paymentFeeFixed: "", shippingCost: "55", handlingCost: "20", fixedCostsMonthly: "1 000", ltvLifespanYears: 4 });
   });
 
   it("lays the lifetime form over what is kept, leaving the costs as they are", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
 import type { BrregCompany } from "@/lib/brreg";
@@ -22,7 +22,13 @@ export function CompanyFields({
   lookup,
   search,
   words = customersEn.fields,
+  stepped = false,
+  submit,
 }: {
+  /** The form's button, shown with the fields (so a stepped form has none until there is something to save). */
+  submit?: ReactNode;
+  /** A new company asked for in steps (round 14, D641): the register lookup first, the rest once it found one or the owner fills in by hand. */
+  stepped?: boolean;
   groups: { id: string; name: string; percent: number; active: boolean }[];
   main?: boolean;
   values?: { name: string; organisationNumber: string; tierId: string | null; employeeSharePercent: number; maxMembers: number; active: boolean };
@@ -34,12 +40,28 @@ export function CompanyFields({
   const [name, setName] = useState(values?.name ?? "");
   const [organisationNumber, setOrganisationNumber] = useState(values?.organisationNumber ?? "");
   const [fromRegister, setFromRegister] = useState<BrregCompany | null>(null);
+  const [open, setOpen] = useState(!stepped || !lookup);
   const fill = (company: BrregCompany) => {
     if (name.trim() === "") setName(company.name);
     // Digits only: the number is what the company's accounts are filled in with at checkout.
     setOrganisationNumber(company.organisationNumber);
     setFromRegister(company);
+    setOpen(true);
   };
+  const limits = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {words.share}
+        <input name="employeeSharePercent" inputMode="numeric" pattern="[0-9]{1,3}" defaultValue={values?.employeeSharePercent ?? 100} className={control} />
+        <span className="font-normal text-muted">{words.shareHint}</span>
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {words.max}
+        <input name="maxMembers" inputMode="numeric" pattern="[0-9]{1,4}" defaultValue={values?.maxMembers ?? 25} className={control} />
+        <span className="font-normal text-muted">{words.maxHint}</span>
+      </label>
+    </div>
+  );
 
   return (
     <>
@@ -47,8 +69,15 @@ export function CompanyFields({
         <div className="flex flex-col gap-2">
           <BrregLookup lookup={lookup} search={search} onPick={fill} />
           {fromRegister && <RegisterNote company={fromRegister} fills="company" />}
+          {!open && (
+            <button type="button" onClick={() => setOpen(true)} className="self-start text-sm text-ink underline underline-offset-2">
+              {words.byHand}
+            </button>
+          )}
         </div>
       )}
+      {open && (
+        <>
       <label className="flex flex-col gap-1 text-sm font-medium">
         {words.name}
         <input
@@ -82,18 +111,14 @@ export function CompanyFields({
           ))}
         </select>
       </label>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {words.share}
-          <input name="employeeSharePercent" inputMode="numeric" pattern="[0-9]{1,3}" defaultValue={values?.employeeSharePercent ?? 100} className={control} />
-          <span className="font-normal text-muted">{words.shareHint}</span>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {words.max}
-          <input name="maxMembers" inputMode="numeric" pattern="[0-9]{1,4}" defaultValue={values?.maxMembers ?? 25} className={control} />
-          <span className="font-normal text-muted">{words.maxHint}</span>
-        </label>
-      </div>
+      {stepped ? (
+        <details className="rounded-md border border-line px-3 py-2">
+          <summary className="cursor-pointer text-sm text-ink">{words.more}</summary>
+          <div className="mt-3">{limits}</div>
+        </details>
+      ) : (
+        limits
+      )}
       {main && (
         <label className="flex flex-col gap-1 text-sm font-medium">
           {words.main}
@@ -106,6 +131,9 @@ export function CompanyFields({
           <input type="checkbox" name="active" defaultChecked={values.active} className="size-4" />
           {words.switchedOn}
         </label>
+      )}
+          {submit}
+        </>
       )}
     </>
   );

@@ -59,6 +59,7 @@ export const commonNb: CommonMessages = {
     asleep: "{label} trenger {need}, som er slått av.",
     hidden: "Denne siden er skjult mens funksjonen er av. Ingenting er slettet: slå den på, så er alt som før.",
     goTo: "Gå til Funksjoner",
+    switchOn: "Slå den på",
     onlyOwner: "Bare en eier kan slå funksjoner av og på, under Innstillinger → Funksjoner.",
     noteOff: "{label} er slått av, så dette er skjult.",
     noteSwitch: "Slå den på under Funksjoner",

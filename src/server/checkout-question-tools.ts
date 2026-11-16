@@ -40,6 +40,8 @@ const asked = (fields: FieldRow[]) =>
     required: f.required,
     help: f.help?.text ?? null,
     help_in: f.help?.byLocale ?? {},
+    // How wide the cart draws it (task 2); set on the page, kept when a question is changed here.
+    width: f.width,
     on: f.enabled,
   }));
 

@@ -6,6 +6,42 @@ import type { Widen } from "./common.en";
  * `AUTOMATION_STARTERS`, `m.news`) is not here. `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }` pair.
  */
 export const marketingEn = {
+  // Round 4 (D612): Marketing's first page: what brings people back, ready plays, what runs and what it did, the list, every tool.
+  home: {
+    title: "Marketing",
+    leadNothing: "Nothing is bringing people back yet.",
+    leadRunning: { one: "{n} thing brings people back by itself.", many: "{n} things bring people back by themselves." },
+    leadBuyers: { one: " {n} person bought from you this month", many: " {n} people bought from you this month" },
+    leadBack: { one: " and {n} came back.", many: " and {n} came back." },
+    leadNoneBack: " and none has come back.",
+    leadNoBuyers: " Nobody has bought yet: these start working with the first orders.",
+    plays: "Ready to switch on",
+    playsSub: "Each takes a minute and runs by itself.",
+    after: { title: "Thank you, come again", does: "An email a week after someone buys, to the people on your list: a thank-you and a reason to come back.", note: "You write it, or let the AI write it, before it goes.", button: "Set it up" },
+    cart: { title: "Cart reminders", does: "An email to people who left items in their cart at checkout, with the items in it.", note: "Only to people who gave their email and did not say no.", button: "Set it up" },
+    offer: { title: "A first offer", does: "3 for 2 on {product}, your best seller by count, for two weeks.", doesNone: "3 for 2 on a product you choose, for two weeks.", note: "Shoppers see it on the products and in the cart; no code to type.", button: "Set it up" },
+    running: "Running now",
+    what: "What",
+    state: "State",
+    did: "In 30 days",
+    automation: "Email after each moment",
+    cartRow: "When a cart is left",
+    campaignRow: "Campaign, no code",
+    on: "On",
+    sent: { one: "{n} email sent", many: "{n} emails sent" },
+    steps: { one: "{n} email", many: "{n} emails" },
+    orders: { one: "{n} order", many: "{n} orders" },
+    nothingRunning: "Nothing runs yet. The ones above start it.",
+    list: "Your list",
+    listCount: { one: "person has asked for your emails", many: "people have asked for your emails" },
+    listText: "A box at checkout and on the site let shoppers say yes. Nothing is sent to anyone who did not.",
+    listLink: "See who is on it",
+    tell: "Tell everyone something",
+    tellText: "News, a new product or a sale, to your list or a group of it. The AI can write the first draft from your products.",
+    tellLink: "Write an email",
+    tools: "Every tool",
+    toolsSub: "by name",
+  },
   common: {
     on: "On",
     off: "Off",
@@ -23,6 +59,14 @@ export const marketingEn = {
     whatItSays: "What it says",
   },
   segments: {
+    /** The list drawn for Homer (round 8, D626): ready segments on the page, each with how many it holds now. */
+    lead: "Groups of your customers, kept up to date by themselves.",
+    leadRest: " Start from one most shops use, or make your own.",
+    yours: "Your segments",
+    ready: "Ready to use",
+    keep: "Keep it",
+    peopleNow: { one: "person now", many: "people now" },
+    makeOwn: "Make your own",
     title: "Segments",
     description:
       "Groups of your customers and subscribers by what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date.",
@@ -167,6 +211,23 @@ export const marketingEn = {
     orJoin: " · or ",
   },
   subscribers: {
+    /** The page drawn for Homer (round 13, D639). */
+    leadNone: "Nobody is on your list yet.",
+    leadNoneRest: " People join in three places; each one confirms by email, and every email you send has a link to leave.",
+    leadSome: { one: "{n} person wants your emails.", many: "{n} people want your emails." },
+    leadWaiting: { one: " {n} waits for their link.", many: " {n} wait for their link." },
+    waysTitle: "How people join",
+    formRow: "A sign-up form on your site",
+    formNone: "Not on any page yet",
+    formSome: { one: "On {n} page", many: "On {n} pages" },
+    formAdd: "Add to the front page",
+    formAddPages: "Add to a page",
+    checkoutRow: "A box at checkout",
+    checkoutSub: "Shown, unticked: buyers tick it themselves",
+    accountRow: "My account",
+    accountSub: "Customers switch emails on and off there",
+    inPlace: "In place",
+    offWithShop: "Not while the online shop is off",
     title: "Subscribers",
     description:
       "People who asked for your emails with news and offers, with the words they agreed to and when. They join from your sign-up forms, checkout and My account, and every email you send them will have a link to leave.",
@@ -209,6 +270,20 @@ export const marketingEn = {
     description:
       "Emails with news and offers to the people who asked for them: everyone on your list, or a segment. Each person gets it once, with a way to unsubscribe.",
     newBroadcast: "New broadcast",
+    /** The page drawn for Homer (round 10, D633): how many can get an email, and three emails to start from. */
+    leadSome: { one: "{n} person can get your emails.", many: "{n} people can get your emails." },
+    leadRest: " Start from one of these; you send a test to yourself before anyone else.",
+    leadNone: "Nobody is on your list yet.",
+    leadNoneRest: " People join with the sign-up at checkout and in your footer; you can write the first email meanwhile.",
+    whoIsOn: "Who is on the list",
+    writeOwn: "Write your own",
+    startsTitle: "Emails to start from",
+    startFromThis: "Start from this",
+    starts: {
+      new_products: { title: "New in the shop", sub: "Your three newest products, with their pictures and prices from the shop." },
+      offer: { title: "An offer for the list", sub: "Say what the offer is; add a running campaign and its terms and end come from the shop." },
+      thanks: { title: "A thank-you", sub: "A short note to the people who shop with you." },
+    },
     empty: "No broadcasts yet. Write one and send a test to yourself first.",
     list: "Broadcasts",
     segment: "Segment: {name}",
@@ -456,10 +531,20 @@ export const marketingEn = {
     },
   },
   automations: {
+    /** The page drawn for Homer (round 13, D639). */
+    leadNone: "None is on yet.",
+    leadNoneRest: " Each goes by itself to people on your list, once; most shops start with {first}.",
+    leadSome: "{names} on.",
+    leadSomeRest: " Each goes by itself to people on your list, once; switching one on never writes about the past.",
+    isOne: "is",
+    areMany: "are",
+    and: "and",
+    startHere: "Start here",
     title: "Email automations",
     description:
       "Emails that go by themselves to the people who want your emails, once each. Switching one on never writes to people about what happened before.",
     sentLately: "Sent {n} in the last 30 days.",
+    ordersAfter: { one: "Then {n} order within a week, {amount}.", many: "Then {n} orders within a week, {amount}." },
     edit: "Edit",
     setUp: "Set it up",
     needsShop: "It needs the online shop, which is switched off.",
@@ -506,6 +591,17 @@ export const marketingEn = {
    * English text, with `{name}` parts carried over. A text not listed stays as the server wrote it.
    */
   sms: {
+    /** Before connecting, drawn for Homer (round 13, D639). */
+    leadNotSet: "Texts are not set up.",
+    leadNotSetRest: " Send offers by text to buyers who asked for them at checkout.",
+    getTitle: "What you get",
+    get: {
+      consent: { title: "Only to people who ticked the box at checkout", sub: "Every text ends with a link to stop them" },
+      daytime: { title: "Sent in the daytime where each reader lives", sub: "A text written at night waits until morning" },
+      cost: { title: "You pay per text, to 46elks", sub: "A Swedish SMS service; the account is yours, Kaizena Flow takes nothing" },
+    },
+    connectOpen: "Connect 46elks",
+    makeAccount: "Make a 46elks account",
     title: "Text messages",
     description: "Send offers by text message to the people who asked for them at checkout. Each text waits until daytime where its reader lives and ends with a link to stop them.",
     connectTitle: "Connect a 46elks account",

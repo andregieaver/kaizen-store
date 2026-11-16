@@ -11,7 +11,7 @@ import { merchandise, rulesFor } from "@/lib/search-rules";
 import { expandQuery } from "@/lib/search-synonyms";
 import { vectorLiteral } from "@/lib/vectors";
 
-import { aiFor } from "./ai";
+import { aiAbilities } from "./ai";
 import type { VisitKey } from "./analytics-visits";
 import { listGridProducts, type GridProduct } from "./catalog";
 import { convertedSql, inCategories, inStockNow, OFFERED, withTags } from "./product-conditions";
@@ -304,8 +304,8 @@ export type SearchResult = {
   filters: SearchFilters | null;
 };
 
-type VectorFor = (storeId: string, space: string, text: string) => Promise<number[]>;
-type Understand = (storeId: string, textModel: string, market: { locale: string; currency: string }, text: string) => Promise<SearchFilters>;
+type VectorFor = (storeId: string, space: string, text: string, visitor: string | null) => Promise<number[]>;
+type Understand = (storeId: string, textModel: string, market: { locale: string; currency: string }, text: string, visitor: string | null) => Promise<SearchFilters>;
 
 const skipped = (what: string) => (error: unknown) => {
   console.warn(`${what} skipped: ${error instanceof Error ? error.message : String(error)}`);
@@ -319,7 +319,9 @@ const skipped = (what: string) => (error: unknown) => {
  * order or stock into filters; both are asked at once, and whatever fails
  * or is late is left out, down to keyword search alone. `understand` is
  * left out when the shopper asked for the words exactly as typed, and both
- * are in the keyword arm of a search test (D77).
+ * are in the keyword arm of a search test (D77). Which AI the store has is read from `aiAbilities()` (a minute per instance, no key), so
+ * a search answered from the search cache reads no AI connection; `vectorFor` and `understand` ask the model only on a cache miss and
+ * under the search's ceiling for `visitor` (`searchAiRoom()`, bloat review step 0.21), else the search goes on by keyword.
  */
 export async function searchProducts(
   shop: Shop,
@@ -327,21 +329,22 @@ export async function searchProducts(
   vectorFor: VectorFor | null,
   understand: Understand | null = null,
   limit = 48,
+  visitor: string | null = null,
 ): Promise<SearchResult> {
   const text = normalizeQuery(query);
   if (!text) return { products: [], semanticBest: null, meaningOnly: 0, filters: null };
-  const ai = await aiFor(shop.storeId, { feature: "search" });
-  const textModel = understand && ai?.textModel && worthUnderstanding(text) ? ai.textModel : null;
+  const ai = await aiAbilities(shop.storeId);
+  const textModel = understand && ai.textModel && worthUnderstanding(text) ? ai.textModel : null;
   const [vector, understood, storeRules] = await Promise.all([
-    ai?.space && vectorFor ? vectorFor(shop.storeId, ai.space, text).catch(skipped("Search by meaning")) : null,
+    ai.space && vectorFor ? vectorFor(shop.storeId, ai.space, text, visitor).catch(skipped("Search by meaning")) : null,
     textModel && understand
-      ? understand(shop.storeId, textModel, { locale: shop.market.locale, currency: shop.market.currency }, text).catch(
+      ? understand(shop.storeId, textModel, { locale: shop.market.locale, currency: shop.market.currency }, text, visitor).catch(
           skipped("Understanding the search"),
         )
       : null,
     rulesOf(shop.storeId),
   ]);
-  const meaning = vector && ai?.space ? { vector, space: ai.space, minSimilarity: ai.minSimilarity } : null;
+  const meaning = vector && ai.space && ai.minSimilarity !== null ? { vector, space: ai.space, minSimilarity: ai.minSimilarity } : null;
   const filters = understood && hasFilters(understood) ? understood : null;
   const ranked = await rankedSearch(shop, text, limit, meaning, filters);
   // The order asked for, or the search's own.
@@ -427,7 +430,7 @@ export async function logRedirectedSearch(shop: Shop, query: string): Promise<vo
 /** Days searches are kept: queries may hold personal data. */
 export const SEARCH_LOG_DAYS = 90;
 
-/** Forgets searches older than `SEARCH_LOG_DAYS`; from the five-minute cron. */
+/** Forgets searches older than `SEARCH_LOG_DAYS`; from the daily run. */
 export async function pruneSearchLog(): Promise<number> {
   const rows = await typedRows(
     z.object({ one: col.int }),

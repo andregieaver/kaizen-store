@@ -102,6 +102,8 @@ export const en = {
   problemDiscount: "The discount code can no longer be used. Check your cart and try again.",
   discountCode: "Discount code",
   haveCode: "Have a discount code?",
+  codeOrCard: "Discount code or gift card",
+  haveCodeOrCard: "Have a discount code or gift card?",
   applyCode: "Apply",
   removeCode: "Remove",
   discount: "Discount",
@@ -585,6 +587,7 @@ export const en = {
     // legal: needs review
     moreFollows: "More of this order follows in another parcel.",
     alreadySent: "All items (already sent)",
+    answers: "Answers at checkout",
   },
   /**
    * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
@@ -911,7 +914,12 @@ export const en = {
   checkoutQuestions: {
     legend: "A few questions from the store",
     required: "required",
-    problem: "Answer the store's questions marked required, then try again.",
+    problem: "Answer the store's questions marked required, check the numbers, dates, email addresses and phone numbers you typed, and give your consent where a question asks for it, then try again.",
+    // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
+    consent: "I agree that the store uses what I ticked here only to prepare this order.",
+    // legal: needs review. The same consent for a dropdown or a choice of one (task 4).
+    consentChosen: "I agree that the store uses what I chose here only to prepare this order.",
+    choose: "Choose",
   },
   /**
    * Producer responsibility (D342): a product under a scheme the seller has no valid registration for in the shopper's country is not sold
@@ -931,6 +939,15 @@ export const en = {
       furniture: "Furniture",
       tyres: "Tyres",
     },
+  },
+  /** A name and a phone at checkout besides the email (D357): asked on our page as the store chooses, kept on the order. */
+  checkoutContact: {
+    name: "Name",
+    phone: "Phone",
+    optional: "(optional)",
+    nameProblem: "Write your name.",
+    phoneProblem: "Write a phone number we can reach you on. A number from another country starts with + and its country code.",
+    saveFailed: "Your details could not be saved. Try again.",
   },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {

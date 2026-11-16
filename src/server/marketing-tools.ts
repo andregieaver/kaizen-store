@@ -1,25 +1,31 @@
 import "server-only";
 
-import { AUTOMATION_KINDS, LIFECYCLE_KINDS, type LifecycleKind } from "@/lib/automation-kinds";
-import { AUTOMATION_WORDS } from "@/lib/automations";
+import { AUTOMATION_KINDS, DELAY_RANGES, LIFECYCLE_KINDS, type LifecycleKind } from "@/lib/automation-kinds";
+import { AUTOMATION_WORDS, ORDER_AFTER_DAYS } from "@/lib/automations";
+import { findAvoided } from "@/lib/brand";
 import { suggestionBlocks } from "@/lib/broadcasts";
+import { CLAIM_LABELS, findClaims } from "@/lib/claims";
 import { localInstant } from "@/lib/follow-ups";
 import { mainCurrency } from "@/lib/markets";
 import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
+import type { PermissionHolder } from "@/lib/permissions";
 import { describeRules, segmentRulesSchema } from "@/lib/segments";
+import { SMS_PARTS_MAX, smsParts } from "@/lib/sms";
 import { plainText } from "@/lib/approval-summaries";
 
-import { automationStats, getAutomations, switchAutomation } from "./automations";
+import { automationStats, getAutomation, getAutomations, saveAutomation, switchAutomation } from "./automations";
+import { brandOf } from "./brand";
 import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, type Broadcast } from "./broadcasts";
 import { listTiers } from "./customer-tiers";
 import { issueGiftCard } from "./gift-cards-admin";
 import { OwnerToolError } from "./owner-tool-error";
 import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type SavedSegment } from "./segments";
 import { storeById } from "./shopper-emails";
+import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
-import type { Account } from "./auth";
+import type { Account, Membership } from "./auth";
 
 /**
  * The AI manager's marketing tools (PSI AGT-01; D295-D298): broadcasts, segments, customer tags and automations, each through the
@@ -28,7 +34,10 @@ import type { Account } from "./auth";
  * and words made in code, never who is on a list.
  */
 
-type Ctx = { account: Account; store: Store; invalidate: (tag: string) => void };
+type Ctx = { account: Account; store: Store; invalidate: (tag: string) => void; holder?: PermissionHolder };
+
+/** The member the tools work for, as the screens' functions take one; its permission was checked before the tool ran. */
+const memberOf = ({ account, store, holder }: Ctx): Membership => ({ account, store, role: holder?.role ?? "owner", kind: holder?.kind, permissions: holder?.permissions });
 
 const fail = (message: string): never => {
   throw new OwnerToolError(message);
@@ -224,6 +233,10 @@ export async function tagCustomerTool({ account, store }: Ctx, { email, tag, rem
   return added.ok ? { done: `Tagged "${tag}".` } : fail(added.problem);
 }
 
+/** Amounts per currency in words, such as "1 450,00 kr", for a tool's answer. */
+const amountsWords = (store: Store, minor: Record<string, number>): string[] =>
+  Object.entries(minor).map(([currency, amount]) => formatMoney(amount, currency, store.localization.locales[0] ?? "en-GB"));
+
 export async function listAutomationsTool({ store }: Ctx) {
   const [automations, stats] = await Promise.all([getAutomations(store), automationStats(store.id)]);
   const sent = stats.sent as Record<LifecycleKind, number>;
@@ -237,9 +250,15 @@ export async function listAutomationsTool({ store }: Ctx) {
         does: words.does,
         on: a.enabled,
         ...(a.delayDays !== null && words.days && { when: words.days(a.delayDays) }),
-        ...((LIFECYCLE_KINDS as readonly string[]).includes(kind) && { sent_last_30_days: sent[kind as LifecycleKind] ?? 0 }),
+        ...((LIFECYCLE_KINDS as readonly string[]).includes(kind) && {
+          sent_last_30_days: sent[kind as LifecycleKind] ?? 0,
+          // Worked out by the store (D4): paid orders their readers placed within the days after an email, never caused by it alone.
+          orders_after: stats.revenue[kind as LifecycleKind].orders,
+          ...(stats.revenue[kind as LifecycleKind].orders > 0 && { revenue_after: amountsWords(store, stats.revenue[kind as LifecycleKind].minor) }),
+        }),
       };
     }),
+    orders_after_means: `Paid orders placed by the reader within ${ORDER_AFTER_DAYS} days of one of its emails in the last 30 days; some would have come anyway.`,
     waiting_for_products_back: stats.waiting,
     link: adminLink(store, "/automations"),
   };
@@ -249,6 +268,137 @@ export async function switchAutomationTool({ account, store }: Ctx, { kind, on }
   const result = await switchAutomation(store, account.id, kind, on);
   if (!result.ok) return fail(result.problem);
   return { done: `${AUTOMATION_WORDS[kind].title} is ${on ? "on" : "off"}.`, link: adminLink(store, "/automations") };
+}
+
+/** Who each automation reaches and when, for the store's writer (D4): what it may and may not know about the reader. */
+const AUTOMATION_AUDIENCE: Record<LifecycleKind, (days: number) => string> = {
+  welcome: (d) =>
+    `It is the shop's welcome email: it goes to each person ${d === 0 ? "as soon as they join" : `${d} days after they join`} the shop's list. Welcome them and say what the shop is about.`,
+  after_purchase: (d) =>
+    `It goes to each customer on the shop's list ${d} days after their order was delivered. Thank them; you may show products that go well with what the shop sells. You do not know what they bought, so never name it.`,
+  win_back: (d) => `It goes to customers on the shop's list who have not ordered for ${d} days. Invite them back warmly, without pressure.`,
+};
+
+/** An automation's days: those asked for, else its own, refused outside its kind's range. */
+async function automationDays(store: Store, kind: LifecycleKind, days: number | undefined): Promise<number> {
+  const range = DELAY_RANGES[kind];
+  const chosen = days ?? (await getAutomation(store, kind)).delayDays ?? range.start;
+  if (!Number.isInteger(chosen) || chosen < range.min || chosen > range.max) fail(`The days for ${AUTOMATION_WORDS[kind].title} must be a whole number from ${range.min} to ${range.max}.`);
+  return chosen;
+}
+
+/** Checks a write before it is kept for a yes: the days within the kind's range. */
+export async function preflightWriteAutomation({ store }: Ctx, input: OwnerToolInput<"write_email_automation">): Promise<void> {
+  await automationDays(store, input.kind, input.days);
+}
+
+/**
+ * Writes an automation's words with the store's own writer (D4 of `docs/100-day-challenge.md`, D352): from the brief, to the readers the kind
+ * reaches, in the store's main language, the store's products and campaigns drawn by code and every text through the claims filter and the
+ * brand's words to avoid. Saved through the screen's own `saveAutomation()`, the days with it; it is not switched on or off here.
+ */
+export async function writeAutomationTool({ account, store }: Ctx, input: OwnerToolInput<"write_email_automation">) {
+  const days = await automationDays(store, input.kind, input.days);
+  const locale = store.localization.locales[0] ?? "en";
+  const suggested = await suggestBroadcast(store, account.id, input.brief, locale, { audience: AUTOMATION_AUDIENCE[input.kind](days) });
+  if (!suggested.ok) return fail(suggested.problem);
+  const s = suggested.suggestion;
+  const current = await getAutomation(store, input.kind);
+  const saved = await saveAutomation(store, account.id, input.kind, {
+    delayDays: days,
+    content: { ...(current.content ?? {}), [locale]: { subject: s.subject, preview: s.preview, blocks: suggestionBlocks(s) } },
+  });
+  if (!saved.ok) return fail(saved.problem);
+  const others = Object.keys(current.content ?? {}).filter((l) => l !== locale && store.localization.keptLocales.includes(l));
+  const words = AUTOMATION_WORDS[input.kind];
+  return {
+    done: `${words.title} has new words in ${locale}. ${words.days?.(days) ?? ""} ${current.enabled ? "It is on, so the next emails use them." : "It is off: switch it on with switch_email_automation."}`.trim(),
+    subject: s.subject,
+    words: [s.heading, ...s.paragraphs],
+    ...(s.products.length > 0 && { products: s.products.map((p) => p.label) }),
+    ...(s.campaigns.length > 0 && { campaigns: s.campaigns.map((c) => c.label) }),
+    ...(others.length > 0 && { other_languages: `${others.join(", ")} keep their own words; the owner changes them on its page (the link).` }),
+    link: adminLink(store, `/automations/${input.kind}`),
+  };
+}
+
+// Text messages (D565) -------------------------------------------------------------------------------
+
+/** A text message by its id or its name (any case); refused when there is none, or more than one by that name. */
+async function findTextMessage(store: Store, named: string): Promise<SmsCampaign> {
+  const byId = await getSmsCampaign(store.id, named);
+  if (byId) return byId;
+  const wanted = named.trim().toLowerCase();
+  const found = (await listSmsCampaigns(store.id)).filter((c) => c.title.trim().toLowerCase() === wanted);
+  if (found.length === 1) return found[0];
+  return fail(found.length > 1 ? `Several text messages are called "${named}": give its id from list_text_messages.` : `No text message "${named}". Look with list_text_messages.`);
+}
+
+/** The store's text messages: whether 46elks is connected, the month's spend against the cap, who is subscribed, and the latest messages. */
+export async function listTextMessagesTool({ store }: Ctx, { limit }: OwnerToolInput<"list_text_messages">) {
+  const [settings, counts, campaigns] = await Promise.all([getSmsSettings(store.id), smsSubscriberCounts(store.id), listSmsCampaigns(store.id)]);
+  if (!settings.connected) return { connected: false, note: "No 46elks account is connected: the owner connects one under Marketing, Text messages.", link: adminLink(store, "/text-messages") };
+  return {
+    connected: true,
+    currency: settings.currency,
+    spent_this_month: settings.spentThisMonth,
+    monthly_cap: settings.monthlyCap,
+    subscribed: counts.subscribed,
+    waiting_for_their_first_order: counts.pending,
+    messages: campaigns.slice(0, limit).map((c) => ({
+      id: c.id,
+      name: c.title,
+      status: c.status,
+      text: c.text,
+      ...(c.status !== "draft" && { delivered: c.counts.delivered, sent: c.counts.sent, failed: c.counts.failed, cost: c.cost }),
+      ...(c.startedAt && { started: timeWords(store, new Date(c.startedAt)) }),
+    })),
+    link: adminLink(store, "/text-messages"),
+  };
+}
+
+/** Writes a draft text message in the AI manager's words, checked as the store's own writers are (claims and the brand's words to avoid). Nothing is sent. */
+export async function draftTextMessageTool(ctx: Ctx, input: OwnerToolInput<"draft_text_message">) {
+  const { store } = ctx;
+  const brand = await brandOf(store.id);
+  const found = [...findClaims(input.text), ...findAvoided(input.text, brand.avoid)];
+  if (found.length > 0) {
+    const named = [...new Set(found.map((c) => `"${c.phrase}"${c.kind === "avoided" ? " (a word the brand avoids)" : ` (${CLAIM_LABELS[c.kind].toLowerCase()})`}`))].join(", ");
+    return fail(`The text makes claims the store does not let AI make: ${named}. Write it without them.`);
+  }
+  const parts = smsParts(input.text).parts;
+  if (parts > SMS_PARTS_MAX) return fail(`The text takes ${parts} messages; shorten it to ${SMS_PARTS_MAX} at most.`);
+  const segment = input.segment ? await findSegment(store, input.segment) : null;
+  const saved = await saveSmsCampaign(memberOf(ctx), null, { title: input.name, text: input.text, segmentId: segment?.id ?? null });
+  if (!saved.ok) return fail(saved.problem);
+  return {
+    done: `A draft text message "${input.name}" is saved, for ${segment ? `the segment "${segment.name}"` : "everyone subscribed to texts"}. Nothing is sent.`,
+    id: saved.id,
+    messages_each: parts,
+    next: "Ask the owner to read it on its page (the link); it is sent with send_text_message, which always needs their approval.",
+    link: adminLink(store, `/text-messages/${saved.id}`),
+  };
+}
+
+/** Checks a send before it is kept for a yes: a draft that reaches someone within the month's cap, priced by 46elks now. */
+export async function preflightSendTextMessage(ctx: Ctx, input: OwnerToolInput<"send_text_message">): Promise<void> {
+  const found = await findTextMessage(ctx.store, input.message);
+  if (found.status !== "draft") fail(`"${found.title}" has been sent already.`);
+  const preview = await previewSmsCampaign(memberOf(ctx), found.id);
+  if (!preview.ok) fail(preview.problem);
+  if (preview.ok && preview.recipients === 0) fail("No one is subscribed to texts for it yet.");
+  if (preview.ok && !preview.withinCap) fail(`It would cost about ${preview.estimate} ${preview.currency}, past this month's cap of ${preview.cap} ${preview.currency}. The owner raises the cap or chooses fewer people.`);
+}
+
+/** Starts a draft on the owner's yes, through the screen's own `startSmsCampaign()` (priced again, the cap and quiet hours kept). */
+export async function sendTextMessageTool(ctx: Ctx, input: OwnerToolInput<"send_text_message">) {
+  const found = await findTextMessage(ctx.store, input.message);
+  const started = await startSmsCampaign(memberOf(ctx), found.id);
+  if (!started.ok) return fail(started.problem);
+  return {
+    done: `"${found.title}" is on its way to ${started.recipients} ${started.recipients === 1 ? "number" : "numbers"}, each within its own country's waking hours.`,
+    link: adminLink(ctx.store, `/text-messages/${found.id}`),
+  };
 }
 
 // Gift cards (D300 F4) -------------------------------------------------------------------------------

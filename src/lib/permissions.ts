@@ -108,6 +108,10 @@ export function areaOfPath(path: string): Area | null {
   return section ? section.key : null;
 }
 
+/** What permissionOfPath() answered, by access and path (bloat review step 0.17): process-wide, never per person; cleared when it holds 2,000. */
+const KEY_MEMO = new Map<string, PermissionKey | null>();
+const KEY_MEMO_MAX = 2000;
+
 /**
  * The key a store page or action needs, from its address after the store's: the page's area with `read` (or `write` for
  * an action or a mutating route), `owner` for a page marked `needs: "owner"` in `ADMIN_PAGES`, and null for Home's pages
@@ -115,12 +119,21 @@ export function areaOfPath(path: string): Area | null {
  */
 export function permissionOfPath(path: string, access: Access = "read"): PermissionKey | null {
   const clean = path === "" ? "" : `/${path.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+  // The key is the access and the cleaned path only: the answer is the same for every member, so nothing of a person may enter it.
+  const memoKey = `${access}|${clean}`;
+  if (KEY_MEMO.has(memoKey)) return KEY_MEMO.get(memoKey) ?? null;
   const matched = matchPath(`/admin/_store${clean}`);
-  if (matched && matched.page.area === "store" && matched.page.needs === "owner") return "owner";
+  let result: PermissionKey | null;
+  if (matched && matched.page.area === "store" && matched.page.needs === "owner") result = "owner";
   // The activity log is membership only: what a member sees in it is narrowed by their readable areas, not by a key for the page.
-  if (matched && matched.page.area === "store" && (MEMBERSHIP_ONLY_PAGE_IDS as readonly string[]).includes(matched.page.id)) return null;
-  const area = areaOfPath(clean);
-  return area ? (`${area}:${access}` as AreaPermission) : null;
+  else if (matched && matched.page.area === "store" && (MEMBERSHIP_ONLY_PAGE_IDS as readonly string[]).includes(matched.page.id)) result = null;
+  else {
+    const area = areaOfPath(clean);
+    result = area ? (`${area}:${access}` as AreaPermission) : null;
+  }
+  if (KEY_MEMO.size >= KEY_MEMO_MAX) KEY_MEMO.clear();
+  KEY_MEMO.set(memoKey, result);
+  return result;
 }
 
 /** Every store page's required key, for the tests that hold the table to the baseline and for the navigation. */

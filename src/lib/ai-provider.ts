@@ -297,6 +297,15 @@ export const aiProviderInput = z
     embeddingEuOnly: z.boolean(),
     textEuOnly: z.boolean(),
     zeroDataRetention: z.boolean(),
+    fallbackModels: z
+      .string()
+      .default("")
+      .transform((text) => [...new Set(text.split(/[\s,]+/).map((m) => m.trim()).filter(Boolean))])
+      .pipe(
+        z
+          .array(z.string().max(100).regex(/^[\w.-]+\/[\w.:-]+$/, "A fallback model is written provider/model, such as anthropic/claude-sonnet-5."))
+          .max(3, "Name at most three fallback models."),
+      ),
     enabled: z.boolean(),
   })
   .superRefine((value, ctx) => {
@@ -352,6 +361,7 @@ export function aiFormValues(formData: FormData) {
     embeddingEuOnly: formData.get("embeddingEuOnly") === "on",
     textEuOnly: formData.get("textEuOnly") === "on",
     zeroDataRetention: formData.get("zeroDataRetention") === "on",
+    fallbackModels: String(formData.get("fallbackModels") ?? ""),
     enabled: formData.get("enabled") === "on",
   };
 }

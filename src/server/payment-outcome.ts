@@ -153,7 +153,10 @@ async function saveCustomer(storeId: string, orderId: string, shopper: ShopperDe
   await db().execute(sql`
     update commerce.orders set
       email = coalesce(nullif(${shopper.email ?? ""}, ''), email),
-      billing_address = ${JSON.stringify({ ...address(shopper.billing, shopper.name), phone: shopper.phone ?? null })}::jsonb,
+      -- A phone or name the shopper typed on our checkout page (D357, saveOrderContact()) stays where the provider gives none.
+      billing_address = ${JSON.stringify(address(shopper.billing, shopper.name))}::jsonb || jsonb_build_object(
+        'name', coalesce(${shopper.name ?? null}::text, billing_address ->> 'name'),
+        'phone', coalesce(${shopper.phone ?? null}::text, billing_address ->> 'phone')),
       -- Collected at the store's place (D237): no address is shipped to, so none is kept as one.
       shipping_address = case when delivery_method = 'pickup' then '{}'::jsonb
         else ${JSON.stringify(address(shipped?.address, shipped?.name))}::jsonb end

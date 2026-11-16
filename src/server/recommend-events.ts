@@ -55,7 +55,7 @@ export async function productOfVariant(storeId: string, variantId: string): Prom
   return row ? String(row.product_id) : null;
 }
 
-/** Forgets events and adds older than `EVENT_DAYS` (the five-minute cron). */
+/** Forgets events and adds older than `EVENT_DAYS` (the daily run). */
 export async function pruneRecommendEvents(): Promise<number> {
   const events = await db().execute<Row>(sql`delete from commerce.recommendation_events where created_at < now() - make_interval(days => ${EVENT_DAYS}) returning 1`);
   const adds = await db().execute<Row>(sql`delete from commerce.recommendation_adds where created_at < now() - make_interval(days => ${ATTRIBUTION_DAYS + EVENT_DAYS}) returning 1`);

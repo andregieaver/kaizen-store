@@ -10,7 +10,6 @@
  * name and organisation number.
  */
 import { vatIncluded } from "./checkout";
-import { featureOn, type FeatureSource } from "./store-features";
 
 export const STORE_AUDIENCES = ["consumers", "businesses", "both"] as const;
 export type StoreAudience = (typeof STORE_AUDIENCES)[number];
@@ -25,15 +24,6 @@ export const parseStoreAudience = (value: unknown): StoreAudience =>
 
 export const parseProductAudience = (value: unknown): ProductAudience =>
   PRODUCT_AUDIENCES.includes(value as ProductAudience) ? (value as ProductAudience) : "all";
-
-/**
- * Who a store sells to as its shoppers see it (D178): the owner's choice while the feature `business` (Sell to businesses) is on, else
- * consumers. The one reading of `stores.audience`: `getStore()` gives this as `store.audience` (the owner's own choice is
- * `store.chosenAudience`), and SQL reads it as `commerce.store_audience(s.audience, s.features)`. A scan test lists the readers.
- */
-export function effectiveAudience(chosen: unknown, features: FeatureSource): StoreAudience {
-  return featureOn(features, "business") ? parseStoreAudience(chosen) : "consumers";
-}
 
 /**
  * Whether a product is offered at all in a store selling to `store` (D178, the same rule as `commerce.audience_offered()`): one for

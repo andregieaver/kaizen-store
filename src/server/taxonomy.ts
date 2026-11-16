@@ -22,8 +22,9 @@ import { parseTermRules, type TermRules } from "@/lib/term-rules";
 
 import { audit, type Account } from "./auth";
 import { refreshRedirects } from "./redirect-live";
-import { getStore } from "./stores";
+import { getStore, storeSlugOf } from "./stores";
 import type { RuleChoices, RuleCount } from "./term-rules";
+import { owned } from "./owned";
 
 /**
  * Categories and tags (D50): Kaizen's for its pages, and each store's for
@@ -57,7 +58,7 @@ const toTerm = (row: Row): Term => ({
 const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts, rules");
 
 const scopeWhere = (scope: TermScope) =>
-  sql`store_id is not distinct from ${scope.storeId}::uuid and content_type = ${scope.contentType}`;
+  sql`${owned(scope.storeId)} and content_type = ${scope.contentType}`;
 
 /** Every category and tag of a scope, by name: for the admin. */
 export async function listTerms(scope: TermScope): Promise<Term[]> {
@@ -134,8 +135,8 @@ async function checkedSeo(scope: TermScope, raw: TermSeo | undefined): Promise<{
   if (scope.storeId === null || scope.contentType !== "product") {
     return Object.keys(raw).length === 0 ? { ok: true, seo: undefined } : { ok: false, problems: [SEO_SCOPE_PROBLEM] };
   }
-  const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${scope.storeId}::uuid`);
-  const store = row ? await getStore(String(row.slug)) : null;
+  const slug = await storeSlugOf(scope.storeId);
+  const store = slug ? await getStore(slug) : null;
   if (!store) return { ok: false, problems: ["This store could not be found."] };
   // Every language the store keeps texts in (D178): the editor sends back a hidden language's texts as they were.
   const parsed = termSeoInput(store.localization.keptLocales).safeParse(raw);
@@ -167,8 +168,8 @@ async function checkedPage(
   if (description && !description.ok) return { ok: false, problems: [description.problem] };
   let texts: TermTexts | undefined;
   if (raw.texts !== undefined) {
-    const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${scope.storeId}::uuid`);
-    const store = row ? await getStore(String(row.slug)) : null;
+    const slug = await storeSlugOf(scope.storeId);
+    const store = slug ? await getStore(slug) : null;
     if (!store) return { ok: false, problems: ["This store could not be found."] };
     const parsed = termTextsInput(store.localization.keptLocales, store.localization.locales[0] ?? "").safeParse(raw.texts);
     if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };

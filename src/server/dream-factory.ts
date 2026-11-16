@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -86,7 +88,7 @@ import { archiveDemoProducts, getSetupProgress, saveStoreDetails } from "./setup
 import { checkupFindings } from "./store-checkup";
 import { grantTrial, trialEndOf } from "./store-trial";
 import { discardDraft, draftStore, openDraft, publishDraft } from "./store-drafts";
-import { storeTag, type Store } from "./stores";
+import { storeSlugOf, storeTag, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
 
@@ -230,6 +232,15 @@ export async function startDreamStore(account: Account, input: { name: string; s
   const run = member ? await startDreamRun(member, prompt) : ({ ok: false, problem: "The new store has no owner." } as const);
   if (!run.ok) log("warn", "dream_factory.store_run_not_started", { store: made.storeId });
   return { ok: true, slug: made.slug, run };
+}
+
+/**
+ * A short fingerprint of a store's newest run (bloat review step 0.17): what the Dream Factory page draws changes exactly when it does. The page
+ * passes the one it drew to its poll, and the poll's action answers the current one, so the page is redrawn only when the run moved.
+ */
+export function dreamFingerprint(run: DreamRun | null): string {
+  if (!run) return "none";
+  return createHash("sha256").update(JSON.stringify([run.id, run.status, run.readyAt, run.finishedAt, run.steps])).digest("hex").slice(0, 16);
 }
 
 /** The store's newest run, for its Dream Factory page. */
@@ -492,8 +503,8 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
   const row = await typedRow(runRow, sql`select ${RUN_COLUMNS} from commerce.dream_runs where id = ${runId}::uuid`);
   if (!row) return 0;
   let run = toRun(row);
-  const [store] = await typedRows(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${run.storeId}::uuid`);
-  const member = store && run.accountId ? await passMembership(store.slug, run.accountId) : null;
+  const slug = await storeSlugOf(run.storeId);
+  const member = slug && run.accountId ? await passMembership(slug, run.accountId) : null;
   if (!member || !memberCan(member, "owner")) {
     await db().execute(sql`update commerce.dream_runs set status = 'failed', finished_at = now(), updated_at = now() where id = ${run.id}::uuid`);
     log("warn", "dream_factory.no_owner", { run: run.id });
@@ -527,7 +538,7 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
       if (usesTurn && !slot.free) continue;
       const before = run.steps[id];
       // The store as it is now: a step earlier in this minute may have set its country, its markets or its features.
-      const current = (await passMembership(store.slug, member.account.id)) ?? member;
+      const current = (await passMembership(member.store.slug, member.account.id)) ?? member;
       const after = await runStep(id, { run, member: current, deps, deadline, slot });
       if (usesTurn || slot.used) turns++;
       if (after && (JSON.stringify(after.state) !== JSON.stringify(before) || after.brief || after.plan || after.presses)) {

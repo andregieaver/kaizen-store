@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."checkout_fields" ADD COLUMN "conditions" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD CONSTRAINT "checkout_fields_conditions" CHECK ("commerce"."checkout_fields"."conditions" is null or (jsonb_typeof("commerce"."checkout_fields"."conditions") = 'array' and jsonb_array_length("commerce"."checkout_fields"."conditions") between 1 and 10));

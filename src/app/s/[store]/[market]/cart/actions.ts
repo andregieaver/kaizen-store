@@ -1,5 +1,6 @@
 "use server";
 
+import { looksLikeGiftCode } from "@/lib/gift-cards";
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -9,7 +10,7 @@ import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_ORDER_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
-import { cleanAnswers } from "@/lib/checkout-rules";
+import { cleanAnswers, todayInZone, type AnswerInput } from "@/lib/checkout-rules";
 import type { GiftFields, GiftProblem } from "@/lib/gift";
 import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-line";
 import { todayIn } from "@/lib/analytics-period";
@@ -29,7 +30,7 @@ import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf } from "@/lib/recommendations";
 import { parseAttribution } from "@/lib/recommendations-schema";
-import { listCheckoutFields, setCartAnswers } from "@/server/checkout-rules";
+import { askedFields, setCartAnswers } from "@/server/checkout-rules";
 import { recordTermsForOrder } from "@/server/checkout-terms";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
@@ -186,7 +187,7 @@ export async function checkoutAction(
   /** Gift cards pay it all (D300 F3), or a booking is paid wholly at the venue (D379): no payment page follows, so the store's terms of sale are accepted here, as on terms. */
   paidByCards: { termsTicked: boolean } | null = null,
   /** The answers to the store's checkout fields (D357), by field; checked here and again when the order is placed. */
-  answers: Record<string, string | boolean> | null = null,
+  answers: Record<string, AnswerInput> | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -207,9 +208,11 @@ export async function checkoutAction(
   }
 
   // The store's questions (D357): kept on the cart as answered, so placing the order again (a code, a delivery) keeps them.
-  const fields = await listCheckoutFields(db(), shop.store.id, { onlyOn: true });
+  // Only the questions this basket is asked (task 4: a question's conditions); an answer to one not asked is not kept.
+  const fields = await askedFields(db(), shop.store.id, cartId, shop.market, { customerId: (await getCustomer(shop.store.id))?.id ?? null });
   if (fields.length > 0) {
-    const asked = cleanAnswers(fields, answers);
+    // A date is checked against the store's own today, a phone typed without its code against the basket's country (task 4).
+    const asked = cleanAnswers(fields, answers, { today: todayInZone(shop.store.timeZone), country: shop.market.code });
     await setCartAnswers(shop.store.id, cartId, asked.answers);
     if (asked.missing.length > 0) return { problem: "checkout_fields" };
   }
@@ -281,12 +284,13 @@ export async function vatNumberAction(
   return { outcome: result.ok ? result.outcome : result.problem };
 }
 
-export type CodeState = { tried: string | null; full?: boolean };
+/** What the one code field shows after a code was typed: the code tried, whether the cart is full, and why a gift card was not added. */
+export type CodeState = { tried: string | null; full?: boolean; problem?: string | null };
 
 /**
- * Puts a discount code on the cart (D31). Whether it applies is shown by
- * the cart page, which checks it against the basket every time, as checkout
- * will.
+ * Puts a discount code on the cart (D31), or a gift card when what was typed is shaped like one (`looksLikeGiftCode()`; one field for both,
+ * the owner's decision of 15 November 2026). Whether a code applies is shown by the cart page, which checks it against the basket every time,
+ * as checkout will; a gift card not added says why here. A card stays a payment, never a discount: only the field is shared.
  */
 export async function applyCodeAction(
   storeSlug: string,
@@ -297,6 +301,12 @@ export async function applyCodeAction(
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   const code = String(form.get("code") ?? "").slice(0, 60);
   if (!shop || !code.trim()) return { tried: null };
+  if (looksLikeGiftCode(code)) {
+    const card = new FormData();
+    card.set("giftCard", code);
+    const { problem } = await applyGiftCardAction(storeSlug, marketSlug, { problem: null }, card);
+    return { tried: problem ? code : null, problem };
+  }
   // Added beside the codes already there (D299 E2); the cart page says which apply and why the others do not.
   const saved = await addCartCode({ storeId: shop.store.id, market: shop.market }, code);
   refresh();

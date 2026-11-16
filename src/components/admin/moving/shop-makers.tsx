@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
@@ -55,7 +54,6 @@ export function ShopMakers({ rows, operators, countries, safety, destinations, s
 
 function MakerItem({ row, operators, countries, safety, destinations, save, onSaved }: { row: MakerRow; operators: Operator[]; countries: CountryOption[]; safety: ProductSafetyData; destinations: string[]; save: Save; onSaved: (text: string) => void }) {
   const w = useAdminText("moving").makers;
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [maker, setMaker] = useState<OperatorChoice | null>(null);
   const [responsible, setResponsible] = useState<OperatorChoice>(null);
@@ -86,7 +84,6 @@ function MakerItem({ row, operators, countries, safety, destinations, save, onSa
       if (result.notPublished > 0) lines.push(countWords(result.notPublished, w.notPublished));
       onSaved(lines.join(" "));
       setMaker(null);
-      router.refresh();
     });
 
   return (

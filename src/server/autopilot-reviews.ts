@@ -34,6 +34,7 @@ import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnI
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
+import { owned } from "./owned";
 
 /**
  * The autopilot keeps going (D328, `docs/ai-autopilot.md` 12), the only writer of `commerce.autopilot_reviews`: from
@@ -83,6 +84,7 @@ export async function dueReviews(): Promise<Due[]> {
       )
       select g.id as goal_id, g.store_id, s.slug as store_slug, commerce.store_is_active(s.id) as store_active, g.created_by, c.conversation_id
       from commerce.assistant_goals g
+      -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
       join commerce.autopilot_settings a on a.store_id is not distinct from g.store_id
       left join commerce.stores s on s.id = g.store_id
       left join last l on l.goal_id = g.id
@@ -93,6 +95,7 @@ export async function dueReviews(): Promise<Due[]> {
         and not exists (select 1 from commerce.assistant_plans p where p.goal_id = g.id and p.status in ('draft', 'running', 'paused'))
         and not exists (select 1 from commerce.autopilot_reviews r where r.goal_id = g.id and r.status = 'running')
         and (
+          -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
           select count(*) from commerce.autopilot_reviews r where r.store_id is not distinct from g.store_id and r.created_at > now() - interval '1 day'
         ) < ${REVIEWS_PER_DAY}
         and (
@@ -119,6 +122,7 @@ export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> 
   `);
   const seen = new Set<string>();
   let taken = 0;
+  const work: { id: string; due: Awaited<ReturnType<typeof dueReviews>>[number] }[] = [];
   for (const due of await dueReviews()) {
     if (taken >= REVIEWS_PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     const storeKey = due.store_id ?? "platform";
@@ -138,14 +142,20 @@ export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> 
     if (!claimed) continue;
     seen.add(storeKey);
     taken++;
-    try {
-      result[await reviewGoal(claimed.id, due, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.review_failed", { review: claimed.id }, error);
-      await finish(claimed.id, "failed", { outcome: "Something went wrong during the review." }).catch(() => undefined);
-      result.failed++;
-    }
+    work.push({ id: claimed.id, due });
   }
+  // Claimed one by one, run side by side: one store's long review never holds another's back (`docs/100-day-challenge.md` H1).
+  await Promise.all(
+    work.map(async ({ id, due }) => {
+      try {
+        result[await reviewGoal(id, due, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.review_failed", { review: id }, error);
+        await finish(id, "failed", { outcome: "Something went wrong during the review." }).catch(() => undefined);
+        result.failed++;
+      }
+    }),
+  );
   return result;
 }
 
@@ -259,7 +269,7 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
   const week = await typedRow(
     z.object({ n: col.int }),
     sql`select count(*)::int as n from commerce.autopilot_reviews
-      where store_id is not distinct from ${due.store_id}::uuid and started and created_at > now() - interval '7 days'`,
+      where ${owned(due.store_id)} and started and created_at > now() - interval '7 days'`,
   );
   const decision = startDecision(settings, week?.n ?? 0);
   if (decision.start && (await startPlanByAutopilot(actor, plan.id, plan.version))) {
@@ -277,8 +287,8 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
 async function newConversation(p: Principal, reviewId: string, title: string): Promise<string> {
   const row = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-      values (${p.store?.id ?? null}::uuid, ${p.account.id}::uuid, ${`Autopilot: ${title}`.slice(0, 80)}) returning id`,
+    sql`insert into commerce.assistant_conversations (store_id, account_id, title, source)
+      values (${p.store?.id ?? null}::uuid, ${p.account.id}::uuid, ${`Autopilot: ${title}`.slice(0, 80)}, 'autopilot') returning id`,
   );
   if (!row) throw new Error("The review's conversation could not be made.");
   await db().execute(sql`update commerce.autopilot_reviews set conversation_id = ${row.id}::uuid where id = ${reviewId}::uuid`);

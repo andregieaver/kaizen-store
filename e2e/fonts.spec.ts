@@ -83,6 +83,8 @@ test("a store's fonts and a component's own font load from Kaizena Flow, never f
   const file = await request.get(`/api/fonts/files/${FILE}`);
   expect(file.headers()["content-type"]).toBe("font/woff2");
   expect(file.headers()["cache-control"]).toContain("immutable");
+  // Kept at the CDN too: Vercel keeps a function's answer only on s-maxage, and takes it out before the browser sees it.
+  expect(file.headers()["cache-control"]).toContain("s-maxage=31536000");
   // A family not installed is an empty stylesheet, never a 404, which would make React give up a streamed boundary (missing-font.spec.ts).
   const none = await request.get("/api/fonts/css/not-installed");
   expect(none.status()).toBe(200);

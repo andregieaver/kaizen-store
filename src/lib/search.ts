@@ -50,3 +50,9 @@ export const MAX_EMBEDDED = 4000;
 export function embeddingDocument(title: string, terms: string, description: string): string {
   return [title.trim(), terms.trim(), description.trim()].filter(Boolean).join("\n").slice(0, MAX_EMBEDDED);
 }
+
+/**
+ * The tokens a store's searches may spend on its AI in a month (bloat review step 0.21): past it a new search runs by keyword alone,
+ * never refused. A constant for every store, its own key or Kaizena Flow's; a setting for owners, as recommendations have, is a later choice.
+ */
+export const SEARCH_AI_MONTHLY_TOKEN_CAP = 1_000_000;

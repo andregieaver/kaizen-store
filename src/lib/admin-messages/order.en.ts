@@ -9,6 +9,35 @@ import type { Widen } from "./common.en";
  */
 export const orderEn = {
   page: {
+    /** The order in a sentence while it waits to be packed (round 6, D620). */
+    paidFor: "{name} paid {amount} {when} for {items}.",
+    packToday: " Pack them and send them today.",
+    theCustomer: "The customer",
+    unitCount: { one: "{n} item", many: "{n} items" },
+    itemsFold: "Items and totals",
+    notesAndHistory: "Notes and history",
+    eventCount: { one: "{n} event", many: "{n} events" },
+    returnsFold: "Returns and withdrawals",
+    /** Round 1 (D595, step 4): the order's path, the header's menu and the fold for refunds and cancelling. */
+    path: {
+      label: "Where this order is",
+      ordered: "Ordered",
+      paid: "Paid",
+      notPaid: "Not paid yet",
+      pack: "Pack it",
+      sent: "Sent",
+      partly: "Partly sent",
+      delivered: "Delivered",
+      here: "You are here",
+      withdraw: "Then 14 days to change their mind",
+    },
+    chipPaid: "Paid",
+    chipToSend: "To send",
+    chipSent: "Sent",
+    chipCancelled: "Cancelled",
+    more: "Refund, cancel, more",
+    refundOrCancel: "Refund or cancel",
+    refundOrCancelHint: "Send money back for some or all of the order, or cancel it before it is sent.",
     back: "Orders",
     title: "Order #{number}",
     cancelledRefunded: "Cancelled and refunded",
@@ -190,6 +219,8 @@ export const orderEn = {
   termsLengths: { net_15: "15 days", net_30: "30 days", net_60: "60 days" },
   termsStates: { due: "Due", due_soon: "Due soon", overdue: "Overdue", paid: "Paid", cancelled: "Cancelled" },
   forms: {
+    refundAmount: "Refund {amount}",
+    confirmRefund: "Send {amount} back to the customer? A refund cannot be undone.",
     paidOutsideNote:
       "This was paid outside Kaizena Flow: pay the customer back yourself, then record it here. Kaizena Flow cannot see whether you paid the customer back, and sends no money. The refund gets a credit note, as any refund does.",
     paidOutsideOwner: "This was paid outside Kaizena Flow. Only the owner can record a refund of it, unless the owner has allowed staff to (Settings, Orders).",
@@ -265,6 +296,7 @@ export const orderEn = {
     printSlip: "Print gift slip",
   },
   tags: {
+    noneShort: "none",
     title: "Tags",
     none: "No tags.",
     remove: "Remove the tag {tag}",
@@ -298,6 +330,8 @@ export const orderEn = {
       paymentFee: "Payment fee",
       platformFee: "Kaizena Flow's fee",
       shipping: "Sending",
+      handling: "Handling and packaging",
+      returnLabels: "Return labels",
       disputes: "Lost dispute",
     },
     estimatedMark: "estimated",

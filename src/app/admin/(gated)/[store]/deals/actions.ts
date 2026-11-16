@@ -10,7 +10,8 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { adminText } from "@/lib/admin-text";
 import { DEAL_LINK_KINDS, type DealLinkKind } from "@/lib/deals";
-import { featureOffText, featureOn } from "@/lib/store-features";
+import { featureOn } from "@/lib/store-features";
+import { featureOffText } from "@/lib/feature-labels";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import {

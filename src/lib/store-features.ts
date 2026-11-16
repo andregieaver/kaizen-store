@@ -10,9 +10,6 @@
  * `FeatureFacts`, and `feature` tags on its navigation items and `ADMIN_PAGES` entries (and `TOOL_FEATURES` for its AI manager tools).
  */
 
-import { countWords } from "./admin-fill";
-import { commonEn, type CommonMessages } from "./admin-messages/common.en";
-
 export const FEATURE_IDS = [
   "shop",
   "subscriptions",
@@ -236,18 +233,6 @@ export function requirementMet(source: FeatureSource, requirement: FeatureRequir
   return ids.some((id) => featureOn(source, id));
 }
 
-/** The words for a requirement: "Appointments or Stays and rentals". */
-export function requirementLabel(requirement: FeatureRequirement, c: CommonMessages["features"] = commonEn.features): string {
-  const ids: readonly FeatureId[] = typeof requirement === "string" ? [requirement] : requirement;
-  return ids.map((id) => c.labels[id]).join(c.or);
-}
-
-/** What a server action says when a stale page asks for something of a feature that is off: "Appointments is switched off under …". */
-export function featureOffText(requirement: FeatureRequirement, c: CommonMessages["features"] = commonEn.features): string {
-  const ids: readonly FeatureId[] = typeof requirement === "string" ? [requirement] : requirement;
-  return countWords(ids.length, c.offUnder, { label: requirementLabel(requirement, c) });
-}
-
 /**
  * The feature a kind of product needs to be offered (D178): an appointment Appointments, a stay or a rental Stays and rentals, a gift card Gift
  * cards (D300); goods none.
@@ -461,6 +446,3 @@ export function featureInUse(id: FeatureId, f: FeatureFacts): boolean {
       return f.deals > 0;
   }
 }
-
-/** A feature that another needs, in a sentence: "the online shop", "the bonus program". */
-export const needWords = (id: FeatureId, c: CommonMessages["features"] = commonEn.features): string => c.need[id];

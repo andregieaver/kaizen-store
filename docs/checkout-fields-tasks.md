@@ -83,7 +83,8 @@ local delivery areas yet (13 November 2026), so no order has met it. A Mollie st
 **Recommendation.**
 
 1. ~~Fix the gap first~~ Done 13 November 2026: a phone field on our checkout page, required for local delivery, passed with `confirm()`.
-2. Then one setting per field under *Customise*, Off, Optional or Required: phone, the person's name and the company name, through
+2. ~~Then one setting per field~~ Done 14 November 2026 (D594) for the phone and the person's name, kept on our own order; the company name
+   stays the business buyer's form (D63). As first written: one setting per field, Off, Optional or Required: phone, the person's name and the company name, through
    `name_collection` and our own fields on Stripe and `cleanPayer()` on Mollie. Lisa's step away; Homer keeps today's defaults.
 3. Address line 2 only with our own address form on Stripe (`updateShippingAddress()`), which costs Stripe's autocomplete. Leave it
    until an owner asks.
@@ -105,47 +106,67 @@ Sources:
 
 ### 2. Field width: left, right or full width
 
-- [ ] An additive column `checkout_fields.width` (`full` | `half`, default `full`). Two `half` questions next to each
-      other share a row; one alone takes the row's left half. On a phone every question is full width.
-- [ ] Homer sees no width setting until he asks for it. The default is full width, and the half and full choice is under
-      the question's *Customise*.
-- [ ] Should "left" and "right" be stored as such, or only "half" with the order deciding the side? Recommended: only
-      `half`, so moving a question can never leave a right-hand field alone on a row.
-- [ ] Show the layout in the editor's preview of the cart.
+Built 14 November 2026 (D596).
+
+- [x] An additive column `checkout_fields.width` (`full` | `half`, default `full`). Two `half` questions next to each
+      other share a row; one alone takes the row's left half. On a phone every question is full width (from a tablet's width up
+      halves share a line; a container query drew them the wrong way round, as the cart's column is narrower on a desktop).
+- [x] Homer sees no width setting until he asks for it. The default is full width, and the half and full choice is under
+      the question's *Customise* (open from the start only for a question already half width).
+- [x] Only `half` is stored, the order deciding the side, so moving a question can never leave a right-hand field alone.
+- [ ] Show the layout in the editor's preview of the cart. The editor has no cart preview; the list says *Half width* on such
+      a question. A drawn preview waits until the editor has one.
 
 ### 3. Many tick boxes at once, for example allergens on food orders
 
-- [ ] A new kind, `checklist`: one question with several options to tick, each option with words per language,
-      required or not. It counts as one question against the limit (14 allergens as single tick boxes would pass the
-      limit of 10 on their own).
-- [ ] A ready-made list: **the EU's 14 allergens** (Regulation (EU) No 1169/2011, Annex II: cereals containing gluten,
-      crustaceans, eggs, fish, peanuts, soybeans, milk, nuts, celery, mustard, sesame, sulphites, lupin, molluscs),
-      written in nb, sv, da and en. Also an optional "None of these" option that clears the others.
-- [ ] Keep the answer as the options ticked, with their words in the store's main language at the time of the order
-      (`CheckoutAnswer` gets a `string[]` answer), and change `readAnswers()` and `answersByField()` to match.
-- [ ] **Check the privacy side first.** A customer's allergies can be health data (GDPR art. 9). Decide, with the
-      privacy texts (D162), whether such a question needs its own explicit consent line, a shorter retention, or a note in
-      the store's privacy page. Do not ship the allergen preset before this is settled.
-- [ ] Should allergens be asked per order or per product line? Recommended: per order first, since kitchens read the
-      order as a whole.
-- [ ] Show the ticked allergens clearly on the order page, the packing slip and staff alerts, not only in the Full
-      profile.
+Built 14 November 2026 (D598).
+
+- [x] A new kind, `checklist`: one question with several options to tick, each option with words per language,
+      required or not. It counts as one question against the limit. At most 30 options (`CHECKLIST_OPTIONS_MAX`).
+- [x] A ready-made list: **the EU's 14 allergens** (Regulation (EU) No 1169/2011, Annex II), hand-written in nb, sv, da
+      and en (`src/lib/checkout-presets.ts`), with "None of these", which clears the others. *Use the EU's 14 allergens* in
+      the editor fills a tick list with them in the store's languages.
+- [x] The answer keeps the options ticked in the store's main words at the time of the order, their ids (to show the cart
+      again) and the consent; `readAnswers()`, `answersByField()` and `answerText()` read it.
+- [x] **The privacy side, decided by the owner 14 November 2026:** a consent line only. A list marked *Ask for the
+      shopper's explicit consent* (the allergen list is) shows a consent box once an option other than None of these is
+      ticked, and the order is refused without it; answers are kept as long as the order's other answers. The consent
+      sentence is hand-written in four languages and marked for legal review.
+- [x] Asked per order, as recommended.
+- [x] The order page and the export show the ticked options (joined). Since 14 November 2026 the packing slip prints every
+      answer under the lines (*Answers at checkout*), but a gift's slip leaves out an answer given with consent, since the
+      gift's recipient reads it (`slipAnswers()`); the staff alert for a new order says how many questions were answered and
+      never the answers (rule 4.8 of `docs/wave-3-notifications.md`: the buyer's own words stay on the order).
 
 ### 4. More field types for edge cases
 
 Candidates, each a kind in `fieldInputSchema` and in `cleanAnswers()`, the editor, the cart, the order page, the export and a test:
 
-- [ ] `select`: one choice from a list, drawn with `Dropdown` (D82), never a native select.
-- [ ] `radio`: one choice, all options visible.
-- [ ] `textarea`: several lines (longer than today's one line of 500 characters).
-- [ ] `number`, with a lowest and highest value.
-- [ ] `date`, with earliest and latest days (check first that bookings, D65, or delivery days do not already cover the need).
-- [ ] `email` and `phone`, checked for shape (for example a gift recipient's contact).
+Step 1 built 14 November 2026 (D601): select, radio and textarea.
+
+- [x] `select`: one choice from a list, drawn with `Dropdown` (D82), never a native select. It starts on *Choose*, which is no
+      answer; its choice goes in a hidden field.
+- [x] `radio`: one choice, all options visible.
+- [x] `textarea`: several lines, at most 2,000 characters, the lines kept (at most one empty line in a row).
+- Both one-choice kinds use a tick list's options (2 to 30, no None of these) and may ask for consent like a tick list; the order
+  keeps the option as an answer of kind `choice`. The AI manager rewords these but does not make them (its tool's kinds stay
+  `text` and `checkbox`, so its eval recording holds).
+Step 2 built 14 November 2026 (D613): number, date, email and phone.
+
+- [x] `number`, a whole number, with an optional lowest and highest value (`bounds`).
+- [x] `date`, with an optional earliest and latest day counted from the store's today (0 to 730 days). Checked first: bookings (D65)
+      are for appointment products and the only delivery day is a subscription box's (D102), so a one-off order had no way to say when.
+- [x] `email` and `phone`, checked for shape (a phone typed without its code is read in the basket's country, `e164Phone()`, and kept
+      in international form).
+- An answer given but not of its question's shape stops the order even when the question is optional, and placing the order checks
+  again (a date chosen yesterday as tomorrow's earliest may be too early today).
 - [ ] `file`: probably not, since the cart is a pay route (D158) and an upload brings storage, scanning and size limits.
       Only build it if a real store asks.
-- [ ] **Conditional questions:** show a question only for some markets, delivery methods or baskets (a product,
-      category or tag), using the same conditions as checkout rules (`conditionHolds()`), so there is one condition
-      model and not two.
+- [x] **Conditional questions** (15 November 2026, D618): a question is asked only when every one of its conditions holds,
+      the checkout rules' own (`conditionHolds()`, one condition model): a country (a market), the basket's value or weight,
+      products, categories, tags or the buyer's customer groups. Not a delivery method: the questions are asked in the cart,
+      before a delivery is chosen. The cart, the answers kept from it and `placeOrder()` all ask `askedFields()`, so a question
+      not asked is never required, and one a changed basket now asks stops the order until it is answered.
 
 ## Common to all four
 

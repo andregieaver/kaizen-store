@@ -1059,8 +1059,13 @@ export async function deliverDue(limit = 50): Promise<{ delivered: number; retry
     else if (!outcome.final && RETRY_SECONDS[delivery.attempts] !== undefined && delivery.encryptedUrl && delivery.enabled) counts.retrying++;
     else counts.failed++;
   }
-  await db().execute(sql`delete from commerce.integration_deliveries where created_at < now() - make_interval(days => ${KEEP_DAYS})`);
   return counts;
+}
+
+/** Deliveries older than KEEP_DAYS go (the daily run; it was every minute until bloat review step 0.31). Returns how many. */
+export async function pruneDeliveries(): Promise<number> {
+  const rows = await db().execute(sql`delete from commerce.integration_deliveries where created_at < now() - make_interval(days => ${KEEP_DAYS}) returning 1`);
+  return rows.length;
 }
 
 /** Sends a test event now, and says how it went. */

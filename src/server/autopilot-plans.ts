@@ -27,6 +27,7 @@ import { actingAs } from "./actor";
 import { audit, type Account } from "./auth";
 import { checkStep } from "./autopilot-checks";
 import { auditArea, getGoal } from "./autopilot-goals";
+import { autonomyFor } from "./autopilot-settings";
 import { offeredToolsByName } from "./offered-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import { currentStore, type Store } from "./stores";
@@ -234,8 +235,8 @@ export async function makePlan(a: PlanActor, input: MakePlanInput, now = new Dat
       given ??
       (await typedRow(
         z.object({ id: col.uuid }),
-        sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-          values (${storeIdOf(a.store)}, ${a.account.id}::uuid, ${`Autopilot: ${input.title}`.slice(0, 80)}) returning id`,
+        sql`insert into commerce.assistant_conversations (store_id, account_id, title, source)
+          values (${storeIdOf(a.store)}, ${a.account.id}::uuid, ${`Autopilot: ${input.title}`.slice(0, 80)}, 'autopilot') returning id`,
         tx,
       ));
     const plan = await typedRow(
@@ -273,7 +274,7 @@ export async function revisePlan(a: PlanActor, input: RevisePlanInput, now = new
     const checked = checkPlan(input.steps, { scope: a.store ? "store" : "platform", tools: offeredToolsByName(a), now }, kept.map((s) => s.key));
     if (!checked.ok) return fail(checked.problem);
     await tx.execute(sql`
-      update commerce.assistant_plans set status = 'draft', version = version + 1, title = ${input.title ?? plan.title}, summary = ${input.summary ?? plan.summary}
+      update commerce.assistant_plans set status = 'draft', paused_for = null, version = version + 1, title = ${input.title ?? plan.title}, summary = ${input.summary ?? plan.summary}
       where id = ${plan.id}::uuid
     `);
     const replaced = steps.filter((s) => !kept.includes(s)).map((s) => s.id);
@@ -323,7 +324,7 @@ export async function startPlanNow(a: PlanActor, tool: "start_autopilot_plan" | 
   if (plan.version !== version) return fail("The plan changed after you saw it: look at it again and start it then.");
   const from = tool === "start_autopilot_plan" ? "draft" : "paused";
   const rows = await db().execute(sql`
-    update commerce.assistant_plans set status = 'running' where id = ${plan.id}::uuid and status = ${from} and version = ${version} returning id
+    update commerce.assistant_plans set status = 'running', paused_for = null where id = ${plan.id}::uuid and status = ${from} and version = ${version} returning id
   `);
   if (rows.length === 0) return fail(`The plan is no longer ${from === "draft" ? "a draft" : "paused"}.`);
   await audit(a.account.id, a.store?.id ?? null, tool === "start_autopilot_plan" ? "ai.plan_started" : "ai.plan_resumed", { planId: plan.id, version }, auditArea(a));
@@ -336,7 +337,7 @@ export async function startPlanNow(a: PlanActor, tool: "start_autopilot_plan" | 
  */
 export async function startPlanByAutopilot(a: PlanActor, planId: string, version: number): Promise<boolean> {
   const rows = await db().execute(sql`
-    update commerce.assistant_plans set status = 'running' where id = ${planId}::uuid and ${inScope(a.store)} and status = 'draft' and version = ${version} returning id
+    update commerce.assistant_plans set status = 'running', paused_for = null where id = ${planId}::uuid and ${inScope(a.store)} and status = 'draft' and version = ${version} returning id
   `);
   if (rows.length === 0) return false;
   await actingAs("autopilot", () => audit(a.account.id, a.store?.id ?? null, "ai.plan_started", { planId, version, review: true }, auditArea(a)));
@@ -347,7 +348,7 @@ export async function pausePlan(a: PlanActor, planId: string, reason?: string): 
   const plan = await planFor(a, planId);
   if (plan.status !== "running") return fail(`That plan is ${plan.status}, not running.`);
   await db().execute(sql`
-    update commerce.assistant_plans set status = 'paused', pause_reason = ${(reason ?? `Paused by ${a.account.name || a.account.email || "a person"}.`).slice(0, 500)}
+    update commerce.assistant_plans set status = 'paused', paused_for = null, pause_reason = ${(reason ?? `Paused by ${a.account.name || a.account.email || "a person"}.`).slice(0, 500)}
     where id = ${plan.id}::uuid and status = 'running'
   `);
   await audit(a.account.id, a.store?.id ?? null, "ai.plan_paused", { planId: plan.id }, auditArea(a));
@@ -369,7 +370,7 @@ export async function stopPlanIn(run: Executor, planId: string, status: PlanStat
     update commerce.assistant_approvals set status = 'declined', decided_at = now(), result = ${JSON.stringify({ error: "The plan was stopped." })}::jsonb
     where status = 'pending' and plan_step_id in (select id from commerce.assistant_plan_steps where plan_id = ${planId}::uuid)
   `);
-  await run.execute(sql`update commerce.assistant_plans set status = 'stopped' where id = ${planId}::uuid and status not in ('done', 'stopped')`);
+  await run.execute(sql`update commerce.assistant_plans set status = 'stopped', paused_for = null where id = ${planId}::uuid and status not in ('done', 'stopped')`);
   await run.execute(sql`
     update commerce.assistant_plan_steps set status = 'cancelled' where plan_id = ${planId}::uuid and status not in ('done', 'skipped', 'cancelled')
   `);
@@ -486,10 +487,19 @@ export async function completeStep(stepId: string, planId: string, result: StepR
 }
 
 /** A step that did not work: another try in a while, or, after `STEP_TRIES`, a question for the owner with the problem in words. */
-export async function failStep(stepId: string, problem: string): Promise<"retry" | "asking"> {
-  const row = await typedRow(z.object({ tries: col.int, title: col.text }), sql`select tries, title from commerce.assistant_plan_steps where id = ${stepId}::uuid`);
+export async function failStep(stepId: string, problem: string): Promise<"retry" | "asking" | "skipped"> {
+  const row = await typedRow(
+    z.object({ tries: col.int, title: col.text, plan_id: col.uuid, store_id: col.uuid.nullable() }),
+    sql`select tries, title, plan_id, store_id from commerce.assistant_plan_steps where id = ${stepId}::uuid`,
+  );
   const tries = (row?.tries ?? 0) + 1;
   const words = problem.slice(0, 450);
+  // In the challenge nobody answers the autopilot's questions (`docs/100-day-challenge.md` 4A1): the step is skipped with its problem, the
+  // plan goes on, and the goal's next review plans around it.
+  if (tries >= STEP_TRIES && row?.store_id && (await autonomyFor(row.store_id)).challenge) {
+    await skipStep(stepId, row.plan_id, `Did not work after ${tries} tries, skipped for the challenge: ${words}`.slice(0, 450));
+    return "skipped";
+  }
   if (tries >= STEP_TRIES) {
     const question: StepQuestion = { text: `"${row?.title ?? "A step"}" did not work after ${tries} tries: ${words} What should I do?`, options: [...RETRY_OPTIONS], retry: true };
     await db().execute(sql`

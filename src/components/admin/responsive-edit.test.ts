@@ -22,7 +22,7 @@ import { BreakpointFields } from "./theme-editor";
 
 /**
  * The builder's responsive mode (D179 phase 2), drawn on the server as the other settings are tested: the bar over the
- * canvas, a field with its device icon at a size, the Advanced tab's Visibility, the toolbar's switches and the theme's
+ * canvas, a field with its device icon at a size, the Visibility tab's screens, the toolbar's switches and the theme's
  * screen sizes. (The builder is only reached signed in, which the e2e suite cannot be, so its behaviour is held here and in
  * `src/lib/responsive-edit.test.ts`.)
  */
@@ -105,11 +105,11 @@ describe("a field at a size", () => {
   });
 });
 
-describe("Visibility in the Advanced tab", () => {
+describe("Visibility in its tab (D631)", () => {
   it("is four sizes, pressed where the part shows", () => {
     const out = clean(renderToString(createElement(VisibilityFields, { part: { visibility: { hideAt: ["sm"] } }, onChange: () => {} })));
     expect(out).toContain(">Visibility</legend>");
-    expect(out).toContain(">Breakpoint</span>");
+    expect(out).toContain(">On which screens</span>");
     const pressed = [...out.matchAll(/aria-pressed="(true|false)"[^>]*title="([^:]+):/g)].map((m) => [m[2], m[1]]);
     expect(pressed).toEqual([
       ["Extra large", "true"],

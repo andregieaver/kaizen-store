@@ -119,7 +119,8 @@ describe("the team", () => {
   it("invites staff and collaborators with the roles to choose from", () => {
     const out = html(createElement(InviteForms, { roles, actions: { staff: action, collaborator: action } }));
     expect(out).toContain("Invite someone");
-    expect(out).toContain("Invite a collaborator");
+    // Round 8 (D626): the collaborator's invite is one fold away under the one invite.
+    expect(out).toContain("For a limited time, as for an agency or a freelancer");
     expect(out).toContain("never an owner");
     expect(out).toContain('max="365"');
     expect(out).toContain('value="30"');
@@ -130,10 +131,10 @@ describe("the team", () => {
 
   it("says how many of the team have two-step sign-in, and the store's requirement", () => {
     const off = html(createElement(TwoStepRequirement, { required: false, withIt: 1, total: 3, action }));
-    expect(off).toContain("1 of 3 people on the team has it");
+    expect(off).toContain("1 of 3 have it.");
     expect(off).toMatch(/name="required"(?![^>]*checked)/);
     const on = html(createElement(TwoStepRequirement, { required: true, withIt: 3, total: 3, action }));
-    expect(on).toContain("3 of 3 people on the team have it");
+    expect(on).toContain("3 of 3 have it.");
     expect(on).toMatch(/name="required"[^>]*checked=""/);
     expect(on).toContain("You need it on yourself first");
   });

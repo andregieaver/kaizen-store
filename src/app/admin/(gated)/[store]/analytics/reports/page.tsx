@@ -1,17 +1,32 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { requireFeature } from "@/components/admin/feature-off";
-import { ButtonLink, Card, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, Card, CARD_CLASS, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { READY_KEYS } from "@/lib/report-catalogue";
+import type { ReadyKey } from "@/lib/report-catalogue";
 import { analyticsContext } from "@/server/analytics-context";
+import { readyAnswers, type ReadyAnswer } from "@/server/report-answers";
 import { listSavedReports } from "@/server/saved-reports";
 
 export const metadata: Metadata = { title: "Reports" };
 
+/** The ready reports under the questions they answer (round 9, D630). */
+const QUESTIONS: { key: "sells" | "where" | "pay" | "when"; reports: ReadyKey[] }[] = [
+  { key: "sells", reports: ["sales_by_product", "sales_by_variant", "sales_by_category"] },
+  { key: "where", reports: ["sales_by_country", "sales_by_currency", "sales_by_channel"] },
+  { key: "pay", reports: ["sales_by_payment_method", "discount_codes"] },
+  { key: "when", reports: ["sales_by_day", "new_and_returning"] },
+];
+
+type Words = ReturnType<typeof adminText<"customReports">>;
+
 /**
- * Analytics → Reports (wave 8 unit A, D345): the ready reports, one press each, and the store's saved ones. Homer opens a ready report;
- * Lisa builds her own from *New report*. A report itself is drawn at `reports/view`.
+ * Analytics → Reports (wave 8 unit A, D345; drawn for Homer in round 9, D630): the store's saved reports first, then the ready ones under
+ * four questions, each with its answer for the last 30 days (read after the page is shown). Homer opens a ready report; Lisa builds her own.
+ * A report itself is drawn at `reports/view`.
  */
 export default async function ReportsPage({ params, searchParams }: PageProps<"/admin/[store]/analytics/reports">) {
   const ctx = await analyticsContext((await params).store, await searchParams);
@@ -21,29 +36,23 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
   const saved = await listSavedReports(ctx.store.id);
   const view = `${ctx.base}/analytics/reports/view`;
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={w.page.title}
-        description={w.page.description}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">{w.page.lead}</span>
+            {w.page.leadRest}
+          </span>,
+        ]}
         actions={
-          <ButtonLink kind="main" href={`${view}?new=1`}>
-            {w.page.newReport}
+          <ButtonLink kind="secondary" href={`${view}?new=1`}>
+            {w.page.buildOwn}
           </ButtonLink>
         }
       />
-      <Card title={w.page.readyTitle} description={w.page.readyDescription}>
-        <List label={w.page.readyTitle}>
-          {READY_KEYS.map((key) => (
-            <ListRow key={key} href={`${view}?ready=${key}`}>
-              <RowLead title={w.page.ready[key]} />
-            </ListRow>
-          ))}
-        </List>
-      </Card>
-      <Card title={w.page.savedTitle}>
-        {saved.length === 0 ? (
-          <p className="text-sm text-muted">{w.page.savedEmpty}</p>
-        ) : (
+      {saved.length > 0 && (
+        <Card title={w.page.savedTitle} compact>
           <List label={w.page.savedTitle}>
             {saved.map((report) => (
               <ListRow key={report.id} href={`${view}?id=${report.id}`}>
@@ -51,8 +60,47 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
               </ListRow>
             ))}
           </List>
-        )}
-      </Card>
+        </Card>
+      )}
+      <Suspense fallback={<Questions words={w} view={view} answers={{}} />}>
+        <AnsweredQuestions ctx={ctx} words={w} view={view} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function AnsweredQuestions({ ctx, words, view }: { ctx: Awaited<ReturnType<typeof analyticsContext>>; words: Words; view: string }) {
+  const answers = await readyAnswers(ctx.store, ctx.lang, ADMIN_LANG_FACTS[ctx.lang].locale);
+  return <Questions words={words} view={view} answers={answers} />;
+}
+
+function Questions({ words: w, view, answers }: { words: Words; view: string; answers: Partial<Record<ReadyKey, ReadyAnswer>> }) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(30rem,100%),1fr))] gap-4">
+      {QUESTIONS.map((q) => (
+        <section key={q.key} aria-labelledby={`q-${q.key}`} className={`flex flex-col px-6 py-5 ${CARD_CLASS}`}>
+          <h2 id={`q-${q.key}`} className="mb-1.5 text-title text-ink">
+            {w.page.questions[q.key]}
+          </h2>
+          <ul className="flex flex-col">
+            {q.reports.map((key) => {
+              const answer = answers[key];
+              return (
+                <li key={key} className="border-b border-line last:border-0">
+                  <AdminLink href={`${view}?ready=${key}`} className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2 hover:[&_.name]:underline">
+                    <span className="name text-body text-ink">{w.page.short[key]}</span>
+                    {answer && (
+                      <span className="text-caption text-ink-2">
+                        {answer === "none" ? w.page.noSales : fillWords(w.page.answer, { label: answer.label, share: answer.share })}
+                      </span>
+                    )}
+                  </AdminLink>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

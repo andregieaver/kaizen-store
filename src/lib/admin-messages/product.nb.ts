@@ -5,6 +5,25 @@ import type { ProductMessages } from "./product.en";
  * (`src/lib/i18n-glossary.ts`): merverdiavgift / mva., lager, varenummer, angrerett, enhetspris, abonnement, gebyr.
  */
 export const productNb: ProductMessages = {
+  preview: {
+    title: "Dette ser kundene",
+    open: "Åpne",
+    noTitle: "Produktets navn",
+    noPrice: "Ingen pris ennå",
+    inclVat: "inkl. mva.",
+    onlyLeft: "Bare {n} igjen",
+    addToCart: "Legg i handlekurven",
+    ready: "Klar til salg",
+    readyCount: "{done} av {total}",
+    checks: {
+      photo: "Et bilde",
+      namePrice: "Et navn og en pris",
+      stock: "På lager",
+      category: "I en kategori",
+      description: "En beskrivelse på minst to setninger",
+      secondPhoto: "Et bilde fra en annen vinkel",
+    },
+  },
   top: {
     products: "Produkter",
     untitled: "Produkt uten navn",
@@ -14,6 +33,8 @@ export const productNb: ProductMessages = {
     published: "Publisert",
     saving: "Lagrer …",
     save: "Lagre",
+    notSaved: "Endringer er ikke lagret ennå",
+    allSaved: "Alt er lagret",
     saved: "Lagret.",
     seeInStore: "Se det i butikken",
     draftsHidden: "Utkast er skjult for kundene.",
@@ -21,6 +42,8 @@ export const productNb: ProductMessages = {
     pleaseFix: "Ingenting er lagret ennå. Rett opp dette:",
   },
   advanced: {
+    jump: "Gå til",
+    parts: { audience: "Hvem kjøper den", priceWords: "Ord rundt prisen", subscriptions: "Abonnement", safety: "Produktsikkerhet", legal: "Mva., retur og land" },
     title: "Avansert",
     text: "Standardkategori, hvem som kjøper, ord rundt prisen, pris etter antall, abonnement, produktsikkerhet, avgift, retur og hvor den selges.",
   },
@@ -63,6 +86,7 @@ export const productNb: ProductMessages = {
     many: "Kjøpsvalg: Abonnementer er slått av under Innstillinger, Funksjoner, så produktets {n} valg er beholdt, men tilbys ikke.",
   },
   text: {
+    more: "Sikkerhetsadvarsler, nettadresse, utdrag og søkeresultater",
     title: "Tittel og beskrivelse",
     language: "Språk",
     empty: " (tom)",
@@ -201,6 +225,7 @@ export const productNb: ProductMessages = {
     nothing: "Fyll ut minst ett felt.",
   },
   row: {
+    moreFor: "Mer for {name}",
     skuFor: "Varenummer for {name}",
     deliveryFor: "Levering for {name}",
     rentedHow: "Hvordan {name} leies ut",
@@ -213,6 +238,9 @@ export const productNb: ProductMessages = {
     stockAtLocations: "Lager på hvert sted for {name}",
     stockAtFor: "Lager for {name} på {location}",
     stockFor: "Lager for {name}",
+    oneFewer: "Én færre av {name}",
+    oneMore: "Én til av {name}",
+    vatPart: "Herav mva. {amount} ({rate} %)",
     priceFor: "Pris i {market} for {name}, {currency}",
     byRule: "Etter landets prisregel",
     byRulePlaceholder: "Etter regel",

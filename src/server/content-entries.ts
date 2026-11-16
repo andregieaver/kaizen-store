@@ -23,6 +23,7 @@ import { getContentType, refusal, type ContentActor } from "./content-types";
 import { keepOwnRelations } from "./custom-fields";
 import type { SaveResult } from "./settings";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * Entries of content types (wave 6 unit H, D326): the only writer of `commerce.content_entries`. An entry's draft is saved through
@@ -68,7 +69,7 @@ export async function listEntries(owner: string | null, typeId: string, run: Exe
     ENTRY_ROW,
     sql`
       select ${entryColumns} from commerce.content_entries e
-      where e.store_id is not distinct from ${owner}::uuid and e.type_id = ${typeId}::uuid
+      where ${owned(owner, sql`e.store_id`)} and e.type_id = ${typeId}::uuid
       order by e.position, e.created_at, e.id
     `,
     run,
@@ -81,7 +82,7 @@ export async function getEntry(owner: string | null, id: string, run: Executor =
   if (!z.uuid().safeParse(id).success) return null;
   const row = await typedRow(
     ENTRY_ROW,
-    sql`select ${entryColumns} from commerce.content_entries e where e.store_id is not distinct from ${owner}::uuid and e.id = ${id}::uuid`,
+    sql`select ${entryColumns} from commerce.content_entries e where ${owned(owner, sql`e.store_id`)} and e.id = ${id}::uuid`,
     run,
   );
   return row ? toEntry(row) : null;
@@ -199,7 +200,7 @@ export async function unpublishEntry(ctx: ContentActor, id: string): Promise<Sav
   if (!entry) return { ok: false, problems: ["That entry no longer exists."] };
   await db().execute(sql`
     update commerce.content_entries set published = null, published_at = null, updated_by = ${ctx.accountId}::uuid
-    where store_id is not distinct from ${ctx.owner}::uuid and id = ${entry.id}::uuid
+    where ${owned(ctx.owner)} and id = ${entry.id}::uuid
   `);
   await audit(ctx.accountId, ctx.owner, "content.entry_unpublished", { entry: id });
   return { ok: true };
@@ -210,7 +211,7 @@ export async function deleteEntry(ctx: ContentActor, id: string): Promise<SaveRe
   const entry = await getEntry(ctx.owner, id);
   if (!entry) return { ok: false, problems: ["That entry no longer exists."] };
   await db().transaction(async (tx) => {
-    await tx.execute(sql`delete from commerce.content_entries where store_id is not distinct from ${ctx.owner}::uuid and id = ${entry.id}::uuid`);
+    await tx.execute(sql`delete from commerce.content_entries where ${owned(ctx.owner)} and id = ${entry.id}::uuid`);
     await clearEntryRefs(tx, ctx.owner, [entry.id]);
   });
   await audit(ctx.accountId, ctx.owner, "content.entry_deleted", { entry: id, type: entry.typeId });

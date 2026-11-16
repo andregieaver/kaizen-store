@@ -8,13 +8,115 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-13
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585]
+checked: 2026-11-15
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.26 — 2026-11-15
+
+An addition to the owner MCP's catalogue for support (D640).
+
+- `carry_out_address_change`: changes an order's delivery address to the one its customer gave in a support request, when the person
+  asking is the order's own customer signed in on the store's chat and nothing of the order is sent or held; the request is then
+  marked done and the customer told. Needs approval; `orders:write`.
+
+## 1.25 — 2026-11-15
+
+An addition to the owner MCP's catalogue for orders (D635).
+
+- `tell_customer_about_order`: tells an order's customer, in the store's own fixed words and their language, that the order is `delayed`,
+  or that its parcel was not delivered (`parcel_attempted`), has a problem (`parcel_problem`) or is on its way back (`parcel_returning`).
+  Refused when the store's records do not bear it out, and sent once per order and update. Needs approval; `orders:write`.
+
+## 1.24 — 2026-11-15
+
+Additions to the owner MCP's catalogue for email automations and text messages (D632).
+
+- `write_email_automation`: the store's AI writes a lifecycle automation's words (`welcome`, `after_purchase`, `win_back`) in the store's
+  main language from a brief, and sets its `days` when given; it is not switched on or off. Needs approval; `marketing:write`.
+- `list_text_messages`: whether a 46elks account is connected, this month's spend against the cap, subscribed numbers and the latest text
+  messages with their status and, once sent, delivered and cost. Never a number. Read only; `marketing:read`.
+- `draft_text_message`: saves a draft text message for everyone subscribed or a segment; nothing is sent. `marketing:write`.
+- `send_text_message`: sends a draft, priced first and refused past the monthly cap. Always needs the owner's approval; `marketing:write`.
+- `list_email_automations` answers also carry `orders_after`, `revenue_after` and `orders_after_means`.
+
+## 1.23 — 2026-11-15
+
+Additions to the owner MCP's catalogue for orders and stock (D621).
+
+- `cancel_order`: cancels a paid order that is not sent yet: what was paid is refunded, the items go back in stock and the customer may be
+  emailed. An order sent, partly sent, unpaid or with a change waiting for payment is refused. Always needs the owner's approval;
+  `orders:write`.
+- `create_purchase_order`: makes and places a purchase order with a supplier from SKUs and units (the variant's cost unless `unit_cost` is
+  given), at a stock location, and emails it to the supplier when the store has its order address. Needs approval; `products:write`.
+- `list_supplier_orders`: the drop-shipping suppliers' orders, refused and late ones first (`which`: `attention`, `open`, `all`), with a
+  refused one's reason in the supplier's words. Read only; `products:read`.
+- `answer_supplier_order`: sends a supplier's order again or cancels it, by the customer's order number. Needs approval; `products:write`.
+
+## 1.22 — 2026-11-15
+
+Checkout questions asked only for some baskets (D357, task 4).
+
+- `conditions` on a checkout field: the checkout rules' own conditions (country, basket value, weight, products, categories, tags,
+  customer groups). The question is asked only when every one holds for the basket; `[]` or none asks it always, and a change without
+  `conditions` keeps them.
+
+## 1.21 — 2026-11-14
+
+More kinds of checkout question (D357, task 4).
+
+- `kind` on a checkout field may now also be `number` (a whole number), `date` (a day), `email` and `phone`, each checked for its shape
+  when the shopper answers.
+- `bounds` (`{ min?, max? }`) gives a `number` its lowest and highest value, and a `date` its earliest and latest day counted from the
+  store's today (0 to 730). Only those two kinds have it; a change without `bounds` keeps them while the kind stays.
+
+## 1.20 — 2026-11-14
+
+An addition to the owner MCP's catalogue (D606).
+
+- `profit_overview`: what a period earned after what it cost, counted as the Analytics pages count it: net sales, the cost of goods, fees,
+  shipping, marketing and lost disputes, gross and contribution profit, contribution margin, profit per krone of marketing and revenue
+  per visitor, with the month's forecast for 30 days or this month. `period` is `7d`, `30d`, `month`, `last_month` or `since` (with
+  `since`, a first day). Read only; `analytics:read`.
+
+## 1.19 — 2026-11-14
+
+New kinds of checkout question (D357, task 4).
+
+- `kind` on a checkout field may now also be `textarea` (several lines, at most 2,000 characters, its lines kept), `select` (one option
+  from a closed list) and `radio` (one option, all shown). A `select` or `radio` question has `options` like a `checklist` (2 to 30, no
+  `none` option) and may be `sensitive`; the other kinds have no options.
+
+## 1.18 — 2026-11-14
+
+An addition to the owner MCP's catalogue (D599).
+
+- `wallet_status`: the store's AI wallet, when its owner connected their Airwallex account: whether it is on, whose app the cards appear
+  in, its currency, its monthly limit and what is left.
+- `request_purchase`: asks for one purchase (what, the merchant and its page, the most it may cost, why). It costs money, so it waits for
+  the owner's yes, and only the store's owner may ask; on the yes a single-use card for at most that amount appears in their Airwallex app.
+- `list_purchases` (the owner's only): the purchases approved. `cancel_purchase` (`settings:write`): calls an open one off, its card closed.
+
+## 1.17 — 2026-11-14
+
+An addition to the Admin API's checkout questions (D357, task 3).
+
+- A question's `kind` may be `checklist`: one question with several options to tick. It has `options` (1 to 30, each with `label` words per
+  language and an `id`; `none` marks the option that clears the others) and `sensitive`: when true, the cart asks the shopper's explicit
+  consent once an option other than `none` is ticked (GDPR article 9, such as allergies). Every question now returns `sensitive`.
+- Writing a question takes `options` and `sensitive` as optional fields: left out on a change, a checklist keeps its options and its consent.
+
+## 1.16 — 2026-11-14
+
+An addition to the Admin API's checkout questions (D357, task 2).
+
+- A question has `width`: `full` or `half`. The cart draws two half-width questions next to each other on one line, and one alone on the left
+  half; a narrow cart draws every question full width. `GET /checkout/fields` returns it. `POST` and `PATCH /checkout/fields` take it as an
+  optional field: left out, a new question is full width and a changed one keeps its width.
 
 ## 1.15 — 2026-11-13
 

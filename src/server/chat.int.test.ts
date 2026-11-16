@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
@@ -47,6 +48,17 @@ afterAll(async () => {
   await closeDb();
 });
 
+/** What `run` gave and the text of each statement the database was sent meanwhile (each goes through `pg`'s `Client.query`). */
+async function counted<T>(run: () => Promise<T>): Promise<[T, string[]]> {
+  const spy = vi.spyOn(pg.Client.prototype, "query");
+  try {
+    const result = await run();
+    return [result, spy.mock.calls.map((c) => String(typeof c[0] === "string" ? c[0] : (c[0] as { text?: string })?.text ?? ""))];
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 const account = () => ({ id: accountId, email: `${slug}@example.com` }) as never;
 
 describe("the knowledge base (D81)", () => {
@@ -88,6 +100,61 @@ describe("the knowledge base (D81)", () => {
     await db().execute(sql`update commerce.pages set published_at = null, published = null where store_id = ${storeId}::uuid and slug = 'om-oss'`);
     expect((await knowledge.syncPageKnowledge(storeId)).dropped).toBeGreaterThan(0);
     expect(await knowledge.searchKnowledge(storeId, "hjem og kontor", "nb-NO")).toEqual([]);
+  });
+
+  it("cuts a published page with no words once, and not again on the next run (bloat review 0.27)", async () => {
+    const wordless = `tom-${run}`;
+    await db().execute(sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+      select store_id, 'page', ${wordless}, jsonb_set(jsonb_set(published, '{rows}', '[]'::jsonb), '{title}', '"Tom"'::jsonb),
+        jsonb_set(jsonb_set(published, '{rows}', '[]'::jsonb), '{title}', '"Tom"'::jsonb), now()
+      from commerce.pages where store_id = ${storeId}::uuid and type = 'page' and published is not null limit 1
+    `);
+    const [page] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${storeId}::uuid and slug = ${wordless}`);
+    const pageId = String(page.id);
+    const sources = sql`select count(*)::int as n from commerce.knowledge_sources where page_id = ${pageId}::uuid`;
+    const chunks = sql`select count(*)::int as n from commerce.knowledge_chunks where page_id = ${pageId}::uuid`;
+
+    expect((await knowledge.syncPageKnowledge(storeId)).cut).toBeGreaterThanOrEqual(1);
+    expect((await db().execute<Row>(sources))[0].n).toBe(1);
+    expect((await db().execute<Row>(chunks))[0].n).toBe(0);
+
+    const [second, texts] = await counted(() => knowledge.syncPageKnowledge(storeId));
+    expect(second.cut).toBe(0);
+    expect(texts.filter((text) => /^\s*begin/i.test(text))).toEqual([]);
+    expect(texts.filter((text) => text.includes("delete from commerce.knowledge_chunks where page_id"))).toEqual([]);
+    // No statement selects a document: every `->>` expression removed, no page or entry `published` column is read.
+    const bare = texts.map((text) => text.replace(/\w+\.published\s*->>\s*'\w+'/g, ""));
+    expect(bare.filter((text) => /p\.published\b(?!_at)/.test(text) || /e\.published\b(?!_at)/.test(text))).toEqual([]);
+    expect(texts.filter((text) => text.includes("published from commerce.pages where id = any"))).toEqual([]);
+    expect(texts.length).toBeLessThanOrEqual(5);
+  });
+
+  it("an idle run of the job is one statement and reads no AI connection (bloat review 0.27)", async () => {
+    await db().execute(sql`insert into commerce.chat_agents (store_id, enabled) values (${storeId}::uuid, true) on conflict (store_id) do update set enabled = true`);
+    await knowledge.refreshKnowledge({ full: true });
+    await db().execute(sql`update commerce.knowledge_chunks set created_at = now() - interval '2 hours' where space is null`);
+    const [idle, texts] = await counted(() => knowledge.refreshKnowledge({ full: false }));
+    expect(idle.cut).toBe(0);
+    expect(idle.sites).toBe(0);
+    expect(texts).toHaveLength(1);
+    expect(texts.filter((text) => text.includes("commerce.ai_providers"))).toEqual([]);
+
+    await db().execute(sql`update commerce.pages set published_at = now() + interval '2 seconds' where store_id = ${storeId}::uuid and type = 'article' and slug = 'nye-produkter'`);
+    const again = await knowledge.refreshKnowledge({ full: false });
+    expect(again.cut).toBe(1);
+    expect(again.sites).toBe(1);
+  });
+
+  it("cuts a page again when it is published again, and forgets a page that is unpublished", async () => {
+    const wordless = `tom-${run}`;
+    const sources = sql`select count(*)::int as n from commerce.knowledge_sources s join commerce.pages p on p.id = s.page_id where p.store_id = ${storeId}::uuid and p.slug = ${wordless}`;
+    await db().execute(sql`update commerce.pages set published_at = now() + interval '1 second' where store_id = ${storeId}::uuid and slug = ${wordless}`);
+    expect((await knowledge.syncPageKnowledge(storeId)).cut).toBe(1);
+    expect((await db().execute<Row>(sources))[0].n).toBe(1);
+    await db().execute(sql`update commerce.pages set published = null, published_at = null where store_id = ${storeId}::uuid and slug = ${wordless}`);
+    await knowledge.syncPageKnowledge(storeId);
+    expect((await db().execute<Row>(sources))[0].n).toBe(0);
   });
 
   it("reads the store's published content entries, only what the site shows of them, and follows their type (D428)", async () => {

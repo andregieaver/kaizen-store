@@ -2781,6 +2781,16 @@ describe("cookie scans and notes (D58)", () => {
     await expect(db.query(note, [null, "cookie", "marketing"])).rejects.toThrow(/cookie_notes_item_idx/);
     await expect(db.query(note, [storeId, "sessionStorage", "tasty"])).rejects.toThrow(/cookie_notes_category/);
   });
+
+  it("have the two indexes the schedule's due check reads a site's newest scan and newest finished scan by (step 0.23)", async () => {
+    const { rows } = await db.query<{ indexname: string; indexdef: string }>(
+      "select indexname, indexdef from pg_indexes where schemaname = 'commerce' and tablename = 'cookie_scans'",
+    );
+    const names = rows.map((r) => r.indexname);
+    expect(names).toContain("cookie_scans_site_created_idx");
+    expect(names).toContain("cookie_scans_site_done_idx");
+    expect(rows.find((r) => r.indexname === "cookie_scans_site_done_idx")?.indexdef).toMatch(/WHERE.*status.*= 'done'/);
+  });
 });
 
 describe("fonts (D59)", () => {
@@ -3166,6 +3176,28 @@ describe("the chat agent (D81)", () => {
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.knowledge_chunks")).n).toBe(0);
     await db.query("delete from commerce.chat_agents");
     await db.query("delete from commerce.chat_usage");
+  });
+});
+
+describe("what the chat agent's knowledge was cut from (bloat review step 0.27)", () => {
+  it("knowledge_sources: one source each, gone with its page", async () => {
+    const source = (pageId: string | null, entryId: string | null) =>
+      db.query(
+        "insert into commerce.knowledge_sources (store_id, page_id, entry_id, published_at, slug) values ($1, $2, $3, now(), 'about')",
+        [store, pageId, entryId],
+      );
+    await expect(source(null, null)).rejects.toThrow(/knowledge_sources_source/);
+    const { id: pageId } = await one<{ id: string }>(
+      "insert into commerce.pages (store_id, slug, draft, published, published_at, type) values ($1, 'about-ks', '{}', '{}', now(), 'page') returning id",
+      [store],
+    );
+    await source(pageId, null);
+    await expect(source(pageId, null)).rejects.toThrow(/knowledge_sources_page_key/);
+    await db.query("delete from commerce.pages where id = $1", [pageId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.knowledge_sources where page_id = $1", [pageId])).n).toBe(0);
+    expect(
+      (await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.knowledge_sources'::regclass")).on,
+    ).toBe(true);
   });
 });
 
@@ -8176,5 +8208,86 @@ describe("a webhook event is claimed before it is worked on (D529)", () => {
     expect(await claim("evt_claim_5")).toBe(true);
     const { rows } = await db.query<{ mine: boolean }>("select commerce.claim_webhook_event($1, 'stripe', 'evt_claim_5', 't', '{}'::jsonb) as mine", [other]);
     expect(rows[0].mine).toBe(true);
+  });
+});
+
+describe("contact details at checkout (D357)", () => {
+  it("asks nothing by default, and keeps only off, optional or required for the phone and the name", async () => {
+    const row = await one<{ checkout_phone: string; checkout_name: string }>("select checkout_phone, checkout_name from commerce.stores where id = $1", [store]);
+    expect(row).toEqual({ checkout_phone: "off", checkout_name: "off" });
+    await db.query("update commerce.stores set checkout_phone = 'required', checkout_name = 'optional' where id = $1", [store]);
+    await expect(db.query("update commerce.stores set checkout_phone = 'always' where id = $1", [store])).rejects.toThrow(/stores_checkout_phone/);
+    await expect(db.query("update commerce.stores set checkout_name = '' where id = $1", [store])).rejects.toThrow(/stores_checkout_name/);
+    await db.query("update commerce.stores set checkout_phone = 'off', checkout_name = 'off' where id = $1", [store]);
+  });
+});
+
+describe("a question's width at checkout (task 2)", () => {
+  it("is full by default and only full or half", async () => {
+    const { id, width } = await one<{ id: string; width: string }>(
+      `insert into commerce.checkout_fields (store_id, kind, label) values ($1, 'text', '{"text":"Door code","byLocale":{}}') returning id, width`,
+      [store],
+    );
+    expect(width).toBe("full");
+    await db.query("update commerce.checkout_fields set width = 'half' where id = $1", [id]);
+    await expect(db.query("update commerce.checkout_fields set width = 'left' where id = $1", [id])).rejects.toThrow(/checkout_fields_width/);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});
+
+describe("a tick list at checkout (task 3)", () => {
+  it("has options exactly when it is a checklist, between 1 and 30 of them", async () => {
+    const label = '{"text":"Allergies","byLocale":{}}';
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label) values ($1, 'checklist', $2)`, [store, label])).rejects.toThrow(/checkout_fields_options/);
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'text', $2, '[{"id":"a"}]')`, [store, label])).rejects.toThrow(/checkout_fields_options/);
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'checklist', $2, '[]')`, [store, label])).rejects.toThrow(/checkout_fields_options/);
+    const { id, sensitive } = await one<{ id: string; sensitive: boolean }>(
+      `insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'checklist', $2, '[{"id":"milk","label":{"text":"Milk","byLocale":{}}}]') returning id, sensitive`,
+      [store, label],
+    );
+    expect(sensitive).toBe(false);
+    await expect(db.query("update commerce.checkout_fields set kind = 'time' where id = $1", [id])).rejects.toThrow(/checkout_fields_kind/);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});
+
+describe("a number, a date, an email and a phone at checkout (task 4)", () => {
+  it("lets only a number or a date have bounds, as an object", async () => {
+    const label = '{"text":"Guests","byLocale":{}}';
+    const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label, bounds) values ($1, 'number', $2, '{"min":1,"max":40}') returning id`, [store, label]);
+    await db.query("update commerce.checkout_fields set kind = 'date', bounds = '{\"min\":0}' where id = $1", [id]);
+    await expect(db.query("update commerce.checkout_fields set kind = 'email' where id = $1", [id])).rejects.toThrow(/checkout_fields_bounds/);
+    await expect(db.query("update commerce.checkout_fields set bounds = '[1, 2]' where id = $1", [id])).rejects.toThrow(/checkout_fields_bounds/);
+    await db.query("update commerce.checkout_fields set kind = 'phone', bounds = null where id = $1", [id]);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});
+
+describe("a question asked only for some baskets (task 4)", () => {
+  it("keeps its conditions as a list of 1 to 10, or none", async () => {
+    const label = '{"text":"Bulb","byLocale":{}}';
+    const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label, conditions) values ($1, 'text', $2, '[{"kind":"country","op":"is","countries":["NO"]}]') returning id`, [store, label]);
+    await expect(db.query("update commerce.checkout_fields set conditions = '[]' where id = $1", [id])).rejects.toThrow(/checkout_fields_conditions/);
+    await expect(db.query("update commerce.checkout_fields set conditions = '{}' where id = $1", [id])).rejects.toThrow(/checkout_fields_conditions/);
+    await db.query("update commerce.checkout_fields set conditions = null where id = $1", [id]);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});
+
+describe("a dropdown, a choice of one and longer text at checkout (task 4)", () => {
+  it("gives a select and radio buttons options, as a checklist has, and longer text none", async () => {
+    const label = '{"text":"Size","byLocale":{}}';
+    const options = '[{"id":"s","label":{"text":"S","byLocale":{}}},{"id":"m","label":{"text":"M","byLocale":{}}}]';
+    for (const kind of ["select", "radio"]) {
+      await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label) values ($1, $2, $3)`, [store, kind, label])).rejects.toThrow(/checkout_fields_options/);
+      const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, $2, $3, $4) returning id`, [store, kind, label, options]);
+      // Turned into a line of text, it must lose its options.
+      await expect(db.query("update commerce.checkout_fields set kind = 'text' where id = $1", [id])).rejects.toThrow(/checkout_fields_options/);
+      await db.query("update commerce.checkout_fields set kind = 'checklist' where id = $1", [id]);
+      await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+    }
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'textarea', $2, $3)`, [store, label, options])).rejects.toThrow(/checkout_fields_options/);
+    const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label) values ($1, 'textarea', $2) returning id`, [store, label]);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
   });
 });

@@ -266,7 +266,8 @@ export const ALLOWED_FIELDS: Record<AuditKind, readonly string[]> = {
   staff: ["email", "role", "roleName", "kind", "expiresAt", "disabled"],
   role: ["name", "permissions"],
   payments: ["enabled", "mode", "orderInvoices"],
-  store: ["termsAtCheckout", "requireTwoStep", "legalRole", "pageId", "customerAccounts"],
+  // checkoutPhone and checkoutName are what the checkout asks (off, optional or required, D357), never a person's number or name.
+  store: ["termsAtCheckout", "requireTwoStep", "legalRole", "pageId", "customerAccounts", "checkoutPhone", "checkoutName"],
   // A customer (D366): only whether the email is confirmed carries a value; a name, an email, a phone, an address or a company is a person's data and is written as changed, never its value.
   customer: ["emailConfirmed"],
 };

@@ -6,7 +6,8 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import type { ListedCookie } from "@/components/consent/cookie-policy";
 import { db, readDb } from "@/db/client";
-import { declaredCookies, OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type KnownCookie, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { declaredCookies, type KnownCookie } from "@/lib/known-cookies";
 import { trackingSchema } from "@/lib/cookie-consent-schema";
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { codeCategories, type CustomCode } from "@/lib/custom-code";
@@ -21,6 +22,7 @@ import { getChatAgent } from "./chat-agent";
 import { usesRememberedModals } from "./page-modals";
 import { referralPublicSettings } from "./referrals";
 import { refreshStoreById } from "./stores";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -43,7 +45,7 @@ async function siteFindings(storeId: string | null): Promise<{ items: ScannedIte
   cacheTag(cookiesTag(storeId));
   const [scan] = await readDb().execute<Row>(sql`
     select items from commerce.cookie_scans
-    where store_id is not distinct from ${storeId}::uuid and status = 'done'
+    where coalesce(store_id, '00000000-0000-0000-0000-000000000000'::uuid) = coalesce(${storeId}::uuid, '00000000-0000-0000-0000-000000000000'::uuid) and status = 'done'
     order by finished_at desc limit 1
   `);
   return { items: parseScannedItems(scan?.items), notes: await readNotes(storeId) };
@@ -52,7 +54,7 @@ async function siteFindings(storeId: string | null): Promise<{ items: ScannedIte
 async function readNotes(storeId: string | null): Promise<CookieNote[]> {
   const rows = await readDb().execute<Row>(sql`
     select kind, name, domain, category, provider, purpose from commerce.cookie_notes
-    where store_id is not distinct from ${storeId}::uuid
+    where ${owned(storeId)}
     order by name
   `);
   return rows.flatMap((row) => {

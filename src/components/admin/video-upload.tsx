@@ -125,7 +125,7 @@ export async function sendVideo(
   const started = await startVideo({ name: details.name, type: file.type, size: file.size, compressed: details.compressed });
   if (!started.ok) return { ok: false, problem: started.problem };
   const stored = await putWithRetry(
-    () => uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: file.type }),
+    () => uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: file.type, cacheControl: "31536000" }),
     (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   );
   if (!stored.ok) {

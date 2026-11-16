@@ -4,7 +4,8 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { formProblems } from "@/lib/form-problems";
-import { featureOffText, featureOn } from "@/lib/store-features";
+import { featureOn } from "@/lib/store-features";
+import { featureOffText } from "@/lib/feature-labels";
 import { checkOwnerRole } from "@/server/permissions";
 import { saveSchedule, scheduleInput } from "@/server/standing-orders";
 

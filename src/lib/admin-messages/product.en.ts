@@ -6,6 +6,26 @@ import type { Widen } from "./common.en";
  * filled by `fillWords()`; a count is a `{ one, many }` pair read by `countWords()`, with `{n}` the number.
  */
 export const productEn = {
+  /** Round 1 (D595, step 5): the shopper's view beside the editor and what the product still lacks. */
+  preview: {
+    title: "What shoppers see",
+    open: "Open",
+    noTitle: "Your product's name",
+    noPrice: "No price yet",
+    inclVat: "incl. VAT",
+    onlyLeft: "Only {n} left",
+    addToCart: "Add to cart",
+    ready: "Ready to sell",
+    readyCount: "{done} of {total}",
+    checks: {
+      photo: "A photo",
+      namePrice: "A name and a price",
+      stock: "In stock",
+      category: "In a category",
+      description: "A description of two sentences or more",
+      secondPhoto: "A photo from another angle",
+    },
+  },
   top: {
     products: "Products",
     untitled: "Untitled product",
@@ -15,6 +35,9 @@ export const productEn = {
     published: "Published",
     saving: "Saving …",
     save: "Save",
+    // Round 4 (D612): the Save bar at the thumb on a phone.
+    notSaved: "Changes not saved yet",
+    allSaved: "Everything is saved",
     saved: "Saved.",
     seeInStore: "See it in your store",
     draftsHidden: "Drafts are hidden from shoppers.",
@@ -22,6 +45,8 @@ export const productEn = {
     pleaseFix: "Nothing was saved yet. Please fix:",
   },
   advanced: {
+    jump: "Jump to",
+    parts: { audience: "Who buys it", priceWords: "Words around the price", subscriptions: "Subscriptions", safety: "Product safety", legal: "Tax, returns and countries" },
     title: "Advanced",
     text: "The standard category, who buys it, words around its price, prices by quantity, subscriptions, product safety, tax, returns and where it is sold.",
   },
@@ -64,6 +89,7 @@ export const productEn = {
     many: "Purchase options: Subscriptions is switched off under Settings, Features, so this product's {n} options are kept but not offered.",
   },
   text: {
+    more: "Safety warnings, web address, excerpt and search results",
     title: "Title and description",
     language: "Language",
     empty: " (empty)",
@@ -202,6 +228,7 @@ export const productEn = {
     nothing: "Fill in at least one field.",
   },
   row: {
+    moreFor: "More for {name}",
     skuFor: "SKU for {name}",
     deliveryFor: "Delivery for {name}",
     rentedHow: "How {name} is rented",
@@ -214,6 +241,9 @@ export const productEn = {
     stockAtLocations: "Stock at each location for {name}",
     stockAtFor: "Stock for {name} at {location}",
     stockFor: "Stock for {name}",
+    oneFewer: "One fewer of {name}",
+    oneMore: "One more of {name}",
+    vatPart: "Of which VAT {amount} ({rate} %)",
     priceFor: "Price in {market} for {name}, {currency}",
     byRule: "By the country's price rule",
     byRulePlaceholder: "By rule",

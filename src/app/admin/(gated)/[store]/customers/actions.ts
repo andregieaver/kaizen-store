@@ -95,3 +95,18 @@ export async function bulkTagAction(storeSlug: string, _state: FormState, form: 
   const done = countWords(result.changed, w.bulk.done);
   return { status: "ok", messages: [result.full > 0 ? done + fillWords(w.bulk.full, { n: String(result.full) }) : done] };
 }
+
+/** Round 3 (D603): a tag added to, or taken off, the people ticked on the list (their emails, at most one page of them). */
+export async function tagTickedAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [await noAccess()] };
+  const w = adminText(adminLangOf(member.account.adminLocale), "customers").staff;
+  const emails = form.getAll("email").flatMap((value) => (typeof value === "string" && value ? [value.slice(0, 320)] : [])).slice(0, BULK_TAG_MAX + 1);
+  if (emails.length > BULK_TAG_MAX) return { status: "error", messages: [w.bulk.tooMany] };
+  const mode = form.get("mode") === "remove" ? "remove" : "add";
+  const result = await tagMany(member.store.id, member.account.id, emails, text(form.get("tag"), 200), mode);
+  if (!result.ok) return { status: "error", messages: [result.problem === "too_many" ? w.bulk.tooMany : w.bulk.badTag] };
+  refresh();
+  const done = countWords(result.changed, w.bulk.done);
+  return { status: "ok", messages: [result.full > 0 ? done + fillWords(w.bulk.full, { n: String(result.full) }) : done] };
+}

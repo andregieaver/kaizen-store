@@ -39,7 +39,7 @@ import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import { getPageForEdit } from "./pages";
 import { encryptionKey } from "./encryption-key";
-import { currentStore, type Store } from "./stores";
+import { currentStore, storeSlugOf, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { loadSharp } from "./sharp-load";
 
@@ -374,7 +374,7 @@ export async function runLook(id: string | null, deps: LookDeps): Promise<boolea
 async function takeLook(look: Claimed, deps: LookDeps): Promise<boolean> {
   try {
     if (!deps.photograph) throw new Error("No browser is available to look with.");
-    const slug = (await typedRow(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${look.store_id}::uuid`))?.slug;
+    const slug = await storeSlugOf(look.store_id);
     const store = slug ? await currentStore(slug) : null;
     if (!store || store.status !== "active") throw new OwnerToolError("The store is not open, so it was not looked at.");
     const targets = await targetsOf(look, store, deps.origin ?? siteUrl());

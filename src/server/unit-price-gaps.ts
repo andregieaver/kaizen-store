@@ -1,12 +1,14 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { priceVat } from "@/lib/pricing";
 import { unitPriceShown, type ShownMeasure, type UnitPriceShown } from "@/lib/unit-price";
 import { shownMeasureFromColumns, type UnitPriceCategory } from "@/lib/unit-price-rules";
 import { STORE_AUDIENCE } from "./product-conditions";
+import { col, typedRow } from "./typed-rows";
 
 /**
  * Which products still need their content for the unit price (D160, `docs/wave-1d-unit-price.md` 2.2 and 3.3). "Needs"
@@ -97,6 +99,33 @@ export async function productsNeedingMeasure(storeId: string, locale: string): P
     reason: row.sold_by_measure ? { kind: "flag" } : { kind: "category", category: String(row.category) },
     skus: (row.skus as string[]).map(String),
   }));
+}
+
+/**
+ * How many products `productsNeedingMeasure()` would list, in one statement and without their titles, categories or SKUs: the
+ * products page's notice needs only the number. The inner conditions are the list's own; the `exists` on variants stands in for its
+ * `q.skus is not null`. A store that marked nothing (no product sold by measure, no category requiring it) costs no scan of its products.
+ */
+export async function countProductsNeedingMeasure(storeId: string): Promise<number> {
+  const row = await typedRow(
+    z.object({ n: col.int }),
+    sql`
+      select case
+        when not exists (select 1 from commerce.products p where p.store_id = ${storeId}::uuid and p.sold_by_measure)
+          and not exists (select 1 from commerce.terms t where t.store_id = ${storeId}::uuid and t.requires_unit_price) then 0
+        else (
+          select count(*)::int from commerce.products p
+          where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind = 'goods'
+            and commerce.unit_price_required(p.store_id, p.id)
+            and exists (
+              select 1 from commerce.product_variants v
+              where v.store_id = p.store_id and v.product_id = p.id and v.active and v.delivery = 'physical' and v.measure_amount is null
+            )
+        )
+      end as n
+    `,
+  );
+  return row?.n ?? 0;
 }
 
 /**

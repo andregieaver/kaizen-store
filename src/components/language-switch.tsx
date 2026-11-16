@@ -3,7 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { mayRemember } from "@/lib/page-modal";
+import { mayRemember } from "@/lib/cookie-consent";
 import { englishPath, PLATFORM_LANG_FACTS, platformPath, suggestedLang, type PlatformLang } from "@/lib/platform-lang";
 import { LANGUAGE_HINT_KEY, LANGUAGE_HINT_TEXT } from "@/lib/platform-lang-text";
 

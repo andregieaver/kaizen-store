@@ -10,6 +10,7 @@ import { audit } from "./auth";
 import { log } from "./log";
 import { removeStoredFiles, startVideoUpload, storedVideo, uploadProductImage, type VideoUpload } from "./media";
 import { mediaUses, type MediaOwner } from "./media-library";
+import { owned } from "./owned";
 
 /**
  * The media library's Compress (D213): a file uploaded before compressing was measured is made smaller in the person's
@@ -47,8 +48,6 @@ type Next = {
   width: number | null;
   height: number | null;
 };
-
-const owned = (storeId: string | null, column = sql`store_id`) => (storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`);
 
 const GONE = "That file is no longer in the library.";
 

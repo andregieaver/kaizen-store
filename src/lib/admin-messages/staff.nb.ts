@@ -34,6 +34,11 @@ export const staffNb: StaffMessages = {
     read_only: { name: "Kun lesetilgang", description: "Kan se på alt unntatt abonnement og faktura og teamet, og endre ingenting." },
   },
   team: {
+    sentence: { people: { one: "{n} person jobber i {store}.", many: "{n} personer jobber i {store}." }, none: " Ingen har totrinnsinnlogging ennå.", some: " {with} av {n} har totrinnsinnlogging.", all: " Alle har totrinnsinnlogging." },
+    more: "Mer",
+    inviteButton: "Inviter noen",
+    you: "(deg)",
+    moreFor: "Mer for {name}",
     title: "Team",
     description:
       "De som står her, kan logge inn med en lenke sendt til e-posten sin, eller med passordet sitt. Eiere styrer teamet og abonnementet; alle andre arbeider i de delene av administrasjonen rollen deres gir dem.",
@@ -59,6 +64,8 @@ export const staffNb: StaffMessages = {
     accessRemoved: "Tilgangen er fjernet",
   },
   invite: {
+    limited: "For en begrenset tid, som for et byrå eller en frilanser",
+    limitedHint: "tilgangen slutter av seg selv",
     title: "Inviter noen",
     staffNote: "Ansatte beholder tilgangen til du fjerner den.",
     email: "E-post",
@@ -72,6 +79,8 @@ export const staffNb: StaffMessages = {
     inviteCollaborator: "Inviter samarbeidspartner",
   },
   twoStep: {
+    short: "Krev totrinnsinnlogging",
+    shortCount: "{with} av {n} har det. Du må ha det selv først.",
     title: "Totrinns innlogging",
     count: { one: "{with} av {n} person i teamet", many: "{with} av {n} personer i teamet" },
     has: { one: "har det.", many: "har det." },
@@ -129,6 +138,14 @@ export const staffNb: StaffMessages = {
     roleDeleted: "Rollen er slettet.",
   },
   activity: {
+    leadWeek: "{entries} denne uken, av {people}.",
+    entriesN: { one: "{n} endring", many: "{n} endringer" },
+    peopleN: { one: "{n} person", many: "{n} personer" },
+    leadNone: "Ingenting er endret denne uken.",
+    leadRest: " Hver endring tas vare på i 24 måneder og kan ikke endres.",
+    moreFilters: "Flere filtre og nedlasting",
+    today: "I dag",
+    yesterday: "I går",
     title: "Aktivitetslogg",
     description: "Hva folk har endret i butikken, og når: produkter, priser, sider, rabattkoder, frakt, teamet og betalingsinnstillingene.",
     ownerSees: "Du ser alle oppføringer.",

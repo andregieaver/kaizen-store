@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
@@ -11,7 +10,6 @@ import { EBAY_CARRIERS, EBAY_MARKETPLACES } from "@/lib/ebay";
 type Step = { ok: true } | { ok: false; problem: string };
 
 function useRun() {
-  const router = useRouter();
   const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
   const [pending, start] = useTransition();
   const run = (job: () => Promise<Step | { ok: true; changed: number }>, done: (r: { ok: true; changed?: number }) => string) =>
@@ -20,7 +18,6 @@ function useRun() {
       const result = await job();
       if (!result.ok) return setMessage({ tone: "problem", text: result.problem });
       setMessage({ tone: "ok", text: done(result) });
-      router.refresh();
     });
   const view = (
     <div role="status" aria-live="polite">
@@ -163,7 +160,6 @@ export function EbayMarkSent({ mark }: { mark: (carrier: string, tracking: strin
 export function EbayButton({ text, act, tone = "secondary" }: { text: string; act: () => Promise<Step | void>; tone?: "primary" | "secondary" }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const router = useRouter();
   return (
     <span className="flex flex-col gap-1">
       <button
@@ -174,7 +170,6 @@ export function EbayButton({ text, act, tone = "secondary" }: { text: string; ac
           start(async () => {
             const result = await act();
             if (result && !result.ok) setProblem(result.problem);
-            else router.refresh();
           })
         }
       >

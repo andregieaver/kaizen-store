@@ -58,8 +58,9 @@ test("an owner switches Deals on, adds a deal for a customer, moves it, wins it 
 
   await page.goto(`/admin/${E2E_STORE}/deals`);
   await expect(page.getByRole("heading", { level: 1, name: "Deals" })).toBeVisible();
-  const board = page.getByRole("region", { name: "The board of deals" });
-  for (const column of ["New", "Talking", "Quote sent", "Won", "Lost"]) await expect(board.getByRole("heading", { name: column, exact: true })).toBeVisible();
+  // With no deal, one card to add the first, the stages on it (round 14, D641); the board comes with the first deal.
+  const stages = page.getByRole("list", { name: "The stages a deal goes through" });
+  for (const column of ["New", "Talking", "Quote sent", "Won", "Lost"]) await expect(stages.getByText(column, { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "New deal" }).click();
   await page.getByLabel("What they might buy").fill(`Tote bags ${run}`);

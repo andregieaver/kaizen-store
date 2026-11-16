@@ -162,6 +162,56 @@ export function LinkPending({ className = "inset-x-3 bottom-1" }: { className?: 
   );
 }
 
+/**
+ * The phone's bottom bar (admin redesign round 1): under `md`, where the rail is not drawn, the level's first four sections sit at the foot
+ * of the screen within a thumb's reach, each an icon over its name, and More opens the slide-out menu with everything else. It is drawn by
+ * the frame in the `rail` layout only, and not in the `focus` layout.
+ */
+export function PhoneTabBar({ items, label, more }: { items: NavItem[]; label: string; more: string }) {
+  const isCurrent = useIsCurrent();
+  const shown = items.filter((item) => !item.foot).slice(0, 4);
+  return (
+    <nav
+      aria-label={label}
+      data-phone-tabs
+      className="fixed inset-x-0 bottom-0 z-40 rounded-t-[20px] bg-rail px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
+    >
+      <ul className="grid grid-cols-5">
+        {shown.map((item) => (
+          <li key={item.href}>
+            <AdminLink
+              href={item.href}
+              aria-current={isCurrent(item) ? "page" : undefined}
+              className="relative flex min-h-12 flex-col items-center justify-center gap-1 text-[11px] text-rail-icon aria-[current=page]:text-brand"
+            >
+              {item.icon && <NavIcon name={item.icon} className="size-[22px]" />}
+              <span className="max-w-full truncate px-1">{item.label}</span>
+              {item.badge ? (
+                <span className="absolute top-0 right-[calc(50%-22px)] min-w-[18px] rounded-pill bg-brand px-1 text-center text-[10px] leading-[18px] text-brand-ink tabular-nums">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              ) : null}
+            </AdminLink>
+          </li>
+        ))}
+        <li>
+          <button
+            type="button"
+            data-open-menu
+            aria-haspopup="dialog"
+            className="flex min-h-12 w-full flex-col items-center justify-center gap-1 text-[11px] text-rail-icon"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[22px]" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            {more}
+          </button>
+        </li>
+      </ul>
+    </nav>
+  );
+}
+
 /** A small count beside a link's label. */
 function Badge({ count }: { count?: number }) {
   if (!count) return null;

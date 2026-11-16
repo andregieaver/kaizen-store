@@ -101,7 +101,8 @@ test.describe("the owner", () => {
     await expect.poll(flatRate).toEqual({ amount: 7900, free: null });
 
     await page.goto(`${settings}/methods?market=NO`);
-    await page.getByRole("link", { name: "Add a method" }).click();
+    // The header's Write your own (round 11, D634): the list card, with its Add a method, only shows once a method exists.
+    await page.getByRole("link", { name: "Write your own" }).click();
     await page.getByLabel("Name, as shoppers see it").fill(METHOD);
     await page.getByLabel("How General is priced").first().selectOption("flat");
     await page.getByLabel(/^Price \(NOK\)$/).first().fill("129");
@@ -162,6 +163,7 @@ test.describe("the Read-only member", () => {
     await expect(page.getByRole("button", { name: "Save flat rates" })).toHaveCount(0);
     await page.goto(`${settings}/methods?market=NO`);
     await expect(page.getByRole("link", { name: "Add a method" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Write your own" })).toHaveCount(0);
 
     const pickup = await paidOrder("pickup");
     await page.goto(`/admin/${E2E_STORE}/orders/${pickup}`);

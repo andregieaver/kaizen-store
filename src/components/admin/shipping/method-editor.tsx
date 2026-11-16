@@ -44,6 +44,8 @@ export type MethodEditorProps = {
   } | null;
   canWrite: boolean;
   save: (input: unknown) => Promise<{ ok: true; id: string; message: string } | { ok: false; message: string }>;
+  /** A ready way to deliver (round 11, D634) that fills in a new method's name and delivery time. */
+  start?: { name: string; estimate: { min: number; max: number } } | null;
 };
 
 const BASES: BlockBasis[] = ["none", "flat", "weight", "value"];
@@ -51,14 +53,15 @@ const BASES: BlockBasis[] = ["none", "flat", "weight", "value"];
 const control = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm";
 
-export function MethodEditor({ base, market, zones, profiles, method, canWrite, save }: MethodEditorProps) {
+export function MethodEditor({ base, market, zones, profiles, method, canWrite, save, start: ready }: MethodEditorProps) {
   const w = useAdminText("shipping").method;
   const router = useRouter();
   const currency = market.currency;
-  const [name, setName] = useState(method?.name ?? "");
+  const [name, setName] = useState(method?.name ?? ready?.name ?? "");
   const [active, setActive] = useState(method?.active ?? true);
-  const [estimateMin, setEstimateMin] = useState(method?.estimate ? String(method.estimate.min) : "");
-  const [estimateMax, setEstimateMax] = useState(method?.estimate ? String(method.estimate.max) : "");
+  const firstEstimate = method ? method.estimate : (ready?.estimate ?? null);
+  const [estimateMin, setEstimateMin] = useState(firstEstimate ? String(firstEstimate.min) : "");
+  const [estimateMax, setEstimateMax] = useState(firstEstimate ? String(firstEstimate.max) : "");
   const [freeOver, setFreeOver] = useState(method?.freeOverMinor ? typedAmount(method.freeOverMinor, currency) : "");
   const [blocks, setBlocks] = useState<BlockDraft[]>(() =>
     blocksFromRates(method?.rates ?? [], zones.map((z) => z.id), profiles.map((p) => p.id), currency),

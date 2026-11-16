@@ -28,6 +28,7 @@ import {
   type Handler,
   type MessageAuthor,
   type SupportMode,
+  type EscalationCategory,
 } from "@/lib/support-rules";
 import { REFUSALS, type Refusal, type SupportEvent } from "@/lib/support-state";
 import type { ToneBand } from "@/lib/support-tone";
@@ -37,6 +38,7 @@ import type { ConversationRef, VisitorAction, VisitorMessage, VisitorMessageData
 import { avatarPictureUrl } from "@/lib/avatar";
 
 import type { Desk } from "./support-desk";
+import { owned } from "./owned";
 
 /** Kaizen's own desk keeps Norway's time (its company's). */
 export const KAIZEN_TIME_ZONE = "Europe/Oslo";
@@ -116,6 +118,8 @@ export type DeskSettings = {
   aiActions: CustomerActionKind[] | null;
   /** Where a store's email form sends its messages while the desk is on (D382). */
   formMessages: FormMessages;
+  /** The AI answers an email about the sender's own orders (`docs/100-day-challenge.md` B1); never for a sensitive store. */
+  emailOrders: boolean;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -147,6 +151,7 @@ export function settingsOf(row: Row): DeskSettings {
     partner: row.sensitive !== true && (row.partner === undefined ? true : Boolean(row.partner)),
     aiActions: Array.isArray(row.ai_actions) ? (row.ai_actions as string[]).filter(isCustomerAction) : null,
     formMessages: (FORM_MESSAGES as readonly string[]).includes(String(row.form_messages)) ? (String(row.form_messages) as FormMessages) : "inbox_and_email",
+    emailOrders: row.sensitive !== true && row.email_orders === true,
   };
 }
 
@@ -255,9 +260,9 @@ export async function newEmailToken(desk: Desk, conversationId: string): Promise
 }
 
 /** The AI's words when it handed the conversation to a person (2.3), shown to staff as text. */
-export async function setAiReason(desk: Desk, conversationId: string, reason: string): Promise<void> {
+export async function setAiReason(desk: Desk, conversationId: string, reason: string, escalation: EscalationCategory | null = null): Promise<void> {
   await db().execute(sql`
-    update commerce.support_conversations set ai_reason = ${reason.slice(0, AI_REASON_MAX)}
+    update commerce.support_conversations set ai_reason = ${reason.slice(0, AI_REASON_MAX)}, escalation = ${escalation}
     where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}
   `);
 }
@@ -481,6 +486,7 @@ export async function endIdleConversations(now: Date = new Date(), limit = 500):
   const at = sql`${now.toISOString()}::timestamptz`;
   const rows = await db().execute<Row>(sql`
     select c.id from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     left join commerce.support_settings s on s.store_id is not distinct from c.store_id
     where c.status = 'open' and c.anonymised_at is null and (
       (c.handler = 'ai' and c.last_message_at < ${at} - make_interval(mins => coalesce(s.end_after_minutes, ${END_AFTER_MINUTES.default})))
@@ -534,6 +540,7 @@ export async function anonymiseConversations(executor: Executor, ids: string[]):
 export async function transcriptsDue(now: Date, ruleCutoff: Date, limit: number): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
     select c.id from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     left join commerce.support_settings s on s.store_id is not distinct from c.store_id
     where c.status = 'ended' and c.anonymised_at is null
       and (c.ended_at < ${ruleCutoff.toISOString()}::timestamptz
@@ -810,7 +817,7 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     left join commerce.accounts ra on ra.id = c.requester_id
     left join commerce.accounts a on a.id = c.assignee_id
-    left join commerce.support_settings ss on ss.store_id is not distinct from c.store_id
+    left join commerce.support_settings ss on ${owned(desk.storeId, sql`ss.store_id`)}
     where c.id = ${conversationId}::uuid and ${deskIs(desk, sql`c.store_id`)} and c.anonymised_at is null
   `);
   if (!c) return null;

@@ -14,6 +14,7 @@ import { isFresh } from "@/lib/privacy-request";
 import { chooseBusinessBuyer } from "./b2b";
 import { saveDefaultAddress } from "./customer-addresses";
 import type { Address } from "./orders";
+import { perRequest } from "./request-memo";
 import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
@@ -455,25 +456,29 @@ export type Customer = {
 export async function getCustomer(storeId: string): Promise<Customer | null> {
   const token = (await cookies()).get(cookieName(storeId))?.value;
   if (!token || token.length > 100) return null;
-  const [row] = await db().execute<Row>(sql`
-    select c.id, c.email, c.name, c.phone, c.address, c.password_hash is not null as has_password,
-      c.company_name, c.organisation_number, c.avatar_path
-    from commerce.customer_sessions s
-    join commerce.customers c on c.store_id = s.store_id and c.id = s.customer_id
-    where s.store_id = ${storeId}::uuid and s.token_hash = ${sha256(token)} and s.expires_at > now()
-  `);
-  if (!row) return null;
-  return {
-    id: String(row.id),
-    email: String(row.email),
-    name: String(row.name),
-    phone: String(row.phone),
-    address: (row.address ?? {}) as Address,
-    hasPassword: Boolean(row.has_password),
-    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
-    companyName: String(row.company_name ?? ""),
-    organisationNumber: String(row.organisation_number ?? ""),
-  };
+  // Read once while a request is rendered (bloat review step 0.22). The token's hash is in the key: after a sign-in in the same request the
+  // cookie holds a new token, so the answer from before it is never reused; after a sign-out there is no token and nothing above is asked.
+  return perRequest(`customer:${storeId}:${sha256(token)}`, async () => {
+    const [row] = await db().execute<Row>(sql`
+      select c.id, c.email, c.name, c.phone, c.address, c.password_hash is not null as has_password,
+        c.company_name, c.organisation_number, c.avatar_path
+      from commerce.customer_sessions s
+      join commerce.customers c on c.store_id = s.store_id and c.id = s.customer_id
+      where s.store_id = ${storeId}::uuid and s.token_hash = ${sha256(token)} and s.expires_at > now()
+    `);
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      email: String(row.email),
+      name: String(row.name),
+      phone: String(row.phone),
+      address: (row.address ?? {}) as Address,
+      hasPassword: Boolean(row.has_password),
+      avatarPath: row.avatar_path ? String(row.avatar_path) : null,
+      companyName: String(row.company_name ?? ""),
+      organisationNumber: String(row.organisation_number ?? ""),
+    } satisfies Customer;
+  });
 }
 
 export async function updateCustomerDetails(

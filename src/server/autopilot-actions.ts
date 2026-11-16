@@ -89,6 +89,10 @@ export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
       if ((AUTONOMY_LEVELS as readonly string[]).includes(level)) levels[area] = level as AutonomyLevel;
     }
     const ai = number(text(form, "ai_monthly"));
+    const marginFloor = number(text(form, "margin_floor"));
+    const perOrder = number(text(form, "purchase_per_order"));
+    const monthly = number(text(form, "purchase_monthly"));
+    const orNull = (n: number | null) => (n === null || Number.isNaN(n) ? null : n);
     await saveAutonomy(actorOf(p), {
       paused: text(form, "running") !== "on",
       levels,
@@ -98,6 +102,9 @@ export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
         priceChangePercent: Number(text(form, "price_change_percent") || 0),
         customerEmailsPerWeek: Number(text(form, "customer_emails") || 0),
         adRaisePercent: Number(text(form, "ad_raise_percent") || 0),
+        marginFloorPercent: marginFloor === null || Number.isNaN(marginFloor) ? null : marginFloor,
+        purchasePerOrder: orNull(perOrder),
+        purchaseMonthly: orNull(monthly),
       },
       planning: {
         continues: text(form, "keep_going") === "on",

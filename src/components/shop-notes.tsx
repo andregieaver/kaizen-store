@@ -1,4 +1,4 @@
-import { cartView } from "@/app/s/[store]/[market]/cart/cart-contents";
+import { cartView } from "@/app/s/[store]/[market]/cart/cart-view";
 import type { Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";

@@ -34,7 +34,8 @@ import type { Term } from "@/lib/taxonomy";
 import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/lib/unit-price";
 import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { limitRefusal } from "@/lib/usage-format";
-import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
+import { FEATURES_BY_ID, featureOn, kindFeature } from "@/lib/store-features";
+import { featureOffText } from "@/lib/feature-labels";
 import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "@/lib/product-media";
 import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsByLocale } from "@/lib/price-words";
 import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-check";
@@ -42,7 +43,7 @@ import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-
 import { bundleForEdit, componentProblems, computedBundlesHolding, onRequestInBundlesProblem, saveBundleComponents } from "./bundles";
 import { productSafety } from "./product-safety";
 import { profileChoices } from "./shipping-admin";
-import { aiFor } from "./ai";
+import { aiAbilities } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import { auditProductSave, productSnapshot } from "./product-audit";
@@ -193,7 +194,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
     hosts: hosts.map((row) => ({ id: String(row.id), name: String(row.name), vatRegistered: Boolean(row.vat_registered) })),
     layouts,
-    aiWriting: Boolean((await aiFor(store.id))?.textModel),
+    aiWriting: (await aiAbilities(store.id)).text,
     shippingProfiles: await profileChoices(store.id),
     ruledMarkets: (await marketPriceRules(store.id)).map((r) => r.market),
     priceWords: store.priceWords,

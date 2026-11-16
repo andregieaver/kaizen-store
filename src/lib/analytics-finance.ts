@@ -39,6 +39,8 @@ export type FinanceLineKey =
   | "paymentFees"
   | "platformFees"
   | "shippingCosts"
+  | "handlingCosts"
+  | "returnLabels"
   | "marketing"
   | "lostDisputes"
   | "contributionProfit"
@@ -182,6 +184,13 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
     missing: shippingUnset,
     note: shippingUnset ? N.shippingUnset : N.shippingEstimated,
   });
+  // Handling and packaging per order (D646): shown once a cost per order is set; return labels booked in the period, shown when there are any.
+  const handling = totals.handlingCostsMinor ?? 0;
+  if ((settings.handlingCostMinor ?? 0) > 0 || handling !== 0) {
+    push("handlingCosts", L.handlingCosts, -handling, { estimated: true, note: N.handlingEstimated });
+  }
+  const returnLabels = totals.returnLabelsMinor ?? 0;
+  if (returnLabels !== 0) push("returnLabels", L.returnLabels, -returnLabels, { note: N.returnLabels });
   const noSpend = orders > 0 && totals.marketingMinor === 0;
   push("marketing", L.marketing, -totals.marketingMinor, { missing: noSpend, note: noSpend ? N.marketingNone : N.marketing });
 
@@ -190,7 +199,8 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
   if (lostDisputes !== 0) {
     push("lostDisputes", L.lostDisputes, -lostDisputes, { note: N.lostDisputes });
   }
-  const contribution = grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - totals.marketingMinor - lostDisputes;
+  const contribution =
+    grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - handling - returnLabels - totals.marketingMinor - lostDisputes;
   push("contributionProfit", L.contributionProfit, contribution, {
     subtotal: true,
     estimated: true,

@@ -97,6 +97,8 @@ export const sv: Messages = {
   problemDiscount: "Rabattkoden kan inte längre användas. Se över varukorgen och försök igen.",
   discountCode: "Rabattkod",
   haveCode: "Har du en rabattkod?",
+  codeOrCard: "Rabattkod eller presentkort",
+  haveCodeOrCard: "Har du en rabattkod eller ett presentkort?",
   applyCode: "Använd",
   removeCode: "Ta bort",
   discount: "Rabatt",
@@ -563,6 +565,7 @@ export const sv: Messages = {
     // legal: needs review
     moreFollows: "Mer av den här beställningen kommer i ett annat paket.",
     alreadySent: "Alla varor (redan skickade)",
+    answers: "Svar i kassan",
   },
   /**
    * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
@@ -878,7 +881,12 @@ export const sv: Messages = {
   checkoutQuestions: {
     legend: "Några frågor från butiken",
     required: "obligatorisk",
-    problem: "Svara på butikens obligatoriska frågor och försök igen.",
+    problem: "Svara på butikens obligatoriska frågor, kontrollera siffrorna, datumen, e-postadresserna och telefonnumren du skrev och ge ditt samtycke där en fråga ber om det, och försök igen.",
+    // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
+    consent: "Jag samtycker till att butiken använder det jag har kryssat i här endast för att förbereda den här beställningen.",
+    // legal: needs review. The same consent for a dropdown or a choice of one (task 4).
+    consentChosen: "Jag samtycker till att butiken använder det jag har valt här endast för att förbereda den här beställningen.",
+    choose: "Välj",
   },
   producer: {
     notSoldHere: "Säljs inte i det här landet just nu: säljarens registrering för producentansvar saknas här.",
@@ -894,6 +902,15 @@ export const sv: Messages = {
       furniture: "Möbler",
       tyres: "Däck",
     },
+  },
+  /** A name and a phone at checkout besides the email (D357): asked on our page as the store chooses, kept on the order. */
+  checkoutContact: {
+    name: "Namn",
+    phone: "Telefon",
+    optional: "(valfritt)",
+    nameProblem: "Skriv ditt namn.",
+    phoneProblem: "Skriv ett telefonnummer som vi kan nå dig på. Ett nummer från ett annat land börjar med + och landsnumret.",
+    saveFailed: "Dina uppgifter kunde inte sparas. Försök igen.",
   },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {

@@ -14,7 +14,7 @@ import { aiFor, type AiConnection } from "./ai";
 import { activeAccount, passMembership } from "./auth";
 import { checkStep } from "./autopilot-checks";
 import { autopilotDecision } from "./autopilot-gate";
-import { completeStep, failStep, loadSteps, stopPlanIn, type PlanStep, type StepResult } from "./autopilot-plans";
+import { completeStep, failStep, loadSteps, skipStep, stopPlanIn, type PlanStep, type StepResult } from "./autopilot-plans";
 import { aiBudgetProblem, autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runPlatformTool } from "./manager-tools";
@@ -23,6 +23,7 @@ import { gateNeeded, heldBy, OwnerToolError, preflightOwnerTool, runOwnerTool } 
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
+import { owned } from "./owned";
 
 /**
  * The autopilot's loop (D309, `docs/ai-autopilot.md` 7.3): from `/api/cron/autopilot` every minute, a few steps at a time and at most one per
@@ -33,7 +34,11 @@ import { skipWhilePaused } from "./ai-pause";
  */
 
 /** Steps taken in one run. */
-const PER_RUN = 3;
+/**
+ * Steps taken in one run, one per store, run side by side (`docs/100-day-challenge.md` H1): with ten challenge stores, one store's long turn
+ * never holds another's step back.
+ */
+const PER_RUN = 12;
 /** How long a run holds a step before another may take it. */
 const CLAIM_MINUTES = 10;
 /** The longest a task step's turn may take. */
@@ -56,6 +61,7 @@ export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotR
   const result: AutopilotRun = { done: 0, waiting: 0, asking: 0, retried: 0, paused: 0 };
   // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
   if (await skipWhilePaused("autopilot")) return result;
+  await resumeAfterBudget();
   // A run that died with a step in hand: the step goes back to be tried again (a try counted).
   await db().execute(sql`
     update commerce.assistant_plan_steps set status = 'pending', tries = tries + 1, claimed_until = null, not_before = now()
@@ -67,26 +73,32 @@ export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotR
       select distinct coalesce(st.store_id::text, 'platform') as store_key, st.store_id
       from commerce.assistant_plan_steps st
       join commerce.assistant_plans p on p.id = st.plan_id and p.status = 'running'
+      -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
       left join commerce.autopilot_settings a on a.store_id is not distinct from st.store_id
       where st.status = 'pending' and (st.not_before is null or st.not_before <= now()) and not coalesce(a.paused, false)
         and (st.store_id is null or commerce.store_is_active(st.store_id))
       limit 50
     `,
   );
-  let taken = 0;
+  // Claimed one by one (each under its store's lock), then run side by side: stores never share a step, so their turns do not wait on each other.
+  const claimed: string[] = [];
   for (const candidate of stores) {
-    if (taken >= PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
+    if (claimed.length >= PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     const step = await claimFor(candidate.store_id);
-    if (!step) continue;
-    taken++;
-    try {
-      result[await runStep(step.id, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.step_failed", { step: step.id }, error);
-      await failStep(step.id, "Something went wrong while running it.").catch(() => undefined);
-      result.retried++;
-    }
+    if (step) claimed.push(step.id);
   }
+  const taken = claimed.length;
+  await Promise.all(
+    claimed.map(async (id) => {
+      try {
+        result[await runStep(id, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.step_failed", { step: id }, error);
+        await failStep(id, "Something went wrong while running it.").catch(() => undefined);
+        result.retried++;
+      }
+    }),
+  );
   // The questions this run asked and the plans it finished are notices for their makers (D350).
   if (taken > 0) await noticeAutopilot();
   return result;
@@ -160,9 +172,35 @@ async function release(stepId: string, at: Date | null = null): Promise<void> {
   `);
 }
 
-async function pausePlanFor(planId: string, stepId: string, reason: string): Promise<void> {
+async function pausePlanFor(planId: string, stepId: string, reason: string, pausedFor: "budget" | null = null): Promise<void> {
   await release(stepId);
-  await db().execute(sql`update commerce.assistant_plans set status = 'paused', pause_reason = ${reason.slice(0, 500)} where id = ${planId}::uuid and status = 'running'`);
+  await db().execute(sql`
+    update commerce.assistant_plans set status = 'paused', pause_reason = ${reason.slice(0, 500)}, paused_for = ${pausedFor}
+    where id = ${planId}::uuid and status = 'running'
+  `);
+}
+
+/**
+ * Plans the month's AI budget paused start again by themselves once it allows (a new month, or a raised budget; `docs/100-day-challenge.md`
+ * F2): their pause was code's, not the owner's. A pause the owner pressed, or one a person must lift, is never touched.
+ */
+export async function resumeAfterBudget(): Promise<number> {
+  const paused = await typedRows(
+    z.object({ store_id: col.uuid.nullable() }),
+    sql`select distinct store_id from commerce.assistant_plans where status = 'paused' and paused_for = 'budget' limit 50`,
+  );
+  let resumed = 0;
+  for (const { store_id } of paused) {
+    const settings = await autonomyFor(store_id);
+    if (settings.paused || (await aiBudgetProblem(store_id, settings))) continue;
+    const rows = await db().execute(sql`
+      update commerce.assistant_plans set status = 'running', pause_reason = null, paused_for = null
+      where status = 'paused' and paused_for = 'budget' and ${owned(store_id)}
+      returning id
+    `);
+    resumed += rows.length;
+  }
+  return resumed;
 }
 
 async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof AutopilotRun> {
@@ -194,6 +232,11 @@ async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof Autop
 
   switch (step.spec.kind) {
     case "question": {
+      // Nobody answers a question in the challenge: the step is skipped, and the plan's later turns decide for themselves.
+      if (settings.challenge) {
+        await skipStep(stepId, plan.id, "Skipped for the challenge: nobody answers questions, so the autopilot decides for itself.");
+        return "retried";
+      }
       await db().execute(sql`
         update commerce.assistant_plan_steps set status = 'asking', question = ${JSON.stringify({ text: step.spec.text, options: step.spec.options })}::jsonb, claimed_until = null
         where id = ${stepId}::uuid and status = 'running'
@@ -214,7 +257,7 @@ async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof Autop
     case "task": {
       const budget = await aiBudgetProblem(plan.store_id, settings);
       if (budget) {
-        await pausePlanFor(plan.id, stepId, budget);
+        await pausePlanFor(plan.id, stepId, budget, "budget");
         return "paused";
       }
       return runTaskStep(plan, principal, step, steps, settings, deps);

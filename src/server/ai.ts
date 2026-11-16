@@ -1,6 +1,8 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { unstable_rethrow } from "next/navigation";
+import { connection } from "next/server";
 
 import { db, readDb } from "@/db/client";
 import {
@@ -19,11 +21,14 @@ import { estimateTokens, readTokens, type AiKind, type AiFeature, type UsageAmou
 import { cosineSimilarity } from "@/lib/vectors";
 import { toolData } from "@/lib/prompt-safety";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
+import { pgTextArray } from "./pg-arrays";
 
 import { limitFor, usageNow } from "./limits";
 import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
+import { refreshTag } from "./refresh";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -68,6 +73,8 @@ export type AiSettings = {
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
   zeroDataRetention: boolean;
+  /** Gateway only: text models tried in order when the text model fails (`docs/100-day-challenge.md` F1). */
+  fallbackModels: string[];
   enabled: boolean;
   updatedAt: string;
 };
@@ -129,13 +136,11 @@ function toSettings(row: Row): AiSettings {
     embeddingEuOnly: Boolean(row.embedding_eu_only),
     textEuOnly: Boolean(row.text_eu_only),
     zeroDataRetention: Boolean(row.zero_data_retention),
+    fallbackModels: Array.isArray(row.fallback_models) ? (row.fallback_models as unknown[]).map(String) : [],
     enabled: Boolean(row.enabled),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
 }
-
-const owned = (storeId: string | null) =>
-  storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
 
 /** Kaizen's settings (null) or a store's own, as saved; null when none. */
 export async function getAiSettings(storeId: string | null): Promise<AiSettings | null> {
@@ -238,8 +243,91 @@ export async function aiRoomLeft(storeId: string): Promise<boolean> {
   return (await usageNow(storeId, "ai_cost_month_micros")) < limit;
 }
 
-/** Cached reads that depend on which AI a site has (the chat widget, D81); saving or removing a provider updates them. */
-export const AI_TAG = "ai-providers";
+/**
+ * What a site's AI can do, for a screen that only shows or hides an AI button and calls no model: flags, the text model's and the
+ * embedding space's names and the similarity limit, never a key or an address. A store at its plan's AI allowance answers all false, as
+ * `aiFor()` gives it no connection. Code about to call a model asks `aiFor()` itself.
+ */
+export type AiAbilities = {
+  text: boolean;
+  sees: boolean;
+  pictures: boolean;
+  pictureEdit: boolean;
+  /** Speech to text (the AI manager's hands-free voice). */
+  hear: boolean;
+  /** Hear and speak: both voice models and a voice (`canSpeak()`, the AI manager). */
+  speak: boolean;
+  /** Text to speech: a speech model and a voice (the page studio reads this as its speak). */
+  speech: boolean;
+  live: boolean;
+  embeds: boolean;
+  source: "store" | "platform" | null;
+  textModel: string | null;
+  space: string | null;
+  minSimilarity: number | null;
+};
+
+/** Abilities are kept a minute per site and server instance, no longer than the limits' memo (`limits.ts`); a save forgets them all. */
+const ABILITIES_FRESH_MS = 60_000;
+const abilitiesMemo = new Map<string, { at: number; value: AiAbilities }>();
+
+/**
+ * What a site's AI can do is of the request, never of a prerender: the connection's read used to make a page that asks it render per
+ * request, and a kept answer reads nothing, so a page's shell could otherwise be built with the abilities of the moment it was built.
+ * Outside a request (a script, a test, a cached function, a job after the response) there is nothing to wait for.
+ */
+async function requestOnly(): Promise<void> {
+  try {
+    await connection();
+  } catch (error) {
+    unstable_rethrow(error);
+  }
+}
+
+/** What a site's AI can do (`AiAbilities`), kept a minute per instance: no statement to `commerce.ai_providers` while the memo is warm. */
+export async function aiAbilities(storeId: string | null): Promise<AiAbilities> {
+  await requestOnly();
+  const key = storeId ?? "kaizen";
+  const now = Date.now();
+  const kept = abilitiesMemo.get(key);
+  if (kept && now - kept.at < ABILITIES_FRESH_MS) return kept.value;
+  const value = abilitiesOf(await aiFor(storeId));
+  abilitiesMemo.set(key, { at: now, value });
+  return value;
+}
+
+/** What a connection can do, as `aiAbilities()` answers it (pure; tests that fake `aiFor()` answer abilities with it too). */
+export function abilitiesOf(c: AiConnection | null): AiAbilities {
+  return {
+    text: Boolean(c?.textModel),
+    sees: Boolean(seeing(c)),
+    pictures: Boolean(c?.image),
+    pictureEdit: Boolean(c?.image?.editModel),
+    hear: Boolean(c?.transcriptionModel),
+    speak: canSpeak(c),
+    speech: Boolean(c?.speechModel && c?.speechVoice),
+    live: Boolean(c?.textModel && c?.live),
+    embeds: Boolean(c?.space),
+    source: c?.source ?? null,
+    textModel: c?.textModel ?? null,
+    space: c?.space ?? null,
+    minSimilarity: c ? c.minSimilarity : null,
+  };
+}
+
+/** Forgets every site's abilities: a save of the platform's provider changes every store that answers with it. Tests call it too. */
+export function forgetAiAbilities(): void {
+  abilitiesMemo.clear();
+}
+
+/**
+ * The tag of cached reads that depend on which AI a site has (the chat widget, D81): one per store, `ai:kaizen` for Kaizena Flow's own.
+ * `saveAiSettings()` and `removeAiSettings()` refresh the tag of the site they changed, and only that one: a store's save never expires
+ * another store's pages. A read for a store that may answer with Kaizena Flow's provider carries the platform's tag too.
+ */
+export const aiTag = (storeId: string | null) => `ai:${storeId ?? "kaizen"}`;
+/** The platform's own AI tag (`aiTag(null)`). */
+export const AI_TAG = aiTag(null);
 
 export type SaveResult = { ok: true } | { ok: false; problems: string[] };
 
@@ -296,19 +384,19 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       transcription_model, speech_model, speech_voice,
       image_model, image_provider, image_base_url, image_api_key_encrypted, image_api_key_hint, image_quality, image_edit_model,
       live_model, live_voice, live_provider, live_base_url, live_api_key_encrypted, live_api_key_hint,
-      min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, enabled, updated_by
+      min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, fallback_models, enabled, updated_by
     ) values (
       ${storeId}::uuid, ${input.provider}, ${baseUrl}, ${encrypted ?? ""}, ${hint ?? ""}, ${input.embeddingModel}, ${input.textModel}, ${input.visionModel},
       ${input.transcriptionModel}, ${input.speechModel}, ${input.speechVoice},
       ${input.imageModel}, ${input.imageProvider}, ${imageBaseUrl},
       -- A kept key is carried into the row itself: the row's checks see it before the update does.
-      case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
-      case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
+      case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
+      case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
       ${input.imageQuality}, ${input.imageEditModel},
       ${input.liveModel}, ${input.liveVoice}, ${input.liveProvider}, ${liveBaseUrl},
-      case when ${input.liveProvider}::text is not null then coalesce(${liveEncrypted}::text, (select p.live_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
-      case when ${input.liveProvider}::text is not null then coalesce(${liveHint}::text, (select p.live_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
-      ${input.minSimilarity}, ${input.embeddingEuOnly}, ${input.textEuOnly}, ${input.zeroDataRetention}, ${input.enabled}, ${accountId}::uuid
+      case when ${input.liveProvider}::text is not null then coalesce(${liveEncrypted}::text, (select p.live_api_key_encrypted from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
+      case when ${input.liveProvider}::text is not null then coalesce(${liveHint}::text, (select p.live_api_key_hint from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
+      ${input.minSimilarity}, ${input.embeddingEuOnly}, ${input.textEuOnly}, ${input.zeroDataRetention}, ${pgTextArray(input.fallbackModels)}::text[], ${input.enabled}, ${accountId}::uuid
     )
     on conflict (store_id) do update set
       provider = excluded.provider, base_url = excluded.base_url,
@@ -323,7 +411,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       live_base_url = excluded.live_base_url, live_api_key_encrypted = excluded.live_api_key_encrypted,
       live_api_key_hint = excluded.live_api_key_hint,
       min_similarity = excluded.min_similarity, embedding_eu_only = excluded.embedding_eu_only,
-      text_eu_only = excluded.text_eu_only, zero_data_retention = excluded.zero_data_retention,
+      text_eu_only = excluded.text_eu_only, zero_data_retention = excluded.zero_data_retention, fallback_models = excluded.fallback_models,
       enabled = excluded.enabled, updated_at = now(), updated_by = excluded.updated_by
   `);
   await audit(accountId, storeId, storeId ? "ai.saved" : "ai.platform_saved", {
@@ -350,6 +438,8 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     liveBaseUrl,
     newLiveKey: Boolean(liveEncrypted),
   });
+  forgetAiAbilities();
+  refreshTag(aiTag(storeId));
   return { ok: true };
 }
 
@@ -357,6 +447,8 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
 export async function removeAiSettings(accountId: string, storeId: string | null): Promise<void> {
   const rows = await db().execute<Row>(sql`delete from commerce.ai_providers where ${owned(storeId)} returning provider`);
   if (rows.length > 0) await audit(accountId, storeId, storeId ? "ai.removed" : "ai.platform_removed", {});
+  forgetAiAbilities();
+  refreshTag(aiTag(storeId));
 }
 
 /** How many stores use their own provider, for Kaizen's page. */
@@ -425,11 +517,13 @@ function wordsIn(messages: (ChatMessage | ToolChatMessage)[]): number {
 const EU = { scope: "zone", geoRegion: "eu" } as const;
 
 /** Vercel AI Gateway's options for a request: EU data centres and zero retention, as set. */
-function gatewayOptions(connection: AiConnection, euOnly: boolean): Record<string, unknown> {
+function gatewayOptions(connection: AiConnection, euOnly: boolean, withFallback = false): Record<string, unknown> {
   if (!providerInfo(connection.provider).gateway) return {};
   const gateway: Record<string, unknown> = {};
   if (euOnly) gateway.inferenceRegion = EU;
   if (connection.zeroDataRetention) gateway.zeroDataRetention = true;
+  // Text calls only (F1): when the text model fails the gateway tries these in order, within the same region and retention rules.
+  if (withFallback && (connection.fallbackModels?.length ?? 0) > 0) gateway.models = connection.fallbackModels;
   return Object.keys(gateway).length > 0 ? { providerOptions: { gateway } } : {};
 }
 
@@ -561,7 +655,7 @@ async function completeTextOnce(
         // OpenAI's newer models take only the second name; for reasoning models it counts their reasoning too.
         ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
         ...tuning,
-        ...gatewayOptions(connection, connection.textEuOnly),
+        ...gatewayOptions(connection, connection.textEuOnly, true),
       },
       options.timeoutMs ?? 30_000,
     );
@@ -631,7 +725,7 @@ async function chatWithToolsOnce(
       tools: tools.map((tool) => ({ type: "function", function: tool })),
       tool_choice: "auto",
       ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
-      ...gatewayOptions(connection, connection.textEuOnly),
+      ...gatewayOptions(connection, connection.textEuOnly, true),
     },
     options.timeoutMs ?? 30_000,
   );
@@ -698,7 +792,7 @@ async function streamWithToolsOnce(
         stream: true,
         ...(STREAM_USAGE.has(connection.provider) && { stream_options: { include_usage: true } }),
         ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
-        ...gatewayOptions(connection, connection.textEuOnly),
+        ...gatewayOptions(connection, connection.textEuOnly, true),
       }),
       redirect: "error",
       signal: options.signal ? AbortSignal.any([timeout, options.signal]) : timeout,

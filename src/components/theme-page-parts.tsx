@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SeeItLive } from "@/components/see-it-live";
-import { ThemePreviewStage, type StageLook } from "@/components/theme-preview-stage";
+import { ThemePreviewStage } from "@/components/lazy/blocks";
+import type { StageLook } from "@/components/theme-preview-stage";
 import { designPreviewPath } from "@/lib/design-presets";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";

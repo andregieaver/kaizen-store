@@ -124,7 +124,6 @@ export function DiscountEditor({
       } as StoreDiscountInput);
       if (result.ok) {
         router.push(back);
-        router.refresh();
       } else {
         setProblems(result.problems);
         window.scrollTo({ top: 0, behavior: "smooth" });

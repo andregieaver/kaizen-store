@@ -33,6 +33,31 @@ export const customersEn = {
     since: "Customer since {date}",
     lastOrder: "Last order {date}",
     noOrder: "No order yet",
+    // Round 3 (D603): the list's sentence, figures, views, sort and ticked people.
+    lead: { one: "{n} person has bought from you", many: "{n} people have bought from you" },
+    leadFresh: { one: ", {n} of them this month.", many: ", {n} of them this month." },
+    leadAllFresh: ", all of them this month.",
+    leadNoneFresh: ".",
+    leadBack: { one: " {n} has come back for more.", many: " {n} have come back for more." },
+    leadNoneBack: " None has come back yet.",
+    leadNobody: "Nobody has bought yet. People show here once someone signs up or buys.",
+    figures: { fresh: "New this month", back: "Came back", backOf: "of {n}", backHint: "A thank-you email brings people back.", average: "Spent on average" },
+    views: { label: "Which people", all: "All", fresh: "New", back: "Came back", subscribed: "Subscribed" },
+    searchPlaceholder: "Name or email",
+    filters: "Filters",
+    sort: { label: "Order", recent: "Newest first", orders: "Most orders", name: "By name" },
+    columns: { person: "Person", bought: "What they bought", last: "Last order", spent: "Spent" },
+    subscribed: "Subscribed",
+    more: "More",
+    tickAll: "Tick everyone on the page",
+    tickOne: "Tick {name}",
+    ticked: { one: "{n} ticked", many: "{n} ticked" },
+    untick: "Untick everyone",
+    tagLabel: "Tag",
+    addTag: "Add a tag",
+    removeTag: "Take a tag off",
+    wholeList: "Tag everyone the search finds",
+    morePictures: "+{n}",
   },
   export: {
     back: "Customers",
@@ -49,6 +74,19 @@ export const customersEn = {
     firstOrder: "First order {date}",
     accountSince: "Account since {date}",
     lastSignIn: "Last signed in {date}",
+    // Round 3 (D603): the page's chips, its one next step, what they bought and the folds.
+    newThisMonth: "New this month",
+    emailThem: "Email {name}",
+    moreMenu: "More",
+    waiting: "Order #{number} is paid and waiting to be sent.",
+    openOrder: "Open the order",
+    since: "Customer since",
+    bought: "What {name} has bought",
+    happened: "Everything that happened",
+    accountPrivacy: "Account and privacy",
+    accountPrivacySub: "the customer group, their data, cart reminders",
+    downloadTheirs: "Download {name}'s data",
+    eraseTheirs: "Erase {name}'s personal data…",
     figures: {
       orders: "Orders",
       spent: "Spent",
@@ -158,6 +196,19 @@ export const customersEn = {
     void: "Void",
   },
   groups: {
+    /** The page drawn for Homer (round 11, D634): a sentence, groups most shops keep, and your own one fold away. */
+    leadNone: "Everyone pays the same price.",
+    leadSome: { one: "{n} group gets a better price.", many: "{n} groups get a better price." },
+    leadRest: " A group gives its customers a fixed discount on everything, without a code.",
+    makeOwn: "Make your own",
+    readyTitle: "Groups most shops keep",
+    makeIt: "Make it",
+    ready: {
+      wholesale: { name: "Wholesale", sub: "Shops and businesses that buy to sell on." },
+      staff: { name: "Staff", sub: "The people who work for you." },
+      regulars: { name: "Regulars", sub: "Customers who come back again and again." },
+      family: { name: "Friends and family", sub: "The people close to you." },
+    },
     title: "Customer groups",
     descriptionBefore:
       "A fixed percentage off everything a customer in the group buys once (not subscriptions, sign-up fees or shipping), taken off before any coupon. Put customers in a group, or give a ",
@@ -196,6 +247,11 @@ export const customersEn = {
     deleteButton: "Delete group",
   },
   companies: {
+    /** Round 14 (D641). */
+    leadNone: "No companies yet.",
+    leadSome: { one: "{n} company buys from you.", many: "{n} companies buy from you." },
+    leadRest: " A company buys as a business: its people share one customer group and one invoice address.",
+    add: "Add a company",
     title: "Companies",
     description:
       "A company's main account invites its employees by email from My account in the store. Everyone in the company gets its group's discount, employees the share you set.",
@@ -256,6 +312,9 @@ export const customersEn = {
   },
   /** The company form (`CompanyFields`). */
   fields: {
+    /** Round 14 (D641): a new company in steps. */
+    byHand: "Fill in by hand instead",
+    more: "More settings: employees' share and the most accounts",
     name: "Company name",
     organisationNumber: "Organisation number",
     organisationHint: "Optional. With it, the company's accounts buy as a business with the number filled in.",

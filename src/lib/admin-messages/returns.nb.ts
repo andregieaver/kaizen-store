@@ -252,6 +252,10 @@ export const returnsNb: ReturnsMessages = {
     none: "Ingen etikett ennå.",
   },
   queue: {
+    nothingWaits: "Ingenting venter på deg.",
+    byHand: "Fikk du en på e-post, brev eller telefon? Åpne ordren og registrer den derfra.",
+    findOrder: "Finn ordren",
+    rules: "Angrerett og returer, reglene",
     title: "Returer",
     description:
       "Angringer er kundens lovfestede rett til å ombestemme seg: du kan ikke nekte dem, og tilbakebetalingen skal skje innen 14 dager etter at du fikk beskjed. Returforespørsler er innenfor ditt eget, lengre returvindu, og du kan godkjenne eller avslå dem.",

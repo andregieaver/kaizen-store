@@ -187,8 +187,8 @@ describe("a part's Motion tab", () => {
       "Speed",
       "Distance",
       "Easing",
-      // The delay and duration are under Advanced, Animation (D179 phase 3), in seconds.
-      "under Advanced, Animation",
+      // The delay and duration are in the Timing fold below (D179 phase 3, D631), in seconds.
+      "under Timing, below",
       "Time between components",
       "100 ms",
       "Play it again each time it comes into view",

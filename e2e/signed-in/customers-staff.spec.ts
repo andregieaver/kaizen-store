@@ -43,6 +43,8 @@ test.describe("the owner", () => {
 
   test("changes the details and keeps a note with its author", async ({ page }) => {
     await page.goto(customerPath);
+    // Editing is a fold under what they bought (D603).
+    await page.getByText("Edit details", { exact: true }).click();
     const edit = page.getByRole("region", { name: "Edit details" });
     await edit.getByLabel("Phone").fill("+47 400 00 123");
     await edit.getByRole("button", { name: "Save details" }).click();
@@ -57,6 +59,8 @@ test.describe("the owner", () => {
 
   test("is told a customer cannot be merged with themselves", async ({ page }) => {
     await page.goto(customerPath);
+    // Merging is in the page's More menu (D603).
+    await page.locator("summary").filter({ hasText: /^More$/ }).click();
     await page.getByRole("link", { name: "Merge with another customer" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Merge customers" })).toBeVisible();
     await page.getByLabel("Email of the customer to fold in").fill(EMAIL);
@@ -72,6 +76,8 @@ test.describe("the owner", () => {
     await expect(tags.getByText(`e2e-${RUN}`)).toBeVisible();
     await page.goto(`/admin/${E2E_STORE}/customers?tag=e2e-${RUN}`);
     await expect(page.getByText(EMAIL)).toBeVisible();
+    // Import and export are in the list's More menu (D603).
+    await page.locator("summary").filter({ hasText: /^More$/ }).click();
     await page.getByRole("link", { name: "Import", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Import customers" })).toBeVisible();
     await expect(page.getByLabel("A CSV file of customers")).toBeVisible();

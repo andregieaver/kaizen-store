@@ -41,7 +41,11 @@ import { notesOf, staffFormValues } from "@/server/customer-staff";
 import { readTimeline } from "@/server/customer-timeline";
 import { privacyCard } from "@/server/privacy-admin";
 import { tagsOf } from "@/server/segments";
-import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
+import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
+import { DotChip, Pictures } from "@/components/admin/home/home-parts";
+import { MoreMenu } from "@/components/admin/orders/order-folds";
+import { orderPreviews } from "@/server/home";
+import { Mail } from "lucide-react";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
@@ -119,34 +123,82 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
   const spent = moneyByCurrency(customer.spentMinor, locale);
-  const averageMinor = Object.fromEntries(
-    Object.entries(customer.spentMinor).map(([currency, total]) => {
-      const count = customer.orderList.filter((o) => o.currency === currency && o.status !== "cancelled").length;
-      return [currency, count > 0 ? Math.round(Number(total) / count) : 0];
-    }),
-  );
+
   const address = customer.address;
+  // Round 3 (D603): their first name in the page's words, the order still waiting to be sent, pictures of what they bought, new this month.
+  const firstName = (customer.name || "").trim().split(/\s+/)[0] || customer.email;
+  const waiting = customer.orderList.find((o) => o.status === "paid");
+  const previews = await orderPreviews(store.id, customer.orderList.slice(0, 12).map((o) => o.id));
+  const linesOf = new Map(previews.map((p) => [p.id, p.lines]));
+  const sinceIso = [customer.firstOrderAt, customer.accountCreatedAt].filter((d): d is string => Boolean(d)).sort()[0] ?? null;
+  const monthStart = new Date(new Date().toLocaleString("en-US", { timeZone: store.timeZone }));
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const isNew = sinceIso !== null && Date.parse(sinceIso) >= monthStart.getTime() - 86_400_000;
+  const menuItem = "flex min-h-10 w-full items-center rounded-panel px-3 text-left text-body text-ink hover:bg-sunken";
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["customers", "privacy", "loyalty", "builder"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/customers`, label: words.back }}
-        title={<span className="flex items-center gap-3"><Avatar avatar={avatarFor(customer)} size={48} /> <span className="min-w-0 break-words">{customer.name || customer.email}</span></span>}
+        title={<span className="flex items-center gap-3"><Avatar avatar={avatarFor(customer)} size={56} /> <span className="min-w-0 break-words">{customer.name || customer.email}</span></span>}
         meta={[
-          accountLabel(customer.account, all.account),
-          customer.firstOrderAt && fillWords(words.firstOrder, { date: date(customer.firstOrderAt) }),
-          customer.accountCreatedAt && fillWords(words.accountSince, { date: date(customer.accountCreatedAt) }),
+          isNew && (
+            <DotChip key="new" tone="positive">
+              {words.newThisMonth}
+            </DotChip>
+          ),
+          <DotChip key="account" tone="neutral">{accountLabel(customer.account, all.account)}</DotChip>,
+          [address?.city, customer.name ? customer.email : null].filter(Boolean).join(" · ") || null,
           customer.lastSignInAt && fillWords(words.lastSignIn, { date: date(customer.lastSignInAt) }),
         ]}
         actions={
-          mayTag && customer.customerId ? (
-            <ButtonLink href={`${base}/customers/${ref.key}/merge`} kind="secondary">
-              {all.staff.merge.link}
-            </ButtonLink>
-          ) : undefined
+          <div className="flex flex-wrap gap-2">
+            {mayTag && (
+              <MoreMenu label={words.moreMenu}>
+                {!customer.customerId && (
+                  <form action={addGuestAction.bind(null, store.slug, ref.key)}>
+                    <button type="submit" className={menuItem}>
+                      {all.staff.edit.makeAccount}
+                    </button>
+                  </form>
+                )}
+                {customer.customerId && (
+                  <AdminLink href={`${base}/customers/${ref.key}/merge`} className={menuItem}>
+                    {all.staff.merge.link}
+                  </AdminLink>
+                )}
+                {privacy && (
+                  <>
+                    <form method="post" action={`${base}/customers/${ref.key}/export`}>
+                      <button type="submit" className={menuItem}>
+                        {fillWords(words.downloadTheirs, { name: firstName })}
+                      </button>
+                    </form>
+                    <span aria-hidden className="h-px bg-line" />
+                    <AdminLink href={`${base}/customers/${ref.key}/erase${privacy.request ? `?request=${privacy.request.id}` : ""}`} className={`${menuItem} text-danger-text`}>
+                      {fillWords(words.eraseTheirs, { name: firstName })}
+                    </AdminLink>
+                  </>
+                )}
+              </MoreMenu>
+            )}
+            <a href={`mailto:${customer.email}`} className="inline-flex h-11 items-center gap-2 rounded-pill border border-edge bg-card px-5 text-body text-ink hover:bg-sunken">
+              <Mail aria-hidden className="size-4" />
+              {fillWords(words.emailThem, { name: firstName })}
+            </a>
+          </div>
         }
       />
+
+      {waiting && (
+        <AdminLink href={`${base}/orders/${waiting.id}`} className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-panel bg-warning-soft px-5 py-4 text-ink">
+          <span aria-hidden className="size-2 rounded-pill bg-warning-solid" />
+          <span className="min-w-60 flex-1 text-body">{fillWords(words.waiting, { number: waiting.number })}</span>
+          <span className="inline-flex h-10 items-center rounded-pill bg-brand px-4 text-body font-medium text-brand-ink">{words.openOrder} →</span>
+        </AdminLink>
+      )}
 
       {returns.often && (
         <p>
@@ -160,69 +212,79 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
       {privacy && <PrivacyBanner base={base} data={privacy} />}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${subscriptionsOn ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         {[
           [words.figures.orders, String(customer.orders)],
           [words.figures.spent, spent || "–"],
-          [words.figures.average, moneyByCurrency(averageMinor, locale) || "–"],
+          [words.since, sinceIso ? date(sinceIso) : "–"],
           // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
           ...(subscriptionsOn ? [[words.figures.subscriptions, String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
           <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
             <span className="text-sm text-muted">{label}</span>
-            <span className="text-xl font-medium">{value}</span>
+            <span className="text-[26px] tracking-tight tabular-nums">{value}</span>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <CustomerTimeline
-            read={timeline}
-            full={full}
-            path={`${base}/customers/${ref.key}`}
-            words={all.timeline}
-            orderStatuses={statuses}
-            locale={locale}
-            timeZone={store.timeZone}
-          />
-
           <section aria-labelledby="orders" className={card}>
-            <h2 id="orders" className="mb-3 text-title text-ink">{words.orders}</h2>
+            <h2 id="orders" className="mb-4 text-title text-ink">{fillWords(words.bought, { name: firstName })}</h2>
             {customer.orderList.length === 0 ? (
               <p className="text-sm text-muted">{words.noOrders}</p>
             ) : (
-              <List label={words.orders}>
-                {customer.orderList.map((order) => (
-                  <ListRow key={order.id}>
-                    <RowLead
-                      title={`#${order.number}`}
-                      href={`${base}/orders/${order.id}`}
-                      sub={
-                        <>
-                          {countWords(order.items, words.items)}
+              <ol aria-label={words.orders} className="flex flex-col gap-5">
+                {customer.orderList.map((order) => {
+                  const lines = linesOf.get(order.id) ?? [];
+                  return (
+                    <li key={order.id} className="flex gap-3.5">
+                      <span aria-hidden className={`mt-1.5 size-2.5 shrink-0 rounded-pill ${order.status === "paid" ? "bg-warning-solid" : order.status === "cancelled" ? "bg-line" : "bg-insight-solid"}`} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+                        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                          <AdminLink href={`${base}/orders/${order.id}`} className="text-body text-ink underline-offset-2 hover:underline">
+                            #{order.number}
+                          </AdminLink>
+                          <span className="text-caption text-muted">{date(order.placedAt)}</span>
+                          <Chip signal={ORDER_STATUS_SIGNAL[order.status]} dot>
+                            {order.status === "cancelled" ? words.cancelledRefunded : statuses[order.status]}
+                          </Chip>
                           {order.subscriptionId && (
-                            <>
-                              {" · "}
-                              <Link href={`${base}/subscriptions/${order.subscriptionId}`} className="underline">
-                                {words.subscription}
-                              </Link>
-                            </>
+                            <Link href={`${base}/subscriptions/${order.subscriptionId}`} className="text-caption underline">
+                              {words.subscription}
+                            </Link>
                           )}
-                          {order.refunded && order.status !== "cancelled" && words.refundedInPart}
-                        </>
-                      }
-                    />
-                    <RowDate>{date(order.placedAt)}</RowDate>
-                    <Chip signal={ORDER_STATUS_SIGNAL[order.status]} dot>
-                      {order.status === "cancelled" ? words.cancelledRefunded : statuses[order.status]}
-                    </Chip>
-                    <RowAmount>{formatMoney(order.totalMinor, order.currency, locale)}</RowAmount>
-                  </ListRow>
-                ))}
-              </List>
+                          {order.refunded && order.status !== "cancelled" && <span className="text-caption text-muted">{words.refundedInPart}</span>}
+                          <span className="ml-auto text-body tabular-nums">{formatMoney(order.totalMinor, order.currency, locale)}</span>
+                        </div>
+                        {lines.length > 0 ? (
+                          <Pictures lines={lines.map(({ title, picture }) => ({ title, picture }))} size={72} max={5} moreWord={(n) => `+${n}`} />
+                        ) : (
+                          <span className="text-caption text-muted">{countWords(order.items, words.items)}</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
             )}
           </section>
+
+          <details className={`${card} group`}>
+            <summary className="cursor-pointer text-title text-ink">{words.happened}</summary>
+            <div className="mt-4">
+              <CustomerTimeline
+                read={timeline}
+                full={full}
+                path={`${base}/customers/${ref.key}`}
+                words={all.timeline}
+                orderStatuses={statuses}
+                locale={locale}
+                timeZone={store.timeZone}
+              />
+
+            </div>
+          </details>
 
           {subscriptionsOn && (
           <section aria-labelledby="subscriptions" className={card}>
@@ -288,26 +350,20 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           )}
 
           {/* Staff's own changes to the person's details (wave 10 unit C, D366); a guest is given an account first. */}
-          {mayTag && (customer.customerId ? (
-            <Card title={all.staff.edit.title} compact>
-              <CustomerForm
-                action={updateCustomerAction.bind(null, store.slug, customer.customerId)}
-                values={formValues ?? EMPTY_CUSTOMER_FORM}
-                words={all.staff.form}
-                submit={all.staff.form.save}
-                note={all.staff.form.emailChangeNote}
-              />
-            </Card>
-          ) : (
-            <Card title={all.staff.edit.title} compact>
-              <p className="mb-3 text-sm">{all.staff.edit.guest}</p>
-              <form action={addGuestAction.bind(null, store.slug, ref.key)}>
-                <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
-                  {all.staff.edit.makeAccount}
-                </button>
-              </form>
-            </Card>
-          ))}
+          {mayTag && customer.customerId && (
+            <details className={card}>
+              <summary className="cursor-pointer text-title text-ink">{all.staff.edit.title}</summary>
+              <section aria-label={all.staff.edit.title} className="mt-4">
+                <CustomerForm
+                  action={updateCustomerAction.bind(null, store.slug, customer.customerId)}
+                  values={formValues ?? EMPTY_CUSTOMER_FORM}
+                  words={all.staff.form}
+                  submit={all.staff.form.save}
+                  note={all.staff.form.emailChangeNote}
+                />
+              </section>
+            </details>
+          )}
 
         </div>
 
@@ -394,73 +450,81 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             remove={mayTag ? (noteId: string) => deleteNoteAction.bind(null, store.slug, ref.key, noteId) : null}
             date={date}
           />
-          {customer.customerId && (
-            <section aria-labelledby="discount" className={`${card} text-sm`}>
-              <h2 id="discount" className="mb-2 text-title text-ink">{words.discount}</h2>
-              {businessOn && access?.companyName && (
-                <p className="mb-2">
-                  {access.role === "owner" ? words.mainAccountOf : words.employeeOf}
-                  <Link href={`${base}/companies/${access.companyId}`} className="underline">
-                    {access.companyName}
-                  </Link>
-                  {words.givesDiscount}
-                </p>
+          <details className={card}>
+            <summary className="cursor-pointer">
+              <span className="text-title text-ink">{words.accountPrivacy}</span>
+              <span className="mt-1 block text-caption text-muted">{words.accountPrivacySub}</span>
+            </summary>
+            <div className="mt-4 flex flex-col gap-4 [&>section]:border-0 [&>section]:p-0">
+              {customer.customerId && (
+                <section aria-labelledby="discount" className={`${card} text-sm`}>
+                  <h2 id="discount" className="mb-2 text-title text-ink">{words.discount}</h2>
+                  {businessOn && access?.companyName && (
+                    <p className="mb-2">
+                      {access.role === "owner" ? words.mainAccountOf : words.employeeOf}
+                      <Link href={`${base}/companies/${access.companyId}`} className="underline">
+                        {access.companyName}
+                      </Link>
+                      {words.givesDiscount}
+                    </p>
+                  )}
+                  <ActionForm action={setCustomerGroupAction.bind(null, store.slug, customer.customerId)} className="flex flex-col gap-2">
+                    <label className="flex flex-col gap-1 font-medium">
+                      {words.group}
+                      <select name="groupId" defaultValue={access?.tierId ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal">
+                        <option value="">{words.none}</option>
+                        {groups.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.name} ({group.percent} %){group.active ? "" : words.switchedOffSuffix}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div>
+                      <SubmitButton variant="secondary">{words.save}</SubmitButton>
+                    </div>
+                  </ActionForm>
+                  <p className="mt-2 text-xs text-muted">
+                    {businessOn && words.betterOfTwo}
+                    <Link href={`${base}/customer-groups`} className="underline">{words.groupsLink}</Link>
+                  </p>
+                </section>
               )}
-              <ActionForm action={setCustomerGroupAction.bind(null, store.slug, customer.customerId)} className="flex flex-col gap-2">
-                <label className="flex flex-col gap-1 font-medium">
-                  {words.group}
-                  <select name="groupId" defaultValue={access?.tierId ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal">
-                    <option value="">{words.none}</option>
-                    {groups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name} ({group.percent} %){group.active ? "" : words.switchedOffSuffix}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div>
-                  <SubmitButton variant="secondary">{words.save}</SubmitButton>
-                </div>
-              </ActionForm>
-              <p className="mt-2 text-xs text-muted">
-                {businessOn && words.betterOfTwo}
-                <Link href={`${base}/customer-groups`} className="underline">{words.groupsLink}</Link>
-              </p>
-            </section>
-          )}
 
-          {privacy && (
-            <PrivacyCard
-              base={base}
-              customerKey={ref.key}
-              data={privacy}
-              canWrite={memberCan(member, "customers:write")}
-              timeZone={store.timeZone}
-              exportProblem={exportProblemOf(Array.isArray(exportParam) ? exportParam[0] : exportParam)}
-            />
-          )}
+              {privacy && (
+                <PrivacyCard
+                  base={base}
+                  customerKey={ref.key}
+                  data={privacy}
+                  canWrite={memberCan(member, "customers:write")}
+                  timeZone={store.timeZone}
+                  exportProblem={exportProblemOf(Array.isArray(exportParam) ? exportParam[0] : exportParam)}
+                />
+              )}
 
-          <section aria-labelledby="more" className={`${card} text-sm`}>
-            <h2 id="more" className="mb-2 text-title text-ink">{words.more}</h2>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <dt className="text-muted">{words.accountTerm}</dt>
-              <dd>{accountLabel(customer.account, all.account)}</dd>
-              <dt className="text-muted">{words.wishlist}</dt>
-              <dd>
-                {customer.account && customer.customerId && customer.wishlistItems > 0 ? (
-                  <Link href={`${base}/wishlists?customer=${customer.customerId}`} className="underline">
-                    {countWords(customer.wishlistItems, words.items)}
-                  </Link>
-                ) : customer.account ? (
-                  words.nothingSaved
-                ) : (
-                  "–"
-                )}
-              </dd>
-              <dt className="text-muted">{words.cartReminders}</dt>
-              <dd>{customer.cartRemindersOptedOut ? words.saidNo : words.allowed}</dd>
-            </dl>
-          </section>
+              <section aria-labelledby="more" className={`${card} text-sm`}>
+                <h2 id="more" className="mb-2 text-title text-ink">{words.more}</h2>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                  <dt className="text-muted">{words.accountTerm}</dt>
+                  <dd>{accountLabel(customer.account, all.account)}</dd>
+                  <dt className="text-muted">{words.wishlist}</dt>
+                  <dd>
+                    {customer.account && customer.customerId && customer.wishlistItems > 0 ? (
+                      <Link href={`${base}/wishlists?customer=${customer.customerId}`} className="underline">
+                        {countWords(customer.wishlistItems, words.items)}
+                      </Link>
+                    ) : customer.account ? (
+                      words.nothingSaved
+                    ) : (
+                      "–"
+                    )}
+                  </dd>
+                  <dt className="text-muted">{words.cartReminders}</dt>
+                  <dd>{customer.cartRemindersOptedOut ? words.saidNo : words.allowed}</dd>
+                </dl>
+              </section>
+            </div>
+          </details>
         </div>
       </div>
     </div>

@@ -37,6 +37,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 - Stores and their markets come from the database (`getStore()`, cached per
   store; `resolveShop()` for URL params). Every catalogue, cart and settings
   query takes a store id; never query a store-owned table without it.
+  A store's address by its id is `storeSlugOf()` (`src/server/stores.ts`, cached
+  under `storeIdTag(id)`); never write the lookup by hand (`store-slug.scan.test.ts`).
 
 ## Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
 
@@ -178,7 +180,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 - **Content types (wave 6 unit H, D326, `docs/wave-6-catalogue.md` Unit H)**: an owner's own kinds of content (`commerce.content_types`, a
   fixed `key`, a web name, fields from `FIELD_TYPES`, title, summary and picture fields, `has_pages`, an `entry_layout` page) and their
   entries (`commerce.content_entries`, a draft and a published `EntryContent`), a store's (Website → Content) or Kaizena Flow's own (`store_id`
-  null, `/admin/platform/content`, no money or file field); every query asks `store_id is not distinct from`. Types are written only by
+  null, `/admin/platform/content`, no money or file field); every query filters with `owned(storeId)` (`src/server/owned.ts`): the store's rows,
+  or the rows with no store for Kaizena Flow; never `is not distinct from`, which no index serves (`ratchet.scan.test.ts` counts it per file).
+  Types are written only by
   `src/server/content-types.ts` and entries only by `src/server/content-entries.ts`, values checked and drawn by the custom fields' own
   functions (`typeAsGroup()`); the screens are the shared views of `components/admin/content-views.tsx` given a `ContentSite`, and the editors' views are
   `content-type-views.tsx` and `content-entry-views.tsx`, so the lists do not load an editor. The field type
@@ -390,7 +394,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   (`commerce.chat_agents`, edited at `/admin/{store}/chat` and
   `/admin/platform/chat`), shown by `StoreChat`/`KaizenChat` in the layouts
   while on and the site's AI has a text model (`chatWidgetFor()`, tagged
-  `chatTag()` and `AI_TAG`). `runChat()` gives the model the rules
+  `chatTag(storeId)`, `aiTag(storeId)` and the platform's `aiTag(null)`, since a store without its own provider answers with
+  Kaizena Flow's; `saveAiSettings()` and `removeAiSettings()` refresh only the tag of the site they changed). `runChat()` gives the model the rules
   (`systemPrompt()`: only the site, facts only from tools; whatever the site's own pages, articles or knowledge
   base speak of is the site's, a comparison with another company included, and the model searches before it
   says it cannot help, D428) and the site's
@@ -410,7 +415,7 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   Knowledge is `knowledge_chunks` (SQL only, like `product_embeddings`):
   documents cut on save, published pages, articles (at their own blog's address, D341) and content
   entries (D326: their title and the fields shown on the site, never one for staff only; cut anew when
-  the type's fields change; D428) by `syncPageKnowledge()` in the five-minute cron, vectors by
+  the type's fields change; D428) by `syncPageKnowledge()` in the five-minute cron, which compares `commerce.knowledge_sources` (what each page and entry was last cut from, also when it gave no passage) in SQL and fetches a document only for a source to cut; `refreshKnowledge()` asks in one statement which sites have work, and once an hour goes through every site with chat on, vectors by
   `embedKnowledge()`; `searchKnowledge()` merges keyword and meaning.
   Voice is push to talk (`/api/chat/voice`: `transcribeAudio()`, then the
   same answer, then `speakText()`), with the provider's voice models.
@@ -639,8 +644,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 ## Cookie consent (D58, `src/lib/cookie-consent.ts`)
 
 - Cookie consent (D58, `src/lib/cookie-consent.ts`): every cookie or storage
-  item the site sets is listed in `KNOWN_COOKIES` with its category and
-  purpose, so a new one goes there too. Only necessary ones need no consent;
+  item the site sets is listed in `COOKIE_PATTERNS`
+  (`src/lib/cookie-patterns.ts`) with its category and in `KNOWN_COOKIES`
+  (`src/lib/known-cookies.ts`) with its purpose, so a new one goes in both. Only necessary ones need no consent;
   `<SiteConsent>` shows the banner only when the site uses an optional
   category (a tracking tool in `stores.tracking` / `platform_settings.tracking`).
   Third-party scripts load only from `ConsentManager` after consent, never
@@ -651,6 +657,7 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   (`src/lib/cookie-scan.ts`, no database, tested in e2e against a small
   site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
   only module that loads Chromium; keep it out of other routes' imports.
+  A site is scanned weekly; a failed scan is tried again after an hour, and after a day from the third failure in a row.
   A store's own code (D61, `src/lib/custom-code.ts`, `stores.custom_code`)
   is added in the browser: necessary code at once, the rest by
   `ConsentManager` after consent. Pass it through `liveCustomCode()`, which

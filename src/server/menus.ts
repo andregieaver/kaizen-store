@@ -1,9 +1,8 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import { cacheLife } from "next/cache";
 
-import { db, readDb } from "@/db/client";
+import { db } from "@/db/client";
 import { t } from "@/lib/i18n";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import {
@@ -27,6 +26,7 @@ import { publishedPageNames } from "./pages";
 import { getPlatformChrome } from "./platform-navigation";
 import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";
+import { owned } from "./owned";
 import { termsIn } from "@/lib/term-texts";
 
 /** The names Kaizen's own links take without a text of their own. */
@@ -70,7 +70,7 @@ const problemsOf = (issues: { message: string }[]) => [...new Set(issues.map((i)
 async function nameTaken(storeId: string | null, name: string, id: string | null): Promise<boolean> {
   const rows = await db().execute<Row>(sql`
     select 1 from commerce.menus
-    where store_id is not distinct from ${storeId}::uuid and name = ${name}
+    where ${owned(storeId)} and name = ${name}
       and (${id}::uuid is null or id <> ${id}::uuid)
   `);
   return rows.length > 0;
@@ -82,7 +82,7 @@ async function writeMenu(storeId: string | null, id: string | null, name: string
   const [row] = id
     ? await db().execute<Row>(sql`
         update commerce.menus set name = ${name}, items = ${json}::jsonb, updated_at = now(), updated_by = ${accountId}::uuid
-        where id = ${id}::uuid and store_id is not distinct from ${storeId}::uuid
+        where id = ${id}::uuid and ${owned(storeId)}
         returning id
       `)
     : await db().execute<Row>(sql`
@@ -208,7 +208,7 @@ export async function savePlatformMenu(account: Account, id: string | null, inpu
  */
 export async function deleteMenu(accountId: string, storeId: string | null, id: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
-    delete from commerce.menus where id = ${id}::uuid and store_id is not distinct from ${storeId}::uuid returning name
+    delete from commerce.menus where id = ${id}::uuid and ${owned(storeId)} returning name
   `);
   if (!row) return false;
   await audit(accountId, storeId, storeId ? "store.menu_deleted" : "platform.menu_deleted", { menuId: id, name: String(row.name) });
@@ -230,9 +230,9 @@ export async function menuUses(storeId: string | null): Promise<Map<string, Menu
   const rows = await db().execute<Row>(sql`
     select m.id as menu_id, p.id, p.type, coalesce(p.draft ->> 'title', '') as title
     from commerce.menus m
-    join commerce.pages p on p.store_id is not distinct from m.store_id
+    join commerce.pages p on ${owned(storeId, sql`p.store_id`)}
       and (p.draft::text like '%"' || m.id::text || '"%' or p.published::text like '%"' || m.id::text || '"%')
-    where m.store_id is not distinct from ${storeId}::uuid
+    where ${owned(storeId, sql`m.store_id`)}
     order by p.type, title
   `);
   for (const row of rows) of(String(row.menu_id)).pages.push({ id: String(row.id), type: String(row.type), title: String(row.title) });
@@ -279,10 +279,4 @@ export async function platformMenuPreviews(): Promise<MenuPreview[]> {
   }));
 }
 
-/** A store's address by its id, for menu components, which know the store by id (cached: addresses do not change). */
-export async function storeSlugOf(storeId: string): Promise<string | null> {
-  "use cache";
-  cacheLife("days");
-  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  return row ? String(row.slug) : null;
-}
+export { storeSlugOf } from "./stores";

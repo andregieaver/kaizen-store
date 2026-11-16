@@ -15,6 +15,8 @@ import { siteUrl } from "@/lib/site";
 import { passMembership, type Membership } from "./auth";
 import { log } from "./log";
 import { memberCan } from "./permissions";
+import { col, typedRow } from "./typed-rows";
+import { z } from "zod";
 
 type Row = Record<string, unknown>;
 
@@ -190,7 +192,33 @@ export async function sendActivityPush(storeId: string, activityId: string, acco
   );
 }
 
-/** One notification to each device of the store whose person still reads its orders, in each person's language; `subject` is read once (null: nothing to say). */
+/**
+ * A call the autopilot kept for a yes (a refund in the 100-day challenge above all, `docs/100-day-challenge.md` A3), to the devices of the
+ * store's owners, who decide it on the Autopilot page: what waits and the store. As `sendOrderPush()`: never throws, removes devices gone.
+ */
+export async function sendDecisionPush(storeId: string, approvalId: string, send: Sender = realSender): Promise<number> {
+  return pushToStore(
+    storeId,
+    async () => {
+      const call = await typedRow(
+        z.object({ summary: col.text }),
+        sql`select summary from commerce.assistant_approvals where store_id = ${storeId}::uuid and id = ${approvalId}::uuid and status = 'pending'`,
+      );
+      if (!call) return null;
+      return (sub: Row, lang: AdminLang) => {
+        const words = STAFF_EMAILS_WORDS[lang].push;
+        const fill = (text: string) => text.replaceAll("{summary}", String(call.summary).slice(0, 120)).replaceAll("{store}", String(sub.name));
+        return { title: fill(words.decisionTitle), body: fill(words.decisionBody), url: `${siteUrl()}/admin/${String(sub.slug)}/assistant/autopilot`, tag: `decision-${approvalId}` };
+      };
+    },
+    `d${approvalId.replaceAll("-", "").slice(0, 30)}`,
+    send,
+    null,
+    "owner",
+  );
+}
+
+/** One notification to each device of the store whose person still may (reads its orders, unless said), in each person's language; `subject` is read once (null: nothing to say). */
 async function pushToStore(
   storeId: string,
   subject: () => Promise<((sub: Row, lang: AdminLang) => { title: string; body: string; url: string; tag: string }) | null>,
@@ -198,6 +226,8 @@ async function pushToStore(
   send: Sender,
   /** One person's devices only (an activity's, D468); every member's of the store when absent. */
   only: string | null = null,
+  /** What a person must be allowed to receive it: reading orders, or being an owner (a decision). */
+  permission: "orders:read" | "owner" = "orders:read",
 ): Promise<number> {
   const keys = (() => {
     try {
@@ -224,10 +254,11 @@ async function pushToStore(
       const accountId = String(sub.account_id);
       if (!allowed.has(accountId)) {
         const member = await passMembership(String(sub.slug), accountId);
-        allowed.set(accountId, Boolean(member && memberCan(member, "orders:read")));
+        allowed.set(accountId, Boolean(member && memberCan(member, permission)));
       }
       if (!allowed.get(accountId)) {
-        await db().execute(sql`delete from commerce.push_subscriptions where id = ${sub.id}::uuid`);
+        // Someone who no longer reads orders is gone for every notice; someone who is just not an owner keeps their device for the rest.
+        if (permission === "orders:read") await db().execute(sql`delete from commerce.push_subscriptions where id = ${sub.id}::uuid`);
         continue;
       }
       const lang = adminLangOf(sub.admin_locale as string | null);

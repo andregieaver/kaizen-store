@@ -8,6 +8,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LIFECYCLE_KINDS } from "@/lib/automations";
 import { automationDays } from "@/lib/marketing-words";
+import { formatMoney } from "@/lib/money";
 import { featureOn } from "@/lib/store-features";
 import { automationStats, getAutomations } from "@/server/automations";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -27,41 +28,69 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
   const mayWrite = memberCan(member, "marketing:write");
   const [automations, stats] = await Promise.all([getAutomations(store), automationStats(store.id)]);
   const stock = automations.back_in_stock;
+  const startKind = LIFECYCLE_KINDS.find((kind) => !automations[kind].enabled) ?? null;
   const shop = featureOn(store, "shop");
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "marketing");
   const wa = w.automations;
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
+  const onNames = [
+    ...LIFECYCLE_KINDS.filter((kind) => automations[kind].enabled).map((kind) => wa.kinds[kind].title),
+    ...(stock.enabled ? [wa.backInStock.title] : []),
+  ];
+  const joinNames = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} ${wa.and} ${names.at(-1)}`);
+  const money = (minor: Record<string, number>) =>
+    Object.entries(minor)
+      .map(([currency, amount]) => formatMoney(amount, currency, ADMIN_LANG_FACTS[lang].locale))
+      .join(" + ");
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Round 13 (D639): which are on in a sentence; the first one still off is the one to start with, the only green button. */}
       <PageHeader
         title={wa.title}
-        description={wa.description}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">
+              {onNames.length === 0
+                ? wa.leadNone
+                : fillWords(wa.leadSome, { names: `${joinNames(onNames)} ${onNames.length === 1 ? wa.isOne : wa.areMany}` })}
+            </span>
+            {onNames.length === 0 ? fillWords(wa.leadNoneRest, { first: wa.kinds[LIFECYCLE_KINDS[0]].title }) : wa.leadSomeRest}
+          </span>,
+        ]}
       />
       <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="grid gap-4 lg:grid-cols-2">
         {LIFECYCLE_KINDS.map((kind) => {
           const a = automations[kind];
           const words = wa.kinds[kind];
+          const after = stats.revenue[kind];
+          const first = kind === startKind;
           return (
             <Card
               key={kind}
               title={words.title}
               compact
+              className={first ? "ring-[1.5px] ring-brand" : undefined}
               aside={
-                <Chip signal={a.enabled ? "positive" : "neutral"} dot>
-                  {a.enabled ? w.common.on : w.common.off}
-                </Chip>
+                first ? (
+                  <Chip signal="positive">{wa.startHere}</Chip>
+                ) : (
+                  <Chip signal={a.enabled ? "positive" : "neutral"} dot>
+                    {a.enabled ? w.common.on : w.common.off}
+                  </Chip>
+                )
               }
             >
               <div className="flex flex-col gap-3">
                 <p className="text-body text-ink">{words.does}</p>
                 <p className="text-body text-ink-2">
-                  {automationDays(kind, a.delayDays ?? 0, wa)} {a.enabled ? fillWords(wa.sentLately, { n: n(stats.sent[kind]) }) : ""}
+                  {automationDays(kind, a.delayDays ?? 0, wa)} {a.enabled ? fillWords(wa.sentLately, { n: n(stats.sent[kind]) }) : ""}{" "}
+                  {after.orders > 0 ? countWords(after.orders, wa.ordersAfter, { n: n(after.orders), amount: money(after.minor) }) : ""}
                 </p>
                 <div className="flex flex-wrap items-start gap-2">
-                  <ButtonLink href={`${base}/${kind}`} kind={a.saved ? "quiet" : "main"}>
+                  <ButtonLink href={`${base}/${kind}`} kind={a.saved ? "quiet" : first ? "main" : "secondary"}>
                     {a.saved ? wa.edit : wa.setUp}
                   </ButtonLink>
                   {mayWrite && a.saved && <AutomationSwitch storeSlug={store.slug} kind={kind} on={a.enabled} toggle={switchAutomationAction} />}
@@ -100,7 +129,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
                     ))}
                   </ul>
                 )}
-                {mayWrite && <AutomationSwitch storeSlug={store.slug} kind="back_in_stock" on={stock.enabled} toggle={switchAutomationAction} />}
+                {mayWrite && <AutomationSwitch storeSlug={store.slug} kind="back_in_stock" on={stock.enabled} toggle={switchAutomationAction} quiet={startKind !== null} />}
               </>
             )}
           </div>

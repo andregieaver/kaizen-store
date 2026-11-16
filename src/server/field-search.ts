@@ -7,7 +7,7 @@ import { groupApplies, type FieldData, type FieldGroup, type Facts, type Values 
 import { searchBodies, usesSearch } from "@/lib/field-search";
 
 import { getFieldData, listFieldGroups, productFacts } from "./custom-fields";
-import { getStore } from "./stores";
+import { getStore, storeSlugOf } from "./stores";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -31,8 +31,8 @@ async function searchGroups(storeId: string): Promise<FieldGroup[]> {
 
 /** The store's languages, main first, unless the caller knows them. */
 async function localesOf(storeId: string): Promise<{ locales: readonly string[]; main: string } | null> {
-  const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = row ? await getStore(String(row.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   return store ? { locales: store.localization.locales, main: store.localization.locales[0] ?? "" } : null;
 }
 

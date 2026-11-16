@@ -47,7 +47,7 @@ import {
 } from "./pipedrive-client";
 import { encryptionKey } from "./encryption-key";
 import { listStaff } from "./settings";
-import { getStore } from "./stores";
+import { getStore, storeSlugOf } from "./stores";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -641,11 +641,8 @@ async function checkOnePage(
 async function storeFacts(
   storeId: string,
 ): Promise<{ currency: string; timeZone: string } | null> {
-  const row = await typedRow(
-    z.object({ slug: col.text }),
-    sql`select slug from commerce.stores where id = ${storeId}::uuid`,
-  );
-  const store = row ? await getStore(row.slug) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   return store
     ? { currency: mainCurrency(store), timeZone: store.timeZone }
     : null;

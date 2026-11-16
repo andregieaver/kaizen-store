@@ -163,6 +163,7 @@ Every store route's first scripts carry the admin's common words, the features t
 - **Done when:** The script tags of the server's HTML, nomodule left out, total at most 615,000 bytes raw for /s/demo/no (680,264 today) and at most 670,000 for /s/demo/no/p/demo-keramikkopp (777,785; 690,000 only while a picker is kept by the press test, named with its bytes), the product page's own entry chunks total at most 297,000 bytes (315,368), and none of them holds 'Sell to businesses', 'Waiting for payment' or 'Kommer ihåg om du valde ljusa'. An import walk of product-parts.tsx finds no cart form; no first script of /s/demo/no holds the carousel, the modal library, the theme preview stage or 'filter-dialog-title'; the filter opens on a first press five runs in five on Chromium and WebKit; and docs/performance.md lists each part kept in first scripts with its bytes.
 - **Platform:** Kaizena Flow's site pages share these first scripts and lose the same 48 to 65 KB.
 - **To carry it out:** [steps/0.16.md](steps/0.16.md) (strong)
+- **Done differently (14 Nov):** the carousel took a sixth commit: as a plain lazy stand-in the page held its row twice without JavaScript, so `carousel.tsx` became the frame (the server's row and still arrows, an early press kept) and `carousel-controls.tsx` loads where a carousel is drawn. No picker was kept in first scripts. The first-press test is in e2e/products-page.spec.ts, which CI runs on WebKit. The spec's budgets count the nomodule polyfill (225,082 bytes), so they are the ceilings plus those bytes.
 
 ## 0.17 Cut what a menu and a progress poll cost in the admin
 
@@ -183,6 +184,7 @@ At least 39 saves in the admin draw the whole route twice: the action refreshes 
 - **Done when:** src/components/admin/router-refresh.scan.test.ts holds the exact count of client router.refresh() calls left in the admin in its baseline (about 50; 90 today), with 0 after an action that always refreshes (36 today) and 0 mixed ones, and the signed-in e2e job passes.
 - **Platform:** The platform admin's saves run through platformAction() and lose the same second draw.
 - **To carry it out:** [steps/0.18.md](steps/0.18.md) (review)
+- **Done differently (14 Nov):** main held 92 calls in 50 files, not 90, so the baseline starts at 92; the brief's pack-pictures lines named other actions than the file now binds (its client calls sit in a `finally` after ask, stop, remake and put back), and a refresh in a `finally` or after an unread answer runs when the action fails, so those and the supplier key's revoke and the old-shop forget stay; the final total is 48, inside the brief's 45 to 55.
 
 ## 0.19 Read the products, customers and stores lists a page at a time
 
@@ -193,6 +195,7 @@ The Products list sends every product of the store to the browser (about 0.9 KB 
 - **Done when:** With a store seeded with 500 products the Products document is under 300,000 characters and says '100 of 500', rg -c getEditorContext 'src/app/admin/(gated)/[store]/products/page.tsx' prints nothing, an integration test shows listCustomers() for a store with 150 customers returning 100 rows and the count, the Products list sends 5 statements or fewer (16 or more today) and enters the baseline of step 1.9 at that number, and 'select all' on the Products list says '100 of 500 selected'.
 - **Platform:** The platform's Stores list is one of the three lists and pages the same way.
 - **To carry it out:** [steps/0.19.md](steps/0.19.md) (review)
+- **Done differently (14 Nov):** only commits 1 and 4 were made. The admin redesign (D597 round 2, D603 round 3) rewrote the Products list (a client catalogue that searches, filters and counts over the whole list it is sent, with its own *Show more* of 60, and `productSkus()` for every product) and the Customers list (`listCustomers()` now has `show` and `sort`, and `customerCounts()`), so commits 2 and 3 as written would undo or contradict it; they wait for a decision on how the redesigned screens page (server search and counts in place of the browser's). Commit 1 fits and was made (the editor context is gone from the Products page; the notice reads a count). Commit 4 fits and was made.
 
 ## 0.20 Stop asking for what does not change: a store's slug, the theme cards, the hosts list
 
@@ -203,6 +206,7 @@ select slug from commerce.stores where id is written by hand in 27 places and is
 - **Done when:** rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' sums to at most 3 (27 today), rg -n 'loadCards\(\)' src/server/theme-store.ts shows two call sites (three today), and the new case in src/lib/store-hosts.test.ts shows 1,000 calls of marketPath() with a 1,000-store hosts list calling JSON.parse once (2,000 or more today).
 - **Platform:** The slug helper and the hosts list are shared code: the platform admin's links and Kaizena Flow's own store read through them.
 - **To carry it out:** [steps/0.20.md](steps/0.20.md) (review)
+- **Done differently (15 Nov):** at `dream-factory.ts` the loop below the replaced read used `store.slug`, so it reads `member.store.slug` (the same value; `slug` is not narrowed inside the loop). `offeredCurrencies()` and `mainLocale()` in `custom-fields.ts` lost their `run` argument, which nothing read any more (their callers were changed to match). `store-copy.ts`, `live-drills.ts` and `product-questions.ts` gained a static import of `storeSlugOf` from `./stores`. Menus' own copy is the 24th read: 23 hand-written copies in 17 files were replaced and the one in `menus.ts` moved. The ratchet baseline was lowered for the twelve files that lost unchecked reads.
 
 ## 0.21 Read the AI connection only to call a model, and give search a ceiling
 
@@ -223,6 +227,7 @@ The cart page calls cartSummary() twice per view, and each call sends 5 statemen
 - **Done when:** cart-contents.test.ts asserts cartSummary is called once per cart render and ./bonus is not called for a store with features ['shop']; a unit test of cartSummary() with features ['shop'] asserts bonusProgram, codeInPlay and friendState are not called; checkout-section.test.ts asserts readCartBonus is not called with Bonus off and cartSummary runs at most once per checkout render; checkout rules come from a cached read that their writers refresh (rg -c 'use cache' src/server/checkout-rules.ts prints 1 or more); a unit test of getCartCount() and getCustomer() shows one read each for two calls inside one render (two to four today); and the money tests pass.
 - **Platform:** Store-only by the house rule's exception: Kaizena Flow sells plans through Stripe and draws no cart.
 - **To carry it out:** [steps/0.22.md](steps/0.22.md) (review)
+- **Done differently (15 Nov):** the cached checkout rules were not made: `enabledRulesCached()` calls `cacheLife()`, which throws outside Next, and every int test that reaches `cartSummary()` (checkout-kinds first) runs outside it without mocking `next/cache`; the brief forbids editing them, so the cached list, its tag and the writers' refresh were taken out and the rules stay a live read. `loadCartView()` lives in `cart/cart-view.ts` (step 0.16 moved it). `deliveryView()`'s fourth parameter is a function returning the known summary, not the summary itself, so a store with no delivery choice on does not have it worked out for nothing. The cart page's gift read now follows the summary instead of running beside it.
 
 ## 0.23 Filter a store's rows the way its index can serve
 
@@ -233,6 +238,7 @@ Postgres cannot answer store_id is not distinct from $1 from an index, so the ho
 - **Done when:** The ratchet's count of 'store_id is not distinct from' in src/server is at most 3 commented column-to-column lines (122 today); a unit test of owned() covers a store id and the null owner, and each moved file's integration tests pass unchanged; a plan test on a seeded table of 200 owners shows store_id in the Index Cond of the page list, the page by address, the page names and the modal statement, for a store and for a null owner; and in production seq_scan of commerce.cookie_scans grows by fewer than 1,000 a day (fewer than 10 once step 3.1 is in), with scheduled cookie scans a day at most a seventh of the sites plus 5.
 - **Platform:** The is-null branch of owned() is the platform's: its pages, terms and cookie scans are found by index too.
 - **To carry it out:** [steps/0.23.md](steps/0.23.md) (review)
+- **Done differently (15 Nov):** the ratchet counted 125 uses, not 124, because autopilot-runner.ts had gained one (line 196, now owned()); the plan test uses a random store id (no store row to clean up); publishedPageNames() is called as (owner, null, 'page'); css-versions.ts keeps its `ownerIs` name as a one-line wrapper of owned(); ai-usage.ts imports owned as ownedStore because its own `owned` takes an account id; support-widgets.ts has a seventh private copy of owned() that the brief does not name and is left; the Cookie consent rule had no schedule sentence, so one was added.
 
 ## 0.24 Read one page, not all of them
 
@@ -243,6 +249,7 @@ listPublishedPages() (src/server/pages.ts) selects every published page of a sto
 - **Done when:** rg -c 'listPublishedPages(' over src without tests gives at most 14 lines (37 today), none picking a page by id or by address; and the reader of the build's .meta files that step 0.1 put in the repo counts 0 prerendered entries of the demo store whose resume data keeps the page list (45 of 261 today), and fails on a trial page that reads the whole list.
 - **Platform:** Kaizena Flow's own pages are read through the same two functions with a null owner, and src/server/platform-navigation.ts is one of the callers moved.
 - **To carry it out:** [steps/0.24.md](steps/0.24.md) (review)
+- **Done differently (15 Nov, local):** the three commits were made as the brief says. The meta reader's `withList` is 9, not 0: the nine blog routes (`/blog/*`, `/blogs/*` article, category and tag pages) still keep the list through `blogArticles()` in `src/server/blogs.ts` (line 114, read by `blogCategories()` in `blog/blog-listing.tsx` and by the feed), which the brief leaves on the list; those routes need an index that carries categories, so this is for the reviewer to decide.
 
 ## 0.25 Prune the scheduler's own log
 
@@ -263,6 +270,7 @@ Thirteen indexes duplicate another: orders carries 34, five of them starting wit
 - **Done when:** src/db/index-duplicates.test.ts returns 0 rows (11 today) with 32 indexes on orders (34 today), and pnpm db:check exits 0.
 - **Platform:** One database: the platform's tables are in the duplicate test.
 - **To carry it out:** [steps/0.26.md](steps/0.26.md) (review)
+- **Done differently:** the marked file's `--> statement-breakpoint` lines each stand alone on a line (`statementsOf` splits only there), not after the semicolon as the brief wrote them; the test's second case checks that every partial twin found is on the allowed list and that at least one is found, because the catalog query finds only two of the six listed (order_events_restock_idx, price_lists_exclusive_idx): the other four differ in column order or are not led by a whole index. Schema lines had moved (orders_retention_idx is at 4936 and so on); the orders_retention_idx doc comment left with its line.
 
 ## 0.27 Let the knowledge job read no document when nothing was published
 

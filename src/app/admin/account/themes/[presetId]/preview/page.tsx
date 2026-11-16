@@ -21,7 +21,7 @@ import { campaignNotices } from "@/server/campaign-notices";
 import { getProduct, listProducts } from "@/server/catalog";
 import { adminDesignPreview, publicDesignPreview } from "@/server/design-presets";
 import { siteFontStyle } from "@/server/fonts";
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageById } from "@/server/pages";
 import { getStore, type Store } from "@/server/stores";
 
 export const metadata: Metadata = { title: "Theme preview", robots: { index: false, follow: false } };
@@ -87,12 +87,11 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
   const footer = layout("footer");
   const productLayout = layout("productLayout")?.content ?? DEFAULT_PRODUCT_LAYOUT;
   const m = t(market.lang);
-  const [pages, products, notices] = await Promise.all([
-    base.frontPageId ? listPublishedPages(base.id) : Promise.resolve([]),
+  const [front, products, notices] = await Promise.all([
+    base.frontPageId ? publishedPageById(base.id, base.frontPageId) : Promise.resolve(null),
     listProducts(base.id, market),
     campaignNotices(base.id, market),
   ]);
-  const front = pages.find((page) => page.id === base.frontPageId) ?? null;
   const product = show === "home" || !products[0] ? null : await getProduct(base.id, market, products[0].handle);
   // A product alone only when there is one; else the front page.
   const showFront = show !== "product" || !product;

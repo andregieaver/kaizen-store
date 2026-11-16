@@ -72,6 +72,15 @@ describe("TaxProfileForm", () => {
     expect(form(swedish)).toContain("Save the tax settings");
   });
 
+  it("shows one part in its row and sends the others as saved, so saving it keeps them (round 15)", () => {
+    const out = html(h(TaxProfileForm, { profile: { ...swedish, iossNumber: "IM2500000001", iossMarkets: ["DE", "FR"] }, country: "SE", countryName: "Sweden", canEdit: true, saveAction: action, part: "oss" }));
+    expect(out).toMatch(/name="ossScheme"[^>]*value="none"/);
+    expect(out).toMatch(/type="hidden" name="vatRegistered" value="on"/);
+    expect(out).toMatch(/type="hidden" name="vatNumber" value="SE556677889901"/);
+    expect((out.match(/type="hidden" name="iossMarkets"/g) ?? []).length).toBe(2);
+    expect(out).not.toContain('type="checkbox" name="iossMarkets"');
+  });
+
   it("uses the admin's tokens, never a fixed colour", () => {
     const out = form(swedish);
     expect(out).toContain("border-line");

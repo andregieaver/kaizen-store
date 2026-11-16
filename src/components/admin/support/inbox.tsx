@@ -1,9 +1,10 @@
 "use client";
 
+import { ChevronDown, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { TAB_WORDS, topicWords } from "@/lib/support-inbox-text";
+import { TAB_WORDS, durationWords, topicWords } from "@/lib/support-inbox-text";
 import { topicsFor } from "@/lib/support-summary";
 import { TONE_BANDS } from "@/lib/support-tone";
 import { TYPING_SHOWN_MS, staffDelay } from "@/lib/support-realtime";
@@ -50,6 +51,8 @@ export function Inbox({
   const [store, setStore] = useState("");
   const [tone, setTone] = useState("");
   const [topic, setTopic] = useState("");
+  // The search and the filters, one press away (round 4, D612); open by themselves while one is in use.
+  const [filtering, setFiltering] = useState(false);
   const [rows, setRows] = useState(initial.rows);
   const [waiting, setWaiting] = useState(initial.waiting);
   const [open, setOpen] = useState<{ id: string; store: string | null } | null>(
@@ -318,61 +321,92 @@ export function Inbox({
   }
 
   const showing = open !== null;
+  // How long the one waiting longest has waited (round 4, D612): the oldest queue time among the open rows waiting for a person.
+  const longest = rows.filter((r) => r.handler === "queue" && r.status === "open" && r.queuedAt).map((r) => r.queuedAt as string).sort()[0] ?? null;
   return (
     <div
       className={`flex h-[calc(100dvh-7rem)] min-h-[28rem] flex-col overflow-hidden ${CARD_CLASS}`}
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
-        <h1 className="text-lg font-medium">{w.title}</h1>
-        <p className="text-sm text-muted" role="status">
-          {countWords(waiting, w.waiting)}
-        </p>
+      {/* Round 4 (D612): who waits, in a sentence, and one menu for being reachable (presence, alerts, the AI partner). */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3">
+        <div className="flex min-w-0 flex-col">
+          <h1 className="text-title text-ink">{w.title}</h1>
+          <p className="text-body text-ink-2" role="status">
+            {waiting > 0 ? (
+              <>
+                <span className="text-ink">{countWords(waiting, w.leadWaiting)}</span>
+                {longest ? fillWords(w.leadLongest, { time: durationWords(longest, now.toISOString(), t.lib) }) : "."}
+              </>
+            ) : (
+              w.leadNobody
+            )}
+          </p>
+        </div>
         <span className="flex-1" />
-        {alerts ? (
-          <button
-            type="button"
-            onClick={() => setAlerts(false)}
-            className="rounded-pill border border-edge px-2 py-1 text-sm hover:bg-sunken"
-            aria-pressed
-          >
-            {w.alertsOn}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void turnOnAlerts()}
-            className="rounded-pill border border-edge px-2 py-1 text-sm hover:bg-sunken"
-            aria-pressed={false}
-          >
-            {w.turnOnAlerts}
-          </button>
-        )}
-        {partnerOn !== null && context.actions.partner && (
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={partnerOn}
-              onChange={(event) => void changePartner(event.target.checked)}
-              className="size-4"
-            />
-            {w.partner}
-          </label>
-        )}
-        {context.presence !== null && context.actions.presence && (
-          <label className="flex items-center gap-2 text-sm">
-            <span>{w.youAre}</span>
-            <select
-              value={presence ?? "away"}
-              onChange={(event) =>
-                void changePresence(event.target.value as "online" | "away")
-              }
-              className="rounded-md border border-line bg-card px-2 py-1"
-            >
-              <option value="online">{w.online}</option>
-              <option value="away">{w.away}</option>
-            </select>
-          </label>
-        )}
+        <details className="relative">
+          <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken [&::-webkit-details-marker]:hidden">
+            {context.presence !== null && (
+              <>
+                <span aria-hidden className={`size-2 rounded-pill ${presence === "online" ? "bg-insight-solid" : "bg-neutral-solid"}`} />
+                {presence === "online" ? w.available : w.away}
+                {" · "}
+              </>
+            )}
+            {alerts ? w.alertsShort.on : w.alertsShort.off}
+            <ChevronDown aria-hidden className="size-4" />
+          </summary>
+          <div className="absolute right-0 z-30 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-panel border border-line bg-card p-4 shadow-[var(--shadow-float)]">
+            <span className="text-caption text-muted">{w.reach}</span>
+            {context.presence !== null && context.actions.presence && (
+              <label className="flex items-center justify-between gap-3 text-body">
+                <span>{w.youAre}</span>
+                <select
+                  value={presence ?? "away"}
+                  onChange={(event) =>
+                    void changePresence(event.target.value as "online" | "away")
+                  }
+                  className="rounded-md border border-line bg-card px-2 py-1"
+                >
+                  <option value="online">{w.online}</option>
+                  <option value="away">{w.away}</option>
+                </select>
+              </label>
+            )}
+            {alerts ? (
+              <button
+                type="button"
+                onClick={() => setAlerts(false)}
+                className="rounded-pill border border-edge px-3 py-1.5 text-body hover:bg-sunken"
+                aria-pressed
+              >
+                {w.alertsOn}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void turnOnAlerts()}
+                className="rounded-pill border border-edge px-3 py-1.5 text-body hover:bg-sunken"
+                aria-pressed={false}
+              >
+                {w.turnOnAlerts}
+              </button>
+            )}
+            {partnerOn !== null && context.actions.partner && (
+              <label className="flex items-start gap-2 text-body">
+                <input
+                  type="checkbox"
+                  checked={partnerOn}
+                  onChange={(event) => void changePartner(event.target.checked)}
+                  className="mt-1 size-4"
+                />
+                <span className="flex flex-col">
+                  {w.partner}
+                  <span className="text-caption text-muted">{w.partnerHint}</span>
+                </span>
+              </label>
+            )}
+          </div>
+        </details>
       </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr_18rem]">
         <section
@@ -380,10 +414,11 @@ export function Inbox({
           aria-label={w.conversations}
         >
           <div className="flex flex-col gap-2 border-b border-line p-3">
+            <div className="flex items-center gap-2">
             <div
               role="tablist"
               aria-label={w.whichConversations}
-              className="flex flex-wrap gap-1"
+              className="flex min-w-0 flex-1 flex-wrap gap-1"
             >
               {(Object.keys(TAB_WORDS) as InboxTab[]).map((key) => (
                 <button
@@ -392,13 +427,25 @@ export function Inbox({
                   role="tab"
                   aria-selected={tab === key}
                   onClick={() => setTab(key)}
-                  className={`rounded-pill px-2 py-1 text-sm ${tab === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
+                  className={`shrink-0 whitespace-nowrap rounded-pill px-2.5 py-1 text-sm ${tab === key ? "bg-ink text-card" : "text-ink-2 hover:bg-sunken"}`}
                 >
                   {t.lib.tabs[key]}
                   {key === "waiting" && waiting > 0 ? ` (${waiting})` : ""}
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setFiltering((shown) => !shown)}
+              aria-expanded={filtering || Boolean(query || tone || topic || store)}
+              aria-label={w.filters}
+              className="flex size-8 shrink-0 items-center justify-center rounded-pill bg-sunken text-ink hover:bg-line"
+            >
+              <Search aria-hidden className="size-4" />
+            </button>
+            </div>
+            {(filtering || Boolean(query || tone || topic || store)) && (
+            <>
             <input
               type="search"
               value={query}
@@ -449,6 +496,8 @@ export function Inbox({
                   </option>
                 ))}
               </select>
+            )}
+            </>
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

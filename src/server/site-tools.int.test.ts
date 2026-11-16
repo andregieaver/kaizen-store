@@ -61,6 +61,8 @@ vi.mock("./ai", async (importOriginal) => {
   return {
     ...real,
     aiFor: async () => connection,
+    // `aiAbilities()` asks the module's own aiFor(), which this mock cannot reach: answer it from the same connection.
+    aiAbilities: async () => real.abilitiesOf(connection as never),
     completeText: async (_connection: unknown, messages: { role: string; content: string }[]) => ({ text: fake.answer(messages), region: null }),
   };
 });

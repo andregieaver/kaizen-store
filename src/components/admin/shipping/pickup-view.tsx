@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { Card, Chip } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { INSTRUCTIONS_MAX, READY_HOURS_MAX } from "@/lib/shipping-limits";
@@ -54,6 +54,15 @@ export function PickupView({
           </Link>
           {w.noPlacesAfter}
         </p>
+        {/* Round 11 (D634): the place is added from here, not found on another page. */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <ButtonLink kind="main" href={`${companyHref}/places/new?kind=shop`}>
+            {w.addStore}
+          </ButtonLink>
+          <ButtonLink kind="secondary" href={`${companyHref}/places/new?kind=pickup`}>
+            {w.addPickup}
+          </ButtonLink>
+        </div>
       </Card>
     );
   }

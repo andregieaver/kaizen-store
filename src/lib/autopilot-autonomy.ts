@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { ChallengeState } from "./autopilot-challenge";
+import { marginFloorProblem } from "./margin-floor";
 import type { GateCategory } from "./owner-tools";
 
 /**
@@ -83,6 +85,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_bonus_program: "marketing",
   set_affiliate_program: "marketing",
   switch_email_automation: "marketing",
+  // An automation's words and days (D4), as switching it is.
+  write_email_automation: "marketing",
   // A loyalty reward switched on or off (AGT-01), as a discount is.
   switch_loyalty_reward: "marketing",
   // A loyalty reward made or changed (AGT-01), as a discount is made.
@@ -96,6 +100,10 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   approve_return: "messages",
   decline_return: "messages",
   email_customer: "messages",
+  // An update about an order in the store's fixed words (D635), counted with the other emails to customers.
+  tell_customer_about_order: "messages",
+  // A verified customer's own address change, before anything is sent (D640): customer service, as an update to them is.
+  carry_out_address_change: "messages",
   resend_order_email: "messages",
   issue_work_invoice: "messages",
   propose_exchange: "messages",
@@ -107,6 +115,10 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   block_affiliate: "money",
   // An ad budget in the owner's own ad account (D585): a raise also meets the account's monthly limit and the largest raise (`adProblem`).
   set_ad_budget: "money",
+  // Stock bought from a supplier (`docs/100-day-challenge.md` C3): also within the purchasing budget, per order and a month (`purchaseProblem`).
+  create_purchase_order: "money",
+  // A drop-ship supplier's order sent again or cancelled (C2): the parcel and the stock, as counting a delivery in is.
+  answer_supplier_order: "catalogue",
 };
 
 /**
@@ -134,7 +146,11 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "renew_domain",
   // A broadcast reaches the whole list at once and cannot be called back: a person always reads it first.
   "send_broadcast",
+  // A text message costs money for every number and cannot be called back (D4): a person always reads it first.
+  "send_text_message",
   "refund_order",
+  // Cancelling a paid order refunds it in the same step (C6): money back to a customer, so in the challenge it goes to the refund queue.
+  "cancel_order",
   "change_order",
   "process_exchange",
   "adjust_customer_credits",
@@ -157,10 +173,12 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "contact_kaizen_support",
   "start_autopilot_plan",
   "resume_autopilot_plan",
+  // A purchase with the AI wallet (D599): every one waits for the owner's yes in this step (`docs/agent-spending.md` 5).
+  "request_purchase",
 ]);
 
 /** Emails to one customer the autopilot may send itself, at most `customerEmailsPerWeek` in seven days (counted from the audit log). */
-export const CUSTOMER_EMAIL_TOOLS = ["email_customer", "reply_to_support"] as const;
+export const CUSTOMER_EMAIL_TOOLS = ["email_customer", "reply_to_support", "tell_customer_about_order"] as const;
 
 /** Gate categories that are never automatic, for a tool added later without an area. */
 const NEVER_CATEGORIES: ReadonlySet<GateCategory> = new Set(["access", "domain", "plan"]);
@@ -187,8 +205,28 @@ export const autonomySettingsSchema = z.object({
        * month is the ad account's own limit (`ad_accounts.monthly_limit_minor`, on the Ads page), in its currency.
        */
       adRaisePercent: z.number().int().min(0).max(1000).default(20),
+      /**
+       * The lowest margin a price, discount or campaign it makes itself may leave any product, in percent of the price without VAT
+       * (`src/lib/margin-floor.ts`, `docs/100-day-challenge.md` D5); null: no floor of its own.
+       */
+      marginFloorPercent: z.number().min(0).max(95).nullable().default(null),
+      /**
+       * The stock it may buy itself (`docs/100-day-challenge.md` C3), in the store's main currency: the most one purchase order may cost and what
+       * the month's purchase orders may add up to (`src/lib/purchase-budget.ts`); both null: every purchase order waits for a yes.
+       */
+      purchasePerOrder: z.number().min(0).max(100_000_000).nullable().default(null),
+      purchaseMonthly: z.number().min(0).max(1_000_000_000).nullable().default(null),
     })
-    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5, adRaisePercent: 20 }),
+    .default({
+      aiMonthlyUsd: 5,
+      discountPercent: 20,
+      priceChangePercent: 10,
+      customerEmailsPerWeek: 5,
+      adRaisePercent: 20,
+      marginFloorPercent: null,
+      purchasePerOrder: null,
+      purchaseMonthly: null,
+    }),
   /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
   planning: z
     .object({
@@ -206,6 +244,11 @@ export const autonomySettingsSchema = z.object({
       waitMinutes: z.number().int().min(5).max(240).default(15),
     })
     .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 }),
+  /**
+   * Challenge mode while it is on (`src/lib/autopilot-challenge.ts`): set by the server from `autopilot_settings.challenge` (`withChallenge()`),
+   * never saved from here, so an owner's form cannot switch it.
+   */
+  challenge: z.custom<ChallengeState>((v) => v === null || (typeof v === "object" && v !== null && (v as { active?: unknown }).active === true)).nullable().default(null),
 });
 export type AutonomySettings = z.output<typeof autonomySettingsSchema>;
 
@@ -214,7 +257,8 @@ export const DEFAULT_AUTONOMY: AutonomySettings = autonomySettingsSchema.parse({
 /** Settings as stored, read safely: anything unreadable falls back to the defaults (ask for everything). */
 export function readAutonomy(raw: unknown): AutonomySettings {
   const parsed = autonomySettingsSchema.safeParse(raw ?? {});
-  return parsed.success ? parsed.data : DEFAULT_AUTONOMY;
+  // Challenge mode is never read from what was given: only the server's `withChallenge()` sets it.
+  return parsed.success ? { ...parsed.data, challenge: null } : DEFAULT_AUTONOMY;
 }
 
 export const levelOf = (settings: AutonomySettings, area: AutonomyArea): AutonomyLevel => settings.levels[area] ?? "ask";
@@ -230,7 +274,23 @@ export type AutonomyFacts = {
   customerEmailsThisWeek?: number | null;
   /** An ad budget's change (D585): why it must ask by the owner's ad limit and largest raise (`adChangeProblem()`), or null when it may. */
   adProblem?: string | null;
+  /** The lowest margin any product would have after the call (`lowestMargin()`), null when it cannot be measured. */
+  lowestMarginPercent?: number | null;
+  /** The call takes nothing off a product's price (free shipping): the floor does not apply. */
+  marginUntouched?: boolean;
+  /** Broadcasts it sent itself in the last seven days (challenge mode). */
+  broadcastsThisWeek?: number | null;
+  /** Answers to customers on the support desk it sent itself in the last 24 hours (challenge mode). */
+  supportRepliesToday?: number | null;
+  /** A purchase order against the purchasing budget (`purchaseBudgetProblem()`): why it must ask, or null when it may. */
+  purchaseProblem?: string | null;
 };
+
+/**
+ * Calls that otherwise always ask but run in challenge mode within its own budgets (`docs/100-day-challenge.md` 4A2): a broadcast within the
+ * broadcasts a week. Refunds and every other money back to a customer stay the person's (the rule allows exactly that).
+ */
+export const CHALLENGE_AUTOMATIC: Readonly<Record<string, AutonomyArea>> = { send_broadcast: "marketing" };
 
 export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } | { run: false; why: string };
 
@@ -239,6 +299,14 @@ export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } 
  * keep it for their yes, with the reason in words.
  */
 export function autonomyDecision(settings: AutonomySettings, tool: string, gate: GateCategory, facts: AutonomyFacts = {}): AutonomyDecision {
+  const challenge = settings.challenge;
+  if (challenge && tool === "send_broadcast") {
+    if (facts.broadcastsThisWeek === undefined || facts.broadcastsThisWeek === null) return { run: false, why: "The broadcasts it sent this week could not be counted." };
+    if (facts.broadcastsThisWeek >= challenge.broadcastsPerWeek) {
+      return { run: false, why: `It has sent ${facts.broadcastsThisWeek} broadcasts itself in seven days, the challenge's limit is ${challenge.broadcastsPerWeek}.` };
+    }
+    return { run: true, tell: levelOf(settings, CHALLENGE_AUTOMATIC.send_broadcast) === "tell", area: CHALLENGE_AUTOMATIC.send_broadcast };
+  }
   if (NEVER_AUTOMATIC.has(tool) || NEVER_CATEGORIES.has(gate)) return { run: false, why: "This always waits for your yes." };
   const area = TOOL_AREAS[tool];
   if (!area) return { run: false, why: "This always waits for your yes." };
@@ -259,6 +327,18 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
     if (facts.adProblem === undefined) return { run: false, why: "The ad account could not be read." };
     if (facts.adProblem !== null) return { run: false, why: facts.adProblem };
   }
+  if (tool === "create_purchase_order") {
+    if (facts.purchaseProblem === undefined) return { run: false, why: "The purchase order could not be measured against the purchasing budget." };
+    if (facts.purchaseProblem !== null) return { run: false, why: facts.purchaseProblem };
+  }
+  // In challenge mode an answer on the support desk has a daily budget of its own: answering customers is the work, not marketing.
+  if (challenge && tool === "reply_to_support") {
+    if (facts.supportRepliesToday === undefined || facts.supportRepliesToday === null) return { run: false, why: "The answers it sent today could not be counted." };
+    if (facts.supportRepliesToday >= challenge.supportRepliesPerDay) {
+      return { run: false, why: `It has answered ${facts.supportRepliesToday} customers itself in 24 hours, the challenge's limit is ${challenge.supportRepliesPerDay}.` };
+    }
+    return { run: true, tell: level === "tell", area };
+  }
   if ((CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)) {
     if (facts.customerEmailsThisWeek === undefined || facts.customerEmailsThisWeek === null) return { run: false, why: "The emails it sent this week could not be counted." };
     if (facts.customerEmailsThisWeek >= settings.budgets.customerEmailsPerWeek) {
@@ -271,8 +351,15 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
       return { run: false, why: `It takes ${round(facts.discountPercent)} % off, more than your limit of ${settings.budgets.discountPercent} %.` };
     }
   }
+  if (MARGIN_TOOLS.has(tool) && !facts.marginUntouched) {
+    const problem = marginFloorProblem(facts.lowestMarginPercent, settings.budgets.marginFloorPercent);
+    if (problem) return { run: false, why: problem };
+  }
   return { run: true, tell: level === "tell", area };
 }
+
+/** The calls the margin floor holds: what changes what a product sells for. */
+export const MARGIN_TOOLS: ReadonlySet<string> = new Set(["set_prices", "create_discount", "create_campaign"]);
 
 const round = (n: number) => Math.round(n * 10) / 10;
 

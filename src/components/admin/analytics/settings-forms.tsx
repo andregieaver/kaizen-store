@@ -97,7 +97,7 @@ export function upcomingTargets(targets: readonly StoredTarget[], today: string,
 }
 
 /**
- * What the settings form sent, laid over what is kept: the costs form sends the four cost fields and the lifetime form only the
+ * What the settings form sent, laid over what is kept: the costs form sends the five cost fields and the lifetime form only the
  * years, so each leaves the other's values as they are. Returns what `parseAnalyticsSettings()` takes (text for the money and the
  * percentage, a number for the years); a years field that is not a number becomes 0, which the parser refuses in words.
  */
@@ -110,6 +110,7 @@ export function settingsFromForm(form: Record<string, FormDataEntryValue>, curre
     paymentFeePercent: text("paymentFeePercent") ?? kept.paymentFeePercent,
     paymentFeeFixed: text("paymentFeeFixed") ?? kept.paymentFeeFixed,
     shippingCost: text("shippingCost") ?? kept.shippingCost,
+    handlingCost: text("handlingCost") ?? kept.handlingCost,
     fixedCostsMonthly: text("fixedCostsMonthly") ?? kept.fixedCostsMonthly,
     ltvLifespanYears: asYears,
   };
@@ -269,6 +270,9 @@ function FeesSection({ currency, locale, settings, actions }: Pick<AnalyticsSett
               <Field label={w.shipping} hint={w.shippingHint}>
                 <UnitInput name="shippingCost" unit={currency} defaultValue={text.shippingCost} placeholder="60,00" />
               </Field>
+              <Field label={w.handling} hint={w.handlingHint}>
+                <UnitInput name="handlingCost" unit={currency} defaultValue={text.handlingCost} placeholder="25,00" />
+              </Field>
               <Field label={w.fixedCosts} hint={w.fixedCostsHint}>
                 <UnitInput name="fixedCostsMonthly" unit={currency} defaultValue={text.fixedCostsMonthly} placeholder="25 000" />
               </Field>
@@ -282,6 +286,7 @@ function FeesSection({ currency, locale, settings, actions }: Pick<AnalyticsSett
             <ReadOnly label={w.percent} value={settings.paymentFeeBps > 0 ? formatPercent(settings.paymentFeeBps / 10_000, 2) : words.notEntered} />
             <ReadOnly label={w.fixed} value={money(settings.paymentFeeFixedMinor)} />
             <ReadOnly label={w.shipping} value={money(settings.shippingCostMinor)} />
+            <ReadOnly label={w.handling} value={money(settings.handlingCostMinor ?? 0)} />
             <ReadOnly label={w.fixedCosts} value={money(settings.fixedCostsMonthlyMinor)} />
           </dl>
         )}

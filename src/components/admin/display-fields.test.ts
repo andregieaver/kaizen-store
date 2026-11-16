@@ -21,7 +21,7 @@ import { PageBuilder } from "./page-builder";
 import { VisibilityFields } from "./responsive-edit";
 
 /**
- * The Advanced tab's Display (D179 phase 4), drawn on the server as the builder's other settings are tested: the select of
+ * The Visibility tab's Who sees it (D179 phase 4, D631), drawn on the server as the builder's other settings are tested: the select of
  * Beaver's five, the rule builder with its groups and the store's real choices, an id no longer the store's shown as
  * removed, and the canvas's blue and red eyes with their legend.
  */
@@ -42,9 +42,10 @@ const choices: VisibilityChoices = {
 };
 
 describe("Display", () => {
-  it("offers Beaver's five under Breakpoint, Always when nothing is set", () => {
+  it("offers Beaver's five under the screens, Always when nothing is set", () => {
     const out = clean(renderToString(createElement(VisibilityFields, { part: {}, onChange: () => {}, display: { setup: store } })));
-    expect(out.indexOf("Breakpoint")).toBeLessThan(out.indexOf("Display"));
+    expect(out.indexOf("On which screens")).toBeGreaterThan(-1);
+    expect(out.indexOf("On which screens")).toBeLessThan(out.indexOf("Who sees it"));
     for (const label of ["Always", "Never", "Signed-out visitors", "Signed-in visitors", "Conditional logic"]) expect(out).toContain(`>${label}</option>`);
     expect(out).toMatch(/<option value="always" selected="">Always<\/option>/);
     expect(out).toContain("left out of the page by the server");

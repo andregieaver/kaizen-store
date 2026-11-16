@@ -17,6 +17,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
   would take a store address. A layout's auth check does not stop its page
   streaming: every page checks for itself.
+- The menu is built by `storeNav()` once per shell render; `permissionOfPath()` is memoised by path and access,
+  never by anything of the member.
 
 ## The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
 
@@ -87,6 +89,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 ## Server actions run through `storeAction()` / `platformAction()` (code review 1.4, `src/server/store-action.ts`): guard, language, one logged failure as a plain line
 
 - A server action runs through `storeAction({ store, key, action, answer }, handler)` (or, on the platform, `platformAction({ area, access, action, answer }, handler)`; `src/server/store-action.ts`, code review 1.4): the key is checked (a member without it gets *You do not have access to this.* in their language, never a 404), the handler runs in the person's language, and anything it throws that nobody planned for is logged once (`action.failed`, the action's name and the store) and answered with a plain line in the form, never Next's error page; `redirect()`, `notFound()` and `refresh()` pass through. `answer` turns a message into the action's own result shape. The orders, returns and books actions use it; other `actions.ts` files move onto it when touched.
+
+- The action refreshes; a client part does not. An action that changes what the route shows calls `refresh()` (or `redirect()`), and its answer already carries the route drawn again, so the client never calls `router.refresh()` after it (that draws every layout and the page a second time). `router.refresh()` stays only where no action refreshed: a poll, a fetch to a route handler, an action that by design does not refresh. `src/components/admin/router-refresh.scan.test.ts` holds the count per file, which may only fall.
 
 ## Plans and billing (`src/server/billing.ts`, decision D18)
 

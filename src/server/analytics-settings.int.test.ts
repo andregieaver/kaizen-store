@@ -84,13 +84,14 @@ afterAll(async () => {
 });
 
 describe("cost assumptions", () => {
-  const typed = { paymentFeePercent: "2,9", paymentFeeFixed: "1,80", shippingCost: "49", fixedCostsMonthly: "12 000", ltvLifespanYears: 4 };
+  const typed = { paymentFeePercent: "2,9", paymentFeeFixed: "1,80", shippingCost: "49", handlingCost: "22,50", fixedCostsMonthly: "12 000", ltvLifespanYears: 4 };
 
   it("are the defaults until saved: nothing entered, three years", async () => {
     expect(await getAnalyticsSettings(storeId)).toEqual({
       paymentFeeBps: 0,
       paymentFeeFixedMinor: 0,
       shippingCostMinor: 0,
+      handlingCostMinor: 0,
       fixedCostsMonthlyMinor: 0,
       ltvLifespanYears: 3,
       saved: false,
@@ -108,12 +109,13 @@ describe("cost assumptions", () => {
     refreshed.length = 0;
     expect(await saveAnalyticsSettings(owner, typed)).toEqual({
       ok: true,
-      settings: { paymentFeeBps: 290, paymentFeeFixedMinor: 180, shippingCostMinor: 4900, fixedCostsMonthlyMinor: 1_200_000, ltvLifespanYears: 4 },
+      settings: { paymentFeeBps: 290, paymentFeeFixedMinor: 180, shippingCostMinor: 4900, handlingCostMinor: 2250, fixedCostsMonthlyMinor: 1_200_000, ltvLifespanYears: 4 },
     });
     expect(await getAnalyticsSettings(storeId)).toMatchObject({
       paymentFeeBps: 290,
       paymentFeeFixedMinor: 180,
       shippingCostMinor: 4900,
+      handlingCostMinor: 2250,
       fixedCostsMonthlyMinor: 1_200_000,
       ltvLifespanYears: 4,
       saved: true,

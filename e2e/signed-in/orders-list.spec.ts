@@ -76,8 +76,9 @@ async function ordersOfRun<T extends Record<string, unknown>>(query: (sql: Retur
 }
 
 test("searches, pages, filters, saves a view and acts on many orders at once", async ({ page }) => {
-  // Search: the run's orders, 50 on the first page and the other 10 behind *Next*, none lost or repeated.
-  await page.goto(`/admin/${STORE}/orders`);
+  // Search: the run's orders, 50 on the first page and the other 10 behind *Next*, none lost or repeated. The bare address opens on To send
+  // while orders wait (round 2, D597), so the search starts from All.
+  await page.goto(`/admin/${STORE}/orders?show=all`);
   const search = page.getByRole("search", { name: "Search and filter the orders" });
   await search.getByLabel("Search").fill(MARK);
   await search.getByRole("button", { name: "Search" }).click();
@@ -93,7 +94,7 @@ test("searches, pages, filters, saves a view and acts on many orders at once", a
   expect(new Set([...first, ...second]).size).toBe(ORDERS);
 
   // A filter from the bar: only the orders with a parcel to send, said in a chip that takes it away again.
-  await page.getByText("Filters, sorting and columns").click();
+  await search.locator("summary").filter({ hasText: /^Filters/ }).click();
   await search.getByRole("checkbox", { name: "To send", exact: true }).check();
   await search.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText(`${TO_SEND} orders`, { exact: true })).toBeVisible();
@@ -107,8 +108,10 @@ test("searches, pages, filters, saves a view and acts on many orders at once", a
   await page.getByLabel(/^Name of the view/).fill(title);
   await page.getByRole("button", { name: "Save view" }).click();
   await expect(page.getByRole("status").filter({ hasText: title })).toBeVisible();
-  await page.goto(`/admin/${STORE}/orders`);
-  await page.getByRole("navigation", { name: "Order views" }).getByRole("link", { name: title }).click();
+  await page.goto(`/admin/${STORE}/orders?show=all`);
+  const viewNav = page.getByRole("navigation", { name: "Order views" });
+  await viewNav.getByText("More views").click();
+  await viewNav.getByRole("link", { name: title }).click();
   await expect(page.getByText(`${TO_SEND} orders`, { exact: true })).toBeVisible();
 
   // On the page: tick them all, tag them, then mark them sent without emailing anyone.

@@ -4,7 +4,7 @@ import type { ChatReply } from "@/lib/chat";
 import type { ChatRequest } from "@/lib/chat-schema";
 import { t } from "@/lib/i18n";
 import type { Signals } from "@/lib/recommendations";
-import { AI_HISTORY, MESSAGE_MAX } from "@/lib/support-rules";
+import { AI_HISTORY, MESSAGE_MAX, type EscalationCategory } from "@/lib/support-rules";
 import type { VisitorMessageData } from "@/lib/support-visitor";
 
 import { AiError } from "./ai";
@@ -29,7 +29,7 @@ import { chatPromptVersion } from "./prompt-versions";
 export const PERSON_PREFIX = "(A person from the store wrote:)";
 
 /** The AI's answer; `error` when it could not answer (the customer's message is kept), `handoff` when it asked for a person. */
-export type SupportTurn = { reply: ChatReply | null; error?: string; handoff?: string };
+export type SupportTurn = { reply: ChatReply | null; error?: string; handoff?: string; escalation?: EscalationCategory };
 
 /** Runs only where the AI answers (`context.agent` and `context.connection` are set: `chatContext()`). */
 export async function runSupportTurn(
@@ -40,7 +40,8 @@ export async function runSupportTurn(
   customer: SupportCustomer = null,
   /** An account asking Kaizen from the admin (step 11): Kaizen's tools for their stores and the admin's pages. */
   admin: { requester: Account } | null = null,
-  /** A conversation by email (D332): the AI is told so and has no tools that need a signed-in customer or a button. `onText`: the
+  /** A conversation by email (D332): the AI is told so and has no tool that needs a button, nor one that needs a signed-in customer unless
+   * `customer` is the sender's own (B1, `emailCustomer()`). `onText`: the
    * answer's finished sentences as they are written, for the chat to show (PSI PERF-08); the message is kept whole, as without it. */
   channel: { email?: boolean; onText?: (shown: string) => void } = {},
 ): Promise<SupportTurn> {
@@ -63,11 +64,19 @@ export async function runSupportTurn(
     const support =
       // On a site of the owner's own (D582) nobody can sign in, so none of support's tools for a customer's orders is offered there.
       context.site.kind === "store" && !context.site.embed
-        ? await supportToolsFor({ site: context.site, settings: context.settings, customer: channel.email ? null : customer, desk, conversationId, email: channel.email })
+        ? await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId, email: channel.email })
         : admin
           ? kaizenToolsFor(admin.requester, await aboutStoreOf(conversationId))
           : null;
-    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null, email: channel.email, ...(channel.onText ? { onText: channel.onText } : {}) });
+    reply = await runChat(context.site, context.agent, request, context.connection, {
+      handoff: context.settings.mode === "ai_first",
+      ...(support ? { support } : {}),
+      admin: admin !== null,
+      email: channel.email,
+      // By email a customer is given only when the sender's address is theirs (`emailCustomer()` in `support-inbound.ts`).
+      emailOrders: Boolean(channel.email && customer),
+      ...(channel.onText ? { onText: channel.onText } : {}),
+    });
   } catch (error) {
     console.warn(`[support] ${context.storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof AiError) return { reply: null, error: m.chat.sorry };
@@ -81,5 +90,5 @@ export async function runSupportTurn(
   const body = (reply.reply || m.chat.sorry).slice(0, MESSAGE_MAX.ai);
   // The prompt version the answer was written under (D391) is kept with it, for the desk; the visitor's feed leaves it out.
   await addMessage(desk, conversationId, "ai", null, body, { data: { ...data, prompt: chatPromptVersion() }, ...(reply.action ? { action: reply.action } : {}) });
-  return { reply, ...(reply.handoff ? { handoff: reply.handoff } : {}) };
+  return { reply, ...(reply.handoff ? { handoff: reply.handoff, ...(reply.escalation ? { escalation: reply.escalation } : {}) } : {}) };
 }

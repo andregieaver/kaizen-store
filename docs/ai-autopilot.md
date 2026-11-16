@@ -275,6 +275,8 @@ the platform principal (`store_id` null), with the targets and checks that make 
   | `products` | active products, demo products left out (`isDemoProduct()`) | yes | no |
   | `pages` | published pages (type `page`) | yes | yes |
   | `stores` | open stores that are real businesses (`not (is_template or starter)`) | no | yes |
+  | `contribution_30d`, `margin_30d` | contribution profit and its share of net sales, last 30 store days (`derive()`); not measured under 30 % cost coverage (D606) | yes | no |
+  | `revenue_since`, `contribution_since` | net sales and contribution profit added up from a first day (D606) | yes | no |
 
   A figure that cannot be known (no rate for a currency, no visits counted) is *not measured* with the reason, never 0 and never met.
   A goal is `met` when every target is met; the code marks it, the model never does.
@@ -323,7 +325,7 @@ the platform principal (`store_id` null), with the targets and checks that make 
 `/api/cron/autopilot`, every minute (`pg_cron` as the broadcasts' route, `maxDuration` 300, inside `trackedRoute()`), runs
 `runAutopilot()`:
 
-- Takes up to three runnable steps, at most one per store (and one for the platform), none where a step is already running: the plan is
+- Takes up to twelve runnable steps (three until D610), at most one per store (and one for the platform), and runs them side by side, none where a step is already running: the plan is
   `running`, the store's autopilot is not paused (7.4), the store is active (`store_is_active()`, which a store being set up is), the steps it
   follows are `done` or `skipped`, `not_before` has passed. Each is claimed (`claimed_until`, ten minutes, `for update skip locked`).
 - Reads the plan's person again (`principalFor()`, the follow-up runner's: an account disabled, a member removed or a platform admin no
@@ -363,7 +365,7 @@ only (the platform's by platform admins):
 - `budgets`: the AI cost of the autopilot a month (US dollars, priced as D145 prices every call; reached, the plans pause with the reason),
   the deepest discount (percent; a discount or campaign deeper than it is kept for a yes), the largest price change (percent of a variant's
   current price; a larger one is kept for a yes), and the emails to customers it may send itself in seven days (`customerEmailsPerWeek`,
-  default 5, 0 asks every time: `email_customer` and `reply_to_support`, counted from the audit log; D334). Theme purchases wait for A4.
+  default 5, 0 asks every time: `email_customer` and `reply_to_support`, counted from the audit log; D334). A lowest margin (`marginFloorPercent`, D605) holds prices, discounts and campaigns that would leave a product under it. Theme purchases wait for A4.
   The AI cost counts every call the autopilot made (`ai_usage.acted_by`, D334), whatever its feature: page builds, pictures and page
   looks keep who asked for them and run as them. A call no price covers makes the month's cost unknown, so the autopilot stops with that
   reason (`aiBudgetProblem()`) while it has a limit of its own.
@@ -1084,8 +1086,8 @@ From `/api/cron/autopilot` (every minute), after the reviews:
 - `detectEvents()`: per store with `reacts` on and the autopilot not paused, inserts the waiting conversations and the tests that ended
   (one query each), and once a day (`ALERT_CHECK_HOURS`, kept in `commerce.autopilot_event_checks`) the store's alerts through
   `alertsForStore()`. Conflicts on the reference do nothing.
-- `runEvents()`: takes up to `EVENTS_PER_RUN` (2) pending events, at most one per store, under `EVENTS_PER_DAY` (12) per store in 24
-  hours, each claimed (`running`, `claimed_until`); a run that died leaves it `failed` once its claim passes. A pending event older than
+- `runEvents()`: takes up to `EVENTS_PER_RUN` (2) pending events, at most one per store, under `EVENTS_PER_DAY` per store and kind in 24
+  hours (48 waiting customers, 12 of each other kind, since 14 November 2026), each claimed (`running`, `claimed_until`); a run that died leaves it `failed` once its claim passes. A pending event older than
   `EVENT_STALE_HOURS` (24) is `skipped` as stale; a support event whose conversation has been answered, taken or ended since is `skipped`
   (*a person answered*); a test event whose test was applied or discarded since is `skipped`.
 - The turn is `runTurn({ scheduled: true, autopilot: { event: kind } })` in one conversation per store for events (`Autopilot: what

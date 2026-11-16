@@ -10,12 +10,12 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { DREAM_STEPS, LOOK_ROUNDS, PROMPT_MAX, PROMPT_MIN, briefQuestions, detailsQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
-import { latestDreamRun } from "@/server/dream-factory";
+import { dreamFingerprint, latestDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
 import { getPageForEdit } from "@/server/pages";
 import { requirePermission } from "@/server/permissions";
 
-import { answerDreamAction, approveLookAction, askLookAction, confirmDreamAction, discardDreamStoreAction, retryDreamAction, startDreamAction, startDreamOverAction, stopDreamAction } from "./actions";
+import { answerDreamAction, approveLookAction, askLookAction, confirmDreamAction, discardDreamStoreAction, dreamStateAction, retryDreamAction, startDreamAction, startDreamOverAction, stopDreamAction } from "./actions";
 import { DreamFrontPage } from "./front-page";
 import { ReworkRun, ReworkStart } from "./rework";
 
@@ -32,7 +32,7 @@ const control = "min-h-11 rounded-md border border-line bg-card px-3 font-normal
  * builds the owner watches it (D419): the progress and what is happening now, the timeline, a sketch of the front page filling in, what
  * has been made and the feed of what was just made; when it is ready, the ways on.
  */
-export default async function DreamFactoryPage({ params }: { params: Promise<{ store: string }> }) {
+export default async function DreamFactoryPage({ params, searchParams }: { params: Promise<{ store: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const member = await requirePermission((await params).store, "owner");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
@@ -40,6 +40,9 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
   const run = await latestDreamRun(store.id);
   const slug = store.slug;
   const base = `/admin/${slug}`;
+  // What the owner typed in the Website hub's box (D603), carried here in the address.
+  const asked = (await searchParams).wish;
+  const wish = typeof asked === "string" ? asked.slice(0, PROMPT_MAX) : undefined;
   const going = run && (run.status === "running" || run.status === "asking" || (run.status === "ready" && !run.finishedAt));
 
   // A rework (D527): changes to a store that exists, prepared as drafts and made live on the owner's press.
@@ -59,7 +62,7 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
           <div className="flex max-w-2xl flex-col gap-6">
             <PageHeader title={w.rework.title} description={<>{w.rework.description}</>} />
             {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
-            <ReworkStart slug={slug} storeId={store.id} words={w} />
+            <ReworkStart slug={slug} storeId={store.id} words={w} wish={wish} />
           </div>
         </AdminTextScope>
       );
@@ -113,7 +116,7 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
   const ready = run.status === "ready" || run.status === "open";
   return (
     <AdminTextScope texts={adminTexts(lang, ["home"])}>
-      {going && <RefreshWhile seconds={REFRESH_SECONDS} />}
+      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} drawn={dreamFingerprint(run)} />}
       <div className="flex max-w-6xl flex-col gap-6">
         <PageHeader title={w.title} description={<>{runWords}</>} status={run.test ? <Chip signal="insight">{w.test}</Chip> : undefined} />
 

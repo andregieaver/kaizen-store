@@ -59,7 +59,10 @@ export function RefundForm({
   outside = null,
   unitsToSend = 0,
   notifyOff = null,
+  currency = "",
 }: Ids & {
+  /** The order's currency, named on the button and in the question before money leaves (round 1, audit D454 H3). */
+  currency?: string;
   /** The refund email is switched off in Notifications (D238): the box is drawn off, linking there. */
   notifyOff?: string | null;
   /**
@@ -85,7 +88,15 @@ export function RefundForm({
   const [amount, setAmount] = useState("");
   const w = useAdminText("order").forms;
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form
+      action={action}
+      onSubmit={(event) => {
+        // Money that leaves is confirmed, naming how much (audit D454 H3/H5); recording a refund made outside asks nothing.
+        if (outside || !amount.trim()) return;
+        if (!window.confirm(fillWords(w.confirmRefund, { amount: `${currency} ${amount.trim()}`.trim() }))) event.preventDefault();
+      }}
+      className="flex flex-col gap-3"
+    >
       {outside && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
           {outside.allowed
@@ -186,8 +197,8 @@ export function RefundForm({
       )}
       {hasEmail && canRefund && !(outside && !outside.allowed) && (notifyOff ? <NotifySwitchedOff href={notifyOff}>{w.emailRefund}</NotifySwitchedOff> : <Notify>{w.emailRefund}</Notify>)}
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className={primary}>
-          {pending ? (outside ? w.recording : w.refunding) : outside ? w.recordRefund : w.refund}
+        <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className="min-h-10 rounded-pill bg-inverse px-4 text-sm font-medium text-inverse-ink disabled:opacity-50">
+          {pending ? (outside ? w.recording : w.refunding) : outside ? w.recordRefund : amount.trim() ? fillWords(w.refundAmount, { amount: `${currency} ${amount.trim()}`.trim() }) : w.refund}
         </button>
         <Result state={state} />
       </div>

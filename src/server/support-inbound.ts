@@ -43,6 +43,12 @@ import { systemDesk, type Desk } from "./support-desk";
 import { handOver } from "./support-route";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
+import type { SupportCustomer } from "./support-tools";
+import { autonomyFor } from "./autopilot-settings";
+import { col, typedRow, typedRows } from "./typed-rows";
+import { owned } from "./owned";
+import { z } from "zod";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -316,7 +322,7 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
       count(*) filter (where from_address = ${from} and created_at > now() - interval '1 hour')::int as sender,
       count(*)::int as desk
     from commerce.support_inbound_emails
-    where store_id is not distinct from ${storeId}::uuid and routed and status = 'done' and created_at > now() - interval '1 day'
+    where ${owned(storeId)} and routed and status = 'done' and created_at > now() - interval '1 day'
   `);
   if (Number(counts?.sender ?? 0) >= INBOUND_PER_SENDER_HOUR) return refused("sender_limit");
   if (Number(counts?.desk ?? 0) >= INBOUND_PER_DESK_DAY) return refused("desk_limit");
@@ -364,7 +370,7 @@ async function existingThread(desk: Desk, conversationId: string, from: string):
     select c.id, c.status, c.ended_at, c.message_seq, lower(coalesce(cu.email, c.contact_email)) as address
     from commerce.support_conversations c
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
-    where c.id = ${conversationId}::uuid and c.store_id is not distinct from ${desk.storeId}::uuid and c.anonymised_at is null and c.source <> 'admin'
+    where c.id = ${conversationId}::uuid and ${owned(desk.storeId, sql`c.store_id`)} and c.anonymised_at is null and c.source <> 'admin'
   `);
   if (!row || row.address !== from || Number(row.message_seq) >= CONVERSATION_MESSAGES_MAX) return null;
   if (row.status === "open") return conversationId;
@@ -421,9 +427,33 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
     await handOver(desk, conversationId, "system", "limit");
     return;
   }
-  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, null, null, { email: true });
+  const customer = await emailCustomer(desk, settings, conversationId);
+  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true });
   if (result.error) await handOver(desk, conversationId, "system", "no_ai");
-  else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff);
+  else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff, result.escalation);
+}
+
+/**
+ * The customer an email conversation is from, for the AI to read their own orders (`docs/100-day-challenge.md` B1), or null: only while the
+ * desk's *Answer emails about orders* is on, or the store is in the challenge, and only the one customer of the store whose address is the
+ * conversation's own. That address is safe to answer about: an email reaches the AI only when its DMARC check did not fail and, in a thread,
+ * only from the conversation's address, and every answer goes to that address alone (`sendReplyEmails()`), so whoever sent it, only the
+ * address's owner reads what the orders say.
+ */
+export async function emailCustomer(desk: Desk, settings: DeskSettings, conversationId: string): Promise<SupportCustomer> {
+  if (!desk.storeId || settings.sensitive) return null;
+  if (!settings.emailOrders && !(await autonomyFor(desk.storeId)).challenge) return null;
+  const conversation = await typedRow(
+    z.object({ contact_email: col.textOrNull }),
+    sql`select contact_email from commerce.support_conversations where id = ${conversationId}::uuid and store_id = ${desk.storeId}::uuid and source = 'email'`,
+  );
+  const address = conversation?.contact_email ? normaliseEmail(conversation.contact_email) : "";
+  if (!address) return null;
+  const found = await typedRows(
+    z.object({ id: col.uuid, email: col.text }),
+    sql`select id, email from commerce.customers where store_id = ${desk.storeId}::uuid and lower(email) = ${address} limit 2`,
+  );
+  return found.length === 1 ? { id: found[0].id, email: found[0].email } : null;
 }
 
 /**
@@ -435,7 +465,7 @@ export async function deskEmailAddress(desk: Desk, env: Record<string, string | 
   if (!domain) return null;
   const [row] = await db().execute<Row>(sql`
     update commerce.support_settings set email_key = coalesce(email_key, ${newKey()})
-    where store_id is not distinct from ${desk.storeId}::uuid
+    where ${owned(desk.storeId)}
     returning email_key
   `);
   const key = row?.email_key ? String(row.email_key) : null;
@@ -449,7 +479,7 @@ export async function deskEmailAddress(desk: Desk, env: Record<string, string | 
 export async function deskEmailsKeyRefused(desk: Desk): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as n from commerce.support_inbound_emails
-    where store_id is not distinct from ${desk.storeId}::uuid and routed and status = 'failed' and reason = 'key_refused'
+    where ${owned(desk.storeId)} and routed and status = 'failed' and reason = 'key_refused'
   `);
   return Number(row?.n ?? 0);
 }

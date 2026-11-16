@@ -4,6 +4,7 @@ import { newPageContent, pageInput, type PageContent, type RichTextDoc } from ".
 import {
   blockTextFields,
   cleanTranslations,
+  indexTitle,
   localizePage,
   pageLanguages,
   pageTexts,
@@ -188,5 +189,15 @@ describe("a picture's own size and its translations (D151)", () => {
     const parsed = pageInput.safeParse(content);
     expect(parsed.success).toBe(true);
     expect(pictureOf(parsed.data!)).toMatchObject({ maxWidth: 300, align: "right", at: { md: { align: "center" } } });
+  });
+});
+
+describe("indexTitle", () => {
+  it("gives the title localizePage() gives, for a translated and an untranslated page", () => {
+    const content: PageContent = { ...page(), title: "About", translations: { "nb-NO": { title: "Om oss" }, "sv-SE": {} } };
+    const entry = { title: content.title, titles: { "nb-NO": "Om oss" } };
+    for (const locale of ["nb-NO", "sv-SE", "da-DK", null, undefined]) {
+      expect(indexTitle(entry, locale)).toBe(localizePage(content, locale).title);
+    }
   });
 });

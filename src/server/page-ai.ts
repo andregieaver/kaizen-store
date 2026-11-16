@@ -40,14 +40,15 @@ import {
 import { pageBlocks, pageInput, reservedPageSlugs, richTextPlain, type PageContent, type PageRow } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
 
-import { AiError, aiFor, completeText, seeing, speakText, transcribeAudio, type AiConnection, type ChatMessage } from "./ai";
+import { AiError, aiAbilities, aiFor, completeText, speakText, transcribeAudio, type AiConnection, type ChatMessage } from "./ai";
 import { makePicture } from "./ai-pictures";
 import { audit, type Account } from "./auth";
 import { brandOf } from "./brand";
 import { getGoogleSettings } from "./google-reviews";
-import { listPublishedPages, ownerLanguages, savePage } from "./pages";
+import { publishedPageIndex, ownerLanguages, savePage } from "./pages";
 import { getStore } from "./stores";
 import { siteTerms } from "./taxonomy";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -93,17 +94,17 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
   const languages = await ownerLanguages(owner.storeId);
   const main = languages[0] ?? { locale: "en", name: "English" };
   const language = { locale: main.locale, name: new Intl.DisplayNames(["en"], { type: "language" }).of(main.locale) ?? main.locale };
-  const articles = await listPublishedPages(owner.storeId, "article");
-  const pages = await listPublishedPages(owner.storeId, "page");
+  const articles = await publishedPageIndex(owner.storeId, "article");
+  const pages = await publishedPageIndex(owner.storeId, "page");
   const pictures = Boolean(connection?.image);
 
   if (owner.storeId === null) {
     const links: SiteLink[] = [
       { label: "Kaizena Flow's front page", href: "/" },
       { label: "Start a store (sign up)", href: "/sign-up" },
-      ...pages.map((page) => ({ label: `Page: ${page.content.title}`, href: `/${page.slug}` })),
+      ...pages.map((page) => ({ label: `Page: ${page.title}`, href: `/${page.slug}` })),
       ...(articles.length > 0 ? [{ label: "The blog", href: "/blog" }] : []),
-      ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.content.title}`, href: `/blog/${article.slug}` })),
+      ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.title}`, href: `/blog/${article.slug}` })),
     ];
     return {
       kind: "kaizen",
@@ -139,9 +140,9 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
     { label: "The store's front page", href: at("") },
     { label: "All products", href: at("/products") },
     ...categories.map((category) => ({ label: `Category: ${category.name}`, href: at(`/category/${category.slug}`) })),
-    ...pages.map((page) => ({ label: `Page: ${page.content.title}`, href: at(`/${page.slug}`) })),
+    ...pages.map((page) => ({ label: `Page: ${page.title}`, href: at(`/${page.slug}`) })),
     ...(articles.length > 0 ? [{ label: "The blog", href: at("/blog") }] : []),
-    ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.content.title}`, href: at(`/blog/${article.slug}`) })),
+    ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.title}`, href: at(`/blog/${article.slug}`) })),
     ...told.map((product) => ({ label: `Product: ${product.title}`, href: product.href })),
     ...(store.details.contactEmail ? [{ label: "Email the store", href: `mailto:${store.details.contactEmail}` }] : []),
   ];
@@ -166,14 +167,14 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
 
 /** What the studio can do on the site: talk (a text model), make pictures, and hear and speak. */
 export async function studioAbilities(storeId: string | null): Promise<{ text: boolean; sees: boolean; pictures: boolean; hear: boolean; speak: boolean }> {
-  const connection = await aiFor(storeId);
+  const a = await aiAbilities(storeId);
   return {
-    text: Boolean(connection?.textModel),
+    text: a.text,
     /** A model that looks at pictures is set up (D163): the page copier's AI needs it. */
-    sees: Boolean(seeing(connection)),
-    pictures: Boolean(connection?.image),
-    hear: Boolean(connection?.transcriptionModel),
-    speak: Boolean(connection?.speechModel && connection.speechVoice),
+    sees: a.sees,
+    pictures: a.pictures,
+    hear: a.hear,
+    speak: a.speech,
   };
 }
 
@@ -329,7 +330,7 @@ export async function buildDraft(
   // The plan comes back from the browser: checked again as when it was made.
   const { plan, notes } = checkPlan(planned, facts, words);
   const written = await inTurns(plan.sections, WRITING_AT_ONCE, (_, index) => writeSection(connection, facts, brief, plan, index, words));
-  const taken = await db().execute<Row>(sql`select slug from commerce.pages where store_id is not distinct from ${owner.storeId}::uuid and type = 'page'`);
+  const taken = await db().execute<Row>(sql`select slug from commerce.pages where ${owned(owner.storeId)} and type = 'page'`);
   const built = buildPage(plan, written.map((w) => w.copy), facts, {
     newId: randomUUID,
     takenSlugs: taken.map((row) => String(row.slug)),
@@ -469,7 +470,7 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
   const connection = await aiFor(owner.storeId, { feature: "page_studio", accountId: owner.account.id });
   if (!connection?.image) return { ok: false, problem: "Set up a picture model under AI settings to make pictures.", outcome: "final" };
   const [page] = await db().execute<Row>(sql`
-    select id from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid and type in ('page', 'article')
+    select id from commerce.pages where id = ${pageId}::uuid and ${owned(owner.storeId)} and type in ('page', 'article')
   `);
   if (!page) return { ok: false, problem: "The page is gone.", outcome: "gone" };
 
@@ -485,7 +486,7 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
 
   const placed = await db().transaction(async (tx) => {
     const [row] = await tx.execute<Row>(sql`
-      select draft from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid for update
+      select draft from commerce.pages where id = ${pageId}::uuid and ${owned(owner.storeId)} for update
     `);
     const content = row ? pageInput.safeParse(row.draft) : null;
     if (!content?.success) return false;

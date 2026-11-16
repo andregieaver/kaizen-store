@@ -61,7 +61,7 @@ export function ImportUpload({
         setProblems([started.problem]);
         return;
       }
-      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv", cacheControl: "0" });
       if (stored.error) {
         setProblems([w.didNotArrive]);
         return;
@@ -121,7 +121,6 @@ export type OptionChoices = {
  */
 export function ImportOptionsForm({ choices, check, checked }: { choices: OptionChoices; check: (options: ImportOptions) => Promise<Step>; checked: boolean }) {
   const w = useAdminText("products").options;
-  const router = useRouter();
   const [options, setOptions] = useState<ImportOptions>(choices.initial);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -135,7 +134,6 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
       setProblem(null);
       const result = await check(options);
       if (!result.ok) setProblem(result.problem);
-      else router.refresh();
     });
 
   return (
@@ -258,7 +256,6 @@ export function ImportApply({
   const w = all.apply;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const n = (value: number) => wholeNumber(value, locale);
-  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -268,7 +265,6 @@ export function ImportApply({
       setProblem(null);
       const result = await step();
       if (!result.ok) setProblem(result.problem);
-      else router.refresh();
     });
 
   return (
@@ -316,7 +312,6 @@ export function ImportApply({
 
 /** Cancels a job that is being checked or applied; it stops after the current product and says how many were written. */
 export function CancelJobButton({ cancel, label: text = "Cancel", stopping = "Stopping …" }: { cancel: () => Promise<Step>; label?: string; stopping?: string }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   return (
@@ -329,7 +324,6 @@ export function CancelJobButton({ cancel, label: text = "Cancel", stopping = "St
           start(async () => {
             const result = await cancel();
             if (!result.ok) setProblem(result.problem);
-            else router.refresh();
           })
         }
       >

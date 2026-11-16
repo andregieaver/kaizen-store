@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -8,6 +7,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { describeDiscount, discountStatus } from "@/lib/discounts";
+import { OFFER_KEYS, OFFERS } from "@/lib/discount-offers";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { requirePermission } from "@/server/permissions";
@@ -35,19 +35,26 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);
   const money = (minor: number, marketCode: string) => formatMoney(minor, currencyOf(marketCode), locale);
   const base = `/admin/${store.slug}/discounts`;
+  const live = discounts.filter((d) => discountStatus(d, d.used) === "active").length;
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader title={w.title} description={w.description} />
-        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
-          {w.newCode}
-        </Link>
-      </div>
-      {discounts.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>{w.empty}</p>
-      ) : (
+      <PageHeader
+        title={w.title}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">{live === 0 ? w.leadNone : countWords(live, w.leadSome)}</span>
+            {w.leadRest}
+          </span>,
+        ]}
+        actions={
+          <ButtonLink kind="secondary" href={`${base}/new`}>
+            {w.writeOwn}
+          </ButtonLink>
+        }
+      />
+      {discounts.length > 0 && (
         <Card compact>
           <List label={w.title}>
             {discounts.map((d) => {
@@ -87,6 +94,40 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
           </List>
         </Card>
       )}
+      <section aria-labelledby="ready-offers" className="flex flex-col gap-3">
+        <h2 id="ready-offers" className="text-title text-ink">
+          {w.offersTitle}
+        </h2>
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3">
+          {OFFER_KEYS.map((key, i) => {
+            const offer = OFFERS[key];
+            const words = w.offers[key];
+            const fill = {
+              amount: formatMoney((offer.amountMajor ?? 0) * 100, mainCurrency(store), locale),
+              least: formatMoney((offer.minSubtotalMajor ?? 0) * 100, mainCurrency(store), locale),
+            };
+            const taken = discounts.some((d) => d.code.toUpperCase() === offer.code);
+            return (
+              <li key={key} className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
+                <span className="self-start rounded-md bg-canvas px-2.5 py-1 font-mono text-body text-ink">{offer.code}</span>
+                <span className="text-body text-ink">{fillWords(words.title, fill)}</span>
+                <span className="text-caption text-ink-2">{fillWords(words.sub, fill)}</span>
+                {!taken && (
+                  <ButtonLink
+                    href={`${base}/new?offer=${key}`}
+                    kind={i === 0 && discounts.length === 0 ? "main" : "secondary"}
+                    size="dense"
+                    className="mt-auto self-start"
+                  >
+                    {w.makeIt}
+                    <span className="sr-only"> {offer.code}</span>
+                  </ButtonLink>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     </div>
     </AdminTextScope>
   );

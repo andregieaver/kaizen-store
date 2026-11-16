@@ -13,7 +13,15 @@ import { describe, expect, it } from "vitest";
  * signed-in person turns it on. A server action file (`"use server"`) is a reference in the browser, not its code.
  */
 const SRC = join(process.cwd(), "src");
-const FORBIDDEN = ["zod", "lib/page-content", "lib/i18n", "lib/email-text"];
+const FORBIDDEN = ["zod", "lib/page-content", "lib/i18n", "lib/email-text", "lib/store-features", "lib/known-cookies", "lib/background-layers"];
+
+/**
+ * The one chain allowed to reach a forbidden file, as data: the admin's words (`lib/admin-messages/*`) reach a visitor's script only
+ * through the sign-up wizard's `components/admin/admin-text-context` (`docs/performance.md`, the sign-up wizard). Nothing else is
+ * excused: `lib/known-cookies` has no exception, as `cookie-policy.tsx` is a server component (no "use client" line), so no walk
+ * from a client entry reaches it.
+ */
+const ALLOWED = [{ target: /^lib\/admin-messages\//, through: "components/admin/admin-text-context" }];
 
 /**
  * The interface text (D212): every text of every language is 270 KB, which a visitor's browser never loads. Its client components
@@ -22,7 +30,7 @@ const FORBIDDEN = ["zod", "lib/page-content", "lib/i18n", "lib/email-text"];
  */
 function forbidden(target: string): boolean {
   const name = rel(target);
-  return FORBIDDEN.includes(name) || /^lib\/messages\/[a-z]{2}$/.test(name);
+  return FORBIDDEN.includes(name) || /^lib\/messages\/[a-z]{2}$/.test(name) || /^lib\/admin-messages\//.test(name);
 }
 
 const IMPORT = /(?:^|\n)\s*(?:import|export)\s+([^;]*?)\s+from\s+["']([^"']+)["']|(?:^|\n)\s*import\s+["']([^"']+)["']/g;
@@ -98,6 +106,7 @@ describe("the visitor's scripts", () => {
         if (!forbidden(target)) continue;
         const chain = [rel(target)];
         for (let at = seen.get(target); at; at = seen.get(at)) chain.unshift(rel(at));
+        if (ALLOWED.some((allowed) => allowed.target.test(rel(target)) && chain.includes(allowed.through))) continue;
         found.push(chain.join(" -> "));
       }
     }
@@ -108,6 +117,20 @@ describe("the visitor's scripts", () => {
     expect([...reach(join(SRC, "lib/i18n.ts")).keys()].some(forbidden)).toBe(true);
     expect([...reach(join(SRC, "lib/browser-text.ts")).keys()].some(forbidden)).toBe(false);
     expect([...reach(join(SRC, "lib/returns-text.ts")).keys()].some(forbidden)).toBe(false);
+  });
+
+  it("would notice: the features table, the admin's words and the cookie details stay out of small files", () => {
+    const b2b = [...reach(join(SRC, "lib/b2b.ts")).keys()].map(rel);
+    expect(b2b).not.toContain("lib/store-features");
+    expect(b2b.some((name) => name.startsWith("lib/admin-messages/"))).toBe(false);
+    expect([...reach(join(SRC, "lib/cookie-consent.ts")).keys()].map(rel)).not.toContain("lib/known-cookies");
+  });
+
+  it("the product page's parts reach no cart form", () => {
+    const reached = [...reach(join(SRC, "components/product-parts.tsx")).keys()].map(rel);
+    for (const form of ["app/s/[store]/[market]/cart/cart-contents", "components/checkout-button", "app/s/[store]/[market]/cart/cart-gift"]) {
+      expect(reached, form).not.toContain(form);
+    }
   });
 
   it("would notice: the product editor (admin) reaches zod", () => {

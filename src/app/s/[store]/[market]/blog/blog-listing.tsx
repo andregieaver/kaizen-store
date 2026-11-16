@@ -18,7 +18,7 @@ import { adminOrigin, marketPath } from "@/lib/paths";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
 import { blogArticles, findBlog, storeBlogs } from "@/server/blogs";
 import { gridData } from "@/server/content-grid";
-import { listPublishedPages, pageForRole, type PublishedPage } from "@/server/pages";
+import { pageForRole, publishedPageById, type PublishedPage } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { marketMoved, resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
@@ -86,7 +86,7 @@ async function loadBlog(params: ShopParams, handle: string | null) {
 async function listingPage(store: Store, blog: Blog): Promise<PublishedPage | null> {
   if (blog.main) return pageForRole(store, "blog");
   if (!blog.listingPageId) return null;
-  return (await listPublishedPages(store.id)).find((page) => page.id === blog.listingPageId) ?? null;
+  return publishedPageById(store.id, blog.listingPageId);
 }
 
 export async function blogMetadata(params: ShopParams, handle: string | null = null): Promise<Metadata> {

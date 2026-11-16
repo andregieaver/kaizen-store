@@ -5,7 +5,8 @@
  * name here is a tool.
  */
 import type { OwnerToolName } from "./owner-tools";
-import { requirementLabel, requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
+import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
+import { requirementLabel } from "./feature-labels";
 
 const BOOKED: FeatureRequirement = ["appointments", "bookings"];
 
@@ -52,6 +53,9 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_transfers: "shop",
   list_purchase_orders: "shop",
   receive_purchase_order: "shop",
+  create_purchase_order: "shop",
+  list_supplier_orders: "shop",
+  answer_supplier_order: "shop",
   list_customer_groups: "shop",
   set_customer_group: "shop",
   set_price_list_prices: "shop",
@@ -93,6 +97,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   sales_trend: "shop",
   sales_funnel: "shop",
   analytics_overview: "shop",
+  profit_overview: "shop",
   explain_change: "shop",
   analytics_alerts: "shop",
   report_catalogue: "shop",
@@ -122,6 +127,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_categories: "shop",
   update_category: "shop",
   refund_order: "shop",
+  cancel_order: "shop",
   approve_return: "shop",
   decline_return: "shop",
   create_discount: "shop",

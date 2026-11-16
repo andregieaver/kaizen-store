@@ -27,6 +27,7 @@ import { log } from "./log";
 import { deskSettings } from "./support";
 import type { Desk, StaffDesk } from "./support-desk";
 import { systemDesk } from "./support-desk";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -51,7 +52,7 @@ async function lines(desk: Desk, conversationId: string): Promise<TranscriptLine
     select m.author, m.body, m.kind, coalesce(nullif(a.name, ''), a.email) as by_name
     from commerce.support_messages m left join commerce.accounts a on a.id = m.account_id
     where m.conversation_id = ${conversationId}::uuid and m.author in ('customer', 'ai', 'agent', 'note', 'system')
-      and m.store_id is not distinct from ${desk.storeId}::uuid
+      and ${owned(desk.storeId, sql`m.store_id`)}
     order by m.seq
   `);
   return rows.map((r) => ({

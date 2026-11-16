@@ -15,7 +15,7 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
   applies it, then deploys. Pushes
   of `*.md` and `docs/**` alone run nothing, except the docs portal's articles under `content/` (D442), which are
   checked and deployed like code. Each deploy then waits until `/api/health` reports the commit (D389,
-  `scripts/await-deploy.mjs`), then requests two pages (`SMOKE_PAGES`), and fails the job when the commit does not arrive or a page does not answer 200.
+  `scripts/await-deploy.mjs`), then requests two pages (`SMOKE_PAGES`) and every challenge store's front page and cart (`/api/health/smoke`, D625), and fails the job when the commit does not arrive or a page does not answer 200.
 - The owner loves to see frequent screenshots and graphics of what is built: send screenshots of new or changed
   screens (and a diagram where it explains how something works) as the work goes, not only at the end.
 
@@ -172,6 +172,12 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The agent's eyes (D310, `docs/ai-autopilot.md` 9, `src/lib/page-look.ts` pure, `src/lib/page-look-shoot.ts`, `src/server/page-looks.ts`)
 - Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)
 - The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)
+- The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)
+- The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
+- The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
+- Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`, `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)
+- Watch and roll back the autopilot's changes (D628, `docs/100-day-challenge.md` F4, `src/lib/autopilot-watch.ts` pure, `src/server/autopilot-watch.ts`)
+- The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
 - Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 - Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)
 - The AI manager's catalogue tools (D308, `docs/ai-autopilot.md` 3, `src/lib/product-tools.ts` pure, `src/server/product-tools.ts`)
@@ -330,6 +336,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Product recommendations (D139, `docs/recommendations.md`, `src/lib/recommendations.ts` pure, `src/server/recommend.ts` engine,…
 - A/B tests of pages (D148, `docs/ab-testing.md`, `src/lib/experiments.ts`, `src/server/experiments.ts`, `experiment-admin.ts`,…
 - Responsive editing (D179, `docs/responsive-editing.md`, phases 1 to 4 built)
+- The settings panel (D631, `SettingsTabs` and `src/components/admin/settings-panel-parts.tsx`, `src/lib/settings-memory.ts`, `src/lib/settings-summary.ts`, `src/lib/style-copy.ts`)
 - Theme elements, content width and resizing (D182, `docs/theme-elements.md`)
 - The Theme tab and the site (D195)
 - Themes on every row, rows that meet, shadows, sidebars and the rail (D262)
@@ -424,6 +431,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   `as unknown as` rise anywhere, and when they fall until `node scripts/ratchet.mjs` lowers `src/server/ratchet.baseline.json` (code review 1.2).
   A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the same ratchet counts the
   writes that do not, per file, and only lets that number fall (code review 1.3).
+  A read of a store's or the platform's rows filters with `owned(storeId)` (`src/server/owned.ts`), never `store_id is not distinct from`: the
+  ratchet counts that wording per file and only lets it fall (D622).
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
   person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):

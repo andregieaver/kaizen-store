@@ -180,20 +180,23 @@ export function VisibilityFields({
   onChange,
   locked,
   display,
+  bare = false,
 }: {
   part: { visibility?: { hideAt?: Size[]; show?: Show } };
   onChange: (patch: { visibility: { hideAt?: Size[]; show?: Show } | undefined }) => void;
   locked?: string;
   /** Who sees the part (phase 4): the page's facts and the store's choices; `locked` says why it is always shown. Absent: no Display. */
   display?: { setup: DisplaySetup; locked?: string };
+  /** In the Visibility tab (D631), which names it already: no line above, its legend for screen readers only. */
+  bare?: boolean;
 }) {
   const hidden = new Set(part.visibility?.hideAt ?? []);
   const hint = useId();
   const words = useAdminText("builder");
   const w = words.responsive;
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-line pt-4">
-      <legend className="float-left mb-1 w-full font-medium">{w.visibility}</legend>
+    <fieldset className={`flex flex-col gap-5 ${bare ? "" : "border-t border-line pt-4"}`}>
+      <legend className={bare ? "sr-only" : "float-left mb-1 w-full font-medium"}>{w.visibility}</legend>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium" id={`${hint}-label`}>
           {w.breakpoint}

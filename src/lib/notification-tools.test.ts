@@ -62,6 +62,8 @@ describe("the notification tools in the owner assistant's catalogue", () => {
       "parcel_tracking",
       "list_email_automations",
       "switch_email_automation",
+      // The list's automations' words, written by the store's AI (D4 of docs/100-day-challenge.md), never an order's notification.
+      "write_email_automation",
     ]);
   });
 

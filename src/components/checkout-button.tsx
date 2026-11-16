@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition, type InputHTMLAttributes, type ReactNode } from "react";
 
 import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
 import { payHeld, type TermsDisplay } from "@/lib/checkout-terms";
-import type { ShownField } from "@/lib/checkout-rules";
+import type { AnswerInput, ShownField } from "@/lib/checkout-rules";
 import type { AddressChoice } from "@/lib/customer-addresses";
 import type { VatNumberMessage } from "@/lib/vat-text";
 import type { CheckoutProblem } from "@/server/checkout";
@@ -161,7 +161,7 @@ export function CheckoutButton({
   /** A signed-in customer's saved addresses in the market's country (D304): choosing one fills the address fields, which stay editable. */
   savedAddresses?: { choices: AddressChoice[]; label: string; typeNew: string };
   /** The store's own questions (D357), in the shopper's language, with what the cart holds of the answers. */
-  questions?: { fields: ShownField[]; answers: Record<string, string | boolean>; legend: string; required: string };
+  questions?: { fields: ShownField[]; answers: Record<string, AnswerInput>; legend: string; required: string; consent: string; consentChosen: string; choose: string };
 }) {
   const [way, setWay] = useState<"now" | "terms">(terms?.onlyWay ? "terms" : "now");
   const onTerms = Boolean(terms) && way === "terms";
@@ -240,7 +240,14 @@ export function CheckoutButton({
         cardsPayAll && !onTerms ? { termsTicked: ticked } : null,
         questions
           ? Object.fromEntries(
-              questions.fields.map((f) => [f.id, f.kind === "checkbox" ? form.get(`question_${f.id}`) === "on" : String(form.get(`question_${f.id}`) ?? "")]),
+              questions.fields.map((f): [string, AnswerInput] => [
+                f.id,
+                f.kind === "checkbox"
+                  ? form.get(`question_${f.id}`) === "on"
+                  : f.kind === "checklist" || f.kind === "select" || f.kind === "radio"
+                    ? { options: form.getAll(`question_${f.id}`).map(String).filter(Boolean), consent: form.get(`question_${f.id}_consent`) === "on" }
+                    : String(form.get(`question_${f.id}`) ?? ""),
+              ]),
             )
           : null,
       );
@@ -457,35 +464,211 @@ export function CheckoutButton({
   );
 }
 
-/** The store's own questions (D357): a text or a box each, kept as typed while the form is sent (`defaultValue` from the cart). */
+/**
+ * A tick list (task 3): one box per option, the `none` option clearing the others (and ticking another clears it), and for a sensitive list
+ * (GDPR article 9, such as allergies) a consent box the shopper must tick once an option other than `none` is ticked. The server checks it all
+ * again (`cleanAnswers()`).
+ */
+function Checklist({
+  field,
+  answer,
+  consentWords,
+  label,
+  span,
+}: {
+  field: ShownField;
+  answer: AnswerInput | undefined;
+  consentWords: string;
+  label: ReactNode;
+  span: string;
+}) {
+  const kept = answer && typeof answer === "object" ? answer : { options: [], consent: false };
+  const [ticked, setTicked] = useState<string[]>(kept.options);
+  const noneId = field.options.find((o) => o.none)?.id;
+  const needsConsent = field.sensitive && ticked.some((id) => id !== noneId);
+  const toggle = (id: string, on: boolean) =>
+    setTicked((was) => (!on ? was.filter((x) => x !== id) : id === noneId ? [id] : [...was.filter((x) => x !== noneId), id]));
+  return (
+    <fieldset data-width={field.width} className={`flex min-w-0 flex-col gap-1 ${span}`}>
+      <legend className="mb-1">{label}</legend>
+      {field.help && <p className="text-muted">{field.help}</p>}
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {field.options.map((o) => (
+          <label key={o.id} className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name={`question_${field.id}`}
+              value={o.id}
+              checked={ticked.includes(o.id)}
+              onChange={(e) => toggle(o.id, e.target.checked)}
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span>{o.label}</span>
+          </label>
+        ))}
+      </div>
+      {needsConsent && (
+        <label className="mt-1 flex items-start gap-2">
+          <input type="checkbox" name={`question_${field.id}_consent`} defaultChecked={kept.consent} required className="mt-0.5 size-4 shrink-0" />
+          <span>{consentWords}</span>
+        </label>
+      )}
+    </fieldset>
+  );
+}
+
+/**
+ * A typed question's three rows (its words, its box, its help) on the grid's own rows from a tablet's width up (CSS subgrid), so two halves next
+ * to each other keep their words, boxes and help lines level, whichever has a longer label or a help line (task 2; a help line under one half
+ * pushed the other's box down when each half was its own column).
+ */
+const ROWS = "sm:row-span-3 sm:grid sm:grid-rows-subgrid sm:gap-y-1";
+
+/**
+ * How the cart's input asks each kind typed in one line (task 4): the browser's own number, date, email and phone inputs, which the server
+ * checks again (`cleanAnswers()`); a number's lowest and highest and a date's earliest and latest day come as `min` and `max`.
+ */
+const INPUT_OF: Partial<Record<ShownField["kind"], InputHTMLAttributes<HTMLInputElement>>> & { text: InputHTMLAttributes<HTMLInputElement> } = {
+  text: { type: "text", maxLength: 500 },
+  number: { type: "number", inputMode: "numeric", step: 1 },
+  date: { type: "date" },
+  email: { type: "email", maxLength: 254, autoComplete: "off" },
+  phone: { type: "tel", inputMode: "tel", maxLength: 32, autoComplete: "off" },
+};
+
+/**
+ * A select or radio buttons (task 4): one option. A select is the storefront's `Dropdown` (D82), never a native select, with its choice in a
+ * hidden field; it starts on Choose, which is no answer. A sensitive one shows its consent box once an option is chosen, as a tick list does.
+ */
+function Choice({
+  field,
+  answer,
+  consentWords,
+  chooseWord,
+  label,
+  span,
+}: {
+  field: ShownField;
+  answer: AnswerInput | undefined;
+  consentWords: string;
+  chooseWord: string;
+  label: ReactNode;
+  span: string;
+}) {
+  const kept = answer && typeof answer === "object" ? answer : { options: [], consent: false };
+  const [chosen, setChosen] = useState<string>(kept.options[0] ?? "");
+  const consent = field.sensitive && chosen !== "" && (
+    <label className="mt-1 flex items-start gap-2">
+      <input type="checkbox" name={`question_${field.id}_consent`} defaultChecked={kept.consent} required className="mt-0.5 size-4 shrink-0" />
+      <span>{consentWords}</span>
+    </label>
+  );
+  if (field.kind === "select") {
+    return (
+      <div data-width={field.width} className={`flex min-w-0 flex-col gap-1 ${span} ${ROWS}`}>
+        <span className="flex flex-1 items-end">
+          <span>{label}</span>
+        </span>
+        <Dropdown
+          label={field.label}
+          hideLabel
+          value={chosen}
+          options={[{ value: "", label: chooseWord }, ...field.options.map((o) => ({ value: o.id, label: o.label }))]}
+          onChange={setChosen}
+        />
+        <input type="hidden" name={`question_${field.id}`} value={chosen} />
+        {field.help && <span className="text-muted">{field.help}</span>}
+        {consent}
+      </div>
+    );
+  }
+  return (
+    <fieldset data-width={field.width} className={`flex min-w-0 flex-col gap-1 ${span}`}>
+      <legend className="mb-1">{label}</legend>
+      {field.help && <p className="text-muted">{field.help}</p>}
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {field.options.map((o) => (
+          <label key={o.id} className="flex items-start gap-2">
+            <input
+              type="radio"
+              name={`question_${field.id}`}
+              value={o.id}
+              checked={chosen === o.id}
+              onChange={() => setChosen(o.id)}
+              required={field.required}
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span>{o.label}</span>
+          </label>
+        ))}
+      </div>
+      {consent}
+    </fieldset>
+  );
+}
+
+/**
+ * The store's own questions (D357): a text or a box each, kept as typed while the form is sent (`defaultValue` from the cart). Two half-width
+ * questions next to each other share a line and one alone takes its left half (task 2): a two-column grid, a full one spanning both, from a
+ * tablet's width up. On a phone every question is full width. (Not a container query: the cart's summary column is narrower on a desktop
+ * than the whole page on a phone, which drew halves on the phone and none on the desktop.)
+ */
 function Questions({ questions, field }: { questions: NonNullable<Parameters<typeof CheckoutButton>[0]["questions"]>; field: string }) {
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2 text-sm" data-checkout-questions>
-      <legend className="mb-1 font-medium">{questions.legend}</legend>
-      {questions.fields.map((f) => {
-        const answer = questions.answers[f.id];
-        const label = (
-          <>
-            {f.label}
-            {f.required && <span className="text-muted"> ({questions.required})</span>}
-          </>
-        );
-        return f.kind === "checkbox" ? (
-          <label key={f.id} className="flex items-start gap-2">
-            <input type="checkbox" name={`question_${f.id}`} defaultChecked={answer === true} required={f.required} className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {label}
-              {f.help && <span className="block text-muted">{f.help}</span>}
-            </span>
-          </label>
-        ) : (
-          <label key={f.id} className="flex flex-col gap-1">
-            <span>{label}</span>
-            <input name={`question_${f.id}`} defaultValue={typeof answer === "string" ? answer : ""} required={f.required} maxLength={500} className={field} />
-            {f.help && <span className="text-muted">{f.help}</span>}
-          </label>
-        );
-      })}
+    <fieldset className="min-w-0 text-sm" data-checkout-questions>
+      <legend className="mb-3 font-medium">{questions.legend}</legend>
+      <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+        {questions.fields.map((f) => {
+          const answer = questions.answers[f.id];
+          const label = (
+            <>
+              {f.label}
+              {f.required && <span className="text-muted"> ({questions.required})</span>}
+            </>
+          );
+          const span = f.width === "half" ? "" : "sm:col-span-2";
+          if (f.kind === "checklist") return <Checklist key={f.id} field={f} answer={answer} consentWords={questions.consent} label={label} span={span} />;
+          if (f.kind === "select" || f.kind === "radio")
+            return <Choice key={f.id} field={f} answer={answer} consentWords={questions.consentChosen} chooseWord={questions.choose} label={label} span={span} />;
+          return f.kind === "checkbox" ? (
+            <label key={f.id} data-width={f.width} className={`flex items-start gap-2 ${span}`}>
+              <input type="checkbox" name={`question_${f.id}`} defaultChecked={answer === true} required={f.required} className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {label}
+                {f.help && <span className="block text-muted">{f.help}</span>}
+              </span>
+            </label>
+          ) : (
+            <label key={f.id} data-width={f.width} className={`flex min-w-0 flex-col gap-1 ${span} ${ROWS}`}>
+              {/* The words take the spare height, so two halves' boxes line up when one label wraps. */}
+              <span className="flex flex-1 items-end">
+                <span>{label}</span>
+              </span>
+              {f.kind === "textarea" ? (
+                <textarea
+                  name={`question_${f.id}`}
+                  defaultValue={typeof answer === "string" ? answer : ""}
+                  required={f.required}
+                  maxLength={2000 /* FIELD_LONG_ANSWER_MAX: a type-only import keeps the rules out of the cart's scripts */}
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2"
+                />
+              ) : (
+                <input
+                  name={`question_${f.id}`}
+                  defaultValue={typeof answer === "string" ? answer : ""}
+                  required={f.required}
+                  {...(INPUT_OF[f.kind] ?? INPUT_OF.text)}
+                  min={f.min ?? undefined}
+                  max={f.max ?? undefined}
+                  className={field}
+                />
+              )}
+              {f.help && <span className="text-muted">{f.help}</span>}
+            </label>
+          );
+        })}
+      </div>
     </fieldset>
   );
 }

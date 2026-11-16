@@ -5,7 +5,10 @@ import { Suspense } from "react";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
-import { ProductsTable, type BulkTools } from "@/components/admin/products-bulk";
+import type { BulkTools } from "@/components/admin/products-bulk";
+import { ProductCatalogue } from "@/components/admin/product-catalogue";
+import { MoreMenu } from "@/components/admin/orders/order-folds";
+import { productSkus } from "@/server/home";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -13,8 +16,9 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { getEditorContext, listAdminProducts } from "@/server/products";
-import { productsNeedingMeasure } from "@/server/unit-price-gaps";
+import { listAdminProducts } from "@/server/products";
+import { listTerms } from "@/server/taxonomy";
+import { countProductsNeedingMeasure, productsNeedingMeasure } from "@/server/unit-price-gaps";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
@@ -31,39 +35,34 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
   const w = adminText(adminLangOf(member.account.adminLocale), "products").list;
+  const menuItem = "flex min-h-10 items-center rounded-panel px-3 text-sm text-ink hover:bg-sunken";
+  const c = adminText(adminLangOf(member.account.adminLocale), "products").catalogue;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title={w.title} />
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/admin/${store.slug}/products/export`}
-            className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
-          >
-            {w.exportLink}
-          </Link>
-          {canWrite && (
-            <Link
-              href={`/admin/${store.slug}/products/import`}
-              className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
-            >
-              {w.importLink}
+      {/* Round 2 (D597): the header's one green action, Lisa's tools in one menu. */}
+      <PageHeader
+        title={w.title}
+        actions={
+          <>
+            <MoreMenu label={c.more}>
+              <Link href={`/admin/${store.slug}/products/export`} className={menuItem}>
+                {w.exportLink}
+              </Link>
+              {canWrite && (
+                <Link href={`/admin/${store.slug}/products/import`} className={menuItem}>
+                  {w.importLink}
+                </Link>
+              )}
+              <Link href={`/admin/${store.slug}/products/categories`} className={menuItem}>
+                {w.categories}
+              </Link>
+            </MoreMenu>
+            <Link href={`/admin/${store.slug}/products/new`} className="max-sm:hidden inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+              + {w.add}
             </Link>
-          )}
-          <Link
-            href={`/admin/${store.slug}/products/categories`}
-            className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
-          >
-            {w.categories}
-          </Link>
-          <Link
-            href={`/admin/${store.slug}/products/new`}
-            className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
-          >
-            {w.add}
-          </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-card" />}>
         <ProductList storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -88,23 +87,26 @@ async function ProductList({
   const needsFilter = !archived && query.needs === "unit-price";
   const locale = store.markets[0]?.locale ?? "en";
   // Unit price (D160): active products that need a content and have none, for the notice and its filter.
-  const [products, needing, editor, imports] = await Promise.all([
+  const [products, needingCount, needing, terms, imports] = await Promise.all([
     needsFilter ? Promise.resolve([]) : listAdminProducts(store, { archived }),
-    archived ? Promise.resolve([]) : productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale),
-    // Bulk editing (D165): the store's categories, tags and markets for the action panels, read only for a member who can change products.
-    canWrite && !needsFilter ? getEditorContext(store) : Promise.resolve(null),
+    // The notice needs the number; the list itself is read only on its own filter.
+    archived || needsFilter ? Promise.resolve(0) : countProductsNeedingMeasure(store.id),
+    needsFilter ? productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale) : Promise.resolve([]),
+    // Bulk editing (D165): the store's categories and tags for the action panels (the markets come from the store), read only for a member who can change products.
+    canWrite && !needsFilter ? listTerms({ storeId: store.id, contentType: "product" }) : Promise.resolve(null),
     canWrite && !archived && !needsFilter ? listJobs(member, "product_import", 5) : Promise.resolve([]),
   ]);
+  const skus = needsFilter ? {} : await productSkus(store.id);
   const openImport = imports.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
-  const bulk: BulkTools | null = editor
+  const bulk: BulkTools | null = terms
     ? {
         preview: previewBulkAction.bind(null, store.slug),
         start: startBulkAction.bind(null, store.slug),
         next: continueBulkAction.bind(null, store.slug),
         matching: matchingAction.bind(null, store.slug),
         undo: undoBatchAction.bind(null, store.slug),
-        terms: editor.terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind })),
-        markets: editor.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
+        terms: terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind })),
+        markets: store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
       }
     : null;
   const base = `/admin/${store.slug}/products`;
@@ -113,7 +115,7 @@ async function ProductList({
   const market = store.markets[0];
   return (
     <AdminTextScope texts={adminTexts(lang, ["products"])}>
-      {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} words={adminText(lang, "screens").unitGaps} />}
+      {!needsFilter && <NeedsContentNotice count={needingCount} href={needsHref} words={adminText(lang, "screens").unitGaps} />}
       {openImport && (
         <p className="rounded-panel bg-sunken p-3 text-sm">
           {fillWords(w.openImport, { name: openImport.inputName ?? w.aFile })}{" "}
@@ -138,7 +140,7 @@ async function ProductList({
         >
           {w.archived}
         </AdminLink>
-        {(needing.length > 0 || needsFilter) && (
+        {(needingCount > 0 || needsFilter) && (
           <AdminLink
             href={needsHref}
             aria-current={needsFilter ? "page" : undefined}
@@ -160,11 +162,12 @@ async function ProductList({
           )}
         </div>
       ) : (
-        <ProductsTable
+        <ProductCatalogue
           slug={store.slug}
           archived={archived}
           locale={locale}
           bulk={bulk}
+          skus={skus}
           priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
           rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
         />

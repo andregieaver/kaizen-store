@@ -20,7 +20,7 @@ import { applyDesignPreset, isOfferedDesign } from "./design-presets";
 import { log } from "./log";
 import { staleTag } from "./refresh";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
-import { storeTag } from "./stores";
+import { storeIdTag, storeTag } from "./stores";
 import { PROMPT_MIN } from "@/lib/dream-factory";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 import { cleanAdSignals, type AdSignals } from "@/lib/ad-signals";
@@ -395,6 +395,8 @@ async function adoptRequestSandbox(admin: Account | null, requestId: string, slu
   // Stale, not refreshed: the confirmation's press must not draw its page again, whose link it has just used up.
   if (before?.slug) staleTag(storeTag(String(before.slug)));
   staleTag(storeTag(slug));
+  // The one moment a store's address changes: what `storeSlugOf()` kept for it is the sandbox's.
+  staleTag(storeIdTag(storeId));
   // The sandbox's allowances are gone with it (`adopt_sandbox()`): the store's plan's limits from now on.
   forgetLimits(storeId);
   const owner = await requesterOf(requestId);

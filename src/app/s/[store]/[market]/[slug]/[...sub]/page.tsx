@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageIndex } from "@/server/pages";
 import { resolveShop } from "@/server/shop";
 
 import { StorePageView, storePageMetadata, type StorePageQuery } from "../store-page-view";
@@ -19,7 +19,7 @@ const whole = async (params: Props["params"]) => {
 /** A store's pages nested under another (`/projects/project-a`), drawn like any other page (`[slug]/page.tsx`). */
 export async function generateStaticParams({ params }: { params: { store: string; market: string } }) {
   const shop = await resolveShop(params.store, params.market);
-  const pages = shop ? await listPublishedPages(shop.store.id) : [];
+  const pages = shop ? await publishedPageIndex(shop.store.id) : [];
   const nested = pages.filter((page) => page.slug.includes("/")).map((page) => {
     const [slug, ...sub] = page.slug.split("/");
     return { slug, sub };

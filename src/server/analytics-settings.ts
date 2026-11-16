@@ -33,6 +33,7 @@ const SETTINGS_ROW = z.object({
   payment_fee_bps: col.int,
   payment_fee_fixed_minor: col.minor,
   shipping_cost_minor: col.minor,
+  handling_cost_minor: col.minor,
   fixed_costs_monthly_minor: col.minor,
   ltv_lifespan_years: col.int,
   updated_at: col.timestamp,
@@ -81,7 +82,7 @@ export async function getAnalyticsSettings(storeId: string): Promise<StoredAnaly
   const row = await typedRow(
     SETTINGS_ROW,
     sql`
-    select payment_fee_bps, payment_fee_fixed_minor, shipping_cost_minor, fixed_costs_monthly_minor, ltv_lifespan_years, updated_at
+    select payment_fee_bps, payment_fee_fixed_minor, shipping_cost_minor, handling_cost_minor, fixed_costs_monthly_minor, ltv_lifespan_years, updated_at
     from commerce.analytics_settings where store_id = ${storeId}::uuid
   `,
   );
@@ -90,6 +91,7 @@ export async function getAnalyticsSettings(storeId: string): Promise<StoredAnaly
     paymentFeeBps: row.payment_fee_bps,
     paymentFeeFixedMinor: row.payment_fee_fixed_minor,
     shippingCostMinor: row.shipping_cost_minor,
+    handlingCostMinor: row.handling_cost_minor,
     fixedCostsMonthlyMinor: row.fixed_costs_monthly_minor,
     ltvLifespanYears: row.ltv_lifespan_years,
     saved: true,
@@ -108,11 +110,11 @@ export async function saveAnalyticsSettings(
   const s = parsed.value;
   await db().execute(sql`
     insert into commerce.analytics_settings
-      (store_id, payment_fee_bps, payment_fee_fixed_minor, shipping_cost_minor, fixed_costs_monthly_minor, ltv_lifespan_years)
-    values (${store.id}::uuid, ${s.paymentFeeBps}, ${s.paymentFeeFixedMinor}, ${s.shippingCostMinor}, ${s.fixedCostsMonthlyMinor}, ${s.ltvLifespanYears})
+      (store_id, payment_fee_bps, payment_fee_fixed_minor, shipping_cost_minor, handling_cost_minor, fixed_costs_monthly_minor, ltv_lifespan_years)
+    values (${store.id}::uuid, ${s.paymentFeeBps}, ${s.paymentFeeFixedMinor}, ${s.shippingCostMinor}, ${s.handlingCostMinor}, ${s.fixedCostsMonthlyMinor}, ${s.ltvLifespanYears})
     on conflict (store_id) do update set
       payment_fee_bps = excluded.payment_fee_bps, payment_fee_fixed_minor = excluded.payment_fee_fixed_minor,
-      shipping_cost_minor = excluded.shipping_cost_minor, fixed_costs_monthly_minor = excluded.fixed_costs_monthly_minor,
+      shipping_cost_minor = excluded.shipping_cost_minor, handling_cost_minor = excluded.handling_cost_minor, fixed_costs_monthly_minor = excluded.fixed_costs_monthly_minor,
       ltv_lifespan_years = excluded.ltv_lifespan_years, updated_at = now()
   `);
   await audit(account.id, store.id, "analytics.settings", { ...s, currency: mainCurrency(store) });

@@ -16,14 +16,17 @@ import { LogoPicture } from "@/components/logo-picture";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { offersAccountAtCheckout } from "@/lib/customer-accounts";
+import { cartBonusOff } from "@/lib/bonus";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
+import { featureOn } from "@/lib/store-features";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { deliveryRowLabel, withDeliveryWords } from "@/lib/delivery-words";
 import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
+import { contactAsked } from "@/lib/checkout-contact";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { customsText, orderCustomsSentence } from "@/lib/customs-text";
 import { checkoutAppearanceFor, checkoutLookOf } from "@/lib/checkout-look";
@@ -37,6 +40,7 @@ import { IMPORT_NOTICE_REASONS, vatRowsWhenMixed } from "@/lib/order-vat";
 import { marketPath } from "@/lib/paths";
 import { vatText } from "@/lib/vat-text";
 import { readCartId } from "@/server/cart";
+import { requestCartSummary } from "@/server/cart-summary";
 import { getOpenCheckout } from "@/server/checkout";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
@@ -53,7 +57,6 @@ import { perRequest } from "@/server/request-memo";
 import { platformPublishableKey } from "@/server/stripe";
 import type { Store } from "@/server/stores";
 
-import { readCartBonus } from "../cart/bonus";
 import { checkoutCreditsAction, checkoutGiftCardAction, checkoutRemoveGiftCardAction } from "./actions";
 
 type CheckoutView = NonNullable<Awaited<ReturnType<typeof loadCheckoutView>>>;
@@ -70,7 +73,9 @@ async function loadCheckoutView(store: Store, market: Market) {
   const open = cartId ? await getOpenCheckout(store.id, cartId) : null;
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!cartId || !open || !order) return null;
-  const bonus = await readCartBonus(store, market, cartId);
+  // The credits are the cart summary's (the render's one); a store without Bonus asks nothing, and the credits part draws nothing for 'off'
+  // (`creditsMode()` is 'off' when `enabled` is false, and `BonusCredits` then returns null).
+  const bonus = featureOn(store, "bonus") ? ((await requestCartSummary(store, market)).summary?.bonus ?? null) : cartBonusOff(false);
   // The gift cards the order is paid with (D300 F3), as the order holds them.
   const giftCards = await checkoutGiftCards(store.id, cartId, open.orderId, market.currency);
   return { m, base, cartId, open, order, bonus, giftCards, timeZone: store.timeZone };
@@ -248,7 +253,7 @@ function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeO
       codes={(codes ?? []).map((c) => ({ code: c.code, problem: c.ok ? null : codeProblemText(m, c, money) }))}
       full={m.codeProblems.codes_full}
       labels={{
-        label: m.haveCode,
+        label: m.haveCodeOrCard,
         code: m.discountCode,
         apply: m.applyCode,
         remove: m.removeCode,
@@ -261,6 +266,7 @@ function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeO
         apply={checkoutGiftCardAction.bind(null, store.slug, market.slug)}
         remove={checkoutRemoveGiftCardAction.bind(null, store.slug, market.slug)}
         labels={{ field: m.giftCardPay.field, apply: m.giftCardPay.apply, applying: m.giftCardPay.applying, remove: m.giftCardPay.remove }}
+        field={false}
       />
     </div>
   );
@@ -462,7 +468,7 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
   const { m, cartId, open, order } = view;
   // Not while the checkout is over and starts again: there is no order to change.
   if (open.expired || open.changed || open.subscription) return null;
-  const found = await deliveryView({ storeId: store.id, market }, cartId, m.shipping);
+  const found = await deliveryView({ storeId: store.id, market }, cartId, m.shipping, async () => (await requestCartSummary(store, market)).summary);
   if (!found) return null;
   // A pickup place's ready time and today's hours as sentences (D237): the client component gets words, never functions.
   const options = withDeliveryWords(found, m, { locale: market.locale, timeZone: store.timeZone });
@@ -507,6 +513,31 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
       }}
     />
   );
+}
+
+/** What the checkout page asks besides the email, or null when it asks nothing (D357, `contactAsked()`). */
+function contactOption(store: Store, market: Market, order: CheckoutView["order"], m: CheckoutView["m"]) {
+  const asked = contactAsked(store.checkoutContact, order);
+  if (asked.name === "off" && asked.phone === "off") return null;
+  const driver = order.deliveryMethod === "local";
+  const c = m.checkoutContact;
+  return {
+    store: store.slug,
+    market: market.slug,
+    country: market.code,
+    asked,
+    driver,
+    labels: {
+      name: c.name,
+      phone: c.phone,
+      optional: c.optional,
+      driverPhone: m.deliveryOptions.driverPhone.label,
+      driverHint: m.deliveryOptions.driverPhone.hint,
+      nameProblem: c.nameProblem,
+      phoneProblem: driver ? m.deliveryOptions.driverPhone.problem : c.phoneProblem,
+      saveFailed: c.saveFailed,
+    },
+  };
 }
 
 async function paymentForm(store: Store, market: Market, view: CheckoutView, drawTerms: boolean) {
@@ -633,12 +664,8 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
                   }
                 : null
             }
-            // Local delivery (D237): the session collects a phone for the driver, which Stripe's form on our page does not draw, so the page asks it.
-            phone={
-              order.deliveryMethod === "local"
-                ? { country: market.code, labels: { label: m.deliveryOptions.driverPhone.label, hint: m.deliveryOptions.driverPhone.hint, problem: m.deliveryOptions.driverPhone.problem } }
-                : null
-            }
+            // A name and a phone besides the email (D357), as this order asks them: the store's choice, a local delivery always the phone (D237).
+            contact={contactOption(store, market, order, m)}
             links={{
               cart: `${base}/cart`,
               order: `${base}/order/${open.orderId}?session_id=${encodeURIComponent(open.sessionId)}`,

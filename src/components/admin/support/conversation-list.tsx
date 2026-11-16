@@ -4,6 +4,10 @@ import type { InboxRow } from "@/server/support";
 import { useAdminText } from "../admin-text";
 
 import { ToneDot } from "./tone";
+import { Initials } from "../home/home-parts";
+
+/** Open and in the queue: someone waits for a person (round 4, D612: drawn in the warning colour). */
+const waitingForPerson = (row: InboxRow) => row.handler === "queue" && row.status === "open";
 
 /**
  * The inbox's list (D216, 2.4): who, the last message's first line, who answers (the AI, waiting and for how long, or the person who
@@ -37,8 +41,11 @@ export function ConversationList({
               onClick={() => onOpen?.(row)}
               aria-current={current ? "true" : undefined}
               data-conversation={row.id}
-              className={`flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-sunken ${current ? "bg-sunken" : ""}`}
+              className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-sunken ${current ? "bg-sunken shadow-[inset_3px_0_0_var(--color-brand)]" : ""}`}
             >
+              {/* Round 4 (D612): who it is at a glance, initials in a round tile. */}
+              <Initials name={row.who} size={36} strong={waitingForPerson(row)} />
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="flex items-center gap-2">
                 {row.unread && (
                   <span
@@ -66,7 +73,7 @@ export function ConversationList({
               </span>
               <span className="flex items-center gap-2 text-xs">
                 <span
-                  className={`rounded-full border border-line px-2 py-0.5 ${row.handler === "queue" && row.status === "open" ? "font-medium" : "text-muted"}`}
+                  className={`rounded-full px-2 py-0.5 ${waitingForPerson(row) ? "bg-warning-soft text-warning-text" : "border border-line text-muted"}`}
                 >
                   {handlerWords(row, now, t.lib)}
                 </span>
@@ -92,6 +99,7 @@ export function ConversationList({
                       row.outcome}
                   </span>
                 )}
+              </span>
               </span>
             </button>
           </li>

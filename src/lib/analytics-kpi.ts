@@ -21,6 +21,8 @@ export type AnalyticsSettings = {
   paymentFeeFixedMinor: number;
   /** What sending one order with a physical line costs the store. */
   shippingCostMinor: number;
+  /** Handling and packaging per order with a physical line (D646), apart from the label; none is 0. */
+  handlingCostMinor?: number;
   /** Rent, salaries and the like per month. */
   fixedCostsMonthlyMinor: number;
   /** Years a customer is expected to stay, for predicted lifetime value. */
@@ -31,6 +33,7 @@ export const DEFAULT_ANALYTICS_SETTINGS: AnalyticsSettings = {
   paymentFeeBps: 0,
   paymentFeeFixedMinor: 0,
   shippingCostMinor: 0,
+  handlingCostMinor: 0,
   fixedCostsMonthlyMinor: 0,
   ltvLifespanYears: 3,
 };
@@ -91,6 +94,13 @@ export type Totals = {
    * the provider's dispute fees where known. Money out, never a refund. Absent means none.
    */
   lostDisputesMinor?: number;
+  /**
+   * Return labels the store booked in the period (D646, `docs/100-day-challenge.md` E1, by the day booked): each label's price without VAT, the
+   * standard rate of the store's country taken off, as shipping is. Absent means none.
+   */
+  returnLabelsMinor?: number;
+  /** Handling and packaging (D646): the paid orders with a physical line × `handlingCostMinor`. Absent means none set. */
+  handlingCostsMinor?: number;
 };
 
 export const EMPTY_TOTALS: Totals = {
@@ -243,7 +253,10 @@ export function estimateText(coverage: number | null): string | null {
 function contributionOf(t: Totals, coverage: number | null): number | null {
   const cogs = estimatedCogs(t, coverage);
   if (cogs === null) return null;
-  return t.revenueMinor - t.refundsMinor - cogs - t.paymentFeesMinor - t.platformFeesMinor - t.shippingCostsMinor - t.marketingMinor - (t.lostDisputesMinor ?? 0);
+  return (
+    t.revenueMinor - t.refundsMinor - cogs - t.paymentFeesMinor - t.platformFeesMinor - t.shippingCostsMinor - t.marketingMinor - (t.lostDisputesMinor ?? 0) -
+    (t.returnLabelsMinor ?? 0) - (t.handlingCostsMinor ?? 0)
+  );
 }
 
 const whole = (n: number | null) => (n === null ? null : Math.round(n));

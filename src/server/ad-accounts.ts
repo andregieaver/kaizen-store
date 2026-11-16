@@ -9,6 +9,7 @@ import {
   adChangeEffect,
   adChangeWords,
   budgetsOf,
+  dailySpendRows,
   daysLeftInMonth,
   META_ACTIVE,
   META_API,
@@ -16,6 +17,7 @@ import {
   metaAccountSchema,
   metaAdSetsSchema,
   metaCampaignsSchema,
+  metaDailySpendSchema,
   metaErrorSchema,
   metaInsightsSchema,
   projectedMonthMinor,
@@ -29,7 +31,11 @@ import { decryptSecret, encryptSecret, parseKey, secretHint } from "@/lib/secret
 
 import { audit } from "./auth";
 import { log } from "./log";
-import { col, typedRow } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
+import { addDays, todayIn } from "@/lib/analytics-period";
+import { toMainOne } from "./analytics-sql";
+import { pgTextArray } from "./pg-arrays";
+import { storeOf } from "./product-data";
 
 /**
  * A store's ad account, connected for its budgets (D585, step 1 of `docs/agent-spending.md`): the only writer of `commerce.ad_accounts` and
@@ -250,4 +256,87 @@ export async function changeAdBudget(storeId: string, actorId: string, change: A
     { target: { type: before.kind === "campaign" ? "ad_campaign" : "ad_set", id: before.id }, changes: { dailyMinor: { from: before.dailyMinor, to: after.dailyMinor }, on: { from: before.on, to: after.on } } },
   );
   return { ok: true, before, after, words: preview.words, overview: preview.overview };
+}
+
+/** The days of spend read again each time: Meta still corrects a day's figure for a while after it. */
+export const SPEND_DAYS = 7;
+/** How often an account's spend is read. */
+export const SPEND_EVERY_HOURS = 6;
+/** The note on the rows this writes, so it changes only its own and never what a person typed. */
+export const META_SPEND_NOTE = "From the Meta ad account";
+
+/**
+ * Writes the Meta ad account's spend per campaign and day of the last `SPEND_DAYS` days into the books' marketing spend (`docs/100-day-challenge.md`
+ * D2, channel `paid_social`), so contribution profit, ROAS and the challenge's ratios count what the ads cost without anyone typing it. Amounts
+ * in the store's main currency (`toMainOne()`); a day with no rate is left for a later run. Rows are only its own (`META_SPEND_NOTE`): a day whose
+ * campaign spent nothing after all loses its row, and a person's own rows are never touched. Returns the rows written, or a problem.
+ */
+export async function syncAdSpend(storeId: string, fetcher: MetaFetch = realFetch, now = new Date()): Promise<{ written: number; unconverted: number } | { problem: "not_connected" } | MetaProblem> {
+  const opened = await tokenOf(storeId);
+  if (!opened) return { problem: "not_connected" };
+  const { view, token } = opened;
+  const store = await storeOf(storeId);
+  if (!store) return { problem: "not_connected" };
+  const until = todayIn(now, view.timeZone);
+  const since = addDays(until, -(SPEND_DAYS - 1));
+  const range = encodeURIComponent(JSON.stringify({ since, until }));
+  const read = await meta(
+    fetcher,
+    token,
+    `act_${view.account}/insights?level=campaign&fields=campaign_id,campaign_name,spend&time_increment=1&time_range=${range}&limit=500`,
+    metaDailySpendSchema,
+  );
+  if (isProblem(read)) return read;
+  const rows = dailySpendRows(read.data, view.currency);
+  let written = 0;
+  let unconverted = 0;
+  const kept: { day: string; campaign: string }[] = [];
+  for (const row of rows) {
+    const main = toMainOne(store, view.currency, row.amountMinor);
+    if (main === null || main <= 0) {
+      unconverted++;
+      continue;
+    }
+    await db().execute(sql`
+      insert into commerce.marketing_spend (store_id, day, channel, campaign, amount_minor, note)
+      values (${storeId}::uuid, ${row.day}::date, 'paid_social', ${row.campaign}, ${main}, ${META_SPEND_NOTE})
+      on conflict (store_id, day, channel, campaign) do update set amount_minor = excluded.amount_minor, note = excluded.note
+        where commerce.marketing_spend.note = ${META_SPEND_NOTE}
+    `);
+    kept.push({ day: row.day, campaign: row.campaign });
+    written++;
+  }
+  // Days Meta now says spent nothing on a campaign: its own row goes (a day with no rate keeps its row until it can be read).
+  if (unconverted === 0) {
+    await db().execute(sql`
+      delete from commerce.marketing_spend
+      where store_id = ${storeId}::uuid and note = ${META_SPEND_NOTE} and day between ${since}::date and ${until}::date
+        and not ((day::text || '|' || campaign) = any(${pgTextArray(kept.map((k) => `${k.day}|${k.campaign}`))}::text[]))
+    `);
+  }
+  await db().execute(sql`update commerce.ad_accounts set spend_synced_at = now() where store_id = ${storeId}::uuid and platform = 'meta'`);
+  return { written, unconverted };
+}
+
+/** The dispatcher's job `adSpend`: the accounts whose spend was not read in `SPEND_EVERY_HOURS`, a few a run. Never throws. */
+export async function syncAllAdSpend(fetcher: MetaFetch = realFetch, now = new Date()): Promise<number> {
+  let synced = 0;
+  try {
+    const due = await typedRows(
+      z.object({ store_id: col.uuid }),
+      sql`
+        select store_id from commerce.ad_accounts
+        where platform = 'meta' and (spend_synced_at is null or spend_synced_at < ${now.toISOString()}::timestamptz - make_interval(hours => ${SPEND_EVERY_HOURS}))
+        order by spend_synced_at nulls first limit 10
+      `,
+    );
+    for (const { store_id } of due) {
+      const result = await syncAdSpend(store_id, fetcher, now);
+      if ("written" in result) synced++;
+      else log("warn", "ad_accounts.spend_not_synced", { storeId: store_id, problem: result.problem });
+    }
+  } catch (error) {
+    log("error", "ad_accounts.spend_sync_failed", {}, error);
+  }
+  return synced;
 }

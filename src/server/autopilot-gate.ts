@@ -7,10 +7,22 @@ import type { SetPricesInput } from "@/lib/product-tools";
 
 import { adBudgetAutopilotProblem } from "./ad-budget-tools";
 import type { Account } from "./auth";
-import { autopilotCustomerEmailsThisWeek } from "./autopilot-settings";
+import { autopilotBroadcastsThisWeek, autopilotCustomerEmailsThisWeek, autopilotSupportRepliesToday } from "./autopilot-settings";
 import { liveCostsMoney } from "./design-tools";
-import { priceChangePercent } from "./product-tools";
+import { OwnerToolError } from "./owner-tool-error";
+import { marginAfterOffer, marginAfterPrices, priceChangePercent } from "./product-tools";
 import type { Store } from "./stores";
+import { purchaseAutopilotProblem } from "./supply-tools";
+
+/** A purchase order against the purchasing budget (C3): one that cannot be made at all asks too, with the reason in words. */
+async function purchaseProblemOf(store: Store, args: Record<string, unknown>, settings: AutonomySettings): Promise<string | null> {
+  try {
+    return await purchaseAutopilotProblem(store, args, settings.budgets);
+  } catch (error) {
+    if (error instanceof OwnerToolError) return error.message;
+    throw error;
+  }
+}
 
 /**
  * The autopilot's decision for one gated call (D309, `docs/ai-autopilot.md` 7.4): the facts the owner's budgets need read first (a price
@@ -24,15 +36,32 @@ export async function autopilotDecision(
   gate: GateCategory,
   args: Record<string, unknown>,
 ): Promise<AutonomyDecision> {
+  // Challenge mode's own budgets (`docs/100-day-challenge.md` 4A2): a broadcast a week, answers on the support desk a day.
+  if (settings.challenge && p.store && (tool === "send_broadcast" || tool === "reply_to_support")) {
+    const facts =
+      tool === "send_broadcast" ? { broadcastsThisWeek: await autopilotBroadcastsThisWeek(p.store.id) } : { supportRepliesToday: await autopilotSupportRepliesToday(p.store.id) };
+    return autonomyDecision(settings, tool, gate, facts);
+  }
+  // The margin floor (D5) is read only where the owner, or the challenge, set one: it costs a read of the catalogue.
+  const floor = settings.budgets.marginFloorPercent !== null;
+  const depth = tool === "create_discount" || tool === "create_campaign" ? discountDepth(tool, args) : null;
   const facts =
     tool === "set_prices" && p.store
-      ? { priceChangePercent: await priceChangePercent(p.store, p.account, args as SetPricesInput) }
+      ? {
+          priceChangePercent: await priceChangePercent(p.store, p.account, args as SetPricesInput),
+          ...(floor ? { lowestMarginPercent: await marginAfterPrices(p.store, p.account, args as SetPricesInput) } : {}),
+        }
       : tool === "create_discount" || tool === "create_campaign"
-        ? { discountPercent: discountDepth(tool, args) }
+        ? {
+            discountPercent: depth,
+            ...(depth === 0 ? { marginUntouched: true } : floor && depth !== null && p.store ? { lowestMarginPercent: await marginAfterOffer(p.store, depth) } : {}),
+          }
         : tool === "make_theme_live" && p.store
           ? { costsMoney: await liveCostsMoney(p.store, p.account, args as MakeThemeLiveInput) }
           : tool === "set_ad_budget" && p.store
             ? { adProblem: await adBudgetAutopilotProblem(p.store, args, settings.budgets.adRaisePercent) }
+            : tool === "create_purchase_order" && p.store
+            ? { purchaseProblem: await purchaseProblemOf(p.store, args, settings) }
             : (CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)
             ? { customerEmailsThisWeek: p.store ? await autopilotCustomerEmailsThisWeek(p.store.id) : null }
             : {};

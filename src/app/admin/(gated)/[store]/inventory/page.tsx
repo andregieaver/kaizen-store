@@ -9,6 +9,7 @@ import { InventoryView } from "@/components/admin/inventory/inventory-view";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { listQuery } from "@/lib/inventory-admin";
+import { variantPictures } from "@/server/home";
 import { inventoryPage } from "@/server/inventory";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -33,7 +34,7 @@ export default async function InventoryPage({ params, searchParams }: Props) {
   const w = adminText(lang, "inventory").pages.list;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="list" title={w.title} intro={w.intro} lang={lang} />
+      <InventoryHead slug={store.slug} active="list" title={w.title} lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -47,11 +48,14 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const lang = adminLangOf(member.account.adminLocale);
   const query = listQuery(await searchParams);
   const page = await inventoryPage(store, { search: query.search, locationId: query.location, status: query.status, after: query.after });
+  // Round 7 (D624): each variant's picture, so the mugs are told apart by sight.
+  const pictures = await variantPictures(store.id, page.rows.map((r) => r.variantId));
   return (
     <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
       <InventoryView
         slug={store.slug}
         page={page}
+        pictures={pictures}
         query={query}
         canWrite={memberCan(member, "products:write")}
         tools={{ adjust: adjustStockAction.bind(null, store.slug), setPolicy: setPoliciesAction.bind(null, store.slug) }}

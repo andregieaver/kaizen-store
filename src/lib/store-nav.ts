@@ -31,6 +31,9 @@ export type StoreItem = {
   feature?: FeatureRequirement;
   /** A page only a customer's store has: left out for Kaizena Flow's own store (D466), which has no plan and is never closed. */
   customer?: true;
+  /** A page that is not what its section's tab stands for (Custom fields under Products): the tab never opens on it, and a section with only
+   * such pages left is not in the menu. */
+  aside?: true;
 };
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
@@ -97,7 +100,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/gift-cards", "Gift cards", "Cards customers buy or you issue: what they hold, each card's history, issuing and changing one.", { feature: "gift_cards", icon: "gift", basic: true }),
           item("/reviews", "Reviews", "What buyers say about your products: check new reviews, publish or hide them and answer.", { feature: "reviews", icon: "star", basic: true }),
           item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product.", { feature: "shop", icon: "layout-template" }),
-          item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more.", { icon: "list-plus" }),
+          item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more.", { icon: "list-plus", aside: true }),
         ],
       },
     ],
@@ -128,8 +131,9 @@ export const STORE_SECTIONS: StoreSection[] = [
     key: "marketing",
     label: "Marketing",
     icon: "megaphone",
-    start: "/campaigns",
-    hub: false,
+    // Round 4 (D612): a first page of its own, what brings people back and what it did, before any one tool.
+    start: "/marketing",
+    hub: true,
     intro: "Ways to get people to buy, and to come back.",
     groups: [
       {
@@ -394,11 +398,13 @@ export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSectio
     .map((s) => {
       const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
       // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
-      const left = groups.flatMap((g) => g.items.map((i) => i.path));
+      // A page that is aside (Custom fields under Products) is never where a tab leads: a website's Products tab would open on Custom fields.
+      const left = groups.flatMap((g) => g.items.filter((i) => !i.aside).map((i) => i.path));
       const start = s.hub || left.length === 0 || left.includes(s.start) ? s.start : left[0];
-      return { ...s, start, groups };
+      return { section: { ...s, start, groups }, onlyAside: !s.hub && left.length === 0 && groups.length > 0 };
     })
-    .filter((s) => !canOpen || s.groups.length > 0);
+    .filter(({ section, onlyAside }) => (!canOpen || section.groups.length > 0) && !onlyAside)
+    .map(({ section }) => section);
 }
 
 /** Addresses inside a section, after the store's: its hub (if it has one) and every page in its sidebar. */
@@ -426,14 +432,10 @@ type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; 
 /** Whether a section's page is left out of the Basic view (D454): one not marked `basic`, unless it is where the section's tab leads. */
 export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<StoreItem, "path" | "basic">): boolean => !item.basic && item.path !== section.start;
 
-/**
- * The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are
- * inside their own section. `counts` puts a number on a section's tab (Support: the conversations waiting for a person, D216).
- */
-export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[] {
+function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<StoreSection["key"], number>>): (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[] {
   return [
     { href: base, label: "Home", icon: "home", exact: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
-    ...storeSections(flags, canOpen).map((s) => ({
+    ...sections.map((s) => ({
       href: `${base}${s.start}`,
       label: s.label,
       icon: s.icon,
@@ -447,11 +449,18 @@ export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, co
   ];
 }
 
-/** The sidebar of each section (none for Home), by the addresses inside it: a section's page of cards matches only itself. */
-export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
+/**
+ * The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are
+ * inside their own section. `counts` puts a number on a section's tab (Support: the conversations waiting for a person, D216).
+ */
+export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[] {
+  return tabsOf(base, storeSections(flags, canOpen), counts);
+}
+
+function areasOf(base: string, sections: StoreSection[]): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
   return [
     { prefixes: HOME_PATHS.map((p) => `${base}${p}`), exact: [base], groups: [] },
-    ...storeSections(flags, canOpen).map((s) => ({
+    ...sections.map((s) => ({
       prefixes: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
       ...(s.hub && { exact: [`${base}${s.start}`] }),
       groups: s.groups.map((g) => ({
@@ -460,4 +469,15 @@ export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): 
       })),
     })),
   ];
+}
+
+/** The sidebar of each section (none for Home), by the addresses inside it: a section's page of cards matches only itself. */
+export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
+  return areasOf(base, storeSections(flags, canOpen));
+}
+
+/** The tabs and the sidebars from one reading of the sections: a menu build asks `canOpen` once per item, not twice (bloat review step 0.17). */
+export function storeNav(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): { tabs: (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[]; areas: { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] } {
+  const sections = storeSections(flags, canOpen);
+  return { tabs: tabsOf(base, sections, counts), areas: areasOf(base, sections) };
 }

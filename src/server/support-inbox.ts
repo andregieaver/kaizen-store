@@ -4,7 +4,7 @@ import type { SupportMode } from "@/lib/support-rules";
 import { KAIZEN_TOPICS, STORE_TOPICS } from "@/lib/support-summary";
 import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
 
-import { aiFor } from "./ai";
+import { aiAbilities } from "./ai";
 import { INBOX_TABS, conversationChannel, deskChannels, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
 import { memberCan } from "./permissions";
 import { deskAgents } from "./support-agent";
@@ -90,12 +90,12 @@ export type ConversationFeed = StaffConversation & {
 export async function conversationFeed(desk: StaffDesk, id: string, after: number): Promise<ConversationFeed | null> {
   const conversation = await staffConversation(desk.desk, id, after);
   if (!conversation) return null;
-  const [, agents, settings, mine, connection, channel] = await Promise.all([
+  const [, agents, settings, mine, abilities, channel] = await Promise.all([
     markRead(desk.desk, id, desk.account.id, conversation.messageSeq),
     deskAgents(desk),
     deskSettings(desk.desk),
     presence(desk.desk, desk.account.id),
-    aiFor(desk.desk.storeId),
+    aiAbilities(desk.desk.storeId),
     conversationChannel(desk.desk, id),
   ]);
   const mode = settings?.mode ?? "off";
@@ -109,10 +109,10 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
     canWrite: desk.canWrite,
     mode,
     agents: agents.filter((a) => a.id !== desk.account.id),
-    partner: { available: !form && desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
+    partner: { available: !form && desk.canWrite && mode !== "off" && Boolean(settings?.partner) && abilities.text, mine: mine.partner },
     channel,
     // A store that handles sensitive information (PSI REG-11, AST-08): no AI reads what customers write, translation included.
-    translate: !form && !settings?.sensitive && desk.canWrite && Boolean(connection?.textModel),
+    translate: !form && !settings?.sensitive && desk.canWrite && abilities.text,
   };
 }
 

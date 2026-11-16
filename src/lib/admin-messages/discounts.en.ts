@@ -49,6 +49,19 @@ export const discountsEn = {
     edit: "Edit",
     usedBy: { one: "Used by {n} order", many: "Used by {n} orders" },
     ofAllowed: " of {limit} allowed",
+    /** The page drawn for Homer (round 9, D630): a sentence, ready offers and Write your own. */
+    leadNone: "No codes yet.",
+    leadSome: { one: "{n} code is live.", many: "{n} codes are live." },
+    leadRest: " Start from an offer most shops make; every part can be changed before it is saved.",
+    writeOwn: "Write your own",
+    offersTitle: "Ready offers",
+    makeIt: "Make it",
+    offers: {
+      welcome: { title: "10 % off a first order", sub: "For new customers, once each." },
+      free_shipping: { title: "Free shipping", sub: "On any order, for a weekend or a month." },
+      newsletter: { title: "15 % for your newsletter", sub: "Send it in a broadcast; ends in two weeks." },
+      thanks: { title: "{amount} off, as a thank-you", sub: "For your best customers, over {least}." },
+    },
   },
   editor: {
     segmentOnly: "People in a segment",
@@ -126,6 +139,19 @@ export const discountsEn = {
     description:
       "Offers that need no code: a percentage or an amount off, buy more and pay for fewer (3 for 2), bigger discounts for buying more, free shipping, or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.",
     newCampaign: "New campaign",
+    /** The page drawn for Homer (round 10, D633): a sentence, ready sales and Write your own. */
+    leadNone: "No sale is running.",
+    leadSome: { one: "{n} sale is running.", many: "{n} sales are running." },
+    leadRest: " Prices change by themselves, without a code; start from a sale most shops run.",
+    writeOwn: "Write your own",
+    salesTitle: "Ready sales",
+    makeIt: "Make it",
+    sales: {
+      three_for_two: { big: "3 for 2", title: "The cheapest of every three is free", sub: "On a category you choose, until you stop it.", name: "3 for 2" },
+      weekend: { big: "−20 %", title: "A weekend sale", sub: "On everything, Friday to Sunday night.", name: "Weekend sale" },
+      free_shipping: { big: "{zero}", title: "Free shipping over {amount}", sub: "Makes baskets a little bigger.", name: "Free shipping over {amount}" },
+      gift: { big: "+ gift", title: "A free product over {amount}", sub: "You choose the product; it goes in the basket by itself.", name: "A gift over {amount}" },
+    },
     empty: "No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.",
     kinds: {
       percent: "Percentage off",

@@ -8,6 +8,15 @@ import type { Widen } from "./common.en";
 export const dealsEn = {
   title: "Deals",
   description: "What each customer or company may buy, from the first talk to won or lost.",
+    /** Round 14 (D641). */
+    leadNone: "No deals yet.",
+    leadNoneRest: " A deal is what a customer or company may buy, followed from the first talk to won or lost.",
+    leadOpen: { one: "{n} open deal", many: "{n} open deals" },
+    worth: " worth {amount}",
+    leadOpenRest: ".",
+    firstTitle: "Add your first deal",
+    firstText: "Who it is with and what they might buy; it starts at {stage}.",
+    stagesLabel: "The stages a deal goes through",
   newDeal: "New deal",
   pipelines: "Pipelines",
   pipeline: "Pipeline",

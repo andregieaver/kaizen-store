@@ -1,4 +1,3 @@
-import { consentCookieName, decodeConsent } from "./cookie-consent";
 import { slugify } from "./slug";
 import { fillWords } from "./admin-fill";
 
@@ -364,17 +363,6 @@ export function rememberClose(modal: RowModal, state: { memory: ModalMemory; now
   } catch {
     return false;
   }
-}
-
-/**
- * Whether the visitor allowed preferences on this site (D58): read from the
- * consent cookie. A remembered closing is a preference, so nothing is kept
- * without it.
- */
-export function mayRemember(cookies: string, storeId: string | null): boolean {
-  const name = consentCookieName(storeId);
-  const pair = cookies.split("; ").find((cookie) => cookie.startsWith(`${name}=`));
-  return decodeConsent(pair?.slice(name.length + 1))?.choices.preferences === true;
 }
 
 // ---------------------------------------------------------------------------

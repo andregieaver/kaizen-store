@@ -9,6 +9,7 @@ import { CONTENT_API } from "./admin-api-content";
 import { CUSTOMERS_API } from "./admin-api-customers";
 import { ORDERS_API } from "./admin-api-orders";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
+import { CHECKOUT_FIELD_KINDS } from "./checkout-rules";
 import { DISCOUNT_KINDS } from "./discounts";
 import { FULFILMENT_STATES } from "./fulfilment";
 import { ADJUST_REASONS } from "./inventory";
@@ -254,12 +255,26 @@ export const apiCheckoutRule = z.object({
 
 export const apiCheckoutField = z.object({
   id,
-  kind: z.enum(["text", "checkbox"]),
+  kind: z.enum(CHECKOUT_FIELD_KINDS),
   required: z.boolean(),
   label: words,
   help: words.nullable(),
   position: z.int(),
   enabled: z.boolean(),
+  width: z.enum(["full", "half"]).describe("How wide the cart draws it: two halves next to each other share a line."),
+  options: z
+    .array(z.object({ id: z.string(), label: words, none: z.boolean().optional() }))
+    .optional()
+    .describe("The options of a checklist, a select or radio buttons, in order; `none` marks a checklist's option that clears the others."),
+  sensitive: z.boolean().describe("The answer may be sensitive personal data: the cart asks the shopper's explicit consent with it."),
+  bounds: z
+    .object({ min: z.int().optional(), max: z.int().optional() })
+    .optional()
+    .describe("A number's lowest and highest value, or a date's earliest and latest day counted from the store's today."),
+  conditions: z
+    .array(conditionSchema)
+    .optional()
+    .describe("Asked only when every condition holds for the basket, the checkout rules' own conditions; none: always asked."),
 });
 
 const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it on or off; nothing else changes.") });
@@ -644,7 +659,7 @@ const CORE_API = [
     permission: "settings:write",
     tag: "Checkout",
     summary: "Create a checkout question",
-    description: "Adds a question the checkout asks: a text or a checkbox, with its words.",
+    description: "Adds a question the checkout asks: a line or several lines of text, a checkbox, a checklist, a select, radio buttons, a number, a date, an email or a phone, with its words.",
     body: fieldInputSchema,
     response: madeId,
     status: 201,

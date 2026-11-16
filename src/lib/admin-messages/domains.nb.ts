@@ -3,6 +3,15 @@ import type { DomainsMessages } from "./domains.en";
 /** Domener-siden på norsk (D312, D313). `{name}` er navnet på et språk. */
 export const domainsNb: DomainsMessages = {
   page: {
+    lead: "Butikken din er åpen på Kaizena Flows adresse.",
+    leadRest: "Del den som den er; et eget domene kommer senere.",
+    addressLabel: "Butikkens adresse",
+    copy: "Kopier",
+    copied: "Kopiert",
+    view: "Se butikken",
+    ownTitle: "Ditt eget domene",
+    ownLater: "Ikke tilgjengelig ennå · her vil du kunne bruke en adresse som dinbutikk.no",
+    ownSoon: "Kommer",
     title: "Domener",
     description: "Der kundene finner butikken din: adressen den har hos Kaizena Flow, eller et eget domene.",
     notSetUp:

@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 
 import type { Principal } from "./owner-assistant";
 import { col, typedRow } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * Stopping a turn of the AI manager on purpose (PSI AGT-03). A turn no longer stops when its page closes or loses its connection: it
@@ -20,7 +21,7 @@ export async function requestStop(principal: Principal, conversationId: string):
   const done = await db().execute(sql`
     update commerce.assistant_conversations set stop_requested_at = now()
     where id = ${conversationId}::uuid and account_id = ${principal.account.id}::uuid
-      and store_id is not distinct from ${principal.store?.id ?? null}::uuid and source = 'admin'
+      and ${owned(principal.store?.id ?? null)} and source = 'admin'
     returning id
   `);
   return done.length > 0;

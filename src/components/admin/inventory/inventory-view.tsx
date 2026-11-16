@@ -1,10 +1,12 @@
 import Link from "next/link";
 
-import { card, field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { field, hint } from "@/components/admin/data/ui";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { fillWords } from "@/lib/admin-fill";
+import { Search } from "lucide-react";
+
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
-import { STATUS_CHOICES, listHref, type ListQuery } from "@/lib/inventory-admin";
+import { listHref, type ListQuery } from "@/lib/inventory-admin";
 import { figureIn } from "@/lib/inventory-words";
 import type { InventoryPage } from "@/server/inventory";
 
@@ -19,6 +21,7 @@ import { InventoryTable, type InventoryTools } from "./inventory-table";
 export function InventoryView({
   slug,
   page,
+  pictures = {},
   query,
   canWrite,
   tools,
@@ -26,6 +29,8 @@ export function InventoryView({
 }: {
   slug: string;
   page: InventoryPage;
+  /** Each variant's picture by id (round 7, D624). */
+  pictures?: Record<string, string | null>;
   query: ListQuery;
   canWrite: boolean;
   tools: InventoryTools;
@@ -37,41 +42,49 @@ export function InventoryView({
   const base = `/admin/${slug}/inventory`;
   const applied = page.applied;
   const filtered = applied.search !== "" || applied.locationId !== null || applied.status !== "all";
-  const counts: { id: "low" | "out" | "owed" | "negative"; label: string; n: number; link: Partial<ListQuery> | null }[] = [
-    { id: "low", label: w.counts.low, n: page.counts.low, link: { status: "low" } },
-    { id: "out", label: w.counts.out, n: page.counts.out, link: { status: "out" } },
-    { id: "owed", label: w.counts.owed, n: page.counts.owed, link: { status: "backorder" } },
-    { id: "negative", label: w.counts.negative, n: page.counts.negative, link: { status: "negative" } },
+  const chips: { status: "all" | "out" | "low" | "backorder" | "negative"; n: number | null }[] = [
+    { status: "all", n: page.counts.variants },
+    { status: "out", n: page.counts.out },
+    { status: "low", n: page.counts.low },
+    { status: "backorder", n: null },
+    ...(page.counts.negative > 0 || applied.status === "negative" ? [{ status: "negative" as const, n: page.counts.negative }] : []),
   ];
   return (
     <div className="flex flex-col gap-4">
-      <section aria-label={w.needsLook} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {counts.map((c) => (
-          <div key={c.id} className={`${card} flex flex-col gap-1`}>
-            <span className={hint}>{c.label}</span>
-            <span className="text-metric text-ink tabular-nums">{figureIn(c.n, locale)}</span>
-            {c.link && c.n > 0 && (
-              <Link href={listHref(base, { ...c.link, location: applied.locationId })} className="text-xs underline underline-offset-2">
-                {w.showThem}
+      {/* Round 7 (D624): what needs a look in a sentence, the same as chips that set the filter, and a search (a plain GET form). */}
+      <p className="max-w-3xl text-body-lg text-ink-2">
+        {page.counts.out === 0 && page.counts.low === 0 ? (
+          <span className="text-ink">{w.sentence.fine}</span>
+        ) : (
+          <span className="text-ink">
+            {page.counts.out > 0
+              ? `${countWords(page.counts.out, w.sentence.out)}${page.counts.low > 0 ? `${w.sentence.and}${countWords(page.counts.low, w.sentence.low)}` : ""}`
+              : countWords(page.counts.low, w.sentence.lowOnly)}
+            {w.sentence.end}
+          </span>
+        )}
+        {canWrite && w.sentence.rest}
+      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label={w.show} className="flex flex-wrap gap-1.5">
+          {chips.map((c) => {
+            const current = applied.status === c.status;
+            return (
+              <Link
+                key={c.status}
+                href={listHref(base, { status: c.status, location: applied.locationId, search: applied.search })}
+                aria-current={current ? "page" : undefined}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-caption ${current ? "bg-inverse text-inverse-ink" : "border border-edge bg-card text-ink hover:bg-sunken"}`}
+              >
+                {w.chips[c.status]} {c.n !== null && <span className={current ? "" : "text-muted"}>{figureIn(c.n, locale)}</span>}
               </Link>
-            )}
-          </div>
-        ))}
-      </section>
-
-      <form method="get" action={base} className={`${card} flex flex-wrap items-end gap-3`} role="search" aria-label={w.filter}>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="inventory-q" className="text-sm font-medium">
-            {w.search}
-          </label>
-          <input id="inventory-q" type="search" name="q" defaultValue={applied.search} placeholder={w.searchPlaceholder} className={`${field} w-64`} />
-        </div>
-        {page.locations.length > 1 && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="inventory-location" className="text-sm font-medium">
-              {w.location}
-            </label>
-            <select id="inventory-location" name="location" defaultValue={applied.locationId ?? ""} className={field}>
+            );
+          })}
+        </nav>
+        <form method="get" action={base} role="search" aria-label={w.filter} className="flex flex-wrap items-center gap-2">
+          {applied.status !== "all" && <input type="hidden" name="status" value={applied.status} />}
+          {page.locations.length > 1 && (
+            <select name="location" aria-label={w.location} defaultValue={applied.locationId ?? ""} className={`${field} h-10`}>
               <option value="">{w.allActive}</option>
               {page.locations.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -80,29 +93,19 @@ export function InventoryView({
                 </option>
               ))}
             </select>
-          </div>
-        )}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="inventory-status" className="text-sm font-medium">
-            {w.show}
+          )}
+          <label className="flex h-10 w-64 items-center gap-2 rounded-pill border border-edge bg-card px-3.5">
+            <Search aria-hidden className="size-4 shrink-0 text-muted" />
+            <input type="search" name="q" defaultValue={applied.search} aria-label={w.search} placeholder={w.find} className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none" />
           </label>
-          <select id="inventory-status" name="status" defaultValue={applied.status} className={field}>
-            {STATUS_CHOICES.map((s) => (
-              <option key={s} value={s}>
-                {t.status[s]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className={primary}>
-          {w.filterButton}
-        </button>
-        {filtered && (
-          <Link href={base} className={secondary}>
-            {w.clear}
-          </Link>
-        )}
-      </form>
+          <button type="submit" className="sr-only">{w.filterButton}</button>
+          {filtered && (
+            <Link href={base} className="text-body text-brand-text hover:underline">
+              {w.clear}
+            </Link>
+          )}
+        </form>
+      </div>
 
       {applied.locationId && (
         <p className={hint}>
@@ -127,6 +130,7 @@ export function InventoryView({
       ) : (
         <InventoryTable
           rows={page.rows}
+          pictures={pictures}
           locations={page.locations}
           chosenLocationId={applied.locationId}
           canWrite={canWrite}

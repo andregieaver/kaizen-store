@@ -7,7 +7,6 @@ import {
   CONSENT_CHANGED_EVENT,
   CONSENT_DAYS,
   FULL_CONSENT,
-  KNOWN_COOKIES,
   NO_CONSENT,
   OPTIONAL_CATEGORIES,
   consentCookieName,
@@ -19,6 +18,7 @@ import {
   type OptionalCategory,
   type TrackingSettings,
 } from "@/lib/cookie-consent";
+import { cookieCategory } from "@/lib/cookie-patterns";
 import { readAdSignals } from "@/lib/ad-signals";
 import { addCustomCode, type CustomCode } from "@/lib/custom-code";
 import { MODAL_STORAGE_PREFIX } from "@/lib/page-modal";
@@ -227,8 +227,8 @@ function forget(categories: OptionalCategory[]) {
   const host = location.hostname;
   const domains = ["", host, `.${host.split(".").slice(-2).join(".")}`];
   for (const name of names) {
-    const known = KNOWN_COOKIES.find((cookie) => cookie.pattern.test(name));
-    if (!known || !categories.includes(known.category as OptionalCategory)) continue;
+    const category = cookieCategory(name);
+    if (!category || !categories.includes(category as OptionalCategory)) continue;
     for (const domain of domains) {
       document.cookie = `${name}=; Max-Age=0; Path=/${domain ? `; Domain=${domain}` : ""}`;
     }

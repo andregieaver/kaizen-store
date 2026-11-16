@@ -23,6 +23,9 @@ import {
 import { marketUrl } from "@/lib/paths";
 
 import { audit } from "./auth";
+import { owned } from "./owned";
+import { col, typedRows } from "./typed-rows";
+import { z } from "zod";
 import { sendEmail, type SendOutcome } from "./email";
 import { emailFooter, storeById } from "./shopper-emails";
 import { normaliseEmail } from "@/lib/email-address";
@@ -456,4 +459,17 @@ export async function addMovedSubscribers(
     } else already += 1;
   }
   return { added, already, ids };
+}
+
+/**
+ * How many published pages carry a newsletter form (round 13, D639): the Subscribers page says whether people can join from the site.
+ * Any block of the published content, at any depth, whose type is `newsletter`.
+ */
+export async function newsletterFormPages(storeId: string): Promise<number> {
+  const [row] = await typedRows(
+    z.object({ n: col.int }),
+    sql`select count(*)::int as n from commerce.pages
+        where ${owned(storeId)} and published is not null and type = 'page' and jsonb_path_exists(published, 'lax $.** ? (@.type == "newsletter")')`,
+  );
+  return row?.n ?? 0;
 }

@@ -19,11 +19,14 @@ const actionName = (action: string, words?: StaffMessages) => {
 };
 
 /** An entry's sentence in the account's words where its action has one; otherwise the sentence the server wrote. */
-function entrySentence(entry: ActivityEntry, words?: StaffMessages): string {
+export function entrySentence(entry: ActivityEntry, words?: StaffMessages): string {
   const sentence = words?.activity.sentences[entry.action];
-  if (!words || !sentence) return entry.summary;
-  const label = entry.target?.label?.trim() || (entry.target ? `${entry.target.type} ${entry.target.id}` : words.activity.it);
-  return fillWords(sentence, { label });
+  const named = entry.target?.label?.trim();
+  // An id is never shown to a person (round 14, D641): a target without a name is left out, "it" in a written sentence.
+  if (!words || !sentence) return entry.target && !named ? actionLabel(entry.action) : entry.summary;
+  // An account without a name in the entry is the person the sentence is about: their name, else "it".
+  const person = entry.target?.type === "account" ? (entry.name ?? entry.email) : null;
+  return fillWords(sentence, { label: named || person || words.activity.it });
 }
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
@@ -139,7 +142,8 @@ export function ActivityFilters({
 }
 
 /** One entry's time, with the date, in the viewer's zone. */
-const when = (iso: string, zone: string, locale = "en-GB") => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: zone }).format(new Date(iso));
+const time = (iso: string, zone: string, locale = "en-GB") => new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: zone }).format(new Date(iso));
+const dayKey = (iso: string, zone: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 
 /**
  * The entries, newest first: a sentence made by code, who did it, where it belongs and when; the changed fields as from and to behind
@@ -151,8 +155,11 @@ export function ActivityList({
   older,
   empty,
   words,
-  locale,
+  locale = "en-GB",
+  now,
 }: {
+  /** The time the page was drawn, for Today and Yesterday (round 14, D641); without it each day is named by its date. */
+  now?: number;
   entries: readonly ActivityEntry[];
   zone: string;
   /** The address of the next, older page; none on the last. */
@@ -166,38 +173,58 @@ export function ActivityList({
   const w = (words ?? staffEn).activity;
   if (entries.length === 0) return <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>{empty ?? w.empty}</p>;
   const values = words ? { none: w.none, yes: w.yes, no: w.no } : undefined;
+  // By day (round 14, D641): Today, Yesterday, then the date; each row says only its time.
+  const today = now === undefined ? null : dayKey(new Date(now).toISOString(), zone);
+  const yesterday = now === undefined ? null : dayKey(new Date(now - 86_400_000).toISOString(), zone);
+  const days: { key: string; entries: ActivityEntry[] }[] = [];
+  for (const entry of entries) {
+    const key = dayKey(entry.at, zone);
+    if (days.at(-1)?.key !== key) days.push({ key, entries: [] });
+    days.at(-1)!.entries.push(entry);
+  }
+  const dayName = (key: string) =>
+    key === today
+      ? w.today
+      : key === yesterday
+        ? w.yesterday
+        : new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" }).format(new Date(`${key}T12:00:00Z`));
   return (
     <div className="flex flex-col gap-4">
-      <ol className={`divide-y divide-line ${CARD_CLASS}`}>
-        {entries.map((entry) => {
-          const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change, values)) : [];
-          return (
-            <li key={entry.id} className="flex gap-3 p-4 text-sm">
-              <Avatar avatar={avatarFor({ email: entry.email ?? "", name: entry.name, avatarPath: entry.avatarPath })} size={32} />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium break-words">{entrySentence(entry, words)}</p>
-                <p className="text-muted">
-                  {entry.name ?? entry.email ?? w.platform}
-                  {entry.actedBy !== "person" && ` ${w.actedBy[entry.actedBy]}`} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{when(entry.at, zone, locale)}</time>
-                </p>
-                {lines.length > 0 && (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-muted">{w.details}</summary>
-                    <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
-                      {lines.map((line) => (
-                        <div key={line.label} className="contents">
-                          <dt className="text-muted">{line.label}</dt>
-                          <dd className="break-words">{line.from === null ? w.changed : `${line.from} → ${line.to}`}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </details>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+      {days.map((day) => (
+        <section key={day.key} aria-label={dayName(day.key)} className={`px-4 pt-3 ${CARD_CLASS}`}>
+          <h2 className="pb-1 text-eyebrow text-ink-2">{dayName(day.key)}</h2>
+          <ol className="divide-y divide-line">
+            {day.entries.map((entry) => {
+              const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change, values)) : [];
+              return (
+                <li key={entry.id} className="flex gap-3 py-3 text-sm">
+                  <Avatar avatar={avatarFor({ email: entry.email ?? "", name: entry.name, avatarPath: entry.avatarPath })} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium break-words">{entrySentence(entry, words)}</p>
+                    <p className="text-muted">
+                      {entry.name ?? entry.email ?? w.platform}
+                      {entry.actedBy !== "person" && ` ${w.actedBy[entry.actedBy]}`} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{time(entry.at, zone, locale)}</time>
+                    </p>
+                    {lines.length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-muted">{w.details}</summary>
+                        <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
+                          {lines.map((line) => (
+                            <div key={line.label} className="contents">
+                              <dt className="text-muted">{line.label}</dt>
+                              <dd className="break-words">{line.from === null ? w.changed : `${line.from} → ${line.to}`}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </details>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      ))}
       {older && (
         <p>
           <Link href={older} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">

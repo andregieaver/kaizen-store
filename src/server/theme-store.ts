@@ -96,6 +96,8 @@ export async function themePreviewNeighbours(slug: string): Promise<{ previous: 
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
+  // Read here, not from `themeStoreCards()`: a theme published after the shared list was cached would have no neighbours on its first
+  // visit (bloat review step 0.20 tried the shared list; e2e/theme-store.spec.ts:118 and :146 failed in CI on afc6d749).
   const around = previewNeighbours(await loadCards(), slug);
   return around && { previous: { slug: around.previous.slug, title: around.previous.title }, next: { slug: around.next.slug, title: around.next.title } };
 }

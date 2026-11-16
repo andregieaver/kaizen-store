@@ -9,13 +9,13 @@ import { fillWords } from "@/lib/admin-fill";
 import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import { PROMPT_MAX, PROMPT_MIN, REVIEW_ROUNDS, REWORK_STEPS, passed } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
-import type { DreamRun } from "@/server/dream-factory";
+import { dreamFingerprint, type DreamRun } from "@/server/dream-factory";
 import { APPEARANCE_ASPECTS } from "@/lib/site-appearance";
 import { latestAppearance } from "@/server/page-looks";
 import { reworkPrepared, type ReworkPrepared } from "@/server/dream-showcase";
 import type { Store } from "@/server/stores";
 
-import { analyseExistingAction, agreeReworkAction, applyReworkAction, askReworkAction, retryDreamAction, startReworkAction, stopDreamAction } from "./actions";
+import { analyseExistingAction, agreeReworkAction, applyReworkAction, askReworkAction, dreamStateAction, retryDreamAction, startReworkAction, stopDreamAction } from "./actions";
 
 type Words = HomeMessages["dream"];
 
@@ -28,7 +28,7 @@ const OWNER_STEPS = new Set<string>(REWORK_STEPS.filter((step) => step.who === "
  * The form a rework starts from (D527): what the owner wants changed, in their own words. *Analyse existing* (D528) is one press beside
  * it: the AI photographs the site, says how it looks and puts a suggestion in the field, for the owner to change before they use it.
  */
-export async function ReworkStart({ slug, storeId, words: w, title }: { slug: string; storeId: string; words: Words; title?: string }) {
+export async function ReworkStart({ slug, storeId, words: w, title, wish }: { slug: string; storeId: string; words: Words; title?: string; /** What the owner typed on the Website hub (D603), the field's start. */ wish?: string }) {
   const r = w.rework;
   const a = r.analyse;
   const analysis = await latestAppearance(storeId);
@@ -100,7 +100,7 @@ export async function ReworkStart({ slug, storeId, words: w, title }: { slug: st
         <label className={field}>
           {title ?? r.startLabel}
           {/* Keyed by the analysis, so its suggestion fills the field when it arrives; the owner changes it before using it. */}
-          <textarea key={seen ? analysis?.id : "own"} name="prompt" required minLength={PROMPT_MIN} maxLength={PROMPT_MAX} rows={seen ? 9 : 5} defaultValue={seen?.suggestion ?? ""} className={`${control} py-2`} />
+          <textarea key={seen ? analysis?.id : "own"} name="prompt" required minLength={PROMPT_MIN} maxLength={PROMPT_MAX} rows={seen ? 9 : 5} defaultValue={wish || seen?.suggestion || ""} className={`${control} py-2`} />
           <span className="font-normal text-ink-2">{seen ? a.suggested : r.startHint}</span>
         </label>
         <div>
@@ -132,7 +132,7 @@ export async function ReworkRun({ store, run, words: w }: { store: Store; run: D
   const words = run.status === "ready" || run.status === "open" ? r.run.running : r.run[run.status];
   return (
     <>
-      {going && <RefreshWhile seconds={REFRESH_SECONDS} />}
+      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} drawn={dreamFingerprint(run)} />}
       <div className="flex max-w-4xl flex-col gap-6">
         <PageHeader title={r.title} description={<>{words}</>} />
 

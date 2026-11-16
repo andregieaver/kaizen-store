@@ -1,0 +1,583 @@
+[
+ {
+  "category": "necessary",
+  "colorMode": true,
+  "days": null,
+  "name": "color_mode_…",
+  "on": "store",
+  "pattern": "^color_mode_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers whether you chose light or dark colours for this store; kept in your browser until you choose again.",
+   "nb": "Husker om du valgte lyse eller mørke farger for denne butikken; lagres i nettleseren til du velger på nytt.",
+   "sv": "Kommer ihåg om du valde ljusa eller mörka färger för den här butiken; sparas i webbläsaren tills du väljer igen.",
+   "da": "Husker, om du valgte lyse eller mørke farver til denne butik; gemmes i din browser, indtil du vælger igen."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 365,
+  "feature": "languages",
+  "languages": true,
+  "name": "kaizen_lang_…",
+  "on": "store",
+  "pattern": "^kaizen_lang_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers the language you chose for this store, so its front page opens in it next time; kept for a year or until you choose again.",
+   "nb": "Husker språket du valgte for denne butikken, slik at forsiden åpnes på det neste gang; lagres i ett år eller til du velger på nytt.",
+   "sv": "Kommer ihåg språket du valde för den här butiken, så att startsidan öppnas på det nästa gång; sparas i ett år eller tills du väljer igen.",
+   "da": "Husker det sprog, du valgte til denne butik, så forsiden åbner på det næste gang; gemmes i et år, eller indtil du vælger igen."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_admin_color_mode",
+  "on": "platform",
+  "pattern": "^kaizen_admin_color_mode$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "In Kaizena Flow's admin: remembers whether you chose light or dark colours, so pages open in them.",
+   "nb": "I Kaizena Flows administrasjon: husker om du valgte lyse eller mørke farger, så sidene åpnes med dem.",
+   "sv": "I Kaizena Flows administration: kommer ihåg om du valde ljusa eller mörka färger, så att sidorna öppnas med dem.",
+   "da": "I Kaizena Flows administration: husker, om du valgte lyse eller mørke farver, så siderne åbner med dem."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_admin_scheme",
+  "on": "platform",
+  "pattern": "^kaizen_admin_scheme$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "In Kaizena Flow's admin: remembers the colour scheme you chose, so pages open in it.",
+   "nb": "I Kaizena Flows administrasjon: husker fargeskjemaet du valgte, så sidene åpnes med det.",
+   "sv": "I Kaizena Flows administration: kommer ihåg färgschemat du valde, så att sidorna öppnas med det.",
+   "da": "I Kaizena Flows administration: husker det farveskema, du valgte, så siderne åbner med det."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_admin_lang",
+  "on": "platform",
+  "pattern": "^kaizen_admin_lang$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "In Kaizena Flow's admin: remembers the language your account shows the admin in, so pages open marked in it.",
+   "nb": "I Kaizena Flows administrasjon: husker språket kontoen din viser administrasjonen på, så sidene åpnes merket med det.",
+   "sv": "I Kaizena Flows administration: kommer ihåg språket ditt konto visar administrationen på, så att sidorna öppnas märkta med det.",
+   "da": "I Kaizena Flows administration: husker det sprog, din konto viser administrationen på, så siderne åbner mærket med det."
+  },
+  "staff": true
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen-admin-shell-…",
+  "on": "platform",
+  "pattern": "^kaizen-admin-shell-\\d+$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "In Kaizena Flow's admin: keeps the page shown when you are offline, so the installed admin can say so. It holds none of your data.",
+   "nb": "I Kaizena Flows administrasjon: tar vare på siden som vises når du er frakoblet, så den installerte administrasjonen kan si fra. Den inneholder ingen av dine data.",
+   "sv": "I Kaizena Flows administration: sparar sidan som visas när du är offline, så att den installerade administrationen kan säga det. Den innehåller inga av dina uppgifter.",
+   "da": "I Kaizena Flows administration: gemmer den side, der vises, når du er offline, så den installerede administration kan sige det. Den indeholder ingen af dine data."
+  },
+  "staff": true
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_admin_rail",
+  "on": "platform",
+  "pattern": "^kaizen_admin_rail$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "In Kaizena Flow's admin: remembers that you chose to see the sections' names beside their icons.",
+   "nb": "I Kaizena Flows administrasjon: husker at du valgte å se navnene på seksjonene ved siden av ikonene.",
+   "sv": "I Kaizena Flows administration: kommer ihåg att du valde att se avsnittens namn bredvid ikonerna.",
+   "da": "I Kaizena Flows administration: husker, at du valgte at se afsnittenes navne ved siden af ikonerne."
+  },
+  "staff": true
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_admin_builder_…",
+  "on": "platform",
+  "pattern": "^kaizen_admin_builder_((left|right)(_width)?|css_width)$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "In Kaizena Flow's page builder: remembers whether you folded a sidebar away and how wide you made it and the CSS panel.",
+   "nb": "I Kaizena Flows sidebygger: husker om du skjulte et sidepanel og hvor bredt du gjorde det og CSS-panelet.",
+   "sv": "I Kaizena Flows sidbyggare: kommer ihåg om du fällde ihop en sidopanel och hur bred du gjorde den och CSS-panelen.",
+   "da": "I Kaizena Flows sidebygger: husker, om du foldede et sidepanel sammen, og hvor bredt du gjorde det og CSS-panelet."
+  },
+  "staff": true
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_site_css_panel",
+  "on": "both",
+  "pattern": "^kaizen_site_css_panel$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "For a site's own signed-in staff: remembers where you moved the Custom CSS panel and how big you made it.",
+   "nb": "For nettstedets egne innloggede ansatte: husker hvor du flyttet panelet for egen CSS og hvor stort du gjorde det.",
+   "sv": "För webbplatsens egna inloggade medarbetare: kommer ihåg var du flyttade panelen för egen CSS och hur stor du gjorde den.",
+   "da": "For webstedets egne loggede ansatte: husker, hvor du flyttede panelet til egen CSS, og hvor stort du gjorde det."
+  },
+  "staff": true
+ },
+ {
+  "category": "necessary",
+  "chat": true,
+  "days": null,
+  "name": "kaizen_chat",
+  "on": "both",
+  "pattern": "^kaizen_chat$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers which chat conversation is yours and a copy of it while you move between pages; gone when you close the tab. The conversation itself is kept by the site for a limited time.",
+   "nb": "Husker hvilken chatsamtale som er din og en kopi av den mens du går mellom sidene; forsvinner når du lukker fanen. Selve samtalen lagres av nettstedet en begrenset tid.",
+   "sv": "Kommer ihåg vilken chattkonversation som är din och en kopia av den medan du går mellan sidorna; försvinner när du stänger fliken. Själva konversationen sparas av webbplatsen en begränsad tid.",
+   "da": "Husker, hvilken chatsamtale der er din, og en kopi af den, mens du går mellem siderne; forsvinder, når du lukker fanen. Selve samtalen gemmes af webstedet i en begrænset tid."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "feature": "shop",
+  "name": "kaizen_rec",
+  "on": "store",
+  "pattern": "^kaizen_rec$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers in this tab which products you looked at, what you searched for and which recommended products you opened, so the store can suggest products that suit you; gone when you close the tab, never joined to who you are.",
+   "nb": "Husker i denne fanen hvilke produkter du så på, hva du søkte etter og hvilke anbefalte produkter du åpnet, slik at butikken kan foreslå produkter som passer deg; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
+   "sv": "Kommer ihåg i den här fliken vilka produkter du tittade på, vad du sökte efter och vilka rekommenderade produkter du öppnade, så att butiken kan föreslå produkter som passar dig; försvinner när du stänger fliken och kopplas aldrig till vem du är.",
+   "da": "Husker i denne fane, hvilke produkter du så på, hvad du søgte efter, og hvilke anbefalede produkter du åbnede, så butikken kan foreslå produkter, der passer til dig; forsvinder, når du lukker fanen, og knyttes aldrig til, hvem du er."
+  },
+  "recommendations": true
+ },
+ {
+  "category": "statistics",
+  "days": 30,
+  "name": "kaizen_touch_…",
+  "on": "store",
+  "pattern": "^kaizen_touch_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers where your first visit in the last 30 days came from (an ad, a search, another site), so the store can see which of its campaigns bring customers; no number that identifies you, never joined to who you are.",
+   "nb": "Husker hvor ditt første besøk de siste 30 dagene kom fra (en annonse, et søk, et annet nettsted), slik at butikken kan se hvilke kampanjer som gir kunder; ingen nummer som identifiserer deg, og kobles aldri til hvem du er.",
+   "sv": "Kommer ihåg var ditt första besök de senaste 30 dagarna kom från (en annons, en sökning, en annan webbplats), så att butiken kan se vilka kampanjer som ger kunder; inget nummer som identifierar dig, och kopplas aldrig till vem du är.",
+   "da": "Husker, hvor dit første besøg de seneste 30 dage kom fra (en annonce, en søgning, et andet websted), så butikken kan se, hvilke kampagner der giver kunder; intet nummer, der identificerer dig, og knyttes aldrig til, hvem du er."
+  },
+  "touch": true
+ },
+ {
+  "category": "statistics",
+  "days": 90,
+  "experiments": true,
+  "name": "kaizen_ab_…",
+  "on": "store",
+  "pattern": "^kaizen_ab(_[0-9a-f-]{36}|_reload)?$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers which version of a page the store is trying on you (an A/B test), by a random number that belongs to this store only, so you see the same version each time and the store can learn which works better; never joined to who you are.",
+   "nb": "Husker hvilken versjon av en side butikken prøver ut på deg (en A/B-test), med et tilfeldig tall som bare hører til denne butikken, slik at du ser samme versjon hver gang og butikken kan lære hva som fungerer best; kobles aldri til hvem du er.",
+   "sv": "Kommer ihåg vilken version av en sida butiken testar på dig (ett A/B-test), med ett slumptal som bara hör till den här butiken, så att du ser samma version varje gång och butiken kan lära sig vad som fungerar bäst; kopplas aldrig till vem du är.",
+   "da": "Husker, hvilken version af en side butikken afprøver på dig (en A/B-test), med et tilfældigt tal, der kun hører til denne butik, så du ser den samme version hver gang, og butikken kan lære, hvad der virker bedst; knyttes aldrig til, hvem du er."
+  }
+ },
+ {
+  "category": "preferences",
+  "days": null,
+  "modals": true,
+  "name": "kaizen_modal_…",
+  "on": "both",
+  "pattern": "^kaizen_modal_[a-z0-9-]+$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers that you closed a pop-up window, so it does not open again straight away; kept until you close the tab, or for the number of days the site has chosen.",
+   "nb": "Husker at du lukket et popup-vindu, slik at det ikke åpnes igjen med en gang; lagres til du lukker fanen, eller i så mange dager nettstedet har valgt.",
+   "sv": "Kommer ihåg att du stängde ett popup-fönster, så att det inte öppnas igen direkt; sparas tills du stänger fliken eller så många dagar som webbplatsen har valt.",
+   "da": "Husker, at du lukkede et popup-vindue, så det ikke åbner igen med det samme; gemmes, til du lukker fanen, eller i det antal dage, webstedet har valgt."
+  }
+ },
+ {
+  "category": "preferences",
+  "days": null,
+  "languages": true,
+  "name": "kaizen_lang_hint",
+  "on": "platform",
+  "pattern": "^kaizen_lang_hint$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers that you closed the suggestion to read Kaizena Flow's site in another language, so it is not shown again; kept in your browser until you clear it.",
+   "nb": "Husker at du lukket forslaget om å lese Kaizena Flows nettsted på et annet språk, slik at det ikke vises igjen; lagres i nettleseren til du sletter det.",
+   "sv": "Kommer ihåg att du stängde förslaget att läsa Kaizena Flows webbplats på ett annat språk, så att det inte visas igen; sparas i webbläsaren tills du rensar det.",
+   "da": "Husker, at du lukkede forslaget om at læse Kaizena Flows websted på et andet sprog, så det ikke vises igen; gemmes i browseren, til du sletter det."
+  }
+ },
+ {
+  "category": "marketing",
+  "days": 30,
+  "name": "kaizen_ref",
+  "on": "platform",
+  "pattern": "^kaizen_ref$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers which Kaizena Flow store owner's referral link you came from, so they are credited if you ask for a store; kept for the number of days the referral program sets.",
+   "nb": "Husker hvilken Kaizena Flow-butikkeiers anbefalingslenke du kom fra, slik at vedkommende får æren hvis du ber om en butikk; lagres i så mange dager som anbefalingsprogrammet bestemmer.",
+   "sv": "Kommer ihåg vilken Kaizena Flow-butiksägares rekommendationslänk du kom från, så att hen krediteras om du ber om en butik; sparas i så många dagar som rekommendationsprogrammet bestämmer.",
+   "da": "Husker, hvilken Kaizena Flow-butiksejers anbefalingslink du kom fra, så vedkommende krediteres, hvis du beder om en butik; gemmes i det antal dage, anbefalingsprogrammet bestemmer."
+  },
+  "referrals": true
+ },
+ {
+  "affiliate": true,
+  "category": "marketing",
+  "days": 90,
+  "feature": "referrals",
+  "name": "kaizen_aff_…",
+  "on": "store",
+  "pattern": "^kaizen_aff_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers which friend's referral link you came from, so the store can give you a welcome discount and thank them; the number of days is the store's choice, at most 90.",
+   "nb": "Husker hvilken venns tipslenke du kom fra, slik at butikken kan gi deg velkomstrabatt og takke vennen; antall dager bestemmer butikken, høyst 90.",
+   "sv": "Kommer ihåg vilken väns tipslänk du kom från, så att butiken kan ge dig välkomstrabatt och tacka vännen; antalet dagar bestämmer butiken, högst 90.",
+   "da": "Husker, hvilken vens anbefalingslink du kom fra, så butikken kan give dig velkomstrabat og takke vennen; antallet af dage bestemmer butikken, højst 90."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 30,
+  "feature": "shop",
+  "name": "cart_…",
+  "on": "store",
+  "pattern": "^cart_[0-9a-f-]{36}_[a-z]{2}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Keeps your shopping cart while you shop.",
+   "nb": "Husker handlekurven din mens du handler.",
+   "sv": "Kommer ihåg din varukorg medan du handlar.",
+   "da": "Husker din kurv, mens du handler."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 60,
+  "name": "account_…",
+  "on": "store",
+  "pattern": "^account_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Keeps you signed in to your account when you choose to sign in.",
+   "nb": "Holder deg innlogget på kontoen din når du velger å logge inn.",
+   "sv": "Håller dig inloggad på ditt konto när du väljer att logga in.",
+   "da": "Holder dig logget ind på din konto, når du vælger at logge ind."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 365,
+  "feature": "shop",
+  "name": "wishlist_…",
+  "on": "store",
+  "pattern": "^wishlist_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Keeps the products you save to your wishlist.",
+   "nb": "Husker produktene du lagrer i ønskelisten.",
+   "sv": "Kommer ihåg produkterna du sparar i önskelistan.",
+   "da": "Husker de produkter, du gemmer på ønskelisten."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 365,
+  "feature": "shop",
+  "name": "kaizen_mine_…",
+  "on": "store",
+  "pattern": "^kaizen_mine_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Tells the page that you have saved products or an account here, so it asks for them only then.",
+   "nb": "Forteller siden at du har lagrede produkter eller en konto her, slik at den bare spør etter dem da.",
+   "sv": "Talar om för sidan att du har sparade produkter eller ett konto här, så att den bara frågar efter dem då.",
+   "da": "Fortæller siden, at du har gemte produkter eller en konto her, så den kun spørger efter dem da."
+  }
+ },
+ {
+  "buyers": true,
+  "category": "necessary",
+  "days": 365,
+  "feature": "business",
+  "name": "buyer_…",
+  "on": "store",
+  "pattern": "^buyer_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers whether you shop privately or for a business, to show the right prices and products.",
+   "nb": "Husker om du handler privat eller for en bedrift, for å vise riktige priser og varer.",
+   "sv": "Kommer ihåg om du handlar privat eller för ett företag, för att visa rätt priser och varor.",
+   "da": "Husker, om du handler privat eller for en virksomhed, for at vise de rigtige priser og varer."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 365,
+  "name": "consent_…",
+  "on": "both",
+  "pattern": "^consent_([0-9a-f-]{36}|kaizen)$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Remembers your choice about cookies on this site.",
+   "nb": "Husker valget ditt om informasjonskapsler på dette nettstedet.",
+   "sv": "Kommer ihåg ditt val om kakor på den här webbplatsen.",
+   "da": "Husker dit valg om cookies på dette websted."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 400,
+  "name": "sb-…-auth-token",
+  "on": "platform",
+  "pattern": "^sb-[a-z0-9]+-auth-token(\\.\\d+)?$/",
+  "provider": "Kaizena Flow (Supabase)",
+  "purpose": {
+   "en": "Keeps store owners and staff signed in to the admin.",
+   "nb": "Holder butikkeiere og ansatte innlogget i administrasjonen.",
+   "sv": "Håller butiksägare och personal inloggade i administrationen.",
+   "da": "Holder butiksejere og ansatte logget ind i administrationen."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_life_link",
+  "on": "platform",
+  "pattern": "^kaizen_life_link$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Checks, for the ten minutes it takes, that a store owner connecting Kaizen Life comes back from the sign-in they started.",
+   "nb": "Sjekker, i de ti minuttene det tar, at en butikkeier som kobler til Kaizen Life kommer tilbake fra innloggingen de startet.",
+   "sv": "Kontrollerar, under de tio minuter det tar, att en butiksägare som ansluter Kaizen Life kommer tillbaka från inloggningen de startade.",
+   "da": "Kontrollerer, i de ti minutter det tager, at en butiksejer, der forbinder Kaizen Life, kommer tilbage fra det login, de startede."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_slack_connect",
+  "on": "platform",
+  "pattern": "^kaizen_slack_connect$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Checks, for the ten minutes it takes, that a store owner connecting Slack comes back from the Slack page they started from.",
+   "nb": "Sjekker, i de ti minuttene det tar, at en butikkeier som kobler til Slack kommer tilbake fra Slack-siden de startet fra.",
+   "sv": "Kontrollerar, under de tio minuter det tar, att en butiksägare som ansluter Slack kommer tillbaka från Slack-sidan de startade från.",
+   "da": "Kontrollerer, i de ti minutter det tager, at en butiksejer, der forbinder Slack, kommer tilbage fra den Slack-side, de startede fra."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_google",
+  "on": "platform",
+  "pattern": "^kaizen_google$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Checks, for the ten minutes it takes, that a customer signing in with Google comes back from the Google page they started from.",
+   "nb": "Sjekker, i de ti minuttene det tar, at en kunde som logger inn med Google kommer tilbake fra Google-siden de startet fra.",
+   "sv": "Kontrollerar, under de tio minuter det tar, att en kund som loggar in med Google kommer tillbaka från Google-sidan de startade från.",
+   "da": "Kontrollerer, i de ti minutter det tager, at en kunde, der logger ind med Google, kommer tilbage fra den Google-side, de startede fra."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_mollie_connect",
+  "on": "platform",
+  "pattern": "^kaizen_mollie_connect$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Checks, for the ten minutes it takes, that a store owner connecting Mollie comes back from the Mollie page they started from.",
+   "nb": "Sjekker, i de ti minuttene det tar, at en butikkeier som kobler til Mollie kommer tilbake fra Mollie-siden de startet fra.",
+   "sv": "Kontrollerar, under de tio minuter det tar, att en butiksägare som ansluter Mollie kommer tillbaka från Mollie-sidan de startade från.",
+   "da": "Kontrollerer, i de ti minutter det tager, at en butiksejer, der forbinder Mollie, kommer tilbage fra den Mollie-side, de startede fra."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 30,
+  "name": "kaizen_sandbox",
+  "on": "platform",
+  "pattern": "^kaizen_sandbox$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Holds the key to the store you are trying the page builder in, so that only you can open it, without an account.",
+   "nb": "Inneholder nøkkelen til butikken du prøver sidebyggeren i, slik at bare du kan åpne den, uten konto.",
+   "sv": "Innehåller nyckeln till butiken där du provar sidbyggaren, så att bara du kan öppna den, utan konto.",
+   "da": "Indeholder nøglen til butikken, hvor du prøver sidebyggeren, så kun du kan åbne den, uden konto."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": null,
+  "name": "kaizen_edit",
+  "on": "store",
+  "pattern": "^kaizen_edit$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Lets a store's own signed-in staff change the words of a page they are looking at, for half an hour after the admin gave them the pass.",
+   "nb": "Lar butikkens egne innloggede ansatte endre ordene på en side de ser på, i en halvtime etter at administrasjonen ga dem tilgang.",
+   "sv": "Låter butikens egna inloggade medarbetare ändra orden på en sida de tittar på, i en halvtimme efter att administrationen gav dem tillgång.",
+   "da": "Lader butikkens egne loggede ansatte ændre ordene på en side, de ser på, i en halv time, efter at administrationen gav dem adgang."
+  },
+  "staff": true
+ },
+ {
+  "category": "necessary",
+  "days": 30,
+  "name": "kaizen_unlock_…",
+  "on": "store",
+  "pattern": "^kaizen_unlock_[0-9a-f-]{36}$/",
+  "private": true,
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "Lets a visitor who entered the password of a store that is not open yet see its pages, without asking again on every page.",
+   "nb": "Lar en besøkende som har skrevet inn passordet til en butikk som ikke er åpnet ennå, se sidene uten å bli spurt på nytt for hver side.",
+   "sv": "Låter en besökare som har skrivit lösenordet till en butik som inte har öppnat ännu se sidorna, utan att bli tillfrågad igen på varje sida.",
+   "da": "Lader en besøgende, der har skrevet adgangskoden til en butik, som ikke er åbnet endnu, se siderne uden at blive spurgt igen på hver side."
+  }
+ },
+ {
+  "category": "necessary",
+  "days": 365,
+  "name": "__stripe_mid, __stripe_sid",
+  "on": "both",
+  "pattern": "^__stripe_(mid|sid)$/",
+  "provider": "Stripe",
+  "purpose": {
+   "en": "Used by Stripe to take payments safely and prevent fraud.",
+   "nb": "Brukes av Stripe for å ta imot betaling trygt og hindre svindel.",
+   "sv": "Används av Stripe för att ta emot betalningar säkert och förhindra bedrägerier.",
+   "da": "Bruges af Stripe til at modtage betalinger sikkert og forhindre svindel."
+  }
+ },
+ {
+  "category": "statistics",
+  "days": 730,
+  "name": "_ga",
+  "on": "both",
+  "pattern": "^_ga$/",
+  "provider": "Google Analytics",
+  "purpose": {
+   "en": "Tells visits apart, to count how the site is used.",
+   "nb": "Skiller besøk fra hverandre, for å telle hvordan nettstedet brukes.",
+   "sv": "Skiljer besök åt, för att räkna hur webbplatsen används.",
+   "da": "Skelner besøg fra hinanden for at tælle, hvordan webstedet bruges."
+  },
+  "tool": "ga4"
+ },
+ {
+  "category": "statistics",
+  "days": 730,
+  "name": "_ga_…",
+  "on": "both",
+  "pattern": "^_ga_[A-Z0-9]+$/",
+  "provider": "Google Analytics",
+  "purpose": {
+   "en": "Keeps the state of a visit, to count how the site is used.",
+   "nb": "Holder styr på et besøk, for å telle hvordan nettstedet brukes.",
+   "sv": "Håller reda på ett besök, för att räkna hur webbplatsen används.",
+   "da": "Holder styr på et besøg for at tælle, hvordan webstedet bruges."
+  },
+  "tool": "ga4"
+ },
+ {
+  "category": "marketing",
+  "days": 90,
+  "name": "_gcl_au",
+  "on": "both",
+  "pattern": "^_gcl_(au|aw|dc|gb|ag)$/",
+  "provider": "Google Ads",
+  "purpose": {
+   "en": "Measures which ads lead to visits and purchases.",
+   "nb": "Måler hvilke annonser som fører til besøk og kjøp.",
+   "sv": "Mäter vilka annonser som leder till besök och köp.",
+   "da": "Måler, hvilke annoncer der fører til besøg og køb."
+  },
+  "tool": [
+   "gtm",
+   "googleAds"
+  ]
+ },
+ {
+  "category": "marketing",
+  "days": 90,
+  "name": "_fbp",
+  "on": "both",
+  "pattern": "^_fbp$/",
+  "provider": "Meta",
+  "purpose": {
+   "en": "Lets Meta show and measure ads to people who visited the site.",
+   "nb": "Lar Meta vise og måle annonser til folk som har besøkt nettstedet.",
+   "sv": "Låter Meta visa och mäta annonser för personer som har besökt webbplatsen.",
+   "da": "Lader Meta vise og måle annoncer til personer, der har besøgt webstedet."
+  },
+  "tool": "metaPixel"
+ },
+ {
+  "category": "marketing",
+  "days": 90,
+  "name": "_fbc",
+  "on": "both",
+  "pattern": "^_fbc$/",
+  "provider": "Meta",
+  "purpose": {
+   "en": "Remembers the Meta ad a visitor came from.",
+   "nb": "Husker hvilken Meta-annonse en besøkende kom fra.",
+   "sv": "Kommer ihåg vilken Meta-annons en besökare kom från.",
+   "da": "Husker, hvilken Meta-annonce en besøgende kom fra."
+  },
+  "tool": "metaPixel"
+ },
+ {
+  "category": "marketing",
+  "days": 390,
+  "name": "_ttp",
+  "on": "store",
+  "pattern": "^(_ttp|_tt_enable_cookie|ttcsid.*)$/",
+  "provider": "TikTok",
+  "purpose": {
+   "en": "Lets TikTok show and measure ads to people who visited the site.",
+   "nb": "Lar TikTok vise og måle annonser til folk som har besøkt nettstedet.",
+   "sv": "Låter TikTok visa och mäta annonser för personer som har besökt webbplatsen.",
+   "da": "Lader TikTok vise og måle annoncer til personer, der har besøgt webstedet."
+  },
+  "tool": "tiktokPixel"
+ },
+ {
+  "category": "marketing",
+  "days": 365,
+  "name": "_pin_unauth",
+  "on": "store",
+  "pattern": "^(_pin_unauth|_pinterest_ct_ua|_epik|_derived_epik)$/",
+  "provider": "Pinterest",
+  "purpose": {
+   "en": "Lets Pinterest show and measure ads to people who visited the site.",
+   "nb": "Lar Pinterest vise og måle annonser til folk som har besøkt nettstedet.",
+   "sv": "Låter Pinterest visa och mäta annonser för personer som har besökt webbplatsen.",
+   "da": "Lader Pinterest vise og måle annoncer til personer, der har besøgt webstedet."
+  },
+  "tool": "pinterestTag"
+ }
+]

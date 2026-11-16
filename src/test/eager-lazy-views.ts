@@ -28,6 +28,9 @@ vi.mock("@/components/lazy/blocks", async () => ({
   PageModal: await pick(() => import("@/components/page-modal"), "PageModal"),
   RecommendedGrid: await pick(() => import("@/components/recommended-grid"), "RecommendedGrid"),
   SearchBox: await pick(() => import("@/components/search-box"), "SearchBox"),
+  ThemePreviewStage: await pick(() => import("@/components/theme-preview-stage"), "ThemePreviewStage"),
+  LanguageSwitch: await pick(() => import("@/components/language-switch"), "LanguageSwitch"),
+  CarouselControls: await pick(() => import("@/components/carousel-controls"), "CarouselControls"),
 }));
 
 vi.mock("@/components/lazy/shop", async () => ({

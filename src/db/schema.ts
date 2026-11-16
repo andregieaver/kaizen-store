@@ -767,6 +767,13 @@ export const stores = commerce.table(
      */
     customerAccounts: text("customer_accounts").notNull().default("optional"),
     /**
+     * Contact details the checkout asks besides the email (task 1 of `docs/checkout-fields-tasks.md`, D357): `off` (the default), `optional`
+     * or `required`, for the phone and for a person's name. Read through `contactAsked()` (a local delivery always asks the phone; the name only
+     * when nothing is sent to an address), written only by `saveCheckoutContact()`. A copy of a store starts with `off`.
+     */
+    checkoutPhone: text("checkout_phone").notNull().default("off"),
+    checkoutName: text("checkout_name").notNull().default("off"),
+    /**
      * How many months the AI manager's conversations about the store are kept after their last message (wave 11 unit L, D391); null is the
      * retention rule's period (`assistant_conversations`, 12 months). The owner's choice, written only by `saveAssistantKeep()`.
      */
@@ -862,6 +869,8 @@ export const stores = commerce.table(
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_customer_accounts", sql`${t.customerAccounts} in ('optional', 'required', 'off')`),
+    check("stores_checkout_phone", sql`${t.checkoutPhone} in ('off', 'optional', 'required')`),
+    check("stores_checkout_name", sql`${t.checkoutName} in ('off', 'optional', 'required')`),
     check("stores_assistant_keep_months", sql`${t.assistantKeepMonths} is null or ${t.assistantKeepMonths} between 1 and 60`),
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(
@@ -4923,8 +4932,6 @@ export const orders = commerce.table(
     index("orders_customer_idx").on(t.storeId, t.customerId),
     index("orders_cart_idx").on(t.storeId, t.cartId),
     index("orders_store_placed_idx").on(t.storeId, t.placedAt),
-    /** The retention job's scan: orders not yet anonymised, oldest first (D162). */
-    index("orders_retention_idx").on(t.storeId, t.placedAt).where(sql`${t.anonymisedAt} is null`),
     check(
       "orders_anonymised",
       sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null and not ${t.isGift} and ${t.giftTo} is null and ${t.giftFrom} is null and ${t.giftMessage} is null and ${t.deliveryNote} is null)`,
@@ -5115,7 +5122,7 @@ export const orderLines = commerce.table(
     index("order_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     orderRef("order_lines_order_fk", t),
     variantRef("order_lines_variant_fk", t),
-    index("order_lines_order_idx").on(t.storeId, t.orderId),
+    // (store_id, order_id) is served by order_lines_analytics_idx, written in SQL because of its INCLUDE.
     index("order_lines_variant_idx").on(t.storeId, t.variantId),
     check("order_lines_quantity_positive", sql`${t.quantity} > 0`),
     check(
@@ -5832,7 +5839,6 @@ export const payoutLines = commerce.table(
     foreignKey({ name: "payout_lines_refund_fk", columns: [t.storeId, t.refundId], foreignColumns: [refunds.storeId, refunds.id] }),
     foreignKey({ name: "payout_lines_dispute_fk", columns: [t.storeId, t.disputeId], foreignColumns: [paymentDisputes.storeId, paymentDisputes.id] }),
     orderRef("payout_lines_order_fk", t),
-    index("payout_lines_payout_idx").on(t.storeId, t.payoutId),
     index("payout_lines_payment_idx")
       .on(t.storeId, t.paymentId)
       .where(sql`${t.paymentId} is not null`),
@@ -6594,7 +6600,6 @@ export const returnExchanges = commerce.table(
     index("return_exchanges_expiry_idx")
       .on(t.storeId, t.status, t.expiresAt)
       .where(sql`${t.status} in ('proposed', 'confirmed', 'processed')`),
-    index("return_exchanges_return_idx").on(t.storeId, t.returnId),
     index("return_exchanges_order_idx").on(t.storeId, t.orderId),
     index("return_exchanges_exchange_order_idx").on(t.storeId, t.exchangeOrderId),
     index("return_exchanges_refund_idx").on(t.storeId, t.refundId),
@@ -8309,13 +8314,34 @@ export const checkoutFields = commerce.table(
     help: jsonb("help"),
     position: integer("position").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
+    /**
+     * How wide the cart draws it (task 2 of `docs/checkout-fields-tasks.md`): `full` (the default) or `half`. Two halves next to each other share
+     * a line, one alone takes its left half; a narrow box draws every question full width. Only `half` is kept, never a side, so moving a
+     * question can never leave a right-hand one alone.
+     */
+    width: text("width").notNull().default("full"),
+    /** A tick list's options in order (`checklist`, task 3): `[{ id, label: { text, byLocale }, none? }]`; null for the other kinds. */
+    options: jsonb("options"),
+    /** The answer may be sensitive personal data (GDPR article 9, such as allergies): the cart asks the shopper's explicit consent with it. */
+    sensitive: boolean("sensitive").notNull().default(false),
+    /** A number's lowest and highest value, or a date's earliest and latest day from the store's today (task 4): `{ min?, max? }`. */
+    bounds: jsonb("bounds"),
+    /** Asked only when every condition holds for the basket, the checkout rules' own (task 4); null: always asked. */
+    conditions: jsonb("conditions"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("checkout_fields_store_id_key").on(t.storeId, t.id),
     index("checkout_fields_store_idx").on(t.storeId, t.position),
-    check("checkout_fields_kind", sql`${t.kind} in ('text', 'checkbox')`),
+    check("checkout_fields_kind", sql`${t.kind} in ('text', 'textarea', 'checkbox', 'checklist', 'select', 'radio', 'number', 'date', 'email', 'phone')`),
+    check("checkout_fields_bounds", sql`${t.bounds} is null or (${t.kind} in ('number', 'date') and jsonb_typeof(${t.bounds}) = 'object')`),
+    check("checkout_fields_conditions", sql`${t.conditions} is null or (jsonb_typeof(${t.conditions}) = 'array' and jsonb_array_length(${t.conditions}) between 1 and 10)`),
+    check(
+      "checkout_fields_options",
+      sql`(${t.kind} in ('checklist', 'select', 'radio')) = (${t.options} is not null) and (${t.options} is null or (jsonb_typeof(${t.options}) = 'array' and jsonb_array_length(${t.options}) between 1 and 30))`,
+    ),
+    check("checkout_fields_width", sql`${t.width} in ('full', 'half')`),
   ],
 );
 
@@ -8342,7 +8368,6 @@ export const apiTokens = commerce.table(
   (t) => [
     unique("api_tokens_hash_key").on(t.tokenHash),
     unique("api_tokens_store_id_key").on(t.storeId, t.id),
-    index("api_tokens_store_idx").on(t.storeId),
     index("api_tokens_created_by_idx").on(t.createdBy),
     check("api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
     // D440: every scope at once fits (21 since wave 14 unit C4), with room for more.
@@ -8376,7 +8401,6 @@ export const apiUploads = commerce.table(
   },
   (t) => [
     unique("api_uploads_store_id_key").on(t.storeId, t.id),
-    index("api_uploads_store_idx").on(t.storeId),
     index("api_uploads_token_idx").on(t.tokenId),
     index("api_uploads_media_idx").on(t.mediaId),
     index("api_uploads_expires_idx").on(t.expiresAt),
@@ -8667,7 +8691,6 @@ export const webhookEndpoints = commerce.table(
   },
   (t) => [
     unique("webhook_endpoints_store_id_key").on(t.storeId, t.id),
-    index("webhook_endpoints_store_idx").on(t.storeId),
     index("webhook_endpoints_created_by_idx").on(t.createdBy),
     check("webhook_endpoints_name", sql`char_length(${t.name}) between 1 and 80`),
     check("webhook_endpoints_topics", sql`cardinality(${t.topics}) between 1 and 40`),
@@ -9689,6 +9712,11 @@ export const cookieScans = commerce.table(
   },
   (t) => [
     index("cookie_scans_store_created_idx").on(t.storeId, t.createdAt),
+    // The due check reads a site's newest scan and newest finished one by the same expression the unique index below uses (step 0.23).
+    index("cookie_scans_site_created_idx").on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`, t.createdAt.desc()),
+    index("cookie_scans_site_done_idx")
+      .on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`, t.finishedAt.desc())
+      .where(sql`${t.status} = 'done'`),
     index("cookie_scans_requested_by_idx").on(t.requestedBy),
     uniqueIndex("cookie_scans_one_active_idx")
       .on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`)
@@ -10730,6 +10758,11 @@ export const aiProviders = commerce.table(
     textEuOnly: boolean("text_eu_only").notNull().default(true),
     /** Gateway only: only providers that keep nothing after the request. */
     zeroDataRetention: boolean("zero_data_retention").notNull().default(true),
+    /**
+     * Gateway only: text models tried in order when the text model fails (`providerOptions.gateway.models`), at most three
+     * (`docs/100-day-challenge.md` F1). Never for embeddings: another model would put vectors in another space.
+     */
+    fallbackModels: text("fallback_models").array().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -10897,6 +10930,32 @@ export const knowledgeDocuments = commerce.table(
     index("knowledge_documents_created_by_idx").on(t.createdBy),
     check("knowledge_documents_title", sql`length(${t.title}) between 1 and 200`),
     check("knowledge_documents_content", sql`length(${t.content}) between 1 and 200000`),
+  ],
+);
+
+/**
+ * What the chat agent's knowledge was last cut from (bloat review step 0.27): one row per published page, article or content
+ * entry that was cut, also when it gave no passage, so the five-minute job can tell in SQL what changed. Dates and addresses
+ * only, no words.
+ */
+export const knowledgeSources = commerce.table(
+  "knowledge_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").references(() => contentEntries.id, { onDelete: "cascade" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+    slug: text("slug").notNull(),
+    typeVersion: text("type_version"),
+    path: text("path"),
+    cutAt: timestamp("cut_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("knowledge_sources_page_key").on(t.pageId),
+    uniqueIndex("knowledge_sources_entry_key").on(t.entryId),
+    index("knowledge_sources_store_idx").on(t.storeId),
+    check("knowledge_sources_source", sql`num_nonnulls(${t.pageId}, ${t.entryId}) = 1`),
   ],
 );
 
@@ -11080,7 +11139,8 @@ export const assistantConversations = commerce.table(
     title: text("title").notNull().default(""),
     /**
      * `admin`, the owner in the admin; `kaizen-life`, Kaizen Life's assistant asking for the owner (D96); `mcp`, another AI assistant or
-     * app connected through Kaizena Flow's authorization server (D439), one conversation per client and person (`oauth_client_id`).
+     * app connected through Kaizena Flow's authorization server (D439), one conversation per client and person (`oauth_client_id`);
+     * `autopilot`, a plan's, a goal review's or the events' own (D309, D328, D331), whose turns count apart from the person's.
      */
     source: text("source").notNull().default("admin"),
     oauthClientId: uuid("oauth_client_id").references(() => oauthClients.id, { onDelete: "set null" }),
@@ -11101,7 +11161,7 @@ export const assistantConversations = commerce.table(
       .on(t.storeId, t.accountId, t.oauthClientId)
       .where(sql`${t.source} = 'mcp'`),
     index("assistant_conversations_oauth_client_idx").on(t.oauthClientId),
-    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life', 'mcp')`),
+    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life', 'mcp', 'autopilot')`),
     index("assistant_conversations_account_idx").on(t.accountId),
     check("assistant_conversations_title", sql`length(${t.title}) <= 200`),
   ],
@@ -13381,6 +13441,11 @@ export const analyticsSettings = commerce.table(
     paymentFeeFixedMinor: bigint("payment_fee_fixed_minor", { mode: "number" }).notNull().default(0),
     /** What sending one order costs the store, per paid order with a physical line. */
     shippingCostMinor: bigint("shipping_cost_minor", { mode: "number" }).notNull().default(0),
+    /**
+     * Handling and packaging per paid order with a physical line (`docs/100-day-challenge.md` E1, D646): what the warehouse charges to pick and pack
+     * an order, or the box and the time it takes; apart from the parcel's label.
+     */
+    handlingCostMinor: bigint("handling_cost_minor", { mode: "number" }).notNull().default(0),
     /** Rent, pay and other fixed costs for a month; taken pro rata by day. */
     fixedCostsMonthlyMinor: bigint("fixed_costs_monthly_minor", { mode: "number" }).notNull().default(0),
     /** Years a customer is expected to keep buying, for the predicted lifetime value. */
@@ -13390,6 +13455,7 @@ export const analyticsSettings = commerce.table(
   (t) => [
     check("analytics_settings_fee_bps", sql`${t.paymentFeeBps} between 0 and 10000`),
     check("analytics_settings_amounts", sql`${t.paymentFeeFixedMinor} >= 0 and ${t.shippingCostMinor} >= 0 and ${t.fixedCostsMonthlyMinor} >= 0`),
+    check("analytics_settings_handling", sql`${t.handlingCostMinor} >= 0`),
     check("analytics_settings_lifespan", sql`${t.ltvLifespanYears} between 1 and 10`),
   ],
 );
@@ -13567,7 +13633,6 @@ export const visits = commerce.table(
   },
   (t) => [
     unique("visits_day_visitor_key").on(t.storeId, t.day, t.visitor),
-    index("visits_store_day_idx").on(t.storeId, t.day),
     check("visits_visitor", sql`${t.visitor} ~ '^[0-9a-f]{24}$'`),
     check("visits_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
     check("visits_channel", sql`${t.channel} in (${channelList})`),
@@ -13621,7 +13686,6 @@ export const legalSnapshots = commerce.table(
   (t) => [
     unique("legal_snapshots_store_id_key").on(t.storeId, t.id),
     unique("legal_snapshots_text_key").on(t.storeId, t.role, t.locale, t.contentHash),
-    index("legal_snapshots_store_idx").on(t.storeId),
     check("legal_snapshots_role", sql`${t.role} in (${legalRoleList})`),
     check("legal_snapshots_hash", sql`${t.contentHash} ~ '^[0-9a-f]{64}$'`),
   ],
@@ -13746,7 +13810,6 @@ export const accountRecoveryCodes = commerce.table(
   },
   (t) => [
     unique("account_recovery_codes_hash_key").on(t.accountId, t.codeHash),
-    index("account_recovery_codes_account_idx").on(t.accountId),
     check("account_recovery_codes_hash", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
   ],
 );
@@ -15021,7 +15084,6 @@ export const orderEdits = commerce.table(
     index("order_edits_expiry_idx")
       .on(t.storeId, t.status, t.expiresAt)
       .where(sql`${t.status} = 'awaiting_payment'`),
-    index("order_edits_order_idx").on(t.storeId, t.orderId),
     index("order_edits_payment_idx").on(t.storeId, t.paymentId),
     index("order_edits_refund_idx").on(t.storeId, t.refundId),
     index("order_edits_made_by_idx").on(t.madeBy),
@@ -15201,6 +15263,12 @@ export const supportSettings = commerce.table(
      * their conversations, and people, never the AI, answer their emails. The owner's alone to change.
      */
     sensitive: boolean("sensitive").notNull().default(false),
+    /**
+     * The AI answers an email about the sender's own orders (`docs/100-day-challenge.md` B1): it reads the orders of the customer whose
+     * address the email came from (DMARC checked) and answers only to that address. Off: such an email goes to a person. On by itself
+     * while the store is in the challenge.
+     */
+    emailOrders: boolean("email_orders").notNull().default(false),
     toneAlert: smallint("tone_alert").default(-40),
     toneHandoff: smallint("tone_handoff").default(-60),
     notifyAfterMinutes: smallint("notify_after_minutes").notNull().default(5),
@@ -15274,6 +15342,8 @@ export const supportConversations = commerce.table(
     toneAlertAt: timestamp("tone_alert_at", { withTimezone: true }),
     handoffReason: text("handoff_reason"),
     aiReason: text("ai_reason"),
+    /** Why a person must answer, as the AI named it when it handed over (`ESCALATION_CATEGORIES`, `docs/100-day-challenge.md` A4). */
+    escalation: text("escalation"),
     messageSeq: integer("message_seq").notNull().default(0),
     /** The last customer message the silent partner has answered. */
     partnerSeq: integer("partner_seq").notNull().default(0),
@@ -15341,6 +15411,10 @@ export const supportConversations = commerce.table(
     check("support_conversations_requester", sql`(${t.source} = 'admin') = (${t.requesterId} is not null) or ${t.anonymisedAt} is not null`),
     check("support_conversations_kaizen_customer", sql`${t.storeId} is not null or ${t.customerId} is null`),
     check("support_conversations_handoff_reason", sql`${t.handoffReason} is null or ${t.handoffReason} in ('customer', 'ai', 'tone', 'no_ai', 'limit')`),
+    check(
+      "support_conversations_escalation",
+      sql`${t.escalation} is null or ${t.escalation} in ('asked_for_person', 'upset', 'legal', 'safety', 'chargeback', 'privacy', 'abuse', 'could_not_help')`,
+    ),
     check("support_conversations_ended_by", sql`${t.endedBy} is null or ${t.endedBy} in ('customer', 'agent', 'timeout', 'system')`),
     check("support_conversations_summary_status", sql`${t.summaryStatus} in ('none', 'pending', 'done', 'failed', 'skipped')`),
     check("support_conversations_rating", sql`${t.rating} is null or ${t.rating} in ('good', 'bad')`),
@@ -16851,6 +16925,145 @@ export const adConnections = commerce.table(
 );
 
 /**
+ * A store's card wallet (D599, step 2 of `docs/agent-spending.md`): the owner's own Airwallex account, connected by OAuth to Kaizena Flow's
+ * partner app, in which Kaizena Flow makes one single-use virtual card per purchase the owner approved. Kaizena Flow never holds the money
+ * nor sees a card number. Tokens encrypted (`secret-box.ts`); written only by `src/server/card-wallet.ts`. `cardholder_id` is the person
+ * the cards are made for (they appear in that person's Airwallex app, and a 3-D Secure check goes to them); `monthly_limit_minor` is what
+ * the AI's cards may take in a calendar month, in `currency`; `paused` is the owner's switch that stops new cards and closes open ones.
+ * Kaizena Flow's own wallet is its house store's.
+ */
+export const cardWallets = commerce.table(
+  "card_wallets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    provider: text("provider").notNull().default("airwallex"),
+    /** `sandbox` or `live`: which Airwallex the grant is for, fixed when connected. */
+    mode: text("mode").notNull(),
+    accountId: text("account_id").notNull(),
+    accessTokenEncrypted: text("access_token_encrypted").notNull(),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+    cardholderId: text("cardholder_id"),
+    cardholderName: text("cardholder_name"),
+    currency: char("currency", { length: 3 }).notNull(),
+    monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    paused: boolean("paused").notNull().default(false),
+    /** `choose`: connected, the cardholder not chosen yet; `on`; `auth_failed`: Airwallex refused the grant, connect again. */
+    state: text("state").notNull().default("choose"),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("card_wallets_store").on(t.storeId),
+    unique("card_wallets_store_id_key").on(t.storeId, t.id),
+    index("card_wallets_updated_by_idx").on(t.updatedBy),
+    check("card_wallets_provider", sql`${t.provider} in ('airwallex')`),
+    check("card_wallets_mode", sql`${t.mode} in ('sandbox', 'live')`),
+    check("card_wallets_state", sql`${t.state} in ('choose', 'on', 'auth_failed')`),
+    check("card_wallets_account", sql`char_length(${t.accountId}) between 1 and 80`),
+    check("card_wallets_cardholder", sql`${t.cardholderId} is null or char_length(${t.cardholderId}) between 1 and 80`),
+    check("card_wallets_cardholder_name", sql`${t.cardholderName} is null or char_length(${t.cardholderName}) between 1 and 200`),
+    check("card_wallets_limit", sql`${t.monthlyLimitMinor} is null or ${t.monthlyLimitMinor} between 0 and 100000000000`),
+    check("card_wallets_on", sql`${t.state} <> 'on' or ${t.cardholderId} is not null`),
+  ],
+);
+
+/**
+ * One purchase the owner approved for the AI (D599): what, from whom, up to how much, and the single-use card made for it in the wallet
+ * (its id and last four digits, never its number). `amount_minor` is the card's own limit, in the wallet's currency; `spent_minor` what the
+ * card's charges took (`agent_purchase_charges`). Written only by `src/server/agent-purchases.ts`.
+ */
+export const agentPurchases = commerce.table(
+  "agent_purchases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    walletId: uuid("wallet_id").references(() => cardWallets.id, { onDelete: "set null" }),
+    what: text("what").notNull(),
+    merchant: text("merchant").notNull(),
+    merchantUrl: text("merchant_url"),
+    why: text("why").notNull().default(""),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    spentMinor: bigint("spent_minor", { mode: "number" }).notNull().default(0),
+    /** `issuing` (the card is being made), `card_ready`, `spent` (charged), `closed`, `cancelled` (by the owner), `failed` (no card). */
+    status: text("status").notNull().default("issuing"),
+    cardId: text("card_id"),
+    cardLast4: text("card_last4"),
+    activeTo: timestamp("active_to", { withTimezone: true }).notNull(),
+    /** Why no card was made, or why it closed early: a code the page words. */
+    failure: text("failure"),
+    approvedBy: uuid("approved_by")
+      .notNull()
+      .references(() => accounts.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("agent_purchases_store_id_key").on(t.storeId, t.id),
+    index("agent_purchases_store_idx").on(t.storeId, t.createdAt),
+    index("agent_purchases_open_idx").on(t.status).where(sql`${t.status} in ('issuing', 'card_ready', 'spent')`),
+    index("agent_purchases_wallet_idx").on(t.walletId),
+    index("agent_purchases_approved_by_idx").on(t.approvedBy),
+    check("agent_purchases_status", sql`${t.status} in ('issuing', 'card_ready', 'spent', 'closed', 'cancelled', 'failed')`),
+    check("agent_purchases_what", sql`char_length(${t.what}) between 1 and 200`),
+    check("agent_purchases_merchant", sql`char_length(${t.merchant}) between 1 and 120`),
+    check("agent_purchases_url", sql`${t.merchantUrl} is null or (char_length(${t.merchantUrl}) <= 500 and ${t.merchantUrl} like 'https://%')`),
+    check("agent_purchases_why", sql`char_length(${t.why}) <= 500`),
+    check("agent_purchases_amount", sql`${t.amountMinor} between 1 and 100000000000`),
+    check("agent_purchases_spent", sql`${t.spentMinor} between 0 and 100000000000`),
+    check("agent_purchases_card", sql`${t.cardLast4} is null or ${t.cardLast4} ~ '^[0-9]{4}$'`),
+    check("agent_purchases_failure", sql`${t.failure} is null or char_length(${t.failure}) between 1 and 40`),
+  ],
+);
+
+/**
+ * A charge on a purchase's card as the wallet's provider reported it (D599): an authorisation, its clearing, a reversal or a refund, with
+ * the amount in the wallet's currency and the merchant's name and category. Kept once per provider transaction; written only by
+ * `src/server/agent-purchases.ts`.
+ */
+export const agentPurchaseCharges = commerce.table(
+  "agent_purchase_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    purchaseId: uuid("purchase_id")
+      .notNull()
+      .references(() => agentPurchases.id, { onDelete: "cascade" }),
+    providerRef: text("provider_ref").notNull(),
+    kind: text("kind").notNull(),
+    /** The provider's status of the transaction, as it says it (`APPROVED`, `PENDING`, `FAILED`, …). */
+    status: text("status").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    merchantName: text("merchant_name"),
+    merchantCategory: text("merchant_category"),
+    happenedAt: timestamp("happened_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("agent_purchase_charges_ref").on(t.storeId, t.providerRef),
+    index("agent_purchase_charges_purchase_idx").on(t.purchaseId),
+    check("agent_purchase_charges_kind", sql`${t.kind} in ('authorization', 'clearing', 'reversal', 'refund', 'other')`),
+    check("agent_purchase_charges_status", sql`char_length(${t.status}) between 1 and 40`),
+    check("agent_purchase_charges_ref_length", sql`char_length(${t.providerRef}) between 1 and 120`),
+    check("agent_purchase_charges_amount", sql`${t.amountMinor} between 0 and 100000000000`),
+    check("agent_purchase_charges_merchant", sql`${t.merchantName} is null or char_length(${t.merchantName}) <= 200`),
+    check("agent_purchase_charges_category", sql`${t.merchantCategory} is null or ${t.merchantCategory} ~ '^[0-9]{4}$'`),
+  ],
+);
+
+/**
  * A store's ad account, connected so its budgets can be read and changed (D585, step 1 of `docs/agent-spending.md`): the platform bills the
  * owner as it always has, and Kaizena Flow only moves budgets inside it, never pays. The token is encrypted (`secret-box.ts`), never sent to a
  * page. `monthly_limit_minor` is what the autopilot may let the account spend in a calendar month (in the account's own currency and time
@@ -16874,6 +17087,8 @@ export const adAccounts = commerce.table(
     token: text("token").notNull(),
     tokenHint: text("token_hint").notNull(),
     monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    /** When the account's daily spend was last written into `marketing_spend` (`syncAdSpend()`, `docs/100-day-challenge.md` D2). */
+    spendSyncedAt: timestamp("spend_synced_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -17208,12 +17423,18 @@ export const assistantPlans = commerce.table(
     version: integer("version").notNull().default(1),
     status: text("status").notNull().default("draft"),
     pauseReason: text("pause_reason"),
+    /**
+     * Why code paused it, when the reason passes by itself: `budget`, the month's AI budget spent or unknown, so the loop starts it again once
+     * the budget allows (`docs/100-day-challenge.md` F2). Null for a pause the owner or a person must lift.
+     */
+    pausedFor: text("paused_for"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    check("assistant_plans_paused_for", sql`${t.pausedFor} is null or ${t.pausedFor} = 'budget'`),
     foreignKey({ name: "assistant_plans_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
     index("assistant_plans_store_idx").on(t.storeId, t.status),
     index("assistant_plans_account_idx").on(t.accountId),
@@ -17325,6 +17546,11 @@ export const autopilotSettings = commerce.table(
     budgets: jsonb("budgets").notNull().default({}),
     /** Whether and how the autopilot keeps working toward the goals (D328), read only through `readAutonomy()`. */
     planning: jsonb("planning").notNull().default({}),
+    /**
+     * The 100-day challenge (`docs/100-day-challenge.md`), read only through `readChallenge()` (`src/lib/autopilot-challenge.ts`) and written
+     * only by `saveChallenge()` (a platform admin's): its dates and budgets. While it is on, the preset rules and the owner's settings are locked.
+     */
+    challenge: jsonb("challenge"),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -17334,6 +17560,7 @@ export const autopilotSettings = commerce.table(
     check("autopilot_settings_levels", sql`jsonb_typeof(${t.levels}) = 'object'`),
     check("autopilot_settings_budgets", sql`jsonb_typeof(${t.budgets}) = 'object'`),
     check("autopilot_settings_planning", sql`jsonb_typeof(${t.planning}) = 'object'`),
+    check("autopilot_settings_challenge", sql`${t.challenge} is null or jsonb_typeof(${t.challenge}) = 'object'`),
   ],
 );
 
@@ -17410,7 +17637,7 @@ export const autopilotEvents = commerce.table(
     index("autopilot_events_account_idx").on(t.accountId),
     index("autopilot_events_conversation_idx").on(t.conversationId),
     index("autopilot_events_plan_idx").on(t.planId),
-    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert')`),
+    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request')`),
     check("autopilot_events_status", sql`${t.status} in ('pending', 'running', 'done', 'skipped', 'failed')`),
     check("autopilot_events_ref", sql`length(${t.ref}) between 1 and 200`),
     check("autopilot_events_facts", sql`jsonb_typeof(${t.facts}) = 'object'`),
@@ -19431,7 +19658,6 @@ export const recurringCosts = commerce.table(
   },
   (t) => [
     unique("recurring_costs_store_id_key").on(t.storeId, t.id),
-    index("recurring_costs_store_idx").on(t.storeId),
     index("recurring_costs_created_by_idx").on(t.createdBy),
     check("recurring_costs_name", sql`char_length(trim(${t.name})) between 1 and 80`),
     check("recurring_costs_match_text", sql`char_length(trim(${t.matchText})) between 3 and 60`),

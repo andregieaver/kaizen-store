@@ -199,3 +199,11 @@ export function baseRouteHeaders(themesOrigin: string | null, env: CspEnv = {}):
     { source: "/admin/:path*", headers: adminFrameHeaders(themesOrigin) },
   ];
 }
+
+/**
+ * Files in public/ with a fixed address (flags, demo art, Kaizena Flow's own pictures) are kept a day by browsers and the CDN: Next's default
+ * for them is max-age=0. A file that changes takes a new name. Not public/downloads, whose zip keeps its name between releases.
+ */
+export const PUBLIC_FILE_HEADERS: { source: string; headers: HeaderEntry[] }[] = [
+  { source: "/:folder(flags|demo|kaizen)/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=86400" }] },
+];

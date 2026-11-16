@@ -10,11 +10,14 @@ export function CopyLinkButton({
   link,
   labels,
   inputId,
+  className = "min-h-11 button-primary px-4 text-sm font-medium",
 }: {
   link: string;
   labels: { copy: string; copied: string };
   /** The id of the read-only field that shows the link, selected when copying is not possible. */
   inputId: string;
+  /** The button's classes; the storefront's primary button unless given (the admin passes its own, round 15). */
+  className?: string;
 }) {
   const [done, setDone] = useState(false);
 
@@ -32,7 +35,7 @@ export function CopyLinkButton({
 
   return (
     <>
-      <button type="button" onClick={copy} className="min-h-11 button-primary px-4 text-sm font-medium">
+      <button type="button" onClick={copy} className={className}>
         {labels.copy}
       </button>
       <span role="status" aria-live="polite" className="text-sm">

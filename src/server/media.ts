@@ -243,19 +243,23 @@ export async function storedVideo(path: string): Promise<{ size: number; type: s
 /**
  * Puts bytes the server made or fetched in one of the public media buckets, at a path of its own (the page replicator's
  * previews and the videos it copies, D150). The buckets refuse other types and larger files themselves.
+ *
+ * `keep`: "year" for a file at a path that is never written twice (a theme photograph, a copied video); "short" (five minutes) for a path
+ * that is written again (the page replicator's previews).
  */
 export async function uploadBytes(
   bucket: "product-media" | "page-videos",
   path: string,
   bytes: Uint8Array,
   contentType: string,
+  keep: "year" | "short",
 ): Promise<{ ok: true; url: string } | { ok: false; problem: string }> {
   const secret = secretKey();
   if ("problem" in secret) return { ok: false, problem: secret.problem };
   const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }).storage.from(bucket);
-  const { error } = await storage.upload(path, bytes, { contentType, cacheControl: "300", upsert: true });
+  const { error } = await storage.upload(path, bytes, { contentType, cacheControl: keep === "year" ? "31536000" : "300", upsert: true });
   if (error) {
     log("error", "media.upload_failed", {}, error);
     return { ok: false, problem: "The file could not be stored." };

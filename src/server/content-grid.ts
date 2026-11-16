@@ -27,8 +27,9 @@ import { fieldsTag } from "./custom-fields";
 import { shownFieldsForItems } from "./field-tiles";
 import { storeBlogs } from "./blogs";
 import { pagesTag } from "./pages";
-import { getOpenStore, storeTag } from "./stores";
+import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
+import { owned } from "./owned";
 
 /**
  * The items a content grid (D51) shows, looked up for the site and for the
@@ -130,9 +131,8 @@ async function customWhere(owner: string | null, marketCode: string | null): Pro
   "use cache";
   cacheLife("hours");
   if (!owner) return { base: null, lang: "en", locale: "en-GB" };
-  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${owner}::uuid`);
-  if (!row) return null;
-  const slug = String(row.slug);
+  const slug = await storeSlugOf(owner);
+  if (!slug) return null;
   // Tagged before anything can come out empty: a store that is not open yet, or has no such market, must be asked again when it changes.
   cacheTag(storeTag(slug));
   const store = await getOpenStore(slug);
@@ -149,8 +149,8 @@ async function gridCustom(block: ContentGridBlock, place: GridPlace): Promise<Gr
 
 /** An open store by id, and one of its markets (by code or by the address of a view, else its first). */
 export async function storeAndMarket(storeId: string, marketCode: string | null) {
-  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = row ? await getOpenStore(String(row.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getOpenStore(slug) : null;
   const market = store && marketIn(store, marketCode);
   return store && market ? { store, market } : null;
 }
@@ -254,7 +254,7 @@ async function gridPages(
   if (type === "page" && filter.parent) {
     if (filter.parent === "@this") {
       const [own] = exclude
-        ? await readDb().execute<Row>(sql`select slug from commerce.pages where id = ${exclude}::uuid and store_id is not distinct from ${owner}::uuid`)
+        ? await readDb().execute<Row>(sql`select slug from commerce.pages where id = ${exclude}::uuid and ${owned(owner)}`)
         : [];
       if (!own) return { items: [], ...language };
       parent = String(own.slug);
@@ -263,7 +263,7 @@ async function gridPages(
   const rows = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.published, coalesce(p.first_published_at, p.published_at) as first_published_at
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
+    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
       and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
       and (${parent}::text is null or (
         left(p.slug, length(${parent}::text) + 1) = ${parent}::text || '/'

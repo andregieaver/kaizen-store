@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
+import { demandForecasts } from "./demand-forecast";
 import { onHandActive } from "./stock-sql";
 import type { Store } from "./stores";
 
@@ -335,15 +336,20 @@ export async function restockSuggestions({ store }: Ctx, { days, cover_days, lea
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical'
   `);
-  const round1 = (x: number) => Math.round(x * 10) / 10;
+  // The forecast (C4, D636): the recent weeks weighing more, the season from last year, a planned campaign by this product's own lift, the
+  // supplier's real delivery time and a safety stock; each adjustment named in the variant's reasons.
+  const forecasts = await demandForecasts(
+    store,
+    rows.map((row) => ({ variantId: String(row.id), productId: String(row.product_id), onHand: Number(row.on_hand) })),
+    { paceDays: days, coverDays: cover_days, leadDays: lead_days },
+  );
   const variants = rows.map((row) => {
     const sold = Number(row.sold);
     // On hand over the active locations. Below zero (a variant sold on backorder) is units sold that the store has not received: it counts as nothing
-    // that lasts, and adds to what to order (need - onHand, with onHand negative), so the suggestion covers what is owed as well as the days ahead (D172).
+    // that lasts, and adds to what to order (the forecast's need less on hand, with on hand negative), so the suggestion covers what is owed as well (D172).
     const onHand = Number(row.on_hand);
     const owed = Number(row.owed);
-    const perDay = sold / days;
-    const need = Math.ceil(perDay * (cover_days + lead_days));
+    const f = forecasts.get(String(row.id));
     return {
       product: String(row.title),
       sku: String(row.sku),
@@ -351,21 +357,24 @@ export async function restockSuggestions({ store }: Ctx, { days, cover_days, lea
       in_stock: Math.max(0, onHand),
       ...(owed > 0 ? { owed_to_customers: owed } : {}),
       sold_in_period: sold,
-      per_day: round1(perDay),
-      lasts_days: perDay > 0 ? round1(Math.max(0, onHand) / perDay) : null,
-      order_now: perDay > 0 && Math.max(0, onHand) / perDay <= lead_days,
-      suggested_order: Math.max(0, need - onHand),
+      per_day: f?.perDay ?? 0,
+      lasts_days: f?.lastsDays ?? null,
+      order_now: f?.orderNow ?? false,
+      suggested_order: f?.suggested ?? 0,
+      ...(f && f.leadDays !== lead_days ? { delivery_days: f.leadDays } : {}),
+      ...(f && f.safety > 0 ? { safety_stock: f.safety } : {}),
+      ...(f && f.reasons.length > 0 ? { why: f.reasons } : {}),
       admin: `/admin/${store.slug}/products/${String(row.product_id)}`,
     };
   });
   const toOrder = variants.filter((v) => v.suggested_order > 0).sort((a, b) => (a.lasts_days ?? 0) - (b.lasts_days ?? 0));
   return {
-    rule: `The pace is the last ${days} days' paid sales. Suggested = sales per day × (${cover_days} days to cover + ${lead_days} days' delivery), less what is in stock, rounded up. Stock is what is on hand at the active locations; a variant sold on backorder is below zero until the goods arrive, and the units owed to customers are added to what to order.`,
+    rule: `A forecast worked out in code from paid sales: units per day from the last ${days} days with the recent weeks weighing more, times the season (how the same days went last year, once there is a year of sales) and a planned price campaign (by this product's own lift in past campaigns). Suggested = per day × (${cover_days} days to cover + the delivery time), plus a safety stock for the days' ups and downs, less what is in stock, rounded up. The delivery time is ${lead_days} days unless the supplier's received purchase orders show their own. Each adjustment used is named in a variant's why. Stock is what is on hand at the active locations; a variant sold on backorder is below zero until the goods arrive, and the units owed to customers are added to what to order.`,
     to_reorder: toOrder.slice(0, 40),
     urgent: toOrder.filter((v) => v.order_now).length,
     out_of_stock_without_sales: variants.filter((v) => v.in_stock === 0 && v.sold_in_period === 0).length,
     owed_units: rows.reduce((sum, row) => sum + Number(row.owed), 0),
     well_stocked: variants.length - toOrder.length,
-    note: toOrder.length === 0 ? "Nothing needs reordering at this pace." : "A suggestion from past sales only; seasons and campaigns change the pace.",
+    note: toOrder.length === 0 ? "Nothing needs reordering at this pace." : "A forecast from the store's own sales, seasons and campaigns; a new product or a sudden change is not in it yet.",
   };
 }

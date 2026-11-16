@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
+import { PageFinder } from "@/components/admin/page-finder";
 import { PlatformRoleNotice } from "@/components/admin/platform-role-notice";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
@@ -26,6 +27,7 @@ import {
   startPlatformAssistantAction,
   savePlatformSkillAction,
 } from "./assistant/actions";
+import { findPlatformPagesAction } from "./finder-actions";
 
 /**
  * The page editor (a page's own address, or a new page, and the theme store's pages edited from Themes, D285) uses the whole width; the
@@ -79,8 +81,11 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         </Suspense>
       }
       actions={
-        // The AI manager can do anything on the platform, so it is the owners' (D510).
-        account.platformAdmin && (
+        <>
+        {/* The page finder (round 1): any platform page by name, ⌘K. */}
+        <PageFinder find={findPlatformPagesAction} words={w.finder} />
+        {/* The AI manager can do anything on the platform, so it is the owners' (D510). */}
+        {account.platformAdmin && (
         <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
           <AiManagerLauncher
             area="platform"
@@ -99,7 +104,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
             }}
           />
         </AdminTextScope>
-        )
+        )}
+        </>
       }
       account={<AdminAccountMenu account={account} role={w.levels.platform} />}
       tabs={tabs}

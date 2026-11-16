@@ -348,6 +348,9 @@ export const NOT_PERSONAL: Record<string, string> = {
   ai_eval_runs: "Runs of the AI evals per model (PSI 2026-10-24): counts, failed cases' ids, problems and the model's answers to scripted cases, and the platform admin account that ran it; no shopper.",
   cron_jobs: "The last run of each scheduled job (PSI 2026-10-24): its name, times, run counts and the last error's message; no person.",
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",
+  card_wallets: "A store's AI wallet (D599): its Airwallex account id, the owner's encrypted grant, the chosen cardholder's id and name in that account, the monthly limit and the pause; no shopper.",
+  agent_purchases: "What the owner approved the AI to buy (D599): what, the merchant and its page, the amount, the single-use card's id and last four digits, never its number, and the approving account; no shopper.",
+  agent_purchase_charges: "The charges on an AI purchase's card (D599): the provider's transaction id, kind, status, amount, the merchant's name and category; no shopper.",
   ad_accounts: "A store's ad account connected for its budgets (D585): the platform's account number, name, currency and time zone, the owner's encrypted token and the autopilot's monthly limit; no shopper.",
   feed_settings: "A store's product feeds (D302): the hash and the encrypted secret of their address and a switch; no person.",
   ad_conversions: "That an order's event was sent to an ad platform (D303 I2): order id, platform, event, status and the platform's answer code; the payload, with the ids, is built when sent and never kept.",
@@ -448,6 +451,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   invoice_settings: "The store's invoice footer and a switch; `email_with_confirmation` is a boolean, not an address.",
   knowledge_chunks: "Pieces of the store's own knowledge documents, written for every shopper.",
   knowledge_documents: "The store's own knowledge documents.",
+  knowledge_sources: "Which published page or entry the chat agent's knowledge was cut from, and when: dates and addresses, no words.",
   marketing_spend: "The owner's note about an advertising cost.",
   menus: "A menu's name.",
   order_views: "A saved view of the order list (D173): a title, the list's filters and its columns, staff configuration. A saved search text sits in `params.q`: the screen says not to save a search for a person's name, and the audit entry never holds it.",
@@ -578,6 +582,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "company.approval_decided": "shopper",
   "order.parcel_out_for_delivery": "shopper",
   "order.parcel_delivered": "shopper",
+  // An update the store sends about an order (D635): a delay or a parcel in trouble, in the store's fixed words, to the order's own address.
+  "order.update": "shopper",
   "return.approved": "shopper",
   "return.declined": "shopper",
   "return.received": "shopper",
@@ -604,6 +610,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "stock.low": "staff",
   "supplier.problem": "staff",
   "supplier.late": "staff",
+  /** A purchase order to a supplier (`docs/100-day-challenge.md` C3): goods, units and costs for a business, never a person's details. */
+  "supplier.purchase_order": "staff",
   "experiment.guardrail": "staff",
   "integration.endpoint_off": "staff",
   /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */
@@ -647,6 +655,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.status_incident": "staff",
   "platform.status_alert": "staff",
   "platform.job_failing": "staff",
+  /** What holds a challenge store up (`docs/100-day-challenge.md` A6), to platform admins: the store's name, the kind and a count, never a customer. */
+  "platform.challenge_stall": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",

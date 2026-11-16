@@ -368,6 +368,14 @@ export function localizePage(content: PageContent, locale: string | null | undef
 }
 
 /**
+ * The title `localizePage(content, locale).title` gives, from a page index's entry: the locale's own title, or the page's (a locale
+ * without a translated title falls back to it).
+ */
+export function indexTitle(entry: { title: string; titles: Record<string, string> }, locale: string | null | undefined): string {
+  return (locale && entry.titles[locale]) || entry.title;
+}
+
+/**
  * A translation from a copy of the page edited in another language: the
  * texts that differ from the page's own. Only texts count; anything else
  * changed in the copy is ignored.

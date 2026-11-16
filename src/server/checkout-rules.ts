@@ -1,26 +1,39 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
   answersByField,
+  type AnswerInput,
   applyCheckoutRules,
+  fieldAsked,
   FIELDS_MAX,
   movedTo,
   NO_RULES,
   RULES_MAX,
   type CheckoutFacts,
+  type ChecklistOption,
   type CheckoutField,
+  type CheckoutFieldKind,
+  type FieldWidth,
   type CheckoutRule,
   type KnownIds,
+  type RuleCondition,
   type RuleOutcome,
   type ShownField,
   type Words,
   shownField,
+  CHECKOUT_FIELD_KINDS,
+  hasBounds,
+  hasOptions,
+  todayInZone,
+  type FieldBounds,
 } from "@/lib/checkout-rules";
-import { fieldInputSchema, ruleInputSchema } from "@/lib/checkout-rules-schema";
+import { boundsProblems, checklistProblems, fieldInputSchema, ruleInputSchema } from "@/lib/checkout-rules-schema";
 import { shown, type Market } from "@/lib/markets";
 import { SWITCHABLE_METHODS } from "@/lib/payment-methods";
 import { DEFAULT_WEIGHT_GRAMS } from "@/lib/shipping-limits";
@@ -29,7 +42,7 @@ import { audit, type Membership } from "./auth";
 import { termsOfProducts } from "./campaigns";
 import { customerTierIds } from "./customer-tiers";
 import { log } from "./log";
-import { col, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Runner = Pick<ReturnType<typeof db>, "execute">;
 
@@ -68,14 +81,30 @@ export async function listCheckoutRules(storeId: string): Promise<RuleRow[]> {
 export type SaveRuleOutcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
 /** What the store's own ids say of a rule: a product, category, tag, group, delivery option or payment method not the store's is refused. */
-async function ruleProblems(storeId: string, rule: Omit<CheckoutRule, "id">, currencies: readonly string[]): Promise<string[]> {
-  const known = await knownIds(db(), storeId);
+/** Conditions that name a product, category, tag or group not the store's: a rule's or a question's (task 4). */
+function conditionProblems(known: KnownIds, conditions: readonly RuleCondition[]): string[] {
   const problems: string[] = [];
-  for (const c of rule.conditions) {
+  for (const c of conditions) {
     if (c.kind === "product" && c.ids.some((id) => !known.products.has(id))) problems.push("Choose products of this store.");
     if ((c.kind === "category" || c.kind === "tag") && c.ids.some((id) => !known.terms.has(id))) problems.push("Choose categories and tags of this store.");
     if (c.kind === "group" && c.ids.some((id) => !known.tiers.has(id))) problems.push("Choose customer groups of this store.");
   }
+  return problems;
+}
+
+/**
+ * The store's ids, with the products the conditions name among them: `knownIds()` leaves products out (a store may have many, and a basket
+ * checks only those its rules name), so saving reads the named ones; without this every product a rule or question named was refused.
+ */
+async function knownForSaving(storeId: string, conditions: readonly RuleCondition[]): Promise<KnownIds> {
+  const known = await knownIds(db(), storeId);
+  const named = [...new Set(conditions.flatMap((c) => (c.kind === "product" ? c.ids : [])))];
+  return { ...known, products: await productsKnown(db(), storeId, named) };
+}
+
+async function ruleProblems(storeId: string, rule: Omit<CheckoutRule, "id">, currencies: readonly string[]): Promise<string[]> {
+  const known = await knownForSaving(storeId, rule.conditions);
+  const problems: string[] = conditionProblems(known, rule.conditions);
   const e = rule.effect;
   if ((e.kind === "hide_shipping" || e.kind === "order_delivery" || e.kind === "delivery_price") && e.options.some((o) => !known.options.has(o))) problems.push("Choose delivery options of this store.");
   // A delivery priced by an amount is priced in the currencies the store shows (D402); another would never apply.
@@ -205,9 +234,30 @@ export async function checkoutRuleOutcome(
 ): Promise<RuleOutcome> {
   const rules = await activeRules(runner, storeId);
   if (rules.length === 0) return NO_RULES;
+  const read = await cartFacts(runner, storeId, cartId, market, { customerId, basketValueMinor });
+  if (!read) return NO_RULES;
+  const { facts, locale } = read;
+  const known = await knownIds(runner, storeId);
+  const named = [...new Set(rules.flatMap((r) => (Array.isArray(r.conditions) ? r.conditions : []).flatMap((c) => (c?.kind === "product" && Array.isArray(c.ids) ? c.ids : []))))];
+  const outcome = applyCheckoutRules(rules, facts, { ...known, products: await productsKnown(runner, storeId, named) }, locale);
+  if (outcome.skipped.length > 0) await recordSkips(storeId, outcome.skipped);
+  return outcome;
+}
+
+/**
+ * What a cart's basket is, as checkout rules and questions with conditions read it (D357, task 4): its country, the currency it is shown
+ * in and its value there, its weight, products, their categories and tags, and the buyer's groups; and its language. Null without the cart.
+ */
+export async function cartFacts(
+  runner: Runner,
+  storeId: string,
+  cartId: string,
+  market: Pick<Market, "code" | "conversion">,
+  { customerId = null, basketValueMinor }: { customerId?: string | null; basketValueMinor?: number } = {},
+): Promise<{ facts: CheckoutFacts; locale: string } | null> {
   // The currency and language the cart is shown in (a market's view, D109): what an amount is compared in and the words chosen.
   const [cart] = await runner.execute(sql`select currency, locale from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid`);
-  if (!cart) return NO_RULES;
+  if (!cart) return null;
   const lines = await runner.execute(sql`
     select p.id as product_id, cl.quantity, cl.starts_at, v.delivery, v.weight_grams, cp.amount_minor, p.kind
     from commerce.cart_lines cl
@@ -239,11 +289,25 @@ export async function checkoutRuleOutcome(
     termIds: [...new Set([...terms.values()].flat())],
     tierIds: await customerTierIds(runner, storeId, customerId),
   };
-  const known = await knownIds(runner, storeId);
-  const named = [...new Set(rules.flatMap((r) => (Array.isArray(r.conditions) ? r.conditions : []).flatMap((c) => (c?.kind === "product" && Array.isArray(c.ids) ? c.ids : []))))];
-  const outcome = applyCheckoutRules(rules, facts, { ...known, products: await productsKnown(runner, storeId, named) }, String(cart.locale));
-  if (outcome.skipped.length > 0) await recordSkips(storeId, outcome.skipped);
-  return outcome;
+  return { facts, locale: String(cart.locale) };
+}
+
+/**
+ * The questions a cart is asked (task 4): those switched on, less those whose conditions do not hold for its basket. The basket is read only
+ * when a question has conditions. The cart page, the answers kept from it and `placeOrder()` all ask this, so a question not asked is never
+ * required, and one a changed basket now asks stops the order until it is answered.
+ */
+export async function askedFields(
+  runner: Runner,
+  storeId: string,
+  cartId: string | null,
+  market: Pick<Market, "code" | "conversion">,
+  options: { customerId?: string | null; basketValueMinor?: number } = {},
+): Promise<FieldRow[]> {
+  const fields = await listCheckoutFields(runner, storeId, { onlyOn: true });
+  if (!fields.some((f) => (f.conditions ?? []).length > 0)) return fields;
+  const read = cartId ? await cartFacts(runner, storeId, cartId, market, options) : null;
+  return fields.filter((f) => fieldAsked(f, read?.facts ?? null));
 }
 
 /** Counts each skipped rule once per call, on its own connection so a refused order's rollback keeps it; never throws. */
@@ -263,9 +327,41 @@ async function recordSkips(storeId: string, skipped: RuleOutcome["skipped"]): Pr
 
 // Checkout fields
 
-const fieldRow = z.object({ id: col.uuid, kind: col.text, required: col.bool, label: z.unknown(), help: z.unknown(), position: col.int, enabled: col.bool });
+const fieldRow = z.object({
+  id: col.uuid,
+  kind: col.text,
+  required: col.bool,
+  label: z.unknown(),
+  help: z.unknown(),
+  position: col.int,
+  enabled: col.bool,
+  width: col.text,
+  options: z.unknown(),
+  sensitive: col.bool,
+  bounds: z.unknown(),
+  conditions: z.unknown(),
+});
 
-export type FieldRow = CheckoutField & { position: number; enabled: boolean };
+/** A number's or a date's bounds as stored (task 4); anything not a whole number is left out. */
+function asBounds(v: unknown): FieldBounds | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const b = v as Record<string, unknown>;
+  const whole = (n: unknown) => (typeof n === "number" && Number.isInteger(n) ? n : undefined);
+  const min = whole(b.min);
+  const max = whole(b.max);
+  return { ...(min !== undefined && { min }), ...(max !== undefined && { max }) };
+}
+
+/** A tick list's options as stored; anything not of the shape is left out. */
+const asOptions = (v: unknown): ChecklistOption[] =>
+  Array.isArray(v)
+    ? v.flatMap((o): ChecklistOption[] => {
+        const r = (o ?? {}) as { id?: unknown; label?: unknown; none?: unknown };
+        return typeof r.id === "string" ? [{ id: r.id, label: asWords(r.label), ...(r.none === true && { none: true }) }] : [];
+      })
+    : [];
+
+export type FieldRow = CheckoutField & { position: number; enabled: boolean; width: FieldWidth; sensitive: boolean };
 
 const placeRow = z.object({ id: col.uuid, position: col.int });
 
@@ -279,19 +375,24 @@ export async function listCheckoutFields(runner: Runner, storeId: string, { only
   const rows = await typedRows(
     fieldRow,
     sql`
-      select id, kind, required, label, help, position, enabled from commerce.checkout_fields
+      select id, kind, required, label, help, position, enabled, width, options, sensitive, bounds, conditions from commerce.checkout_fields
       where store_id = ${storeId}::uuid and (${!onlyOn} or enabled) order by position, created_at
     `,
     runner,
   );
   return rows.map((r) => ({
     id: r.id,
-    kind: r.kind === "checkbox" ? "checkbox" : "text",
+    kind: (CHECKOUT_FIELD_KINDS as readonly string[]).includes(r.kind) ? (r.kind as CheckoutFieldKind) : "text",
     required: r.required,
     label: asWords(r.label),
     help: r.help ? asWords(r.help) : null,
     position: r.position,
     enabled: r.enabled,
+    width: r.width === "half" ? "half" : "full",
+    ...(r.options !== null && { options: asOptions(r.options) }),
+    sensitive: r.sensitive,
+    ...(r.bounds !== null && r.bounds !== undefined && { bounds: asBounds(r.bounds) }),
+    ...(Array.isArray(r.conditions) && r.conditions.length > 0 && { conditions: r.conditions as RuleCondition[] }),
   }));
 }
 
@@ -300,26 +401,53 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const f = parsed.data;
   const storeId = member.store.id;
+  // Options (tasks 3 and 4): checked when given or when a question is made; a change without them keeps the ones it has, checked against the
+  // kind it becomes (a tick list's None of these does not become a dropdown's option).
+  if (!id || f.options !== undefined) {
+    const problems = checklistProblems(f);
+    if (problems.length > 0) return { ok: false, problems };
+  } else if (hasOptions(f.kind)) {
+    const had = await typedRow(z.object({ options: z.unknown() }), sql`select options from commerce.checkout_fields where store_id = ${storeId}::uuid and id = ${id}::uuid`);
+    const problems = had ? checklistProblems({ kind: f.kind, options: had.options === null || had.options === undefined ? [] : asOptions(had.options) }) : [];
+    if (problems.length > 0) return { ok: false, problems };
+  }
+  // A number's or a date's bounds (task 4): checked when given; a change without them keeps the ones it has while its kind stays.
+  const boundsWrong = boundsProblems(f);
+  if (boundsWrong.length > 0) return { ok: false, problems: boundsWrong };
+  const bounds = hasBounds(f.kind) && f.bounds ? JSON.stringify(f.bounds) : null;
+  // When it is asked (task 4): conditions of the store's own products, categories, tags and groups; [] asks it always (kept as none).
+  if (f.conditions?.length) {
+    const wrong = conditionProblems(await knownForSaving(storeId, f.conditions), f.conditions);
+    if (wrong.length > 0) return { ok: false, problems: [...new Set(wrong)] };
+  }
+  const conditions = f.conditions === undefined ? undefined : f.conditions.length > 0 ? JSON.stringify(f.conditions) : null;
+  const options = hasOptions(f.kind) && f.options ? JSON.stringify(f.options.map((o) => ({ id: o.id ?? randomUUID().slice(0, 8), label: o.label, ...(o.none && { none: true }) }))) : null;
   if (id) {
     const done = await db().execute(sql`
       update commerce.checkout_fields set kind = ${f.kind}, required = ${f.required}, label = ${JSON.stringify(f.label)}::jsonb,
-        help = ${f.help ? JSON.stringify(f.help) : null}::jsonb, updated_at = now()
+        help = ${f.help ? JSON.stringify(f.help) : null}::jsonb, width = coalesce(${f.width ?? null}::text, width),
+        options = case when ${f.kind} in ('checklist', 'select', 'radio') then coalesce(${options}::jsonb, options) end,
+        sensitive = ${hasOptions(f.kind)} and coalesce(${f.sensitive ?? null}::boolean, sensitive),
+        bounds = case when ${f.kind} in ('number', 'date') then coalesce(${f.bounds === undefined ? null : bounds}::jsonb, case when kind = ${f.kind} and ${f.bounds === undefined} then bounds end) end,
+        conditions = case when ${conditions === undefined} then conditions else ${conditions ?? null}::jsonb end,
+        updated_at = now()
       where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
     `);
     if (done.length === 0) return { ok: false, problems: ["This field is gone."] };
-    await audit(member.account.id, storeId, "shipping.checkout_field_changed", { kind: f.kind, required: f.required }, { target: { type: "checkout_field", id } });
+    await audit(member.account.id, storeId, "shipping.checkout_field_changed", { kind: f.kind, required: f.required, ...(f.width && { width: f.width }) }, { target: { type: "checkout_field", id } });
     return { ok: true, id };
   }
   const [count] = await db().execute(sql`select count(*)::int as n from commerce.checkout_fields where store_id = ${storeId}::uuid`);
   if (Number(count?.n ?? 0) >= FIELDS_MAX) return { ok: false, problems: [`A checkout asks at most ${FIELDS_MAX} questions.`] };
   const [row] = await db().execute(sql`
-    insert into commerce.checkout_fields (store_id, kind, required, label, help, position)
-    values (${storeId}::uuid, ${f.kind}, ${f.required}, ${JSON.stringify(f.label)}::jsonb, ${f.help ? JSON.stringify(f.help) : null}::jsonb,
+    insert into commerce.checkout_fields (store_id, kind, required, label, help, width, options, sensitive, bounds, conditions, position)
+    values (${storeId}::uuid, ${f.kind}, ${f.required}, ${JSON.stringify(f.label)}::jsonb, ${f.help ? JSON.stringify(f.help) : null}::jsonb, ${f.width ?? "full"},
+      ${options}::jsonb, ${hasOptions(f.kind) && (f.sensitive ?? false)}, ${bounds}::jsonb, ${conditions ?? null}::jsonb,
       (select coalesce(max(position), -1) + 1 from commerce.checkout_fields where store_id = ${storeId}::uuid))
     returning id
   `);
   const made = String(row.id);
-  await audit(member.account.id, storeId, "shipping.checkout_field_made", { kind: f.kind, required: f.required }, { target: { type: "checkout_field", id: made } });
+  await audit(member.account.id, storeId, "shipping.checkout_field_made", { kind: f.kind, required: f.required, width: f.width ?? "full", sensitive: f.sensitive ?? false }, { target: { type: "checkout_field", id: made } });
   return { ok: true, id: made };
 }
 
@@ -374,13 +502,28 @@ export async function setCartAnswers(storeId: string, cartId: string, answers: u
 }
 
 /** What the checkout asks this cart (D357): the fields that are on, in the cart's language, and the answers the cart holds. */
-export async function checkoutQuestionsFor(storeId: string, locale: string, cartId: string | null): Promise<{ fields: ShownField[]; answers: Record<string, string | boolean> }> {
-  const fields = await listCheckoutFields(db(), storeId, { onlyOn: true });
+export async function checkoutQuestionsFor(
+  storeId: string,
+  locale: string,
+  cartId: string | null,
+  market: Pick<Market, "code" | "conversion">,
+  customerId: string | null = null,
+): Promise<{ fields: ShownField[]; answers: Record<string, AnswerInput> }> {
+  // Only the questions this basket is asked (task 4: a question's conditions).
+  const fields = await askedFields(db(), storeId, cartId, market, { customerId });
   if (fields.length === 0) return { fields: [], answers: {} };
   const [cart] = cartId
     ? await db().execute(sql`select checkout_answers from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid`)
     : [];
-  return { fields: fields.map((f) => shownField(f, locale)), answers: answersByField(cart?.checkout_answers) };
+  // A date's earliest and latest day are counted from the store's own today (task 4).
+  const today = fields.some((f) => f.kind === "date") ? await storeToday(storeId) : undefined;
+  return { fields: fields.map((f) => shownField(f, locale, today)), answers: answersByField(cart?.checkout_answers) };
+}
+
+/** The store's today (`YYYY-MM-DD`) in its own time zone. */
+export async function storeToday(storeId: string): Promise<string> {
+  const row = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  return todayInZone(row?.time_zone ?? "Europe/Oslo");
 }
 
 /** What the rule editor offers (D357): the store's delivery options in every country (named with the country), products, categories, tags, groups. */

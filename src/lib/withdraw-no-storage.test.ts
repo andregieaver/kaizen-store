@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { KNOWN_COOKIES } from "./cookie-consent";
+import { KNOWN_COOKIES } from "./known-cookies";
 import { RESERVED_STORE_PAGE_SLUGS } from "./page-content";
 import { placeOfPath } from "./visit-record";
 

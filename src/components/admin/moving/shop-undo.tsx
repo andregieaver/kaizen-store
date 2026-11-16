@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
@@ -16,7 +15,6 @@ export type UndoOutcome = { ok: true; removed: number; kept: number } | { ok: fa
  */
 export function ShopUndo({ total, allowed, undo }: { total: number; allowed: boolean; undo: () => Promise<UndoOutcome> }) {
   const w = useAdminText("moving").undo;
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
@@ -42,7 +40,6 @@ export function ShopUndo({ total, allowed, undo }: { total: number; allowed: boo
                   const result = await undo();
                   setAsking(false);
                   setSaid(result.ok ? [countWords(result.removed, w.done), result.kept > 0 ? countWords(result.kept, w.kept) : ""].filter(Boolean).join(" ") : result.problem === "real_orders" ? w.gone : w.failed);
-                  router.refresh();
                 })
               }
             >

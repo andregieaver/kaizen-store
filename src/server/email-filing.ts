@@ -11,7 +11,7 @@ import { bareAddress, filingAddress, inboundDomain } from "@/lib/inbound-email";
 import { featureOn } from "@/lib/store-features";
 
 import { log } from "./log";
-import { getStore } from "./stores";
+import { getStore, storeSlugOf } from "./stores";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
 
@@ -46,8 +46,8 @@ export type FilingOutcome = { status: "done" | "refused"; reason?: string };
 export async function fileReceived(storeId: string, mail: ReceivedMail, env: Record<string, string | undefined> = process.env): Promise<FilingOutcome> {
   const domain = inboundDomain(env.SUPPORT_INBOUND_DOMAIN);
   if (!domain) return { status: "refused", reason: "not_set_up" };
-  const [slug] = await db().execute<{ slug: string }>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = slug ? await getStore(String(slug.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   if (!store || !featureOn(store, "sales")) return { status: "refused", reason: "sales_off" };
   const from = bareAddress(mail.from);
   const team = await typedRows(

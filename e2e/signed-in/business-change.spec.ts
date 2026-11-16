@@ -13,6 +13,9 @@ test("an owner plans a change of the business behind the store, ticks a step off
   const run = Date.now().toString(36);
   const name = `E2E Holding AS ${run}`;
   await page.goto(`/admin/${E2E_STORE}/settings/company`);
+  // One fold away since round 10 (D633), open by itself while a change is planned.
+  const fold = page.locator("details", { has: page.getByText("Selling to businesses and changing the business") });
+  if (!(await fold.evaluate((el) => (el as HTMLDetailsElement).open))) await fold.getByText("Selling to businesses and changing the business").click();
   const section = page.getByRole("region", { name: "Changing the business behind the store" });
   // A change left by an earlier run that stopped half-way is called off first.
   const leftOver = section.getByRole("button", { name: "Call off the change" });

@@ -15,11 +15,11 @@ import {
   featureKept,
   featureOn,
   missingNeeds,
-  needWords,
   type FeatureFacts,
   type FeatureId,
   type FeatureSource,
 } from "./store-features";
+import { needWords } from "./feature-labels";
 
 /** A reason a feature cannot be switched off, with the admin page (after the store's address) where it is dealt with. */
 export type FeatureBlocker = { text: string; path: string };

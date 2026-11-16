@@ -12,7 +12,7 @@ import { featureOn } from "@/lib/store-features";
 import { storeHomeJsonLd } from "@/lib/structured-data";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listProducts } from "@/server/catalog";
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageById } from "@/server/pages";
 import { placePageForVisitor } from "@/server/role-pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { marketMoved, resolveShop } from "@/server/shop";
@@ -25,9 +25,7 @@ async function load(params: Props["params"]) {
   if (!shop) return null;
   // The store's chosen front page (D54), while it is published; else the product list. While the page is in a test (D148, phase 10) and the
   // address carries the visitor's other version of it, that version.
-  const chosen = shop.store.frontPageId
-    ? ((await listPublishedPages(shop.store.id)).find((p) => p.id === shop.store.frontPageId) ?? null)
-    : null;
+  const chosen = shop.store.frontPageId ? await publishedPageById(shop.store.id, shop.store.frontPageId) : null;
   const { page: frontPage, test, version } = await placePageForVisitor(shop.store.id, "front", chosen, shop.ab);
   return { ...shop, frontPage, test, version };
 }

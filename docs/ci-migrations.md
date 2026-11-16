@@ -45,6 +45,7 @@ and the data row by row. On 11 November 2026 both were the same.
 `DATABASE_URL=postgres://…/postgres node scripts/squash-migrations.mjs --through=<newest file>`, then again with `--write` once
 the check passes. It carries `baseline_4` forward and lists the squashed files with a Storage, scheduler or role step: fold any it
 lacks into it first. Push it alone, with no other migration: CI's `release` job records the four files, and the deploy follows.
+The run log's prune (`kaizen-cron-log-retention`, daily at 03:41, seven days) is scheduled by the migration `…_cron_run_log_retention.sql`; at the next squash fold it into the new baseline's scheduler block by hand.
 
 ### Migrations that keep the busiest tables writable (code review FD4, D569)
 
@@ -67,6 +68,8 @@ migration therefore:
 A table the same file creates is empty, and anything goes there. `src/db/migration-safety.scan.test.ts` holds every migration after
 `20261111172838_sms_campaign_index.sql` to this; `src/db/migrate-no-transaction.int.test.ts` runs the marker on a scratch database.
 It sits beside the other rule for a migration: add, never rename or drop in the same change.
+
+An index written by hand is checked against the table's other indexes by `src/db/index-duplicates.test.ts`; when it replaces a declared one, the declared line leaves `src/db/schema.ts` in the same change.
 
 A push to `main` takes one of two paths, chosen by reading production's ledger (the `pending` job runs
 `db-migrate.mjs --status` on the checked-out commit):

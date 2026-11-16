@@ -4,11 +4,11 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 
-import { AppointmentPicker } from "@/components/appointment-picker";
+import { AppointmentPicker } from "@/components/lazy/shop";
 import { SwitchToBusiness } from "@/components/buyer";
 import { CampaignNotices } from "@/components/campaign-notice";
 import { CustomFieldGroups, CustomFieldView } from "@/components/custom-fields-view";
-import { GiftCardBuy } from "@/components/gift-card-buy";
+import { GiftCardBuy } from "@/components/lazy/shop";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle } from "@/components/page-article";
 import { Price, VatAmount } from "@/components/price";
@@ -17,7 +17,7 @@ import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductGrid } from "@/components/product-listing";
 import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-options";
-import { RangePicker } from "@/components/range-picker";
+import { RangePicker } from "@/components/lazy/shop";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
 import { passportPath } from "@/lib/product-passport";
 import { siteUrl } from "@/lib/site";
@@ -68,6 +68,7 @@ import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
 import type { ReviewFacts } from "@/server/review-facts";
 import { backInStockOn } from "@/server/stock-requests";
+import { perRequest } from "@/server/request-memo";
 import type { Store } from "@/server/stores";
 import { partFeatureOn } from "@/lib/part-features";
 import { stripeLocale } from "@/lib/checkout";
@@ -76,7 +77,7 @@ import { themeLayersOf } from "@/lib/section-styles";
 
 import { ProductRating, ProductReviews } from "./product-reviews";
 import { ProductQuestion } from "./product-question";
-import { QuoteRequest } from "./quote-request";
+import { QuoteRequest } from "@/components/lazy/shop";
 import { questionForm, questionKindOf, quoteFieldsOf } from "@/lib/product-question";
 import { quoteFor } from "@/lib/quotes";
 import { quotePrefill, quotesOfferedHere } from "@/server/quote-requests";
@@ -687,11 +688,15 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
   );
 }
 
+/** Stock is read for the request, once for a product's variants whichever parts ask: never cached across requests (bloat review step 0.22). */
+const stockOnce = (storeId: string, ids: string[]) =>
+  perRequest(`stock:${storeId}:${[...ids].sort().join(",")}`, () => getVariantStock(storeId, ids));
+
 /** The page's structured data (JSON-LD), with stock, per request: drawn once, whatever the layout holds. */
 export async function ProductJsonLdSection({ store, market, product, reviews }: Omit<ProductPageContext, "m">) {
   if (product.kind !== "goods") return <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable reviews={reviews} />;
   await connection();
-  const availability = await getVariantStock(
+  const availability = await stockOnce(
     store.id,
     product.variants.map((v) => v.id),
   );
@@ -1009,7 +1014,7 @@ async function VariantsWithStock({
   // is read per request.
   const expressKind = product.kind === "goods" && product.plans.length === 0 && !product.subscriptionOnly;
   const [availability, notifyOn, listed, breaks, listRules, express, klarna] = await Promise.all([
-    getVariantStock(store.id, ids),
+    stockOnce(store.id, ids),
     backInStockOn(store.id),
     buyer ? buyer.then((id) => listPricesFor(store.id, id, ids, market.code)) : new Map<string, { amountMinor: number; listId: string }>(),
     buyer ? buyer.then((id) => priceBreaksFor(store.id, id, ids, market.code)) : new Map<string, BreakStep[]>(),

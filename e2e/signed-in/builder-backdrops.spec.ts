@@ -24,7 +24,7 @@ test("a ready-made backdrop goes on in one press, turns its hue with one slider,
 
   const row = page.locator('[data-builder-item="row"]').filter({ has: page.getByRole("heading", { name: "Over a backdrop" }) });
   await row.getByRole("button", { name: /^Settings \(row \d+\)/ }).press("Enter");
-  await page.getByRole("tab", { name: "Style" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
 
   // Homer: one press. The background's kind follows the backdrop's own, and the canvas draws the layers still.
   const layers = row.locator("[data-fx-layers] > [data-fx-bglayer]");
@@ -125,7 +125,7 @@ test("a picture from the library goes on as a layer, placed or filling the part,
 
   const row = page.locator('[data-builder-item="row"]').filter({ has: page.getByRole("heading", { name: "Over a picture layer" }) });
   await row.getByRole("button", { name: /^Settings \(row \d+\)/ }).press("Enter");
-  await page.getByRole("tab", { name: "Style" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
 
   // With no background at all, the layers are still one press away, and a picture of the owner's own is one of them.
   await page.getByRole("button", { name: "Add layers over the background" }).click();

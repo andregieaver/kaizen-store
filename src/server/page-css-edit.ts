@@ -16,6 +16,7 @@ import { refreshTagNow } from "./refresh";
 import { authorise, pageRow, revisionOf, type PageTextFailure } from "./page-text-edit";
 import { saveSiteCss } from "./site-css";
 import { storeTag } from "./stores";
+import { owned } from "./owned";
 
 /**
  * Custom CSS on the live site (D306): staff who may change a page's words there (D192) may also change its own CSS, and those who may
@@ -114,7 +115,7 @@ export async function savePageCss(input: {
   const outcome = await db().transaction(async (tx): Promise<{ ok: true; draftKept: boolean; changed: boolean; slug: string; title: string; type: string } | PageTextFailure> => {
     const [page] = await tx.execute<Row>(sql`
       select slug, type, draft, published from commerce.pages
-      where id = ${input.page}::uuid and store_id is not distinct from ${owner}::uuid and type in ('page', 'article')
+      where id = ${input.page}::uuid and ${owned(owner)} and type in ('page', 'article')
       for update
     `);
     if (!page) return GONE;

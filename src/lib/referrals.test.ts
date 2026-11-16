@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { encodeConsent, FULL_CONSENT, NO_CONSENT } from "./cookie-consent";
-import { KNOWN_COOKIES, declaredCookies } from "./cookie-consent";
+import { KNOWN_COOKIES, declaredCookies } from "./known-cookies";
 import { bpsText, commissionOn, makeReferralCode, mayKeepReferral, normalizeReferralCode, readReferralCookie, REFERRAL_CODE, REFERRAL_COOKIE, REFERRAL_DEFAULTS, referralCodeFor, referralCookie, referralEnds, referralPath, referralSignUpPath, referralUrl, sumPerCurrency, withinReferralWindow } from "./referrals";
 import { referralSettingsInput } from "./referrals-schema";
 

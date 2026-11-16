@@ -53,6 +53,11 @@ import { emptyProduct, getEditorContext, getProductForEdit, saveProduct, type Ed
 import type { Store } from "./stores";
 import { createTerm, termsTag } from "./taxonomy";
 import { pictureItem } from "@/lib/product-media";
+import { lowestMargin, type MarginRow } from "@/lib/margin-floor";
+import { z } from "zod";
+import { toMainOne } from "./analytics-sql";
+import { col, typedRows } from "./typed-rows";
+import { pgTextArray } from "./pg-arrays";
 
 type Row = Record<string, unknown>;
 
@@ -526,4 +531,68 @@ export async function productApprovalWords(store: Store, tool: string, args: Rec
   } catch {
     return null;
   }
+}
+
+/**
+ * The lowest margin the new prices of a `set_prices` call leave any variant (the margin floor, `docs/100-day-challenge.md` D5): each changed
+ * price in the store's main currency (`toMainOne()`), without the market's VAT for the product's category, against the variant's unit cost.
+ * Only the prices the call changes are measured. Null when none can be (no cost, no exchange rate) or the call cannot be read.
+ */
+export async function marginAfterPrices(store: Store, account: Account, input: SetPricesInput): Promise<number | null> {
+  try {
+    const { found, stored, editor } = await dryChange({ account, store, invalidate: () => {} }, { product: input.product });
+    const change = pricesAsChange(input.product, input, stored);
+    if (!change.ok) return null;
+    const currency = new Map(editor.markets.map((m) => [m.code, m.currency]));
+    const markets = [...currency.keys()];
+    const facts = await typedRows(
+      z.object({ sku: col.text, cost_minor: col.minor.nullable(), market: col.text, rate: z.coerce.number().nullable() }),
+      sql`
+        select v.sku, v.cost_minor, m.code as market, commerce.vat_rate(m.code, p.vat_category)::float8 as rate
+        from commerce.product_variants v
+        join commerce.products p on p.id = v.product_id and p.store_id = v.store_id
+        cross join unnest(${pgTextArray(markets)}::text[]) as m(code)
+        where v.store_id = ${store.id}::uuid and v.product_id = ${found.id}::uuid
+      `,
+    );
+    const rows: MarginRow[] = [];
+    for (const variant of change.change.variants ?? []) {
+      for (const [market, text] of Object.entries(variant.prices ?? {})) {
+        const fact = facts.find((f) => f.sku.toLowerCase() === (variant.sku ?? "").toLowerCase() && f.market === market);
+        const code = currency.get(market);
+        if (!fact || fact.cost_minor === null || fact.rate === null || !code || text.trim() === "") continue;
+        const minor = parsePrice(text, code);
+        const main = minor === null ? null : toMainOne(store, code, minor);
+        if (main === null) continue;
+        rows.push({ priceMinor: main, vatRate: fact.rate, costMinor: fact.cost_minor });
+      }
+    }
+    return lowestMargin(rows);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The lowest margin an offer taking `depthPercent` off would leave any active product with a cost, in any market (the margin floor, D5). An
+ * offer's own reach (a category, a code) is not read: every product is measured, the strictest reading.
+ */
+export async function marginAfterOffer(store: Store, depthPercent: number): Promise<number | null> {
+  const prices = await typedRows(
+    z.object({ amount_minor: col.minor, currency: col.currency, cost_minor: col.minor, rate: z.coerce.number().nullable() }),
+    sql`
+      select cp.amount_minor, cp.currency, v.cost_minor, commerce.vat_rate(cp.market_code, p.vat_category)::float8 as rate
+      from commerce.current_prices cp
+      join commerce.product_variants v on v.id = cp.variant_id and v.store_id = cp.store_id
+      join commerce.products p on p.id = v.product_id and p.store_id = v.store_id
+      where cp.store_id = ${store.id}::uuid and p.status = 'active' and v.cost_minor is not null
+    `,
+  );
+  const rows: MarginRow[] = [];
+  for (const price of prices) {
+    const main = toMainOne(store, price.currency, price.amount_minor);
+    if (main === null || price.rate === null) continue;
+    rows.push({ priceMinor: main, vatRate: price.rate, costMinor: price.cost_minor });
+  }
+  return lowestMargin(rows, depthPercent);
 }

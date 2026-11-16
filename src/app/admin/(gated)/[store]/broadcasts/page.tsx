@@ -5,10 +5,15 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { BroadcastStatus } from "@/lib/broadcasts";
+import type { BroadcastTemplateKey } from "@/lib/broadcast-templates";
 import { listBroadcasts } from "@/server/broadcasts";
+import { subscriberCounts } from "@/server/marketing-subscribers";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Broadcasts" };
+
+/** The emails Homer starts from (round 10, D633): templates of D368, the first with the store's newest products in it. */
+const STARTS = ["new_products", "offer", "thanks"] as const satisfies readonly BroadcastTemplateKey[];
 
 const SIGNAL: Record<BroadcastStatus, "neutral" | "insight" | "warning" | "positive"> = {
   draft: "neutral",
@@ -22,7 +27,8 @@ const SIGNAL: Record<BroadcastStatus, "neutral" | "insight" | "warning" | "posit
 export default async function BroadcastsPage({ params }: PageProps<"/admin/[store]/broadcasts">) {
   const member = await requirePermission((await params).store, "marketing:read");
   const { store } = member;
-  const broadcasts = await listBroadcasts(store.id);
+  const [broadcasts, counts] = await Promise.all([listBroadcasts(store.id), subscriberCounts(store.id)]);
+  const people = counts.subscribed;
   const base = `/admin/${store.slug}/broadcasts`;
   const mayWrite = memberCan(member, "marketing:write");
   const lang = adminLangOf(member.account.adminLocale);
@@ -35,12 +41,26 @@ export default async function BroadcastsPage({ params }: PageProps<"/admin/[stor
     <div className="flex flex-col gap-6">
       <PageHeader
         title={wb.title}
-        description={wb.description}
-        actions={mayWrite ? <ButtonLink href={`${base}/new`} kind="main">{wb.newBroadcast}</ButtonLink> : undefined}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">{people === 0 ? wb.leadNone : countWords(people, wb.leadSome, { n: people.toLocaleString(numbers) })}</span>
+            {people === 0 ? wb.leadNoneRest : wb.leadRest}
+          </span>,
+        ]}
+        actions={
+          <>
+            <ButtonLink href={`/admin/${store.slug}/subscribers`} kind="secondary">
+              {wb.whoIsOn}
+            </ButtonLink>
+            {mayWrite && (
+              <ButtonLink href={`${base}/new`} kind="secondary">
+                {wb.writeOwn}
+              </ButtonLink>
+            )}
+          </>
+        }
       />
-      {broadcasts.length === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>{wb.empty}</p>
-      ) : (
+      {broadcasts.length > 0 && (
         <Card compact>
           <List label={wb.list}>
             {broadcasts.map((b) => (
@@ -60,6 +80,30 @@ export default async function BroadcastsPage({ params }: PageProps<"/admin/[stor
             ))}
           </List>
         </Card>
+      )}
+      {mayWrite && (
+        <section aria-labelledby="starts" className="flex flex-col gap-3">
+          <h2 id="starts" className="text-title text-ink">
+            {wb.startsTitle}
+          </h2>
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(18rem,100%),1fr))] gap-3">
+            {STARTS.map((key, i) => (
+              <li key={key} className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
+                <span className="text-body text-ink">{wb.starts[key].title}</span>
+                <span className="text-caption text-ink-2">{wb.starts[key].sub}</span>
+                <ButtonLink
+                  href={`${base}/new?from=${key}`}
+                  kind={i === 0 && broadcasts.length === 0 ? "main" : "secondary"}
+                  size="dense"
+                  className="mt-auto self-start"
+                >
+                  {wb.startFromThis}
+                  <span className="sr-only"> {wb.starts[key].title}</span>
+                </ButtonLink>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

@@ -8,6 +8,18 @@ import type { Widen } from "./common.en";
 export const blogEn = {
   noChange: "You cannot change the blog.",
   links: { blogs: "Blogs", authors: "Authors", comments: "Comments" },
+  /** The blog's list drawn for Homer (round 9, D630): a sentence, picture cards, the rest under More. */
+  list: {
+    live: { one: "{n} article is live.", many: "{n} articles are live." },
+    noneLive: "No article is live yet.",
+    newest: " The newest, “{title}”, came out {date}.",
+    firstSoon: " Write the first one; it stays a draft until you publish it.",
+    waiting: { one: "{n} comment waits for you to read it.", many: "{n} comments wait for you to read them." },
+    read: "Read them",
+    label: "Your articles",
+    newSub: "a draft until you publish it",
+    more: "More",
+  },
   comments: {
     off: { label: "Off", hint: "No comment form, and no comments are shown." },
     moderated: { label: "Held for you to read", hint: "Comments are shown once you approve them. The safe choice." },

@@ -36,8 +36,43 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
     return (
       <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={w.description} />
-        <Card title={w.connectTitle}>{owner ? <SmsConnectForm connect={connectSmsAction.bind(null, store.slug)} /> : <p className="text-body text-muted">{w.ownerOnly}</p>}</Card>
+        {/* Round 13 (D639): what texts give and cost first; the three fields one press away, under Connect 46elks. */}
+        <PageHeader
+          title={w.title}
+          meta={[
+            <span key="lead">
+              <span className="text-ink">{w.leadNotSet}</span>
+              {w.leadNotSetRest}
+            </span>,
+          ]}
+        />
+        <section aria-labelledby="get" className={`px-6 py-3 ${CARD_CLASS}`}>
+          <h2 id="get" className="mt-2 mb-1 text-title text-ink">{w.getTitle}</h2>
+          <ul className="divide-y divide-line">
+            {(["consent", "daytime", "cost"] as const).map((key) => (
+              <li key={key} className="flex min-h-14 flex-col justify-center py-3">
+                <span className="text-body text-ink">{w.get[key].title}</span>
+                <span className="text-caption text-ink-2">{w.get[key].sub}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {owner ? (
+          <details className="group flex flex-col gap-4">
+            <summary className="flex cursor-pointer list-none flex-wrap gap-2 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink group-open:hidden">{w.connectOpen}</span>
+              <a href="https://46elks.com" target="_blank" rel="noopener" className="inline-flex h-11 items-center rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken">
+                {w.makeAccount}
+              </a>
+            </summary>
+            <Card title={w.connectTitle}>
+              <SmsConnectForm connect={connectSmsAction.bind(null, store.slug)} />
+            </Card>
+          </details>
+        ) : (
+          <p className="text-body text-muted">{w.ownerOnly}</p>
+        )}
+
       </div>
       </AdminTextScope>
     );
