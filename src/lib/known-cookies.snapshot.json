@@ -195,6 +195,38 @@
   }
  },
  {
+  "category": "recordings",
+  "days": 31,
+  "name": "kaizen_replay_ids_…",
+  "on": "store",
+  "pattern": "^kaizen_replay_ids_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "The numbers of the recordings this browser made in the last 31 days, so you can delete them; never sent anywhere else.",
+   "nb": "Numrene på opptakene denne nettleseren har laget de siste 31 dagene, slik at du kan slette dem; sendes aldri noe annet sted.",
+   "sv": "Numren på inspelningarna som den här webbläsaren har gjort de senaste 31 dagarna, så att du kan radera dem; skickas aldrig någon annanstans.",
+   "da": "Numrene på de optagelser, denne browser har lavet de seneste 31 dage, så du kan slette dem; sendes aldrig andre steder hen."
+  },
+  "recordings": true,
+  "storage": "local"
+ },
+ {
+  "category": "recordings",
+  "days": null,
+  "name": "kaizen_replay_…",
+  "on": "store",
+  "pattern": "^kaizen_replay_[0-9a-f-]{36}$/",
+  "provider": "Kaizena Flow",
+  "purpose": {
+   "en": "A random number for this tab that ties a recording of your visit together; gone when you close the tab, never joined to who you are.",
+   "nb": "Et tilfeldig nummer for denne fanen som holder et opptak av besøket ditt sammen; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
+   "sv": "Ett slumpat nummer för den här fliken som håller ihop en inspelning av ditt besök; försvinner när du stänger fliken och kopplas aldrig till vem du är.",
+   "da": "Et tilfældigt nummer for denne fane, der holder en optagelse af dit besøg sammen; forsvinder, når du lukker fanen, og knyttes aldrig til, hvem du er."
+  },
+  "recordings": true,
+  "storage": "session"
+ },
+ {
   "category": "preferences",
   "days": null,
   "modals": true,

@@ -665,3 +665,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   gives none until stores have their own hosts (P7).
   The wishlist (D34) hearts ask `/wishlist/saved` only when the marker cookie `kaizen_mine_{storeId}` (necessary, declared in
   `KNOWN_COOKIES`, set on a first save and on sign-in) is present.
+  Heatmaps and recordings (D657, `docs/heatmaps-and-recordings.md`): `recordings` is a fourth optional category, asked about only while a
+  store records visits; its bit is written into the consent cookie only when the version names it, so every other cookie keeps its three
+  bits. Heatmaps run under statistics and add the token `heat` to the version (`consentVersion(categories, extras)`, extras from
+  `siteCookies()`), so visitors are asked again and the statistics text names them. An owner's code and an owner's note on a scanned item
+  never take `recordings` (`CODE_CATEGORIES`). A known storage item carries `storage` on its `KNOWN_COOKIES` entry, which is how the scan
+  recognises it. Legal facts gain `heatmaps` and `sessionRecordings` only when true, so the legal AI rewrites nothing for other stores.
