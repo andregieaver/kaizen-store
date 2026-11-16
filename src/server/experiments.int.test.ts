@@ -196,6 +196,28 @@ describe("making a test (D148)", () => {
     expect(await admin.deleteDraft(account, storeId, made.id)).toMatchObject({ ok: false });
   });
 
+  it("asks for a version's changes to be published when they are saved only in its draft, and starts once they are", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Saved only", pageId: aboutId, goal: "orders" });
+    if (!made.ok) throw new Error("not made");
+    const version = (await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
+    // The builder's Save: the draft changes, the published copy visitors are shown stays the original's.
+    const [row] = await db().execute<Row>(sql`select published from commerce.pages where id = ${version}::uuid`);
+    const content = row.published as PageContent;
+    const rows = content.rows.map((r) => ({ ...r, columns: r.columns.map((c) => ({ ...c, blocks: c.blocks.map((b) => (b.type === "heading" ? { ...b, text: `${b.text} (saved)` } : b)) })) }));
+    await db().execute(sql`update commerce.pages set draft = ${JSON.stringify({ ...content, rows })}::jsonb where id = ${version}::uuid`);
+    const b = (await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!;
+    expect(b).toMatchObject({ changed: false, unpublished: true });
+    const problems = await admin.startProblemsOf(storeId, made.id);
+    expect(problems.join(" ")).toContain("Version B's latest changes are saved but not published");
+    expect(problems.join(" ")).not.toContain("still the same as the original");
+    expect(await admin.startExperiment(account, storeId, made.id)).toMatchObject({ ok: false });
+    // The builder's Publish: the published copy is the draft now.
+    await db().execute(sql`update commerce.pages set published = draft where id = ${version}::uuid`);
+    expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")).toMatchObject({ changed: true, unpublished: false });
+    expect((await admin.startExperiment(account, storeId, made.id)).ok).toBe(true);
+    await endAll();
+  });
+
   it("adds and removes versions with the shares evened out", async () => {
     const made = await admin.createExperiment(account, storeId, { name: "Three", pageId: aboutId, goal: "cart" });
     if (!made.ok) throw new Error("not made");

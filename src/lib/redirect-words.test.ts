@@ -62,6 +62,9 @@ describe("the A/B test catalogue", () => {
     );
     expect(experimentProblemText("That form is not in the part you are testing.", experimentsNb)).toBe("Det skjemaet er ikke i delen du tester.");
     expect(experimentProblemText("A test has at most 4 versions, the original included.", experimentsNb)).toBe("En test har høyst 4 versjoner, originalen medregnet.");
+    expect(experimentProblemText("Version B's latest changes are saved but not published: publish them in the builder, as visitors are shown what is published.", experimentsNb)).toBe(
+      "De siste endringene i versjon B er lagret, men ikke publisert: publiser dem i sidebyggeren, for de besøkende får se det som er publisert.",
+    );
   });
 
   it("writes the verdict and the estimate in Norwegian when given the words, and in English unchanged when not", () => {

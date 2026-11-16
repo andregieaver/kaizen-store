@@ -205,6 +205,8 @@ export const experimentsNb: ExperimentsMessages = {
     readyTitle: "Klar til å starte?",
     changed: "{name} er forskjellig fra originalen",
     notChanged: "{name} er fortsatt lik originalen: endre den først",
+    unpublished: "De siste endringene i {name} er lagret, men ikke publisert: publiser dem i sidebyggeren",
+    publishChanges: "Publiser endringene i {name}",
     published: "Siden er publisert",
     notPublished: "Publiser siden først: en test starter fra det som er publisert",
     goalSet: "Testen teller {goal}",
@@ -396,6 +398,7 @@ export const experimentsNb: ExperimentsMessages = {
     different: {
       title: "Hva som er forskjellig",
       none: "Ingenting er forskjellig fra originalen.",
+      unpublished: "Den har endringer som er lagret i sidebyggeren og ikke publisert ennå. De besøkende ville fått se det som er publisert.",
       more: { one: "og {n} endring til", many: "og {n} endringer til" },
       preview: "Forhåndsvis",
     },
@@ -513,6 +516,7 @@ export const experimentsNb: ExperimentsMessages = {
     applyPart: "Den versjonen kunne ikke tas i bruk: siden har ikke lenger {part}, eller versjonen kunne ikke leses.",
     applyPage: "Den versjonen kunne ikke leses.",
     same: "Versjon {key} er fortsatt lik originalen: endre den først, ellers har testen ingenting å finne.",
+    versionUnpublished: "De siste endringene i versjon {key} er lagret, men ikke publisert: publiser dem i sidebyggeren, for de besøkende får se det som er publisert.",
     workingWhole:
       "En arbeidsside testes med en del av den, rundt butikkens egen komponent, ikke som helhet: velg delen i sidebyggeren med «A/B-test dette».",
     needsOriginal: "En test trenger originalen og minst én annen versjon.",

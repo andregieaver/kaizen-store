@@ -111,7 +111,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
       experimentTraffic(store, [{ id: test.page.id, slug: test.page.slug, title: test.page.title, kind: test.page.kind, role: test.page.role }]),
     ]);
     // The checklist says a version is unchanged and the page unpublished itself; the rest of what the start checks found is listed under it.
-    const shownByChecklist = (p: string) => /still the same as the original|^Publish the page before testing it|^Choose the (button|form)/.test(p);
+    const shownByChecklist = (p: string) => /still the same as the original|latest changes are saved but not published|^Publish the page before testing it|^Choose the (button|form)/.test(p);
     const problems = experimentProblems(left.filter((p) => !shownByChecklist(p)), w);
     const changeWords = Object.fromEntries(Object.entries(changes).map(([key, list]) => [key, list.map((d) => differenceLine(d, builder))]));
     const allChanged = test.variants.every((v) => v.key === "a" || v.changed);

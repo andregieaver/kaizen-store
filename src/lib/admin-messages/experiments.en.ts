@@ -214,6 +214,8 @@ export const experimentsEn = {
     readyTitle: "Ready to start?",
     changed: "{name} differs from the original",
     notChanged: "{name} is still the same as the original: change it first",
+    unpublished: "{name}'s latest changes are saved but not published: publish them in the builder",
+    publishChanges: "Publish {name}'s changes",
     published: "The page is published",
     notPublished: "Publish the page first: a test starts from what is published",
     goalSet: "The test counts {goal}",
@@ -436,6 +438,7 @@ export const experimentsEn = {
     different: {
       title: "What is different",
       none: "Nothing differs from the original.",
+      unpublished: "It has changes saved in the builder and not published yet. Visitors would be shown what is published.",
       more: { one: "and {n} more change", many: "and {n} more changes" },
       preview: "Preview",
     },
@@ -526,6 +529,7 @@ export const experimentsEn = {
     applyPart: "That version could not be applied: the page no longer has {part}, or the version could not be read.",
     applyPage: "That version could not be read.",
     same: "Version {key} is still the same as the original: change it first, or the test has nothing to find.",
+    versionUnpublished: "Version {key}'s latest changes are saved but not published: publish them in the builder, as visitors are shown what is published.",
     workingWhole:
       "A working page is tested by a part of it, around the shop's own component, not as a whole: choose the part in the page builder with “A/B test this”.",
     needsOriginal: "A test needs the original and at least one other version.",

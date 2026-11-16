@@ -63,8 +63,8 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
   page: { id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", published: true, type: "page", kind: "page" },
   part: null,
   variants: [
-    { key: "a", name: "Original", share: 0.5, pageId: null, published: true, changed: false, scope: null },
-    { key: "b", name: "Version B", share: 0.5, pageId: "33333333-3333-4333-8333-333333333333", published: true, changed: true, scope: null },
+    { key: "a", name: "Original", share: 0.5, pageId: null, published: true, changed: false, unpublished: false, scope: null },
+    { key: "b", name: "Version B", share: 0.5, pageId: "33333333-3333-4333-8333-333333333333", published: true, changed: true, unpublished: false, scope: null },
   ],
   ...over,
 });
@@ -168,6 +168,19 @@ describe("a draft as a record (D660)", () => {
     expect(ready).toContain("Version B differs from the original");
     expect(ready).toContain("Everything is ready");
     expect(ready).toContain("Heading: “Om oss” became “Kort fortalt”");
+  });
+
+  it("asks for a version's changes to be published when they are saved only as a draft, not to change it", () => {
+    const saved = test({ variants: [test().variants[0], { ...test().variants[1], changed: false, unpublished: true }] });
+    const panel = html(createElement(DraftPanel, { store: "demo", test: saved, markets: [] }));
+    expect(panel).toContain("Version B's latest changes are saved but not published");
+    expect(panel).toContain("changes saved in the builder and not published yet");
+    expect(panel).not.toContain("still the same as the original");
+    expect(panel).not.toContain("Nothing differs from the original");
+    expect(panel).not.toContain("Everything is ready");
+    const actions = html(createElement(DraftActions, { store: "demo", test: saved, ready: false }));
+    expect(actions).toContain("Publish Version B's changes");
+    expect(actions).not.toContain("Start the test");
   });
 });
 
