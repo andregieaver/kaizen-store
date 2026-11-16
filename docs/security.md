@@ -241,6 +241,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 | `/api/unsubscribe` | a person leaving a list | the email's own token |
 | `/api/usage` | Vercel's usage drain | the drain's secret, compared in constant time (2.8) |
 | `/api/visit` | a visitor's browser (counted visits, speed, D152, D336) | `sameSite()`; counts only, no person |
+| `/api/signals` | a visitor's browser after consent (heatmaps, D656) | `sameSite()`, the store's own page, consent read again, a day's cap; `heat`: totals per page and day, no person |
 | `/api/webhooks` | anyone building a webhook receiver (D438) | none: `v1/topics.json` is the public catalogue of topics, payload shapes and signature steps, generated from code, no store's data |
 | `/api/wordpress` | the WordPress plugin (D169) | the plugin's token for its store (`asPlugin()`, 2.9) |
 

@@ -593,7 +593,7 @@ profitable, each a link to its order.
 
 Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
 [`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
-(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors. Nothing is collected yet.
+(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the tables and `/api/signals/heat`, which no page calls yet.
 
 The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
 

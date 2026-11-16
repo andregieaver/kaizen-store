@@ -1722,6 +1722,10 @@ selected (the DOM layer passes it only when the selection is not collapsed), sin
     visitor is kept).
 - **`src/server/page-heat-prune.int.test.ts`:** old rows go and recent ones stay, for an open store and a closed one.
 
+*As built (16 Nov 2026):* `runningExperiments()` is imported from `src/server/experiments.ts` (not moved). The database checks are in
+`src/db/page-heat.test.ts`; `recordHeat()`'s in `src/server/page-heat.int.test.ts`, which mocks `next/headers` for `lockedOut()` and
+`runningExperiments()` for the tags.
+
 **Done when:**
 
 - the tests pass;

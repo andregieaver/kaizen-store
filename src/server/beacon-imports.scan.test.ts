@@ -8,6 +8,7 @@ const BEACONS = [
   "src/app/api/visit/touch/route.ts",
   "src/app/api/visit/speed/route.ts",
   "src/app/api/visit/speed/own/route.ts",
+  "src/app/api/signals/heat/route.ts",
   "src/app/api/recommendations/events/route.ts",
 ];
 
