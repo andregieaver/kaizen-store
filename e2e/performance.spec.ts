@@ -124,6 +124,58 @@ test("a first row's background picture loads at once, a later row's lazily, and 
   await expect(later).toHaveAttribute("src", small);
 });
 
+test("a full-width picture on a 2x phone and a two-column picture on a 3x phone draw the 800 px copy", async ({ browser }) => {
+  test.setTimeout(120_000);
+  // The media library keeps one row per address: each run's picture has its own. The files are the site's own public ones, so the
+  // browser can fetch them.
+  const run = Date.now().toString(36);
+  const big = `${base}/demo/cabin.svg?run=${run}&w=1600`;
+  const medium = `${base}/demo/cabin.svg?run=${run}&w=800`;
+  const small = `${base}/demo/mug.svg?run=${run}`;
+  const picture = (id: string) => ({ id, type: "image", image: { url: big, width: 1600, height: 900, alt: "Hytte" } });
+  const url = await storePageRows("ytelse-bilde", [
+    { id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [picture("p1")] }] },
+    {
+      id: "r2",
+      type: "row",
+      layout: "2",
+      stack: false,
+      columns: [
+        { id: "c2", blocks: [picture("p2")] },
+        { id: "c3", blocks: [{ id: "h1", type: "heading", text: "Ved siden av", level: 2 }] },
+      ],
+    },
+  ]);
+  const store = url.split("/")[2];
+  const sql = testDb();
+  try {
+    // The picture is in the store's media library with its small and 800 px copies, as an upload leaves it.
+    await sql`
+      insert into commerce.media (store_id, kind, url, thumbnail_url, medium_url, bucket, path, file_name, content_type, width, height)
+      select id, 'image', ${big}, ${small}, ${medium}, 'product-media', ${`${store}/cabin.webp`}, 'cabin.webp', 'image/webp', 1600, 900
+      from commerce.stores where slug = ${store}`;
+  } finally {
+    await sql.end();
+  }
+  const size = { width: 390, height: 844 };
+  const source = (img: import("@playwright/test").Locator) => img.evaluate((el) => (el as HTMLImageElement).currentSrc);
+  const twoX = await browser.newContext({ viewport: size, screen: size, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const threeX = await browser.newContext({ viewport: size, screen: size, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  try {
+    const first = await twoX.newPage();
+    await first.goto(url);
+    await expect.poll(() => source(first.locator('img[alt="Hytte"]').first())).toBe(medium);
+    const second = await threeX.newPage();
+    await second.goto(url);
+    await expect.poll(() => source(second.locator('img[alt="Hytte"]').nth(1))).toBe(medium);
+    // At 3x a full-width picture needs 1,170 pixels, so the large file is right there.
+    await expect.poll(() => source(second.locator('img[alt="Hytte"]').first())).toBe(big);
+  } finally {
+    await twoX.close();
+    await threeX.close();
+  }
+});
+
 test("a product tile takes the 800 px copy on a 3x phone, and no tile or gallery picture is fetched more than 1.5 times too wide (bloat review 0.33)", async ({ browser }) => {
   test.setTimeout(120_000);
   // A store of its own, nothing of it cached yet: its products' first pictures are three real files of 480, 800 and 1,600 px, as an

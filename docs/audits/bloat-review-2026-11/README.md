@@ -46,6 +46,7 @@ node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs out      # module
 node docs/audits/bloat-review-2026-11/scripts/scripts-by-page.mjs out   # needs out/routes.json and the analyzer's data
 
 node docs/audits/bloat-review-2026-11/scripts/markers.mjs "<marker>" …   # after pnpm build: routes whose first-load chunks hold each string, the median admin route, routes over 1,300,000 bytes, the largest first-load chunk (steps 0.9 to 0.11; step 1.2's scripts/bundle-budget.mjs replaces it)
+DATABASE_URL=postgres://… node docs/audits/bloat-review-2026-11/scripts/page-pictures.mjs   # step 0.44: one line, how many page pictures wider than 800 px have a library row with no middle copy (read-only)
 
 node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs out       # files and exports nothing uses (suspects)
 node docs/audits/bloat-review-2026-11/scripts/copied-code.mjs out       # exact copies

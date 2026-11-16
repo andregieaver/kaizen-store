@@ -14,7 +14,10 @@ a 480 px copy. A 3x phone and a Retina laptop need 540 to 800 pixels for a produ
 (71 KB on average for the theme art, where the 800 px copy is 18 KB). The server's own makers (`shrinkPicture()`, the content packs'
 art, the product import) make the 800 px copy with sharp. A picture stored before has two files and is offered as two; nothing makes
 the copy afterwards. The third file adds about a quarter to a picture's stored bytes, which Usage and limits counts. A fourth size of
-1,200 px is the owner's later choice. Pictures inside page content still offer two files (step 0.44). The quality bar:
+1,200 px is the owner's later choice. Pictures in page content (a picture component, a Before and after, a row's or column's background picture) are offered the 800 px
+copy too (step 0.44): the page never stores it; `withPageAlts()` reads it from the library by the picture's address each time the
+page is read. A picture in a column that stays beside others on a phone says its share of the screen in `sizes` (`phoneShare()`,
+`fixedSizes()`). Pictures that are layers over a background keep two files. The quality bar:
 
 - structural similarity (SSIM) in 8 × 8 windows on brightness and on colour, a see-through picture over white and over black;
 - measured at half size for pictures of 960 pixels and more (how a picture kept at twice its shown size is seen), with a

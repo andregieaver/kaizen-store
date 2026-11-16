@@ -219,7 +219,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   few page loads says how many there are. The page, the CSV `speed.figures` and the AI manager's `speed_report` read `speedReport()`. CI's
   budgets are `SPEED_BUDGETS` in `e2e/performance.spec.ts`: a change past one is a regression to look at, not a number to raise. Kaizena Flow's own
   site and the admin are measured the same way (D390: `SpeedBeacon own`, `src/server/own-speed.ts`, the only writer of `own_speed_samples`,
-  shown on Platform → Usage and limits).
+  shown on Platform → Usage and limits). A picture in page content gets the library's 800 px copy when the page is read
+  (`withSmallCopies()`, never saved), and its `sizes` follow its column's share on a phone (`phoneShare()` in
+  `src/lib/column-share.ts`, server only).
 
 
 ## Heatmaps and recordings: what the storefront sends (D656, `docs/heatmaps-and-recordings.md`, `src/components/signals/`, `src/server/page-heat.ts`, `src/server/recordings.ts`)
