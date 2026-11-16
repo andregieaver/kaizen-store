@@ -1,6 +1,6 @@
 {
-  "id": "5dad9c75-ece1-45d9-b3c6-c2b274232bde",
-  "prevId": "a7b8510f-1b80-4da4-9fb7-92347b343b5b",
+  "id": "52906751-1953-44b1-a725-45c3d95d3899",
+  "prevId": "5dad9c75-ece1-45d9-b3c6-c2b274232bde",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -17805,6 +17805,19 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "tries": {
+          "name": "tries",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "tried_at": {
+          "name": "tried_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
