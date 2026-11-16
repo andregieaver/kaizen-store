@@ -72,7 +72,7 @@ contract as HTML from the same snapshot as the PDF, a download of the PDF, and o
 **Level 2, advanced signature (AdES) with national ID, step 5:** the same page, but step 1 is BankID (Norway), MitID, Freja,
 Smart-ID … through one EU identity broker (chosen then: Criipto, Signicat or Scrive, processing in the EU). The broker's signed
 identity assertion is kept as the evidence; the seal can become a qualified one from the same vendor. Its credentials are a
-platform or store setting, never an environment variable (D15). Lisa chooses the level per template.
+platform or store setting, never an environment variable (D15). Lisa chooses the level per template, once level 2 exists (after level 1 is in use, section 8).
 
 The store's signer signs inside the admin (already signed in with two-step), with the same evidence.
 
@@ -85,7 +85,7 @@ The store's signer signs inside the admin (already signed in with two-step), wit
 - **Webhooks** (D354) `contract.sent|signed|declined`; the Admin API (D355) reads contracts.
 - **Retention**: a signed contract is kept 3 years 6 months after the agreement ends (Bokføringsloven § 13(2)); erasure keeps it
   (legal obligation) and removes the person from everything else; the export lists contracts under purpose `sales`.
-- **Permissions**: `contracts:read`, `contracts:write` (send), the store signer only by an owner or a member allowed to sign.
+- **Permissions**: `contracts:read`, `contracts:write` (draft, send), `contracts:sign` (sign for the store: the deal's owner or a named member, section 8).
 - **Usage and limits** counts contracts sent per month; the feature sits under `sales` (D464), offered as Deals is.
 - **The platform**: Kaizena Flow's own store has Deals (D466), so it gets contracts in the same change (its own sales
   agreements); `docs/platform-parity.md` needs no new row.
@@ -99,8 +99,10 @@ The store's signer signs inside the admin (already signed in with two-step), wit
 4. Deals' contract stage and win, the timeline, webhooks, the AI manager's tools.
 5. Level 2: an EU identity broker for BankID and its neighbours.
 
-## 8. Open questions for the owner
+## 8. The owner's answers (16 November 2026)
 
-- Level 2 from the start, or after level 1 is in use?
-- May a quote itself be signed as the contract (a template block of its lines is the default), or is a contract always apart?
-- Who signs for the store: the deal's owner, or a named signer?
+- **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.
+- **A contract is always its own document**: a quote is never signed as the contract. A template may still show the linked
+  quote's lines as a block (fields only), but the thing signed is the contract.
+- **The store signs by the deal's owner or a named signer**: the contract's store signer is the deal's owner by default; Lisa
+  may name another member allowed to sign (`contracts:sign`). With no owner on the deal, a named signer is required to send.
