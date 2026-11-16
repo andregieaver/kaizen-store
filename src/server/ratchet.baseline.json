@@ -175,7 +175,7 @@
     "src/server/invoice-storage.ts": 1,
     "src/server/invoices.ts": 22,
     "src/server/kaizen-life.ts": 1,
-    "src/server/knowledge.ts": 15,
+    "src/server/knowledge.ts": 13,
     "src/server/languages.ts": 7,
     "src/server/launch-themes.ts": 3,
     "src/server/leads.ts": 1,

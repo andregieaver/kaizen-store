@@ -123,6 +123,27 @@ describe("the knowledge base (D81)", () => {
     expect(second.cut).toBe(0);
     expect(texts.filter((text) => /^\s*begin/i.test(text))).toEqual([]);
     expect(texts.filter((text) => text.includes("delete from commerce.knowledge_chunks where page_id"))).toEqual([]);
+    // No statement selects a document: every `->>` expression removed, no page or entry `published` column is read.
+    const bare = texts.map((text) => text.replace(/\w+\.published\s*->>\s*'\w+'/g, ""));
+    expect(bare.filter((text) => /p\.published\b(?!_at)/.test(text) || /e\.published\b(?!_at)/.test(text))).toEqual([]);
+    expect(texts.filter((text) => text.includes("published from commerce.pages where id = any"))).toEqual([]);
+    expect(texts.length).toBeLessThanOrEqual(5);
+  });
+
+  it("an idle run of the job is one statement and reads no AI connection (bloat review 0.27)", async () => {
+    await db().execute(sql`insert into commerce.chat_agents (store_id, enabled) values (${storeId}::uuid, true) on conflict (store_id) do update set enabled = true`);
+    await knowledge.refreshKnowledge({ full: true });
+    await db().execute(sql`update commerce.knowledge_chunks set created_at = now() - interval '2 hours' where space is null`);
+    const [idle, texts] = await counted(() => knowledge.refreshKnowledge({ full: false }));
+    expect(idle.cut).toBe(0);
+    expect(idle.sites).toBe(0);
+    expect(texts).toHaveLength(1);
+    expect(texts.filter((text) => text.includes("commerce.ai_providers"))).toEqual([]);
+
+    await db().execute(sql`update commerce.pages set published_at = now() + interval '2 seconds' where store_id = ${storeId}::uuid and type = 'article' and slug = 'nye-produkter'`);
+    const again = await knowledge.refreshKnowledge({ full: false });
+    expect(again.cut).toBe(1);
+    expect(again.sites).toBe(1);
   });
 
   it("cuts a page again when it is published again, and forgets a page that is unpublished", async () => {
