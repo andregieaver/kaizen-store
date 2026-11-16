@@ -107,6 +107,7 @@ export const screensEn = {
   },
   /** One of Kaizena Flow's pages chosen for a place of its own (D143). */
   pagePlace: {
+    change: "Change",
     shows: "{name} shows",
     untitled: "Untitled",
     notPublished: " (not published)",

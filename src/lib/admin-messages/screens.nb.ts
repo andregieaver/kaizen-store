@@ -90,6 +90,7 @@ export const screensNb: ScreensMessages = {
     nothing: "Kaizena Flow har ingen publisert side å vise ennå.",
   },
   pagePlace: {
+    change: "Endre",
     shows: "{name} viser",
     untitled: "Uten tittel",
     notPublished: " (ikke publisert)",

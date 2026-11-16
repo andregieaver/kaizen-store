@@ -553,6 +553,11 @@ export const platformSiteNb: PlatformSiteMessages = {
     },
     categories: "Kategorier og stikkord",
     createAi: "Lag med KI",
+    leadNoPages: "Ingen sider ennå",
+    leadPages: { one: "{n} side", many: "{n} sider" },
+    leadJoin: "{pages}, og {legal}.",
+    firstPage: "Din første side",
+    firstPageSub: "Start fra en mal, beskriv den for KI-en, eller begynn tom.",
     special: "Spesielle sider",
     specialNote:
       "Kaizena Flows forside, blogg og 404-side har et standardutseende. Bygg en av dem i sidebyggeren i stedet: velg en av de publiserte sidene dine for den, eller start fra en ny side som ligner standardsiden. Standardsiden vises til du gjør det.",

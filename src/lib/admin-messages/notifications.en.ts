@@ -311,6 +311,8 @@ export const notificationsEn = {
     },
   },
   log: {
+    today: "Today",
+    yesterday: "Yesterday",
     title: "Emails to customers",
     back: "Emails to customers",
     none: "No emails yet.",
