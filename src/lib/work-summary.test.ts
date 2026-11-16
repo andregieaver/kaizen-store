@@ -35,6 +35,7 @@ const invoice = (o: Partial<OverviewInvoice> & Pick<OverviewInvoice, "id" | "sta
   totalMinor: 0,
   paidMinor: 0,
   creditedMinor: 0,
+  lostMinor: 0,
   dueOn: null,
   paidOn: null,
   updatedOn: TODAY,
