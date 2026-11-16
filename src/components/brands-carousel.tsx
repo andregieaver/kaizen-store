@@ -120,6 +120,7 @@ export function BrandsCarousel({
       data-movement={movement}
       data-still={still ? "" : undefined}
       data-moved-by={movement === "none" ? "visitor" : undefined}
+      data-kz-ambient={movement === "none" ? undefined : ""}
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)}
@@ -142,7 +143,7 @@ export function BrandsCarousel({
           </ul>
         </div>
       ) : movement === "none" ? (
-        <div className="kz-brands-stepper">
+        <div className="kz-brands-stepper" data-kz-no-rage="">
           <button
             type="button"
             className="kz-brands-arrow"

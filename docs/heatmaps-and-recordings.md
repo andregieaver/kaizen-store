@@ -1767,6 +1767,12 @@ selected (the DOM layer passes it only when the selection is not collapsed), sin
 - in `e2e/ab-tests.spec.ts` style: from a page under a page test, soft-navigate to another page; that page's view row has no tag of the
   test.
 
+*As built (16 Nov 2026):* the marks test reads the components' sources (`src/components/signals/marks.test.ts`) rather than rendering
+them, since most need a store to render. `custom-fields-view.tsx` is not marked: it shows the owner's specification tables, not a form.
+The search section's mark is on its outer element (the results are a fragment), and the Google reviews' mask on its root (the names are
+drawn by `TestimonialCards`). `e2e/heatmaps.spec.ts` covers a view's summary with a dead click on its part, and no request without consent
+that named heatmaps, under GPC or on the cart; the drawer, withdrawal and soft navigation under a test follow with step 5.
+
 **Also:** `e2e/performance.spec.ts` still passes unchanged, because the collector is not a `script[src]` in the HTML. And
 `pay-routes.graph.test.ts` passes.
 

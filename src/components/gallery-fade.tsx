@@ -185,7 +185,7 @@ export function GalleryFade({
             </div>
           )}
           {resolved.arrows && (
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex gap-2" data-kz-no-rage="">
               <button type="button" onClick={() => step(-1)} disabled={!canPrev} aria-label={m.carouselPrevious} className={arrow}>
                 <svg {...icon}>
                   <path d="m15 18-6-6 6-6" />

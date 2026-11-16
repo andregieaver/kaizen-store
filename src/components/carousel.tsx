@@ -50,7 +50,7 @@ export function Carousel({ children, settings }: { children: ReactNode; settings
       </div>
     ) : null;
   return (
-    <div ref={box} role="group" aria-roledescription={m.carousel} className="relative">
+    <div ref={box} role="group" aria-roledescription={m.carousel} data-kz-ambient={settings?.autoplay ? "" : undefined} className="relative">
       {children}
       {inBrowser ? <CarouselControls box={box} pressedRef={pressedRef} settings={settings} still={still} /> : still}
     </div>

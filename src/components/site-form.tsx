@@ -141,7 +141,7 @@ export function SiteForm({
 
   if (state.kind === "done") {
     return (
-      <div ref={root}>
+      <div ref={root} data-kz-private="">
         <p ref={done} tabIndex={-1} role="status" className="rounded-md bg-surface p-4 outline-none">
           <Inline text={state.text} />
         </p>
@@ -158,7 +158,7 @@ export function SiteForm({
   );
 
   return (
-    <div ref={root} className="flex flex-col gap-4">
+    <div ref={root} data-kz-private="" className="flex flex-col gap-4">
       {notice && (
         <p role="status" className="rounded-md bg-surface p-3 text-sm">
           {notice}
