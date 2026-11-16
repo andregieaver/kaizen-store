@@ -190,7 +190,7 @@ export async function removeOriginalPeriod(a: { account: Account }, storeId: str
 }
 
 /**
- * Freezes the baseline (`docs/100-day-challenge.md` E7, D648): the clone's cost estimates, the agreed ad money and a fingerprint of its goods'
+ * Freezes the baseline (`docs/100-day-challenge.md` E7, D650): the clone's cost estimates, the agreed ad money and a fingerprint of its goods'
  * cost prices, kept with the challenge. A platform admin's, only before Day 1 (frozen again replaces it), and only once the store has saved
  * its cost estimates, so the score never rests on estimates nobody entered. Audited with what was frozen.
  */

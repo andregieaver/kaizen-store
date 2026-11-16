@@ -2759,6 +2759,11 @@ export const productTranslations = commerce.table(
     seoDescription: text("seo_description").notNull().default(""),
     /** A short text of its own for lists and content grids; empty uses the start of the description. */
     excerpt: text("excerpt").notNull().default(""),
+    /**
+     * When the title, description or safety text last changed (bloat review step 0.28), set by the trigger
+     * product_translations_text_changed: the listings' check reads only words newer than its last reading (step 0.29).
+     */
+    textChangedAt: timestamp("text_changed_at", { withTimezone: true }).notNull().defaultNow(),
     /** The keyword search document (S1): title and description, stemmed in the translation's language. */
     search: tsvector("search").generatedAlwaysAs(
       (): ReturnType<typeof sql> => sql`commerce.product_search_doc(locale, title, description)`,
@@ -9428,6 +9433,11 @@ export const media = commerce.table(
     altWrittenAt: timestamp("alt_written_at", { withTimezone: true }),
     /** When the AI last failed to write one (or a language of it), so that picture waits a day. */
     altTriedAt: timestamp("alt_tried_at", { withTimezone: true }),
+    /**
+     * How many times in a row the AI failed to write this picture's alt text; the five-minute job stops at five (bloat review
+     * step 0.28), a person asking still tries. Back to 0 on a success.
+     */
+    altTries: smallint("alt_tries").notNull().default(0),
     /**
      * When the file was last compressed until it was as small as it could be while it still looked the same (D213): at upload
      * or by the library's Compress. Null for files from before, which Compress offers; a compressed file is never compressed

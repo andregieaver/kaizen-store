@@ -790,8 +790,9 @@ const described = sql`(m.alt <> '' or m.alt_translations <> '{}'::jsonb or regex
 
 /**
  * Gives a site's items vectors from its AI where they have none from its
- * current model, where the item changed since, or once a day (so what uses
- * an item is kept current); unchanged text keeps its vector.
+ * current model, where the item changed since, or once a week (so what uses
+ * an item is kept current; it was daily until bloat review step 0.28: 13,414
+ * date-only updates on 468 rows); unchanged text keeps its vector.
  */
 export async function embedMedia(owner: MediaOwner, connection: AiConnection, limit = PER_RUN): Promise<{ embedded: number; failed: string | null }> {
   const space = connection.space;
@@ -805,7 +806,7 @@ export async function embedMedia(owner: MediaOwner, connection: AiConnection, li
     select m.id, m.file_name, m.alt, m.alt_translations, e.content_hash from commerce.media m
     left join commerce.media_embeddings e on e.media_id = m.id
     where ${owned(owner.storeId, sql`m.store_id`)} and ${described}
-      and (e.media_id is null or e.space <> ${space} or e.updated_at < m.updated_at or e.updated_at < now() - interval '1 day')
+      and (e.media_id is null or e.space <> ${space} or e.updated_at < m.updated_at or e.updated_at < now() - interval '7 days')
     order by e.updated_at nulls first, m.created_at
     limit ${limit}
   `);
@@ -854,12 +855,29 @@ export async function embedMedia(owner: MediaOwner, connection: AiConnection, li
   return { embedded, failed: null };
 }
 
-/** The cron's share: each site with media and an AI brings its library's vectors up to date. */
-export async function refreshMediaEmbeddings(): Promise<{ sites: number; embedded: number }> {
-  const owners = await db().execute<Row>(sql`
-    select distinct m.store_id, s.slug from commerce.media m left join commerce.stores s on s.id = m.store_id
-    where m.store_id is null or (s.status = 'active' and not s.starter and not s.sandbox)
-  `);
+/**
+ * The cron's share: each site with a picture that is new or changed in the last hour, or whose vector is older than the
+ * picture or than a week, brings its library's vectors up to date; once an hour every site with media, which is what finds
+ * a changed embedding model and a site that got its AI later (bloat review step 0.28).
+ */
+export async function refreshMediaEmbeddings(options: { now?: Date; full?: boolean } = {}): Promise<{ sites: number; embedded: number }> {
+  const now = options.now ?? new Date();
+  const full = options.full ?? now.getUTCMinutes() < 5;
+  const owners = await db().execute<Row>(
+    full
+      ? sql`
+        select distinct m.store_id, s.slug from commerce.media m left join commerce.stores s on s.id = m.store_id
+        where m.store_id is null or (s.status = 'active' and not s.starter and not s.sandbox)
+      `
+      : sql`
+        select distinct m.store_id, s.slug from commerce.media m
+        left join commerce.stores s on s.id = m.store_id
+        left join commerce.media_embeddings e on e.media_id = m.id
+        where (m.store_id is null or (s.status = 'active' and not s.starter and not s.sandbox))
+          and ((e.media_id is null and m.updated_at > now() - interval '1 hour' and ${described})
+            or e.updated_at < m.updated_at or e.updated_at < now() - interval '7 days')
+      `,
+  );
   let embedded = 0;
   for (const row of owners) {
     const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };

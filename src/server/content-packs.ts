@@ -34,6 +34,7 @@ import { makePicture } from "./ai-pictures";
 import { activeAccount, audit, platformCan, type Account } from "./auth";
 import { catalogTag } from "./catalog";
 import type { ApplyDeps } from "./design-presets";
+import { refreshStoreEmbeddings } from "./embeddings";
 import { log } from "./log";
 import { rewriteAddresses } from "./media-compress";
 import { storePicture } from "./media-library";
@@ -346,6 +347,7 @@ async function writePack(admin: Account, row: PackRow, pack: ContentPack, deps: 
   // Its own art (a signature theme's, `docs/signature-themes.md`) in its library first; the rest are the pictures made so far.
   const pictures = await placeArt(admin, row, pack, deps);
   for (const product of pack.products) await writeProduct(store, editor, admin, pack, product, pictures[`product:${product.handle}`] ?? null);
+  await refreshStoreEmbeddings(store.id).catch(() => undefined);
   await writePages(admin, row.storeId, pack, pictures, deps);
   await db().execute(sql`update commerce.store_starters set pack_version = ${pack.version}, updated_by = ${admin.id}::uuid where id = ${row.starterId}::uuid`);
 }

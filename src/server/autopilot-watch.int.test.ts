@@ -8,6 +8,7 @@ vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 const { closeDb, db } = await import("@/db/client");
 const { watchAutopilotChanges, watchedChanges } = await import("./autopilot-watch");
 const { newStore } = await import("./inventory-test-support");
+const { newPageContent } = await import("@/lib/page-content");
 
 type Row = Record<string, unknown>;
 
@@ -123,5 +124,50 @@ describe("watch and roll back (F4)", () => {
     await watchAutopilotChanges({ everyRun: true });
     expect(await priceNow(busy.storeId)).toBe(34900);
     expect((await watchedChanges(busy.storeId))[0]).toMatchObject({ verdict: "fall", undone: [] });
+  });
+});
+
+describe("a page the autopilot published (F4, D651)", () => {
+  const page = (slug: string, text: string) => ({
+    ...newPageContent(),
+    title: "Autumn",
+    slug,
+    rows: [{ id: "row-1", type: "row" as const, layout: "1", columns: [{ id: "column-1", blocks: [{ id: "heading-1", type: "heading" as const, text, level: 2 as const }] }] }],
+  });
+  const live = async (id: string) =>
+    (await db().execute<Row>(sql`select published -> 'rows' -> 0 -> 'columns' -> 0 -> 'blocks' -> 0 ->> 'text' as text from commerce.pages where id = ${id}::uuid`))[0]?.text;
+
+  /**
+   * A page live as "before" ten days ago and published again as "after" by the autopilot `hoursAgo` hours ago, written as the page and its
+   * versions stand then (the audit log is append-only, so the publishes are not made through the save, which would date them now).
+   */
+  async function published(slug: string, hoursAgo: number): Promise<string> {
+    const before = JSON.stringify(page(slug, "before"));
+    const after = JSON.stringify(page(slug, "after"));
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at)
+      values (${busy.storeId}::uuid, 'page', ${slug}, ${after}::jsonb, ${after}::jsonb, now() - ${hoursAgo} * interval '1 hour', now() - interval '10 days')
+      returning id
+    `);
+    const id = String(row.id);
+    await db().execute(sql`
+      insert into commerce.page_versions (store_id, page_id, kind, content, created_at)
+      values (${busy.storeId}::uuid, ${id}::uuid, 'published', ${before}::jsonb, now() - interval '10 days'),
+             (${busy.storeId}::uuid, ${id}::uuid, 'published', ${after}::jsonb, now() - ${hoursAgo} * interval '1 hour' - interval '1 second')
+    `);
+    await change(busy, "publish_page", { page: slug, type: "page" }, hoursAgo, [{ action: "store.page_published", target: id, details: { slug } }]);
+    return id;
+  }
+
+  it("publishes the version that was live before again after a clear fall, and leaves a page someone edited since", async () => {
+    const watched = await published(`autumn-${Date.now().toString(36)}`, 8.1);
+    const edited = await published(`autumn-edited-${Date.now().toString(36)}`, 8.05);
+    // Someone changed the second page's draft after the autopilot published it: it stays as they left it.
+    await db().execute(sql`update commerce.pages set draft = jsonb_set(draft, '{title}', '"Autumn, edited"') where id = ${edited}::uuid`);
+    await watchAutopilotChanges({ everyRun: true });
+    expect(await live(watched)).toBe("before");
+    expect(await live(edited)).toBe("after");
+    const verdicts = (await watchedChanges(busy.storeId)).filter((w) => w.tool === "publish_page");
+    expect(verdicts.map((v) => v.undone)).toEqual(expect.arrayContaining([["the page back to the version that was live before"], []]));
   });
 });

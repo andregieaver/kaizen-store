@@ -284,6 +284,8 @@ The knowledge job reads about 40 whole pages a call every five minutes and re-cu
 
 ## 0.28 Make picture, alt-text and product upkeep cost one statement when nothing changed
 
+Done differently: the picture job checks uses weekly in place of a change stamp per site (most places a picture is kept have no reliable updated_at), and the text marker is product_translations.text_changed_at, not a column on products.
+
 Three more AI upkeep jobs walk every store every five minutes to find nothing. The picture job re-checks where each picture is used every day by text-searching every page (13,414 date-only updates on 468 rows): use one change stamp per site, and list only owners with a stale item. The alt-text job lists a site only while a picture is due, and gives up on a picture after five tries. The product index embeds on save from every saver, and its platform-wide scan runs hourly behind a minute guard until step 3.3 gives jobs a cadence. Ship the three apart, smallest first.
 
 - **Closes:** [CR-4](../findings/scheduled-work/CR-4.md), [DQ-3](../findings/queries/DQ-3.md), [DS-10](../findings/database-shape/DS-10.md), [AI-13](../findings/ai-calls/AI-13.md), [AI-5](../findings/ai-calls/AI-5.md), GAP-ai-s6

@@ -554,6 +554,11 @@ export const platformSiteEn = {
     },
     categories: "Categories and tags",
     createAi: "Create with AI",
+    leadNoPages: "No pages yet",
+    leadPages: { one: "{n} page", many: "{n} pages" },
+    leadJoin: "{pages}, and {legal}.",
+    firstPage: "Your first page",
+    firstPageSub: "Start from a template, describe it to the AI, or begin empty.",
     special: "Special pages",
     specialNote:
       "Kaizena Flow's front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.",

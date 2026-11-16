@@ -1,6 +1,6 @@
 {
-  "id": "9b12188e-c3b1-46c4-aa4e-cedfae896c5e",
-  "prevId": "22aa5aff-1cdd-47bb-b487-f2bcc05c4cda",
+  "id": "a7b8510f-1b80-4da4-9fb7-92347b343b5b",
+  "prevId": "675053ef-b62c-46b9-a689-d5cd4d73e36f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -42603,6 +42603,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "alt_tries": {
+          "name": "alt_tries",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "compressed_at": {
           "name": "compressed_at",
           "type": "timestamp with time zone",
@@ -60382,6 +60389,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "''"
+        },
+        "text_changed_at": {
+          "name": "text_changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         },
         "search": {
           "name": "search",

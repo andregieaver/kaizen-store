@@ -16,11 +16,13 @@ export default async function StoreEmailsPage({ params }: PageProps<"/admin/[sto
   const lang = adminLangOf(member.account.adminLocale);
   const words = adminText(lang, "notifications");
   const emails = await listEmails({ storeId: store.id, limit: 200 });
+  // By day, as the platform's (round 16, D650).
+  const drawnAt = new Date();
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={words.log.title} />
       <Card compact>
-        <EmailLog emails={emails} base={`/admin/${store.slug}/emails`} locale={ADMIN_LANG_FACTS[lang].locale} words={words} />
+        <EmailLog emails={emails} base={`/admin/${store.slug}/emails`} locale={ADMIN_LANG_FACTS[lang].locale} words={words} now={drawnAt.getTime()} />
       </Card>
     </div>
   );

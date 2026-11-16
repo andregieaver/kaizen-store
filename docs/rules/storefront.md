@@ -130,9 +130,10 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   must fall back to this when their model is unavailable. Search by meaning
   (D74): product translations' vectors are in `product_embeddings` (pgvector
   in `extensions`: write `extensions.vector` and `OPERATOR(extensions.<=>)`;
-  the table is SQL only, outside the Drizzle schema), kept current by
-  `refreshEmbeddings()` in the five-minute cron and `refreshStoreEmbeddings()`
-  after a product is saved; `rankedSearch()` merges keyword and meaning by
+  the table is SQL only, outside the Drizzle schema), kept current because
+  every saver of a product calls `refreshStoreEmbeddings()` at once (a new
+  saver must too), and `refreshEmbeddings()` goes through every store once an
+  hour (the first five minutes of the hour) as the net; `rankedSearch()` merges keyword and meaning by
   reciprocal rank fusion, and only compares vectors of the same `space`.
   Query understanding (D75, `src/lib/query-understanding.ts`,
   `src/server/query-understanding.ts`): the text model turns a search into

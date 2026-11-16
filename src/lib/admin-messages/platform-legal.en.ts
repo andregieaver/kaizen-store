@@ -15,6 +15,12 @@ export const platformLegalEn = {
   businessLink: "Business details",
   overwrite: "Write again over this page",
   write: "Write the legal pages",
+  legalNone: "the legal pages are not written",
+  legalSome: "{n} of the {total} legal pages are published",
+  legalAll: "the legal pages are published",
+  missingLine: { one: "One business detail is missing from the legal pages: {list}.", many: "{n} business details are missing from the legal pages: {list}." },
+  fillIn: "Fill them in",
+  writeHint: "All three, in English and Norwegian, published at once.",
   outcomes: { made: "made and published", written: "written and published", kept: "kept as it is", failed: "could not be written" },
   done: "Legal pages: {list}.",
 };

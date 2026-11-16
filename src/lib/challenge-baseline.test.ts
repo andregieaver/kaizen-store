@@ -13,7 +13,7 @@ const baseline: Baseline = {
   costFingerprint: "a".repeat(64),
 };
 
-describe("the challenge's baseline (E7, D648)", () => {
+describe("the challenge's baseline (E7, D650)", () => {
   it("is read back as it was kept", () => {
     expect(baselineSchema.parse(baseline)).toEqual(baseline);
     expect(baselineSchema.safeParse({ ...baseline, costFingerprint: "x" }).success).toBe(false);

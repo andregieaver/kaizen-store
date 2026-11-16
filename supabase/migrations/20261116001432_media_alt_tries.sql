@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."media" ADD COLUMN "alt_tries" smallint DEFAULT 0 NOT NULL;

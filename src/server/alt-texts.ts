@@ -26,6 +26,8 @@ type Row = Record<string, unknown>;
 /** Pictures described at once, and at most per call from the library (each call is one model request per picture). */
 const AT_ONCE = 4;
 export const ALT_BATCH = 8;
+/** Failed tries in a row after which the five-minute job leaves a picture alone (a person asking still tries; bloat review step 0.28). */
+export const ALT_TRIES_MAX = 5;
 /** The largest picture sent (its small copy is used when it has one). */
 const MAX_BYTES = 4 * 1024 * 1024;
 /** Types a text model that sees pictures reads. */
@@ -101,7 +103,7 @@ export async function writeAltText(
   const site = options.site === undefined ? await altSite(owner) : options.site;
   if (!site) return { ok: false, problem: "The store has no markets, so no language to write in." };
 
-  const tried = () => db().execute(sql`update commerce.media set alt_tried_at = now() where id = ${id}::uuid`);
+  const tried = () => db().execute(sql`update commerce.media set alt_tried_at = now(), alt_tries = alt_tries + 1 where id = ${id}::uuid`);
   const picture = await pictureBytes(row);
   if ("problem" in picture) {
     await tried();
@@ -143,7 +145,7 @@ export async function writeAltText(
     update commerce.media set alt = ${alt},
       -- A language the store keeps but does not show now (D178) keeps its text.
       alt_translations = (alt_translations - array[${sql.join(locales.map((locale) => sql`${locale}`), sql`, `)}]::text[]) || ${JSON.stringify(translations)}::jsonb, alt_source = 'ai',
-      alt_written_at = now(), alt_tried_at = ${complete ? null : sql`now()`}, updated_at = now()
+      alt_written_at = now(), alt_tried_at = ${complete ? null : sql`now()`}, alt_tries = 0, updated_at = now()
     where id = ${id}::uuid and (${Boolean(options.replace)} or alt_source is distinct from 'staff')
     returning id
   `);
@@ -162,11 +164,11 @@ export type AltRun = { written: number; failed: number; remaining: number; probl
  */
 export async function writeAltTexts(
   owner: MediaOwner,
-  options: { since: Date; rewrite?: boolean; limit?: number },
+  options: { since: Date; rewrite?: boolean; limit?: number; job?: boolean },
 ): Promise<AltRun> {
   const [raw, site] = await Promise.all([aiFor(owner.storeId, { feature: "media" }), altSite(owner)]);
   const connection = seeing(raw);
-  const due = await dueForAltText(owner, options.since, Boolean(options.rewrite), site);
+  const due = await dueForAltText(owner, options.since, Boolean(options.rewrite), site, Boolean(options.job));
   if (!connection) {
     return { written: 0, failed: 0, remaining: due.length, problem: "Set up an AI model that sees pictures under AI settings to write alt texts." };
   }
@@ -198,7 +200,7 @@ export async function writeAltTexts(
  * without any, those the AI wrote without one of the site's languages
  * (a market added since, or English), and with `rewrite` all the AI's.
  */
-async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean, site: AltSite | null): Promise<string[]> {
+async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean, site: AltSite | null, job = false): Promise<string[]> {
   const others = (site?.languages ?? []).slice(1).map((language) => language.locale);
   const at = since.toISOString();
   const rows = await db().execute<Row>(sql`
@@ -206,6 +208,7 @@ async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean, s
     where ${owner.storeId ? sql`store_id = ${owner.storeId}::uuid` : sql`store_id is null`}
       and kind = 'image' and content_type <> 'image/svg+xml'
       and (alt_tried_at is null or alt_tried_at < ${at}::timestamptz)
+      ${job ? sql`and alt_tries < ${ALT_TRIES_MAX}` : sql``}
       and (alt_source is null
         ${others.length > 0 ? sql`or (alt_source = 'ai' and not alt_translations ?& array[${sql.join(others.map((locale) => sql`${locale}`), sql`, `)}]::text[])` : sql``}
         ${rewrite ? sql`or (alt_source = 'ai' and alt_written_at < ${at}::timestamptz)` : sql``})
@@ -215,30 +218,59 @@ async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean, s
 }
 
 /**
- * The five-minute cron's part (D89): new pictures get their alt texts
- * without anyone asking (and the AI's texts a language added since), a few per site and a few sites per run (those
- * waiting longest first), on sites whose AI has a text model. A picture
- * that could not be described waits a day. Returns the owners whose texts
- * changed, for their caches.
+ * The sites with a picture the five-minute job should look at (bloat review step 0.28), the ones waiting longest first. Only
+ * a picture without a text that is due (not tried today, fewer than five failures in a row) lists its site; with `full` also
+ * a site whose AI texts may lack a language added since.
  */
-export async function refreshAltTexts(perSite = 4, sitesPerRun = 5): Promise<{ owners: MediaOwner[]; written: number }> {
-  const sites = await db().execute<Row>(sql`
+export async function sitesDueForAltText(full = false): Promise<Row[]> {
+  return db().execute<Row>(sql`
     select m.store_id, s.slug from commerce.media m
     left join commerce.stores s on s.id = m.store_id
-    where (m.store_id is null or (s.status = 'active' and not s.starter and not s.sandbox)) and m.kind = 'image' and m.content_type <> 'image/svg+xml' and (m.alt_source is null or m.alt_source = 'ai')
-      and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day')
+    where (m.store_id is null or (s.status = 'active' and not s.starter and not s.sandbox)) and m.kind = 'image' and m.content_type <> 'image/svg+xml'
+      and ${
+        full
+          ? sql`(m.alt_source is null or m.alt_source = 'ai') and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day') and m.alt_tries < ${ALT_TRIES_MAX}`
+          : sql`m.alt_source is null and m.alt_tries < ${ALT_TRIES_MAX} and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day')`
+      }
     group by m.store_id, s.slug
     order by min(m.created_at)
   `);
+}
+
+/**
+ * The five-minute cron's part (D89): new pictures get their alt texts within five minutes, a few per site and a few sites per
+ * run (those waiting longest first), on sites whose AI has a text model that sees pictures. A language added since is filled by
+ * the pass in the first five minutes of each hour. A picture that failed waits a day and is left alone by the job after five
+ * failures in a row (a person's own run still tries it). A site with no model that sees pictures is looked at once a day.
+ * Returns the owners whose texts changed, for their caches.
+ */
+export async function refreshAltTexts(
+  perSite = 4,
+  sitesPerRun = 5,
+  options: { now?: Date; full?: boolean } = {},
+): Promise<{ owners: MediaOwner[]; written: number }> {
+  const now = options.now ?? new Date();
+  const full = options.full ?? now.getUTCMinutes() < 5;
+  const sites = await sitesDueForAltText(full);
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const owners: MediaOwner[] = [];
   for (const row of sites) {
     if (owners.length >= sitesPerRun) break;
     const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };
-    if (!seeing(await aiFor(owner.storeId))) continue;
-    if ((await dueForAltText(owner, since, false, await altSite(owner))).length > 0) owners.push(owner);
+    const due = await dueForAltText(owner, since, false, await altSite(owner), true);
+    if (due.length === 0) continue;
+    if (!seeing(await aiFor(owner.storeId))) {
+      // No model that sees pictures: the site waits a day, and no try is counted against a picture.
+      await db().execute(sql`
+        update commerce.media set alt_tried_at = now()
+        where ${owner.storeId ? sql`store_id = ${owner.storeId}::uuid` : sql`store_id is null`}
+          and kind = 'image' and alt_source is null and (alt_tried_at is null or alt_tried_at < now() - interval '1 day')
+      `);
+      continue;
+    }
+    owners.push(owner);
   }
-  const runs = await Promise.all(owners.map((owner) => writeAltTexts(owner, { since, limit: perSite })));
+  const runs = await Promise.all(owners.map((owner) => writeAltTexts(owner, { since, limit: perSite, job: true })));
   return {
     owners: owners.filter((_, index) => runs[index].written > 0),
     written: runs.reduce((sum, run) => sum + run.written, 0),
