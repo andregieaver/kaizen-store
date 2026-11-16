@@ -57,8 +57,13 @@ export function CustomerForm({
         {input("name", words.name, { max: CUSTOMER_NAME_MAX })}
         {input("phone", words.phone, { type: "tel", max: CUSTOMER_PHONE_MAX })}
       </div>
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-2 text-body-strong text-ink">{words.address}</legend>
+      {/* Round 20 (D671): the address and the company each wait behind their own row, open where the person has them. */}
+      <PartFold
+        title={words.address}
+        sub={[values.line1, values.postalCode, values.city].filter(Boolean).join(", ") || words.addressSub}
+        action={values.line1 || values.city ? words.changePart : words.addPart}
+        open={Boolean(values.line1 || values.city || values.postalCode)}
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           {input("line1", words.line1, { max: 200 })}
           {input("line2", words.line2, { max: 200 })}
@@ -66,20 +71,40 @@ export function CustomerForm({
           {input("city", words.city, { max: 100 })}
           {input("country", words.country, { max: 2, hint: words.countryHint })}
         </div>
-      </fieldset>
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-2 text-body-strong text-ink">{words.company}</legend>
+      </PartFold>
+      <PartFold
+        title={words.company}
+        sub={values.companyName || words.companySub}
+        action={values.companyName ? words.changePart : words.addPart}
+        open={Boolean(values.companyName || values.organisationNumber)}
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           {input("companyName", words.companyName, { max: CUSTOMER_COMPANY_MAX })}
           {input("organisationNumber", words.organisationNumber, { max: 40 })}
         </div>
-        <p className="text-xs text-muted">{words.companyHint}</p>
-      </fieldset>
+        <p className="mt-3 text-xs text-muted">{words.companyHint}</p>
+      </PartFold>
       {note && <p className="text-xs text-muted">{note}</p>}
       <div>
         <SubmitButton>{submit}</SubmitButton>
       </div>
     </ActionForm>
+  );
+}
+
+/** A part of the form as a row that opens it; its fields are sent whether it is open or not. */
+function PartFold({ title, sub, action, open, children }: { title: string; sub: string; action: string; open: boolean; children: React.ReactNode }) {
+  return (
+    <details open={open} className="group border-t border-line">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-col">
+          <span className="text-body text-ink">{title}</span>
+          <span className="truncate text-caption text-ink-2">{sub}</span>
+        </span>
+        <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2 group-open:hidden">{action}</span>
+      </summary>
+      <div className="pb-3">{children}</div>
+    </details>
   );
 }
 

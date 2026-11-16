@@ -30,6 +30,9 @@ export type CustomerListWords = {
   noOrder: string;
   subscribed: string;
   tickAll: string;
+  /** On a phone the tick boxes wait behind Select (round 20, D671). */
+  select?: string;
+  selectDone?: string;
   tickOne: string;
   ticked: Plural;
   untick: string;
@@ -39,6 +42,8 @@ export type CustomerListWords = {
   morePictures: string;
 };
 
+/** On a phone, without Select, there is no tick column (round 20): the names have the room. */
+const GRID_PHONE_PLAIN = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 sm:grid-cols-[2.25rem_minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_7rem]";
 const GRID = "grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 sm:grid-cols-[2.25rem_minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_7rem]";
 
 /**
@@ -47,6 +52,8 @@ const GRID = "grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-4 g
  */
 export function CustomerList({ base, items, words, tagAction }: { base: string; items: CustomerListItem[]; words: CustomerListWords; tagAction: ((state: FormState, form: FormData) => Promise<FormState>) | null }) {
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
+  const [selecting, setSelecting] = useState(false);
+  const plain = !selecting;
   const toggle = (key: string) =>
     setTicked((now) => {
       const next = new Set(now);
@@ -58,6 +65,19 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
   const chosen = items.filter((item) => ticked.has(item.key));
   return (
     <div className="flex flex-col gap-4">
+      {tagAction && words.select && (
+        <button
+          type="button"
+          aria-pressed={selecting}
+          onClick={() => {
+            if (selecting) setTicked(new Set());
+            setSelecting(!selecting);
+          }}
+          className="-mb-2 self-end text-sm font-medium text-ink underline underline-offset-2 sm:hidden"
+        >
+          {selecting ? words.selectDone : words.select}
+        </button>
+      )}
       <div className="overflow-hidden rounded-panel bg-card">
         <div aria-hidden={tagAction ? undefined : true} className={`${GRID} hidden border-b border-line px-5 py-2.5 text-caption text-muted sm:grid`}>
           {tagAction ? (
@@ -81,11 +101,11 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
           const on = ticked.has(item.key);
           const title = item.name || item.email;
           return (
-            <div role="listitem" key={item.key} className={`${GRID} border-b border-line px-5 py-3 last:border-b-0 ${on ? "bg-brand-soft/40" : ""}`}>
+            <div role="listitem" key={item.key} className={`${plain ? GRID_PHONE_PLAIN : GRID} border-b border-line px-5 py-3 last:border-b-0 ${on ? "bg-brand-soft/40" : ""}`}>
               {tagAction ? (
-                <input type="checkbox" checked={on} onChange={() => toggle(item.key)} aria-label={fillWords(words.tickOne, { name: title })} className="size-4" />
+                <input type="checkbox" checked={on} onChange={() => toggle(item.key)} aria-label={fillWords(words.tickOne, { name: title })} className={`size-4 ${plain ? "max-sm:hidden" : ""}`} />
               ) : (
-                <span />
+                <span className={plain ? "max-sm:hidden" : ""} />
               )}
               <AdminLink href={`${base}/${item.key}`} className="flex min-w-0 items-center gap-3 text-ink hover:underline">
                 {item.avatar}
@@ -98,11 +118,11 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
                 </span>
               </AdminLink>
               <span className="text-right text-body tabular-nums sm:hidden">{item.spent}</span>
-              <div className="col-start-2 flex items-center gap-2 sm:col-start-auto">
+              <div className={`${plain ? "col-start-1" : "col-start-2"} flex items-center gap-2 sm:col-start-auto`}>
                 {item.lines.length > 0 && <Pictures lines={item.lines} size={36} max={3} moreWord={(n) => fillWords(words.morePictures, { n })} />}
                 {item.orders > 0 && <span className="text-caption text-muted">{countWords(item.orders, words.orders)}</span>}
               </div>
-              <span className="col-start-3 row-start-2 text-right text-caption text-muted sm:col-start-auto sm:row-start-auto sm:text-left sm:text-body sm:text-ink-2">{item.last}</span>
+              <span className={`${plain ? "col-start-2" : "col-start-3"} row-start-2 text-right text-caption text-muted sm:col-start-auto sm:row-start-auto sm:text-left sm:text-body sm:text-ink-2`}>{item.last}</span>
               <span className="hidden text-right text-body tabular-nums sm:block">{item.spent}</span>
             </div>
           );
