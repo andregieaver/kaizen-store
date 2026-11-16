@@ -72,7 +72,7 @@ export function QuantityStepper({
   const button =
     "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-lg leading-none outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40";
   return (
-    <div className="flex flex-col gap-1 text-sm" data-quantity-stepper="">
+    <div className="flex flex-col gap-1 text-sm" data-quantity-stepper="" data-kz-no-rage="">
       <label htmlFor={id} className={hideLabel ? "sr-only" : undefined}>
         {labels.quantity}
         {context && <span className="sr-only">{sr}</span>}

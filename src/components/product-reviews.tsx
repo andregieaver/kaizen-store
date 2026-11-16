@@ -57,7 +57,7 @@ export function ProductReviews({
   const r = m.reviews;
   const most = Math.max(1, ...summary.counts);
   return (
-    <section id={id} aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
+    <section id={id} aria-labelledby={`${id}-heading`} data-kz-mask="" className="flex flex-col gap-4">
       <h2 id={`${id}-heading`} className="font-heading text-xl">
         {heading ?? r.heading}
       </h2>

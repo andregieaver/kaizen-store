@@ -33,7 +33,7 @@ export function GiftCardForm({
 }) {
   const [state, action, pending] = useActionState(apply, { problem: null });
   return (
-    <div className="flex flex-col gap-2" data-gift-card-form>
+    <div className="flex flex-col gap-2" data-gift-card-form data-kz-private="">
       {cards.length > 0 && (
         <ul className="flex flex-col gap-2">
           {cards.map((card) => (

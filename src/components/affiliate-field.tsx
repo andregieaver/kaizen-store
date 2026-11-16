@@ -16,5 +16,5 @@ export function AffiliateField({ store }: { store: string }) {
     () => heldAffiliateCode(store),
     () => null,
   );
-  return code ? <input type="hidden" name={AFFILIATE_PARAM} value={code} /> : null;
+  return code ? <input type="hidden" name={AFFILIATE_PARAM} value={code} data-kz-private="" /> : null;
 }

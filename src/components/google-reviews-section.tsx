@@ -36,7 +36,7 @@ export async function GoogleReviewsSection({ block, place }: { block: Testimonia
   const m = t(locale.split("-")[0]);
   const rating = found.rating === null ? null : new Intl.NumberFormat(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(found.rating);
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" data-kz-mask="">
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         {found.rating !== null && <StarRating stars={found.rating} />}
         <span>{rating ? m.googleRating(rating, found.count) : m.googleReviews}</span>

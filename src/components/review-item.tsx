@@ -28,7 +28,7 @@ export function ReviewItem({ review, words, locale, store }: { review: ShownRevi
         </p>
       )}
       {review.pictures.length > 0 && (
-        <ul className="mt-1 flex flex-wrap gap-2" data-review-pictures>
+        <ul className="mt-1 flex flex-wrap gap-2" data-review-pictures data-kz-private="">
           {review.pictures.map((p, i) => {
             const scale = Math.min(1, 96 / Math.max(p.width, p.height));
             return (

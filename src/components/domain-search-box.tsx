@@ -87,7 +87,7 @@ export function DomainSearchBox({
           {pending ? words.searching : words.search}
         </button>
       </form>
-      <div aria-live="polite">
+      <div aria-live="polite" data-kz-private="">
         {answer && !answer.ok && <p>{answer.reason === "unavailable" ? words.unavailable : answer.message}</p>}
         {answer?.ok && (
           <>

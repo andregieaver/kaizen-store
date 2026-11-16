@@ -85,6 +85,7 @@ export function CartDrawer({
   return (
     <dialog
       ref={dialog}
+      data-kz-private=""
       aria-labelledby="cart-drawer-title"
       onCancel={(event) => {
         event.preventDefault();

@@ -37,7 +37,7 @@ export function BlogComments({
       {comments.length === 0 ? (
         <p className="text-muted">{m.none}</p>
       ) : (
-        <ol className="flex flex-col gap-4">
+        <ol className="flex flex-col gap-4" data-kz-mask="">
           {comments.map((comment) => (
             <li key={comment.id} className="rounded-lg border border-border p-4" data-comment="">
               <p className="text-sm">

@@ -108,7 +108,7 @@ export function DeliveryChoice({
     ? labels.localFrom.replace("{minimum}", formatMoney(business ? withoutVat(below.minimumMinor, vatRate) : below.minimumMinor, currency, locale, { decimals }))
     : null;
   return (
-    <section aria-labelledby="delivery-choice-heading" className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <section aria-labelledby="delivery-choice-heading" data-kz-private="" className="flex flex-col gap-3 rounded-lg border border-border p-4">
       <h2 id="delivery-choice-heading" className="text-lg font-medium">
         {labels.heading}
       </h2>
