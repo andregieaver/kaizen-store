@@ -160,3 +160,47 @@ describe("the colour roles outside the admin", () => {
     expect(css.match(/(?<!:where\()html:not\(\[data-admin\]\)/g) ?? []).toHaveLength(0);
   });
 });
+
+/** The `@source` lines of a stylesheet text: the paths it reads and the paths it leaves out. */
+function sourceLines(text: string): { positive: string[]; negative: string[] } {
+  return {
+    positive: [...text.matchAll(/^@source "([^"]+)";$/gm)].map((m) => m[1]),
+    negative: [...text.matchAll(/^@source not "([^"]+)";$/gm)].map((m) => m[1]),
+  };
+}
+
+/** Every css file under a folder of the repo. */
+function cssFiles(dir: string): string[] {
+  return readdirSync(join(ROOT, dir)).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(join(ROOT, path)).isDirectory()) return cssFiles(path);
+    return name.endsWith(".css") ? [path] : [];
+  });
+}
+
+describe("Tailwind reads code only (bloat review 0.35)", () => {
+  it("keeps the import without automatic sources", () => {
+    expect(css).toContain('@import "tailwindcss" source(none);\n');
+  });
+
+  it("reads only src: no source leaves it, so no SQL, docs or snapshot is read", () => {
+    expect(sourceLines(css).positive).toEqual(["../"]);
+  });
+
+  it("leaves out the data, the tests, the interface texts and the schema folder", () => {
+    const { negative } = sourceLines(css);
+    for (const path of ["../data", "../**/*.test.ts", "../**/*.test.tsx", "../test", "../lib/messages", "../lib/admin-messages", "../db"]) {
+      expect(negative).toContain(path);
+    }
+  });
+
+  it("has no other css file under src that starts its own scan", () => {
+    const scanning = cssFiles("src").filter((file) => /^@source/m.test(readFileSync(join(ROOT, file), "utf8")));
+    expect(scanning).toEqual(["src/app/globals.css"]);
+  });
+
+  it("would notice a source outside src", () => {
+    const sample = '@source "../";\n@source "../../supabase/migrations/*.sql";';
+    expect(sourceLines(sample).positive).not.toEqual(["../"]);
+  });
+});
