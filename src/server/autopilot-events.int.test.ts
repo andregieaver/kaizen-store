@@ -174,6 +174,31 @@ describe("reacting to events", () => {
     expect(await eventsOf(other.id)).toHaveLength(0);
   });
 
+  it("gives a running test that has an answer the test's tools once, and lets it go once the test is decided (D664)", async () => {
+    const [page] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${store.id}::uuid and type = 'page' and published is not null limit 1`);
+    const made = await admin.createExperiment(store.account, store.id, { name: "Shorter hero", pageId: String(page.id), goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const variant = (await admin.getExperiment(store.id, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
+    const [content] = await db().execute<Row>(sql`select published from commerce.pages where id = ${variant}::uuid`);
+    const changed = JSON.stringify(content.published).replace('"text":"', '"text":"Shorter: ');
+    await db().execute(sql`update commerce.pages set draft = ${changed}::jsonb, published = ${changed}::jsonb where id = ${variant}::uuid`);
+    const started = await admin.startExperiment(store.account, store.id, made.id);
+    if (!started.ok) throw new Error(started.problems.join(" "));
+    expect(await admin.markAnswered(store.id, made.id)).toBe(true);
+    turns.length = 0;
+    await react();
+    const row = (await eventsOf()).find((r) => r.kind === "test_answered");
+    expect(row).toMatchObject({ ref: made.id, status: "done" });
+    const turn = turns.find((t) => t.message.includes('"Shorter hero"'))!;
+    expect(turn.autopilot?.tools).toEqual(["list_experiments", "explain_results", "apply_winner", "get_brand"]);
+    expect(turn.message).toContain("it is still running");
+    // Found again later: kept once.
+    await react();
+    expect((await eventsOf()).filter((r) => r.kind === "test_answered" && r.ref === made.id)).toHaveLength(1);
+    await admin.stopExperiment(store.account, store.id, made.id);
+    await admin.discardExperiment(store.account, store.id, made.id);
+  });
+
   it("keeps what it changed at Do it and tell me with the event, for the page and the digest (D309 7.4)", async () => {
     await db().execute(sql`delete from commerce.support_conversations where store_id = ${store.id}::uuid`).catch(() => undefined);
     await settings({ reacts: true, waitMinutes: 15 });

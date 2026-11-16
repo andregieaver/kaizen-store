@@ -352,6 +352,7 @@ export const assistantEn = {
       kinds: {
         support_waiting: "A customer waited for a person",
         test_ended: "An A/B test ended",
+        test_answered: "An A/B test had an answer",
         alert: "An analytics alert",
         order_unsent: "A paid order was not sent",
         delivery_problem: "A parcel ran into trouble",

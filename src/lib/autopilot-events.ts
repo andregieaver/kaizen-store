@@ -22,6 +22,8 @@ export const EVENT_KINDS = [
   "stockout_risk",
   // Support (B3, D640): the order's own signed-in customer asked to change its address or cancel it, before it was sent.
   "staff_request",
+  // A/B tests (D148 phase 14b, D664): a running test has an answer for the first time; the owners were told (D662).
+  "test_answered",
 ] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 
@@ -40,6 +42,7 @@ export const EVENTS_PER_DAY: Readonly<Record<EventKind, number>> = {
   payments_failing: 4,
   stockout_risk: 12,
   staff_request: 24,
+  test_answered: 12,
 };
 /** A pending event older than this is no longer worth a turn. */
 export const EVENT_STALE_HOURS = 24;
@@ -90,6 +93,8 @@ export const EVENT_TOOLS: Readonly<Record<EventKind, readonly string[]>> = {
     "get_brand",
   ],
   test_ended: ["list_experiments", "explain_results", "apply_winner", "get_brand"],
+  // The same tools as a test that ended: apply_winner stops a running test first and waits for the owner's yes where they keep it.
+  test_answered: ["list_experiments", "explain_results", "apply_winner", "get_brand"],
   // A goal review's tools (D328), without the platform's own: events are a store's.
   alert: [...REVIEW_PLAN_TOOLS, ...REVIEW_READ_TOOLS.filter((name) => name !== "platform_overview")],
   // Orders (C5): the order's own tools, and the customer told only in the store's fixed words (D635): cancelling one always waits for the
@@ -120,6 +125,13 @@ export const EVENT_LINES: Readonly<Record<EventKind, string>> = {
     "You are working on your own now, as the store's autopilot: an A/B test has ended by itself. Nobody is reading along.",
     "- Read what it found with explain_results. Its verdict is the store's, worked out in code: never make one of your own.",
     "- If the verdict says one version is better, choose it with apply_winner; if the original is better, choose original. If the verdict is unclear (too few visitors, no clear difference, something wrong), choose nothing and say why.",
+    "- apply_winner may wait for the owner's yes; say so when it does. Never pretend it was done.",
+    "- End with one or two plain sentences on what the test found and what you chose: the owner reads them.",
+  ].join("\n"),
+  test_answered: [
+    "You are working on your own now, as the store's autopilot: an A/B test that is still running has an answer for the first time. Nobody is reading along.",
+    "- Read what it found with explain_results. Its verdict is the store's, worked out in code: never make one of your own.",
+    "- If the verdict says one version is better, choose it with apply_winner (it stops the test first). If it says the original is better, choose original. If there is no clear difference, choose nothing: the owner decides whether to keep the original or let it run.",
     "- apply_winner may wait for the owner's yes; say so when it does. Never pretend it was done.",
     "- End with one or two plain sentences on what the test found and what you chose: the owner reads them.",
   ].join("\n"),
@@ -186,6 +198,8 @@ export const EVENT_LINES: Readonly<Record<EventKind, string>> = {
 
 export type SupportEventFacts = { conversation: string; waitedMinutes: number; handoffReason: string | null };
 export type TestEventFacts = { experiment: string; name: string; stopReason: "guardrail" | "planned_end"; stoppedAt: string };
+/** A running test's first answer (D664): the test and when the store marked it answered. */
+export type AnsweredEventFacts = { experiment: string; name: string; answeredAt: string };
 export type AlertEventFacts = { alert: string; severity: string; text: string; evidence: string[] };
 /** An order event's order (C5): its number for the model, its id for the checks. */
 export type OrderEventFacts = { order: string; orderId: string };
@@ -211,7 +225,8 @@ export type EventFacts =
   | ({ kind: "dispute_opened" } & DisputeEventFacts)
   | ({ kind: "payments_failing" } & PaymentsEventFacts)
   | ({ kind: "stockout_risk" } & StockoutEventFacts)
-  | ({ kind: "staff_request" } & StaffRequestEventFacts);
+  | ({ kind: "staff_request" } & StaffRequestEventFacts)
+  | ({ kind: "test_answered" } & AnsweredEventFacts);
 
 export type EventGoal = { id: string; title: string };
 
@@ -235,6 +250,12 @@ export function eventMessage(facts: EventFacts, goals: readonly EventGoal[] = []
     case "test_ended":
       return [
         `Autopilot: the A/B test ${JSON.stringify(clip(facts.name, 120))} (id ${facts.experiment}) ended on ${facts.stoppedAt.slice(0, 10)}: ${STOP_WORDS[facts.stopReason]}.`,
+        "",
+        `Read its results with explain_results (${facts.experiment}), then choose with apply_winner as its verdict supports, or choose nothing and say why.`,
+      ].join("\n");
+    case "test_answered":
+      return [
+        `Autopilot: the A/B test ${JSON.stringify(clip(facts.name, 120))} (id ${facts.experiment}) has an answer since ${facts.answeredAt.slice(0, 10)}; it is still running.`,
         "",
         `Read its results with explain_results (${facts.experiment}), then choose with apply_winner as its verdict supports, or choose nothing and say why.`,
       ].join("\n");
@@ -311,6 +332,7 @@ export function eventRef(facts: EventFacts, today: string): string {
     case "support_waiting":
       return facts.conversation;
     case "test_ended":
+    case "test_answered":
       return facts.experiment;
     case "alert":
       return `${facts.alert}:${isoWeek(today)}`;

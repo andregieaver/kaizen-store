@@ -54,10 +54,11 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
    2b. **The original and B side by side (no migration).** A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
    the same access checks), drawn in two scaled frames on the draft page and under *What is different* on a started test.
 3. **News and a memory (phase 14, D662, built 16 November 2026).** See `ab-testing.md`, "What phase 14 built".
-   3b. **The AI side of news and memory (no migration; one eval run).** The autopilot's `test_answered` event (its kind added to
-   `autopilot_events_kind`, its turn's lines and tools as `test_ended`'s), a gated `record_learning` tool, and an owner webhook event. Each
-   changes what the agents are offered, so they ship together with a new run of the agents' eval on Platform → AI and its recording.
-4. **The list, ideas and eyes (phase 15, no migration).** The list with a lead sentence (*One test has an answer.*) and rows grouped
+   3b. **The AI side of news and memory.** Part 1 built (D664): the autopilot's `test_answered` event. Part 2: a gated
+   `record_learning` tool, pushed on its own without a migration so it deploys after the quick gate, then one eval run on Platform → AI and
+   its recording. The owner webhook event moved to step 4: it needs an `experiment` subject in the platform's event model (Admin API, apps,
+   the docs portal).
+4. **The list, ideas and eyes (phase 15, no migration).** An owner webhook event `experiment.answered` (an `experiment` subject in the event model). The list with a lead sentence (*One test has an answer.*) and rows grouped
    (needs your decision, still learning, ideas, what your tests taught you), each with its stage chip and a progress bar or sparkline; the
    Marketing page (D612) shows a test with an answer among *what runs now*. "Ideas to test" built in code from suggest's facts, without a
    model call; `look_at_versions` through page-look (D310); CSV and an Admin API read of the card. The platform's view

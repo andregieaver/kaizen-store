@@ -463,8 +463,13 @@ notice kind).
   (optional), or later on a decided test's page (`LearningCard`, `saveLearning()`, audited without the words). The list shows them under
   *What your tests taught you*; `list_experiments`, `explain_results` and `suggest_experiments` (`what_earlier_tests_taught`, and with each
   candidate's earlier tests) return them as the owner's words, as they return the test's idea.
-- **Kept for step 3b:** the autopilot's `test_answered` event and the gated `record_learning` tool. Both change what the agents are offered
-  (an event's turn lines, a tool's definition), so they wait for one eval run on Platform → AI with their recording.
+- **Step 3b, part 1 (D664):** the autopilot's `test_answered` event. A store that lets its autopilot react (D331) gets one headless turn per
+  test the first time it has an answer, while it still runs: `explain_results`, then `apply_winner` as the verdict supports (it stops the test
+  first, and waits for the owner's yes where they keep it), nothing on no clear difference; the same tools as `test_ended`. Its kind is added to
+  `autopilot_events_kind` (migration `20261116104252_dashing_owl`). The event's lines are not part of any eval fingerprint, so no new
+  recording is needed for it.
+- **Step 3b, part 2:** the gated `record_learning` tool, which changes the tools' fingerprint: shipped on its own, without a migration (so it
+  deploys after the quick gate), then the eval run on Platform → AI against the deployed tool and its recording committed.
 
 
 

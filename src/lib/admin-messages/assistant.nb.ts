@@ -343,6 +343,7 @@ export const assistantNb: AssistantMessages = {
       kinds: {
         support_waiting: "En kunde ventet på et menneske",
         test_ended: "En A/B-test ble avsluttet",
+        test_answered: "En A/B-test fikk et svar",
         alert: "Et analysevarsel",
         order_unsent: "En betalt ordre ble ikke sendt",
         delivery_problem: "En pakke fikk problemer",
