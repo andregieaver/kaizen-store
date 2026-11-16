@@ -844,7 +844,7 @@ export class ClickJudge {
   leave(at: number): void;          // visibilitychange, blur, pagehide
   urlChange(at: number): void;
   tick(now: number): Verdict[];     // verdicts that are due
-  flush(now: number): Verdict[];    // everything pending, none dead
+  flush(): Verdict[];               // everything pending, none dead
 }
 ```
 
@@ -1674,6 +1674,10 @@ first.**
 analytics rule is that a figure is defined there before it is built.
 
 **Done when:** the tests pass, and nothing outside these files changed except the export in `visit-record.ts`.
+
+*As built (16 Nov 2026):* `recording.ts` and `replay-sanitize.ts` are left to the recording steps (9 and 11), where they are first used;
+`frustratedVersion()` to step 12. `ClickJudge.flush()` takes no time argument. A selection counts as a sign of life only when text is
+selected (the DOM layer passes it only when the selection is not collapsed), since every click on text moves the caret.
 
 ### Step 3: Heat tables and the heat route
 

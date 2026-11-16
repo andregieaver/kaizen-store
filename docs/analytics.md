@@ -593,7 +593,19 @@ profitable, each a link to its order.
 
 Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
 [`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
-(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need. Nothing is collected yet.
+(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors. Nothing is collected yet.
+
+The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
+
+| Figure | Definition |
+|---|---|
+| Page view | A load, soft navigation or back/forward restore to an allowed page (`signalPlace()`, mirroring `placeOfPath()` + `speedKind()`), until the next page or `pagehide`; under 1 s visible is never sent. |
+| Dead click | A candidate click (not a field, label, media or frame; not the same element again within 1 s) with no counted mutation from its pointerdown to 2.5 s after, no scroll within 300 ms, no text selected within 100 ms, no focus move or leaving within 1 s, no address change within 2.5 s. |
+| Rage click | Three clicks each within 1 s of the last and 30 px of the first or on the same element, not on text fields; counted once, on the third, at the first click's place. |
+| Scroll reach | The deepest point seen over the tallest the page was, in 5 % buckets; 100 % for a page no taller than the window. |
+| Fold | The window's share of the page at the first look; averaged per page view. |
+| Attention | Ms per 50 px strip on screen in two 250 ms ticks running, while visible and with input in the last 15 s; sent as 20 bands of the first 20,000 px (each band the mean of its strips, at most 120 s a view). |
+| Frustration | Page views with a dead or rage click, over page views. |
 
 ## Not tracked (said on the pages)
 
