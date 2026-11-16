@@ -34,6 +34,11 @@ export const notificationsEn = {
     view: "View",
   },
   emails: {
+    read: "Read",
+    lead: "The emails customers get. Tap one to change its words.",
+    groupCount: { one: "{n} email, {on} on", many: "{n} emails, {on} on" },
+    yourWords: "your words",
+    howTitle: "How these emails work",
     title: "Notifications",
     description:
       "The emails your customers get about their orders and returns. The order confirmation and the acknowledgement of a withdrawal are required by law, and the other emails marked {alwaysOn} carry what customers need: they cannot be switched off. Switching an email off also unticks {notify} where staff send, refund or cancel an order. Text you write yourself is your responsibility.",

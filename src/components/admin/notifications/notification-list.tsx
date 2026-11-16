@@ -1,17 +1,14 @@
 import Link from "next/link";
 
-import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { ActionForm, type FormState } from "@/components/admin/action-form";
+import { SwitchButton } from "@/components/admin/notifications/switch-button";
+import { countWords } from "@/lib/admin-fill";
 import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { NOTIFICATION_GROUPS, notificationPath, type NotificationGroup } from "@/lib/notifications";
 import type { NotificationListItem } from "@/server/notifications";
 
-import { languageLabel } from "./language-label";
 
 type SwitchAction = (state: FormState, form: FormData) => Promise<FormState>;
-
-const SIGNAL: Record<NotificationListItem["status"], "positive" | "neutral" | "insight"> = { on: "positive", off: "neutral", always: "insight", fixed: "insight" };
 
 /** A notification's name, when it is sent and why it is required, in the admin's words (`NOTIFICATIONS` in English). */
 export function notificationWords(def: { id: string; label: string; when: string; why: string | null }, w: NotificationsMessages = notificationsEn) {
@@ -30,7 +27,6 @@ export function NotificationList({
   switchAction,
   handovers,
   words = notificationsEn,
-  display = "en",
 }: {
   items: NotificationListItem[];
   /** `/admin/{store}/settings/notifications`. */
@@ -41,21 +37,32 @@ export function NotificationList({
   handovers: boolean;
   /** The admin's words in the account's language; English unless given. */
   words?: NotificationsMessages;
-  /** The language languages are named in (`Intl.DisplayNames`). */
+  /** Kept for callers; the languages are named on each email's own page since round 22. */
   display?: string;
 }) {
   const groups = NOTIFICATION_GROUPS.map((group) => ({ group, rows: items.filter((i) => i.def.group === group) })).filter((g) => g.rows.length > 0);
+  // Round 22 (D687): each group says how many of its emails go out, and each email is one line: its name, and its switch or Always.
   return (
     <div className="flex flex-col gap-6">
-      {groups.map(({ group, rows }) => (
-        <Card key={group} title={words.emails.groups[group]} description={groupNote(group, handovers, words)}>
-          <List label={words.emails.groups[group]}>
-            {rows.map((item) => (
-              <NotificationRow key={item.def.id} item={item} base={base} switchAction={switchAction} words={words} display={display} />
-            ))}
-          </List>
-        </Card>
-      ))}
+      {groups.map(({ group, rows }) => {
+        const on = rows.filter((r) => r.status !== "off").length;
+        const note = groupNote(group, handovers, words);
+        return (
+          <section key={group} aria-label={words.emails.groups[group]} className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5 px-1">
+              <h2 className="text-body-strong text-ink">
+                {words.emails.groups[group]} <span className="font-normal text-ink-2">· {countWords(rows.length, words.emails.groupCount, { on })}</span>
+              </h2>
+              {note && <p className="text-caption text-ink-2">{note}</p>}
+            </div>
+            <ul className="divide-y divide-line rounded-lg border border-line bg-card px-4 sm:px-5">
+              {rows.map((item) => (
+                <NotificationRow key={item.def.id} item={item} base={base} switchAction={switchAction} words={words} />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -70,60 +77,36 @@ function NotificationRow({
   base,
   switchAction,
   words,
-  display,
 }: {
   item: NotificationListItem;
   base: string;
   switchAction: ((id: string) => SwitchAction) | null;
   words: NotificationsMessages;
-  display: string;
 }) {
   const { def } = item;
   const shown = notificationWords(def, words);
   const w = words.emails;
   const c = words.common;
   const href = `${base}/${notificationPath(def.id)}`;
-  const languages = item.languages.filter((l) => l.offered || l.own);
+  // The store's own words in a language it offers (or a problem with them) is the one fact kept beside the name; the rest is on the email's page.
+  const own = item.languages.filter((l) => l.own);
+  const problem = own.some((l) => l.invalid);
   return (
-    <ListRow>
-      <RowLead
-        title={shown.label}
-        href={href}
-        sub={
-          <>
-            {shown.when}
-            {def.required && shown.why && <span className="block">{fillWords(w.alwaysSent, { why: shown.why })}</span>}
-            {languages.length > 0 && (
-              <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                {languages.map((l) => (
-                  <span key={l.lang}>
-                    {languageLabel(l.lang, display)}: {l.own ? (l.invalid ? w.yourTextProblem : w.yourText) : w.standardText}
-                    {!l.offered && w.noLongerOffered}
-                  </span>
-                ))}
-              </span>
-            )}
-          </>
-        }
-      />
-      <RowActions>
-        <Chip signal={SIGNAL[item.status]} dot>
-          {w.status[item.status]}
-        </Chip>
-        {switchAction && !def.required && (
-          <ActionForm action={switchAction(def.id)} successMessage={item.enabled ? c.switchedOff : c.switchedOn} className="flex items-center gap-2">
-            <input type="hidden" name="enabled" value={item.enabled ? "off" : "on"} />
-            <SubmitButton variant="secondary">
-              {item.enabled ? c.switchOff : c.switchOn}
-              <span className="sr-only"> {shown.label}</span>
-            </SubmitButton>
-          </ActionForm>
-        )}
-        <Link href={href} className="inline-flex min-h-10 items-center rounded-pill px-3 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
-          {def.editable ? c.edit : c.view}
-          <span className="sr-only"> {shown.label}</span>
-        </Link>
-      </RowActions>
-    </ListRow>
+    <li className="flex min-h-14 items-center gap-3 py-2">
+      <Link href={href} className="flex min-w-0 flex-1 flex-col py-1 text-body text-ink hover:underline">
+        {shown.label}
+        {own.length > 0 && <span className={`text-caption ${problem ? "text-danger-text" : "text-ink-2"}`}>{problem ? w.yourTextProblem : w.yourWords}</span>}
+      </Link>
+      {def.required ? (
+        <span className="shrink-0 text-caption text-ink-2">{w.status[item.status]}</span>
+      ) : switchAction ? (
+        <ActionForm action={switchAction(def.id)} successMessage={item.enabled ? c.switchedOff : c.switchedOn} className="flex shrink-0 items-center gap-2">
+          <input type="hidden" name="enabled" value={item.enabled ? "off" : "on"} />
+          <SwitchButton on={item.enabled} label={`${item.enabled ? c.switchOff : c.switchOn} ${shown.label}`} />
+        </ActionForm>
+      ) : (
+        <span className="shrink-0 text-caption text-ink-2">{w.status[item.status]}</span>
+      )}
+    </li>
   );
 }

@@ -47,23 +47,24 @@ describe("the Notifications list (D238, 2.1 point 1)", () => {
     expect(html).not.toMatch(BAD);
     for (const group of ["Orders", "Pickup and local delivery", "Returns"]) expect(html).toContain(group);
     for (const def of NOTIFICATIONS) expect(html).toContain(def.label);
-    // The required ones have no switch, the others one each.
-    const switches = html.match(/Switch (off|on)<span class="sr-only">/g) ?? [];
+    // The required ones have no switch, the others one each (round 22, D687: a switch named for what pressing it does).
+    const switches = html.match(/role="switch"/g) ?? [];
     expect(switches).toHaveLength(NOTIFICATIONS.filter((n) => !n.required).length);
     expect(html).toContain("Always on");
     expect(html).toContain("Fixed");
-    expect(html).not.toContain("Switch off<span class=\"sr-only\"> Order confirmation");
+    expect(html).not.toContain('aria-label="Switch off Order confirmation"');
     // The carrier emails start off.
-    expect(html).toContain("Switch on<span class=\"sr-only\"> Out for delivery (carrier)");
-    // Languages: the store's own text, or the standard one.
-    expect(html).toContain("Norwegian Bokmål: your text");
-    expect(html).toContain("English: standard text");
+    expect(html).toContain('aria-checked="false" aria-label="Switch on Out for delivery (carrier)"');
+    // The store's own words are said beside the name; which languages, on the email's page.
+    expect(html).toContain("your words");
+    expect(html).not.toContain("English: standard text");
     expect(html).toContain('href="/admin/kaffe/settings/notifications/order-sent"');
   });
 
   it("only reads for someone who may not change settings, and says when pickup and local delivery are not offered", () => {
     const html = plain(renderToString(h(NotificationList, { items: items(), base: "/admin/kaffe/settings/notifications", switchAction: null, handovers: false })));
     expect(html).not.toMatch(/Switch (off|on)/);
+    expect(html).not.toContain('role="switch"');
     expect(html).toContain("The store offers no pickup or local delivery yet");
   });
 });

@@ -22,6 +22,8 @@ export const giftCardsEn = {
     leadNoneRest: " Make a gift card for customers to buy, or issue one yourself.",
     leadHold: "Customers hold {amount}.",
     leadHoldRest: " A card sold counts as a sale when it is spent.",
+    issueSub: "A make-good or a prize, without a sale",
+    issueAction: "Issue",
     issueCard: "Issue a card",
     sellTitle: "Sell gift cards in your shop",
     sellText: "Switches gift cards on. Then make a product of the kind Gift card with the amounts you sell, such as 250, 500 and 1 000.",

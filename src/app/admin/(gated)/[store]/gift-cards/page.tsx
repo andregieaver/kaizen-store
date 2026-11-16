@@ -8,6 +8,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { EXPIRY_CHOICES, expiryWords, GIFT_CARD_STATES, STATE_SIGNAL, type GiftCardState } from "@/lib/gift-card-admin";
 import { formatMoney } from "@/lib/money";
+import { submitClass } from "@/lib/submit-class";
 import { featureOn } from "@/lib/store-features";
 import { giftCardCounts, giftCardOutstanding, giftCardSettings, listGiftCards } from "@/server/gift-cards-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -67,7 +68,7 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        meta={[
+        meta={!on ? undefined : [
           <span key="lead">
             <span className="text-ink">
               {!on ? w.leadOff : total === 0 ? w.leadNone : fillWords(w.leadHold, { amount: held || formatMoney(0, mainCurrencyCode, locale) })}
@@ -75,20 +76,28 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
             {!on ? w.leadOffRest : total === 0 ? w.leadNoneRest : w.leadHoldRest}
           </span>,
         ]}
-        actions={canIssue ? <ButtonLink href={`${base}/new`} kind="secondary">{w.issueCard}</ButtonLink> : undefined}
+        actions={canIssue && on ? <ButtonLink href={`${base}/new`} kind="secondary">{w.issueCard}</ButtonLink> : undefined}
       />
 
       {/* Round 12 (D637): off is one press to switch on, on with no card one press to make the product; tiles only once cards exist. */}
       {!on ? (
-        <section aria-labelledby="sell" className={`flex flex-wrap items-center justify-between gap-6 px-6 py-5 ${CARD_CLASS}`}>
+        // Round 22 (D687): while off, one offer said once: the amounts a shop usually sells, what selling gives, one wide button.
+        <section aria-labelledby="sell" className={`flex flex-col gap-4 px-5 py-5 sm:px-6 ${CARD_CLASS}`}>
+          <div aria-hidden className="grid max-w-md grid-cols-3 gap-2">
+            {[250, 500, 1000].map((major, i) => (
+              <span key={major} className={`flex h-14 items-center justify-center rounded-md text-body text-ink ${["bg-positive-soft", "bg-sunken", "bg-insight-soft"][i]}`}>
+                {formatMoney(major * 100, mainCurrencyCode, locale, { decimals: "hide_whole" })}
+              </span>
+            ))}
+          </div>
           <div className="flex max-w-xl flex-col gap-2">
             <h2 id="sell" className="text-title text-ink">{w.sellTitle}</h2>
-            <p className="text-body text-ink-2">{w.sellText}</p>
-            <p className="text-caption text-muted">{w.off}</p>
+            <p className="text-body text-ink-2">{w.leadOffRest.trim()}</p>
           </div>
           {owner ? (
-            <ActionForm action={switchOnFromPageAction.bind(null, store.slug, "gift_cards")}>
-              <SubmitButton>{w.sellOn}</SubmitButton>
+            <ActionForm action={switchOnFromPageAction.bind(null, store.slug, "gift_cards")} className="flex flex-col gap-2">
+              <SubmitButton className={`${submitClass("primary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>{w.sellOn}</SubmitButton>
+              <p className="text-caption text-muted">{w.sellText}</p>
             </ActionForm>
           ) : (
             <p className="text-caption text-muted">{w.ownerOnly}</p>
@@ -187,8 +196,19 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
         </Card>
       )}
 
-      <section aria-labelledby="how" className={`px-6 py-3 ${CARD_CLASS}`}>
+      <section aria-labelledby="how" className={`px-5 py-3 sm:px-6 ${CARD_CLASS}`}>
         <h2 id="how" className="mt-2 mb-1 text-title text-ink">{w.howTitle}</h2>
+        {/* While off, issuing a card is a row here rather than the page's first button, and that sold cards stay spendable is said once (round 22). */}
+        {!on && <p className="pb-2 text-caption text-ink-2">{w.off}</p>}
+        {!on && canIssue && (
+          <Link href={`${base}/new`} className="flex min-h-14 items-center justify-between gap-3 border-b border-line py-3">
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">{w.issueCard}</span>
+              <span className="text-caption text-ink-2">{w.issueSub}</span>
+            </span>
+            <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{w.issueAction}</span>
+          </Link>
+        )}
         {canIssue ? (
           <details>
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 [&::-webkit-details-marker]:hidden">
