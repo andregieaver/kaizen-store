@@ -78,7 +78,7 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
           {w.offersTitle}
         </h2>
         {/* On a phone the offers are a strip to swipe, each card the tap (round 17, D652); wider, a grid as before. */}
-        <ul className={`snap-x snap-mandatory ${CHIP_STRIP.replace("gap-2", "gap-3")} sm:grid sm:grid-cols-2 xl:grid-cols-4`}>
+        <ul className={`snap-x snap-mandatory scroll-px-4 sm:scroll-px-0 ${CHIP_STRIP.replace("gap-2", "gap-3")} sm:grid sm:grid-cols-2 xl:grid-cols-4`}>
           {PLAN_OFFER_KEYS.map((key) => (
             <li key={key} className="w-56 shrink-0 snap-start sm:w-auto">
               <Link
