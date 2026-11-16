@@ -112,6 +112,46 @@ describe("the marketing tools", () => {
     await expect(run("write_email_automation", { kind: "welcome", brief: "A sale" })).rejects.toThrow(/claims/);
   });
 
+  it("writes a follow-up with the same writer, only after the first and in order, and lists it (D653)", async () => {
+    const c = await ctx();
+    await expect(ownerTools.preflightOwnerTool(c, "write_email_automation", { kind: "win_back", brief: "Come back", step: 2 })).rejects.toThrow(/write step 1 first/);
+    await expect(ownerTools.preflightOwnerTool(c, "write_email_automation", { kind: "welcome", brief: "Again", step: 3 })).rejects.toThrow(/write step 2 first/);
+    await expect(ownerTools.preflightOwnerTool(c, "write_email_automation", { kind: "welcome", brief: "Again", step: 2, days: 90 })).rejects.toThrow(/from 1 to 60/);
+    model.reply = JSON.stringify({ subject: "Still here?", preview: "", heading: "A small reminder", paragraphs: ["Have a look when you have time."], button: "" });
+    const done = (await run("write_email_automation", { kind: "welcome", brief: "A gentle second hello", step: 2, days: 4 })) as { done: string; link: string };
+    expect(done.done).toContain("second email is added");
+    expect(done.link).toMatch(/\/automations\/welcome\/follow-ups\/2$/);
+    const listed = (await run("list_email_automations", {})) as { automations: { kind: string; follow_ups?: { step: number; subject: string }[]; products?: string }[] };
+    const welcome = listed.automations.find((a) => a.kind === "welcome");
+    expect(welcome?.follow_ups).toEqual([{ step: 2, when: "4 days after the email before, if they have not ordered since the first", subject: "Still here?" }]);
+    expect(listed.automations.find((a) => a.kind === "cross_sell")?.products).toMatch(/chooses for the reader/);
+  });
+
+  it("lists, writes and switches the cart reminders, refusing claims, a code the store lacks and a time outside its range (D653)", async () => {
+    const c = await ctx();
+    const before = (await run("cart_reminder_stats", {})) as { on: boolean; reminders: unknown[] };
+    expect(before).toMatchObject({ on: false, reminders: [] });
+    const words = { subject: "Your cart at {store}", heading: "Still thinking?", body: "Your cart is saved for you.", button: "Back to the cart" };
+    await expect(ownerTools.preflightOwnerTool(c, "write_cart_reminder", { ...words })).rejects.toThrow(/after how many hours/);
+    await expect(ownerTools.preflightOwnerTool(c, "write_cart_reminder", { ...words, after_hours: 0.25 })).rejects.toThrow(/after_hours/);
+    await expect(ownerTools.preflightOwnerTool(c, "write_cart_reminder", { ...words, after_hours: 2, body: "The best price ever." })).rejects.toThrow(/claims/);
+    await expect(ownerTools.preflightOwnerTool(c, "write_cart_reminder", { ...words, after_hours: 2, discount_code: "NOPE-NOT-HERE" })).rejects.toThrow(/no discount code/);
+
+    expect(((await run("switch_email_automation", { kind: "cart_reminders", on: true })) as { done: string }).done).toContain("3 reminders go");
+    const added = (await run("write_cart_reminder", { ...words, after_hours: 2 })) as { id: string; done: string };
+    expect(added.done).toContain("A reminder is added");
+    const after = (await run("cart_reminder_stats", {})) as { on: boolean; reminders: { id: string; after: string; on: boolean; subject: string }[] };
+    expect(after.on).toBe(true);
+    expect(after.reminders).toHaveLength(4);
+    expect(after.reminders.find((r) => r.id === added.id)).toMatchObject({ after: "2 hours", on: true, subject: "Your cart at {store}" });
+
+    const changed = (await run("write_cart_reminder", { ...words, reminder: added.id, subject: "Your cart is waiting", on: false })) as { done: string };
+    expect(changed.done).toContain("has new words");
+    const last = (await run("cart_reminder_stats", {})) as { reminders: { id: string; after: string; on: boolean; subject: string }[] };
+    expect(last.reminders.find((r) => r.id === added.id)).toMatchObject({ after: "2 hours", on: false, subject: "Your cart is waiting" });
+    expect(((await run("switch_email_automation", { kind: "cart_reminders", on: false })) as { done: string }).done).toBe("Cart reminders are off.");
+  });
+
   it("counts the paid orders a reader placed within a week of an automation's email (D4)", async () => {
     const [sub] = await db().execute<{ id: string }>(sql`select id from commerce.marketing_subscribers where store_id = ${store.id}::uuid and email = 'reader@example.com'`);
     await db().execute(sql`

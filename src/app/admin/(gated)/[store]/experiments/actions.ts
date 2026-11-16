@@ -171,7 +171,7 @@ export async function discardExperimentAction(storeSlug: string, id: string): Pr
 }
 
 /**
- * Decides a test from its page (D655): a version becomes the page, or `original` keeps it. A running test is stopped first, as the AI
+ * Decides a test from its page (D656): a version becomes the page, or `original` keeps it. A running test is stopped first, as the AI
  * manager's `apply_winner` does, so a clear winner is one press (and a yes) away instead of Stop, then Decide.
  */
 export async function decideExperimentAction(storeSlug: string, id: string, choice: string): Promise<Outcome> {

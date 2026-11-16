@@ -1,4 +1,5 @@
 import { likeness, looksTheSame, lowestPassing, type Likeness, type Pixels } from "./image-quality";
+import { MEDIUM_COPY_WIDTH } from "./picture-sizes";
 
 /**
  * Compressing a picture in the browser before it is uploaded (D213): resized to at most `maxSize` pixels on its long side,
@@ -132,4 +133,14 @@ async function tryAvif(reference: ImageData, width: number, height: number, limi
 /** A picture compressed for upload, as a blob (the shape callers used before D213). */
 export async function shrinkImage(file: File, maxSize: number): Promise<Blob> {
   return (await compressPicture(file, maxSize)).blob;
+}
+
+/**
+ * A picture's 800 px copy (bloat review step 0.33), made in the browser beside the 480 px one, for a picture whose compressed file
+ * is wider than 800 px; null otherwise. `compressPicture()` bounds the long side, so a portrait picture's bound is raised until the
+ * copy is 800 px wide, as `srcset` says it is.
+ */
+export async function mediumCopy(file: Blob, image: { width: number; height: number }): Promise<CompressedPicture | null> {
+  if (image.width <= MEDIUM_COPY_WIDTH) return null;
+  return compressPicture(file, Math.max(MEDIUM_COPY_WIDTH, Math.round((MEDIUM_COPY_WIDTH * image.height) / image.width)));
 }

@@ -367,7 +367,7 @@ describe("ending a test (D148)", () => {
     expect(headingOf(after)).toContain("(new)");
     expect(rowsBefore).not.toContain("(new)");
     expect(after && "page" in after ? after.page.slug : "").toBe("om-oss");
-    // The page keeps its own title, not the version's admin name "… (B)" (D655).
+    // The page keeps its own title, not the version's admin name "… (B)" (D656).
     const titleOf = (found: typeof before) => (found && "page" in found ? found.page.content.title : "");
     expect(titleOf(after)).toBe(titleOf(before));
     expect(titleOf(after)).not.toContain("(B)");
@@ -866,7 +866,7 @@ describe("tests of the front page and the All products page (D148, phase 10)", (
     const made = await admin.createExperiment(account, storeId, { name: "Front page headline", pageId: frontId, goal: "orders" });
     if (!made.ok) throw new Error(made.problems.join(" "));
     expect((await admin.getExperiment(storeId, made.id))!.page).toMatchObject({ kind: "role", role: "front" });
-    // An untouched copy is not a change (D656): the template's front page has a grid whose columns the copy stores in today's shape.
+    // An untouched copy is not a change (D657): the template's front page has a grid whose columns the copy stores in today's shape.
     expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")).toMatchObject({ changed: false });
     expect(await admin.startProblemsOf(storeId, made.id)).toEqual([expect.stringContaining("still the same as the original")]);
     await changeVariant(made.id, "b");

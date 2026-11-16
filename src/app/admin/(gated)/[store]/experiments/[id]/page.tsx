@@ -63,7 +63,7 @@ function pathOf(test: ExperimentInfo, card: ExperimentCard, w: ExperimentsMessag
   ];
 }
 
-/** One A/B test (D148, a record since D655): set up while it is a draft; once started, its stage, path, answer and the one next step. */
+/** One A/B test (D148, a record since D656): set up while it is a draft; once started, its stage, path, answer and the one next step. */
 export default async function ExperimentPage({ params }: PageProps<"/admin/[store]/experiments/[id]">) {
   const { store: slug, id } = await params;
   const { store, account } = await requirePermission(slug, "marketing:read");
@@ -107,7 +107,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           : null;
 
   if (test.status === "draft") {
-    // A draft as a record (D656): what stands in the way of a start, what each version changes, and how long it takes at the shop's traffic.
+    // A draft as a record (D657): what stands in the way of a start, what each version changes, and how long it takes at the shop's traffic.
     const [left, changes, traffic] = await Promise.all([
       startProblemsOf(store.id, test.id),
       versionDifferences(store.id, test),

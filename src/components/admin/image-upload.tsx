@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { compressPicture, extensionOf } from "@/lib/image-compress";
+import { compressPicture, extensionOf, mediumCopy } from "@/lib/image-compress";
 import { savingWords } from "@/lib/image-quality";
 
 import { LibraryButton } from "./media-picker";
@@ -18,19 +18,22 @@ export type Uploaded = { url: string; width: number; height: number };
 export type Saving = { before: number; after: number };
 
 /**
- * Compresses a picture in the browser (1600 px, with a 480 px thumbnail; the smallest that still looks the same, AVIF where
- * it is clearly smaller, D213) and uploads it; also used for a background video's first picture.
+ * Compresses a picture in the browser (1600 px, with an 800 px copy for a picture wider than that and a 480 px thumbnail; the
+ * smallest that still looks the same, AVIF where it is clearly smaller, D213) and uploads it; also used for a background video's
+ * first picture.
  */
 export async function uploadPicture(
   upload: Upload,
   file: File,
 ): Promise<{ ok: true; image: Uploaded; saving: Saving } | { ok: false; problem: string }> {
   const [image, thumbnail] = await Promise.all([compressPicture(file, 1600, { avif: true }), compressPicture(file, 480)]);
+  const medium = await mediumCopy(file, image);
   const data = new FormData();
   data.set("image", new File([image.blob], `picture.${extensionOf(image.type)}`, { type: image.type }));
   // Its name as it was on the owner's computer, for the media library (D88).
   data.set("name", file.name);
   data.set("thumbnail", new File([thumbnail.blob], `picture-480.${extensionOf(thumbnail.type)}`, { type: thumbnail.type }));
+  if (medium) data.set("medium", new File([medium.blob], `picture-800.${extensionOf(medium.type)}`, { type: medium.type }));
   // Compressed until it was as small as it could be while it looked the same (D213).
   data.set("compressed", "1");
   const outcome = await upload(data);
@@ -39,8 +42,8 @@ export async function uploadPicture(
 }
 
 /**
- * Chooses a picture, shrinks it in the browser (1600 px, with a 480 px
- * thumbnail) and uploads it, as product and page pictures are. In the page
+ * Chooses a picture, shrinks it in the browser (1600 px, with an 800 px copy
+ * and a 480 px thumbnail) and uploads it, as product and page pictures are. In the page
  * builder it also makes one by prompt (D283, `PictureMakerProvider`): the
  * made picture comes with its alt text as the second argument; `current` is
  * the picture the field has, which making again starts from and *Remove

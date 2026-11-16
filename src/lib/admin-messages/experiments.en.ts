@@ -118,7 +118,7 @@ export const experimentsEn = {
     make: "Make the test",
     nothingShown: "Nothing is shown to visitors until you start it.",
   },
-  /** The new-test form on one screen (D656): the goal with how soon it answers, where, how long, and Customise. */
+  /** The new-test form on one screen (D657): the goal with how soon it answers, where, how long, and Customise. */
   start: {
     goalTitle: "What do you want more of?",
     moreGoals: "More goals",
@@ -162,7 +162,7 @@ export const experimentsEn = {
     ownFigures: "Your own figures",
     make: "Make version B",
   },
-  /** A draft's page as a record (D656): its next step in the header, a checklist, what each version changes, and its settings under Customise. */
+  /** A draft's page as a record (D657): its next step in the header, a checklist, what each version changes, and its settings under Customise. */
   draftCard: {
     change: "Change {name}",
     start: "Start the test",
@@ -322,7 +322,7 @@ export const experimentsEn = {
     moreThan99: "more than 99 %",
     lessThan1: "less than 1 %",
   },
-  /** A started test's page as a record (D655, `experimentCard()`): its stage, the path, the one next step, and the pictures of what it found. */
+  /** A started test's page as a record (D656, `experimentCard()`): its stage, the path, the one next step, and the pictures of what it found. */
   card: {
     eyebrow: "A/B test",
     states: {

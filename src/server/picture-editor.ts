@@ -104,7 +104,15 @@ export async function editLibraryPicture(
     { storeId, accountId: owner.accountId },
     new File([new Uint8Array(shrunk.image)], name, { type: "image/webp" }),
     new File([new Uint8Array(shrunk.thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" }),
-    { fileName: name, alt, madeBy: "ai_edited", editedFrom: String(row.id), aiMarked: true },
+    {
+      fileName: name,
+      alt,
+      madeBy: "ai_edited",
+      editedFrom: String(row.id),
+      aiMarked: true,
+      // Its 800 px copy (bloat review step 0.33), made and marked by shrinkPicture() for a picture wider than that.
+      medium: shrunk.medium ? new File([new Uint8Array(shrunk.medium)], name.replace(/\.webp$/, "-800.webp"), { type: "image/webp" }) : null,
+    },
   );
   if (!stored.ok) return { ok: false, problem: stored.problem };
   return { ok: true, picture: { id: stored.id ?? null, url: stored.url, thumbnailUrl: stored.thumbnailUrl, width: shrunk.width, height: shrunk.height, alt } };

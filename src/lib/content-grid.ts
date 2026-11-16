@@ -18,9 +18,10 @@ export type GridItem = {
   excerpt: string;
   /**
    * `width` and `height` are the size a tile draws it at (custom items, D155). `large` is the picture beside `url`, its small copy,
-   * with its own width `largeWidth` where known, so the tile offers both by width (D336; products' pictures from the library).
+   * with its own width `largeWidth` where known, so the tile offers both by width (D336; products' pictures from the library), and
+   * `medium` its 800 px copy between them when the library has one (bloat review step 0.33; products only so far).
    */
-  image: { url: string; alt: string; width?: number; height?: number; large?: string; largeWidth?: number } | null;
+  image: { url: string; alt: string; width?: number; height?: number; large?: string; largeWidth?: number; medium?: string } | null;
   /** Products only: the cheapest price in the market, and whether others cost more. */
   price: { view: PriceView; from: boolean } | null;
   /** Products only (D431): priced on request, so the tile says so in place of a price. */

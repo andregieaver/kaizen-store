@@ -2,7 +2,7 @@
 
 A review of the A/B tests (D148, [`ab-testing.md`](ab-testing.md)) for people who have never run one, and for the AI that helps
 them. The page with the findings, screenshots of the screens as they were and mockups: https://claude.ai/artifact/Ep8Vp5BbKEs7QMpECrZqfs.
-Steps 1 and 2 are built (phases 12 and 13 of D148, D655 and D656); step 2b and steps 3 and 4 are the plan.
+Steps 1 and 2 are built (phases 12 and 13 of D148, D656 and D657); step 2b and steps 3 and 4 are the plan.
 
 The engine is sound and stays as it is: rules fixed before results, no verdict before the minimum, the split check, the guardrail,
 the words written in code (`verdictOf()`), approval for start, stop and apply. What the person saw was the problem: three tables, an
@@ -47,8 +47,8 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
 
 ## Steps
 
-1. **Read at a glance (phase 12, D655, built 16 November 2026).** See `ab-testing.md`, "What phase 12 built".
-2. **No numbers to guess, and a calmer start (phase 13, D656, built 16 November 2026).** See `ab-testing.md`, "What phase 13 built". Small
+1. **Read at a glance (phase 12, D656, built 16 November 2026).** See `ab-testing.md`, "What phase 12 built".
+2. **No numbers to guess, and a calmer start (phase 13, D657, built 16 November 2026).** See `ab-testing.md`, "What phase 13 built". Small
    shops meet the honest answer often (a 20 % change takes months at 70 visitors a day), so the form names the smallest change that could
    be found within six weeks and offers it in one press.
    2b. **The original and B side by side (no migration).** A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,

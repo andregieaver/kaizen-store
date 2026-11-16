@@ -9415,10 +9415,17 @@ export const media = commerce.table(
     kind: text("kind").notNull(),
     url: text("url").notNull(),
     thumbnailUrl: text("thumbnail_url"),
+    /**
+     * Its 800 px copy (bloat review step 0.33), made where the 480 px one is, for a picture wider than 800 px; null for one stored
+     * before, which is offered as its two files.
+     */
+    mediumUrl: text("medium_url"),
     /** The Storage bucket and paths, to delete the files with the item. */
     bucket: text("bucket").notNull(),
     path: text("path").notNull(),
     thumbnailPath: text("thumbnail_path"),
+    /** The 800 px copy's path in the bucket, removed with the item. */
+    mediumPath: text("medium_path"),
     fileName: text("file_name").notNull(),
     contentType: text("content_type").notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
@@ -18401,7 +18408,7 @@ export const liveDrills = commerce.table(
   },
   (t) => [
     check("live_drills_status", sql`${t.status} in ('requested', 'running', 'done')`),
-    check("live_drills_kinds", sql`cardinality(${t.kinds}) between 1 and 10`),
+    check("live_drills_kinds", sql`cardinality(${t.kinds}) between 1 and 20`),
     index("live_drills_store_idx").on(t.storeId, t.requestedAt),
     index("live_drills_requested_by_idx").on(t.requestedBy),
   ],

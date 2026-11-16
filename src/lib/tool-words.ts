@@ -40,6 +40,7 @@ export const TOOL_WORDS: Record<string, string> = {
   tell_customer_about_order: "Preparing the customer's update",
   carry_out_address_change: "Changing the delivery address",
   write_email_automation: "Writing the email",
+  write_cart_reminder: "Preparing the reminder",
   list_text_messages: "Reading the text messages",
   draft_text_message: "Saving the text message",
   send_text_message: "Preparing the text message",

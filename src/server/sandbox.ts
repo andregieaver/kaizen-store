@@ -330,13 +330,13 @@ export async function sandboxAi(sandbox: Sandbox, feature: AiFeature): Promise<A
 /** The files of a sandbox's library: only those in its own folder, never the addresses its copied products point at (the source's). */
 async function sandboxFiles(storeId: string): Promise<Map<string, string[]>> {
   const rows = await typedRows(
-    z.object({ bucket: col.text, path: col.text, thumbnail_path: col.textOrNull }),
-    sql`select bucket, path, thumbnail_path from commerce.media where store_id = ${storeId}::uuid and bucket is not null and path is not null`,
+    z.object({ bucket: col.text, path: col.text, thumbnail_path: col.textOrNull, medium_path: col.textOrNull }),
+    sql`select bucket, path, thumbnail_path, medium_path from commerce.media where store_id = ${storeId}::uuid and bucket is not null and path is not null`,
   );
   const own = (path: string | null): path is string => Boolean(path?.startsWith(`${storeId}/`));
   const files = new Map<string, string[]>();
   for (const row of rows) {
-    const paths = [row.path, row.thumbnail_path].filter(own);
+    const paths = [row.path, row.thumbnail_path, row.medium_path].filter(own);
     if (paths.length > 0) files.set(row.bucket, [...(files.get(row.bucket) ?? []), ...paths]);
   }
   return files;

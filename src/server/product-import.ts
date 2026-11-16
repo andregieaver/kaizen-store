@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { DELIMITER_WORDS, parseCsv, type ParsedCsv } from "@/lib/csv";
 import { finding, summariseCounts, type DryRunCounts, type Finding, type ItemSummary, type JobCounts, EMPTY_COUNTS } from "@/lib/data-job";
 import { BULK_CHUNK, IMPORT_MAX_BYTES, IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS, IMPORT_PICTURE_MAX_BYTES, IMPORT_PICTURE_TYPES, IMPORT_PICTURE_WIDTH, IMPORT_THUMBNAIL_WIDTH } from "@/lib/data-limits";
+import { MEDIUM_COPY_WIDTH } from "@/lib/picture-sizes";
 import { groupProducts, readNeutral, type FileFinding, type Grouped, type NeutralFile, type ProductCsvContext, type ProductDraft } from "@/lib/product-csv";
 import { detectFormat, readShopify } from "@/lib/product-csv-shopify";
 import { isWooCommerce, readWooCommerce } from "@/lib/product-csv-woocommerce";
@@ -452,6 +453,8 @@ export async function pictureToLibrary(
   if (!got.ok) return { ok: false, reason: got.problem };
   let image: Buffer;
   let thumb: Buffer;
+  // Its 800 px copy (bloat review step 0.33), for a picture wider than that.
+  let medium: Buffer | null = null;
   let size: { width: number; height: number };
   try {
     const source = sharp(got.bytes, { failOn: "none", animated: false }).rotate();
@@ -459,6 +462,7 @@ export async function pictureToLibrary(
     thumb = await source.clone().resize({ width: IMPORT_THUMBNAIL_WIDTH, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
     const meta = await sharp(image).metadata();
     size = { width: meta.width ?? 0, height: meta.height ?? 0 };
+    if (size.width > MEDIUM_COPY_WIDTH) medium = await source.clone().resize({ width: MEDIUM_COPY_WIDTH, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
   } catch {
     return { ok: false, reason: "That address is not a picture that can be used." };
   }
@@ -467,7 +471,7 @@ export async function pictureToLibrary(
     owner,
     new File([new Uint8Array(image)], name, { type: "image/webp" }),
     new File([new Uint8Array(thumb)], name, { type: "image/webp" }),
-    { fileName: name },
+    { fileName: name, ...(medium && { medium: new File([new Uint8Array(medium)], name, { type: "image/webp" }) }) },
   );
   return stored.ok ? { ok: true, url: stored.url, thumbnailUrl: stored.thumbnailUrl, ...size } : { ok: false, reason: stored.problem };
 }

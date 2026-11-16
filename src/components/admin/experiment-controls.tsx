@@ -68,7 +68,7 @@ function Problems({ problems }: { problems: string[] }) {
 }
 
 /**
- * A draft's next step, in its header (D656, the record of round 1): change the version while it is still the original, then start the
+ * A draft's next step, in its header (D657, the record of round 1): change the version while it is still the original, then start the
  * test; scheduling the start, another version and deleting the draft are under More, each asking first where it cannot be undone.
  */
 export function DraftActions({ store, test, ready }: { store: string; test: ExperimentInfo; ready: boolean }) {
@@ -141,7 +141,7 @@ export function DraftActions({ store, test, ready }: { store: string; test: Expe
 }
 
 /**
- * A draft (D148, a record since D656): whether it is ready to start, as a checklist; each version with what it changes against the original
+ * A draft (D148, a record since D657): whether it is ready to start, as a checklist; each version with what it changes against the original
  * and its links to change and preview it; and the settings under Customise, with how long the test takes at the shop's own traffic.
  */
 export function DraftPanel({
@@ -385,7 +385,7 @@ export function DraftPanel({
 }
 
 /**
- * What can be done to a test that has started, in its header (D655, the record of round 1): the one green button its stage asks for
+ * What can be done to a test that has started, in its header (D656, the record of round 1): the one green button its stage asks for
  * (start a scheduled test, use the winner, keep the original), the rest behind More (rename, stop, the other choices), and a question
  * before anything changes. Deciding a running test stops it first (`decideExperimentAction`).
  */

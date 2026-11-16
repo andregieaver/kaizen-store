@@ -10,6 +10,7 @@ import { pictureSources } from "@/lib/picture-sizes";
 export function SizedPicture({
   url,
   small,
+  medium,
   width,
   height,
   sourceWidth,
@@ -24,6 +25,8 @@ export function SizedPicture({
   url: string;
   /** The library's 480 px copy, when it has one. */
   small?: string | null;
+  /** Its 800 px copy, when the library has one. */
+  medium?: string | null;
   /** The width and height it is drawn at (its shape). */
   width: number;
   height: number;
@@ -38,7 +41,7 @@ export function SizedPicture({
   priority?: boolean;
   draggable?: boolean;
 }) {
-  const sources = pictureSources({ url, small, width: sourceWidth });
+  const sources = pictureSources({ url, small, medium, width: sourceWidth });
   if (!sources.srcSet) {
     return (
       <Image
@@ -56,7 +59,7 @@ export function SizedPicture({
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- the owner's picture as its two files by width; next/image takes no srcset of its own
+    // eslint-disable-next-line @next/next/no-img-element -- the owner's picture as its files by width; next/image takes no srcset of its own
     <img
       src={sources.src}
       srcSet={sources.srcSet}

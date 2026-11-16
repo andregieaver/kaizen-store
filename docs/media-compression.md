@@ -6,9 +6,15 @@ new service is involved.
 
 ## Pictures
 
-`compressPicture()` (`src/lib/image-compress.ts`) resizes to at most 1600 pixels (a 480 pixel copy beside it), then searches
-the quality between 50 % and 95 % (five halvings) for the lowest whose result still looks the same as the resized picture,
-`looksTheSame()` in `src/lib/image-quality.ts`:
+`compressPicture()` (`src/lib/image-compress.ts`) resizes to at most 1600 pixels, then searches the quality between 50 % and 95 %
+(five halvings) for the lowest whose result still looks the same as the resized picture, `looksTheSame()` in
+`src/lib/image-quality.ts`. A picture is kept as three files (bloat review step 0.33): the picture, at most 1,600 px wide; an 800 px
+copy for a picture wider than that (`mediumCopy()`, 800 px wide whatever its shape; `commerce.media.medium_url` and `medium_path`); and
+a 480 px copy. A 3x phone and a Retina laptop need 540 to 800 pixels for a product tile, so with two files they took the 1,600 px one
+(71 KB on average for the theme art, where the 800 px copy is 18 KB). The server's own makers (`shrinkPicture()`, the content packs'
+art, the product import) make the 800 px copy with sharp. A picture stored before has two files and is offered as two; nothing makes
+the copy afterwards. The third file adds about a quarter to a picture's stored bytes, which Usage and limits counts. A fourth size of
+1,200 px is the owner's later choice. Pictures inside page content still offer two files (step 0.44). The quality bar:
 
 - structural similarity (SSIM) in 8 × 8 windows on brightness and on colour, a see-through picture over white and over black;
 - measured at half size for pictures of 960 pixels and more (how a picture kept at twice its shown size is seen), with a

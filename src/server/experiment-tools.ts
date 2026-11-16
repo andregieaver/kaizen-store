@@ -191,7 +191,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
         : undefined,
     };
   });
-  // The card the test's page draws (D655): its stage, how far from an answer and when, each version's likely range, what each changed.
+  // The card the test's page draws (D656): its stage, how far from an answer and when, each version's likely range, what each changed.
   const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results: r, now: new Date() });
   const changes = await versionDifferences(store.id, test);
   const signed = (share: number) => `${share >= 0 ? "+" : "−"}${Math.abs(Math.round(share * 100))} %`;
@@ -253,7 +253,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     `),
   ]);
   const running = tests.filter((t) => t.status === "running" || t.status === "scheduled");
-  // The shop's own traffic (D656): each candidate's visitors who could take part, and how long each counted goal would take there.
+  // The shop's own traffic (D657): each candidate's visitors who could take part, and how long each counted goal would take there.
   const traffic = await experimentTraffic(store, targets);
   const speeds = (targetId: string) => {
     const perDay = eligiblePerDay(traffic, targetId);

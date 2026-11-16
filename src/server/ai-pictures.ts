@@ -3,6 +3,7 @@ import "server-only";
 import type { Sharp } from "sharp";
 
 import { findClaims } from "@/lib/claims";
+import { MEDIUM_COPY_WIDTH } from "@/lib/picture-sizes";
 
 import { AiError, generateImage, type AiConnection, type ImageShape } from "./ai";
 import { storePicture } from "./media-library";
@@ -42,8 +43,14 @@ export function aiSourceXmp(source: AiSource): string {
   );
 }
 
-/** A model's picture as the pair the site keeps; `ai` marks both files as made or changed by AI. */
-export async function shrinkPicture(bytes: Uint8Array, ai?: AiSource): Promise<{ image: Buffer; thumbnail: Buffer; width: number; height: number }> {
+/**
+ * A model's picture as the files the site keeps: the picture, its 480 px thumbnail and, for a picture wider than 800 px, its 800 px
+ * copy (bloat review step 0.33; null otherwise). `ai` marks every file as made or changed by AI.
+ */
+export async function shrinkPicture(
+  bytes: Uint8Array,
+  ai?: AiSource,
+): Promise<{ image: Buffer; thumbnail: Buffer; medium: Buffer | null; width: number; height: number }> {
   const sharp = await loadSharp();
   const source = sharp(bytes, { failOn: "error" }).rotate();
   const marked = (picture: Sharp) => (ai ? picture.withXmp(aiSourceXmp(ai)) : picture);
@@ -51,7 +58,11 @@ export async function shrinkPicture(bytes: Uint8Array, ai?: AiSource): Promise<{
     marked(source.clone().resize({ width: WIDTH, withoutEnlargement: true }).webp({ quality: 82 })).toBuffer({ resolveWithObject: true }),
     marked(source.clone().resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true }).webp({ quality: 78 })).toBuffer(),
   ]);
-  return { image: image.data, thumbnail, width: image.info.width, height: image.info.height };
+  const medium =
+    image.info.width > MEDIUM_COPY_WIDTH
+      ? await marked(source.clone().resize({ width: MEDIUM_COPY_WIDTH, withoutEnlargement: true }).webp({ quality: 80 })).toBuffer()
+      : null;
+  return { image: image.data, thumbnail, medium, width: image.info.width, height: image.info.height };
 }
 
 /** A file name from a picture's alt text: `ai-bright-shop-with-plants.webp`. */
@@ -94,7 +105,13 @@ export async function makePicture(
     owner,
     new File([new Uint8Array(shrunk.image)], name, { type: "image/webp" }),
     new File([new Uint8Array(shrunk.thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" }),
-    { fileName: name, alt, madeBy: "ai_made", aiMarked: true },
+    {
+      fileName: name,
+      alt,
+      madeBy: "ai_made",
+      aiMarked: true,
+      medium: shrunk.medium ? new File([new Uint8Array(shrunk.medium)], name.replace(/\.webp$/, "-800.webp"), { type: "image/webp" }) : null,
+    },
   );
   if (!stored.ok) return { ok: false, problem: stored.problem };
   return { ok: true, picture: { url: stored.url, thumbnailUrl: stored.thumbnailUrl, width: shrunk.width, height: shrunk.height } };

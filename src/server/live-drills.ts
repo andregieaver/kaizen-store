@@ -131,6 +131,16 @@ async function factsDrill(storeId: string): Promise<DrillResult> {
     : { kind: "payment_facts", outcome: "failed", detail: `${row.unread} of ${row.paid} payments were not read from Stripe.` };
 }
 
+async function invoicesDrill(storeId: string): Promise<DrillResult> {
+  const { issueWaitingInvoices, ordersWithInvoice } = await import("./invoice-issue");
+  await issueWaitingInvoices(storeId);
+  const row = await ordersWithInvoice(sql`${drillOrders(storeId)} and o.placed_at > now() - interval '1 day'`);
+  if (row.orders === 0) return { kind: "invoices", outcome: "skipped", detail: "No drill order was paid in the last day." };
+  return row.invoiced === row.orders
+    ? { kind: "invoices", outcome: "passed", detail: `${row.orders} paid orders, each with its invoice.` }
+    : { kind: "invoices", outcome: "failed", detail: `${row.orders - row.invoiced} of ${row.orders} paid orders have no invoice: the Waiting tab under Invoices says why.` };
+}
+
 async function sentDrill(storeId: string): Promise<DrillResult> {
   const order = await pickOrder(
     storeId,
@@ -377,6 +387,7 @@ async function runOne(storeId: string, kind: DrillKind, requestedBy: string | nu
     if (kind === "database_door") return await doorDrill();
     if (kind === "webhooks") return await webhooksDrill();
     if (kind === "payment_facts") return await factsDrill(storeId);
+    if (kind === "invoices") return await invoicesDrill(storeId);
     if (kind === "mark_sent") return await sentDrill(storeId);
     return await refundDrill(storeId, kind);
   } catch (error) {

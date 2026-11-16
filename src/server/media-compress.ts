@@ -33,6 +33,8 @@ type Current = {
   bucket: string;
   path: string;
   thumbnailPath: string | null;
+  /** Its 800 px copy's path (bloat review step 0.33), null for a file without one. */
+  mediumPath: string | null;
   contentType: string;
   sizeBytes: number;
   compressedAt: string | null;
@@ -41,8 +43,11 @@ type Current = {
 type Next = {
   url: string;
   thumbnailUrl: string | null;
+  /** The compressed picture's 800 px copy (bloat review step 0.33): null when it is no wider than that, or for a video. */
+  mediumUrl: string | null;
   path: string;
   thumbnailPath: string | null;
+  mediumPath: string | null;
   contentType: string;
   sizeBytes: number;
   width: number | null;
@@ -53,7 +58,7 @@ const GONE = "That file is no longer in the library.";
 
 async function current(owner: MediaOwner, id: string): Promise<Current | null> {
   const [row] = await db().execute<Row>(sql`
-    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, content_type, size_bytes, compressed_at
+    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, medium_path, content_type, size_bytes, compressed_at
     from commerce.media where id = ${id}::uuid and ${owned(owner.storeId)}
   `);
   if (!row) return null;
@@ -65,6 +70,7 @@ async function current(owner: MediaOwner, id: string): Promise<Current | null> {
     bucket: String(row.bucket),
     path: String(row.path),
     thumbnailPath: row.thumbnail_path ? String(row.thumbnail_path) : null,
+    mediumPath: row.medium_path ? String(row.medium_path) : null,
     contentType: String(row.content_type),
     sizeBytes: Number(row.size_bytes),
     compressedAt: row.compressed_at ? String(row.compressed_at) : null,
@@ -83,21 +89,30 @@ async function refusal(owner: MediaOwner, file: Current, avif: boolean): Promise
 /** Whether a result is not worth keeping: empty, or not clearly smaller than the original (whose size older rows may lack). */
 const tooLarge = (file: Current, size: number) => !(size > 0) || (file.sizeBytes > 0 && size > file.sizeBytes * COMPRESS_WORTH);
 
-/** A picture the browser compressed takes the original's place. */
-export async function replacePicture(owner: MediaOwner, accountId: string, id: string, image: File, thumbnail: File): Promise<CompressOutcome> {
+/** A picture the browser compressed takes the original's place, with its 800 px copy when it is wider than that (bloat review step 0.33). */
+export async function replacePicture(
+  owner: MediaOwner,
+  accountId: string,
+  id: string,
+  image: File,
+  thumbnail: File,
+  medium?: File | null,
+): Promise<CompressOutcome> {
   const file = await current(owner, id);
   if (!file || file.kind !== "image") return { ok: false, problem: GONE };
   const refused = await refusal(owner, file, image.type === "image/avif");
   if (refused) return { ok: false, problem: refused };
   if (tooLarge(file, image.size)) return { ok: false, problem: "It is already about as small as it can be while it looks the same." };
-  const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
+  const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail, medium ?? null);
   if (!uploaded.ok || !("stored" in uploaded)) return uploaded.ok ? { ok: false, problem: "The smaller file could not be stored." } : uploaded;
   const size = imageSize(new Uint8Array(await image.slice(0, 64 * 1024).arrayBuffer()));
   return swap(owner, accountId, file, {
     url: uploaded.url,
     thumbnailUrl: uploaded.thumbnailUrl,
+    mediumUrl: uploaded.mediumUrl ?? null,
     path: uploaded.stored.path,
     thumbnailPath: uploaded.stored.thumbnailPath,
+    mediumPath: uploaded.stored.mediumPath ?? null,
     contentType: image.type,
     sizeBytes: image.size,
     width: size?.width ?? null,
@@ -135,8 +150,10 @@ export async function replaceVideo(owner: MediaOwner, accountId: string, id: str
   return swap(owner, accountId, file, {
     url: stored.url,
     thumbnailUrl: null,
+    mediumUrl: null,
     path,
     thumbnailPath: null,
+    mediumPath: null,
     contentType: stored.type || "video/mp4",
     sizeBytes: stored.size,
     width: null,
@@ -158,6 +175,8 @@ async function swap(owner: MediaOwner, accountId: string, file: Current, next: N
       update commerce.media set
         url = ${next.url}, thumbnail_url = ${next.thumbnailUrl ?? file.thumbnailUrl}, path = ${next.path},
         thumbnail_path = ${next.thumbnailPath ?? file.thumbnailPath}, content_type = ${next.contentType}, size_bytes = ${next.sizeBytes},
+        -- The compressed picture's own 800 px copy, or none (bloat review step 0.33): the old one is never the new picture's.
+        medium_url = ${next.mediumUrl}, medium_path = ${next.mediumPath},
         width = coalesce(${next.width}, width), height = coalesce(${next.height}, height), compressed_at = now(), updated_at = now()
       where id = ${file.id}::uuid
     `);
@@ -170,14 +189,19 @@ async function swap(owner: MediaOwner, accountId: string, file: Current, next: N
       return false;
     });
   if (!swapped) {
-    await removeStoredFiles(file.bucket, [next.path, ...(next.thumbnailPath ? [next.thumbnailPath] : [])]);
+    await removeStoredFiles(file.bucket, [next.path, ...(next.thumbnailPath ? [next.thumbnailPath] : []), ...(next.mediumPath ? [next.mediumPath] : [])]);
     return { ok: false, problem: "The file could not take the original's place, so nothing changed. Try again." };
   }
   const keptOriginal = keepsOriginal(usesBefore) || (await namedInRecords(owner.storeId, [file.url, file.thumbnailUrl]));
+  // The old 800 px copy (bloat review step 0.33) goes whether or not the original is kept: its address is never saved anywhere, in the
+  // site or outside it (only the storefront's srcset names it, read from this row), so a kept one would be a file nothing names.
+  const replacedMedium = file.mediumPath ? [file.mediumPath] : [];
   if (!keptOriginal) {
     // A video's thumbnail is its own library picture, not this row's: only a picture's small copy goes with it.
     const replacedThumbnail = next.thumbnailPath && file.thumbnailPath ? [file.thumbnailPath] : [];
-    await removeStoredFiles(file.bucket, [file.path, ...replacedThumbnail]);
+    await removeStoredFiles(file.bucket, [file.path, ...replacedThumbnail, ...replacedMedium]);
+  } else if (replacedMedium.length > 0) {
+    await removeStoredFiles(file.bucket, replacedMedium);
   }
   await auditCompressed(owner, accountId, file, next.sizeBytes, keptOriginal);
   return { ok: true, before: file.sizeBytes, after: next.sizeBytes, keptOriginal };

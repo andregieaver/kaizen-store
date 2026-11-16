@@ -1,7 +1,11 @@
 import "server-only";
 
-import { AUTOMATION_KINDS, DELAY_RANGES, LIFECYCLE_KINDS, type LifecycleKind } from "@/lib/automation-kinds";
-import { AUTOMATION_WORDS, ORDER_AFTER_DAYS } from "@/lib/automations";
+import { sql } from "drizzle-orm";
+import { z } from "zod";
+
+import { AUTOMATION_KINDS, DELAY_RANGES, FOLLOW_UP_DAYS, isPickKind, LIFECYCLE_KINDS, type FollowUpPosition, type LifecycleKind } from "@/lib/automation-kinds";
+import { AUTOMATION_WORDS, ORDER_AFTER_DAYS, PICKS_SHOWN } from "@/lib/automations";
+import { defaultText, MAX_DELAY_MINUTES, MIN_DELAY_MINUTES, type ReminderText } from "@/lib/cart-reminders";
 import { findAvoided } from "@/lib/brand";
 import { suggestionBlocks } from "@/lib/broadcasts";
 import { CLAIM_LABELS, findClaims } from "@/lib/claims";
@@ -15,7 +19,8 @@ import { describeRules, segmentRulesSchema } from "@/lib/segments";
 import { SMS_PARTS_MAX, smsParts } from "@/lib/sms";
 import { plainText } from "@/lib/approval-summaries";
 
-import { automationStats, getAutomation, getAutomations, saveAutomation, switchAutomation } from "./automations";
+import { automationStats, getAutomation, getAutomations, saveAutomation, saveFollowUp, switchAutomation, type Automation } from "./automations";
+import { cartReminderStats, getCartReminderSettings, saveCartReminderStep, setCartRemindersEnabled } from "./cart-reminders";
 import { brandOf } from "./brand";
 import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, type Broadcast } from "./broadcasts";
 import { listTiers } from "./customer-tiers";
@@ -25,6 +30,7 @@ import { addTag, evaluateSegment, listSegments, removeTag, saveSegment, type Sav
 import { storeById } from "./shopper-emails";
 import { getSmsCampaign, getSmsSettings, listSmsCampaigns, previewSmsCampaign, saveSmsCampaign, smsSubscriberCounts, startSmsCampaign, type SmsCampaign } from "./sms";
 import type { Store } from "./stores";
+import { typedRow } from "./typed-rows";
 import type { Account, Membership } from "./auth";
 
 /**
@@ -250,6 +256,14 @@ export async function listAutomationsTool({ store }: Ctx) {
         does: words.does,
         on: a.enabled,
         ...(a.delayDays !== null && words.days && { when: words.days(a.delayDays) }),
+        ...(isPickKind(kind) && { products: `Each email shows up to ${PICKS_SHOWN} products the shop chooses for the reader; none to show, it does not go.` }),
+        ...(a.followUps.length > 0 && {
+          follow_ups: a.followUps.map((f) => ({
+            step: f.position,
+            when: `${f.delayDays} ${f.delayDays === 1 ? "day" : "days"} after the email before, if they have not ordered since the first`,
+            subject: f.content[store.localization.locales[0] ?? ""]?.subject ?? "",
+          })),
+        }),
         ...((LIFECYCLE_KINDS as readonly string[]).includes(kind) && {
           sent_last_30_days: sent[kind as LifecycleKind] ?? 0,
           // Worked out by the store (D4): paid orders their readers placed within the days after an email, never caused by it alone.
@@ -264,7 +278,9 @@ export async function listAutomationsTool({ store }: Ctx) {
   };
 }
 
-export async function switchAutomationTool({ account, store }: Ctx, { kind, on }: OwnerToolInput<"switch_email_automation">) {
+export async function switchAutomationTool(ctx: Ctx, { kind, on }: OwnerToolInput<"switch_email_automation">) {
+  if (kind === "cart_reminders") return switchCartReminders(ctx, on);
+  const { account, store } = ctx;
   const result = await switchAutomation(store, account.id, kind, on);
   if (!result.ok) return fail(result.problem);
   return { done: `${AUTOMATION_WORDS[kind].title} is ${on ? "on" : "off"}.`, link: adminLink(store, "/automations") };
@@ -291,8 +307,29 @@ async function automationDays(store: Store, kind: LifecycleKind, days: number | 
   return chosen;
 }
 
-/** Checks a write before it is kept for a yes: the days within the kind's range. */
+/** The follow-up a write is for (D653): the one at that step, or the next one to add; refused for a gap, before the first is saved, or past three. */
+function followUpTarget(automation: Automation, step: FollowUpPosition): { position: FollowUpPosition; exists: boolean } {
+  const title = AUTOMATION_WORDS[automation.kind].title;
+  if (!automation.saved) fail(`${title} has no first email saved yet: write step 1 first.`);
+  if (automation.followUps.some((f) => f.position === step)) return { position: step, exists: true };
+  if (step !== automation.followUps.length + 2) fail(`${title} has ${automation.followUps.length === 0 ? "no follow-up" : "one follow-up"}: write step ${automation.followUps.length + 2} first.`);
+  return { position: step, exists: false };
+}
+
+/** A follow-up's days: those asked for, else its own, else where a new one starts; refused outside 1 to 60. */
+function followUpDays(automation: Automation, position: FollowUpPosition, days: number | undefined): number {
+  const chosen = days ?? automation.followUps.find((f) => f.position === position)?.delayDays ?? FOLLOW_UP_DAYS.start;
+  if (!Number.isInteger(chosen) || chosen < FOLLOW_UP_DAYS.min || chosen > FOLLOW_UP_DAYS.max) fail(`A follow-up's days must be a whole number from ${FOLLOW_UP_DAYS.min} to ${FOLLOW_UP_DAYS.max}, after the email before.`);
+  return chosen;
+}
+
+/** Checks a write before it is kept for a yes: the days within the kind's range, and for a follow-up the step it can be. */
 export async function preflightWriteAutomation({ store }: Ctx, input: OwnerToolInput<"write_email_automation">): Promise<void> {
+  if (input.step === 2 || input.step === 3) {
+    const automation = await getAutomation(store, input.kind);
+    followUpDays(automation, followUpTarget(automation, input.step).position, input.days);
+    return;
+  }
   await automationDays(store, input.kind, input.days);
 }
 
@@ -301,7 +338,9 @@ export async function preflightWriteAutomation({ store }: Ctx, input: OwnerToolI
  * reaches, in the store's main language, the store's products and campaigns drawn by code and every text through the claims filter and the
  * brand's words to avoid. Saved through the screen's own `saveAutomation()`, the days with it; it is not switched on or off here.
  */
-export async function writeAutomationTool({ account, store }: Ctx, input: OwnerToolInput<"write_email_automation">) {
+export async function writeAutomationTool(ctx: Ctx, input: OwnerToolInput<"write_email_automation">) {
+  if (input.step === 2 || input.step === 3) return writeFollowUp(ctx, input, input.step);
+  const { account, store } = ctx;
   const days = await automationDays(store, input.kind, input.days);
   const locale = store.localization.locales[0] ?? "en";
   const suggested = await suggestBroadcast(store, account.id, input.brief, locale, { audience: AUTOMATION_AUDIENCE[input.kind](days) });
@@ -323,6 +362,129 @@ export async function writeAutomationTool({ account, store }: Ctx, input: OwnerT
     ...(s.campaigns.length > 0 && { campaigns: s.campaigns.map((c) => c.label) }),
     ...(others.length > 0 && { other_languages: `${others.join(", ")} keep their own words; the owner changes them on its page (the link).` }),
     link: adminLink(store, `/automations/${input.kind}`),
+  };
+}
+
+/** A follow-up's words (D653), by the same writer for the same readers, told it is a later email to those who have not ordered since. */
+async function writeFollowUp({ account, store }: Ctx, input: OwnerToolInput<"write_email_automation">, step: FollowUpPosition) {
+  const automation = await getAutomation(store, input.kind);
+  const target = followUpTarget(automation, step);
+  const days = followUpDays(automation, target.position, input.days);
+  const locale = store.localization.locales[0] ?? "en";
+  const audience = `${AUTOMATION_AUDIENCE[input.kind](automation.delayDays ?? DELAY_RANGES[input.kind].start)} This is its ${step === 2 ? "second" : "third"} email, ${days} days after the one before, to those who have not ordered since the first: a gentle reminder, never a copy of the first.`;
+  const suggested = await suggestBroadcast(store, account.id, input.brief, locale, { audience });
+  if (!suggested.ok) return fail(suggested.problem);
+  const s = suggested.suggestion;
+  const current = automation.followUps.find((f) => f.position === target.position)?.content ?? automation.content ?? {};
+  const saved = await saveFollowUp(store, account.id, input.kind, target.exists ? target.position : null, {
+    delayDays: days,
+    content: { ...current, [locale]: { subject: s.subject, preview: s.preview, blocks: suggestionBlocks(s) } },
+  });
+  if (!saved.ok) return fail(saved.problem);
+  const title = AUTOMATION_WORDS[input.kind].title;
+  return {
+    done: `${title}'s ${step === 2 ? "second" : "third"} email ${target.exists ? "has new words" : "is added"} in ${locale}, sent ${days} ${days === 1 ? "day" : "days"} after the email before to those who have not ordered since. ${automation.enabled ? "The automation is on, so it goes from now on." : "The automation is off: switch it on with switch_email_automation."}`,
+    subject: s.subject,
+    words: [s.heading, ...s.paragraphs],
+    ...(s.products.length > 0 && { products: s.products.map((p) => p.label) }),
+    link: adminLink(store, `/automations/${input.kind}/follow-ups/${saved.position ?? target.position}`),
+  };
+}
+
+// Cart reminders (D33, D653) -------------------------------------------------------------------------------
+
+const hoursWords = (minutes: number) => {
+  const hours = minutes / 60;
+  return hours >= 24 && hours % 24 === 0 ? `${hours / 24} ${hours === 24 ? "day" : "days"}` : `${hours} ${hours === 1 ? "hour" : "hours"}`;
+};
+
+const CODE_ROW = z.object({ id: z.string(), code: z.string() });
+
+/** `cart_reminder_stats`: the reminders as the page lists them (D653), and the last 30 days. */
+export async function listCartRemindersTool({ store }: Ctx) {
+  const [settings, stats] = await Promise.all([getCartReminderSettings(store.id), cartReminderStats(store.id)]);
+  const codes = new Map<string, string>();
+  for (const id of new Set(settings.steps.flatMap((s) => (s.discountCodeId ? [s.discountCodeId] : [])))) {
+    const row = await typedRow(CODE_ROW, sql`select id::text, code from commerce.discount_codes where store_id = ${store.id}::uuid and id = ${id}::uuid`);
+    if (row) codes.set(row.id, row.code);
+  }
+  const main = store.localization.locales[0] ?? "";
+  return {
+    on: settings.enabled,
+    reminders: settings.steps.map((s) => ({
+      id: s.id,
+      after: hoursWords(s.delayMinutes),
+      on: s.active,
+      ...(s.discountCodeId && { discount_code: codes.get(s.discountCodeId) ?? "a code that no longer exists" }),
+      subject: s.content[main]?.subject ?? "",
+    })),
+    // The figures as the tool answered them before it listed the reminders (the MCP contract keeps its fields, D438).
+    period: "the last 30 days",
+    checkouts_left_with_email: stats.captured,
+    reminded: stats.reminded,
+    bought_after_reminder: stats.recovered,
+    won_back: amountsWords(store, stats.recoveredMinor),
+    page: adminLink(store, "/cart-reminders"),
+  };
+}
+
+/** A discount code by its code (any case): its id, null to take it away, undefined to keep; refused when the store has none by that code. */
+async function reminderCode(store: Store, code: string | undefined): Promise<string | null | undefined> {
+  if (code === undefined) return undefined;
+  if (code === "") return null;
+  const row = await typedRow(CODE_ROW, sql`select id::text, code from commerce.discount_codes where store_id = ${store.id}::uuid and lower(code) = lower(${code}) limit 1`);
+  return row ? row.id : fail(`The store has no discount code "${code}". list_discounts names them.`);
+}
+
+/** Checks a cart reminder's words and timing before it is kept for a yes: claims and the brand's words to avoid, the hours, the reminder and the code. */
+export async function preflightWriteCartReminder({ store }: Ctx, input: OwnerToolInput<"write_cart_reminder">): Promise<void> {
+  const brand = await brandOf(store.id);
+  const words = [input.subject, input.heading, input.body, input.button].join("\n");
+  const found = [...findClaims(words), ...findAvoided(words, brand.avoid)];
+  if (found.length > 0) {
+    const named = [...new Set(found.map((c) => `"${c.phrase}"${c.kind === "avoided" ? " (a word the brand avoids)" : ` (${CLAIM_LABELS[c.kind].toLowerCase()})`}`))].join(", ");
+    fail(`The words make claims the store does not let AI make: ${named}. Write them without.`);
+  }
+  if (input.after_hours !== undefined) {
+    const minutes = Math.round(input.after_hours * 60);
+    if (minutes < MIN_DELAY_MINUTES || minutes > MAX_DELAY_MINUTES) fail("A reminder goes from half an hour to 30 days after the shopper typed their email.");
+  }
+  if (!input.reminder && input.after_hours === undefined) fail("Say after how many hours a new reminder goes.");
+  if (input.reminder && !(await getCartReminderSettings(store.id)).steps.some((s) => s.id === input.reminder)) fail("That reminder no longer exists: cart_reminder_stats names them.");
+  await reminderCode(store, input.discount_code);
+}
+
+/** Writes or adds a cart reminder on the owner's yes, through the screen's own `saveCartReminderStep()`; other languages keep their words. */
+export async function writeCartReminderTool(ctx: Ctx, input: OwnerToolInput<"write_cart_reminder">) {
+  await preflightWriteCartReminder(ctx, input);
+  const { store } = ctx;
+  const settings = await getCartReminderSettings(store.id);
+  const current = input.reminder ? settings.steps.find((s) => s.id === input.reminder) : undefined;
+  const main = store.localization.locales[0] ?? "en";
+  const code = await reminderCode(store, input.discount_code);
+  const others: Record<string, ReminderText> = Object.fromEntries(
+    store.localization.locales.map((locale) => [locale, current?.content[locale] ?? defaultText(locale, settings.steps.length)]),
+  );
+  const saved = await saveCartReminderStep(memberOf(ctx), current?.id ?? null, {
+    delayMinutes: input.after_hours === undefined ? current?.delayMinutes : Math.round(input.after_hours * 60),
+    active: input.on ?? current?.active ?? true,
+    discountCodeId: code === undefined ? (current?.discountCodeId ?? null) : code,
+    content: { ...others, [main]: { subject: input.subject, heading: input.heading, body: input.body, button: input.button } },
+  });
+  if (!saved.ok) return fail(saved.problems[0] ?? "The reminder could not be saved.");
+  return {
+    done: `${current ? "The reminder has new words" : "A reminder is added"} in ${main}.${settings.enabled ? "" : " Cart reminders are off: switch them on with switch_email_automation (cart_reminders)."}`,
+    id: saved.id,
+    link: adminLink(store, `/cart-reminders/${saved.id}`),
+  };
+}
+
+async function switchCartReminders(ctx: Ctx, on: boolean) {
+  await setCartRemindersEnabled(memberOf(ctx), on);
+  const settings = await getCartReminderSettings(ctx.store.id);
+  return {
+    done: on ? `Cart reminders are on: ${settings.steps.filter((s) => s.active).length} reminders go to shoppers who leave a checkout after typing their email.` : "Cart reminders are off.",
+    link: adminLink(ctx.store, "/cart-reminders"),
   };
 }
 

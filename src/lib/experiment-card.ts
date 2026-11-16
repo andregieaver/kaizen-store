@@ -3,7 +3,7 @@ import { compareToOriginal, normalQuantile, type VariantFigures, type VerdictKin
 import { GOAL_WORDS, type ExperimentStatus, type Goal } from "./experiments";
 
 /**
- * One A/B test as a person reads it (D148 phase 12, D655, `docs/ab-testing-usability.md`): which stage it is at, how far it is from an
+ * One A/B test as a person reads it (D148 phase 12, D656, `docs/ab-testing-usability.md`): which stage it is at, how far it is from an
  * answer and when that is likely, each version's change against the original with its likely range, and the one next step. Pure and
  * worked out from what `experimentResults()` counted, so the test's page, the AI manager's `explain_results` (and the platform's
  * `explain_ab_test`, which reads it) say the same thing. The range uses the verdict's own level (the stricter one with several versions),

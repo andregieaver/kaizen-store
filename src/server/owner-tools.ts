@@ -38,6 +38,9 @@ import {
   sendBroadcastTool,
   switchAutomationTool,
   writeAutomationTool,
+  listCartRemindersTool,
+  writeCartReminderTool,
+  preflightWriteCartReminder,
   listTextMessagesTool,
   draftTextMessageTool,
   sendTextMessageTool,
@@ -57,7 +60,6 @@ import {
   suggestExperimentsTool,
 } from "./experiment-tools";
 import { cancelBooking, listBookings } from "./bookings";
-import { cartReminderStats } from "./cart-reminders";
 import { preflightTellCustomer, tellCustomerTool } from "./order-updates";
 import { carryOutAddressChangeTool, closeCancelRequests, preflightCarryOutAddressChange } from "./support-requests";
 import { orderPrivacy } from "./privacy-pages";
@@ -1259,18 +1261,6 @@ async function listSubscriptionsTool({ store }: OwnerToolContext, { limit }: Own
   }));
 }
 
-async function cartReminderStatsTool({ store }: OwnerToolContext) {
-  const stats = await cartReminderStats(store.id);
-  return {
-    period: "the last 30 days",
-    checkouts_left_with_email: stats.captured,
-    reminded: stats.reminded,
-    bought_after_reminder: stats.recovered,
-    won_back: Object.entries(stats.recoveredMinor).map(([currency, minor]) => money(store, minor, currency)),
-    page: adminLink(store, "/cart-reminders"),
-  };
-}
-
 async function wishlistInsights({ store }: OwnerToolContext) {
   const [figures, wished] = await Promise.all([wishlistFigures(store.id), mostWishedProducts(store.id, mainLocale(store), 5)]);
   return {
@@ -2294,6 +2284,8 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     request_purchase: preflightRequestPurchase,
     // An automation's days outside its range, and a text message that reaches no one or passes the cap (D4).
     write_email_automation: preflightWriteAutomation,
+    // A cart reminder with claims or the brand's avoided words, at a time outside half an hour to 30 days, or for a code the store lacks (D653).
+    write_cart_reminder: preflightWriteCartReminder,
     // An update about an order its records do not bear out, or one the customer had already (D635).
     tell_customer_about_order: preflightTellCustomer,
     // An address change the request does not bear out: not the order's signed-in customer, sent, held, or no full address (D640).
@@ -2499,7 +2491,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_customers: listCustomersTool,
   get_customer: getCustomerTool,
   list_subscriptions: listSubscriptionsTool,
-  cart_reminder_stats: cartReminderStatsTool,
+  cart_reminder_stats: listCartRemindersTool,
   wishlist_insights: wishlistInsights,
   list_emails: listEmailsTool,
   subscription_boxes: subscriptionBoxes,
@@ -2579,6 +2571,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_email_automations: listAutomationsTool,
   switch_email_automation: switchAutomationTool,
   write_email_automation: writeAutomationTool,
+  write_cart_reminder: writeCartReminderTool,
   list_text_messages: listTextMessagesTool,
   draft_text_message: draftTextMessageTool,
   send_text_message: sendTextMessageTool,
