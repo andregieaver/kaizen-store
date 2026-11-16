@@ -201,3 +201,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.28 pushed as 6de0a11d (55500e88, d9d7712e, 80c2230e, 6de0a11d; migrations 20261116001432_media_alt_tries, 20261116004359_product_text_changed, 20261116004405_product_text_changed_rules). Watching CI; re-run once if only flaky signed-in tests fail.
 - Step 0.28 DONE: run 1359 all green, migrations at 01:47 UTC; prod checked; write-up 41130b87 (D654). Later reading: media_embeddings updates/day < 100, product hash ~24 calls/day.
 - Next: 0.29 (needs 0.28's text_changed_at: done).
+- Step 0.29 pushed as ebaeb7c0 (migration 20261116015416_content_screened_tries). Reviewed: the one-time wave of 89 screened products costs no AI calls (unchanged hash). Watching CI.
