@@ -93,7 +93,10 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                     </>
                   }
                 />
-                <RowFact className="hidden sm:block">
+                <RowFact
+                  className="hidden sm:block"
+                  sub={t.card.state === "learning" && t.status === "running" && t.card.progress.readyAround ? fillWords(ex.list.readyAround, { date: date.format(new Date(`${t.card.progress.readyAround}T12:00:00Z`)) }) : undefined}
+                >
                   {t.card.state === "learning" && t.status === "running" ? (
                     <span className="flex items-center gap-2" aria-label={ex.list.progress}>
                       <MiniBar share={t.card.progress.share} signal="warning" />
