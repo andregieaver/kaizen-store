@@ -698,7 +698,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   over staff's). The AI sees the picture's small copy (`imagePart()`) and
   what uses it, and its texts pass `parseAltTexts()` (claims filter, colours
   allowed); the library runs it on one or all pictures, the five-minute
-  cron on new ones. The site shows them where a picture has no alt text of
+  cron on new ones (`sitesDueForAltText()` lists a site only while a picture
+  without a text is due; a language added since is filled by the hourly pass;
+  after five failures in a row, `media.alt_tries`, only a person's run tries a
+  picture again). The site shows them where a picture has no alt text of
   its own: SQL reads of product and variant pictures through
   `commerce.media_alt(url, locale)`, page loaders through `withPageAlts()`;
   a new place that draws a library picture does the same, and changes call

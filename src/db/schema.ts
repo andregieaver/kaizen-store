@@ -9429,6 +9429,11 @@ export const media = commerce.table(
     /** When the AI last failed to write one (or a language of it), so that picture waits a day. */
     altTriedAt: timestamp("alt_tried_at", { withTimezone: true }),
     /**
+     * How many times in a row the AI failed to write this picture's alt text; the five-minute job stops at five (bloat review
+     * step 0.28), a person asking still tries. Back to 0 on a success.
+     */
+    altTries: smallint("alt_tries").notNull().default(0),
+    /**
      * When the file was last compressed until it was as small as it could be while it still looked the same (D213): at upload
      * or by the library's Compress. Null for files from before, which Compress offers; a compressed file is never compressed
      * again, so a picture cannot lose a little more each time.
