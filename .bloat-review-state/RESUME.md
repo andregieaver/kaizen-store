@@ -205,3 +205,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.29 DONE: run 1363, migration 02:40 UTC; prod: 20 listings stamped with 0 AI calls by 02:55; advisors INFO only (checked). Write-up 6eeacca2 (D655).
 - Next: 0.30 (invoice job; migration in 3rd commit only), then 0.33 (strong, needs 0.32: done), 0.34, 0.35, 0.36 (strong) ...
 - Step 0.30: commits 1-2 (ed4eebf5, 10c66d24) reviewed (issue_waiting_invoices itself PERFORMs issue_missing_credit_notes: confirmed in baseline). Commit 3 made by me from the executor's patch, with the invoice count moved into invoice-issue.ts (ordersWithInvoice) so document-readers allow-list is unchanged; migration 20261116033159_live_drill_kinds.sql. Checks task bhwzfkye1, then push. Executor ran `git reset --hard HEAD` (forbidden; no history moved).
+- Step 0.30 pushed as 24073585 (ed4eebf5, 10c66d24, 24073585; migration 20261116033159_live_drill_kinds). CI wait task bpqped1fy; re-run once if only flaky.
+- Step 0.33 executor (Opus a1afa870d064d6145) started: 800 px copy of every picture, 4 commits, migration in commit 1.
