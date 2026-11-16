@@ -109,7 +109,8 @@ questions in section 12.
    - So the tables are not personal data (`NOT_PERSONAL`).
    - **A/B behaviour is computed from those totals** (tagged per version), not from per-visitor rows. The promise "only totals are
      kept" therefore holds for visitors in a test too.
-   - One beacon costs at most three statements (bloat review: one counted visit is at most three statements).
+   - One beacon writes three statements: the daily slot and two upserts (the bloat review's bar). The store is a cached read. A
+     private store's `lockedOut()` and a miss of the `runningExperiments()` memo add one read each.
 6. **Recordings are personal data, held under pseudonyms:**
    - a random id per browser tab, never joined to a customer, cart, order, visit, the consent cookie's id or the A/B id (CNIL "I1");
    - times are kept coarse (to 10 minutes), and the events carry times relative to the recording's start, so a recording cannot be
@@ -184,7 +185,7 @@ A unit test holds each constant to the value in this table.
 | **Scroll reach** | Per view: `reach = min(100, floor(100 × maxBottom / maxHeight))`. `maxBottom` is the largest `scrollY + innerHeight` seen during the view, and `maxHeight` the largest `document.documentElement.scrollHeight`. Sampled on scroll (at most every 200 ms), on resize and on each attention tick. If `maxHeight ≤ innerHeight`, reach is 100. It is stored in 5 % buckets, `floor(reach / 5)`, 0..20. | `REACH_BUCKETS = 21` |
 | **Reached b %** | Over a period: page views whose bucket is at least `b/5`, divided by all page views. The view shows 25, 50, 75 and 100 %. | — |
 | **Fold** | At the first measurement after load: `round(1000 × innerHeight / scrollHeight)`, capped at 1000 (per mille). **Average fold** = sum of folds ÷ page views, shown as a percentage of the page. | — |
-| **Attention** | Per view, time is kept in 50 px bins of the page, at most 400 bins, so the first 20,000 px. A tick runs every 250 ms while the tab is visible and the visitor gave input (pointer, key, wheel, touch or scroll) in the last 15 s. On a tick, each bin whose middle line is inside `[scrollY, scrollY + innerHeight]` **in this tick and in the one before** gets 250 ms. That drops fly-by scrolling.<br><br>When a summary is sent, `H = min(maxHeight, 20000)` is split into **20 bands** of `H/20`. A band's value is the **mean** of the bins whose middle line falls in it; if none does, it is the bin under the band's middle line. So it is the time a strip of that band was on screen, whatever the page's height. Each band is capped at 120,000 ms per view. The seq-0 summary sends `attH = H`.<br><br>Shown as **seconds per page view**: Σ ms(band) ÷ page views. Also shown as share of time: ms(band) ÷ Σ ms. | `BIN_PX = 50`, `MAX_BINS = 400`, `TICK_MS = 250`, `IDLE_MS = 15000`, `BANDS = 20`, `BAND_CAP_MS = 120000` |
+| **Attention** | Per view, time is kept in 50 px bins of the page, at most 400 bins, so the first 20,000 px. A tick runs every 250 ms while the tab is visible and the visitor gave input (pointer, key, wheel, touch or scroll) in the last 15 s. On a tick, each bin whose middle line is inside `[scrollY, scrollY + innerHeight]` **in this tick and in the one before** gets 250 ms. That drops fly-by scrolling.<br><br>When the view's first (seq-0) summary is built, `H = min(maxHeight, 20000)` is **fixed** and kept in the view's state (`attH`). Every later summary of the view uses the same H, even if the page has grown since. H is split into **20 bands** of `H/20`. A band's value is the **mean** of the bins whose middle line falls in it; if none does, it is the bin under the band's middle line. So it is the time a strip of that band was on screen, whatever the page's height. Each band is capped at 120,000 ms per view. A continuation sends `max(0, band − sent)` per band. The seq-0 summary sends `attH = H`.<br><br>Shown **per band** as seconds per page view: the band's ms, summed over days and devices, ÷ page views. Also shown as share of time: ms(band) ÷ Σ ms of all bands. | `BIN_PX = 50`, `MAX_BINS = 400`, `TICK_MS = 250`, `IDLE_MS = 15000`, `BANDS = 20`, `BAND_CAP_MS = 120000` |
 | **Frustration (page)** | Page views with at least one dead or rage click (`frustrated_views`, counted once per view), divided by page views. | — |
 | **Recording** | One browser tab's visit while the visitor is sampled. It starts on the first allowed page, and continues across soft navigations and full loads in that tab; it pauses on pages that are not allowed. It ends after any of:<br>- 30 min without input;<br>- 60 min in all;<br>- 4 MB uploaded;<br>- 200 segments;<br>- 50 pages.<br><br>Nothing is uploaded until it has lasted 5 s and had one interaction. | `REC_IDLE_MS = 1_800_000`, `REC_MAX_MS = 3_600_000`, `REC_MAX_BYTES = 4_194_304`, `REC_MAX_SEGMENTS = 200`, `REC_MAX_PAGES = 50`, `REC_MIN_MS = 5000` |
 | **Sampling** | When a tab's recording session starts: recorded if `Math.random() × 100 < recording_share`, kept for the tab's session. | `RECORDING_SHARES = [10, 25, 50, 100]`, default 50 |
@@ -311,7 +312,9 @@ A drawn version is `docs/heatmaps-and-recordings.svg`.
 
 Nothing from the browser is trusted as it arrives.
 
-- **Every route checks:**
+- **The forget route checks only `sameSite()` and its budget** (section 8.3): withdrawal and deletion must work whatever the store's
+  state.
+- **The heat and rec routes check:**
   - same site (`sameSite()`);
   - the request comes from the store's own page (`fromStoresOwnPage()`);
   - no robots (`isBot()`) and no GPC or DNT (`wantsPrivacy()`);
@@ -331,7 +334,7 @@ Nothing from the browser is trusted as it arrives.
 | Browser modules (DOM bindings) | `src/components/signals/click-watch.ts`, `heat-collector.ts`, `session-recorder.ts`, `forget.ts` |
 | Pure modules (no DOM, no zod, browser-safe) | `src/lib/page-heat.ts`, `src/lib/click-signals.ts`, `src/lib/heat-collect.ts`, `src/lib/heat-anchor.ts`, `src/lib/signal-paths.ts`, `src/lib/ab-shown.ts`, `src/lib/recording.ts` |
 | Pure modules for the server and admin | `src/lib/heat-read.ts`, `src/lib/replay-sanitize.ts`, `src/lib/map-measure.ts` (runs inside the shot's page), `src/lib/map-shoot.ts` (the Playwright steps) |
-| Server modules | `src/server/page-heat.ts` (ingest and prune), `src/server/page-heat-read.ts` (reads), `src/server/signal-tags.ts` (cookies and A/B tags), `src/server/running-experiments.ts` (moved out of `experiments.ts`), `src/server/recordings.ts` (ingest, forget, delete, prune, seal), `src/server/recordings-read.ts`, `src/server/recording-files.ts` (bucket), `src/server/map-shots.ts` |
+| Server modules | `src/server/page-heat.ts` (ingest and prune), `src/server/page-heat-read.ts` (reads), `src/server/signal-tags.ts` (cookies and A/B tags), `src/server/recordings.ts` (ingest, forget, delete, prune, seal), `src/server/recordings-read.ts`, `src/server/recording-files.ts` (bucket), `src/server/map-shots.ts` |
 | Routes | `/api/signals/heat`, `/api/signals/rec`, `/api/signals/forget` (new folder `src/app/api/signals/`) |
 | Buckets | `recordings` (private, gzip), `page-maps` (private, JPEG) |
 | Tables | `commerce.page_heat_days`, `commerce.click_cells`, `commerce.page_map_shots`, `commerce.recordings` |
@@ -437,7 +440,7 @@ create function commerce.add_bigint_arrays(a bigint[], b bigint[]) returns bigin
 **Retention.** Code constants (`HEAT_KEEP_DAYS`, `CELL_KEEP_DAYS`), like `SPEED_KEEP_DAYS`, pruned daily. Not personal data, so no
 retention kind.
 
-**Writes per beacon.** Three statements:
+**Writes per beacon.** Three statements (plus the reads named in section 2, item 5):
 
 - one daily `chat_usage` slot;
 - one upsert of `page_heat_days`;
@@ -543,8 +546,11 @@ create index recordings_unsealed_idx on commerce.recordings (last_at) where not 
   - `USAGE_METRICS.recordings = { kind: "counter", unit: "count", source: "database" }`;
   - a line in `counters()` (`src/server/usage-meter.ts`) counting the day's new recordings per store;
   - `LIMITS.recordings_month = { metric: "recordings", period: "month", enforce: "hard", scope: "store" }`;
-  - widen `measuredPlusLive()`'s metric type in `src/server/limits.ts` to include `recordings`, add `'recordings'` to its `ran` CTE's
-    metric list, and add a `liveValue()` case that counts the store's `recordings` rows since the month began;
+  - a `case "recordings":` in `liveValue()` (`src/server/limits.ts`) that returns
+    ``first(sql`select count(*)::int as value from commerce.recordings where store_id = ${storeId}::uuid and started_at >= ${month}`)``,
+    served by `recordings_store_started_idx`;
+  - **leave `measuredPlusLive()` and its `ran` CTE untouched**. Wiring recordings through it while also counting from the month's start
+    would count days twice;
   - `{ metric: "recordings", key: "recordings_month" }` in `OWNER_LINES` (`src/server/usage.ts`);
   - words in `m.plans.limitNames` (en, nb, sv, da) and in the `capacity` admin catalogue (en, nb).
 - **Not in `storage_bytes`.** Recordings do not count toward it; leave `storage_bytes_by_store()` alone, because the owner does not
@@ -582,14 +588,14 @@ and PGlite skip it.
     <SiteSignals
       store={{ id: store.id, slug: store.slug, heatmaps: store.heatmaps, recordings: store.recordings,
                share: store.recordingShare, mask: store.recordingMask }}
-      breakpoints={await breakpointsFor(store.id)}
+      breakpoints={breakpointsOf(store.theme.settings)}
     />
   </Suspense>
 )}
 ```
 
-`MarketExtras` becomes `async` to await `breakpointsFor()` (`src/server/breakpoints.ts`, cached). Alternatively, read the breakpoints
-inside a small async server component placed in that Suspense.
+`breakpointsOf()` is pure (`src/lib/breakpoints.ts`), and `MarketExtras` already has the cached `store`. `MarketExtras` stays
+synchronous.
 
 **Why there, and not in `layout.tsx`:**
 
@@ -612,7 +618,8 @@ inside a small async server component placed in that Suspense.
 
 ### 7.2 `SiteSignals` (`"use client"`, draws `null`)
 
-1. **Opted out.** If `optedOut()` (`src/lib/visit-beacon.ts`: GPC or DNT), do nothing at all.
+1. **Opted out.** If `optedOut({ globalPrivacyControl, doNotTrack, windowDoNotTrack, msDoNotTrack })` (`src/lib/visit-beacon.ts`; build
+   the argument from `navigator` and `window` as `src/components/visit-beacon.tsx` does) is true, do nothing at all.
 2. **Staff.** If `staffPath(store.slug) !== null` (`src/components/back-to-admin.tsx`), do nothing.
 3. **Consent.** Read the consent cookie with `decodeConsent()` (`src/lib/cookie-consent.ts`), as `src/components/ab/ab-assign.tsx` does,
    and listen for `CONSENT_CHANGED_EVENT`.
@@ -627,9 +634,15 @@ inside a small async server component placed in that Suspense.
    - The click watch runs while `(heatOn && place.heat) || (recOn && place.rec)`, and is stopped otherwise.
    - The heat view runs while `heatOn && place.heat`.
    - The recorder runs while `recOn && place.rec`, through `await import("./session-recorder")`, so rrweb is never in the first scripts.
-7. **When the pathname changes** (a `useLayoutEffect` on the pathname, so it runs before paint):
-   - end the heat view (section 7.3);
-   - tell the recorder the new page, or pause it if the new page is not allowed (section 7.4). The recorder also guards itself.
+7. **When the pathname changes.** A pathname change must end the view, but an unmount (the drawer opening) must keep it, and a single
+   effect's cleanup cannot tell the two apart. So use **two effects**:
+   1. `useLayoutEffect(() => onPage(window.location.pathname), [pathname])`, with **no cleanup**. `onPage` ends the kept view (its final
+      summary) only when the view's path differs from the new one. It then starts or continues the view, and starts, pauses or resumes
+      the recorder (section 7.4). The recorder also guards itself.
+   2. A mount-only `useEffect(() => () => onUnmount(), [])`. Its cleanup sends the heat continuation, sends the recorder's tail, then
+      pauses the recorder.
+
+   Never end the view in a cleanup.
 8. **When the tab is hidden** (`visibilitychange` to hidden): summarise the heat view and flush the recorder's segment.
 9. **Consent withdrawn.** Import `forget.ts` statically, and in the listener, with no `await`:
    - call `discard()` on the heat view and on the recorder, which drops buffered data **without sending it** and aborts uploads in flight
@@ -650,14 +663,17 @@ export type ReachState = { maxBottom: number; maxHeight: number; fold: number | 
 export function reachStep(s: ReachState, m: { scrollY: number; innerHeight: number; scrollHeight: number }): ReachState;
 export function reachBucket(s: ReachState, innerHeight: number): number; // 0..20
 
-export type AttentionState = { bins: number[]; lastVisible: Set<number> | null; sentBands: number[] };
+export type AttentionState = { bins: number[]; lastVisible: Set<number> | null; sentBands: number[]; attH: number | null }; // attH fixed at seq 0
 export function attentionTick(s: AttentionState, m: { scrollY: number; innerHeight: number; active: boolean; visible: boolean }): AttentionState;
 export function attentionBands(s: AttentionState, maxHeight: number): { bands: number[]; attH: number }; // 20 ints ≤ BAND_CAP_MS
 ```
 
 **The view's own state** (`HeatView`, kept in a **module-level variable** in `heat-collector.ts`, so it outlives the component):
 
-- At the start it captures `path` (`location.pathname`), `device`, `startedAt` and `tags` (a copy of `shownVersions()`).
+- At the start it captures `path` (`location.pathname`), `device` and `startedAt`, and an empty `tags` set.
+- **The first tags come a tick later.** The view's first tags are taken in a `setTimeout(…, 0)` scheduled when the view starts. That
+  runs after React's passive effects, so the previous page's `AbMarker` has already unregistered and the new page's has registered. A
+  copy taken in the layout effect would carry the previous page's test into this view. The recorder's `kz-ab` follows the same rule.
 - `tags` only grows: each `AB_SHOWN_EVENT` adds its pairs while `location.pathname` still equals the view's `path`. Nothing is ever
   removed during the view.
 - Every summary of the view uses these captured values. **Ending a view never reads `location`, never calls `reachStep()` and takes
@@ -743,18 +759,18 @@ type HeatBody = {
 
 **`emit(event)` guards every event before it is buffered:**
 
-1. If `signalPlace(location.pathname, location.search, slug)?.rec` is not true:
-   - drop the event and everything buffered since the last allowed page;
-   - **pause**.
-
-   History is already updated when rrweb emits a new page's mutations, so this sees the new path even before React's effects run.
+1. If `signalPlace(location.pathname, location.search, slug)?.rec` is not true, **drop this event and pause**. History is already
+   updated when rrweb emits a new page's mutations, so this sees the new path even before React's effects run. Every event already in
+   the buffer was checked while an allowed path was current, so pausing keeps them.
 2. For an event of type 4 (Meta), set `data.href = location.origin + location.pathname`. No query string and no fragment.
 3. Set `event.timestamp = event.timestamp − session.started`. Times are relative to the session's start; the exact clock time never
    leaves the browser.
 
 **Pause and resume.**
 
-- **Pause:** call rrweb's `stop()`, discard the buffer, and clear the module's "recording" flag.
+- **Pause:** send what is buffered, as a segment by fetch, or as a tail of at most 60,000 bytes when the page is going away. Then call
+  rrweb's `stop()` and clear the module's "recording" flag. Only a consent withdrawal (section 7.2, item 9) discards the buffer without
+  sending it.
 - **Resume** (an allowed page again, or `SiteSignals` mounting again after the drawer): call `record()` again. That gives a new full
   snapshot, with the same session id and the next seq.
 - Guard `record()` with the module flag so React's double effects cannot start two recorders.
@@ -788,6 +804,10 @@ type HeatBody = {
   | 410 | Stop for this tab session (`sampled: false`) |
   | 429 or 503 | Drop this segment and continue. If the dropped segment held a full snapshot, call `takeFullSnapshot()` before the next one. |
   | 400 | Stop (our bug; log nothing to the visitor) |
+
+  **seq advances only after a 204.** After a 429 or 503, the next segment reuses the same seq. If the dropped segment held a full
+  snapshot, the next one starts with `takeFullSnapshot()`. Gaps in `seqs` then come only from a tail sent by `sendBeacon`, whose answer
+  is never known. This matters because the row is created only by seq 0.
 
 **The tail** is sent when the tab is hidden, and when the recorder pauses because `SiteSignals` unmounts (not when a page is refused):
 
@@ -864,9 +884,12 @@ export function signalPlace(pathname: string, search: string, storeSlug: string)
 **The rule:**
 
 1. Drop `/s/{storeSlug}` in front, when present.
-2. If the first segment is a market (two letters, optionally `-{lang}-{cur}`, optionally `~…`), drop it.
-3. For a store without a market in its addresses (D181), a first segment that is a language code (two letters) is dropped too.
-4. Allow **only** these remaining shapes:
+2. If the first segment matches `new RegExp(`^${MARKET_PARAM}$`)`, drop it. `MARKET_PARAM` is exported from `src/lib/pay-routes.ts`
+   (pure, and already in the storefront bundle through `isPayPath()`).
+   - It covers `no` and `no-en-eur`, a marketless store's (D181) `en`, `eur` and `en-eur`, and `~…` version tokens.
+   - On a marketless store, a page slug of two or three letters is dropped as if it were a market. The twin then allows a little more
+     than the server, which is fine: the server stays the authority.
+3. Allow **only** these remaining shapes:
 
    | Shape | What it is |
    |---|---|
@@ -880,15 +903,19 @@ export function signalPlace(pathname: string, search: string, storeSlug: string)
    | `[slug]` | the store's own page, the slug not in `RESERVED_STORE_PAGE_SLUGS` and not in `PRIVATE_ROUTES` |
 
    Everything else is null.
-5. If `search` has a `q` parameter, `rec` is false; `heat` may stay true.
+4. If `search` has a `q` parameter, `rec` is false; `heat` may stay true.
 
 The twin copies the lists it needs: `PRIVATE_ROUTES`, `RESERVED_STORE_PAGE_SLUGS` and `RESERVED_ARTICLE_SLUGS`. Export
 `PRIVATE_ROUTES` from `src/lib/visit-record.ts` so the test can compare.
 
-**The test** (`src/lib/signal-paths.test.ts`) holds a table of paths and asserts that `signalPlace` agrees with
-`speedKind(placeOfPath(...).landing)` for each. That includes `/no/p/x`, `/no/category/x`, `/no/blog/x`, `/no/blogs/a/b`, `/no/a/b`,
-`/no/withdraw`, `/no/returns/t`, `/no/cookies`, `/no/cart`, `/no/account/orders`, `/s/demo/no/checkout`, `/p/shirt` (a store in one
-country) and `/` (a marketless front page). It also asserts that the copied lists equal the real ones.
+**The test** (`src/lib/signal-paths.test.ts`) holds a table of paths and asserts two things:
+
+- `signalPlace` **never refuses** a path that `speedKind(placeOfPath(...).landing)` keeps;
+- it **refuses every** path with a `PRIVATE_ROUTES` segment.
+
+The table includes `/no/p/x`, `/no/category/x`, `/no/blog/x`, `/no/blogs/a/b`, `/no/a/b`, `/no/withdraw`, `/no/returns/t`,
+`/no/cookies`, `/no/cart`, `/no/account/orders` and `/s/demo/no/checkout`. For a store in one country it also has `/p/shirt`, `/eur/p/x`,
+`/en-eur/category/y` and `/` (a marketless front page). The test also asserts that the copied lists equal the real ones.
 
 ### 7.7 DOM marks to add to storefront components (step 4)
 
@@ -957,8 +984,12 @@ country) and `/` (a marketless front page). It also asserts that the copied list
 | 503 | Our failure, so the client drops the segment |
 
 **Dependencies.** Every exported function in `recordings.ts` takes `deps: { files?: RecordingFiles | null } = {}`, defaulting to
-`recordingFiles()`, as `src/server/reviews.ts` takes `deps.storage`. When `files` is null (no Storage, as in CI), answer 503 and write
-nothing.
+`recordingFiles()`, as `src/server/reviews.ts` takes `deps.storage`. When `files` is null (no Storage, as in CI):
+
+- `recordSegment` answers 503 and writes nothing;
+- `forgetRecordings`, `deleteRecording`, `pruneRecordings` and `sealRecordings` change nothing, leave the rows and log
+  `recordings.no_storage`, so no file ever outlives its row;
+- the forget route still answers 204.
 
 **Steps:**
 
@@ -986,8 +1017,11 @@ nothing.
    width and height rounded to 10 px, `entry_page`, `mask` = the store's, and `on conflict (id) do nothing`. A conflicting id that
    belongs to another store gives 410.
 9. `verifiedTags(...)`.
-10. Upload to `recordings/{storeId}/{id}/{seq3}.gz`. `files.upload()` returns `"ok" | "exists" | "failed"`: `"exists"` when Supabase
-    says the object already exists (status 409).
+10. **Upload** `gzipSync(JSON.stringify(body))`, built from the validated and rewritten body. **Never upload the bytes as received**,
+    for z=0 or z=1, or the server-side strip of step 6 never reaches the stored file. `$size` in step 11 is that buffer's length.
+    - The path is `recordings/{storeId}/{id}/{seq3}.gz`, with `contentType: "application/gzip"` (the bucket allows only that type).
+    - `files.upload()` returns `"ok" | "exists" | "failed"`. It is `"exists"` when the error has `statusCode === "409"`, or
+      `status === 409`, or a message matching `/already exists|duplicate/i`; any other error is `"failed"`, answered 503.
 11. **One conditional update** (it names `store_id`):
 
     ```sql
@@ -1045,9 +1079,9 @@ these hold:
 
 It returns the **distinct** `"{experimentId}:{version}"` strings, sorted.
 
-**`runningExperiments()`** and its 20-second memo move into `src/server/running-experiments.ts`, which imports only `db`, the A/B site
-helpers and `src/lib/experiments.ts`. Re-export it from `src/server/experiments.ts` so nothing else changes. The beacon route must not
-pull `src/server/experiments.ts` (`next/headers`, page-content) into its graph.
+**`runningExperiments()`:** `signal-tags.ts` imports it from `src/server/experiments.ts`. `beacon-imports.scan.test.ts` reads only the
+route file's own imports, and `lockedOut()` already brings `next/headers`, so nothing forbids it. **Do not move it.** Its memo is shared
+with `storeIdOfSlug()` and cleared by `forgetRunning()`, which starting and stopping a test call.
 
 **Never** store the A/B visitor id: it leads to `experiment_carts`, then to orders, then to the customer.
 
@@ -1064,8 +1098,7 @@ helpers from `src/lib/heat-read.ts`.
   - views and the frustration counts;
   - the click cells summed over days (`group by anchor, cx, cy`), limited to the last `CELL_KEEP_DAYS`.
 - **`versionBehaviour(storeId, experimentId)`**, with `where tag like $experimentId || ':%'`, summed over **every page** with that tag
-  (a header test spans every page). Per version key: views, the share reaching 50 %, attention seconds per view, and the dead, rage and
-  frustrated view shares.
+  (a header test spans every page). Per version key: views, the share reaching 50 %, and the dead, rage and frustrated view shares.
 - **`taggedTests(storeId, page)`**: the tests with tagged rows for a page (for the version chips, step 12).
 
 **`src/lib/heat-read.ts`** (pure):
@@ -1086,7 +1119,9 @@ helpers from `src/lib/heat-read.ts`.
   - downloads `all.gz`, or the segments in `seqs` order;
   - gunzips each with `maxOutputLength`;
   - concatenates the `events` arrays;
-  - returns `sanitizeEvents(events, store)`.
+  - returns `sanitizeEvents(events, { storeOrigins: storeOrigins(store.slug), supabaseOrigin: new URL(publicEnv().NEXT_PUBLIC_SUPABASE_URL).origin })`
+    (`storeOrigins` from `src/lib/paths.ts`, `publicEnv` from `src/lib/public-env.ts`);
+  - when there are no files (`seqs` empty and not sealed), returns `[]` without touching `files`.
 
 ### 8.6 Sanitising recorded events (`src/lib/replay-sanitize.ts`, pure)
 
@@ -1135,14 +1170,22 @@ Every other URL becomes `""`. That includes anything under `/admin` or another `
 - a store's `/_next/static/…css` (kept and made relative), a Supabase public picture (kept as is), and an
   `https://{store}/admin/x` image (blanked).
 
-**The player page also sends an enforced CSP** (next.config.ts `headers()`, for `/admin/:store/analytics/recordings/:id`):
+**The player page also sends an enforced CSP.** Add `replayRouteHeaders(themesOrigin, { supabaseUrl })` to `src/lib/csp.ts`, returning:
 
-```
-img-src 'self' data: blob: {supabase}; font-src 'self' data: {supabase}; media-src 'self' blob: {supabase}
+```ts
+[{ source: "/admin/:store/analytics/recordings/:id", headers: [{ key: "Content-Security-Policy",
+   value: `frame-ancestors 'self'${themesOrigin ? ` ${themesOrigin}` : ""}; img-src 'self' data: blob: ${supabase}; font-src 'self' data: ${supabase}; media-src 'self' blob: ${supabase}` }] }]
 ```
 
-Nothing else, so the admin's own scripts and styles are untouched. The replay frame is `about:blank` and inherits the policy. Step 11's
-e2e checks that the page logs no CSP errors of its own.
+Spread it in `next.config.ts` `headers()` **right after** `...baseRouteHeaders(...)`.
+
+- In Next, a later header entry with the same key **replaces** an earlier one on a path both match. That is why the value repeats the
+  admin's `frame-ancestors 'self'`: without it, any site could frame the player page.
+- It sets no `script-src` or `style-src`, so the admin's own scripts and styles are untouched.
+- The replay frame is `about:blank`, and it inherits the policy.
+
+Add a `csp.test.ts` case asserting that the player path's policy contains `frame-ancestors 'self'` and `img-src`. Step 11's e2e checks
+that the page logs no CSP errors of its own.
 
 ### 8.7 Jobs
 
@@ -1171,8 +1214,9 @@ Then add one to `DISPATCHER_JOBS` in `src/server/cron-prunes.scan.test.ts`.
 
 `sealRecordings()`:
 
-1. **Choose** with `where not sealed and segments > 1 and seal_tries < 3 and last_at < now() - interval '35 minutes' order by last_at
-   limit 50`, using the partial index.
+1. **Choose** with `where not sealed and segments > 1 and seal_tries < 3 and last_at < now() - interval '45 minutes' order by last_at
+   limit 50`, using the partial index. The 45 minutes are `REC_IDLE_MS`, plus the 10-minute floor of `last_at`, plus 5 minutes, so a
+   session that can still send is never sealed.
 2. **For each recording:**
    - increment `seal_tries` (naming `store_id`);
    - download the segments in `seqs`, gunzip them, concatenate the events, gzip, and upload `all.gz`;
@@ -1213,11 +1257,11 @@ calls `router.refresh()`: `router-refresh.scan.test.ts` fails any new admin file
 const started = Date.now();
 after(async () => {
   await runPageLooks(deadline, deps);
-  await runMapShots(Math.max(Date.now() + 60_000, started + 120_000), { photograph: browserMapPhotographer, origin });
+  // A look already running can end late; never let the shots pass maxDuration (300 s).
+  const until = Math.min(started + 270_000, Math.max(Date.now() + 60_000, started + 120_000));
+  if (until - Date.now() >= MAP_SHOT_MS) await runMapShots(until, { photograph: browserMapPhotographer, origin });
 });
 ```
-
-The deadline stays below `started + 270_000`, so it ends inside `maxDuration = 300`.
 
 **Claiming.** One row at a time, as `claim()` in `src/server/page-looks.ts` does:
 
@@ -1229,7 +1273,7 @@ where id = (select id from commerce.page_map_shots
 returning *
 ```
 
-At most 6 shots per run. A new shot does not start once `Date.now() + MAP_SHOT_MS > deadline`.
+At most 6 shots per run. A shot starts only while `Date.now() + MAP_SHOT_MS <= until`.
 
 **One browser per shot.** A browser reused after a page's context closed can hang for good (D150, `src/lib/replicate-look.ts`). So:
 
@@ -1255,7 +1299,7 @@ looking(launchBrowser, MAP_SHOT_MS - LOOK.closeMs, (browser) => shootMap(browser
 
 **The browser context.**
 
-- Viewport: width `typicalWidth(await breakpointsFor(store.id), size)` with size `sm` (mobile), `md` (tablet) or `xl` (desktop)
+- Viewport: width `typicalWidth(breakpointsOf(store.theme.settings), size)` with size `sm` (mobile), `md` (tablet) or `xl` (desktop)
   (`src/lib/breakpoints.ts`); height `TYPICAL_SCREENS[size].height`. Mobile adds `isMobile: true, hasTouch: true`.
 - `reducedMotion: "reduce"`.
 - Add the cookie `consent_{storeId}` = `encodeConsent({ visitor: "00000000-0000-4000-8000-000000000000", version, choices: NO_CONSENT })`.
@@ -1298,7 +1342,9 @@ looking(launchBrowser, MAP_SHOT_MS - LOOK.closeMs, (browser) => shootMap(browser
   - chips: All, Dead, Rage.
 - **How far people scroll:**
   - 20 horizontal bands coloured by `reachedShares`;
-  - dashed lines labelled "75 % got here", "50 %" and "25 %" (`reachLines`), and "Average fold".
+  - dashed lines labelled "75 % got here", "50 %" and "25 %" (`reachLines`), and "Average fold";
+  - bands and lines are drawn over `layout.h` (the full page height) at the picture's scale. Anything below the picture's bottom (it
+    stops at 10,000 px) is not drawn, and the table still lists all four shares.
 - **Where people look:**
   - 20 bands over the attention height (`att_height_sum ÷ views`, at most the picture's height), coloured against the busiest band;
   - labels such as "4.2 s".
@@ -1362,8 +1408,12 @@ Put these figures in `docs/capacity.md`.
 - **Platform admins see counts only.** Recordings per store and month come through the usage metric on Usage and limits. Admins never
   open a store's recordings: the pages are owner-only, and the DPA says so for support conversations (`en.ts:300`). The DPA gets the
   same sentence for recordings (step 13, owner).
-- **The platform hold** `recordings_open` is switched on Usage and limits (`/admin/platform/capacity`) by a platform owner, through
-  `platformAction()`, audited `platform.recordings_open_set`, and modelled on `setDomainsOpenToAll()` (`src/server/domain-admin.ts`).
+- **The platform hold** `recordings_open` is switched on Usage and limits (`/admin/platform/capacity`):
+  - `src/app/admin/(gated)/platform/capacity/actions.ts`:
+    `recordingsOpenAction = platformAction({ area: "settings", action: "platform.recordings_open_set", answer }, (account) => setRecordingsOpen(account, on))`.
+    Only the platform owner role writes `settings`.
+  - `setRecordingsOpen()` (server) updates `platform_settings` and audits `platform.recordings_open_set`, shaped like
+    `setDomainsOpenToAll()` in `src/server/domain-admin.ts`.
 - **Add a row** to `docs/platform-parity.md` (step 13).
 
 ---
@@ -1375,7 +1425,7 @@ Put these figures in `docs/capacity.md`.
 | # | Question | Before |
 |---|---|---|
 | O1 | The plan values for `recordings_month`. The proposal is seeded and can be changed under Usage and limits. | Recordings open to stores |
-| O2 | The default sampling share: 50 % proposed (10, 25, 50 and 100 offered) | Step 11 |
+| O2 | The default sampling share: 50 % proposed (10, 25, 50 and 100 offered) | Step 1 (the column's default; after that, only by a migration) |
 | O3 | The points for the DPA, the sub-processor note and Kaizena Flow's privacy notice (section 4, item 9), written by the owner | Recordings open to stores |
 | O4 | Who may watch recordings: owner only (proposed), or also a role? A role means a new permission key and a migration. | Step 11 |
 
@@ -1412,6 +1462,14 @@ never reaches the running server. The e2e specs therefore follow `e2e/performanc
 4. End a page view with `page.close()`. Headless Chromium does not deliver a beacon sent while it navigates.
 5. Assert on the database with `expect.poll`, not on a beacon sent during navigation.
 6. **Never change the demo store.**
+7. **Part anchors in tests.** `storePageWith()` names rows `row-{n}` and columns `column-{n}`, which `PART_ID` does not match. When a test
+   asserts part anchors (step 6's measure spec, any test of a part's clicks), build the page with `storePageRows()` and give every row,
+   column and block an id from `crypto.randomUUID()`.
+8. **Getting the store.** Both helpers return only the address. Take the slug with `address.split("/")[2]` and run
+   `update commerce.stores set … where slug = ${slug}`, as `runningTest()` in `e2e/ab-tests.spec.ts` does.
+9. **Signed-in specs** run on `E2E_STORE` (`e2e-shop`), whose switches must never change. Seed its rows (`page_heat_days`,
+   `page_map_shots`, `recordings`) with `testDb()` instead. The screens show the data that exists whatever the switch says; the switch
+   only stops new collection.
 
 ### Step 1: Consent groundwork and store switches (no visible feature yet)
 
@@ -1521,7 +1579,9 @@ and decide each hit; `pnpm typecheck` finds the rest. Known places:
 - A cookie-scan unit test: a scanned `kaizen_replay_<uuid>` session-storage item is known, category `recordings`.
 - `siteCookies()` (unit or integration): heatmaps on adds `statistics` and `heat`; recordings on adds the category and the two items;
   both off gives the same result as before.
-- A legal-facts test: `factsHash()` of a store with both off is unchanged from before the change.
+- A legal-facts test, in `src/server/legal-facts.int.test.ts` or a unit test with `vi.mock("server-only")`. `factsHash()` from
+  `src/server/legal-writer.ts` is unchanged for a store with both switches off, and the built facts then have no `heatmaps` or
+  `sessionRecordings` key.
 - `e2e/cookies.spec.ts`: a fresh store with recordings on (section 13 header) shows the fourth choice and the first-layer notice;
   refusing all sets a cookie whose fourth bit is 0.
 - `src/db/commerce.test.ts`: the new store checks.
@@ -1569,7 +1629,7 @@ first.**
   - `sessionFor(stored, now, share, random)`: whether a new session is needed, and whether it is sampled;
   - `timelineMarks(events)`: the player's markers from `kz-page` and `kz-click` events.
 - **`src/lib/replay-sanitize.ts`:** `sanitizeEvents()` (section 8.6).
-- **`src/lib/heat-read.ts`:** the functions of section 8.5, including `frustratedVersion()` (step 12 uses it).
+- **`src/lib/heat-read.ts`:** the functions of section 8.5, except `frustratedVersion()`, which step 12 adds with its tests.
 
 **Tests** (one `*.test.ts` per module). At least:
 
@@ -1591,7 +1651,8 @@ first.**
   - `active: false` adds nothing;
   - the cap holds;
   - a page of 30,000 px gives `attH = 20000`;
-  - a page of 600 px still gives a value in every band.
+  - a page of 600 px still gives a value in every band;
+  - the page grows from 2,000 to 4,000 px after seq 0: the continuation's bands are all ≥ 0 and use H = 2,000.
 - **Reach:** a page shorter than the window gives bucket 20; maxima are kept across steps.
 - **`anchorOf`:**
   - part classes win over landmarks;
@@ -1625,7 +1686,7 @@ analytics rule is that a figure is defined there before it is built.
   `enable row level security` lines, then `node scripts/prune-snapshots.mjs`.
 - **`src/server/page-heat.ts`:** `recordHeat()` (section 8.1), `pruneHeat()`, and
   `HeatOutcome = { recorded: true } | { recorded: false; reason }`.
-- **`src/server/signal-tags.ts`** (section 8.4), and **`src/server/running-experiments.ts`** (the move, with a re-export).
+- **`src/server/signal-tags.ts`** (section 8.4).
 - **`src/app/api/signals/heat/route.ts`** (section 8.1).
 - **`src/server/beacon-imports.scan.test.ts`:** add the route to `BEACONS`.
 - **`docs/security.md` §2.11:** a row for `/api/signals`:
@@ -1649,9 +1710,12 @@ analytics rule is that a figure is defined there before it is built.
   - seq 1 adds attention and clicks but not views or reach;
   - two beacons add up;
   - a tag the cookie does not hold is dropped;
-  - a held tag writes both rows, and `heatPages()` still counts one view;
+  - a held tag writes both rows: the `tag = ''` row and the tag's row each have `views = 1` (checked with SQL);
   - a duplicated `ab` pair is recorded once;
-  - the A/B cookie is set URI-encoded, as Next writes it.
+  - the A/B cookie is set URI-encoded, as Next writes it;
+  - `lockedOut()` reads `cookies()` from `next/headers`, not the headers passed in. So mock `next/headers` with a cookie jar, as
+    `src/server/private-mode.int.test.ts` does, and set or clear `kaizen_unlock_{storeId}` there for the private-store cases (an unlocked
+    visitor is kept).
 - **`src/server/page-heat-prune.int.test.ts`:** old rows go and recent ones stay, for an open store and a closed one.
 
 **Done when:**
@@ -1667,8 +1731,9 @@ analytics rule is that a figure is defined there before it is built.
 
 **Files:**
 
-- **`src/components/signals/click-watch.ts`, `heat-collector.ts` and `site-signals.tsx`** (sections 7.2, 7.3 and 7.5). The recorder
-  branch returns early until step 9.
+- **`src/components/signals/click-watch.ts`, `heat-collector.ts` and `site-signals.tsx`** (sections 7.2, 7.3 and 7.5).
+  - Come in step 9: the recorder branch, section 7.2 item 4, and item 9's call of `forgetRecordings()`.
+  - Built now: item 9's `discard()` of the heat view and its removal of the listeners.
 - **`src/components/lazy/site-signals.tsx`**, and the mount in **`src/app/s/[store]/[market]/extras.tsx`** (section 7.1). Do not touch
   `layout.tsx`.
 - **`src/components/ab/ab-marker.tsx`**, the exact edit:
@@ -1687,10 +1752,12 @@ analytics rule is that a figure is defined there before it is built.
 - with the consent cookie `1.{uuid}.statistics+heat.010` set: after a scroll, `page.close()` leaves one `page_heat_days` row with
   views 1 (`expect.poll`);
 - on `/s/{slug}/cart` and `/s/{slug}/account`, no request;
-- on a page with a picture (`storePageWith`), a click on the picture gives a dead click, and a click on a link that opens something does
-  not;
+- on a page with a picture (`storePageWith`): click the picture, wait 3 s (more than `DEAD_AFTER_MS`), then `page.close()`, and poll for
+  `dead_clicks = 1`. A click on a link that opens something gives none;
 - opening and closing the cart drawer on a product page, then closing the page, counts **one** view;
-- withdrawing Statistics sends no `/api/signals/heat` request.
+- withdrawing Statistics sends no `/api/signals/heat` request;
+- in `e2e/ab-tests.spec.ts` style: from a page under a page test, soft-navigate to another page; that page's view row has no tag of the
+  test.
 
 **Also:** `e2e/performance.spec.ts` still passes unchanged, because the collector is not a `script[src]` in the HTML. And
 `pay-routes.graph.test.ts` passes.
@@ -1742,15 +1809,11 @@ screenshot** of the settings section.
   - a private store fails with the private-store problem.
 - **A unit test of `mapShotUrl()`:** a market store, a marketless store (D181), and a tag (the two cookies, no URL change; version `a`
   without cookies).
-- **`e2e/map-measure.spec.ts`:** `measureAnchors` runs against a fresh store page and returns its parts' keys. It needs a browser.
+- **`e2e/map-measure.spec.ts`:** `measureAnchors` runs against a fresh store page built with `storePageRows()` and uuid ids (section 13
+  header, item 7), and returns those parts' keys. It needs a browser.
 
-**Done when:**
-
-- the tests pass;
-- after the deploy, a shot requested on the house store's front page (or any store with heatmaps on) is `done` within two cron runs.
-  Check `page_map_shots` in production.
-
-Never point a local build at production storage.
+**Done when:** the tests pass. The production check moves to step 7, because no screen asks for a shot before then. Never point a local
+build at production storage.
 
 ### Step 7: The heatmaps screens
 
@@ -1797,14 +1860,17 @@ The version chips come in step 12.
 
 - `heatmaps-view.test.ts`: off, collecting, too few views, a ranked list, and seed rows that are tagged and untagged (the tagged ones are
   never double-counted);
-- `e2e/signed-in/heatmaps.spec.ts`, modelled on `live.spec.ts`: the OWNER opens the page; the READER (Read-only role) can open it but
-  gets no *Take a new picture*;
+- `src/server/page-heat-read.int.test.ts`: `heatPages()` over a beacon with one verified tag counts one view;
+- `e2e/signed-in/heatmaps.spec.ts`, modelled on `live.spec.ts`. Seed `page_heat_days` rows (≥ 30 views) and a `done` `page_map_shots`
+  row for one page of `E2E_STORE`, then open `…/heatmaps?page=…`. The OWNER sees *Take a new picture* in the fold; the READER (Read-only
+  role) can open the page but does not see it;
 - `store-nav.test.ts`, `admin-map.test.ts`, `permissions.scan.test.ts` and `admin-pages-nb.test.ts` pass.
 
 **Done when:**
 
 - the view tests pass with seeded rows;
-- after the deploy, the owner's house store (or a test store) shows a map in all three views.
+- after the deploy, opening the house store's map (heatmaps switched on for it) asks for a shot, which is `done` within two cron runs,
+  and the map draws in all three views.
 
 **Send the owner screenshots** of the hub and of each view (phone and computer), plus `docs/heatmaps-and-recordings.svg`.
 
@@ -1828,8 +1894,7 @@ The version chips come in step 12.
 **Files:**
 
 - **The lists:** the retention label in `privacy.{en,nb}.ts`; the metering changes of section 6.4 (`usage-meter.ts`, `limits.ts`
-  `measuredPlusLive` and `liveValue`, `usage.ts` `OWNER_LINES`); words in `m.plans.limitNames` (en, nb, sv, da) and the `capacity`
-  catalogue (en, nb).
+  `liveValue`, `usage.ts` `OWNER_LINES`); words in `m.plans.limitNames` (en, nb, sv, da) and the `capacity` catalogue (en, nb).
 - **`src/server/recording-files.ts`:** `recordingFiles()` with `upload` (`"ok" | "exists" | "failed"`), `download`, `remove`, `list` and
   `pathsOf(row)`.
   - Read the key exactly as `reviewPictureStorage()` does (`src/server/review-picture-store.ts`): `process.env.SUPABASE_SECRET_KEY`,
@@ -1843,8 +1908,8 @@ The version chips come in step 12.
   store.
 - **The platform switch** for `recordings_open` on `/admin/platform/capacity` (section 11), with a platform action and words.
 - **More lists:** `COPY_RULES`; `PERSONAL_DATA` (both entries) with the Norwegian reasons; `PURPOSE_OF` (both); `STORE_EXPORT_LEFT_OUT`.
-  Add a `NOT_INCLUDED` row in every language to `src/lib/privacy-text.ts`: "Recordings of visits: kept under a random number for one
-  tab, for 30 days, and cannot be tied to you."
+  Add to `NOT_INCLUDED` in `src/lib/privacy-text.ts`, in nb, sv, da and en (translated):
+  `{ what: "Recordings of visits", why: "They are kept under a random number for one browser tab, for 30 days, and cannot be tied to you." }`.
 - **The daily route:** `daily.recordings`.
 
 **Tests:**
@@ -1853,14 +1918,16 @@ The version chips come in step 12.
 - **`src/server/recordings.int.test.ts`**, with a fake `files` modelled on `memoryStorage()` in `src/server/review-pictures.int.test.ts`:
   - seq 0 creates the row, with coarse times; seq 1 adds to it;
   - each of these gives 410: no consent, GPC, a robot, the switch off, `recordings_open` off (and the house store passes), a private
-    store, a refused page, over the monthly limit, and over the day's slot;
+    store's locked-out visitor (an unlocked one is kept; mock `next/headers` as in step 3), a refused page, over the monthly limit, and
+    over the day's slot;
+  - seq 0 answered 503, then seq 0 again, creates the row;
   - a zip bomb (a 20 MB string gzipped) gives 400;
   - an id of another store gives 410;
   - a duplicate segment is counted once;
   - a seq gap (0, 1, 3) is stored, and `pathsOf()` names exactly those files;
   - a failed conditional update removes the uploaded file;
   - `files` null gives 503 and no row;
-  - a Meta event's `?email=…` is stripped;
+  - a Meta event's `?email=…` is stripped, checked in the file the fake `files` received;
   - forget deletes the rows and removes exactly their files;
   - prune deletes expired rows and their files, stops at its deadline, and prunes a closed store's rows too.
 - `src/db/<name>-plan-features.test.ts`, copied from the redirects one.
@@ -1919,7 +1986,7 @@ step 11, and the platform hold is closed.
 **Tests** in `src/server/recordings.int.test.ts`:
 
 - a finished recording with three segments becomes one file with the events in order, and the segments are removed;
-- an active recording (last segment 10 minutes ago) is left alone;
+- an active recording (last segment 10 minutes ago) is left alone, and so is one whose floored `last_at` is 40 minutes old;
 - a segment arriving during sealing makes the seal step back (all.gz removed; segments kept);
 - a forget during sealing leaves no file;
 - a recording that fails three times is never picked again;
@@ -1936,10 +2003,11 @@ step 11, and the platform hold is closed.
 - **`src/app/admin/(gated)/[store]/analytics/recordings/[id]/page.tsx`:** owner only; the player page. Add its path to the `FULL_WIDTH`
   regex in `src/app/admin/(gated)/[store]/layout.tsx`.
 - **`src/app/admin/(gated)/[store]/analytics/recordings/[id]/events/route.ts`:**
-  - GET, guarded with the literal `"owner"` key through `requirePermission()` (`src/server/permissions.ts`). A refused member gets 404
-    (`notFound()`);
-  - add the file to `OWNER_ONLY_EXTRA` in `src/lib/permissions.scan.test.ts`, with the reason "a recording's events are a visitor's
-    behaviour; only the owner may watch them (D652), as the player page's map entry says";
+  - GET, guarded with the literal `"owner"` key through `requirePermission(slug, "owner")` (`src/server/permissions.ts`). A refused
+    member gets 404 (`notFound()`);
+  - `permissions.scan.test.ts` walks a route's path up to its nearest map page. With the map entry `analytics.recording`
+    (`/analytics/recordings/[id]`, `needs: "owner"`), the scan itself requires the `owner` key here, so **no `OWNER_ONLY_EXTRA` entry
+    is needed**;
   - **audit first:**
     `audit(member.account.id, store.id, "analytics.recording_viewed", { recording: id, device, durationS }, { target: { type: "recording", id } })`.
     If the audit fails, answer 503 and send nothing (the precedent is `exportAnalyticsTable()`);
@@ -1960,13 +2028,15 @@ step 11, and the platform hold is closed.
   - a **Recordings** row;
   - three confirmation checkboxes: "My store is not aimed at children", "My store does not sell health, religious, political or other
     sensitive goods", and "My privacy policy says visits may be recorded" (which links to the store's privacy page);
-  - share chips (10, 25, 50 and 100 %, default per O2);
+  - share chips (10, 25, 50 and 100 %, defaulting to the column's default);
   - "Hide all text in recordings", in its own fold;
   - "Recordings are kept 30 days. Only you can watch them.";
   - `setRecordingsAction`.
 
   While the platform hold is closed and the store is not the house store, the row says "Recordings are not available yet" instead of the
   switch.
+- **Existing recordings stay visible.** The list and the player show the recordings that exist whatever the switch says; the switch only
+  stops new ones. When it is off, a line says so above the list.
 - **Links into recordings:** *Watch recordings* on each **Where visitors get stuck** row and on the map view
   (`/analytics/recordings?page=…&has=rage`), shown only where `canOpenPath()` allows (owner).
 - **Navigation and map:**
@@ -1990,13 +2060,15 @@ step 11, and the platform hold is closed.
 - view tests of the list: off, not available yet, empty, grouped by day, dimmed when watched;
 - `setRecordings` refuses another store while `recordings_open` is off;
 - **`e2e/signed-in/recordings.spec.ts`:**
+  - **Seed** a `recordings` row for `E2E_STORE` with `testDb()`; never change its switches.
   - **The player:** the OWNER sees the list and opens a player fed a fixed events file served by `page.route` on the events URL. The
     player draws an iframe whose `sandbox` is `allow-same-origin`, without `allow-scripts`, and the page logs no CSP errors.
   - **The route itself** (no `page.route`):
     - seed a recording row with `seqs = '{}'`; `recordingEvents()` returns `[]` without touching files when there are none, so no
       Storage is needed;
     - the OWNER's `page.request.get(eventsUrl)` answers 200, and an `analytics.recording_viewed` audit row exists;
-    - the READER's answers 404, with no audit row.
+    - the READER's answers 404, and no `analytics.recording_viewed` row is written. (A `staff.permission_refused` row is, as for any
+      refused member.)
   - **The READER** gets the page refused and no nav link.
 - a unit test that the events route refuses when the audit fails (mock `audit`).
 
@@ -2024,9 +2096,12 @@ There are no new tables and no per-visitor rows: behaviour per version comes fro
   - words in `experiments.{en,nb}.ts` `results`.
 - **The experiment page** (`src/app/admin/(gated)/[store]/experiments/[id]/page.tsx`) reads `versionBehaviour()` and passes it on.
 - **The platform view:**
-  - `src/lib/platform-experiments.ts`: add `frustrated: string | null` to `TestLine`; push `{ kind: "frustrated", words: "Version X gets
-    clearly more rage or dead clicks." }` in `flagsOf()` for a running test; add `frustrated?: string | null` to `adviceFor()`'s input,
-    with a line saying the platform tells the owner and never stops the test;
+  - `src/lib/platform-experiments.ts`:
+    - widen `Flag["kind"]` with `"frustrated"`, and give it a label wherever the platform view switches on the kind;
+    - add `frustrated: string | null` to `TestLine`;
+    - push `{ kind: "frustrated", words: "Version X gets clearly more rage or dead clicks." }` in `flagsOf()` for a running test;
+    - add `frustrated?: string | null` to `adviceFor()`'s input, with a line saying the platform tells the owner and never stops the
+      test;
   - `src/server/platform-experiments.ts` fills `frustrated` beside `harmed`.
 - **The heatmap page** reads a `tag` parameter and shows **version chips** (from `taggedTests()`). Map shots for a tag use the cookie
   route of section 9.2.
@@ -2201,8 +2276,9 @@ admin text, and are listed in `BEACONS`.
 12. **Never reuse the consent cookie's visitor id or the A/B visitor id** for a recording, and never store exact times.
 13. **A store with recordings off must produce exactly today's consent cookie and legal facts** (step 1).
 14. **`chat_usage` is pruned after two days.** Never keep a monthly count there.
-15. **Owner-only routes whose path is not a map entry go in `OWNER_ONLY_EXTRA`** (`permissions.scan.test.ts`). Never loosen recordings
-    to `analytics:read`. A refused member gets 404, not 403.
+15. **Owner-only routes.** `permissions.scan.test.ts` derives a route's key from its nearest map page. Mark the recordings pages
+    `needs: "owner"`, and their routes then need the `owner` key. Only an owner-only file whose nearest map page is **not** marked owner
+    goes in `OWNER_ONLY_EXTRA`. Never loosen recordings to `analytics:read`. A refused member gets 404, not 403.
 16. **Every Storage object is a Postgres row.** Never write one file per event or per page view.
 17. **New admin pages and new owner tools change the AI manager's prompt.** CI's eval replay then fails until the owner records the
     eval again. List new pages in `NOT_YET_IN_PROMPT` (steps 7 and 11), and take them out only in step 14.
@@ -2216,8 +2292,8 @@ admin text, and are listed in `BEACONS`.
 25. **The platform's legal texts are the owner's,** hand-written (`src/lib/platform-legal/*`). List the points; never edit them.
 26. **CI has no Storage.** Inject `files`; fake them in integration tests; answer the segment route with `page.route` in e2e.
 27. **The demo store is prerendered and cached.** E2e tests use a fresh `testStore()` with the switch set before its first request.
-28. **`registerProblems()` refuses `storage:` keys in `NOT_PERSONAL`, and a pseudonymous entry with no personal columns.** Follow
-    section 6.4 exactly.
+28. **Two register rules.** `registerProblems()` refuses `storage:` keys in `NOT_PERSONAL`, because they are not tables. And
+    `personal-data.test.ts` refuses a non-`none` entry with no personal columns; never add to its exceptions. Follow section 6.4 exactly.
 
 ---
 
@@ -2268,4 +2344,5 @@ the admin and AI) and the web (tool definitions, techniques, the law).
 | Date | Change |
 |---|---|
 | 16 Nov 2026 | Written: research, design and the build in 14 steps. Nothing built. |
-| 16 Nov 2026 | **Reviewed from five angles (112 findings) and corrected.** The main changes:<br>- `SiteSignals` is mounted in `MarketExtras` (the pay-route graph test follows dynamic imports).<br>- The browser's page rule is an allow-list mirroring `placeOfPath()` and `speedKind()`, and refuses `q=` for recordings.<br>- `PART_ID` matches ids with several dashes.<br>- Product cards inside parts get anchors of their own.<br>- Attention is a mean per band, not a sum.<br>- Frustration is counted once per view.<br>- A view keeps its path and tags from its start, and survives the cart drawer.<br>- The click judge arms at `pointerdown` and gives one verdict per click.<br>- No per-visitor A/B rows: behaviour per version comes from tagged totals, with a stricter flag.<br>- The recorder pauses in `emit`, before a refused page's DOM is buffered, strips query strings, masks inputs to nothing and sends relative times; recordings keep coarse times.<br>- `seqs` names every file; conditional updates and seals; the bucket is 5 MB.<br>- Map shots use one browser per shot, claim their rows, and take their widths from the store's breakpoints, with A/B versions served through cookies.<br>- The sanitiser uses an allow-list of asset paths, and the player sends an enforced CSP.<br>- Recordings are held platform-wide (`recordings_open`), and the DPIA draft comes before the switch.<br>- Owner code and cookie notes cannot choose the new category; legal facts and consent records stay compatible.<br>- The e2e tests use fresh stores and no Storage.<br>- The migration order for generated checks is fixed.<br>- `RefreshWhile` instead of `router.refresh()`; `OWNER_ONLY_EXTRA` for the events route.<br>- The closed-store hook was dropped (closing deletes nothing).<br>- The storage keys are renamed to `kaizen_replay_…`. |
+| 16 Nov 2026 | **Reviewed from five angles (112 findings) and corrected.** The main changes:<br>- `SiteSignals` is mounted in `MarketExtras` (the pay-route graph test follows dynamic imports).<br>- The browser's page rule is an allow-list mirroring `placeOfPath()` and `speedKind()`, and refuses `q=` for recordings.<br>- `PART_ID` matches ids with several dashes.<br>- Product cards inside parts get anchors of their own.<br>- Attention is a mean per band, not a sum.<br>- Frustration is counted once per view.<br>- A view keeps its path and tags from its start, and survives the cart drawer.<br>- The click judge arms at `pointerdown` and gives one verdict per click.<br>- No per-visitor A/B rows: behaviour per version comes from tagged totals, with a stricter flag.<br>- The recorder pauses in `emit`, before a refused page's DOM is buffered, strips query strings, masks inputs to nothing and sends relative times; recordings keep coarse times.<br>- `seqs` names every file; conditional updates and seals; the bucket is 5 MB.<br>- Map shots use one browser per shot, claim their rows, and take their widths from the store's breakpoints, with A/B versions served through cookies.<br>- The sanitiser uses an allow-list of asset paths, and the player sends an enforced CSP.<br>- Recordings are held platform-wide (`recordings_open`), and the DPIA draft comes before the switch.<br>- Owner code and cookie notes cannot choose the new category; legal facts and consent records stay compatible.<br>- The e2e tests use fresh stores and no Storage.<br>- The migration order for generated checks is fixed.<br>- `RefreshWhile` instead of `router.refresh()`.<br>- The closed-store hook was dropped (closing deletes nothing).<br>- The storage keys are renamed to `kaizen_replay_…`. |
+| 16 Nov 2026 | **Second review round (46 findings: a consistency critic and a check of the new code claims), corrected.** The main changes:<br>- The attention height is fixed at seq 0, so continuations never go negative.<br>- A view's first tags are taken a tick after it starts, after `AbMarker`'s passive effects.<br>- `SiteSignals` uses two effects, so the drawer never ends a view.<br>- The player's CSP lives in `csp.ts` and repeats `frame-ancestors`, which a later header would otherwise remove.<br>- Sealing waits 45 minutes past the floored `last_at`.<br>- A segment's seq advances only after a 204.<br>- The stored file is the rewritten body.<br>- `runningExperiments()` is imported, not moved: its memo is shared with `forgetRunning()`.<br>- The page rule drops a first segment matching `MARKET_PARAM` (it covers `eur` and `en-eur` for marketless stores).<br>- The monthly limit is counted live, without `measuredPlusLive()`.<br>- `breakpointsOf(store.theme.settings)` is used, and `MarketExtras` stays synchronous.<br>- The map-shot deadline is capped.<br>- **Corrections to round one:** the events route needs no `OWNER_ONLY_EXTRA` entry, because its owner-only map page already applies; a refused member's `staff.permission_refused` audit row is expected.<br>- **E2e fixes:** signed-in specs seed `E2E_STORE`'s rows; part-anchor tests use `storePageRows()` with uuid ids; the `lockedOut()` cases mock `next/headers`. |
