@@ -6,7 +6,8 @@ describe("watch and roll back (F4)", () => {
   it("knows which changes can be undone", () => {
     expect(isRevertible("set_prices")).toBe(true);
     expect(isRevertible("make_theme_live")).toBe(true);
-    expect(isRevertible("publish_page")).toBe(false);
+    expect(isRevertible("publish_page")).toBe(true);
+    expect(isRevertible("edit_page")).toBe(false);
     expect(isRevertible("reply_to_support")).toBe(false);
   });
 

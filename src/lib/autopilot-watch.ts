@@ -7,7 +7,7 @@
  */
 
 /** The changes that can be undone, and how (`src/server/autopilot-watch.ts`). */
-export const REVERTIBLE_TOOLS = ["set_prices", "create_discount", "set_discount_active", "create_campaign", "set_campaign_active", "make_theme_live", "set_ad_budget"] as const;
+export const REVERTIBLE_TOOLS = ["set_prices", "create_discount", "set_discount_active", "create_campaign", "set_campaign_active", "make_theme_live", "set_ad_budget", "publish_page"] as const;
 export type RevertibleTool = (typeof REVERTIBLE_TOOLS)[number];
 export const isRevertible = (tool: string): tool is RevertibleTool => (REVERTIBLE_TOOLS as readonly string[]).includes(tool);
 
