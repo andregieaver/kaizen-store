@@ -80,7 +80,9 @@ describe("the register fails for a table nobody classified (the heart of the uni
       await db.exec("rollback");
     }
     expect(registerProblems(await schemaMap())).toEqual([]);
-  });
+    // Two reads of every table's columns in PGlite: about 12 s on an idle machine and past the shared 20 s on CI's runners as the schema
+    // grows (CI runs 1454, 1461 and 1462), so this test has its own limit.
+  }, 60_000);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
