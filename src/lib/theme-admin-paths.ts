@@ -23,17 +23,3 @@ export const STARTING_CONTENT_HREF = `${THEMES_ADMIN}#starting-content`;
 /** The theme store's own pages (D285): edited here, never among Kaizena Flow's other pages; the card listing them on Themes. */
 export const THEME_STORE_PAGES = `${THEMES_ADMIN}/pages`;
 export const themeStorePageHref = (pageId: string): string => `${THEME_STORE_PAGES}/${pageId}`;
-export const THEME_STORE_PAGES_HREF = `${THEMES_ADMIN}#theme-store-pages`;
-
-/**
- * The addresses themes, design profiles and store templates had before D273 and where they went, as Next's `redirects`
- * (`next.config.ts`). The old site's themes (`/admin/platform/themes/{install}`) took an address that is now a theme's: the theme page
- * sends an install's id on to the site's Design (`designPage()`).
- */
-export const LEGACY_THEME_REDIRECTS: readonly { source: string; destination: string; permanent: false }[] = [
-  { source: "/admin/platform/design-profiles", destination: THEMES_ADMIN, permanent: false },
-  { source: "/admin/platform/design-profiles/:path+", destination: `${THEMES_ADMIN}/:path+`, permanent: false },
-  { source: "/admin/platform/store-templates", destination: THEMES_ADMIN, permanent: false },
-  { source: "/admin/platform/store-templates/:starter", destination: `${THEMES_ADMIN}/demo-stores/:starter`, permanent: false },
-  { source: "/admin/account/design-profiles/:preset/preview", destination: "/admin/account/themes/:preset/preview", permanent: false },
-];

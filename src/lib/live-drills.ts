@@ -98,10 +98,6 @@ export function dreamDrillOutcome(status: string): Exclude<DrillOutcome, "skippe
   return "waiting";
 }
 
-export function isDrillKind(value: unknown): value is DrillKind {
-  return typeof value === "string" && (DRILL_KINDS as readonly string[]).includes(value);
-}
-
 /** The kinds asked, known ones only, once each, in the run's own order. */
 export function drillPlan(kinds: readonly string[]): DrillKind[] {
   return DRILL_KINDS.filter((k) => kinds.includes(k));

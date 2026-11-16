@@ -409,7 +409,10 @@ export function ProductEditor(props: Props) {
         <AppointmentSection storeSlug={storeSlug} product={product} update={update} context={context} />
       )}
       {(product.kind === "stay" || product.kind === "rental") && product.appointment && (
-        <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
+        // Round 25 (D693): on a phone the price comes first; a stay's or rental's rules follow it as rows.
+        <div className="max-md:order-1">
+          <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
+        </div>
       )}
       {product.kind === "bundle" ? (
         <BundleSection storeSlug={storeSlug} product={product} update={update} context={context} />
@@ -3231,7 +3234,7 @@ function RangeSection({
       <h2 id="range-heading" className="mb-1 text-title text-ink">
         {stay ? w.stay : w.rental}
       </h2>
-      <p className="mb-4 text-sm text-muted">
+      <p className="mb-4 text-sm text-muted max-sm:hidden">
         {stay ? w.stayIntro : w.rentalIntro}
       </p>
       {context.hosts.length > 0 && (
@@ -3258,6 +3261,7 @@ function RangeSection({
           </span>
         </label>
       )}
+      <PhoneFold title={stay ? w.rowTimesStay : w.rowTimes} sub={fillWords(w.subTimes, { from: a.checkInTime, to: a.checkOutTime })} change={all.variants.phoneChange} done={all.variants.phoneDone}>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={label}>
           {stay ? w.checkIn : w.pickUp}
@@ -3267,7 +3271,10 @@ function RangeSection({
           {stay ? w.checkOut : w.return}
           <input type="time" value={a.checkOutTime} onChange={(e) => set({ checkOutTime: e.target.value })} className={input} />
         </label>
-        <span />
+      </div>
+      </PhoneFold>
+      <PhoneFold title={w.rowLength} sub={fillWords(stay ? w.subLengthNights : w.subLengthDays, { min: a.minNights, max: a.maxNights, ahead: a.maxDaysAhead })} change={all.variants.phoneChange} done={all.variants.phoneDone}>
+      <div className="grid gap-4 sm:mt-4 sm:grid-cols-3">
         <label className={label}>
           {w.shortest} <span className={hint}>{stay ? w.nights : w.wholeDays}</span>
           <input
@@ -3313,6 +3320,8 @@ function RangeSection({
           />
         </label>
       </div>
+      </PhoneFold>
+      <PhoneFold title={stay ? w.units : w.items} sub={units.filter((u) => a.resourceIds.includes(u.id)).map((u) => u.name).join(", ") || w.noneYet} change={all.variants.phoneChange} done={all.variants.phoneDone}>
       {context.places.length > 0 && (
         <label className={`${label} mt-4 max-w-sm`}>
           {all.appointment.where}
@@ -3351,6 +3360,8 @@ function RangeSection({
           ))
         )}
       </fieldset>
+      </PhoneFold>
+      <PhoneFold title={stay ? w.rowFeeStay : w.rowFee} sub={[Object.values(a.bookingFee).some((v) => v.trim()) ? w.subFee : w.subNoFee, a.seasons.length > 0 ? countWords(a.seasons.length, w.subSeasons) : w.subNoSeasons].join(", ")} change={all.variants.phoneChange} done={all.variants.phoneDone}>
       <PricingFields
         a={a}
         set={set}
@@ -3359,7 +3370,10 @@ function RangeSection({
         businesses={context.audience === "businesses"}
         otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
       />
+      </PhoneFold>
+      <PhoneFold title={all.payment.title} sub={fillWords(w.subPayment, { how: a.payment === "now" ? all.payment.now : a.payment === "deposit" ? all.payment.deposit : fillWords(all.payment.venue, { where: stay ? all.payment.places.checkIn : all.payment.places.pickUp }), hours: a.cancelHours })} change={all.variants.phoneChange} done={all.variants.phoneDone}>
       <PaymentFields a={a} set={set} where={stay ? all.payment.places.checkIn : all.payment.places.pickUp} />
+      </PhoneFold>
     </section>
   );
 }

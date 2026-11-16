@@ -385,9 +385,6 @@ export function readDraft(args: {
   return { ok: true, input, key };
 }
 
-export const hasDraftProblems = (problems: DraftProblems): boolean =>
-  Object.keys(problems.header).length > 0 || Object.keys(problems.lines).length > 0 || problems.general.length > 0;
-
 /** How many things the person must fix before the draft can be saved. */
 export const problemCount = (problems: DraftProblems): number =>
   Object.keys(problems.header).length +

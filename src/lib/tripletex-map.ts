@@ -12,21 +12,12 @@ import { decimalOf, externalVoucherNumber } from "./tripletex";
 // The documents as every accounting connection reads them (D460): kept here under their old names for Tripletex's modules and tests.
 export {
   customerKey,
-  keysOf,
   shopCreditNoteDoc,
   shopInvoiceDoc,
-  shopKey,
   workCreditNoteDoc,
   workInvoiceDoc,
-  workLineKey,
   type BookingDoc,
-  type BookingLine,
   type CustomerRef,
-  type DocKind,
-  type DocSource,
-  type WorkCreditNoteRow,
-  type WorkInvoiceRow,
-  type WorkLineRow,
 } from "./accounting-docs";
 
 // ---------------------------------------------------------------------------------------------------------------------

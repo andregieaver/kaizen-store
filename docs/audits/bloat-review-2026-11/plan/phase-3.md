@@ -297,6 +297,8 @@ Every read of a stored page runs the editor's whole input schema and the upgrade
 - **Effort:** M. **Areas it moves:** The page builder's model and a built page; The code itself.
 - **Done when:** node scripts/page-shapes.mjs prints 0 documents that differ from their parse on a freshly seeded database and on production, and rg for upgradeRow, upgradeBlock, upgradeLegacy and upgradeResponsive in src outside tests prints nothing.
 - **Platform:** The platform's pages and the launch themes' snapshots are rewritten by the same script.
+- **First part done in step 0.46** (16 November 2026, D698): the six source files and the seed write today's shape, held by
+  `src/lib/page-shapes.test.ts`; the stored pages and the upgraders remain.
 - **To carry it out:** [steps/3.17.md](steps/3.17.md) (strong)
 
 ## 3.18 Build twice per push, and lint and type-check once

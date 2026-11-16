@@ -648,7 +648,6 @@ export const analyticsNb: AnalyticsMessages = {
       period: "Periode",
       periods: { week: "Uke", month: "Måned", quarter: "Kvartal", custom: "Dager jeg velger" },
       start: "En dag i perioden",
-      startCustom: "Første dag",
       end: "Siste dag",
       endHint: "Bare for dager du velger.",
       value: "Mål",

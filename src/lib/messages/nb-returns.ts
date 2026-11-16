@@ -32,7 +32,6 @@ export const nbReturns: ReturnsMessages = {
   contactStore: (store: string) => `Kommer du ikke videre? Kontakt ${store}.`,
   limited: "Det har kommet for mange forespørsler akkurat nå. Vent litt og prøv igjen, eller skriv til butikken.",
   nothing: "Det er ingenting på denne ordren du kan angre nå.",
-  chooseLines: "Velg minst én vare du vil angre.",
   quantityProblem: "Sjekk antallene: du kan ikke angre flere enn det som er igjen av en vare.",
   errorsHeading: "Sjekk disse feltene",
   fieldErrors: {
@@ -77,7 +76,6 @@ export const nbReturns: ReturnsMessages = {
     button: "Send returforespørsel",
     sent: (number: string) => `Returforespørselen din ${number} er sendt. Butikken svarer på e-post.`,
     track: "Følg forespørselen",
-    pickLines: "Velg varene du vil levere tilbake.",
   },
   windowStatutory: (day: string) => `Du kan angre til og med ${day}.`,
   windowBefore: "Varene er ikke sendt ennå. Du kan angre nå.",

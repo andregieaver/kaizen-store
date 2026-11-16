@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."stores" DROP CONSTRAINT "stores_modules";--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_modules" CHECK ("commerce"."stores"."modules" <@ array['work']::text[]);

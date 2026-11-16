@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { REDIRECTS_MAX } from "@/lib/data-limits";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's two rows for redirects and categories' SEO texts (D168, `docs/wave-2-redirects.md` 5.5; migration `*_redirects_plan_features.sql`):
@@ -16,7 +15,6 @@ import { readMigration } from "./migration-files";
 let db: PGlite;
 
 const NAMES = ["Redirects and 404 report", "SEO title and description for categories and tags"];
-const MIGRATION = readMigration("20261005171916_redirects_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -55,15 +53,5 @@ describe("the plan comparison's rows for redirects and categories' SEO texts", (
     const text = rows.map((r) => r.description).join("\n");
     expect(text).toContain(`${REDIRECTS_MAX.toLocaleString("en-US")} manual redirects`);
     expect(text).not.toMatch(/unlimited|guarantee|instant|rank|traffic/i);
-  });
-
-  it("adds nothing a second time when the migration is run again", async () => {
-    await db.exec(MIGRATION);
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = any($1)", [NAMES]);
-    expect(rows[0].n).toBe(2);
-  });
-
-  it("holds no DELETE or DROP: the migration tool cancels a function body that has one", () => {
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 });

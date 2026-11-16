@@ -199,11 +199,9 @@ export function targetProgress(input: TargetInput): TargetProgress {
 /** What a target can count. Net sales and AOV are minor units of the main currency without VAT, orders a count, conversion basis points (250 is 2.50 %). */
 export const TARGET_METRICS = ["net_sales", "orders", "conversion", "aov"] as const;
 export type TargetMetric = (typeof TARGET_METRICS)[number];
-export const isTargetMetric = (value: unknown): value is TargetMetric => (TARGET_METRICS as readonly unknown[]).includes(value);
 
 export const TARGET_PERIODS = ["week", "month", "quarter", "custom"] as const;
 export type TargetPeriod = (typeof TARGET_PERIODS)[number];
-export const isTargetPeriod = (value: unknown): value is TargetPeriod => (TARGET_PERIODS as readonly unknown[]).includes(value);
 
 /** The longest custom period: two years (the last day at most 730 days after the first), as the database checks. */
 export const CUSTOM_MAX_SPAN_DAYS = 730;

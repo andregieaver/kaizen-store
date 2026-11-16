@@ -130,6 +130,3 @@ export const FULFILMENT_AUDIT_ACTIONS = {
   /** A parcel undone (D174 follow-up): the parcel's id, its units, the units left to send, whether the order was reopened, the carrier it was booked with. */
   shipmentUndone: "order.shipment_undone",
 } as const;
-export type FulfilmentAuditAction = (typeof FULFILMENT_AUDIT_ACTIONS)[keyof typeof FULFILMENT_AUDIT_ACTIONS];
-export const FULFILMENT_AUDIT_ALL: readonly FulfilmentAuditAction[] = Object.values(FULFILMENT_AUDIT_ACTIONS);
-export const fulfilmentInOrdersArea = (): boolean => FULFILMENT_AUDIT_ALL.every((a) => areaOfAction(a) === "orders");

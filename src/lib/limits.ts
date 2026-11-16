@@ -30,7 +30,6 @@ export const LIMITS = {
 
 export type LimitKey = keyof typeof LIMITS;
 export const LIMIT_KEYS = Object.keys(LIMITS) as LimitKey[];
-export const STORE_LIMIT_KEYS = LIMIT_KEYS.filter((k) => LIMITS[k].scope === "store");
 
 export function isLimitKey(value: unknown): value is LimitKey {
   return typeof value === "string" && (LIMIT_KEYS as string[]).includes(value);

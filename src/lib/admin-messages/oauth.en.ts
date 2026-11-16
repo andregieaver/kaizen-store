@@ -141,7 +141,6 @@ export const oauthEn = {
     none: "No AI assistant or app reaches this store.",
     by: "Connected by {person}",
     cut: "Cut off",
-    cutDone: "Cut off from this store.",
     gone: "It no longer reaches this store.",
     cutTitle: "Cut off from this store",
     cutDescription: "Apps an owner cut off for someone. Connecting again does not bring this store back until you let it in again.",

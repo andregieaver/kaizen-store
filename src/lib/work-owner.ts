@@ -371,8 +371,6 @@ export function parseOwnerReportParams(
   };
 }
 
-export const isEmptyOwnerReport = (report: OwnerReport): boolean => report.rows.length === 0;
-
 const hoursOf = (minutes: number): string => hundredthsToDecimal(minutesToHundredths(minutes));
 
 /**

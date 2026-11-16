@@ -51,24 +51,6 @@ export type AgentActResult =
   | { ok: true; brief?: string | null; ran?: boolean; replies?: SavedReply[]; locale?: string; text?: string; language?: string }
   | { ok: false; problem: string };
 
-export const ACT_KINDS = [
-  "claim",
-  "reply",
-  "note",
-  "transfer",
-  "hand_back",
-  "end",
-  "ask_sign_in",
-  "brief",
-  "summary",
-  "partner",
-  "ask_partner",
-  "pause_partner",
-  "replies",
-  "translate",
-  "translate_reply",
-] as const;
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** An action's input from a form or the inbox, checked; null when it is not one. */

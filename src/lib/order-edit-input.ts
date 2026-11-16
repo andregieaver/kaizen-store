@@ -52,4 +52,3 @@ export const editPaidOutsideInput = z.object({
     .optional(),
   reference: z.string().trim().max(200).optional(),
 });
-export type EditPaidOutsideInput = z.infer<typeof editPaidOutsideInput>;

@@ -86,9 +86,11 @@ test("a tag goes on everyone the list finds, a code is limited to a segment, and
   await page.goto(`/admin/${STORE}/discounts/new`);
   const code = `MESSE${RUN}`.toUpperCase();
   await page.getByLabel(/^Code shoppers type/).fill(code);
+  // Who can use it is a row since round 22: opened first.
+  await page.locator("summary").filter({ hasText: /^Who/ }).click();
   await page.getByRole("radio", { name: "People in a segment" }).check();
   await page.getByRole("combobox", { name: /^Segment/ }).selectOption({ label: `Messe ${RUN}` });
-  await page.getByRole("button", { name: "Save code" }).click();
+  await page.getByRole("button", { name: `Save ${code}` }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/discounts$`));
 
   // The segment's page names the code, and Delete is refused while it does.

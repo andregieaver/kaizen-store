@@ -32,7 +32,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * visitors before that press.
  */
 
-export { DRAFT_PAGES_MAX, draftStoreInput, type DraftStoreArgs } from "@/lib/store-drafts";
+export { draftStoreInput, type DraftStoreArgs } from "@/lib/store-drafts";
 
 export type DraftResult = { ok: true; id: string; pages: number; theme: string | null } | { ok: false; problem: string };
 

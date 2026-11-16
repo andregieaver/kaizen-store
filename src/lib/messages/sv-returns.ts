@@ -32,7 +32,6 @@ export const svReturns: ReturnsMessages = {
   contactStore: (store: string) => `Kommer du inte vidare? Kontakta ${store}.`,
   limited: "Det har kommit för många förfrågningar just nu. Vänta en stund och försök igen, eller skriv till butiken.",
   nothing: "Det finns inget på den här ordern som du kan ångra nu.",
-  chooseLines: "Välj minst en vara att ångra.",
   quantityProblem: "Kontrollera antalen: du kan inte ångra fler än det som finns kvar av en vara.",
   errorsHeading: "Kontrollera de här fälten",
   fieldErrors: {
@@ -77,7 +76,6 @@ export const svReturns: ReturnsMessages = {
     button: "Skicka returförfrågan",
     sent: (number: string) => `Din returförfrågan ${number} är skickad. Butiken svarar med e-post.`,
     track: "Följ förfrågan",
-    pickLines: "Välj varorna du vill lämna tillbaka.",
   },
   windowStatutory: (day: string) => `Du kan ångra till och med ${day}.`,
   windowBefore: "Varorna har inte skickats ännu. Du kan ångra nu.",

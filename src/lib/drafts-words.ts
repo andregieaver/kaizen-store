@@ -18,9 +18,6 @@ export function editProblemText(code: string, text: string, words: DraftsWords["
   return english[code] === text && local[code] ? local[code] : text;
 }
 
-/** Why an order cannot be changed, in the person's language, from its code (`editBlock()`). */
-export const editBlockWords = (reason: string, words: DraftsWords["edit"]): string | null => (words.blocks as Record<string, string>)[reason] ?? null;
-
 /** Why an order cannot be changed, given in the code's English words (`orderEditProblemText()`), in the person's language; other text stays as written. */
 export function blockTextWords(text: string, words: DraftsWords["edit"]): string {
   const code = Object.entries(draftsEn.edit.blocks).find(([, english]) => english === text)?.[0];

@@ -159,7 +159,6 @@ export const AFFILIATE_NEEDS_BONUS = loyaltyEn.affiliate.needsBonus;
 
 /** What turning it on or off does, in the order the owner needs to know it. */
 export const AFFILIATE_ON_NOTES = loyaltyEn.affiliate.onNotes;
-export const AFFILIATE_OFF_NOTE = loyaltyEn.affiliate.offNote;
 
 type RuleWords = LoyaltyMessages["affiliateRules"];
 

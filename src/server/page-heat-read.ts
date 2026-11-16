@@ -66,13 +66,13 @@ export async function heatPages(storeId: string, { from, to, device }: HeatPerio
   }));
 }
 
-/** A page's views per device over `[from, to)`, every visitor's. */
-export async function pageDevices(storeId: string, page: string, { from, to }: HeatPeriod): Promise<Record<HeatDevice, number>> {
+/** A page's views per device over `[from, to)`, every visitor's or one A/B version's (`tag`). */
+export async function pageDevices(storeId: string, page: string, { from, to }: HeatPeriod, tag = ""): Promise<Record<HeatDevice, number>> {
   const rows = checkedRows(
     z.object({ device: DEVICE, views: col.minor }),
     await setBased(sql`
       select device, sum(views)::bigint as views from commerce.page_heat_days
-      where ${owned(storeId)} and tag = '' and page = ${page} and day >= ${from}::date and day < ${to}::date group by device
+      where ${owned(storeId)} and tag = ${tag} and page = ${page} and day >= ${from}::date and day < ${to}::date group by device
     `),
   );
   const out: Record<HeatDevice, number> = { mobile: 0, tablet: 0, desktop: 0 };
@@ -147,4 +147,82 @@ export async function pageHeat(storeId: string, { page, device, tag = "", from, 
     frustratedViews: sum("frustrated_views"),
     cells: checkedRows(CELL_ROW, cells),
   };
+}
+
+export type VersionBehaviour = {
+  /** The version's key (`a` the original). */
+  version: string;
+  views: number;
+  /** Shares of page views, 0..1. */
+  reachedHalf: number;
+  rageShare: number;
+  deadShare: number;
+  rageViews: number;
+  deadViews: number;
+  /** The page key this version was seen on most, for its heatmap. */
+  topPage: string;
+};
+
+/**
+ * Behaviour per version of one A/B test (D656 step 12, plan 8.5): its tagged totals (`{experiment}:{version}`) summed over every page and
+ * day, since a header test spans every page. Never a visitor: the rows are daily totals.
+ */
+export async function versionBehaviour(storeId: string, experimentId: string): Promise<VersionBehaviour[]> {
+  const rows = checkedRows(
+    z.object({ tag: col.text, views: col.minor, reached_half: col.minor, dead_views: col.minor, rage_views: col.minor, top_page: col.text }),
+    await setBased(sql`
+      with per as (
+        select tag, page, sum(views)::bigint as views, sum(dead_views)::bigint as dead_views, sum(rage_views)::bigint as rage_views,
+          coalesce(sum((select sum(r) from unnest(reach[11:21]) as r)), 0)::bigint as reached_half
+        from commerce.page_heat_days
+        where ${owned(storeId)} and tag like ${`${experimentId}:%`}
+        group by tag, page
+      )
+      select tag, sum(views)::bigint as views, sum(reached_half)::bigint as reached_half, sum(dead_views)::bigint as dead_views,
+        sum(rage_views)::bigint as rage_views, (array_agg(page order by views desc, page))[1] as top_page
+      from per group by tag order by tag
+    `),
+  );
+  return rows.map((r) => ({
+    version: r.tag.slice(experimentId.length + 1),
+    views: r.views,
+    reachedHalf: r.views > 0 ? r.reached_half / r.views : 0,
+    rageShare: r.views > 0 ? r.rage_views / r.views : 0,
+    deadShare: r.views > 0 ? r.dead_views / r.views : 0,
+    rageViews: r.rage_views,
+    deadViews: r.dead_views,
+    topPage: r.top_page,
+  }));
+}
+
+export type TaggedTest = { id: string; name: string; versions: { key: string; name: string }[] };
+
+/** Rows of (test, version) in order, gathered per test. */
+export function testsOfTags(rows: readonly { id: string; name: string; version: string; version_name: string | null }[]): TaggedTest[] {
+  const out = new Map<string, TaggedTest>();
+  for (const r of rows) {
+    const test = out.get(r.id) ?? { id: r.id, name: r.name, versions: [] };
+    test.versions.push({ key: r.version, name: r.version_name ?? r.version.toUpperCase() });
+    out.set(r.id, test);
+  }
+  return [...out.values()];
+}
+
+/** The tests with tagged totals for a page (the version chips on its map, D656 step 12), newest first, with their versions' names. */
+export async function taggedTests(storeId: string, page: string): Promise<TaggedTest[]> {
+  const rows = checkedRows(
+    z.object({ id: col.uuid, name: col.text, version: col.text, version_name: col.text.nullable() }),
+    await setBased(sql`
+      with tags as (
+        select distinct split_part(tag, ':', 1) as id, split_part(tag, ':', 2) as version
+        from commerce.page_heat_days where ${owned(storeId)} and page = ${page} and tag <> ''
+      )
+      select e.id, e.name, t.version, v.name as version_name
+      from tags t
+      join commerce.experiments e on e.id::text = t.id and e.store_id = ${storeId}::uuid
+      left join commerce.experiment_variants v on v.experiment_id = e.id and v.key = t.version
+      order by e.created_at desc, e.id, t.version
+    `),
+  );
+  return testsOfTags(rows);
 }

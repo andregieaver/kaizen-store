@@ -12,9 +12,6 @@ const FINAL: ReadonlySet<HandoffStatus> = new Set(["done", "declined", "failed",
 /** A status nothing changes any more: the task ended. */
 export const isFinal = (status: HandoffStatus): boolean => FINAL.has(status);
 
-export const isHandoffStatus = (value: unknown): value is HandoffStatus =>
-  typeof value === "string" && (HANDOFF_STATUSES as readonly string[]).includes(value);
-
 /** Tasks one person may hand over in a day, each way. */
 export const HANDOFFS_PER_DAY = 20;
 export const TASK_MAX = 4000;

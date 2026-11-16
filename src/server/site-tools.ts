@@ -1022,12 +1022,3 @@ export async function preflightPlatformSiteTool(ctx: SiteToolContext, name: stri
   if (name === "use_header_footer") return preflightChooseHeaderFooter(ctx, input as UseHeaderFooterArgs);
 }
 
-/** The site tools' approval words on Kaizena Flow's own site, from its own pages, menus and logos; null for any other tool. */
-export async function platformSiteApprovalWords(ctx: SiteToolContext, name: string, args: Record<string, unknown>): Promise<string | null> {
-  if (name === "publish_page") return publishApprovalWords(ctx, args);
-  if (name === "set_page_place") return placeApprovalWords(ctx, args);
-  if (name === "save_menu") return menuApprovalWords(ctx, args);
-  if (name === "set_header_footer") return headerFooterApprovalWords(ctx, args);
-  if (name === "use_header_footer") return chooseHeaderFooterApprovalWords(ctx, args);
-  return null;
-}

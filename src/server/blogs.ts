@@ -121,12 +121,6 @@ export async function findBlog(storeId: string, handle: string | null): Promise<
   return (handle === null ? blogs.find((b) => b.main) : blogs.find((b) => !b.main && b.handle === handle)) ?? null;
 }
 
-/** Where an article lives: its blog and its address inside a market. */
-export async function articlePlace(storeId: string, content: Pick<PageContent, "blogId">, slug: string): Promise<{ blog: Blog; path: string } | null> {
-  const blog = blogOfArticle(await storeBlogs(storeId), content);
-  return blog ? { blog, path: articlePath(blog, slug) } : null;
-}
-
 // ---------------------------------------------------------------------------------------------------------------------------------
 // The feed
 // ---------------------------------------------------------------------------------------------------------------------------------

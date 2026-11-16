@@ -10,8 +10,6 @@ import { SOURCE_MAX, TARGET_MAX } from "./redirect-path";
 
 export const REDIRECT_TOOLS = ["redirect_overview", "add_redirect"] as const;
 
-/** The windows the 404 report offers (`NOT_FOUND_WINDOWS`), the same three days counts. */
-export const OVERVIEW_WINDOWS = [7, 30, 90] as const;
 export const OVERVIEW_ROWS_MAX = 20;
 export const OVERVIEW_ROWS_DEFAULT = 10;
 
@@ -29,9 +27,6 @@ export const oneLine = (text: string, max = 200): string => {
 export function redirectSummary(from: string, to: string): string {
   return `Redirect ${oneLine(from)} to ${oneLine(to)} in every country, as a permanent redirect (308).`;
 }
-
-/** A count that is a lower bound, in words: a request served from a cache is never seen. */
-export const atLeast = (n: number): string => `at least ${n}`;
 
 export type OverviewCounts = { manual: number; product: number; category: number; tag: number; page: number; article: number; total: number; limit: number };
 

@@ -39,9 +39,6 @@ type Row = Record<string, unknown>;
  * an invoice twice and never spent on two; a line Stripe did not take is given back (`applyCreditToInvoice()`).
  */
 
-/** The events the billing webhook listens to beyond subscriptions: `BILLING_EVENTS`, which the webhook is set up with. */
-export const REFERRAL_INVOICE_EVENTS = ["invoice.created", "invoice.paid", "invoice.voided", "invoice.deleted", "credit_note.created"] as const;
-
 /** The store an invoice is for: its Stripe customer account is the store's account in that mode, else its subscription's metadata. */
 export async function storeForInvoice(mode: PaymentModeName, invoice: InvoiceShape): Promise<string | null> {
   if (invoice.customer_account) {

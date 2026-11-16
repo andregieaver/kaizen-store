@@ -256,7 +256,8 @@ async function detectOrderEvents(now: Date): Promise<number> {
       returning id
     `,
     // A customer's request code may carry out (B3, D640): an address change (with the new address as fields) or a cancellation, asked on the
-    // store's chat by the order's own signed-in customer, the order paid, not held and nothing of it sent. Any other request stays a person's.
+    // store's chat by the order's own signed-in customer, or by email and confirmed from the order's own address (D685), the order paid, not
+    // held and nothing of it sent. Any other request stays a person's.
     sql`
       with reacting as (${REACTING})
       insert into commerce.autopilot_events (store_id, kind, ref, facts)
@@ -268,9 +269,11 @@ async function detectOrderEvents(now: Date): Promise<number> {
         and o.restricted_at is null and o.anonymised_at is null
       where a.confirmer = 'staff' and a.status = 'proposed' and a.kind in ('change_address', 'cancel_order') and a.created_at > ${since}
         and (a.kind <> 'change_address' or a.args ? 'address')
-        and c.source = 'site' and c.customer_id is not null
-        and (o.customer_id = c.customer_id
-          or exists (select 1 from commerce.customers cu where cu.store_id = c.store_id and cu.id = c.customer_id and lower(cu.email) = lower(o.email)))
+        and ((c.source = 'site' and c.customer_id is not null
+          and (o.customer_id = c.customer_id
+            or exists (select 1 from commerce.customers cu where cu.store_id = c.store_id and cu.id = c.customer_id and lower(cu.email) = lower(o.email))))
+          -- By email, once the customer confirmed it from the link sent to the order's own address (D685).
+          or (c.source = 'email' and a.customer_confirmed_at is not null and lower(c.contact_email) = lower(o.email)))
         and o.status in ('paid', 'authorized') and o.held_at is null
         and not exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null)
       on conflict (store_id, kind, ref) do nothing

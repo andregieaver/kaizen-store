@@ -1364,9 +1364,10 @@ localization, menus, SEO) call `t()` from `src/lib/i18n.ts`. Therefore:
   gets `workOn` (`src/server/stores.ts`, like `bookingsOn`, `deliveriesOn`);
   `setWorkModule()` + `saveWorkModuleAction` + a card on the Features page
   (owner only), audit `work.enabled/disabled`.
-* **WP1a did the data level only:** `Store.workOn` (`src/server/stores.ts`),
-  `MODULES` / `StoreModule` (`src/lib/store-modules.ts`) and the widened
-  `stores_modules` check. **WP5 must wire:** the Features card and
+* **WP1a did the data level only:** `Store.workOn` (`src/server/stores.ts`)
+  and the widened `stores_modules` check, which holds the names a store can
+  have (bookings, deliveries, work; the file that copied it as `MODULES` was
+  deleted in bloat review step 0.36). **WP5 must wire:** the Features card and
   `setWorkModule()` (same `array_agg(distinct m) ... array_remove` update as
   `src/server/bookings.ts`), the store admin layout tab and group,
   `PageNeeds` (`src/lib/admin-map.ts`: add `"work"`) with its use in
@@ -2237,11 +2238,9 @@ is still the source of truth for the switch. Only the screens moved, and the per
   lock. In the browser `useWorkTimer({ showStore, accountId, serverTimer })` starts, stops and discards against the
   timer's own store (`TimerTarget` and `ClientTimer` carry `storeSlug`/`storeName`), and the bar names the store when the
   person has Work on in more than one. Estimate warnings work across stores unchanged.
-* **Old addresses.** `LEGACY_WORK_REDIRECTS` (`work-paths.ts`, added to `redirects` in `next.config.ts`; temporary,
-  307): `/admin/{store}/work`, `/admin/{store}/work/{path}` and `/admin/{store}/settings/work` lead to
-  `/admin/account/work/s/{store}[/{path}]` (the query string is kept). The first segment excludes `account` and `platform`
-  so `/admin/account/work` does not match `/admin/:store/work` and loop. A redirect names nothing of the store: the target
-  page checks membership. Tested in `work-paths.test.ts` (with Next's own path matcher) and `e2e/work.spec.ts`.
+* **Old addresses.** Work's old store-level addresses (`/admin/{store}/work…` and `/admin/{store}/settings/work`) redirected to the
+  new ones until they were removed on 16 November 2026 (bloat review step 0.37), before the platform opened, while only the team held
+  an old address.
 * **Tests.** PGlite: `commerce.test.ts` (one timer per person and store, across stores with the entry logged to the first
   store, the unique index, the clean-up of timers from before); `work-time.int.test.ts` (a timer started in another store
   stops and logs the first, `getRunningTimer(account)` names the store, a left store hides it); `work-paths.test.ts`;

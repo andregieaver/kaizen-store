@@ -533,7 +533,8 @@ function TermRow({
             <span className="font-mono text-xs text-muted">{term.slug}</span>
             {term.rules && <span className="text-xs text-muted">{countWords(term.rules.conditions.length, rw.summary)}</span>}
             {seo && (
-              <span className="text-xs text-muted">{seoLanguages.length > 0 ? fillWords(w.seoIn, { languages: seoLanguages.join(", ") }) : w.seoNone}</span>
+              // On a phone the row says only what is set (round 25): "no text of its own" waits for wider screens.
+              <span className={`text-xs text-muted ${seoLanguages.length > 0 ? "" : "max-sm:hidden"}`}>{seoLanguages.length > 0 ? fillWords(w.seoIn, { languages: seoLanguages.join(", ") }) : w.seoNone}</span>
             )}
             {unitPrice && marked && (
               <span className="text-xs text-muted">
@@ -562,17 +563,37 @@ function TermRow({
               </button>
             </span>
           ) : (
+            // Round 25 (D693): on a phone a row has one action, Change; ordering, fields and Delete come with it opened.
             <span className="flex flex-wrap gap-2">
-              {page && !term.rules && <TermProductOrder termId={term.id} setup={page} />}
-              {fields && <TermFieldsButton term={term} setup={fields} />}
+              <span className="contents max-sm:hidden">
+                {page && !term.rules && <TermProductOrder termId={term.id} setup={page} />}
+                {fields && <TermFieldsButton term={term} setup={fields} />}
+              </span>
               <button type="button" onClick={() => setEditing(true)} className={button} aria-label={fillWords(w.changeAria[term.kind], { name: term.name })}>
                 {w.change}
               </button>
-              <button type="button" onClick={() => setConfirming(true)} className={button} aria-label={fillWords(w.deleteAria[term.kind], { name: term.name })}>
+              <button type="button" onClick={() => setConfirming(true)} className={`${button} max-sm:hidden`} aria-label={fillWords(w.deleteAria[term.kind], { name: term.name })}>
                 {w.delete}
               </button>
             </span>
           )}
+        </div>
+      )}
+      {editing && (
+        <div className="flex flex-wrap gap-2 border-t border-line pt-3 sm:hidden">
+          {page && !term.rules && <TermProductOrder termId={term.id} setup={page} />}
+          {fields && <TermFieldsButton term={term} setup={fields} />}
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              setConfirming(true);
+            }}
+            className={button}
+            aria-label={fillWords(w.deleteAria[term.kind], { name: term.name })}
+          >
+            {w.delete}
+          </button>
         </div>
       )}
       {note && (

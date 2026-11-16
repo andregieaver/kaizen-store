@@ -41,11 +41,6 @@ export const NO_PROBLEMS: FormProblems = { fields: {}, general: [] };
 export const hasProblems = (problems: FormProblems): boolean =>
   Object.keys(problems.fields).length > 0 || problems.general.length > 0;
 
-/** Every message, once, for a summary that is read out. */
-export const allMessages = (problems: FormProblems): string[] => [
-  ...new Set([...Object.values(problems.fields), ...problems.general]),
-];
-
 /** The schema's issues as messages per top-level field: the first for a field, and `general` for the rest. */
 export function issuesToProblems(error: z.ZodError, rename: Record<string, string> = {}): FormProblems {
   const fields: Record<string, string> = {};

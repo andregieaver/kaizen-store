@@ -1,4 +1,4 @@
-# Heatmaps and recordings (decision D656, planned)
+# Heatmaps and recordings (decision D656; steps 1 to 13 built, step 14 next)
 
 A built-in alternative to Microsoft Clarity and Hotjar, for store owners and for Kaizena Flow's own site. It covers:
 
@@ -2038,6 +2038,10 @@ account page round trip and the cart drawer's pause are not in the e2e yet.
 
 **Done when:** the tests pass and the DPIA draft is committed.
 
+*As built (16 Nov 2026):* a sealed file is `{ v: 1, events }`, the segments' events in seq order; an `all.gz` left by an earlier try that
+stopped half way is removed and written again. The DPIA draft is `docs/dpia-recordings.md`; it marks the player's sanitising and CSP as not
+yet built (step 11).
+
 ### Step 11: The recordings screens, and the recordings switch
 
 **Files:**
@@ -2120,6 +2124,15 @@ account page round trip and the cart drawer's pause are not in the e2e yet.
 watches the recording in production. **Send the owner screenshots** of the list, the player (a phone and a computer recording) and the
 settings row.
 
+*As built (16 Nov 2026):* the events route asks `checkPermission(slug, "owner")` and answers 404 itself (a route handler, so no
+`notFound()`); the audit, the first viewing and the gzip are `serveRecordingEvents()` in `recordings-read.ts`, whose `log` is injectable,
+and the failed-audit case is an integration test there. The player's policy is `replayRouteHeaders()` in `src/lib/csp.ts`, spread after the
+base headers in `next.config.ts` for `/admin/:store/analytics/recordings/:id`. The timeline's marks are the recorder's own custom events
+(`kz-page`, `kz-click`; `timelineMarks()` in `recording.ts`). The list's versions show as their letter. The share is radio buttons in
+the row (one press each), the confirmations are asked only while the store does not record yet, and *Watch recordings* on the heatmaps
+hub and map opens the list on that page with rage clicks. The e2e feeds a small hand-drawn page to the player (`RECORDING_EVENTS` may
+name a real events file for screenshots).
+
 ### Step 12: Tying it to A/B tests
 
 There are no new tables and no per-visitor rows: behaviour per version comes from the tagged totals.
@@ -2165,6 +2178,14 @@ There are no new tables and no per-visitor rows: behaviour per version comes fro
 **Done when:** a running test on a test store shows behaviour per version, and a version's heatmap draws on that version's own picture.
 **Send the owner a screenshot** of the behaviour section.
 
+*As built (16 Nov 2026):* `frustratedVersion(rows, minViews)` takes the minimum as an argument (the callers pass `FLAG_VERSION_VIEWS`),
+and the threshold test uses 2,000 against 2,000 page views (1,999 is below the minimum, so never a flag). The warning is drawn above the
+details (it is the one thing Homer needs), the behaviour table inside them, after the funnel. `versionBehaviour()` also gives each
+version's most viewed page, which the *Heatmap* link opens. The chips' names are the test's name and the version's (`taggedTests()`,
+`recordingTests()`, both through `testsOfTags()`); a tag that names no test of the store offers no chip, and the heatmap page accepts only a
+tag its chips offer. The platform's advice puts the line first for a running test. The e2e of the owner's screen is
+`e2e/signed-in/ab-behaviour.spec.ts`.
+
 ### Step 13: Words for the law, and the docs
 
 **Files.**
@@ -2196,6 +2217,11 @@ There are no new tables and no per-visitor rows: behaviour per version comes fro
   (`data-kz-private`), and is never on pay routes.
 
 **Done when:** the docs say what was built, and `brand.scan.test.ts` and `rules-index.test.ts` pass.
+
+*As built (16 Nov 2026):* the two rules are named for what each covers ("Heatmaps and recordings: what the storefront sends (D656, …)" and
+"Heatmaps and recordings: the owner's screens (D656, …)"), since one heading may match only one CLAUDE.md line per section; the A/B note
+is its own section after phase 16 of `ab-testing.md` (phase 11 is no longer the last). In production, `site_from_store` is on and the
+house store `kaizenaflow` has heatmaps on and recordings off; `recordings_open` is off. The owner's four tasks are in the decision row.
 
 ### Step 14: The AI manager's tools (last)
 

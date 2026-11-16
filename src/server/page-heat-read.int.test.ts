@@ -13,7 +13,7 @@ const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 vi.mock("./experiments", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments")>()), runningExperiments: async () => [{ id: EXP }] }));
 
 const { recordHeat } = await import("./page-heat");
-const { heatPages, pageDevices, pageHeat } = await import("./page-heat-read");
+const { heatPages, pageDevices, pageHeat, taggedTests, versionBehaviour } = await import("./page-heat-read");
 
 /** Heatmaps' reads (D656 step 7): a view with a verified version counts once in the page list, and a page's map sums its days. */
 
@@ -83,5 +83,15 @@ describe("heatmaps' reads (D656)", () => {
     expect(all.attHeightSum).toBe(3000);
     expect(all.cells).toEqual([{ anchor: "@main", cx: 2, cy: 3, clicks: 1, dead: 1, rage: 0 }]);
     expect((await pageHeat(storeId, { page: "/no/p/demo-mug", device: "mobile", from: "2026-10-01", to: "2026-10-02" })).views).toBe(0);
+  });
+
+  it("reads a test's behaviour per version over every page, and leaves out a test the store does not have (D656 step 12)", async () => {
+    expect(await versionBehaviour(storeId, EXP)).toEqual([
+      { version: "b", views: 1, reachedHalf: 1, rageShare: 0, deadShare: 1, rageViews: 0, deadViews: 1, topPage: "/no/p/demo-mug" },
+    ]);
+    expect(await versionBehaviour(storeId, "00000000-0000-4000-8000-000000000000")).toEqual([]);
+    expect(await pageDevices(storeId, "/no/p/demo-mug", PERIOD, `${EXP}:b`)).toEqual({ mobile: 1, tablet: 0, desktop: 0 });
+    // The tag names no test of this store, so it offers no chip.
+    expect(await taggedTests(storeId, "/no/p/demo-mug")).toEqual([]);
   });
 });

@@ -24,6 +24,8 @@ export const PRIVATE_SEGMENTS: readonly string[] = [
   "sign-in",
   "ab",
   "cookies",
+  // A request's confirmation link holds its secret token (D685).
+  "request",
 ];
 
 /** Copy of `RESERVED_STORE_PAGE_SLUGS` (`page-content.ts`): the store's own routes, never one of its pages. */
@@ -40,6 +42,7 @@ export const RESERVED_PAGE_SEGMENTS: readonly string[] = [
   "order",
   "p",
   "products",
+  "request",
   "returns",
   "search",
   "subscription",

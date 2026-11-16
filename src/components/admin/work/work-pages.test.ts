@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WORK_SETTINGS, sellerReadiness } from "@/lib/work-settings";
 import { workOverview, type OverviewEntry, type OverviewInvoice } from "@/lib/work-overview";
 
-import { WorkComingSoon } from "./coming-soon";
 import { SeriesForm, WorkSettingsForm } from "./settings-form";
 import { OverviewBody, type OverviewProps } from "./work-overview";
 import { WorkOff } from "./work-off";
@@ -245,12 +244,9 @@ describe("the numbering form", () => {
 });
 
 describe("the stand-ins", () => {
-  it("point to the switch when Work is off, and back to Work while a page is still to come", () => {
+  it("point to the switch when Work is off", () => {
     const off = html(createElement(WorkOff, { storeSlug: "kaffe", title: "Clients" }));
     expect(off).toContain('href="/admin/account/work/settings"');
     expect(off).toContain("Work is off");
-    const soon = html(createElement(WorkComingSoon, { storeSlug: "kaffe", title: "Clients" }));
-    expect(soon).toContain("Coming in the next step.");
-    expect(soon).toContain('href="/admin/account/work/s/kaffe"');
   });
 });

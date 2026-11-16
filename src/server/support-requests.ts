@@ -19,8 +19,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * A customer's requests to staff carried out by code (`docs/100-day-challenge.md` B3, D640). A request the support chat passed to a person
- * (`request_staff_action`) is done by code only when the person asking is the order's own customer, signed in on the store's chat (never a
- * visitor who typed an order number, never an email, whose sender can be anyone), and only before anything of the order is sent:
+ * (`request_staff_action`) is done by code only when the person asking is the order's own customer, signed in on the store's chat, or wrote
+ * by email and confirmed it from the one-time link sent to the order's own address (D685, `src/server/request-confirm.ts`; never a visitor who
+ * typed an order number, never an email on its own, whose sender can be anyone), and only before anything of the order is sent:
  *
  * - an address change, with the new address the customer gave as fields (`carry_out_address_change`), through the order page's own
  *   `updateOrderContact()`;
@@ -59,10 +60,10 @@ async function requestOf(store: Store, id: string): Promise<Request> {
     REQUEST,
     sql`
       select a.id, a.kind, a.status, a.args, a.conversation_id, c.source,
-        coalesce(c.source = 'site' and c.customer_id is not null and o.id is not null and (
+        coalesce((c.source = 'site' and c.customer_id is not null and o.id is not null and (
           o.customer_id = c.customer_id
           or exists (select 1 from commerce.customers cu where cu.store_id = c.store_id and cu.id = c.customer_id and lower(cu.email) = lower(o.email))
-        ), false) as verified,
+        )) or (c.source = 'email' and a.customer_confirmed_at is not null and o.id is not null and lower(c.contact_email) = lower(o.email)), false) as verified,
         o.id as order_id, o.number as order_number, o.status::text as order_status,
         exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as sent,
         coalesce(o.held_at is not null, false) as held
@@ -85,7 +86,7 @@ function refusal(r: Request, kind: "change_address" | "cancel_order"): string | 
   if (!r.verified) {
     return r.source === "site"
       ? "The person asking is not signed in as the order's customer, so code does not act on it: a person answers it."
-      : "The request came by email, whose sender cannot be checked, so code does not act on it: a person answers it.";
+      : "The request came by email and the customer has not confirmed it from the link sent to the order's own address, so code does not act on it: a person answers it.";
   }
   if (r.held) return `Order ${r.order_number} is held: a person decides about it.`;
   if (r.sent) return `Order ${r.order_number} has been sent already, so it cannot be changed: a person answers the customer.`;

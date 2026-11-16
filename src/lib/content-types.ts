@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  CONTENT_TYPE_KEY,
   EMPTY_DATA,
   fieldDefsSchema,
   isEmptyValue,
@@ -44,15 +43,10 @@ import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 /** The cache tag of an owner's types and entries: every writer's caller refreshes it, and every reader on the site tags itself with it. */
 export const contentTag = (owner: string | null) => `content:${owner ?? "kaizena"}`;
 
-/** The most types an owner (a store, or Kaizena Flow's own site) keeps, and entries of all its types together. */
-export const MAX_CONTENT_TYPES = 50;
-export const MAX_ENTRIES = 10_000;
 export const TYPE_NAME_MAX = 80;
 export const TYPE_SLUG_MAX = 60;
 export const ENTRY_SLUG_MAX = 120;
 
-/** A type's key: made once and never changed, what fields and grids name a type by, so a copied store needs no remapping. */
-export const TYPE_KEY = CONTENT_TYPE_KEY;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /** The field types a type's title, summary and picture may be. */
@@ -251,7 +245,6 @@ export const entryInput = z.object({
   seo: seoSchema.default({ title: "", description: "" }),
   seoTranslations: z.record(z.string().min(2).max(10), seoSchema).default({}),
 });
-export type EntryInput = z.infer<typeof entryInput>;
 
 /** Why an entry cannot be published as it is: a title in the main language, besides its type's required fields. */
 export function publishProblems(type: Pick<ContentType, "fields" | "titleField">, content: EntryContent, main: string): string[] {

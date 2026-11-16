@@ -1,0 +1,7 @@
+ALTER TABLE "commerce"."pages" DROP CONSTRAINT "pages_store_slug_not_reserved";--> statement-breakpoint
+ALTER TABLE "commerce"."support_actions" ADD COLUMN "confirm_token_hash" text;--> statement-breakpoint
+ALTER TABLE "commerce"."support_actions" ADD COLUMN "confirm_sent_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."support_actions" ADD COLUMN "customer_confirmed_at" timestamp with time zone;--> statement-breakpoint
+CREATE UNIQUE INDEX "support_actions_confirm_token_key" ON "commerce"."support_actions" USING btree ("confirm_token_hash");--> statement-breakpoint
+ALTER TABLE "commerce"."pages" ADD CONSTRAINT "pages_store_slug_not_reserved" CHECK ("commerce"."pages"."store_id" is null or "commerce"."pages"."type" <> 'page' or split_part("commerce"."pages"."slug", '/', 1) not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'request', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw'));--> statement-breakpoint
+ALTER TABLE "commerce"."support_actions" ADD CONSTRAINT "support_actions_confirm" CHECK (("commerce"."support_actions"."confirm_token_hash" is null) = ("commerce"."support_actions"."confirm_sent_at" is null) and ("commerce"."support_actions"."customer_confirmed_at" is null or ("commerce"."support_actions"."confirm_sent_at" is not null and "commerce"."support_actions"."confirmer" = 'staff')));

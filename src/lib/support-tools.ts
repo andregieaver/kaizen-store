@@ -108,8 +108,6 @@ export const KAIZEN_SUPPORT_TOOLS = [
   supportTool("find_admin_page", "Find the admin page that does something, as a link.", z.object({ query: z.string().trim().min(1).max(200) })),
 ] as const;
 
-export type SupportToolName = (typeof SUPPORT_TOOLS)[number]["name"];
-
 /**
  * A return's exchange as the support tools tell the AI (D239, `docs/wave-3-exchanges.md` 2.6): the state only, in words for the model to put in the
  * customer's language. Never a price or a difference (the customer's own exchange page and emails say those), and no action: the AI never proposes,

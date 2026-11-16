@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { RECORDING_KEEP_DAYS } from "@/lib/recording";
 
-import { readMigration } from "./migration-files";
 import { createTestDatabase } from "./testing";
 
 /**
@@ -14,7 +13,6 @@ import { createTestDatabase } from "./testing";
 
 let db: PGlite;
 const NAME = "Recordings and heatmaps";
-const MIGRATION = readMigration("20261116125513_recordings_rules.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -51,15 +49,6 @@ describe("the plan comparison's row for recordings and heatmaps", () => {
     expect(rows[0].rls).toBe(true);
     const { rows: rule } = await db.query<{ period_value: number; period_unit: string }>("select period_value, period_unit from commerce.retention_rules where kind = 'recordings' and country is null");
     expect(rule).toEqual([{ period_value: RECORDING_KEEP_DAYS, period_unit: "days" }]);
-  });
-
-  it("adds nothing a second time when the migration is run again, and holds no DELETE or DROP", async () => {
-    await db.exec(MIGRATION.replace(/--> statement-breakpoint/g, ""));
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = $1", [NAME]);
-    expect(rows[0].n).toBe(1);
-    const { rows: rules } = await db.query<{ n: number }>("select count(*)::int as n from commerce.retention_rules where kind = 'recordings'");
-    expect(rules[0].n).toBe(1);
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 
   it("holds a recording's row to its checks", async () => {

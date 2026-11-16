@@ -48,6 +48,7 @@ export const heatmapsEn = {
     collecting: "Collecting. A page's map appears after {n} page views.",
     noneStuck: "No page has enough views yet to say where visitors get stuck.",
     frontPage: "Front page",
+    watch: "Watch recordings",
   },
   map: {
     back: "Heatmaps",
@@ -56,6 +57,8 @@ export const heatmapsEn = {
     days: "{n} days",
     viewLabel: "What the map shows",
     deviceLabel: "Device",
+    versionLabel: "A/B test version",
+    everyone: "Every visitor",
     periodLabel: "Period",
     taking: "Taking a picture of this page. It takes a minute or two.",
     failed: "The picture could not be taken: {problem}",

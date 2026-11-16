@@ -80,13 +80,14 @@ export function DraftActions({ store, test, ready }: { store: string; test: Expe
   const base = `/admin/${store}/experiments`;
   const [ask, setAsk] = useState<"schedule" | "delete" | null>(null);
   const [at, setAt] = useState("");
-  const unchanged = test.variants.find((v) => v.key !== "a" && !v.changed && v.pageId);
+  // The version that still needs the builder: one unchanged, or one whose changes are saved but not published.
+  const unchanged = test.variants.find((v) => v.key !== "a" && (!v.changed || v.unpublished) && v.pageId);
   return (
     <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
       <div className="flex flex-wrap items-center gap-2">
         {unchanged ? (
           <ButtonLink kind="main" size="header" href={`${base}/variants/${unchanged.pageId}`}>
-            {fillWords(c.change, { name: unchanged.name })}
+            {fillWords(unchanged.unpublished ? c.publishChanges : c.change, { name: unchanged.name })}
           </ButtonLink>
         ) : (
           <Button kind={ready ? "main" : "secondary"} size="header" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))}>
@@ -201,7 +202,7 @@ export function DraftPanel({
   const versions = test.variants.filter((v) => v.key !== "a");
   const needsBlock = GOAL_WORDS[test.goal].needsBlock;
   const checks: { ok: boolean; text: string }[] = [
-    ...versions.map((v) => ({ ok: v.changed, text: fillWords(v.changed ? c.changed : c.notChanged, { name: v.name }) })),
+    ...versions.map((v) => ({ ok: v.changed && !v.unpublished, text: fillWords(v.unpublished ? c.unpublished : v.changed ? c.changed : c.notChanged, { name: v.name }) })),
     { ok: test.page.published, text: test.page.published ? c.published : c.notPublished },
     { ok: !needsBlock || Boolean(test.goalBlock), text: needsBlock && !test.goalBlock ? c.goalMissing : fillWords(c.goalSet, { goal: w.goals[test.goal].label.toLowerCase() }) },
   ];
@@ -278,9 +279,10 @@ export function DraftPanel({
                     )}
                   </span>
                 </span>
+                {v.key !== "a" && v.unpublished && <span className="text-caption text-warning-text">{w.card.different.unpublished}</span>}
                 {v.key !== "a" &&
                   (lines.length === 0 ? (
-                    <span className="text-caption text-muted">{w.card.different.none}</span>
+                    !v.unpublished && <span className="text-caption text-muted">{w.card.different.none}</span>
                   ) : (
                     <ul className="flex list-disc flex-col gap-1 pl-5 text-caption text-ink-2">
                       {lines.slice(0, 5).map((line, i) => (

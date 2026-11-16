@@ -9,8 +9,6 @@ import type { SectionStyles } from "./section-styles";
 export const pad = (y: number, x = 20) => ({ padding: { top: y, right: x, bottom: y, left: x } });
 /** A size in rem. */
 export const rem = (value: number) => ({ value, unit: "rem" as const });
-/** A size in pixels. */
-export const px = (value: number) => ({ value, unit: "px" as const });
 /** A size in em (letter spacing). */
 export const em = (value: number) => ({ value, unit: "em" as const });
 /** A line height with no unit. */

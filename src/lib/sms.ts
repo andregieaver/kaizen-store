@@ -118,9 +118,6 @@ export function nextSendTime(now: Date, country: string, hours: { from: number; 
   return atWallHour(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), hours.from, zone);
 }
 
-/** 46elks writes money in ten-thousandths of the account's currency; minor units are hundredths. */
-export const unitsToMinor = (units: number): number => Math.round(units / 100);
-
 /** A campaign's estimate: one recipient's price per country (from 46elks's own dry run), times its recipients and the text's parts. */
 export function campaignEstimate(perCountry: ReadonlyMap<string, number>, recipients: ReadonlyMap<string, number>, parts: number): number {
   let units = 0;
@@ -147,7 +144,6 @@ export const smsSettingsInput = z.object({
   /** The most a calendar month's texts may cost, in the 46elks account's currency (whole units). */
   monthlyCap: z.coerce.number().int().min(0, "The cap is 0 or more.").max(1_000_000, "The cap is at most 1 000 000.").default(500),
 });
-export type SmsSettingsInput = z.infer<typeof smsSettingsInput>;
 
 export const smsCampaignInput = z.object({
   title: z.string().trim().min(1, "Give the text message a name.").max(120, "A name is at most 120 characters."),
@@ -155,7 +151,6 @@ export const smsCampaignInput = z.object({
   /** `all`: every SMS subscriber; else a saved segment's people who are SMS subscribers. */
   segmentId: z.string().uuid().nullable().default(null),
 });
-export type SmsCampaignInput = z.infer<typeof smsCampaignInput>;
 
 export const SMS_CAMPAIGN_STATUSES = ["draft", "sending", "sent", "stopped"] as const;
 export type SmsCampaignStatus = (typeof SMS_CAMPAIGN_STATUSES)[number];

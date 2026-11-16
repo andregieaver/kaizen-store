@@ -33,7 +33,6 @@ export const TARGETS_FOR: Record<"store" | "platform", readonly GoalTargetKind[]
 export const GOALS_ACTIVE_MAX = 5;
 export const TARGETS_MAX = 5;
 export const GOAL_STATUSES = ["active", "met", "dropped"] as const;
-export type GoalStatus = (typeof GOAL_STATUSES)[number];
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date is YYYY-MM-DD.");
 

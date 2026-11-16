@@ -74,6 +74,3 @@ export function nextSteps(clock: RequestClock, kind: PrivacyKind, now: Date): st
   return steps;
 }
 
-/** The order the list shows requests in: open ones first, the soonest due first. */
-export const WHICH_REQUESTS = ["open", "overdue", "due_soon", "answered", "all"] as const;
-export type WhichRequests = (typeof WHICH_REQUESTS)[number];

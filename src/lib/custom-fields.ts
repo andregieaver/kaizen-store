@@ -522,12 +522,6 @@ export function withParents(
   return [...all];
 }
 
-/** A group's rules for a kind of thing only: a rule about something else (a page's role on a product) would never match. */
-export const locationFor = (group: FieldGroup, entity: FieldEntity): RuleGroups<LocationRule> =>
-  group.location
-    .map((all) => all.filter((rule) => LOCATION_PARAMS[entity].some((p) => p.param === rule.param)))
-    .filter((all) => all.length > 0);
-
 // ---------------------------------------------------------------------------
 // Values as text, and when they are empty
 // ---------------------------------------------------------------------------

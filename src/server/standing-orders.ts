@@ -32,10 +32,8 @@ import { storeFeeBps } from "./billing";
 import { cancelUnpaidOrder, completeOrderPayment, placeOrder } from "./checkout";
 import { ensureTestAccount } from "./connect";
 import type { Address } from "./orders";
-import { refreshTag } from "./refresh";
 import { getCheckoutAccount } from "./settings";
 import { sendDeliveryCard, sendDeliveryPrepared, sendDeliveryStarted } from "./shopper-emails";
-import { storeTag } from "./stores";
 import { platformStripe } from "./stripe";
 import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
 
@@ -131,18 +129,6 @@ export async function saveSchedule({ account, store }: Membership, input: z.infe
     active: input.active,
   });
   return { ok: true };
-}
-
-/** Switches weekly deliveries on or off (D102): off, shoppers cannot start lists, and cutoffs stop. */
-export async function setDeliveriesModule({ account, store }: Membership, enabled: boolean): Promise<void> {
-  await db().execute(sql`
-    update commerce.stores set modules = case when ${enabled}
-      then (select array_agg(distinct m) from unnest(modules || array['deliveries']) m)
-      else array_remove(modules, 'deliveries') end
-    where id = ${store.id}::uuid
-  `);
-  await audit(account.id, store.id, enabled ? "deliveries.enabled" : "deliveries.disabled", {});
-  refreshTag(storeTag(store.slug));
 }
 
 // ---------------------------------------------------------------------------
@@ -1129,26 +1115,6 @@ export async function listStandingOrders(storeId: string): Promise<ListAdminRow[
     cardLabel: String(row.card_label ?? ""),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   }));
-}
-
-/** A customer's lists are forgotten with their account; deliveries' orders stay, as any order. */
-export async function forgetStandingOrders(storeId: string, customerId: string): Promise<void> {
-  const lists = await db().execute<Row>(sql`
-    select id, stripe_account, mode, payment_method from commerce.standing_orders
-    where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid
-  `);
-  for (const list of lists) {
-    const stripe = list.mode ? platformStripe(list.mode as PaymentModeName) : null;
-    if (stripe && list.payment_method && list.stripe_account) {
-      try {
-        await stripe.paymentMethods.detach(String(list.payment_method), {}, { stripeAccount: String(list.stripe_account) });
-      } catch {
-        // Gone already.
-      }
-    }
-    await db().execute(sql`delete from commerce.standing_deliveries where store_id = ${storeId}::uuid and standing_order_id = ${String(list.id)}::uuid`);
-    await db().execute(sql`delete from commerce.standing_orders where store_id = ${storeId}::uuid and id = ${String(list.id)}::uuid`);
-  }
 }
 
 /** The delivery order a pay-link session was for, if it is this customer's (D102). */

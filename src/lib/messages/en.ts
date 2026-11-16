@@ -110,7 +110,6 @@ export const en = {
   /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
   workInvoice: {
     pageTitle: (number: string) => `Invoice ${number}`,
-    creditPageTitle: (number: string) => `Credit note ${number}`,
     print: "Print or save as PDF",
     openNote: (amount: string, due: string) => `Amount due: ${amount}, due ${due}.`,
     paidNote: "This invoice has been paid. Thank you.",
@@ -223,7 +222,6 @@ export const en = {
     choose: "Use this delivery",
     choosing: "Updating your order …",
     standard: "Standard shipping",
-    deliveryLine: (label: string) => `Delivery: ${label}`,
     pickupAt: (place: string) => `Pick up at ${place}`,
     windowLine: (when: string) => `Delivered ${when}`,
   },
@@ -291,7 +289,6 @@ export const en = {
     discountRow: "Welcome discount",
     cardLine: "Share your link and earn bonus credits",
     signInForDiscount: (percent: string) => `Sign in to get ${percent}% off the goods in your first order`,
-    cartApplied: (percent: string) => `Welcome discount: ${percent}% off the goods in your first order.`,
     intro: "Share your link. When a friend orders for the first time, they get a welcome discount and you earn bonus credits.",
     linkLabel: "Your link",
     copy: "Copy link",
@@ -319,7 +316,6 @@ export const en = {
     blocked: "Your link is switched off, so it earns nothing now. Contact the store if you think this is a mistake.",
     creditsLink: "See your bonus credits",
     notAvailable: "The store does not have a referral program right now.",
-    signInToRefer: "Sign in to get your own link to share.",
   },
   /** Creators (D386): applying and the creator's own page in My account. Hand-written, for legal review (HAND_WRITTEN_ONLY). */
   creator: {
@@ -345,7 +341,6 @@ export const en = {
     rules: "An order counts once it is paid. If it is refunded or cancelled, what it earned is taken back. Your own orders earn nothing.",
     statsHeading: "What your code has done",
     visits: "Visits to your link in the last 30 days",
-    ordersLabel: "Orders",
     ordersWaiting: "Waiting for payment",
     ordersEarned: "Earned",
     ordersReversed: "Taken back",
@@ -399,7 +394,6 @@ export const en = {
     approvedState: "Approved: pay for it and it is sent",
     payNow: "Pay now",
     placedWaiting: (number: string) => `Order ${number} is placed and waits for your company's approval. You get an email when it is decided.`,
-    decidedAlready: "That order was already decided.",
     subscriptionCurrency: (currency: string) => `This is a subscription, and subscriptions are in ${currency}.`,
     showPricesIn: (currency: string) => `Show prices in ${currency}`,
     title: "My company",
@@ -579,7 +573,6 @@ export const en = {
     readyAt: (place: string) => `Ready to collect at ${place}`,
     deliveredOn: (date: string) => `Delivered ${date}`,
     noNews: (carrier: string) => `${carrier} has no news about this parcel yet.`,
-    followAt: (carrier: string) => `Follow the parcel at ${carrier}`,
     events: "News from the carrier",
   },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
@@ -816,11 +809,9 @@ export const en = {
   googleReviews: "Reviews on Google",
   seeOnGoogle: "See all on Google",
   viewProduct: "View product",
-  nothingHere: "Nothing here yet.",
   blog: "Blog",
   byAuthor: (name: string) => `By ${name}`,
   noArticles: "No articles yet.",
-  allArticles: "All articles",
   cookies: "Cookies",
   /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
   reportContent: "Report illegal content",
@@ -838,13 +829,13 @@ export const en = {
     preferences: { name: "Preferences", text: "Remember choices you make, such as language and display." },
     statistics: { name: "Statistics", text: "Count visits and show how the site is used, so we can improve it." },
     marketing: { name: "Marketing", text: "Show and measure ads, also on other sites." },
-    recordings: { name: "Recordings of your visit", text: "Records the shop's pages as you saw them, your clicks, taps, scrolling and pointer movement, which test version you saw and roughly when, so the shop can see what is hard to use. Not on the cart, checkout, account or order pages; never what you type. Kept 30 days." },
+    recordings: { name: "Recordings of your visit", text: "Records the shop's pages as you saw them, your clicks, taps, scrolling and pointer movement, which test version you saw and roughly when, so the shop can see what is hard to use. Not on the cart, checkout, account, order or search pages; never what you type. Kept 30 days." },
   },
-  // D656, docs/heatmaps-and-recordings.md: hand-written, for legal review before recordings open to stores.
+  // D656, docs/heatmaps-and-recordings.md: hand-written; reviewed by the owner on 16 November 2026, for a lawyer before recordings open to stores.
   consentStatisticsHeat: "Count visits and show how the site is used, including totals of where visitors click, how far they scroll and how long parts of a page are on screen (heatmaps), also per test version, so we can improve it.",
   consentRecordingNotice: "This shop can record your visits to its pages (what the page shows, your clicks, taps, scrolling and pointer movement) to find what is hard to use. What you type is never recorded.",
-  cookieHeatmaps: "Heatmaps: while you allow statistics, your browser sends which parts of a page you click, how far you scroll and how long parts of the page are on your screen, and which test version you saw. Only totals per page and day are kept, with no number that identifies you.",
-  cookieRecordings: "Recordings: while you allow recordings, the shop records what happens on its pages in this tab: the page as it was shown, your clicks, taps, scrolling and pointer movement, your screen size and the test version you saw. Everything you type, the chat, the cart, the checkout and your account are left out. A random number for this tab ties the recording together; it is never joined to who you are. The shop is responsible for the recordings; Kaizena Flow keeps them for it, in Ireland, for 30 days. You can withdraw at any time under Cookie settings, and delete the recordings this browser made below.",
+  cookieHeatmaps: "Heatmaps: while you allow statistics, your browser sends which parts of a page you click, how far you scroll and how long parts of the page are on your screen, and which test version you saw. Only totals per page and day are kept, with no number that identifies you. If your browser sends Global Privacy Control or Do Not Track, nothing is sent.",
+  cookieRecordings: "Recordings: while you allow recordings, the shop records what happens on its pages in this tab: the page as it was shown, your clicks, taps, scrolling and pointer movement, your screen size and the test version you saw. Everything you type, the chat, the cart, the checkout and your account are left out. A random number for this tab ties the recording together; it is never joined to who you are. The shop is responsible for the recordings; Kaizena Flow keeps them for it, in Ireland, for 30 days. Withdrawing under Cookie settings stops the recording at once and deletes the recordings this browser made; so does the button below. If your browser sends Global Privacy Control or Do Not Track, nothing is recorded.",
   cookiePageIntro:
     "Cookies are small text files stored in your browser. Here you can see which ones this site uses, who sets them, what they are for and how long they last.",
   onlyNecessary: "This site uses only cookies it needs to work. Those do not need consent.",
@@ -1144,7 +1135,6 @@ export const en = {
   swapTo: "Variant",
   saveChanges: "Save the changes",
   changesSaved: "Saved. The change applies from the next renewal.",
-  subscriptionOrders: "Orders in this subscription",
   cartReminderNotice: "If you do not finish your purchase, we may email you a reminder about your cart.",
   cartReminderOptOut: "Do not send me reminders",
   cartReminderOptedOut: "You will get no reminders about your cart.",
@@ -1321,7 +1311,6 @@ export const en = {
     chooseNewPassword: "Choose a new password",
     forgotPassword: "Forgot your password?",
     resetIntro: "We send a code to your email. With it you choose a new password.",
-    resetFor: (email: string) => `We send a code to ${email}. With it you choose a new password.`,
     saveAndSignIn: "Save and sign in",
     invalidEmail: "Enter a valid email address.",
     checkoutAccount: "Create an account with the email above",
@@ -1368,7 +1357,6 @@ export const en = {
     setPassword: "Save password",
     removePassword: "Remove the password",
     passwordRule: "At least 12 characters. A few unrelated words are strong and easy to remember.",
-    passwordShort: "Use at least 12 characters.",
     /** Profile picture (D97). */
     pictureTitle: "Profile picture",
     pictureChoose: "Choose a picture",
@@ -1626,8 +1614,6 @@ export const en = {
     taken: "Those dates are not free. Choose others.",
     tooShort: (min: number, stay: boolean) => `At least ${min} ${stay ? (min === 1 ? "night" : "nights") : min === 1 ? "day" : "days"}.`,
     tooLong: (max: number, stay: boolean) => `At most ${max} ${stay ? (max === 1 ? "night" : "nights") : max === 1 ? "day" : "days"}.`,
-    tooSoon: "That is too soon. Choose later dates.",
-    tooFar: "Bookings are not taken that far ahead yet.",
     free: "free",
     full: "taken",
     past: "past",
@@ -1670,7 +1656,6 @@ export const en = {
     sentTo: (to: string, day: string) => `Emailed to ${to} on ${day}`,
     toYou: "Emailed to you once you have paid",
     withdrawal: "You may withdraw from a gift card within 14 days, as long as none of it has been used.",
-    notDiscounted: "Discounts and bonus credits are not taken off gift cards.",
   },
   // The gift card's email (D300 F2). legal: needs review.
   giftCardEmail: {

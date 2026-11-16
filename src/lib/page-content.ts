@@ -313,8 +313,11 @@ export type Background =
   | { type: "color"; color: Color; opacity?: number }
   | {
       type: "image";
-      /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`), never saved. */
-      image: { url: string; width: number; height: number; small?: string };
+      /**
+       * `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`), never saved.
+       * `medium`: the library's 800 px copy, set the same way, never saved.
+       */
+      image: { url: string; width: number; height: number; small?: string; medium?: string };
       /** A colour laid over the picture, `opacity` 0–100, so text on it can be read. */
       overlay: { color: Color; opacity: number } | null;
       /** How soft the picture is drawn, in pixels (up to `BLUR_MAX`); none when left out. */
@@ -411,8 +414,11 @@ export type RichTextBlock = PartBase & Bindable & { id: string; type: "richText"
 export type ImageBlock = PartBase & Bindable & {
   id: string;
   type: "image";
-  /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`, D336), never saved. */
-  image: { url: string; width: number; height: number; alt: string; small?: string } | null;
+  /**
+   * `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`, D336), never saved.
+   * `medium`: the library's 800 px copy, set the same way, never saved.
+   */
+  image: { url: string; width: number; height: number; alt: string; small?: string; medium?: string } | null;
   caption: string;
   /** Where the picture leads when pressed (a web address, a page like /about, #anchor, mailto: or tel:); none for a plain picture. */
   href?: string;
@@ -425,7 +431,7 @@ export type ImageBlock = PartBase & Bindable & {
 };
 
 /** A picture a component shows, as an image block's: uploaded and shrunk in the browser, its description for screen readers. */
-export type BlockPicture = { url: string; width: number; height: number; alt: string; small?: string };
+export type BlockPicture = { url: string; width: number; height: number; alt: string; small?: string; medium?: string };
 /** Where a Before and after's slider starts unless set: the middle. */
 export const BEFORE_AFTER_START = 50;
 export const BEFORE_AFTER_LABEL_MAX = 40;
@@ -516,8 +522,6 @@ export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 /** How large a heading looked, apart from its level, before the Typography panel (D49; folded into it on read, D179). */
 export const HEADING_SIZES = { sm: "Small", md: "Medium", lg: "Large", xl: "Extra large", "2xl": "Huge" } as const;
 export type HeadingSize = keyof typeof HEADING_SIZES;
-/** The size a heading has unless one is chosen. */
-export const HEADING_DEFAULT_SIZE: Record<HeadingLevel, HeadingSize> = { 1: "xl", 2: "lg", 3: "md", 4: "sm", 5: "sm", 6: "sm" };
 export const FONT_WEIGHTS = { normal: "Normal", medium: "Medium", semibold: "Semibold", bold: "Bold" } as const;
 export type FontWeight = keyof typeof FONT_WEIGHTS;
 export const HEADING_MAX = 300;
@@ -2436,6 +2440,7 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "order",
   "p",
   "products",
+  "request",
   "returns",
   "search",
   "subscription",

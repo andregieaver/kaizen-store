@@ -823,7 +823,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             <FoldOnHash id="refund-cancel" action={w.openRow} summary={cancellable ? w.refundOrCancel : w.refundRow} hint={cancellable ? w.refundOrCancelHint : editability?.block === "sent" ? w.refundSentHint : w.refundHint}>
           {(paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0) && (
             <section aria-labelledby="refund" className="flex flex-col">
-              <h2 id="refund" className="mb-1 text-body-strong text-ink">{w.refund}</h2>
+              <h2 id="refund" className="sr-only">{w.refund}</h2>
               <p className="mb-3 text-sm text-muted">
                 {fillWords(w.paidSoFar, { amount: money(order.paidMinor) })}
                 {order.refundedMinor > 0 && fillWords(w.refundedSoFar, { amount: money(order.refundedMinor) })}.{" "}

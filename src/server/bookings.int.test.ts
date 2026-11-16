@@ -54,18 +54,14 @@ const staffForm = (values: Partial<Record<string, unknown>> = {}) => ({
 });
 
 describe("the bookings module (D65)", () => {
-  it("switches on and off, keeping the store's time zone", async () => {
-    await bookings.setBookingsModule(member, { enabled: true, timeZone: "Europe/Stockholm", reminderHours: 48 });
-    await bookings.setBookingsModule(member, { enabled: true, timeZone: "Europe/Stockholm", reminderHours: 48 });
-    const [on] = await db().execute<Row>(sql`
-      select modules, time_zone, booking_reminder_hours from commerce.stores where id = ${storeId}::uuid
+  it("keeps the store's time zone and reminder", async () => {
+    await bookings.saveBookingSettings(member, { timeZone: "Europe/Stockholm", reminderHours: 48 });
+    const [saved] = await db().execute<Row>(sql`
+      select time_zone, booking_reminder_hours from commerce.stores where id = ${storeId}::uuid
     `);
-    expect(on).toEqual({ modules: ["bookings"], time_zone: "Europe/Stockholm", booking_reminder_hours: 48 });
-    await bookings.setBookingsModule(member, { enabled: false, timeZone: "Europe/Oslo", reminderHours: 24 });
-    const [off] = await db().execute<Row>(sql`select modules from commerce.stores where id = ${storeId}::uuid`);
-    expect(off.modules).toEqual([]);
-    expect(bookings.bookingsModuleInput.safeParse({ enabled: true, timeZone: "Mars/Olympus", reminderHours: 24 }).success).toBe(false);
-    expect(bookings.bookingsModuleInput.safeParse({ enabled: true, timeZone: "Europe/Oslo", reminderHours: 200 }).success).toBe(false);
+    expect(saved).toEqual({ time_zone: "Europe/Stockholm", booking_reminder_hours: 48 });
+    expect(bookings.bookingSettingsInput.safeParse({ timeZone: "Mars/Olympus", reminderHours: 24 }).success).toBe(false);
+    expect(bookings.bookingSettingsInput.safeParse({ timeZone: "Europe/Oslo", reminderHours: 200 }).success).toBe(false);
   });
 });
 

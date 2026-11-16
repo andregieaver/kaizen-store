@@ -8,7 +8,7 @@ import { allowedWhenNotOpen } from "@/lib/store-closure";
 
 import { getAccount, platformCan, requirePlatformReader, type Account, type Membership } from "./auth";
 import type { ChatSite } from "./chat-agent";
-import { checkPermission, requirePermission } from "./permissions";
+import { checkPermission } from "./permissions";
 
 /**
  * A support desk (D216, `docs/support.md` 4.5): a store's, or Kaizen's (`storeId` null). Every reader and writer in
@@ -103,11 +103,6 @@ const fromMember = (member: Membership): StaffDesk => ({
 });
 
 const holder = (member: Pick<Membership, "role" | "kind" | "permissions">) => ({ role: member.role, kind: member.kind, permissions: member.permissions });
-
-/** A store's desk for a page: `support:read` or `support:write` (`requirePermission()`: a 404 for anyone else). */
-export async function storeDesk(slug: string, access: Access): Promise<StaffDesk> {
-  return fromMember(await requirePermission(slug, `support:${access}`));
-}
 
 /** A store's desk for a route or an action, or null. */
 export async function checkStoreDesk(slug: string, access: Access): Promise<StaffDesk | null> {

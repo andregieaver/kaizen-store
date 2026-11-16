@@ -132,14 +132,12 @@ export const logRequestInput = z.object({
   receivedOn: z.iso.date("Enter the date the request was received."),
   note: text(1000).default(""),
 });
-export type LogRequestInput = z.infer<typeof logRequestInput>;
 
 export const extendInput = z.object({ reason: text(1000).min(1, "Say why the request is extended.") });
 export const refuseInput = z.object({
   reason: z.enum(REFUSAL_REASONS, "Choose a reason."),
   note: text(1000).default(""),
 });
-export type RefuseInput = z.infer<typeof refuseInput>;
 
 /** The confirmation a staff erasure asks for: the subject's own email typed again, or the word ERASE for a subject with none. */
 export function erasureConfirmed(typed: string, subjectEmail: string | null): boolean {

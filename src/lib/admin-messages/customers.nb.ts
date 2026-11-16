@@ -373,6 +373,15 @@ export const customersNb: CustomersMessages = {
     deleted: "Lokasjonen er slettet.",
   },
   priceLists: {
+    noneLead: "Egne priser for kundegrupper og bedrifter. Ingen ennå.",
+    readyTitle: "Lister de fleste butikker lager",
+    writeOwn: "Skriv din egen",
+    makeIt: "Lag den",
+    ready: {
+      retailers: { name: "Forhandlere", sub: "Butikker som selger varene dine videre." },
+      wholesale: { name: "Engros", sub: "Store bestillinger fra bedrifter." },
+      staff: { name: "Ansatte", sub: "For dem som jobber med deg." },
+    },
     title: "Prislister",
     description:
       "Egne priser for kundegrupper og bedrifter: en prosent av markedsprisen, faste priser per produkt eller begge deler. En kjøper betaler den laveste prisen listene gir, aldri mer enn butikkens pris, vist som sin pris, ikke som et avslag.",
@@ -668,10 +677,8 @@ export const customersNb: CustomersMessages = {
     otherCompany: "Den kontoen hører allerede til en annen bedrift.",
     companyFull: "Bedriften er full.",
     schema: {
-      wholePercent: "Skriv en hel prosent.",
       groupName: "Gi gruppen et navn.",
       companyName: "Gi bedriften et navn.",
-      oneAccount: "Minst én konto.",
     },
   },
 };

@@ -9,7 +9,7 @@
 import { decimalAmount, toCsv } from "./dac7";
 import { addDays } from "./analytics-period";
 import type { ConversionGroup, ReturnData } from "./oss-return";
-import type { CurrencyBridge, MainBridge, ReconLine } from "./tax-reconciliation";
+import type { CurrencyBridge, ReconLine } from "./tax-reconciliation";
 import { ratePercent, type VatReport } from "./tax-report";
 import type { ReturnPart } from "./tax-classes";
 
@@ -112,9 +112,6 @@ export function reconciliationCsv(bridges: readonly CurrencyBridge[], period: { 
 }
 
 const causeKey = (l: ReconLine): string => (l.kind === "cause" ? (l.cause as string) : l.kind === "finance" ? "finance" : l.kind === "report" ? "report" : l.kind);
-
-/** For the page's table of the main-currency bridge (not a file): its lines as labels and amounts. */
-export const mainBridgeRows = (b: MainBridge): { label: string; amount: string; orders: number }[] => b.lines.map((l) => ({ label: l.label, amount: decimalAmount(l.taxMinor, b.currency), orders: l.orders }));
 
 // ---------------------------------------------------------------------------
 // File names

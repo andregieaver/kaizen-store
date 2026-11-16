@@ -7,7 +7,6 @@
  */
 
 export type CreatorStatus = "applied" | "approved" | "declined" | "stopped";
-export const CREATOR_STATUSES: readonly CreatorStatus[] = ["applied", "approved", "declined", "stopped"];
 
 export type CreatorSettings = {
   enabled: boolean;
@@ -85,9 +84,6 @@ export type CreatorProblem =
   | "already"
   | "payout_over"
   | "code";
-export const CREATOR_PROBLEMS: readonly CreatorProblem[] = [
-  "owner_only", "no_access", "invalid", "channel", "category", "not_found", "status", "off", "unverified", "already", "payout_over", "code",
-];
 
 export type CreatorResult = { ok: true } | { ok: false; problem: CreatorProblem };
 

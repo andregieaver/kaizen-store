@@ -91,7 +91,6 @@ export const reviewsNb: ReviewsMessages = {
     publishCheck: "La meg kontrollere hver enkelt først",
     checkOnly: "Bare kontroller filen, importer ingenting",
     submit: "Importer",
-    submitCheck: "Kontroller filen",
     honest: "Importerte omtaler merkes som importerte og aldri som verifiserte kjøp, på produktsiden og i dataene til søkemotorer.",
     resultChecked: { one: "Filen er kontrollert: {n} omtale kan importeres.", many: "Filen er kontrollert: {n} omtaler kan importeres." },
     resultImported: { one: "{n} omtale importert.", many: "{n} omtaler importert." },

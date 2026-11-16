@@ -10,4 +10,3 @@ export const pushSubscriptionInput = z.object({
   keys: z.object({ p256dh: base64url.min(40).max(200), auth: base64url.min(8).max(64) }),
   device: z.string().trim().max(60).default(""),
 });
-export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInput>;

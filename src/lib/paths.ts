@@ -82,11 +82,6 @@ export function rememberSiteStore(storeSlug: string, on: boolean): void {
   else onSite.delete(storeSlug);
 }
 
-/** Whether a store's pages are Kaizena Flow's own site, as this process last read the store (D484). */
-export function servesSite(storeSlug: string): boolean {
-  return onSite.has(storeSlug);
-}
-
 /**
  * The store's own address: Kaizena Flow's own while its pages are the site (D484), else its primary custom domain (P8), else
  * `{slug}.{store domain}`, e.g. `https://demo.kaizenstore.site`; null while stores are under Kaizen's.

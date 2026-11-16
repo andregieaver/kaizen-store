@@ -144,5 +144,3 @@ export function deadlineSentence(period: TaxPeriod, today: string): string {
 /** A custom range of the VAT view as a key: `2026-09-01..2026-09-30` (both ends inclusive). */
 export const rangeKey = (from: string, toExclusive: string): string => `${from}..${addDays(toExclusive, -1)}`;
 
-/** The key of a period for the export log: a quarter or month key, or a range. */
-export const periodKeyOf = (period: TaxPeriod): string => period.key;

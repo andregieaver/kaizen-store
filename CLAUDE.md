@@ -70,8 +70,7 @@ stand-in is the only fake, and only it is told it is one.
   `pnpm exec drizzle-kit generate --custom --name <name>`. Only the newest snapshot in `supabase/migrations/meta` is kept (D532): `pnpm db:generate` prunes
   them, and after a custom migration run `node scripts/prune-snapshots.mjs`.
 - The folder starts with a baseline (D572, `docs/ci-migrations.md`): four files made by `scripts/squash-migrations.mjs` from the 789 up to
-  11 November 2026, which are kept in `supabase/archive/`; never edit a baseline, and read an old migration in a test through
-  `src/db/migration-files.ts`. Squash again each quarter.
+  11 November 2026, which are kept in `supabase/archive/`; never edit a baseline. Squash again each quarter.
 - New migrations reach production through CI (`docs/ci-migrations.md`): push the file with the change; the
   `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand
@@ -110,6 +109,7 @@ Each rule is in full in `docs/rules/storefront.md` under the same words; read it
 - Content types (wave 6 unit H, D326, `docs/wave-6-catalogue.md` Unit H)
 - A standard product taxonomy (wave 6 unit I, D327, `docs/wave-6-catalogue.md` Unit I)
 - Speed (wave 7 unit B, D336, `docs/analytics.md` Speed, `src/lib/picture-sizes.ts`, `src/lib/speed.ts`, `src/server/analytics-speed.ts`)
+- Heatmaps and recordings: what the storefront sends (D656, `docs/heatmaps-and-recordings.md`, `src/components/signals/`, `src/server/page-heat.ts`, `src/server/recordings.ts`)
 - Each country's own (wave 7 unit D, D338, `docs/wave-7-storefront.md` D)
 - Private mode (wave 7 unit E, D339, `docs/wave-7-storefront.md` E)
 - What is sold where (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1)
@@ -184,6 +184,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The AI manager's website tools (D308, `docs/ai-autopilot.md` 4.1, `src/lib/site-tools.ts` pure, `src/server/site-tools.ts`)
 - The AI manager's setup tools (D308, `docs/ai-autopilot.md` 5.1, `src/lib/setup-tools.ts` pure, `src/server/setup-tools.ts`)
 - Store analytics (D152, `docs/analytics.md`, `/admin/{store}/analytics/…`, store section Analytics)
+- Heatmaps and recordings: the owner's screens (D656, `docs/heatmaps-and-recordings.md`, `src/server/page-heat-read.ts`, `src/server/recordings-read.ts`, `src/lib/replay-sanitize.ts`)
 - Reports (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` 3, `docs/analytics.md` Reports)
 - Withdrawals and returns (D153, `docs/returns.md`, `/s/{store}/{market}/withdraw`, `/admin/{store}/returns`)
 - The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)

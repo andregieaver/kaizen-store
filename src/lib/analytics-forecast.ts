@@ -56,8 +56,6 @@ export const SEASONAL_MIN_COVERAGE = 0.875;
 /** And at least this many of those days with sales (selling at least half the window), the volume the factor needs. */
 export const SEASONAL_MIN_SELLING_DAYS = 28;
 
-/** The range's two-sided probability, 80 %, and its normal quantile. */
-export const RANGE_PROBABILITY = 0.8;
 export const RANGE_Z = 1.2815515655446004;
 
 export type DailyValue = { day: string; value: number };

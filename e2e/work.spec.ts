@@ -26,20 +26,7 @@ const WORK_PAGES = [
   "/admin/account/work/s/demo/reports",
   "/admin/account/work/s/demo/settings",
   "/admin/demo/settings/features",
-  // Work's old store-level addresses (D122) lead to the new ones and so to the same sign-in.
-  "/admin/demo/work",
-  "/admin/demo/work/clients",
-  "/admin/demo/settings/work",
 ];
-
-test("Work's old addresses redirect to the owner's level and reveal nothing", async ({ request }) => {
-  const old = await request.get("/admin/demo/work/invoices?show=overdue", { maxRedirects: 0 });
-  expect(old.status()).toBe(307);
-  expect(old.headers().location).toBe("/admin/account/work/s/demo/invoices?show=overdue");
-  expect(await old.text()).not.toContain("Unbilled time");
-  const settings = await request.get("/admin/demo/settings/work", { maxRedirects: 0 });
-  expect(settings.headers().location).toBe("/admin/account/work/s/demo/settings");
-});
 
 test("the Work pages are closed to visitors without a session", async ({ page, request }) => {
   for (const path of WORK_PAGES) {

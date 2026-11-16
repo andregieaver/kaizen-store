@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -74,5 +74,71 @@ describe("CI runs each check once", () => {
 
   it("would notice a build without the variable", () => {
     expect(buildsWithoutSkip("jobs:\n  a:\n    steps:\n      - run: pnpm build\n")).toEqual(["a"]);
+  });
+});
+
+type Project = { test: { name: string; include: string[]; exclude?: string[]; setupFiles?: string[]; globalSetup?: string[]; isolate?: boolean } };
+
+/** Every file under a folder whose name ends in the suffix. */
+const walk = (dir: string, suffix: string): string[] =>
+  readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : walk(path, suffix);
+    return entry.name.endsWith(suffix) ? [path] : [];
+  });
+
+describe("the unit tests load only what they use (bloat review 0.39)", async () => {
+  // The path is held in a variable: tsconfig does not allow a `.mts` extension in an import path.
+  const configPath = "../../vitest.config.mts";
+  const config = (await import(/* @vite-ignore */ configPath)).default as {
+    test?: { projects?: Project[]; setupFiles?: unknown; globalSetup?: unknown; include?: unknown };
+  };
+  const projects = config.test?.projects ?? [];
+  const named = (name: string) => projects.find((project) => project.test.name === name)?.test;
+
+  it("sets up nothing at the root", () => {
+    expect(config.test?.setupFiles).toBeUndefined();
+    expect(config.test?.globalSetup).toBeUndefined();
+    expect(config.test?.include).toBeUndefined();
+  });
+
+  it("loads the admin's English only where parts are drawn", () => {
+    const withEnglish = projects.filter((project) => project.test.setupFiles?.includes("src/test/admin-english.ts"));
+    expect(withEnglish.map((project) => project.test.name)).toEqual(["components"]);
+  });
+
+  it("builds the test database only for the tests that open it", () => {
+    expect(projects.filter((project) => project.test.globalSetup).map((project) => project.test.name)).toEqual(["db"]);
+    const outside = walk("src", ".test.ts").filter((file) => !file.startsWith("src/db/"));
+    for (const file of outside) {
+      const text = readFileSync(join(root, file), "utf8");
+      // This file names the words it looks for.
+      if (file === "src/lib/ci-once.scan.test.ts") continue;
+      expect(text.includes("createTestDatabase") || text.includes("test-db-template"), file).toBe(false);
+    }
+  });
+
+  it("puts every unit test file in exactly one project", () => {
+    expect(named("components")?.include).toEqual(["src/components/**/*.test.ts"]);
+    expect(named("db")?.include).toEqual(["src/db/**/*.test.ts"]);
+    expect(named("unit")?.include).toEqual(["src/**/*.test.ts"]);
+    expect(named("unit")?.exclude).toEqual(expect.arrayContaining(["src/components/**", "src/db/**"]));
+    for (const project of projects) expect(project.test.exclude, project.test.name).toContain("src/**/*.int.test.ts");
+    const files = walk("src", ".test.ts").filter((file) => !file.endsWith(".int.test.ts"));
+    expect(files.length).toBeGreaterThan(1000);
+    for (const file of files) {
+      const takers = [file.startsWith("src/components/") && "components", file.startsWith("src/db/") && "db", !file.startsWith("src/components/") && !file.startsWith("src/db/") && "unit"].filter(Boolean);
+      expect(takers, file).toHaveLength(1);
+    }
+    expect(existsSync(join(root, "vitest.config.mts"))).toBe(true);
+  });
+
+  it("has no test that reads the archived migrations", () => {
+    expect(existsSync(join(root, "src/db/migration-files.ts"))).toBe(false);
+    for (const file of walk("src", ".test.ts")) {
+      const text = readFileSync(join(root, file), "utf8");
+      // The words are split here so that a search for them finds no test, this one included.
+      for (const word of ["read" + "Migration", "find" + "Migration", "migration" + "History", "supabase/" + "archive"]) expect(text.includes(word), `${file}: ${word}`).toBe(false);
+    }
   });
 });

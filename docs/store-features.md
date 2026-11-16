@@ -40,6 +40,9 @@ takes away, needs, where it is set up, the legacy module). The database repeats 
   is remembered while the shop is off: switching the shop back on brings back exactly what was on.
 - `getStore()` gives `store.features` (as kept); `store.bookingsOn` (appointments or stays and rentals on) and
   `store.deliveriesOn` (boxes on) are derived from it.
+- **Removed on 16 November 2026 (bloat review step 0.37).** Bookings and subscription boxes are switched in `stores.features`
+  alone; `stores.modules` holds only `work` (the twin for older code was removed), and `stores_features_sync()` only keeps the
+  features list distinct and sorted. The text below is the history of the twin.
 - `stores.modules` stays for the code that reads it. The trigger `stores_features_sync()` keeps its `bookings`
   (appointments or bookings on) and `deliveries` (boxes on) in step with what is on (the shop's switch included), and
   when older code writes a module it moves the features (`bookings` → `appointments` and `bookings`; `deliveries` →

@@ -9,7 +9,6 @@ import { db } from "@/db/client";
 import { findClaims } from "@/lib/claims";
 import {
   EMPTY_COPY,
-  PICTURES_MAX,
   SECTIONS_MAX,
   buildPage,
   buildSection,
@@ -19,7 +18,6 @@ import {
   copyWithoutClaims,
   interviewMessages,
   pageBrief,
-  pagePlan,
   picturePrompt,
   planMessages,
   readCopy,
@@ -503,9 +501,6 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
   return { ok: true, url: picture.url };
 }
 
-/** At most this many pictures are asked for a page (the plan keeps to it). */
-export const PICTURE_JOBS_MAX = PICTURES_MAX;
-
 // ---------------------------------------------------------------------------
 // Voice
 // ---------------------------------------------------------------------------
@@ -537,6 +532,3 @@ export async function speakToOwner(storeId: string | null, text: string): Promis
   }
 }
 
-/** The brief and plan as the studio sends them, read. */
-export const studioBrief = pageBrief;
-export const studioPlan = pagePlan;

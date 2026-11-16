@@ -453,7 +453,8 @@ export function Inbox({
           </button>
         </div>
       )}
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr_18rem]">
+      {/* One column no wider than the screen on a phone (round 21): the tabs scroll inside it rather than widening it. */}
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[22rem_1fr_18rem]">
         <section
           className={`${showing ? "hidden lg:flex" : "flex"} min-h-0 flex-col border-line lg:border-r`}
           aria-label={w.conversations}

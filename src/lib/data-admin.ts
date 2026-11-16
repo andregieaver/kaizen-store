@@ -7,7 +7,7 @@
 import { commonEn, type CommonMessages } from "./admin-messages/common.en";
 import { fillWords } from "./admin-fill";
 import { DATA_EXPORTS_ACTIVE_MAX, EXPORT_KEEP_DAYS, EXPORT_MAX_ROWS } from "./data-limits";
-import { isEnded, type JobKind, type JobPhase, type JobStatus } from "./data-job";
+import { type JobKind, type JobPhase, type JobStatus } from "./data-job";
 
 /** Shown on the order and customer export pages: the file holds personal data (GDPR Art. 5(1)(c), (e), (f)). Needs a human read (section 8). */
 export const PERSONAL_DATA_WARNING = `This file contains personal data. Keep it only as long as you need it; it is deleted from here after ${EXPORT_KEEP_DAYS} days.`;
@@ -15,20 +15,6 @@ export const PERSONAL_DATA_WARNING = `This file contains personal data. Keep it 
 /** Shown on the customer export page: Kaizen records no marketing consent yet, so the file must never be used as a mailing list (section 2.5). */
 export const NO_CONSENT_NOTE =
   "This file is not a mailing list. Who agreed to marketing email is on the Subscribers page, with the words they agreed to and when.";
-
-/** The main-currency columns of the order file: indicative, not for a tax return (section 2.3.3). */
-export const MAIN_CURRENCY_NOTE =
-  "The main-currency columns are indicative. They use the store's exchange rate at the time the file is made, and are blank for a currency the store has no rate for. They are not for a tax return.";
-
-/** The order file is not a tax or accounting document (section 2.3.7). */
-export const NOT_A_STATEMENT_NOTE =
-  "This file is not a statement of account, an invoice register or a return. Your accountant's documents are the invoices and credit notes and the VAT, OSS and IOSS files.";
-
-/** Orders paid in Stripe's test mode are in the file, marked (section 2.3.5, 13.2): an accountant's copy leaves the marked rows out. Needs a human read (section 8). */
-export const TEST_PAYMENT_NOTE = "Orders paid in Stripe's test mode are in the file and marked test_payment = true. They are try-outs, not sales: leave those rows out of anything you give your accountant.";
-
-/** Nothing in the file is sent anywhere: a large export is made as a job and downloaded here, after signing in (section 2.3.2). */
-export const NEVER_EMAILED_NOTE = "A file is never sent by email. When a large export is ready you get an email with a link to this page, and download the file here.";
 
 /** What a product file does not carry (section 2.1.4): said on the export page so a round trip holds no surprise. */
 export const NOT_IN_PRODUCT_FILE = [
@@ -161,8 +147,6 @@ export function doneOfTotal(done: number | null, total: number | null, unit: str
   if (total === null || total === undefined) return done ? fillWords(words.count, { n: wholeNumber(done, locale), unit }) : "";
   return fillWords(words.doneOf, { done: wholeNumber(done ?? 0, locale), total: wholeNumber(total, locale), unit });
 }
-
-export const jobEnded = (status: JobStatus): boolean => isEnded(status);
 
 /** The page of a kind of export job, after the store's address. */
 export const exportPath = (kind: Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import" | "customer_import" | "order_history_import">): string =>

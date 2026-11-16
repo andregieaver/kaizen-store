@@ -50,5 +50,3 @@ export function textOfContent(content: unknown): string {
   return out.join("\n");
 }
 
-/** The day the ban applied (ECGT Art. 4(1), second subparagraph). */
-export const GREEN_RULE_DATE = "2026-09-27";

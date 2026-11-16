@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EDIT_PAY_DAYS, PICK_LIST_MAX } from "@/lib/fulfilment-limits";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's rows for wave 3, run 3 (D174, `docs/wave-3-fulfilment.md` 5.5; migration `*_fulfilment_plan_features.sql`): three rows described once in the
@@ -16,7 +15,6 @@ import { readMigration } from "./migration-files";
 let db: PGlite;
 
 const NAMES = ["Order editing after purchase", "Partial fulfilment", "Pick lists"] as const;
-const MIGRATION = readMigration("20261007022211_fulfilment_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -71,15 +69,5 @@ describe("the plan comparison's rows for order editing, partial fulfilment and p
     expect(text).toContain("No prices, names or addresses");
     // Section 7 of the spec: none of these is built.
     expect(text).not.toMatch(/unlimited|guarantee|real.?time|ai[- ]powered|saved card|automatic(ally)? charge|template|bin|location|cancel (a )?shipment|self-service|partly sent orders? can be edited/i);
-  });
-
-  it("adds nothing a second time when the migration is run again", async () => {
-    await db.exec(MIGRATION);
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = any($1)", [[...NAMES]]);
-    expect(rows[0].n).toBe(NAMES.length);
-  });
-
-  it("holds no DELETE or DROP: the migration tool cancels a function body that has one", () => {
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 });

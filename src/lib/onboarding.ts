@@ -17,23 +17,6 @@ export type ExtraAnswer = (typeof EXTRA_ANSWERS)[number];
 
 export type OnboardingAnswers = { sells: SellAnswer[]; extras: ExtraAnswer[] };
 
-/** The words of each answer, as the wizard shows them. */
-export const SELL_ANSWER_WORDS: Record<SellAnswer, { label: string; words: string }> = {
-  goods: { label: "Products to ship", words: "Things you send by post or a carrier, or that customers collect." },
-  downloads: { label: "Downloads", words: "Files customers buy and download, such as e-books, music or patterns." },
-  appointments: { label: "Appointments", words: FEATURES_BY_ID.appointments.words },
-  stays: { label: "Stays or rentals", words: "Rooms, homes and items booked by the night, day or hour." },
-  subscriptions: { label: "Subscriptions", words: FEATURES_BY_ID.subscriptions.words },
-  boxes: { label: "Subscription boxes", words: FEATURES_BY_ID.boxes.words },
-  website: { label: "Just a website, no online shop", words: "Pages, a blog, forms and your business details. Nothing is sold; switch the shop on later when you want to." },
-};
-
-export const EXTRA_ANSWER_WORDS: Record<ExtraAnswer, { label: string; words: string }> = {
-  countries: { label: "Sell in several countries", words: FEATURES_BY_ID.countries.words },
-  languages: { label: "Several languages", words: "Show the store in more than one language; with an online shop, prices in other currencies too." },
-  business: { label: "Sell to businesses", words: FEATURES_BY_ID.business.words },
-};
-
 /** The feature each kind of thing sold switches on besides the online shop (goods and downloads need nothing more). */
 const SELL_FEATURE: Partial<Record<SellAnswer, FeatureId>> = {
   appointments: "appointments",

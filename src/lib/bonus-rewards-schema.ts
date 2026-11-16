@@ -18,4 +18,3 @@ export const rewardInput = z
     if (r.kind === "amount" && Object.keys(r.amounts).length === 0) ctx.addIssue({ code: "custom", path: ["amounts"], message: "Give the amount off in at least one country." });
   });
 
-export type RewardInput = z.infer<typeof rewardInput>;

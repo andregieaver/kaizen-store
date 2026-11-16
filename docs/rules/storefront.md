@@ -219,8 +219,31 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   few page loads says how many there are. The page, the CSV `speed.figures` and the AI manager's `speed_report` read `speedReport()`. CI's
   budgets are `SPEED_BUDGETS` in `e2e/performance.spec.ts`: a change past one is a regression to look at, not a number to raise. Kaizena Flow's own
   site and the admin are measured the same way (D390: `SpeedBeacon own`, `src/server/own-speed.ts`, the only writer of `own_speed_samples`,
-  shown on Platform → Usage and limits).
+  shown on Platform → Usage and limits). A picture in page content gets the library's 800 px copy when the page is read
+  (`withSmallCopies()`, never saved), and its `sizes` follow its column's share on a phone (`phoneShare()` in
+  `src/lib/column-share.ts`, server only).
 
+
+## Heatmaps and recordings: what the storefront sends (D656, `docs/heatmaps-and-recordings.md`, `src/components/signals/`, `src/server/page-heat.ts`, `src/server/recordings.ts`)
+
+- Nothing is sent until the store's owner switches heatmaps or recordings on (`stores.heatmaps`, `stores.recordings`); recordings also
+  wait for `platform_settings.recordings_open`, which Kaizena Flow's own store passes. `SiteSignals` is drawn by `MarketExtras` only
+  then, lazily once the browser is idle, inside `OffPayRoutes` and in `FORBIDDEN_ON_PAY_ROUTES`, so never on a pay route; never for staff
+  on their own store, a visitor with Global Privacy Control or Do Not Track, or a robot. Heatmaps run under Statistics, with the version
+  token `heat` so visitors are asked again; recordings are a consent category of their own (`recordings`, its bit written only when the
+  version names it, so other cookies stay as they were). A withdrawal stops both at once, sends nothing buffered and deletes the tab's
+  recordings (`forget.ts`, `/api/signals/forget`).
+- Every definition (page view, dead and rage click, reach, fold, attention) is in the plan's section 3 and its constants in
+  `src/lib/page-heat.ts` and `src/lib/click-signals.ts`; change one there first. Pages are the store's page keys (`signalPlace()` in the
+  browser mirroring `placeOfPath()` and `speedKind()` on the server): never the cart, checkout, order, account, search or admin, never
+  an address with a query. Heatmaps keep daily totals only (`page_heat_days`, `click_cells`), tagged `''` and `{experiment}:{version}`
+  only as the visitor's A/B cookie confirms it for a running test.
+- Recordings use rrweb 2.2.0, the whole family held to it by an override: every field masked to nothing (not even its length), text
+  marked `data-kz-mask` to three dots, areas marked `data-kz-private` blocked (the chat, the cart drawer, forms, search suggestions,
+  review pictures, the express area). **A new storefront component that shows what someone typed or personal data carries one of the
+  marks** (`src/components/signals/marks.test.ts` lists them). Times are relative to the session's start, addresses lose their query,
+  a tab's id is random and joined to nothing. The server keeps the checked body, never the bytes as sent, within its checks (same site,
+  own page, consent, the hold, the plan's `recordings_month`, a day's slot, a budget that fails closed); 30 days, then gone with every file.
 ## Each country's own (wave 7 unit D, D338, `docs/wave-7-storefront.md` D)
 
 - **Each country's own (wave 7 unit D, D338, `docs/wave-7-storefront.md` D)**: a store's page or article is for the countries in

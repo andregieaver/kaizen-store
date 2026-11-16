@@ -19,6 +19,11 @@ export const notificationsNb: NotificationsMessages = {
     view: "Vis",
   },
   emails: {
+    read: "Les",
+    lead: "E-postene kundene får. Trykk på en for å endre ordene.",
+    groupCount: { one: "{n} e-post, {on} på", many: "{n} e-poster, {on} på" },
+    yourWords: "dine ord",
+    howTitle: "Slik virker disse e-postene",
     title: "Varsler",
     description:
       "E-postene kundene dine får om bestillinger og returer. Ordrebekreftelsen og kvitteringen for bruk av angreretten kreves etter loven, og de andre e-postene merket {alwaysOn} inneholder det kundene trenger: de kan ikke slås av. Slår du av en e-post, fjernes også haken ved {notify} der ansatte sender, refunderer eller kansellerer en bestilling. Tekst du skriver selv, er ditt ansvar.",

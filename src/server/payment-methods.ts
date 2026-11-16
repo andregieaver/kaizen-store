@@ -109,7 +109,3 @@ export async function awaitBankPayment(storeId: string, sessionId: string, now: 
   return Boolean(done?.ok);
 }
 
-/** A method's name for the owner, or the type itself for one Kaizena Flow does not list. */
-export function methodLabel(type: string): string {
-  return methodInfo(type)?.label ?? type;
-}

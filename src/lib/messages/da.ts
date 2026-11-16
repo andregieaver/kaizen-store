@@ -105,7 +105,6 @@ export const da: Messages = {
   /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
   workInvoice: {
     pageTitle: (number: string) => `Faktura ${number}`,
-    creditPageTitle: (number: string) => `Kreditnota ${number}`,
     print: "Udskriv eller gem som PDF",
     openNote: (amount: string, due: string) => `Beløb til betaling: ${amount}, forfald ${due}.`,
     paidNote: "Fakturaen er betalt. Tak.",
@@ -218,7 +217,6 @@ export const da: Messages = {
     choose: "Brug denne levering",
     choosing: "Opdaterer bestillingen …",
     standard: "Almindelig fragt",
-    deliveryLine: (label: string) => `Levering: ${label}`,
     pickupAt: (place: string) => `Afhentes hos ${place}`,
     windowLine: (when: string) => `Leveres ${when}`,
   },
@@ -283,7 +281,6 @@ export const da: Messages = {
     discountRow: "Velkomstrabat",
     cardLine: "Del dit link og optjen bonuskredit",
     signInForDiscount: (percent: string) => `Log ind for at få ${percent} % rabat på varerne i din første ordre`,
-    cartApplied: (percent: string) => `Velkomstrabat: ${percent} % rabat på varerne i din første ordre.`,
     intro: "Del dit link. Når en ven bestiller for første gang, får vennen en velkomstrabat, og du optjener bonuskredit.",
     linkLabel: "Dit link",
     copy: "Kopiér linket",
@@ -311,7 +308,6 @@ export const da: Messages = {
     blocked: "Dit link er slået fra og giver ingenting lige nu. Kontakt butikken, hvis du tror, det er en fejl.",
     creditsLink: "Se din bonuskredit",
     notAvailable: "Butikken har ikke et anbefalingsprogram lige nu.",
-    signInToRefer: "Log ind for at få dit eget link at dele.",
   },
   /** Skabere (D386): ansøgning og skaberens egen side under Min konto. Håndskrevet, til juridisk gennemgang (HAND_WRITTEN_ONLY). */
   creator: {
@@ -337,7 +333,6 @@ export const da: Messages = {
     rules: "En ordre tæller, når den er betalt. Bliver den refunderet eller annulleret, trækkes det, den gav, tilbage. Dine egne ordrer giver ikke noget.",
     statsHeading: "Hvad din kode har ført til",
     visits: "Besøg via dit link de seneste 30 dage",
-    ordersLabel: "Ordrer",
     ordersWaiting: "Venter på betaling",
     ordersEarned: "Optjent",
     ordersReversed: "Trukket tilbage",
@@ -389,7 +384,6 @@ export const da: Messages = {
     approvedState: "Godkendt: betal, så bliver den sendt",
     payNow: "Betal nu",
     placedWaiting: (number: string) => `Ordre ${number} er afgivet og venter på virksomhedens godkendelse. Du får en e-mail, når den er afgjort.`,
-    decidedAlready: "Den ordre er allerede afgjort.",
     subscriptionCurrency: (currency: string) => `Dette er et abonnement, og abonnementer er i ${currency}.`,
     showPricesIn: (currency: string) => `Vis priser i ${currency}`,
     title: "Min virksomhed",
@@ -557,7 +551,6 @@ export const da: Messages = {
     readyAt: (place: string) => `Klar til afhentning hos ${place}`,
     deliveredOn: (date: string) => `Leveret ${date}`,
     noNews: (carrier: string) => `${carrier} har ingen nyheder om denne pakke endnu.`,
-    followAt: (carrier: string) => `Følg pakken hos ${carrier}`,
     events: "Nyt fra transportøren",
   },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
@@ -784,11 +777,9 @@ export const da: Messages = {
   googleReviews: "Anmeldelser på Google",
   seeOnGoogle: "Se alle på Google",
   viewProduct: "Se produktet",
-  nothingHere: "Intet her endnu.",
   blog: "Blog",
   byAuthor: (name: string) => `Af ${name}`,
   noArticles: "Ingen artikler endnu.",
-  allArticles: "Alle artikler",
   cookies: "Cookies",
   /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
   reportContent: "Anmeld ulovligt indhold",
@@ -806,13 +797,13 @@ export const da: Messages = {
     preferences: { name: "Præferencer", text: "Husker valg, du træffer, som sprog og visning." },
     statistics: { name: "Statistik", text: "Tæller besøg og viser, hvordan webstedet bruges, så vi kan gøre det bedre." },
     marketing: { name: "Markedsføring", text: "Viser og måler annoncer, også på andre websteder." },
-    recordings: { name: "Optagelser af dit besøg", text: "Optager butikkens sider, som du så dem, klik, tryk, rulning og markørbevægelser, hvilken testversion du så og omtrent hvornår, så butikken kan se, hvad der er svært at bruge. Ikke i kurven, kassen, kontoen eller ordresiderne; aldrig det, du skriver. Gemmes i 30 dage." },
+    recordings: { name: "Optagelser af dit besøg", text: "Optager butikkens sider, som du så dem, klik, tryk, rulning og markørbevægelser, hvilken testversion du så og omtrent hvornår, så butikken kan se, hvad der er svært at bruge. Ikke i kurven, kassen, kontoen, ordresiderne eller søgesiderne; aldrig det, du skriver. Gemmes i 30 dage." },
   },
-  // D656, docs/heatmaps-and-recordings.md: hand-written, for legal review before recordings open to stores.
+  // D656, docs/heatmaps-and-recordings.md: hand-written; reviewed by the owner on 16 November 2026, for a lawyer before recordings open to stores.
   consentStatisticsHeat: "Tæller besøg og viser, hvordan webstedet bruges, også summer af, hvor besøgende klikker, hvor langt de ruller, og hvor længe dele af en side er på skærmen (heatmaps), også pr. testversion, så vi kan gøre det bedre.",
   consentRecordingNotice: "Denne butik kan optage dine besøg på dens sider (hvad siden viser, klik, tryk, rulning og markørbevægelser) for at finde det, der er svært at bruge. Det, du skriver, optages aldrig.",
-  cookieHeatmaps: "Heatmaps: så længe du tillader statistik, sender din browser, hvilke dele af en side du klikker på, hvor langt du ruller, og hvor længe dele af siden er på skærmen, og hvilken testversion du så. Kun summer pr. side og dag gemmes, uden et nummer, der identificerer dig.",
-  cookieRecordings: "Optagelser: så længe du tillader optagelser, optager butikken, hvad der sker på dens sider i denne fane: siden, som den blev vist, klik, tryk, rulning og markørbevægelser, skærmstørrelsen og testversionen, du så. Alt, hvad du skriver, chatten, kurven, kassen og din konto er udeladt. Et tilfældigt nummer for denne fane holder optagelsen sammen; det knyttes aldrig til, hvem du er. Butikken er ansvarlig for optagelserne; Kaizena Flow gemmer dem for butikken, i Irland, i 30 dage. Du kan når som helst trække dit samtykke tilbage under cookieindstillingerne og slette de optagelser, denne browser lavede, nedenfor.",
+  cookieHeatmaps: "Heatmaps: så længe du tillader statistik, sender din browser, hvilke dele af en side du klikker på, hvor langt du ruller, og hvor længe dele af siden er på skærmen, og hvilken testversion du så. Kun summer pr. side og dag gemmes, uden et nummer, der identificerer dig. Hvis din browser sender Global Privacy Control eller Do Not Track, sendes intet.",
+  cookieRecordings: "Optagelser: så længe du tillader optagelser, optager butikken, hvad der sker på dens sider i denne fane: siden, som den blev vist, klik, tryk, rulning og markørbevægelser, skærmstørrelsen og testversionen, du så. Alt, hvad du skriver, chatten, kurven, kassen og din konto er udeladt. Et tilfældigt nummer for denne fane holder optagelsen sammen; det knyttes aldrig til, hvem du er. Butikken er ansvarlig for optagelserne; Kaizena Flow gemmer dem for butikken, i Irland, i 30 dage. Trækker du dit samtykke tilbage under cookieindstillingerne, stopper optagelsen med det samme, og de optagelser, denne browser lavede, slettes; knappen nedenfor sletter dem også. Hvis din browser sender Global Privacy Control eller Do Not Track, optages intet.",
   cookiePageIntro:
     "Cookies er små tekstfiler, der gemmes i din browser. Her kan du se, hvilke dette websted bruger, hvem der sætter dem, hvad de bruges til, og hvor længe de varer.",
   onlyNecessary: "Webstedet bruger kun cookies, der er nødvendige for, at det virker. Sådanne kræver ikke samtykke.",
@@ -1107,7 +1098,6 @@ export const da: Messages = {
   swapTo: "Variant",
   saveChanges: "Gem ændringerne",
   changesSaved: "Gemt. Ændringen gælder fra næste fornyelse.",
-  subscriptionOrders: "Ordrer i abonnementet",
   cartReminderNotice: "Gennemfører du ikke købet, kan vi sende dig en påmindelse om kurven på e-mail.",
   cartReminderOptOut: "Send mig ingen påmindelser",
   cartReminderOptedOut: "Du får ingen påmindelser om kurven.",
@@ -1344,7 +1334,6 @@ export const da: Messages = {
     chooseNewPassword: "Vælg ny adgangskode",
     forgotPassword: "Glemt adgangskoden?",
     resetIntro: "Vi sender en kode til din e-mail. Med den vælger du en ny adgangskode.",
-    resetFor: (email: string) => `Vi sender en kode til ${email}. Med den vælger du en ny adgangskode.`,
     saveAndSignIn: "Gem og log ind",
     invalidEmail: "Skriv en gyldig e-mailadresse.",
     checkoutAccount: "Opret konto med e-mailen ovenfor",
@@ -1391,7 +1380,6 @@ export const da: Messages = {
     setPassword: "Gem adgangskode",
     removePassword: "Fjern adgangskoden",
     passwordRule: "Mindst 12 tegn. Nogle ord, der ikke hører sammen, er både stærkt og let at huske.",
-    passwordShort: "Brug mindst 12 tegn.",
     /** Profile picture (D97). */
     pictureTitle: "Profilbillede",
     pictureChoose: "Vælg et billede",
@@ -1648,8 +1636,6 @@ export const da: Messages = {
     taken: "Datoerne er ikke ledige. Vælg andre.",
     tooShort: (min: number, stay: boolean) => `Mindst ${min} ${stay ? (min === 1 ? "nat" : "nætter") : min === 1 ? "dag" : "dage"}.`,
     tooLong: (max: number, stay: boolean) => `Højst ${max} ${stay ? (max === 1 ? "nat" : "nætter") : max === 1 ? "dag" : "dage"}.`,
-    tooSoon: "Der er for kort tid til. Vælg senere datoer.",
-    tooFar: "Så langt frem tages der ikke imod bookinger endnu.",
     free: "ledig",
     full: "optaget",
     past: "passeret",
@@ -1692,7 +1678,6 @@ export const da: Messages = {
     sentTo: (to: string, day: string) => `Sendes på e-mail til ${to} ${day}`,
     toYou: "Sendes på e-mail til dig, når du har betalt",
     withdrawal: "Du kan fortryde købet af et gavekort inden for 14 dage, så længe intet af det er brugt.",
-    notDiscounted: "Rabatter og bonuspoint trækkes ikke fra gavekort.",
   },
   // Gavekortets e-mail (D300 F2). legal: needs review.
   giftCardEmail: {

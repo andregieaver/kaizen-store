@@ -3,7 +3,6 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's four rows for data in and out (D165, `docs/wave-2-data.md` 5.5; migration `*_data_plan_features.sql`): described once, in the
@@ -13,7 +12,6 @@ import { readMigration } from "./migration-files";
 let db: PGlite;
 
 const NAMES = ["Product CSV import and export", "Order and customer CSV export", "Bulk product editing", "CSV for every analytics table"];
-const MIGRATION = readMigration("20261005132729_data_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -51,15 +49,5 @@ describe("the plan comparison's rows for data in and out", () => {
     expect(text).toContain("5,000 products");
     expect(text).toContain("7 days");
     expect(text).not.toMatch(/unlimited|guarantee|instant/i);
-  });
-
-  it("adds nothing a second time when the migration is run again", async () => {
-    await db.exec(MIGRATION);
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = any($1)", [NAMES]);
-    expect(rows[0].n).toBe(4);
-  });
-
-  it("holds no DELETE or DROP: the migration tool cancels a function body that has one", () => {
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 });

@@ -18,11 +18,6 @@ export type DealStatus = (typeof DEAL_STATUSES)[number];
 export const DEAL_LINK_KINDS = ["order", "draft", "work_assignment"] as const;
 export type DealLinkKind = (typeof DEAL_LINK_KINDS)[number];
 
-/** How a deal was closed: by a person, or won by a paid order or an issued Work invoice linked to it. */
-/** Who or what closed a deal; `platform` is Kaizena Flow's own records closing a sign-up in its own store (D467). */
-export const DEAL_CLOSED_VIA = ["person", "order", "work_invoice", "platform"] as const;
-export type DealClosedVia = (typeof DEAL_CLOSED_VIA)[number];
-
 export const DEAL_TITLE_MAX = 200;
 export const DEAL_REASON_MAX = 200;
 export const PIPELINE_NAME_MAX = 80;
@@ -31,10 +26,6 @@ export const MAX_STAGES = 12;
 export const MAX_PIPELINES = 20;
 /** The largest estimate, in minor units: ten billion in a two-decimal currency. */
 export const ESTIMATE_MAX_MINOR = 1_000_000_000_000;
-
-/** The stages a store's first pipeline starts with, for Homer: names by key in the catalogue; won and lost are a deal's status, not stages. */
-export const DEFAULT_STAGES = ["new", "talking", "quote_sent"] as const;
-export type DefaultStage = (typeof DEFAULT_STAGES)[number];
 
 const dateText = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const trimmed = (max: number) => z.string().trim().min(1).max(max);

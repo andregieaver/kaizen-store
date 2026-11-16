@@ -75,7 +75,6 @@ export const methodInput = z
     const keys = m.groups.map((g) => `${g.zoneId ?? "-"}|${g.profileId ?? "-"}`);
     if (new Set(keys).size !== keys.length) ctx.addIssue({ code: "custom", message: "Rates: one block per zone and profile.", path: ["groups"] });
   });
-export type MethodInput = z.infer<typeof methodInput>;
 
 const patternsInput = z
   .array(z.string())
@@ -94,14 +93,12 @@ export const zoneInput = z.object({
   name: name("Name"),
   patterns: patternsInput,
 });
-export type ZoneInput = z.infer<typeof zoneInput>;
 
 export const profileInput = z.object({
   id: uuid.nullable(),
   name: name("Name"),
   productIds: z.array(uuid).max(10_000),
 });
-export type ProfileInput = z.infer<typeof profileInput>;
 
 export const defaultWeightInput = z.object({
   grams: z.number().int("Default weight: whole grams.").min(1, "Default weight: at least 1 g.").max(WEIGHT_GRAMS_MAX, `Default weight: at most ${WEIGHT_GRAMS_MAX} g.`),
@@ -115,7 +112,6 @@ export const pickupOptionInput = z.object({
   instructions: z.string().trim().max(INSTRUCTIONS_MAX, `Pickup instructions: at most ${INSTRUCTIONS_MAX} characters.`),
   instructionsT: texts(INSTRUCTIONS_MAX),
 });
-export type PickupOptionInput = z.infer<typeof pickupOptionInput>;
 
 export const localAreaInput = z
   .object({
@@ -146,4 +142,3 @@ export const localAreaInput = z
       if (a.patterns.length > 0) ctx.addIssue({ code: "custom", message: "An area by radius has no postal codes.", path: ["patterns"] });
     }
   });
-export type LocalAreaInput = z.infer<typeof localAreaInput>;

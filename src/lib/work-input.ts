@@ -207,7 +207,6 @@ export const taskInput = z.object({
   status: z.enum(["open", "done"]).default("open"),
   estimatedMinutes: estimateMinutes.nullish().transform((value) => value ?? null),
 });
-export type TaskInput = z.infer<typeof taskInput>;
 
 export const timeEntryInput = z.object({
   assignmentId: uuid,
@@ -217,13 +216,11 @@ export const timeEntryInput = z.object({
   billable: z.boolean().default(true),
   note: optionalText(TIME_NOTE_MAX),
 });
-export type TimeEntryInput = z.infer<typeof timeEntryInput>;
 
 /** The only thing changed on an entry after it is logged: its note (changing minutes means delete and log again). */
 export const timeEntryNoteInput = z.object({ note: optionalText(TIME_NOTE_MAX) });
 
 export const startTimerInput = z.object({ assignmentId: uuid, taskId: optionalUuid });
-export type StartTimerInput = z.infer<typeof startTimerInput>;
 
 // --- Invoices ---------------------------------------------------------------------
 
@@ -272,7 +269,6 @@ export const invoiceDraftInput = z
       "The period ends before it starts.",
     ),
   );
-export type InvoiceDraftInput = z.infer<typeof invoiceDraftInput>;
 
 /** A draft saved whole: the header and every line, in order (the editor's 600 ms autosave sends this). */
 export const invoiceInput = z
@@ -294,7 +290,6 @@ export const invoiceInput = z
       seen.add(line.id);
     });
   });
-export type InvoiceInput = z.infer<typeof invoiceInput>;
 
 /** Issuing: the day is today in the store's time zone unless the owner backdates it within what settings allow (4.4). */
 export const issueInvoiceInput = z.object({
@@ -303,7 +298,6 @@ export const issueInvoiceInput = z.object({
   /** The owner has seen that the date is earlier than the previous document's and confirms. */
   confirmEarlierDate: z.boolean().default(false),
 });
-export type IssueInvoiceInput = z.infer<typeof issueInvoiceInput>;
 
 /** A draft recorded as an invoice issued elsewhere before (D499): the number and the days it had there, never numbered from the store's series. */
 export const recordElsewhereInput = z.object({
@@ -312,7 +306,6 @@ export const recordElsewhereInput = z.object({
   issuedOn: day("Give the date it was issued."),
   dueOn: optionalDay("Give the due date as a date."),
 });
-export type RecordElsewhereInput = z.infer<typeof recordElsewhereInput>;
 
 // --- Recurring templates ----------------------------------------------------------
 
@@ -341,7 +334,6 @@ export const recurringInvoiceInput = z
   .superRefine(
     notBefore<{ startDate: string; endDate: string | null }>("startDate", "endDate", "The end comes before the start."),
   );
-export type RecurringInvoiceInput = z.infer<typeof recurringInvoiceInput>;
 
 // --- Settings ---------------------------------------------------------------------
 
@@ -410,7 +402,6 @@ export const recordPaymentInput = z.object({
   method: z.enum(MANUAL_PAYMENT_METHODS).default("bank"),
   reference: optionalText(200),
 });
-export type RecordPaymentInput = z.infer<typeof recordPaymentInput>;
 
 /** Writing off what of an invoice is lost (D500): all that is outstanding unless an amount is given, on a day, with why. */
 export const markLostInput = z.object({
@@ -419,14 +410,12 @@ export const markLostInput = z.object({
   writtenOffOn: day("Give the date it was written off."),
   reason: optionalText(500),
 });
-export type MarkLostInput = z.infer<typeof markLostInput>;
 
 /** Taking a loss back adds a reversing row; the original stays. */
 export const reverseLossInput = z.object({ lossId: uuid });
 
 /** Undoing a payment adds a reversing row; the original stays. */
 export const reversePaymentInput = z.object({ paymentId: uuid, reason: optionalText(500) });
-export type ReversePaymentInput = z.infer<typeof reversePaymentInput>;
 
 /**
  * A credit note (4.6): the whole invoice (which voids it) or chosen lines and
@@ -461,4 +450,3 @@ export const creditNoteInput = z
       seen.add(line.lineId);
     });
   });
-export type CreditNoteInput = z.infer<typeof creditNoteInput>;

@@ -23,7 +23,6 @@ export const BRIEF_MIN = 3;
 
 export const PICTURE_SHAPES = ["landscape", "portrait", "square"] as const;
 export type PictureShape = (typeof PICTURE_SHAPES)[number];
-export const SHAPE_WORDS: Record<PictureShape, string> = { landscape: "Wide", portrait: "Tall", square: "Square" };
 
 /** The shape nearest a picture's own, so a picture made again fits where the one before was. */
 export function shapeOf(width: number, height: number): PictureShape {

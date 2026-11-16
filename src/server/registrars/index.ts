@@ -43,7 +43,3 @@ export async function registrarFor(domain: string): Promise<DomainRegistrar | nu
 /** The registrar a registration was made with. */
 export const registrarById = (id: string): DomainRegistrar | null => (id in REGISTRARS ? REGISTRARS[id as RegistrarId]() : null);
 
-/** For tests: forget the TLD lists. */
-export function forgetSupportedTlds(): void {
-  tldCache = null;
-}

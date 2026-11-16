@@ -15,9 +15,6 @@ export const riskLevelOf = (value: unknown): RiskLevel =>
 /** Whether staff are shown the risk: elevated or highest only (normal and not assessed show nothing). */
 export const riskShown = (level: string | null | undefined): level is "elevated" | "highest" => level === "elevated" || level === "highest";
 
-/** The chip's words. */
-export const riskWords = (level: "elevated" | "highest"): string => (level === "highest" ? "Stripe: highest risk" : "Stripe: elevated risk");
-
 /** Stripe's dispute statuses (`warning_*` are inquiries, which move no money). */
 export const DISPUTE_STATUSES = [
   "warning_needs_response",

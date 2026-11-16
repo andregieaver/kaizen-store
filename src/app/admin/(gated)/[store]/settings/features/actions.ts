@@ -42,7 +42,7 @@ export async function saveBookingSettingsAction(storeSlug: string, _state: FormS
  * Switches a feature on from the page it serves (round 12, D637: Gift cards, Reviews), as a form: on never needs a confirmation, and an owner
  * alone may do it, as on the Features page.
  */
-export async function switchOnFromPageAction(storeSlug: string, feature: "gift_cards" | "reviews"): Promise<FormState> {
+export async function switchOnFromPageAction(storeSlug: string, feature: "gift_cards" | "reviews" | "languages" | "currencies"): Promise<FormState> {
   const member = await checkOwnerRole(storeSlug);
   if (!member) return problems([adminText(await actionAdminLang(), "settings").features.actions.onlyOwners]);
   const lang = adminLangOf(member.account.adminLocale);

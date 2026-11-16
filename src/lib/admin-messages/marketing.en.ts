@@ -84,7 +84,6 @@ export const marketingEn = {
     wantYourEmails: "Want your emails",
     moneyUnknown: "{n} could not be judged on money: their orders are in a currency with no rate.",
     whoIsIn: "Who is in it",
-    firstBy: "The first {n} by their last order.",
     nobody: "Nobody matches these rules today.",
     wantsYourEmails: "Wants your emails",
     peopleList: "People",

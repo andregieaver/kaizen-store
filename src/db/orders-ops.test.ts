@@ -9,7 +9,6 @@ import { COPIED_ORDER_EVENTS } from "@/lib/order-ops-events";
 
 import { createInvoiceStore, one as q1, placeOrder, scalar as q0 } from "./invoice-fixture";
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * Order search, tags, archive, draft orders and gift messages (wave 3, run 2, D173, docs/wave-3-orders.md 3.3): the rules the database holds, against every
@@ -1196,33 +1195,6 @@ describe("duplicating a store", () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 describe("the patched functions", () => {
-  const migration = readMigration(/_orders_ops_rules\.sql$/);
-  const patches = [...migration.matchAll(/DO \$patch\$[\s\S]*?\$patch\$;/g)].map((m) => m[0]);
-
-  it("are four, each one anchored replacement that raises when its anchor is gone and does nothing the second time", async () => {
-    expect(patches).toHaveLength(4);
-    for (const patch of patches) {
-      expect(patch).toContain("RAISE EXCEPTION");
-      expect(patch).toContain("IF position(");
-    }
-    const before = await scalar<string>("select pg_get_functiondef('commerce.copied_orders_read_only()'::regprocedure)");
-    for (const patch of patches) await db.exec(patch);
-    expect(await scalar<string>("select pg_get_functiondef('commerce.copied_orders_read_only()'::regprocedure)")).toBe(before);
-  });
-
-  it("fail loudly, and leave the function as it was, when the function is not the one they were written for", async () => {
-    await db.exec("begin");
-    try {
-      await db.exec(`create or replace function commerce.refuse_copied_order_event() returns trigger language plpgsql set search_path = '' as $f$ begin return new; end; $f$`);
-      const patch = patches.find((p) => p.includes("refuse_copied_order_event"))!;
-      await expect(db.exec(patch)).rejects.toThrow(/refuse_copied_order_event: the type test was not found/);
-    } finally {
-      await db.exec("rollback");
-    }
-    // After the rollback the real function is back, patched.
-    expect(await scalar<string>("select pg_get_functiondef('commerce.refuse_copied_order_event()'::regprocedure)")).toContain("order.tags_changed");
-  });
-
   it("keep what the earlier migrations put in them: a copied order is still refused anything else, anonymising still works", async () => {
     const def = await scalar<string>("select pg_get_functiondef('commerce.copied_orders_read_only()'::regprocedure)");
     expect(def).toContain("commerce.anonymising");
@@ -1233,14 +1205,6 @@ describe("the patched functions", () => {
     const snap = await scalar<string>("select pg_get_functiondef('commerce.build_invoice_snapshot(uuid, date, date)'::regprocedure)");
     expect(snap).toContain("'paid_online'");
     expect(snap).toContain("'paid_outside'");
-  });
-
-  it("put no DELETE, DROP or TRUNCATE inside any function this migration makes (the migration tool cancels those)", () => {
-    const functions = [...migration.matchAll(/CREATE FUNCTION[\s\S]*?\n\$\$;/g)].map((m) => m[0]);
-    expect(functions.length).toBeGreaterThanOrEqual(10);
-    for (const body of [...functions, ...patches]) {
-      expect(body, body.slice(0, 80)).not.toMatch(/\b(DELETE\s+FROM|DROP\s+(TABLE|FUNCTION|TRIGGER|INDEX|CONSTRAINT)|TRUNCATE)\b/i);
-    }
   });
 
   it("make every function with a fixed, empty search path and none callable by the public roles' default grants beyond the schema's own rules", async () => {

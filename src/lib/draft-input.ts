@@ -112,7 +112,6 @@ export const draftLineInput = z
       if (!line.vatCategory) ctx.addIssue({ code: "custom", message: "Choose the VAT category of a custom item.", path: ["vatCategory"] });
     }
   });
-export type DraftLineInput = z.infer<typeof draftLineInput>;
 
 export const draftDiscountInput = z
   .object({
@@ -167,7 +166,6 @@ export const draftSendInput = z.object({
   validDays: z.number().int().min(DRAFT_VALID_DAYS_MIN).max(DRAFT_VALID_DAYS_MAX).optional(),
   createLink: z.boolean().default(false),
 });
-export type DraftSendInput = z.infer<typeof draftSendInput>;
 
 /** How money taken outside Kaizen was received. */
 export const MANUAL_PAYMENT_METHODS = ["bank_transfer", "cash", "other"] as const;
@@ -195,7 +193,6 @@ export const draftPaidOutsideInput = z.object({
     .optional()
     .transform((v) => (v ? v : null)),
 });
-export type DraftPaidOutsideInput = z.infer<typeof draftPaidOutsideInput>;
 
 /** Recording a refund of money that was taken outside Kaizen: the amount in major units and why; staff paid the customer back themselves. */
 export const manualRefundInput = z.object({
@@ -203,4 +200,3 @@ export const manualRefundInput = z.object({
   reason: z.string().trim().min(1, "Say why.").max(200),
   restock: z.boolean().default(true),
 });
-export type ManualRefundInput = z.infer<typeof manualRefundInput>;

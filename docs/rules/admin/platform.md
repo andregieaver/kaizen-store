@@ -357,8 +357,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   per feature (the ids are `FEATURE_IDS` in `src/lib/store-features.ts`). `stores.features` holds what the owner keeps on; what is
   *on* is only `featureOn(store, id)` (kept, with everything in its `needs`; SQL `commerce.feature_on()`), so a feature's switch is
   remembered while the shop is off; never test
-  `store.features.includes()` for "on". `store.bookingsOn`/`deliveriesOn` are derived from it, and `stores.modules`'
-  `bookings`/`deliveries` follow it by trigger (`stores_features_sync()`, both ways) for older code. Only owners switch, through
+  `store.features.includes()` for "on". `store.bookingsOn`/`deliveriesOn` are derived from it. Bookings and
+  subscription boxes are switched in `stores.features` alone; `stores.modules` holds only `work` (the twin for older code was
+  removed in bloat review step 0.37), and `stores_features_sync()` only keeps the features list distinct and sorted. Only owners switch, through
   `setFeature()` (needs enforced, `featureBlockers()` refuse where customers would be hit, `featureWarnings()` need `confirmed`,
   audited `store.feature`); nothing is deleted, history and shoppers' after-sale links stay. Off means hidden in the admin (a
   `feature` on its `STORE_SECTIONS` item and `ADMIN_PAGES` entry, held equal by `store-nav.test.ts`;

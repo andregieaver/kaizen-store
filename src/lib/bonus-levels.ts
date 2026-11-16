@@ -11,8 +11,6 @@ export const BONUS_LEVELS_MAX = 4;
 export const BONUS_LEVEL_NAME_MAX = 40;
 /** The most a customer can be given for opening an account, in minor units of the credits' currency. */
 export const BONUS_SIGNUP_MAX_MINOR = 1_000_000;
-/** The days of spending a level counts. */
-export const BONUS_LEVEL_DAYS = 365;
 
 export type BonusLevel = {
   name: string;

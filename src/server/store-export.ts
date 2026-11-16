@@ -115,6 +115,8 @@ export const STORE_EXPORT_TABLES = [
   // A store's sales pipelines and their stages (D464): its own words and order; the deals name people and leave through the privacy export.
   "deal_pipelines",
   "deal_stages",
+  // Its contract templates (D695): its own words; the contracts name people and leave through the privacy export.
+  "contract_templates",
 ] as const;
 
 /** A column that could open a door, never written to the file (the support inbox's channel and email-address keys among them). */

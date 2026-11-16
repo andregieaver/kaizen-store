@@ -485,6 +485,7 @@ export const shippingNb: ShippingMessages = {
     checkoutOff: "Lagret. Tjenestene er av i kassen.",
   },
   checkoutAsks: {
+    seeIt: "Se det",
     title: "Hva kassen spør om",
     accounts: "Kundekontoer",
     shortHints: { optional: "Gjester er velkomne", required: "Bare for medlemmer", off: "Bare gjester" },

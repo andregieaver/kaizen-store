@@ -32,6 +32,9 @@ export function pageName(page: string, words: HeatmapsMessages): string {
   return rest === "" ? words.hub.frontPage : rest;
 }
 
+/** Recordings of a page with rage clicks, for the owner (D656 step 11). */
+export const recordingsOfPage = (base: string, page: string) => `${base}/analytics/recordings?${new URLSearchParams({ page, has: "rage" }).toString()}`;
+
 export const mapHref = (base: string, page: string, params: Record<string, string> = {}) =>
   `${base}/analytics/heatmaps?${new URLSearchParams({ page, ...params }).toString()}`;
 
@@ -91,9 +94,16 @@ export function HeatmapsHub({ base, on, owner, pages, words }: HeatmapsHubProps)
                       {formatCount(p.views)} {w.colViews.toLowerCase()} · {formatPercent(p.frustration)} {w.colStuck.toLowerCase()}
                     </p>
                   </div>
-                  <Link href={mapHref(base, p.page)} className={i === 0 ? primary : "inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm"}>
-                    {i === 0 ? w.seeMap : w.map}
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {owner ? (
+                      <Link href={recordingsOfPage(base, p.page)} className="text-sm underline">
+                        {w.watch}
+                      </Link>
+                    ) : null}
+                    <Link href={mapHref(base, p.page)} className={i === 0 ? primary : "inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm"}>
+                      {i === 0 ? w.seeMap : w.map}
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ol>
@@ -137,6 +147,12 @@ export type PageMapViewProps = {
   refresher: ReactNode;
   words: HeatmapsMessages;
   locale: string;
+  /** The owner's link to this page's recordings with rage clicks (D656 step 11); left out for anyone else. */
+  watchHref?: string;
+  /** The A/B version shown (`{experiment}:{version}`), `""` for every visitor (D656 step 12). */
+  tag?: string;
+  /** The versions with totals for this page, as chips beside "Every visitor"; none without a test. */
+  versions?: { tag: string; label: string }[];
 };
 
 /** A part's words: a landmark, a product card, or where on the page it sits. */
@@ -154,8 +170,12 @@ export function partLabel(anchor: string, layout: MapLayout | null, words: Heatm
 export function PageMapView(props: PageMapViewProps) {
   const { base, page, view, device, days, devices, heat, shot, period, words, locale } = props;
   const w = words.map;
-  const here = (params: Partial<{ view: string; device: string; days: string }>) =>
-    mapHref(base, page, { view, device, days: String(days), ...params });
+  const tag = props.tag ?? "";
+  const here = (params: Partial<{ view: string; device: string; days: string; tag: string }>) => {
+    const next: Record<string, string> = { view, device, days: String(days), tag, ...params };
+    if (!next.tag) delete next.tag;
+    return mapHref(base, page, next);
+  };
   const dayChoices = view === "click" ? MAP_DAYS.filter((d) => d <= 90) : MAP_DAYS;
   const shares = reachedShares(heat.reach);
   const lines = reachLines(shares);
@@ -209,6 +229,15 @@ export function PageMapView(props: PageMapViewProps) {
           ))}
         </nav>
       </div>
+      {props.versions && props.versions.length > 0 ? (
+        <nav aria-label={w.versionLabel} className="flex flex-wrap gap-2">
+          {[{ tag: "", label: w.everyone }, ...props.versions].map((v) => (
+            <Link key={v.tag || "all"} href={here({ tag: v.tag })} aria-current={v.tag === tag ? "true" : undefined} className={chip(v.tag === tag)}>
+              {v.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
     </div>
   );
 
@@ -240,6 +269,11 @@ export function PageMapView(props: PageMapViewProps) {
   return (
     <div className="flex flex-col gap-6">
       {chips}
+      {props.watchHref ? (
+        <Link href={props.watchHref} className="w-fit text-sm underline">
+          {words.hub.watch}
+        </Link>
+      ) : null}
       {enough ? (
         <p className="text-sm">
           {fillWords(w.summary, {

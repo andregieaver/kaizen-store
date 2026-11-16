@@ -1,7 +1,9 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { guarded, refusal, returnErrorCode, returnErrorMessage, RETURN_ERROR_MESSAGES } from "./return-errors";
-import { readMigration } from "@/db/migration-files";
 
 /** What the database's returns rules raise, as the Drizzle driver wraps it, and how it is worded. */
 
@@ -36,7 +38,8 @@ describe("return errors", () => {
   });
 
   it("words every code the migration raises", async () => {
-    const sql = readMigration(/_returns_rules\.sql$/);
+    const dir = join(process.cwd(), "supabase/migrations");
+    const sql = readdirSync(dir).filter((name) => name.endsWith(".sql")).sort().map((name) => readFileSync(join(dir, name), "utf8")).join("\n");
     const codes = [...sql.matchAll(/RAISE EXCEPTION '((?:return|withdrawal)_[a-z_]+):/g)].map((m) => m[1]);
     expect(codes.length).toBeGreaterThan(20);
     for (const code of new Set(codes)) expect(RETURN_ERROR_MESSAGES, code).toHaveProperty(code);

@@ -1,7 +1,7 @@
 import { layerPictureUrls, withLayerSmallCopies, type BackgroundLayer } from "./background-layers";
 import { innerColumns, mapChildBlocks, mapInnerColumns, withChildren, type Background, type PageBlock, type PageContent, type RowBackground } from "./page-content";
 import { mapTexts } from "./page-translation";
-import { SMALL_COPY_WIDTH } from "./picture-sizes";
+import { MEDIUM_COPY_WIDTH, SMALL_COPY_WIDTH } from "./picture-sizes";
 
 /**
  * A page's pictures and their alt texts (D89). The site shows a picture in
@@ -80,16 +80,29 @@ export function backgroundImageUrls(content: PageContent): string[] {
 /**
  * The page with each background picture's, picture layer's (D537) and picture component's small copy (`image.small`, the library's
  * 480 px one) where the library has one, so a phone is not sent the large file (D211, D336) and a blurred picture loads the small one
- * only. Set when the page is read, never saved (the page's schema drops it).
+ * only. Picture components, Before and afters and row and column backgrounds are also given the 800 px copy (`image.medium`, from
+ * `mediumLookup`); layers keep two files. Set when the page is read, never saved (the page's schema drops both).
  */
-export function withSmallCopies(content: PageContent, lookup: (url: string) => string | undefined): PageContent {
+export function withSmallCopies(
+  content: PageContent,
+  lookup: (url: string) => string | undefined,
+  mediumLookup: (url: string) => string | undefined = () => undefined,
+): PageContent {
   let changed = false;
+  /** The picture with its small and 800 px copies filled where the library has them; the same object when nothing is new. */
+  const copies = <P extends { url: string; small?: string; medium?: string }>(picture: P): P => {
+    const small = lookup(picture.url);
+    const medium = mediumLookup(picture.url);
+    const newSmall = small && small !== picture.url && picture.small !== small ? small : undefined;
+    const newMedium = medium && medium !== picture.url && picture.medium !== medium ? medium : undefined;
+    if (!newSmall && !newMedium) return picture;
+    changed = true;
+    return { ...picture, ...(newSmall ? { small: newSmall } : {}), ...(newMedium ? { medium: newMedium } : {}) };
+  };
   const fill = <B extends Background | RowBackground | undefined>(background: B): B => {
     if (background?.type !== "image") return background;
-    const small = lookup(background.image.url);
-    if (!small || small === background.image.url || background.image.small === small) return background;
-    changed = true;
-    return { ...background, image: { ...background.image, small } };
+    const image = copies(background.image);
+    return image === background.image ? background : { ...background, image };
   };
   // The layers' pictures (D537): the key is written only where a part has layers, so a part without them stays as it was.
   const layered = (layers: BackgroundLayer[] | undefined): { backgroundLayers?: BackgroundLayer[] } => {
@@ -102,20 +115,12 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
   const fillBlock = (block: PageBlock): PageBlock => {
     let out = block;
     if (out.type === "image" && out.image) {
-      const small = lookup(out.image.url);
-      if (small && small !== out.image.url && out.image.small !== small) {
-        changed = true;
-        out = { ...out, image: { ...out.image, small } };
-      }
+      const image = copies(out.image);
+      if (image !== out.image) out = { ...out, image };
     }
     if (out.type === "beforeAfter") {
-      const withSmall = <P extends { url: string; small?: string } | null>(picture: P): P => {
-        const small = picture && lookup(picture.url);
-        if (!picture || !small || small === picture.url || picture.small === small) return picture;
-        changed = true;
-        return { ...picture, small };
-      };
-      out = { ...out, before: withSmall(out.before), after: withSmall(out.after) };
+      const withCopies = <P extends { url: string; small?: string; medium?: string } | null>(picture: P): P => (picture ? copies(picture) : picture);
+      out = { ...out, before: withCopies(out.before), after: withCopies(out.after) };
     }
     if (out.type === "columns") out = mapInnerColumns(out, (inner) => ({ ...inner, background: fill(inner.background), ...layered(inner.backgroundLayers) }));
     return out.type === "columns" || out.type === "faq" ? mapChildBlocks(out, fillBlock) : out;
@@ -134,12 +139,16 @@ export const SMALL_ENOUGH_BLUR = 4;
 
 /**
  * Where a background picture is loaded from: the small copy alone when it is blurred (`SMALL_ENOUGH_BLUR`), else the large one
- * with the small one offered beside it (`srcSet`, by width) for a narrow screen. Without a small copy, the picture as it is.
+ * with the small one offered beside it (`srcSet`, by width) for a narrow screen, and the 800 px copy between them where there is
+ * one and the picture is wider than it. Without a small copy, the picture as it is.
  */
-export function backgroundSources(image: { url: string; width: number; small?: string }, blur: number): { src: string; srcSet?: string } {
+export function backgroundSources(image: { url: string; width: number; small?: string; medium?: string }, blur: number): { src: string; srcSet?: string } {
   const small = image.small && image.width > SMALL_COPY_WIDTH ? image.small : undefined;
   if (!small) return { src: image.url };
   if (blur >= SMALL_ENOUGH_BLUR) return { src: small };
+  if (image.medium && image.width > MEDIUM_COPY_WIDTH) {
+    return { src: image.url, srcSet: `${small} ${SMALL_COPY_WIDTH}w, ${image.medium} ${MEDIUM_COPY_WIDTH}w, ${image.url} ${image.width}w` };
+  }
   return { src: image.url, srcSet: `${small} ${SMALL_COPY_WIDTH}w, ${image.url} ${image.width}w` };
 }
 export { SMALL_COPY_WIDTH };

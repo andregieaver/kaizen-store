@@ -65,6 +65,11 @@ export type VariantInfo = {
   pageId: string | null;
   published: boolean;
   changed: boolean;
+  /**
+   * The version's draft differs from its published copy (saved in the builder, not published): visitors are shown the published copy, so a
+   * test does not start until it is published.
+   */
+  unpublished: boolean;
   /** For a part test: whether the version differs from the original in the part only (see `partChanges()`). */
   scope: "ok" | "outside" | "missing" | "modal" | null;
 };
@@ -184,6 +189,7 @@ async function variantsOf(storeId: string, experimentId: string, originalPublish
     pageId: r.page_id ? String(r.page_id) : null,
     published: r.key === "a" ? true : Boolean(r.published),
     changed: r.key === "a" ? false : !sameRows(r.published ?? r.draft, originalPublished),
+    unpublished: r.key === "a" ? false : r.published !== null && r.published !== undefined && !sameRows(r.draft, r.published),
     scope: scopeOf(r, original, part),
   }));
 }
@@ -565,7 +571,11 @@ async function checkStart(storeId: string, test: ExperimentInfo): Promise<string
     needsPart: test.page.kind === "role" && isPartOnlyPlace(test.page.role) && !test.part,
     partLabel: test.part?.label ?? null,
   });
-  for (const v of test.variants) if (v.key !== "a" && !v.changed) problems.push(`Version ${v.key.toUpperCase()} is still the same as the original: change it first, or the test has nothing to find.`);
+  for (const v of test.variants) {
+    if (v.key === "a") continue;
+    if (v.unpublished) problems.push(`Version ${v.key.toUpperCase()}'s latest changes are saved but not published: publish them in the builder, as visitors are shown what is published.`);
+    else if (!v.changed) problems.push(`Version ${v.key.toUpperCase()} is still the same as the original: change it first, or the test has nothing to find.`);
+  }
   return problems;
 }
 

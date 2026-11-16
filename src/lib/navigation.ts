@@ -13,7 +13,6 @@ export const MENU_MAX_DEPTH = 2;
 export const MENU_NAME_MAX = 80;
 
 export const LINK_KINDS = ["home", "products", "page", "product", "category", "tag", "blog", "article", "blogCategory", "account", "cart", "url"] as const;
-export type LinkKind = (typeof LINK_KINDS)[number];
 
 export type MenuLink =
   | { kind: "home" }
@@ -331,10 +330,6 @@ export function linkExists(link: MenuLink | PlatformMenuLink, names: MenuNames):
 // Kaizen's own header and footer (D42)
 // ---------------------------------------------------------------------------
 
-/** Where a link in Kaizen's own menus can go. */
-export const PLATFORM_LINK_KINDS = ["home", "page", "category", "tag", "blog", "article", "blogCategory", "signUp", "signIn", "url"] as const;
-export type PlatformLinkKind = (typeof PLATFORM_LINK_KINDS)[number];
-
 export type PlatformMenuLink =
   | { kind: "home" }
   | { kind: "signUp" }
@@ -351,8 +346,6 @@ export type PlatformMenuLink =
 export type PlatformMenuItem = { label: Record<string, string>; link: PlatformMenuLink };
 
 export type PlatformNavigation = StoreNavigation;
-
-export const EMPTY_PLATFORM_NAVIGATION: PlatformNavigation = EMPTY_NAVIGATION;
 
 /** Any menu link, store or platform: what the shared menu editor works with. */
 export type AnyMenuLink = MenuLink | PlatformMenuLink;

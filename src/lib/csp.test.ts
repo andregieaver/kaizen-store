@@ -11,6 +11,7 @@ import {
   SITE_HEADERS,
   adminFrameHeaders,
   baseRouteHeaders,
+  replayRouteHeaders,
   checkoutCsp,
   payHeaders,
   payRouteHeaders,
@@ -190,5 +191,18 @@ describe("public files (bloat review step 0.32)", () => {
     expect(PUBLIC_FILE_HEADERS[0].source).toBe("/:folder(flags|demo|kaizen)/:path*");
     expect(PUBLIC_FILE_HEADERS[0].headers).toEqual([{ key: "Cache-Control", value: "public, max-age=86400" }]);
     expect(readFileSync(join(process.cwd(), "next.config.ts"), "utf8")).toContain("...PUBLIC_FILE_HEADERS");
+  });
+});
+
+describe("the recording player's policy (D656 8.6)", () => {
+  it("keeps the admin's frame-ancestors and lets a replay load only the admin's, data, blob and storage files", () => {
+    const [entry] = replayRouteHeaders("https://themes.kaizenaflow.com", { supabaseUrl: "https://abc.supabase.co" });
+    expect(entry.source).toBe("/admin/:store/analytics/recordings/:id");
+    const value = entry.headers[0].value;
+    expect(value).toContain("frame-ancestors 'self' https://themes.kaizenaflow.com");
+    expect(value).toContain("img-src 'self' data: blob: https://abc.supabase.co");
+    expect(value).toContain("font-src 'self' data: https://abc.supabase.co");
+    expect(value).not.toMatch(/script-src|style-src/);
+    expect(replayRouteHeaders(null)[0].headers[0].value).toBe("frame-ancestors 'self'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:");
   });
 });

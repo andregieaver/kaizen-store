@@ -1,3 +1,5 @@
+import { createHash, randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -142,5 +144,78 @@ describe("the staff_request event and a cancellation (B3, D640)", () => {
     await run("cancel_order", { order: mine.number, reason: "The customer asked to cancel in support.", notify: false });
     expect(await statusOf(cancel.id)).toBe("done");
     expect(await statusOf(visitor.id)).toBe("proposed");
+  });
+});
+
+describe("a request by email, confirmed from the order's own address (B3, D685)", () => {
+  /** A request in an email conversation from `from`. */
+  async function emailed(from: string, kind: "change_address" | "cancel_order", args: Record<string, unknown>): Promise<string> {
+    const [c] = await db().execute<Row>(sql`
+      insert into commerce.support_conversations (store_id, source, handler, token_hash, locale, contact_email)
+      values (${store.storeId}::uuid, 'email', 'ai', ${`b3e-${Math.random()}`}, 'nb-NO', ${from}) returning id
+    `);
+    const [a] = await db().execute<Row>(sql`
+      insert into commerce.support_actions (conversation_id, store_id, kind, confirmer, args, summary, details)
+      values (${String(c.id)}::uuid, ${store.storeId}::uuid, ${kind}, 'staff', ${JSON.stringify(args)}::jsonb, 'Endre leveringsadressen', 'The customer asks.')
+      returning id
+    `);
+    return String(a.id);
+  }
+
+  it("emails a link to the order's address, acts only once the customer confirms there, and never on a link that ran out", async () => {
+    const { offerRequestConfirmation, requestToConfirm, confirmRequestByLink } = await import("./request-confirm");
+    await db().execute(sql`
+      insert into commerce.autopilot_settings (store_id, planning, updated_at) values (${store.storeId}::uuid, '{"reacts": true}'::jsonb, now())
+      on conflict (store_id) do update set planning = excluded.planning
+    `);
+    const email = `ana-${tag}@example.com`;
+    const o = await order(ana, email);
+    const id = await emailed(email.toUpperCase(), "change_address", { orderNumber: o.number, address: ADDRESS });
+    expect(await refusal(ownerTools.preflightOwnerTool(ctx(), "carry_out_address_change", { request: id }))).toMatch(/has not confirmed it from the link/);
+
+    expect(await offerRequestConfirmation(id)).not.toBeNull();
+    const [mail] = await db().execute<Row>(sql`select subject from commerce.email_messages where store_id = ${store.storeId}::uuid and kind = 'support.request_confirm' order by created_at desc limit 1`);
+    expect(String(mail.subject)).toContain(o.number);
+    // Once only.
+    expect(await offerRequestConfirmation(id)).toBeNull();
+
+    await detectEvents({ stockoutCheck: false });
+    const before = await db().execute<Row>(sql`select ref from commerce.autopilot_events where store_id = ${store.storeId}::uuid and kind = 'staff_request' and ref = ${id}`);
+    expect(before).toHaveLength(0);
+
+    // The token is only kept as a hash: the test gives the request one it knows.
+    const token = randomBytes(32).toString("hex");
+    await db().execute(sql`update commerce.support_actions set confirm_token_hash = ${createHash("sha256").update(token).digest("hex")} where id = ${id}::uuid`);
+    expect(await requestToConfirm(store.storeId, token)).toMatchObject({ state: "open", orderNumber: o.number });
+    expect(await confirmRequestByLink(store.storeId, "cd".repeat(32))).toBe(false);
+    expect(await confirmRequestByLink(store.storeId, token)).toBe(true);
+    expect((await requestToConfirm(store.storeId, token))?.state).toBe("confirmed");
+
+    await detectEvents({ stockoutCheck: false });
+    const after = await db().execute<Row>(sql`select ref from commerce.autopilot_events where store_id = ${store.storeId}::uuid and kind = 'staff_request' and ref = ${id}`);
+    expect(after).toHaveLength(1);
+    const done = await run("carry_out_address_change", { request: id });
+    expect(String(done.done)).toContain("Nygata 5");
+
+    // A link that ran out confirms nothing.
+    const late = await order(ana, email);
+    const lateId = await emailed(email, "cancel_order", { orderNumber: late.number });
+    expect(await offerRequestConfirmation(lateId)).not.toBeNull();
+    const lateToken = randomBytes(32).toString("hex");
+    await db().execute(sql`
+      update commerce.support_actions set confirm_token_hash = ${createHash("sha256").update(lateToken).digest("hex")}, confirm_sent_at = now() - interval '49 hours'
+      where id = ${lateId}::uuid
+    `);
+    expect(await confirmRequestByLink(store.storeId, lateToken)).toBe(false);
+    expect((await requestToConfirm(store.storeId, lateToken))?.state).toBe("closed");
+  });
+
+  it("sends no link when the email's address is not the order's", async () => {
+    const { offerRequestConfirmation } = await import("./request-confirm");
+    const o = await order(ana, `ana-${tag}@example.com`);
+    const id = await emailed("someone-else@example.com", "cancel_order", { orderNumber: o.number });
+    expect(await offerRequestConfirmation(id)).toBeNull();
+    const [row] = await db().execute<Row>(sql`select confirm_sent_at from commerce.support_actions where id = ${id}::uuid`);
+    expect(row.confirm_sent_at).toBeNull();
   });
 });

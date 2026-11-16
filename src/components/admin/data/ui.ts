@@ -6,7 +6,6 @@ export const hint = "text-xs text-muted";
 const button = "inline-flex min-h-10 items-center justify-center gap-2 rounded-pill px-4 text-sm font-medium disabled:opacity-40";
 export const primary = `${button} bg-brand text-brand-ink`;
 export const secondary = `${button} border border-edge bg-card hover:bg-sunken`;
-export const link = "underline underline-offset-2";
 export const tableShell = "overflow-x-auto rounded-panel border border-line bg-sunken";
 export const th = "px-3 py-2 text-left font-medium";
 export const td = "px-3 py-2 align-top";

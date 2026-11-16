@@ -28,8 +28,6 @@ export const visitBody = z.object({
   ttclid: z.literal(true).optional(),
 });
 
-export type VisitBodyInput = z.infer<typeof visitBody>;
-
 /** Page views one visitor can add on one day; past it the visit is left as it is (a script, not a person). */
 export const PAGE_VIEW_CAP = 3000;
 /** Rows older than this many months are deleted by the daily job. */
@@ -81,6 +79,8 @@ export const PRIVATE_ROUTES: readonly string[] = [
   "sign-in",
   "ab",
   "cookies",
+  // A request's confirmation link holds its secret token (D685).
+  "request",
 ];
 
 const decoded = (value: string): string | null => {

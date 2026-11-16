@@ -24,8 +24,8 @@ test.describe("the owner", () => {
     await page.goto(base);
     await expect(page.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Order confirmation", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Switch (off|on) Order confirmation/ })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Switch on Out for delivery \(carrier\)/ })).toBeVisible();
+    await expect(page.getByRole("switch", { name: /Switch (off|on) Order confirmation/ })).toHaveCount(0);
+    await expect(page.getByRole("switch", { name: /Switch on Out for delivery \(carrier\)/ })).not.toBeChecked();
     await expect(page.getByRole("link", { name: "Staff alerts" })).toBeVisible();
   });
 
@@ -52,7 +52,8 @@ test.describe("the owner", () => {
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
 
     await page.goto(base);
-    await expect(page.getByText(/Norwegian Bokmål: your text/).first()).toBeVisible();
+    // Round 22: the list says "your words" beside the email; its languages are on the email's own page.
+    await expect(page.getByRole("link", { name: /^Order sent\s*your words$/ })).toBeVisible();
 
     await page.goto(`${base}/order-sent`);
     await chooseNorwegian(page);
@@ -79,7 +80,7 @@ test.describe("a Read-only member", () => {
   test("reads the emails but cannot switch or save them, and gets the 404 on the staff alerts", async ({ page }) => {
     await page.goto(base);
     await expect(page.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Switch (off|on)/ })).toHaveCount(0);
+    await expect(page.getByRole("switch")).toHaveCount(0);
     await page.goto(`${base}/order-sent`);
     await expect(page.getByText("You can see this email but not change it.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);

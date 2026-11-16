@@ -1136,10 +1136,4 @@ async function pageTitle(pageId: string, storeId: string): Promise<{ id: string;
   return row ? { id: String(row.id), title: String(row.title ?? "Copy") } : null;
 }
 
-/** What the studio can offer: copying needs a browser; the AI's part needs a model that sees pictures. */
-export async function replicaAbilities(storeId: string): Promise<{ ai: boolean; browser: boolean }> {
-  const connection = await aiFor(storeId);
-  return { ai: Boolean(seeing(connection)), browser: true };
-}
-
 export type { PageCapture };

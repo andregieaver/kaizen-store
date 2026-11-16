@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" font-family="system-ui, sans-serif" font-size="14">
+  <rect width="960" height="360" fill="#ffffff"/>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#555"/></marker></defs>
+  <text x="24" y="34" font-size="18" font-weight="600" fill="#1a1a1a">A contract's life (D695)</text>
+  <g stroke="#555" stroke-width="1.5" fill="none" marker-end="url(#a)">
+    <path d="M168 110H218"/><path d="M368 110H418"/><path d="M568 110H618"/><path d="M768 110H808"/>
+    <path d="M693 140V200"/><path d="M493 140V200"/>
+  </g>
+  <g fill="#f3f1ff" stroke="#6b5bd6" stroke-width="1.5">
+    <rect x="24" y="80" width="144" height="60" rx="10"/><rect x="218" y="80" width="150" height="60" rx="10"/>
+    <rect x="418" y="80" width="150" height="60" rx="10"/><rect x="618" y="80" width="150" height="60" rx="10"/>
+  </g>
+  <rect x="808" y="80" width="128" height="60" rx="10" fill="#e8f6ec" stroke="#2f8a4b" stroke-width="1.5"/>
+  <g fill="#1a1a1a" text-anchor="middle">
+    <text x="96" y="106" font-weight="600">Template</text><text x="96" y="126" font-size="12" fill="#555">clauses + fields</text>
+    <text x="293" y="106" font-weight="600">Draft</text><text x="293" y="126" font-size="12" fill="#555">filled from the deal</text>
+    <text x="493" y="106" font-weight="600">Sent</text><text x="493" y="126" font-size="12" fill="#555">frozen PDF + SHA-256</text>
+    <text x="693" y="106" font-weight="600">Signing</text><text x="693" y="126" font-size="12" fill="#555">email code · name · evidence</text>
+    <text x="872" y="106" font-weight="600">Signed</text><text x="872" y="126" font-size="12" fill="#555">audit page + seal</text>
+  </g>
+  <g font-size="12" fill="#1a1a1a" text-anchor="middle">
+    <rect x="418" y="200" width="150" height="54" rx="10" fill="#fff7e6" stroke="#c98a1b"/>
+    <text x="493" y="223" font-weight="600">Deal → contract stage</text><text x="493" y="241" fill="#555">trigger, via “contract”</text>
+    <rect x="618" y="200" width="150" height="54" rx="10" fill="#fff7e6" stroke="#c98a1b"/>
+    <text x="693" y="223" font-weight="600">Declined / expired</text><text x="693" y="241" fill="#555">reason kept; new version</text>
+    <rect x="808" y="200" width="128" height="54" rx="10" fill="#fff7e6" stroke="#c98a1b"/>
+    <text x="872" y="223" font-weight="600">Deal won</text><text x="872" y="241" fill="#555">deal_win()</text>
+  </g>
+  <path d="M872 140V200" stroke="#555" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+  <text x="24" y="300" font-size="13" fill="#555">Level 1 (built first): email code + typed name, sealed with Kaizena Flow's certificate.</text>
+  <text x="24" y="322" font-size="13" fill="#555">Level 2 (step 5): BankID / MitID / Freja through an EU identity broker, same signing page.</text>
+</svg>

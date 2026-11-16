@@ -82,7 +82,6 @@ export const supplierInput = z.object({
     ...rest,
     returnTo: returnStreet ? { name: returnName, street: returnStreet, postalCode: returnPostalCode, city: returnCity, country: returnCountry } : null,
   }));
-export type SupplierInput = z.infer<typeof supplierInput>;
 
 /** A supplier's return address as kept (D562), or null unless every part is there. */
 export function readReturnTo(value: unknown): { name: string; street: string; postalCode: string; city: string; country: string } | null {
@@ -96,6 +95,3 @@ export function readReturnTo(value: unknown): { name: string; street: string; po
 /** The supplier location's name: the supplier's, cut to the 60 characters a location name may have. */
 export const supplierLocationName = (name: string): string => name.trim().replace(/\s+/g, " ").slice(0, 60);
 
-/** The working days a drop-shipped parcel takes on top of the shipping method's own time: the slowest supplier in the cart. */
-export const extraDispatchDays = (suppliers: readonly { dispatchDays: number }[]): number =>
-  suppliers.reduce((most, s) => Math.max(most, s.dispatchDays), 0);

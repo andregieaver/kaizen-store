@@ -185,4 +185,3 @@ export const RETURN_EVENT_TYPES = [
   "return.cancelled",
   "return.refund_overridden",
 ] as const;
-export type ReturnEventType = (typeof RETURN_EVENT_TYPES)[number];

@@ -40,13 +40,6 @@ import { targetLink, targetOf, type TargetKind } from "./menu-links";
 const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `id${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 
-/**
- * What custom items and a carousel do not do (D155), said where they are edited so nobody looks for it: each tile is a picture,
- * words, one link and a few lines, not a free layout.
- */
-export const CUSTOM_ITEMS_LIMITS =
-  "Not included: slides laid out freely (a hero slider with text and buttons over a picture), tabs, accordions, vertical or fading sliders, thumbnails, videos, a grid inside a card, live prices or filters. Each item is a picture, words, one link and a few lines.";
-
 /** What an item is called in the list. */
 export const itemName = (item: CustomGridItem, index: number, w?: BlocksMessages["custom"]): string =>
   item.title.trim() ||

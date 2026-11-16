@@ -69,6 +69,60 @@ export function CheckoutAsksCard({
     </span>
   );
 
+  const preview = (
+    <>
+        <div aria-hidden className="flex flex-col gap-2 rounded-md border border-line bg-sunken p-3.5">
+        {chosenMode === "required" ? (
+          <span className="flex h-10 items-center justify-center rounded-md bg-inverse text-caption text-inverse-ink">{w.signInFirst}</span>
+        ) : (
+          <span className="flex justify-between text-caption text-muted">
+            {w.contact}
+            {chosenMode === "optional" && <span className="underline">{w.signIn}</span>}
+          </span>
+        )}
+        {field(w.email, false)}
+        {chosen.phone !== "off" && field(w.phoneField, chosen.phone === "optional")}
+        <span className="mt-1 text-caption text-muted">{w.delivery}</span>
+        {field(w.address, false)}
+        {field(w.city, false)}
+        <span className="text-caption text-muted">{w.follows}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className="text-caption text-muted">{w.questions}</span>
+        {questions.map((q) => (
+          <a
+            key={q.id}
+            href={`#question-${q.id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              openCheckoutQuestion(q.id);
+            }}
+            aria-label={fillWords(w.editQuestion, { name: q.label })}
+            className="flex min-h-10 items-center rounded-md border border-dashed border-edge bg-card px-3 text-caption text-ink hover:bg-sunken"
+          >
+            <span className="truncate">{q.label}</span>
+            {!q.required && <span className="ml-1 shrink-0 text-muted">{w.optional}</span>}
+          </a>
+        ))}
+        {canWrite && (
+          <a
+            href="#question-new"
+            onClick={(e) => {
+              e.preventDefault();
+              openCheckoutQuestion("new");
+            }}
+            className="text-sm text-ink underline"
+          >
+            {w.addQuestion}
+          </a>
+        )}
+      </div>
+      <a href="#checkout-asks" className="text-sm text-muted underline">
+        {w.changeAsks}
+      </a>
+    </>
+  );
+
   return (
     <div className="flex flex-wrap items-stretch gap-5">
       <section aria-labelledby="checkout-asks" className={`flex min-w-0 flex-[999_1_440px] flex-col gap-5 p-6 ${CARD_CLASS}`}>
@@ -163,60 +217,20 @@ export function CheckoutAsksCard({
           </details>
         </form>
       </section>
-      <aside aria-labelledby="checkout-preview" className={`flex min-w-0 flex-[1_1_300px] flex-col gap-3 p-6 ${CARD_CLASS}`}>
+      <aside aria-labelledby="checkout-preview" className={`hidden min-w-0 flex-[1_1_300px] flex-col gap-3 p-6 sm:flex ${CARD_CLASS}`}>
         <h2 id="checkout-preview" className="text-body-strong text-ink">
           {w.preview}
         </h2>
-        <div aria-hidden className="flex flex-col gap-2 rounded-md border border-line bg-sunken p-3.5">
-          {chosenMode === "required" ? (
-            <span className="flex h-10 items-center justify-center rounded-md bg-inverse text-caption text-inverse-ink">{w.signInFirst}</span>
-          ) : (
-            <span className="flex justify-between text-caption text-muted">
-              {w.contact}
-              {chosenMode === "optional" && <span className="underline">{w.signIn}</span>}
-            </span>
-          )}
-          {field(w.email, false)}
-          {chosen.phone !== "off" && field(w.phoneField, chosen.phone === "optional")}
-          <span className="mt-1 text-caption text-muted">{w.delivery}</span>
-          {field(w.address, false)}
-          {field(w.city, false)}
-          <span className="text-caption text-muted">{w.follows}</span>
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-caption text-muted">{w.questions}</span>
-          {questions.map((q) => (
-            <a
-              key={q.id}
-              href={`#question-${q.id}`}
-              onClick={(e) => {
-                e.preventDefault();
-                openCheckoutQuestion(q.id);
-              }}
-              aria-label={fillWords(w.editQuestion, { name: q.label })}
-              className="flex min-h-10 items-center rounded-md border border-dashed border-edge bg-card px-3 text-caption text-ink hover:bg-sunken"
-            >
-              <span className="truncate">{q.label}</span>
-              {!q.required && <span className="ml-1 shrink-0 text-muted">{w.optional}</span>}
-            </a>
-          ))}
-          {canWrite && (
-            <a
-              href="#question-new"
-              onClick={(e) => {
-                e.preventDefault();
-                openCheckoutQuestion("new");
-              }}
-              className="text-sm text-ink underline"
-            >
-              {w.addQuestion}
-            </a>
-          )}
-        </div>
-        <a href="#checkout-asks" className="text-sm text-muted underline">
-          {w.changeAsks}
-        </a>
+        {preview}
       </aside>
+      {/* Round 24 (D692): on a phone the shopper's view is one press away, not a screen tall below the choices. */}
+      <details className={`group w-full sm:hidden ${CARD_CLASS}`}>
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 [&::-webkit-details-marker]:hidden">
+          <span className="text-body text-ink">{w.preview}</span>
+          <span className="text-sm font-medium text-ink underline underline-offset-2">{w.seeIt}</span>
+        </summary>
+        <div className="flex flex-col gap-3 px-5 pb-5">{preview}</div>
+      </details>
     </div>
   );
 }

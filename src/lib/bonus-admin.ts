@@ -279,10 +279,6 @@ export function percentNumber(bps: number, w: { decimal: string } = loyaltyEn.bo
 /** What the program is, for the owner who has not turned it on. */
 export const BONUS_EXPLANATION = loyaltyEn.bonus.explanation;
 
-/** What turning it on or off does, in the order the owner needs to know it. */
-export const BONUS_ON_NOTES = loyaltyEn.bonus.onNotes;
-export const BONUS_OFF_NOTE = loyaltyEn.bonus.offNote;
-
 /** The note for accountants that goes with the overview. */
 export const BONUS_ACCOUNTING_NOTE = loyaltyEn.bonus.accountingNote;
 

@@ -22,7 +22,6 @@ const ALREADY: readonly string[] = [
   "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx",
   "src/components/admin/admin-text-context.tsx",
   "src/components/admin/sign-in-text.tsx",
-  "src/components/admin/audience-fields.tsx",
   "src/components/admin/company-fields.tsx",
   "src/components/admin/delete-reminder-button.tsx",
   "src/components/admin/demo-content-card.tsx",

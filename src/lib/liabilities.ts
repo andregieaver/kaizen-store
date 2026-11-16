@@ -21,11 +21,9 @@ export type RollForward = {
 
 /** The bonus ledger's kinds in the order the roll-forward lists them. */
 export const BONUS_ROLL_KINDS = ["earn", "referral", "redeem", "restore", "reverse", "expire", "adjust"] as const;
-export type BonusRollKind = (typeof BONUS_ROLL_KINDS)[number];
 
 /** The gift card ledger's kinds that move what customers hold (a hold and its release net to nothing and are left out). */
 export const GIFT_CARD_ROLL_KINDS = ["issue", "spend", "refund", "adjust", "expire", "void"] as const;
-export type GiftCardRollKind = (typeof GIFT_CARD_ROLL_KINDS)[number];
 
 /**
  * A roll-forward from the ledger's own sums: `opening` and `closing` are the ledger's sums before the period and at its end, `moved` each kind's

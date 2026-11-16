@@ -386,6 +386,15 @@ export const customersEn = {
   },
   /** Price lists (D321, `/admin/{store}/price-lists`). */
   priceLists: {
+    noneLead: "Your own prices for customer groups and companies. None yet.",
+    readyTitle: "Lists most shops make",
+    writeOwn: "Write your own",
+    makeIt: "Make it",
+    ready: {
+      retailers: { name: "Retailers", sub: "Shops that sell your goods on." },
+      wholesale: { name: "Wholesale", sub: "Large orders from businesses." },
+      staff: { name: "Staff", sub: "For the people who work with you." },
+    },
     title: "Price lists",
     description:
       "Prices of their own for customer groups and companies: a percentage off the market price, fixed prices per product, or both. A buyer pays the lowest price their lists give, never more than the shop's price, shown as their price, not as a reduction.",
@@ -684,10 +693,8 @@ export const customersEn = {
     companyFull: "The company is full.",
     /** The forms' own checks (`tierInput`, `companyInput`), by the English the schema writes. */
     schema: {
-      wholePercent: "Whole percent, please.",
       groupName: "Give the group a name.",
       companyName: "Give the company a name.",
-      oneAccount: "At least one account.",
     },
   },
 };

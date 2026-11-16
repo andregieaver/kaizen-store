@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { findAvoided, type AvoidedFinding } from "./brand";
 import { findClaims, type ClaimFinding } from "./claims";
-import { BROADCAST_AUDIENCES, type BroadcastStatus } from "./broadcast-status";
+import { BROADCAST_AUDIENCES } from "./broadcast-status";
 import type { EmailBlock, EmailContent } from "./email-layout";
 
 export * from "./broadcast-status";
@@ -83,7 +83,6 @@ export const broadcastInput = z
   .superRefine((value, ctx) => {
     if (value.audience === "segment" && !value.segmentId) ctx.addIssue({ code: "custom", message: "Choose a segment.", path: ["segmentId"] });
   });
-export type BroadcastInput = z.infer<typeof broadcastInput>;
 
 export const emptyContent = (): LanguageContent => ({ subject: "", preview: "", blocks: [] });
 
@@ -337,10 +336,3 @@ export type BroadcastCounts = {
 
 export const emptyCounts = (): BroadcastCounts => ({ recipients: 0, queued: 0, sent: 0, delivered: 0, bounced: 0, complained: 0, failed: 0, skipped: 0, unsubscribed: 0 });
 
-export const STATUS_WORDS: Record<BroadcastStatus, string> = {
-  draft: "Draft",
-  scheduled: "Scheduled",
-  sending: "Sending",
-  sent: "Sent",
-  cancelled: "Stopped",
-};

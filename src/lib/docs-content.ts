@@ -674,4 +674,4 @@ export function docRefTrail(index: DocsIndex, page: DocRefPage): DocRefPage[] {
 /** Whether a track is written in a language. */
 export const trackIn = (track: DocTrack, lang: DocLang): boolean => DOC_TRACK_LANGS[track].includes(lang);
 
-export { isTrack as isDocTrack, isLang as isDocLang };
+export { isTrack as isDocTrack };

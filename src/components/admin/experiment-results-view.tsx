@@ -6,6 +6,8 @@ import { GOAL_WORDS } from "@/lib/experiments";
 import { formatMoney } from "@/lib/money";
 import type { ExperimentInfo } from "@/server/experiment-admin";
 import type { ExperimentResults } from "@/server/experiment-results";
+import type { VersionBehaviour } from "@/server/page-heat-read";
+import { MIN_VERSION_VIEWS } from "@/lib/page-heat";
 import { AdminLink, Card, CARD_CLASS, ShareBar } from "@/components/admin/ui";
 
 import { FoldOnHash } from "./orders/order-folds";
@@ -22,6 +24,92 @@ const signedIn = (locale: string) => (share: number) => `${share >= 0 ? "+" : "â
 const nameOf = (test: ExperimentInfo, key: string) => test.variants.find((v) => v.key === key)?.name ?? key.toUpperCase();
 
 type Words = ExperimentsMessages;
+
+export type BehaviourProps = {
+  rows: VersionBehaviour[];
+  /** The version `frustratedVersion()` flagged, if any. */
+  frustrated: string | null;
+  /** The store's admin path (`/admin/{store}`), for the links. */
+  storeBase: string;
+  /** Which links the member may follow (`canOpenPath()`). */
+  heatmaps: boolean;
+  recordings: boolean;
+};
+
+/** The line that says a version meets clearly more rage or dead clicks (D656 step 12): a warning, never a stop. */
+export function FrustratedLine({ test, frustrated, words }: { test: ExperimentInfo; frustrated: string | null; words: Words }) {
+  if (!frustrated) return null;
+  return (
+    <p role="status" className="rounded-panel border border-warning-line bg-warning-soft px-3 py-2 text-sm text-ink" data-frustrated>
+      {fillWords(words.results.behaviour.frustrated, { name: nameOf(test, frustrated) })}
+    </p>
+  );
+}
+
+/**
+ * How visitors behaved in each version (D656 step 12, `#ab-behaviour`): from the heatmaps' tagged daily totals over every page the test
+ * touched, never a visitor. Below `MIN_VERSION_VIEWS` page views a version says so instead of a share; links open its heatmap and
+ * recordings only for a member who may.
+ */
+export function VersionBehaviourSection({ test, behaviour, words, numberLocale }: { test: ExperimentInfo; behaviour: BehaviourProps; words: Words; numberLocale: string }) {
+  const w = words.results.behaviour;
+  const percent = percentIn(numberLocale);
+  const num = (n: number) => n.toLocaleString(numberLocale);
+  const byKey = new Map(behaviour.rows.map((r) => [r.version, r]));
+  const tag = (key: string) => encodeURIComponent(`${test.id}:${key}`);
+  return (
+    <section aria-labelledby="ab-behaviour-title" id="ab-behaviour" className="flex flex-col gap-2">
+      <h2 id="ab-behaviour-title" className="text-title text-ink">{w.title}</h2>
+      <p className="text-sm text-muted">{w.lead}</p>
+      <div className={`overflow-x-auto ${CARD_CLASS}`}>
+        <table className="w-full min-w-[34rem] text-left text-sm" aria-labelledby="ab-behaviour-title">
+          <thead>
+            <tr className="border-b border-line text-muted">
+              <th scope="col" className="px-4 py-2 font-normal">{words.results.version}</th>
+              <th scope="col" className="px-4 py-2 font-normal">{w.views}</th>
+              <th scope="col" className="px-4 py-2 font-normal">{w.reachedHalf}</th>
+              <th scope="col" className="px-4 py-2 font-normal">{w.rage}</th>
+              <th scope="col" className="px-4 py-2 font-normal">{w.dead}</th>
+              <th scope="col" className="px-4 py-2 font-normal"><span className="sr-only">{w.heatmap}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {test.variants.map((v) => {
+              const row = byKey.get(v.key);
+              const views = row?.views ?? 0;
+              const enough = views >= MIN_VERSION_VIEWS;
+              return (
+                <tr key={v.key} className="border-b border-line last:border-0" data-version={v.key}>
+                  <th scope="row" className="whitespace-nowrap px-4 py-2 font-medium">{v.name}</th>
+                  <td className="px-4 py-2 tabular-nums">{num(views)}</td>
+                  {enough && row ? (
+                    <>
+                      <td className="px-4 py-2 tabular-nums">{percent(row.reachedHalf, 0)}</td>
+                      <td className="px-4 py-2 tabular-nums">{percent(row.rageShare)}</td>
+                      <td className="px-4 py-2 tabular-nums">{percent(row.deadShare)}</td>
+                    </>
+                  ) : (
+                    <td colSpan={3} className="px-4 py-2 text-muted">{w.tooFew}</td>
+                  )}
+                  <td className="whitespace-nowrap px-4 py-2">
+                    <span className="flex gap-3">
+                      {behaviour.heatmaps && row ? (
+                        <AdminLink href={`${behaviour.storeBase}/analytics/heatmaps?page=${encodeURIComponent(row.topPage)}&tag=${tag(v.key)}`} className="underline">{w.heatmap}</AdminLink>
+                      ) : null}
+                      {behaviour.recordings && row ? (
+                        <AdminLink href={`${behaviour.storeBase}/analytics/recordings?tag=${tag(v.key)}`} className="underline">{w.recordings}</AdminLink>
+                      ) : null}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 
 /** "How sure are we?": each version's change against the original as a dot (the best guess) on a bar (its likely range), against "no change". */
 function RangeChart({ test, card, words, numberLocale }: { test: ExperimentInfo; card: ExperimentCard; words: Words; numberLocale: string }) {
@@ -252,6 +340,7 @@ export function ExperimentResultsView({
   words = experimentsEn,
   numberLocale = "en-GB",
   readyAround = null,
+  behaviour = null,
 }: {
   test: ExperimentInfo;
   results: ExperimentResults;
@@ -266,6 +355,8 @@ export function ExperimentResultsView({
   numberLocale?: string;
   /** `card.progress.readyAround` written as a date in the account's language. */
   readyAround?: string | null;
+  /** Behaviour per version from the heatmaps (D656 step 12); null where the store has neither heatmaps nor tagged totals. */
+  behaviour?: BehaviourProps | null;
 }) {
   const r = words.results;
   const c = words.card;
@@ -316,6 +407,7 @@ export function ExperimentResultsView({
         </p>
         {results.unconverted > 0 && <p className="text-caption text-muted">{countWords(results.unconverted, r.unconverted)}</p>}
       </section>
+      {behaviour?.frustrated ? <FrustratedLine test={test} frustrated={behaviour.frustrated} words={words} /> : null}
 
       {card.impact && (
         <section aria-labelledby="ab-impact" className="flex flex-col gap-1 rounded-card bg-insight-soft p-5" data-impact>
@@ -466,6 +558,8 @@ export function ExperimentResultsView({
             </p>
           )}
         </section>
+
+        {behaviour ? <VersionBehaviourSection test={test} behaviour={behaviour} words={words} numberLocale={numberLocale} /> : null}
 
         <section aria-labelledby="ab-split" className="flex flex-col gap-2">
           <h2 id="ab-split" className="text-title text-ink">

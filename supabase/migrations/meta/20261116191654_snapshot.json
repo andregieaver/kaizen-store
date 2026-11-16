@@ -1,6 +1,6 @@
 {
-  "id": "2da998ed-915c-42b3-bc62-347786a74756",
-  "prevId": "4817f89e-69c0-424e-ba8d-06dd2855bbc0",
+  "id": "4abfa7c7-3fe0-4164-9749-3caa22d9aaf1",
+  "prevId": "6899dd0a-c694-4c12-b420-7fe86b223b51",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7916,7 +7916,7 @@
       "checkConstraints": {
         "automation_sends_kind": {
           "name": "automation_sends_kind",
-          "value": "\"commerce\".\"automation_sends\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish')"
+          "value": "\"commerce\".\"automation_sends\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse')"
         },
         "automation_sends_step": {
           "name": "automation_sends_step",
@@ -8062,7 +8062,7 @@
       "checkConstraints": {
         "automation_steps_kind": {
           "name": "automation_steps_kind",
-          "value": "\"commerce\".\"automation_steps\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish')"
+          "value": "\"commerce\".\"automation_steps\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse')"
         },
         "automation_steps_position": {
           "name": "automation_steps_position",
@@ -8182,7 +8182,7 @@
       "checkConstraints": {
         "automations_kind": {
           "name": "automations_kind",
-          "value": "\"commerce\".\"automations\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'back_in_stock')"
+          "value": "\"commerce\".\"automations\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse', 'back_in_stock')"
         },
         "automations_enabled_at": {
           "name": "automations_enabled_at",
@@ -8194,7 +8194,7 @@
         },
         "automations_delay": {
           "name": "automations_delay",
-          "value": "case \"commerce\".\"automations\".\"kind\" when 'welcome' then \"commerce\".\"automations\".\"delay_days\" between 0 and 30 when 'after_purchase' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'win_back' then \"commerce\".\"automations\".\"delay_days\" between 30 and 730 when 'cross_sell' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'replenish' then \"commerce\".\"automations\".\"delay_days\" between 7 and 365 else \"commerce\".\"automations\".\"delay_days\" is null end"
+          "value": "case \"commerce\".\"automations\".\"kind\" when 'welcome' then \"commerce\".\"automations\".\"delay_days\" between 0 and 30 when 'after_purchase' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'win_back' then \"commerce\".\"automations\".\"delay_days\" between 30 and 730 when 'cross_sell' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'replenish' then \"commerce\".\"automations\".\"delay_days\" between 7 and 365 when 'browse' then \"commerce\".\"automations\".\"delay_days\" between 1 and 5 else \"commerce\".\"automations\".\"delay_days\" is null end"
         }
       },
       "isRLSEnabled": false
@@ -18231,6 +18231,1260 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.contract_events": {
+      "name": "contract_events",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "name": "contract_events_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "commerce",
+            "type": "always"
+          }
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signer_id": {
+          "name": "signer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "document_sha256": {
+          "name": "document_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "by_account": {
+          "name": "by_account",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contract_events_contract_idx": {
+          "name": "contract_events_contract_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contract_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contract_events_signer_idx": {
+          "name": "contract_events_signer_idx",
+          "columns": [
+            {
+              "expression": "signer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contract_events_by_idx": {
+          "name": "contract_events_by_idx",
+          "columns": [
+            {
+              "expression": "by_account",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "contract_events_store_id_stores_id_fk": {
+          "name": "contract_events_store_id_stores_id_fk",
+          "tableFrom": "contract_events",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contract_events_signer_id_contract_signers_id_fk": {
+          "name": "contract_events_signer_id_contract_signers_id_fk",
+          "tableFrom": "contract_events",
+          "columnsFrom": [
+            "signer_id"
+          ],
+          "tableTo": "contract_signers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "contract_events_by_account_accounts_id_fk": {
+          "name": "contract_events_by_account_accounts_id_fk",
+          "tableFrom": "contract_events",
+          "columnsFrom": [
+            "by_account"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "contract_events_contract_fk": {
+          "name": "contract_events_contract_fk",
+          "tableFrom": "contract_events",
+          "columnsFrom": [
+            "store_id",
+            "contract_id"
+          ],
+          "tableTo": "contracts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contract_events_kind": {
+          "name": "contract_events_kind",
+          "value": "\"commerce\".\"contract_events\".\"kind\" in ('sent', 'viewed', 'code_sent', 'code_checked', 'signed', 'declined', 'reminded', 'completed', 'expired', 'cancelled')"
+        },
+        "contract_events_sha": {
+          "name": "contract_events_sha",
+          "value": "\"commerce\".\"contract_events\".\"document_sha256\" is null or \"commerce\".\"contract_events\".\"document_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "contract_events_agent": {
+          "name": "contract_events_agent",
+          "value": "(\"commerce\".\"contract_events\".\"ip\" is null or char_length(\"commerce\".\"contract_events\".\"ip\") <= 64) and (\"commerce\".\"contract_events\".\"user_agent\" is null or char_length(\"commerce\".\"contract_events\".\"user_agent\") <= 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.contract_signers": {
+      "name": "contract_signers",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "commerce.new_document_token('sig_')"
+        },
+        "viewed_at": {
+          "name": "viewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signed_at": {
+          "name": "signed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signed_name": {
+          "name": "signed_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_sha256": {
+          "name": "document_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declined_at": {
+          "name": "declined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decline_reason": {
+          "name": "decline_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contract_signers_token_key": {
+          "name": "contract_signers_token_key",
+          "columns": [
+            {
+              "expression": "token",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contract_signers_position_key": {
+          "name": "contract_signers_position_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contract_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contract_signers_store_key": {
+          "name": "contract_signers_store_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contract_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contract_signers\".\"role\" = 'store'",
+          "concurrently": false
+        },
+        "contract_signers_account_idx": {
+          "name": "contract_signers_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "contract_signers_store_id_stores_id_fk": {
+          "name": "contract_signers_store_id_stores_id_fk",
+          "tableFrom": "contract_signers",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contract_signers_account_id_accounts_id_fk": {
+          "name": "contract_signers_account_id_accounts_id_fk",
+          "tableFrom": "contract_signers",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "contract_signers_contract_fk": {
+          "name": "contract_signers_contract_fk",
+          "tableFrom": "contract_signers",
+          "columnsFrom": [
+            "store_id",
+            "contract_id"
+          ],
+          "tableTo": "contracts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contract_signers_role": {
+          "name": "contract_signers_role",
+          "value": "\"commerce\".\"contract_signers\".\"role\" in ('store', 'customer', 'other')"
+        },
+        "contract_signers_position": {
+          "name": "contract_signers_position",
+          "value": "\"commerce\".\"contract_signers\".\"position\" between 0 and 9"
+        },
+        "contract_signers_name": {
+          "name": "contract_signers_name",
+          "value": "\"commerce\".\"contract_signers\".\"name\" = btrim(\"commerce\".\"contract_signers\".\"name\") and char_length(\"commerce\".\"contract_signers\".\"name\") between 1 and 200"
+        },
+        "contract_signers_email": {
+          "name": "contract_signers_email",
+          "value": "\"commerce\".\"contract_signers\".\"email\" = lower(btrim(\"commerce\".\"contract_signers\".\"email\")) and \"commerce\".\"contract_signers\".\"email\" ~ '^[^@[:space:]]+@[^@[:space:]]+$' and char_length(\"commerce\".\"contract_signers\".\"email\") <= 254"
+        },
+        "contract_signers_token": {
+          "name": "contract_signers_token",
+          "value": "\"commerce\".\"contract_signers\".\"token\" ~ '^sig_[A-Za-z0-9_-]{43}$'"
+        },
+        "contract_signers_once": {
+          "name": "contract_signers_once",
+          "value": "\"commerce\".\"contract_signers\".\"signed_at\" is null or \"commerce\".\"contract_signers\".\"declined_at\" is null"
+        },
+        "contract_signers_signed": {
+          "name": "contract_signers_signed",
+          "value": "(\"commerce\".\"contract_signers\".\"signed_at\" is null) = (\"commerce\".\"contract_signers\".\"signed_name\" is null) and (\"commerce\".\"contract_signers\".\"signed_at\" is null) = (\"commerce\".\"contract_signers\".\"document_sha256\" is null) and (\"commerce\".\"contract_signers\".\"signed_at\" is null) = (\"commerce\".\"contract_signers\".\"evidence\" is null)"
+        },
+        "contract_signers_signed_name": {
+          "name": "contract_signers_signed_name",
+          "value": "\"commerce\".\"contract_signers\".\"signed_name\" is null or char_length(btrim(\"commerce\".\"contract_signers\".\"signed_name\")) between 2 and 200"
+        },
+        "contract_signers_sha": {
+          "name": "contract_signers_sha",
+          "value": "\"commerce\".\"contract_signers\".\"document_sha256\" is null or \"commerce\".\"contract_signers\".\"document_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "contract_signers_reason": {
+          "name": "contract_signers_reason",
+          "value": "\"commerce\".\"contract_signers\".\"decline_reason\" is null or (\"commerce\".\"contract_signers\".\"declined_at\" is not null and char_length(\"commerce\".\"contract_signers\".\"decline_reason\") between 1 and 500)"
+        },
+        "contract_signers_agent": {
+          "name": "contract_signers_agent",
+          "value": "(\"commerce\".\"contract_signers\".\"ip\" is null or char_length(\"commerce\".\"contract_signers\".\"ip\") <= 64) and (\"commerce\".\"contract_signers\".\"user_agent\" is null or char_length(\"commerce\".\"contract_signers\".\"user_agent\") <= 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.contract_templates": {
+      "name": "contract_templates",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "blocks": {
+          "name": "blocks",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "signing_level": {
+          "name": "signing_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'email'"
+        },
+        "expires_days": {
+          "name": "expires_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "reminder_days": {
+          "name": "reminder_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contract_templates_name_key": {
+          "name": "contract_templates_name_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"name\")",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contract_templates\".\"archived_at\" is null",
+          "concurrently": false
+        },
+        "contract_templates_created_by_idx": {
+          "name": "contract_templates_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "contract_templates_store_id_stores_id_fk": {
+          "name": "contract_templates_store_id_stores_id_fk",
+          "tableFrom": "contract_templates",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contract_templates_created_by_accounts_id_fk": {
+          "name": "contract_templates_created_by_accounts_id_fk",
+          "tableFrom": "contract_templates",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "contract_templates_store_id_key": {
+          "name": "contract_templates_store_id_key",
+          "columns": [
+            "store_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contract_templates_name": {
+          "name": "contract_templates_name",
+          "value": "\"commerce\".\"contract_templates\".\"name\" = btrim(\"commerce\".\"contract_templates\".\"name\") and char_length(\"commerce\".\"contract_templates\".\"name\") between 1 and 80"
+        },
+        "contract_templates_language": {
+          "name": "contract_templates_language",
+          "value": "\"commerce\".\"contract_templates\".\"language\" ~ '^[a-z]{2}(-[A-Z]{2})?$'"
+        },
+        "contract_templates_blocks": {
+          "name": "contract_templates_blocks",
+          "value": "jsonb_typeof(\"commerce\".\"contract_templates\".\"blocks\") = 'array'"
+        },
+        "contract_templates_level": {
+          "name": "contract_templates_level",
+          "value": "\"commerce\".\"contract_templates\".\"signing_level\" in ('email')"
+        },
+        "contract_templates_expires": {
+          "name": "contract_templates_expires",
+          "value": "\"commerce\".\"contract_templates\".\"expires_days\" between 1 and 365"
+        },
+        "contract_templates_reminder": {
+          "name": "contract_templates_reminder",
+          "value": "\"commerce\".\"contract_templates\".\"reminder_days\" is null or \"commerce\".\"contract_templates\".\"reminder_days\" between 1 and 60"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.contracts": {
+      "name": "contracts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deal_id": {
+          "name": "deal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "template_version": {
+          "name": "template_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "blocks": {
+          "name": "blocks",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "snapshot": {
+          "name": "snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pdf_path": {
+          "name": "pdf_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pdf_sha256": {
+          "name": "pdf_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signed_pdf_path": {
+          "name": "signed_pdf_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signed_pdf_sha256": {
+          "name": "signed_pdf_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signing_level": {
+          "name": "signing_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'email'"
+        },
+        "reminder_days": {
+          "name": "reminder_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_by": {
+          "name": "sent_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replaces_id": {
+          "name": "replaces_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contracts_replaces_key": {
+          "name": "contracts_replaces_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "replaces_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contracts\".\"replaces_id\" is not null",
+          "concurrently": false
+        },
+        "contracts_deal_idx": {
+          "name": "contracts_deal_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "deal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contracts_customer_idx": {
+          "name": "contracts_customer_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contracts\".\"customer_id\" is not null",
+          "concurrently": false
+        },
+        "contracts_company_idx": {
+          "name": "contracts_company_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contracts\".\"company_id\" is not null",
+          "concurrently": false
+        },
+        "contracts_template_idx": {
+          "name": "contracts_template_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "template_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contracts\".\"template_id\" is not null",
+          "concurrently": false
+        },
+        "contracts_open_idx": {
+          "name": "contracts_open_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"contracts\".\"status\" = 'sent'",
+          "concurrently": false
+        },
+        "contracts_sent_by_idx": {
+          "name": "contracts_sent_by_idx",
+          "columns": [
+            {
+              "expression": "sent_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contracts_created_by_idx": {
+          "name": "contracts_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "contracts_store_id_stores_id_fk": {
+          "name": "contracts_store_id_stores_id_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contracts_sent_by_accounts_id_fk": {
+          "name": "contracts_sent_by_accounts_id_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "sent_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "contracts_created_by_accounts_id_fk": {
+          "name": "contracts_created_by_accounts_id_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "contracts_deal_fk": {
+          "name": "contracts_deal_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "store_id",
+            "deal_id"
+          ],
+          "tableTo": "deals",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "contracts_template_fk": {
+          "name": "contracts_template_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "store_id",
+            "template_id"
+          ],
+          "tableTo": "contract_templates",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contracts_customer_fk": {
+          "name": "contracts_customer_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "store_id",
+            "customer_id"
+          ],
+          "tableTo": "customers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contracts_company_fk": {
+          "name": "contracts_company_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "store_id",
+            "company_id"
+          ],
+          "tableTo": "customer_companies",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contracts_replaces_fk": {
+          "name": "contracts_replaces_fk",
+          "tableFrom": "contracts",
+          "columnsFrom": [
+            "store_id",
+            "replaces_id"
+          ],
+          "tableTo": "contracts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "contracts_store_id_key": {
+          "name": "contracts_store_id_key",
+          "columns": [
+            "store_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contracts_title": {
+          "name": "contracts_title",
+          "value": "\"commerce\".\"contracts\".\"title\" = btrim(\"commerce\".\"contracts\".\"title\") and char_length(\"commerce\".\"contracts\".\"title\") between 1 and 200"
+        },
+        "contracts_language": {
+          "name": "contracts_language",
+          "value": "\"commerce\".\"contracts\".\"language\" ~ '^[a-z]{2}(-[A-Z]{2})?$'"
+        },
+        "contracts_status": {
+          "name": "contracts_status",
+          "value": "\"commerce\".\"contracts\".\"status\" in ('draft', 'sent', 'signed', 'declined', 'expired', 'cancelled')"
+        },
+        "contracts_blocks": {
+          "name": "contracts_blocks",
+          "value": "jsonb_typeof(\"commerce\".\"contracts\".\"blocks\") = 'array'"
+        },
+        "contracts_level": {
+          "name": "contracts_level",
+          "value": "\"commerce\".\"contracts\".\"signing_level\" in ('email')"
+        },
+        "contracts_reminder": {
+          "name": "contracts_reminder",
+          "value": "\"commerce\".\"contracts\".\"reminder_days\" is null or \"commerce\".\"contracts\".\"reminder_days\" between 1 and 60"
+        },
+        "contracts_sent": {
+          "name": "contracts_sent",
+          "value": "(\"commerce\".\"contracts\".\"status\" = 'draft') = (\"commerce\".\"contracts\".\"sent_at\" is null) and (\"commerce\".\"contracts\".\"sent_at\" is null) = (\"commerce\".\"contracts\".\"snapshot\" is null) and (\"commerce\".\"contracts\".\"sent_at\" is null) = (\"commerce\".\"contracts\".\"expires_at\" is null)"
+        },
+        "contracts_signed": {
+          "name": "contracts_signed",
+          "value": "(\"commerce\".\"contracts\".\"status\" = 'signed') = (\"commerce\".\"contracts\".\"completed_at\" is not null)"
+        },
+        "contracts_closed": {
+          "name": "contracts_closed",
+          "value": "(\"commerce\".\"contracts\".\"status\" in ('declined', 'expired', 'cancelled')) = (\"commerce\".\"contracts\".\"closed_at\" is not null)"
+        },
+        "contracts_pdf": {
+          "name": "contracts_pdf",
+          "value": "(\"commerce\".\"contracts\".\"pdf_path\" is null) = (\"commerce\".\"contracts\".\"pdf_sha256\" is null) and (\"commerce\".\"contracts\".\"pdf_path\" is null or \"commerce\".\"contracts\".\"sent_at\" is not null)"
+        },
+        "contracts_signed_pdf": {
+          "name": "contracts_signed_pdf",
+          "value": "(\"commerce\".\"contracts\".\"signed_pdf_path\" is null) = (\"commerce\".\"contracts\".\"signed_pdf_sha256\" is null) and (\"commerce\".\"contracts\".\"signed_pdf_path\" is null or \"commerce\".\"contracts\".\"status\" = 'signed')"
+        },
+        "contracts_sha": {
+          "name": "contracts_sha",
+          "value": "(\"commerce\".\"contracts\".\"pdf_sha256\" is null or \"commerce\".\"contracts\".\"pdf_sha256\" ~ '^[0-9a-f]{64}$') and (\"commerce\".\"contracts\".\"signed_pdf_sha256\" is null or \"commerce\".\"contracts\".\"signed_pdf_sha256\" ~ '^[0-9a-f]{64}$')"
+        },
+        "contracts_not_itself": {
+          "name": "contracts_not_itself",
+          "value": "\"commerce\".\"contracts\".\"replaces_id\" is null or \"commerce\".\"contracts\".\"replaces_id\" <> \"commerce\".\"contracts\".\"id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.cookie_notes": {
       "name": "cookie_notes",
       "schema": "commerce",
@@ -21318,6 +22572,119 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.customer_product_views": {
+      "name": "customer_product_views",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "viewed_at": {
+          "name": "viewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "customer_product_views_viewed_idx": {
+          "name": "customer_product_views_viewed_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "viewed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "customer_product_views_product_idx": {
+          "name": "customer_product_views_product_idx",
+          "columns": [
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "customer_product_views_customer_fk": {
+          "name": "customer_product_views_customer_fk",
+          "tableFrom": "customer_product_views",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "tableTo": "customers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "customer_product_views_product_fk": {
+          "name": "customer_product_views_product_fk",
+          "tableFrom": "customer_product_views",
+          "columnsFrom": [
+            "product_id"
+          ],
+          "tableTo": "products",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "customer_product_views_store_id_customer_id_product_id_pk": {
+          "name": "customer_product_views_store_id_customer_id_product_id_pk",
+          "columns": [
+            "store_id",
+            "customer_id",
+            "product_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "commerce.customer_sessions": {
       "name": "customer_sessions",
       "schema": "commerce",
@@ -23514,6 +24881,13 @@
           "notNull": true,
           "default": false
         },
+        "contract_stage": {
+          "name": "contract_stage",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -23550,6 +24924,28 @@
           "with": {},
           "method": "btree",
           "where": "\"commerce\".\"deal_stages\".\"quote_stage\"",
+          "concurrently": false
+        },
+        "deal_stages_contract_key": {
+          "name": "deal_stages_contract_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "pipeline_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"deal_stages\".\"contract_stage\"",
           "concurrently": false
         },
         "deal_stages_order_idx": {
@@ -24059,7 +25455,7 @@
         },
         "deals_closed_via": {
           "name": "deals_closed_via",
-          "value": "\"commerce\".\"deals\".\"closed_via\" is null or \"commerce\".\"deals\".\"closed_via\" in ('person', 'order', 'work_invoice', 'platform')"
+          "value": "\"commerce\".\"deals\".\"closed_via\" is null or \"commerce\".\"deals\".\"closed_via\" in ('person', 'order', 'work_invoice', 'platform', 'contract')"
         },
         "deals_reason": {
           "name": "deals_reason",
@@ -51267,7 +52663,7 @@
         },
         "pages_store_slug_not_reserved": {
           "name": "pages_store_slug_not_reserved",
-          "value": "\"commerce\".\"pages\".\"store_id\" is null or \"commerce\".\"pages\".\"type\" <> 'page' or split_part(\"commerce\".\"pages\".\"slug\", '/', 1) not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')"
+          "value": "\"commerce\".\"pages\".\"store_id\" is null or \"commerce\".\"pages\".\"type\" <> 'page' or split_part(\"commerce\".\"pages\".\"slug\", '/', 1) not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'request', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')"
         },
         "pages_article_slug_not_reserved": {
           "name": "pages_article_slug_not_reserved",
@@ -81094,7 +82490,7 @@
         },
         "stores_modules": {
           "name": "stores_modules",
-          "value": "\"commerce\".\"stores\".\"modules\" <@ array['bookings', 'deliveries', 'work']::text[]"
+          "value": "\"commerce\".\"stores\".\"modules\" <@ array['work']::text[]"
         },
         "stores_features": {
           "name": "stores_features",
@@ -83118,6 +84514,24 @@
           "primaryKey": false,
           "notNull": false
         },
+        "confirm_token_hash": {
+          "name": "confirm_token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confirm_sent_at": {
+          "name": "confirm_sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_confirmed_at": {
+          "name": "customer_confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -83138,6 +84552,21 @@
             }
           ],
           "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "support_actions_confirm_token_key": {
+          "name": "support_actions_confirm_token_key",
+          "columns": [
+            {
+              "expression": "confirm_token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "with": {},
           "method": "btree",
           "concurrently": false
@@ -83228,6 +84657,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "support_actions_confirm": {
+          "name": "support_actions_confirm",
+          "value": "(\"commerce\".\"support_actions\".\"confirm_token_hash\" is null) = (\"commerce\".\"support_actions\".\"confirm_sent_at\" is null) and (\"commerce\".\"support_actions\".\"customer_confirmed_at\" is null or (\"commerce\".\"support_actions\".\"confirm_sent_at\" is not null and \"commerce\".\"support_actions\".\"confirmer\" = 'staff'))"
+        },
         "support_actions_confirmer": {
           "name": "support_actions_confirmer",
           "value": "\"commerce\".\"support_actions\".\"confirmer\" in ('customer', 'staff')"

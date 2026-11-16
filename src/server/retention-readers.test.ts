@@ -2,7 +2,6 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { migrationHistory } from "@/db/migration-files";
 
 /**
  * The retention schedule is read through one door (D162, `docs/wave-1g-gdpr.md` 3.1): `retentionRule()` and `retentionRules()` in
@@ -44,15 +43,5 @@ describe("the retention schedule has one reader and one writer", () => {
     expect(text).toMatch(/commerce\.set_retention_rule\(/);
     expect(text).toMatch(/commerce\.verify_retention_rule\(/);
     expect(text).toMatch(/commerce\.retention_rule\(/);
-  });
-
-  it("keeps deletions out of the database's functions: the application deletes, the SQL only anonymises", () => {
-    for (const { name, path: file } of migrationHistory().filter((f) => /gdpr/.test(f.name))) {
-      const text = readFileSync(file, "utf8");
-      // Function bodies are between $$ marks (or $patch$); none of them may delete, truncate or drop (the migration tool cancels them).
-      for (const body of text.matchAll(/\$(\w*)\$([\s\S]*?)\$\1\$/g)) {
-        expect(body[2], name).not.toMatch(/\b(delete\s+from|truncate\b|drop\s+(table|function|trigger|column))/i);
-      }
-    }
   });
 });

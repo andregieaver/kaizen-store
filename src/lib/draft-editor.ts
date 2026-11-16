@@ -3,7 +3,6 @@
  * the unit tests read the same functions. The editor holds typed text (a price is "249,00", a percent "10,5"); `inputFromForm()` writes it as the `draftInput` the server validates again, and
  * `formFromDraft()` reads a saved draft back into typed text. Nothing here prices anything: the summary is always the server's (`previewDraft()`).
  */
-import { formatPercentBps } from "./draft-input";
 import { formatPriceInput } from "./product-input";
 
 export type EditorAddress = { name: string; line1: string; line2: string; postalCode: string; city: string; country: string };
@@ -76,8 +75,6 @@ export type DraftLike = {
     onRequest?: boolean;
   }[];
 };
-
-export const EMPTY_ADDRESS: EditorAddress = { name: "", line1: "", line2: "", postalCode: "", city: "", country: "" };
 
 const addressOf = (raw: Record<string, string | null>): EditorAddress => ({
   name: raw.name ?? "",
@@ -183,8 +180,6 @@ export function inputFromForm(state: EditorState, version: number): Record<strin
 
 /** A stable text of the editor's state for "is there anything unsaved": the input without its version. */
 export const fingerprint = (state: EditorState): string => JSON.stringify(inputFromForm(state, 1));
-
-export const formatDiscountValue = (bps: number): string => formatPercentBps(bps);
 
 /** What a typed tag text becomes: split on commas, trimmed, empty ones dropped (the server validates each). */
 export function splitTags(text: string): string[] {

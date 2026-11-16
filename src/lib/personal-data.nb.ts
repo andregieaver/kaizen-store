@@ -150,6 +150,12 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "De ansattes notater om en person (D366), knyttet til adressen: eksporteres med markedsføringsopplysningene (ordene og når) og slettes når personens opplysninger slettes.",
   deals:
     "Ansattes salgsmuligheter med en person (D464): hva de kan kjøpe, steg og verdi, og hvorfor den ble tapt; eksporteres med personens notater og slettes når personen slettes (en bedrifts salgsmulighet beholder bedriften og mister personen).",
+  contracts:
+    "Avtaler sendt til en person for signering (D695): det de sa, fylt ut med personens navn og opplysninger; eksporteres med personens salgsmuligheter og slettes når personen slettes (at en signert avtale beholdes etter bokføringsreglene, kommer med signeringen, D695 steg 3).",
+  contract_signers:
+    "Hvem som ble bedt om å signere en avtale (D695), og hvordan de signerte eller hvorfor de avslo, knyttet til personen gjennom avtalen: eksporteres og slettes med den.",
+  contract_events:
+    "En avtales logg (D695): når den ble sendt, åpnet, signert eller avslått, fra hvilken adresse og nettleser, knyttet gjennom avtalen: eksporteres og slettes med den.",
   activities:
     "De ansattes samtaler, møter og oppgaver om en person (D468): hva og når, og det som ble skrevet om dem; eksporteres med personens notater og slettes når personen slettes (en aktivitet om en bedrift eller en avtale beholder den og mister personen).",
   customer_tags: "De ansattes stikkord på en person (D296), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",
@@ -165,6 +171,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "Filene til bildene i en omtale (D301 G4) i den private lagringsbøtten: fjernes etter at omtalen er slettet (av forfatteren eller ved sletting av personens opplysninger), og ryddes daglig når en rad er borte.",
   review_requests:
     "At en e-post med forespørsel om omtale (D301 G3) ble sendt for en bestilling, og når, med hashen av lenken (selve e-posten ligger under e-poster i eksporten): slettes når kjøperens opplysninger slettes, og 400 dager etter at den ble laget.",
+  customer_product_views:
+    "Hvilke produkter en innlogget abonnent så på, for butikkens e-post om dem (D691): lagres bare med samtykke til markedsføring og markedsføringscookies, mens e-posten er på, i 7 dager; tas med i eksporten av markedsføringsdata og slettes ved sletting (og med kontoen).",
   stock_requests:
     "En forespørsel om å få beskjed én gang når en utsolgt variant er tilbake (D298): adressen, produktet og statusen, eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes; ubekreftede slettes når lenken går ut, ventende etter 180 dager, sendte etter 30.",
   marketing_consent_events:

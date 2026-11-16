@@ -2,13 +2,9 @@
 
 import { useState } from "react";
 
-import { settingsEn } from "@/lib/admin-messages/settings.en";
 import type { StoreAudience } from "@/lib/b2b";
 
 import { useAdminText } from "./admin-text";
-
-/** Who a store sells to, in words: English, as read by code that has no account's language. */
-export const AUDIENCE_LABELS: Record<StoreAudience, string> = settingsEn.company.audience.labels;
 
 const AUDIENCES: readonly StoreAudience[] = ["consumers", "businesses", "both"];
 

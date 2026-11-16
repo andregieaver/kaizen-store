@@ -77,7 +77,6 @@ export const priceBasisOf = (audience: StoreAudience): PriceBasis => (audience =
 // ---------------------------------------------------------------------------
 
 export const TEXT_COLUMNS = ["title", "description", "safety_information", "seo_title", "seo_description"] as const;
-export type TextColumn = (typeof TEXT_COLUMNS)[number];
 
 export const PRODUCT_STATUSES = ["draft", "active", "archived"] as const;
 export const DELIVERY_WORDS = ["physical", "digital", "service"] as const;

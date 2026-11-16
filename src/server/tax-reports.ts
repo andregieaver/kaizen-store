@@ -2,7 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
-import { addDays, daysBetween } from "@/lib/analytics-period";
+import { daysBetween } from "@/lib/analytics-period";
 import { zonedDate } from "@/lib/booking-slots";
 import { mainCurrency } from "@/lib/markets";
 import { buildReturn, iossState, type RateChoice, type ReturnData, type ReturnMode, type ReturnScheme } from "@/lib/oss-return";
@@ -164,8 +164,3 @@ export async function returnView(store: Store, scheme: ReturnScheme, period: Tax
   };
 }
 
-/** The first day of the quarter or month a day is in, and the day after the last: for a caller that has a day and wants the half-open range. */
-export const rangeOfPeriod = (period: TaxPeriod): TaxRange => ({ from: period.from, to: period.to });
-
-/** `to` exclusive from a last day included (a custom range typed as two days). */
-export const exclusiveEnd = (lastDay: string): string => addDays(lastDay, 1);

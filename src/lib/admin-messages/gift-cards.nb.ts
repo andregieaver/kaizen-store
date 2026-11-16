@@ -31,6 +31,8 @@ export const giftCardsNb: GiftCardsMessages = {
     leadNoneRest: " Lag et gavekort kundene kan kjøpe, eller utsted et selv.",
     leadHold: "Kundene har {amount}.",
     leadHoldRest: " Et solgt kort regnes som salg når det brukes.",
+    issueSub: "Som plaster på såret eller en premie, uten et salg",
+    issueAction: "Utsted",
     issueCard: "Utsted et kort",
     sellTitle: "Selg gavekort i butikken",
     sellText: "Slår på gavekort. Lag så et produkt av typen Gavekort med beløpene du selger, for eksempel 250, 500 og 1 000.",

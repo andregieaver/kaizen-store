@@ -95,7 +95,6 @@ export const reviewsEn = {
     publishCheck: "Let me check each one first",
     checkOnly: "Only check the file, import nothing",
     submit: "Import",
-    submitCheck: "Check the file",
     honest: "Imported reviews are marked as imported and never as verified purchases, on the product page and in search engines' data.",
     resultChecked: { one: "The file is checked: {n} review can be imported.", many: "The file is checked: {n} reviews can be imported." },
     resultImported: { one: "{n} review imported.", many: "{n} reviews imported." },

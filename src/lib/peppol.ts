@@ -23,9 +23,6 @@ export const DOCUMENT_TYPES = {
 } as const;
 export type PeppolDocument = keyof typeof DOCUMENT_TYPES;
 
-/** The process both are sent in (BT-23). */
-export const BILLING_PROCESS = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0";
-
 /** The electronic address schemes by country, with the length of the number each takes. */
 const SCHEMES: Readonly<Record<string, { eas: string; digits: number }>> = {
   NO: { eas: "0192", digits: 9 },

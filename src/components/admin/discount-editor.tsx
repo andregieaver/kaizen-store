@@ -7,6 +7,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import type { StoreDiscountInput } from "@/lib/discounts";
 
 import { useAdminText } from "./admin-text";
+import { FoldRow } from "./fold-row";
 
 type Save = (input: StoreDiscountInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type Market = { code: string; name: string; currency: string };
@@ -97,6 +98,28 @@ export function DiscountEditor({
     return parent ? `${path(parent)} › ${term.name}` : term.name;
   };
 
+  // What each row says while closed (round 22): the choice in words, so nothing needs opening to be read.
+  const firstMin = markets.find((m) => (d.minSubtotals[m.code] ?? "").trim());
+  const reach = some ? countWords(chosen.length + d.termIds.length, w.sub.some) : w.sub.everything;
+  const minimum = d.minQuantity ? countWords(Number(d.minQuantity), w.sub.atLeast) : firstMin ? fillWords(w.sub.from, { amount: `${d.minSubtotals[firstMin.code].trim()} ${firstMin.currency}` }) : w.sub.noMinimum;
+  const appliesSub = `${reach}, ${minimum}`;
+  const whoSub =
+    who === "groups"
+      ? tiers.filter((t) => d.tierIds.includes(t.id)).map((t) => t.name).join(", ") || f.groupsOnly
+      : who === "customers"
+        ? countWords(d.customerEmails.split(/[\s,;]+/).filter(Boolean).length, w.sub.named)
+        : who === "segment"
+          ? (segments.find((x) => x.id === d.segmentId)?.name ?? w.segmentOnly)
+          : w.everyone;
+  const whenSub = [
+    d.startsAt ? fillWords(w.sub.fromDay, { day: d.startsAt.slice(0, 10) }) : w.sub.fromNow,
+    d.endsAt ? fillWords(w.sub.until, { day: d.endsAt.slice(0, 10) }) : w.sub.noEnd,
+    d.uniqueCodes ? w.sub.singleUse : d.usageLimit ? countWords(Number(d.usageLimit), w.sub.uses) : w.sub.noLimit,
+    ...(!d.uniqueCodes && d.oncePerCustomer ? [w.sub.onceEach] : []),
+    ...(d.active ? [] : [w.sub.off]),
+  ].join(", ");
+  const combineSub = `${d.combinesWith.length === 0 ? w.sub.alone : w.sub.withOthers}, ${d.combinesWithCampaigns ? w.sub.campaigns : w.sub.noCampaigns}`;
+
   const submit = () =>
     startSaving(async () => {
       const result = await save({
@@ -155,16 +178,22 @@ export function DiscountEditor({
         </h2>
         <label className={label}>
           {w.codeLabel}
-          <input
-            value={d.code}
-            onChange={(event) => set("code", event.target.value.toUpperCase())}
-            required
-            maxLength={40}
-            autoCapitalize="characters"
-            spellCheck={false}
-            className={`${input} font-mono uppercase`}
-            aria-describedby="code-hint"
-          />
+          <span className="flex gap-2">
+            <input
+              value={d.code}
+              onChange={(event) => set("code", event.target.value.toUpperCase())}
+              required
+              maxLength={40}
+              autoCapitalize="characters"
+              spellCheck={false}
+              className={`${input} min-h-11 flex-1 font-mono text-base uppercase`}
+              aria-describedby="code-hint"
+            />
+            {/* Round 22 (D687): a code from what it gives, for an owner with no name in mind. */}
+            <button type="button" onClick={() => set("code", suggestCode(d, w.suggestWords))} className="min-h-11 shrink-0 rounded-pill border border-edge bg-card px-4 text-sm font-normal hover:bg-sunken">
+              {w.suggest}
+            </button>
+          </span>
           <span id="code-hint" className={hint}>
             {w.codeHint}
             {used > 0 && countWords(used, w.usedHint)}
@@ -172,12 +201,18 @@ export function DiscountEditor({
         </label>
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">{f.whatItGives}</legend>
-          {(["percent", "fixed", "free_shipping"] as const).map((value) => (
-            <label key={value} className="flex min-h-10 items-center gap-3 text-sm">
-              <input type="radio" name="kind" checked={d.kind === value} onChange={() => set("kind", value)} className="size-4" />
-              {w.kinds[value]}
-            </label>
-          ))}
+          {/* Three choices side by side (round 22), the chosen one outlined; each is still a radio. */}
+          <div className="grid grid-cols-3 gap-2">
+            {(["percent", "fixed", "free_shipping"] as const).map((value) => (
+              <label
+                key={value}
+                className={`flex min-h-12 cursor-pointer items-center justify-center rounded-md px-2 text-center text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand ${d.kind === value ? "border-2 border-ink font-medium" : "border border-edge"}`}
+              >
+                <input type="radio" name="kind" checked={d.kind === value} onChange={() => set("kind", value)} className="sr-only" />
+                {w.kindsShort[value]}
+              </label>
+            ))}
+          </div>
         </fieldset>
         {d.kind === "percent" && (
           <>
@@ -235,10 +270,11 @@ export function DiscountEditor({
         )}
       </section>
 
-      <section aria-labelledby="applies-heading" className={card}>
-        <h2 id="applies-heading" className="text-title text-ink">
-          {f.whatItAppliesTo}
-        </h2>
+      {/* Round 22 (D687): what most codes leave as it is, as rows that say what is chosen and open in place. */}
+      <section aria-label={w.moreLabel} className="rounded-lg border border-line bg-card px-5">
+        <ul className="divide-y divide-line">
+        <FoldRow title={f.whatItAppliesTo} sub={appliesSub} action={w.change}>
+          <div className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">{f.products}</legend>
           <label className="flex min-h-10 items-center gap-3 text-sm">
@@ -325,12 +361,11 @@ export function DiscountEditor({
           </div>
           <p className={hint}>{w.minOrderHint}</p>
         </div>
-      </section>
+          </div>
+        </FoldRow>
 
-      <section aria-labelledby="who-heading" className={card}>
-        <h2 id="who-heading" className="text-title text-ink">
-          {w.who}
-        </h2>
+        <FoldRow title={w.who} sub={whoSub} action={w.change}>
+          <div className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">{w.who}</legend>
           <label className="flex min-h-10 items-center gap-3 text-sm">
@@ -400,12 +435,11 @@ export function DiscountEditor({
           </label>
         )}
         {who !== "everyone" && <p className={hint}>{w.signedInHint}</p>}
-      </section>
+          </div>
+        </FoldRow>
 
-      <section aria-labelledby="limits-heading" className={card}>
-        <h2 id="limits-heading" className="text-title text-ink">
-          {w.when}
-        </h2>
+        <FoldRow title={w.when} sub={whenSub} action={w.change}>
+          <div className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={label}>
             {f.starts}
@@ -456,12 +490,11 @@ export function DiscountEditor({
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
           {f.switchedOn}
         </label>
-      </section>
+          </div>
+        </FoldRow>
 
-      <section aria-labelledby="combine-heading" className={card}>
-        <h2 id="combine-heading" className="text-title text-ink">
-          {w.combine}
-        </h2>
+        <FoldRow title={w.combine} sub={combineSub} action={w.change}>
+          <div className="flex flex-col gap-4">
         <p className={hint}>{w.combineHint}</p>
         {(["products", "order", "shipping"] as const).map((kind) => (
           <label key={kind} className="flex items-center gap-3 text-sm">
@@ -483,15 +516,18 @@ export function DiscountEditor({
             <span className={`block ${hint}`}>{w.withCampaignsHint}</span>
           </span>
         </label>
+          </div>
+        </FoldRow>
+        </ul>
       </section>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={saving}
-          className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
+          className="min-h-12 w-full rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50 sm:w-auto"
         >
-          {saving ? f.saving : w.save}
+          {saving ? f.saving : d.code.trim() ? fillWords(w.saveNamed, { code: d.code.trim() }) : w.save}
         </button>
         <a href={back} className="text-sm underline">
           {f.cancel}
@@ -499,4 +535,13 @@ export function DiscountEditor({
       </div>
     </form>
   );
+}
+
+/** A code from what it gives (round 22): SAVE15, OFF100, FREESHIP in the admin's words; the owner can change it before saving. */
+function suggestCode(d: DiscountDraft, words: { percent: string; fixed: string; free_shipping: string }): string {
+  if (d.kind === "free_shipping") return words.free_shipping;
+  if (d.kind === "percent") return `${words.percent}${(d.percent || "10").replace(/\D/g, "")}`;
+  const amount = Object.values(d.amounts).find((a) => a.trim()) ?? "";
+  const whole = amount.replace(/[,.].*$/, "").replace(/\D/g, "");
+  return `${words.fixed}${whole}`;
 }

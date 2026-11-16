@@ -21,10 +21,6 @@ export type Channel = (typeof CHANNELS)[number]["key"];
 
 export const CHANNEL_KEYS: readonly Channel[] = CHANNELS.map((c) => c.key);
 
-export const CHANNEL_LABELS: Record<Channel, string> = Object.fromEntries(
-  CHANNELS.map((c) => [c.key, c.label]),
-) as Record<Channel, string>;
-
 export function isChannel(value: unknown): value is Channel {
   return typeof value === "string" && (CHANNEL_KEYS as readonly string[]).includes(value);
 }

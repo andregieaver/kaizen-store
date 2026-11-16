@@ -281,7 +281,7 @@ function atelierSections(words: AtelierWords, picture: PackPictureOf): ThemeSect
         blocks: [
           eyebrow(words.collection.eyebrow),
           heading(words.collection.heading, 2),
-          productGrid(6, { columns: { mobile: 2, tablet: 2, desktop: 3 }, gap: 40 }),
+          productGrid(6, { columns: 3, at: { md: { columns: 2 } }, gap: 40 }),
           button(words.collection.more, "/products", "outline", { ...square, align: "center", className: "atelier-more" }),
         ],
       },

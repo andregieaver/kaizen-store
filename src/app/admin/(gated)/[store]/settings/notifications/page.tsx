@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { NotificationList } from "@/components/admin/notifications/notification-list";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui";
 import { listLocalAreas } from "@/server/local-delivery";
 import { listNotifications } from "@/server/notifications";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -35,7 +35,7 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={<>{withItalics(w.description, { alwaysOn: w.alwaysOnWord, notify: w.notifyWord })}</>}
+        description={w.lead}
         actions={
           memberCan(member, "owner") ? (
             <Link href={`${base}/staff`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
@@ -46,9 +46,19 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
       />
       <NotificationList items={items} base={base} handovers={handovers} words={words} display={ADMIN_LANG_FACTS[lang].tag} switchAction={canWrite ? (id) => switchNotificationAction.bind(null, store.slug, id) : null} />
       {!canWrite && <p className="text-sm text-muted">{w.readOnly}</p>}
-      <Card title={w.addsTitle} description={w.addsDescription}>
-        <p className="text-body text-ink-2">{w.addsText}</p>
-      </Card>
+      {/* Round 22 (D687): the long words on how the emails work, and what Kaizena Flow always adds, one press away. */}
+      <details className="rounded-lg border border-line bg-card px-5">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 text-body text-ink [&::-webkit-details-marker]:hidden">
+          {w.howTitle}
+          <span className="text-sm font-medium underline underline-offset-2">{w.read}</span>
+        </summary>
+        <div className="flex flex-col gap-3 pb-5 text-body text-ink-2">
+          <p>{withItalics(w.description, { alwaysOn: w.alwaysOnWord, notify: w.notifyWord })}</p>
+          <h2 className="text-body-strong text-ink">{w.addsTitle}</h2>
+          <p>{w.addsDescription}</p>
+          <p>{w.addsText}</p>
+        </div>
+      </details>
     </div>
   );
 }

@@ -119,13 +119,6 @@ export async function clientByClientId(clientId: string): Promise<OAuthClient | 
   return row ? toClient(row) : null;
 }
 
-/** The client of a row id. */
-export async function clientById(id: string): Promise<OAuthClient | null> {
-  if (!z.uuid().safeParse(id).success) return null;
-  const row = await typedRow(clientRow, sql`select ${CLIENT_COLUMNS} from commerce.oauth_clients where id = ${id}::uuid`);
-  return row ? toClient(row) : null;
-}
-
 export type FoundClient = { ok: true; client: OAuthClient } | { ok: false; problem: "unknown" | "blocked" | "document"; detail?: string };
 
 /**

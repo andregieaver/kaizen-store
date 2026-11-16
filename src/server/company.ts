@@ -112,8 +112,6 @@ export const locationInput = z.object({
   longitude: z.string().trim().max(20).optional(),
 });
 
-export type LocationInput = z.input<typeof locationInput>;
-
 export type SaveResult = { ok: true; id?: string } | { ok: false; problems: string[] };
 
 /** The office (made the first time), a shop or pickup point (new when `id` is null). */

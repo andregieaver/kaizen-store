@@ -23,9 +23,6 @@ export const ORDER_EDIT_TRANSITIONS: Record<OrderEditStatus, readonly OrderEditS
   expired: [],
 };
 
-/** The statuses an edit may be written with: an applied one at once (a lower or equal total, or paid outside Kaizen), or one waiting for the customer's payment. */
-export const ORDER_EDIT_START: readonly OrderEditStatus[] = ["awaiting_payment", "applied"];
-
 export const canMoveOrderEdit = (from: OrderEditStatus, to: OrderEditStatus): boolean => ORDER_EDIT_TRANSITIONS[from].includes(to);
 export const isOrderEditFinal = (status: OrderEditStatus): boolean => ORDER_EDIT_TRANSITIONS[status].length === 0;
 /** An edit that ended without changing the order. */

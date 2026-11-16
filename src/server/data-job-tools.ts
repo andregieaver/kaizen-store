@@ -2,7 +2,7 @@ import "server-only";
 
 import { JOB_KINDS, STATUS_WORDS, isImport, progressPercent, type JobKind } from "@/lib/data-job";
 import { groupFindings } from "@/lib/data-job-help";
-import type { OwnerToolInput, OwnerToolName } from "@/lib/owner-tools";
+import type { OwnerToolInput } from "@/lib/owner-tools";
 
 import type { Membership } from "./auth";
 import { listItems, type DataJob } from "./data-job-store";
@@ -163,5 +163,3 @@ export async function explainImportProblemsTool(ctx: Ctx, { job_id }: OwnerToolI
   };
 }
 
-/** The two tools' names, for the registry's test. */
-export const DATA_JOB_TOOLS = ["list_data_jobs", "explain_import_problems"] as const satisfies readonly OwnerToolName[];

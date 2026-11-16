@@ -76,9 +76,6 @@ export function shownPriceWords(store: StoreWords | undefined, product: ProductP
   return prefix || suffix ? { prefix, suffix } : null;
 }
 
-/** Whether the words differ from none. */
-export const hasWords = (words: PriceWords | null | undefined): words is PriceWords => Boolean(words && (words.prefix || words.suffix));
-
 /**
  * A prefix as it sits before the amount: a space after a word that ends in a letter, a digit or a full stop or colon ("Kun 499 kr",
  * "ca. 499 kr"), none after a sign ("~499 kr"). Empty for none.

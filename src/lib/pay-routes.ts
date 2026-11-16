@@ -8,7 +8,6 @@
 
 /** The three routes, as their segment after the market. */
 export const PAY_SEGMENTS = ["cart", "checkout", "order"] as const;
-export type PaySegment = (typeof PAY_SEGMENTS)[number];
 
 /**
  * A market in an address: the country with a language and a currency (`no`, `no-en`, `no-eur`, `no-en-eur`, D109) and,

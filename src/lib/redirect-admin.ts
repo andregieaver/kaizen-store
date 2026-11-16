@@ -182,8 +182,6 @@ export function uncountedWords(uncounted: { requests: number; days: number }, w:
 /** The words of the one-click button of a suggestion. */
 export const suggestionWords = (path: string, w: W = redirectsEn): string => fillWords(w.report.table.redirectTo, { path });
 
-/** The suggestion's kind as a small label beside the button. */
-export const SUGGESTION_KIND: Record<string, string> = redirectsEn.report.suggestionKinds;
 export const suggestionKind = (kind: string, w: W = redirectsEn): string => (w.report.suggestionKinds as Record<string, string>)[kind] ?? kind;
 
 // ---------------------------------------------------------------------------

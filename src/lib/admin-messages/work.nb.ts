@@ -37,8 +37,6 @@ export const workNb: WorkMessages = {
     stopsRunning: "Stopper tidtakeren som går, og fører tiden dens",
   },
   off: {
-    comingSoon: "Kommer i neste steg.",
-    backToWork: "Tilbake til Arbeid",
     isOff: "Arbeid er slått av for denne butikken, så siden er skjult i menyen.",
     switchOn: "Slå det på i innstillingene for Arbeid",
     titles: {

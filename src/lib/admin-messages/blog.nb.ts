@@ -129,7 +129,6 @@ export const blogNb: BlogMessages = {
     plainText: "En kommentar vises som ren tekst: lenker og kode i den følges ikke.",
   },
   editor: {
-    blogHeading: "Blogg",
     blog: "I bloggen",
     author: "Forfatter",
     authorNone: "Ingen forfatter: navnet nedenfor",

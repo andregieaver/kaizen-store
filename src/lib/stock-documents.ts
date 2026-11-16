@@ -71,7 +71,6 @@ export const transferInput = z
     if (input.origin === input.destination) ctx.addIssue({ code: "custom", path: ["destination"], message: "Stock moves to another location than the one it leaves." });
     uniqueSkus(input.lines, ctx);
   });
-export type TransferInput = z.infer<typeof transferInput>;
 
 export const purchaseOrderInput = z
   .object({
@@ -92,7 +91,6 @@ export const purchaseOrderInput = z
       .max(DOCUMENT_LINES_MAX, `A purchase order holds at most ${DOCUMENT_LINES_MAX} lines.`),
   })
   .superRefine((input, ctx) => uniqueSkus(input.lines, ctx));
-export type PurchaseOrderInput = z.infer<typeof purchaseOrderInput>;
 
 /** A unit cost as typed, in minor units of the order's currency; null when it cannot be read or is out of range. */
 export function unitCostMinor(text: string, currency: string): number | null {

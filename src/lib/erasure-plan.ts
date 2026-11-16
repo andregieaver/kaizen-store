@@ -27,15 +27,6 @@ export type PlanOrder = {
 
 export type PlanWarningKind = "staff_account" | "host" | "work_client" | "company_main" | "copies_in_other_stores" | "copied_orders_elsewhere";
 
-export const PLAN_WARNING_TEXT: Record<PlanWarningKind, string> = {
-  staff_account: "This email is also a staff or owner account of the store. The account is not touched.",
-  host: "This email is also a host of the store. The host is another subject and is not touched.",
-  work_client: "This person is a client in the owner's Work area (the owner's own accounting). Nothing there is touched.",
-  company_main: "This person is the main account of a company. The company stays with its other members and has no owner until staff promote another.",
-  copies_in_other_stores: "Copies of this customer exist in other stores of the same owner. They are separate and are not erased here.",
-  copied_orders_elsewhere: "Orders copied from this store to other stores are history there. They are not erased here.",
-};
-
 export type PlanRow = {
   /** A register table, or `orders` split by what happens to each. */
   table: string;

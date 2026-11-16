@@ -78,20 +78,6 @@ export const storeCopyInput = z.object({
 export type StoreCopyInput = z.infer<typeof storeCopyInput>;
 
 export const noneOf = (): CopySelection => ({ mode: "none" });
-export const DEFAULT_COPY_OPTIONS: StoreCopyOptions = {
-  pages: { mode: "all" },
-  products: { mode: "all" },
-  posts: { mode: "all" },
-  customers: false,
-  orders: false,
-  confirmDataUse: false,
-  emailTexts: false,
-};
-
-/** Whether anything of a kind is copied, and how many of a total. */
-export const copiesAny = (selection: CopySelection): boolean => selection.mode !== "none";
-export const copyCount = (selection: CopySelection, total: number): number =>
-  selection.mode === "all" ? total : selection.mode === "selected" ? Math.min(selection.ids.length, total) : 0;
 
 // ---------------------------------------------------------------------------
 // What the wizard shows before it starts

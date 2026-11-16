@@ -277,7 +277,6 @@ export const setProductStatusInput = z.object({
 export type SetProductStatusInput = z.output<typeof setProductStatusInput>;
 
 export const WRITE_TEXTS = ["description", "search", "languages"] as const;
-export type WriteText = (typeof WRITE_TEXTS)[number];
 
 export const writeProductTextsInput = z.object({
   product: productRef,

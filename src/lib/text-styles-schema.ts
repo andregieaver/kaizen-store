@@ -35,4 +35,3 @@ export const textStyleInput = z.object({
   settings: textStyleSettingsSchema,
   css: z.string().max(TEXT_STYLE_CSS_MAX, `A style's CSS is at most ${TEXT_STYLE_CSS_MAX} characters.`).nullable().optional(),
 });
-export type TextStyleInput = z.infer<typeof textStyleInput>;

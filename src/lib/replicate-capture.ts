@@ -224,7 +224,6 @@ export const CAPTURE_STYLES = [
   "scrollSnapType",
   "scrollSnapAlign",
 ] as const;
-export type CaptureStyle = (typeof CAPTURE_STYLES)[number];
 
 // ---------------------------------------------------------------------------
 // Reading values

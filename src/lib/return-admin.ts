@@ -32,12 +32,6 @@ export const CONDITION_LABELS: Record<ReturnCondition, string> = EN.labels.condi
 
 export const ACTION_LABELS: Record<ReturnAction, string> = EN.labels.action;
 
-/** The reason a line the law excludes gives, as words (`order_lines.withdrawal_exclusion`). */
-export const EXCLUSION_LABELS: Record<string, string> = EN.labels.exclusion;
-
-/** Why a line was declined: a code the system wrote (`excluded_by_law`, the withdrawal function's) or the words of the person who declined it. */
-export const DECLINE_REASON_LABELS: Record<string, string> = EN.labels.declineReason;
-
 const lookup = (table: Record<string, string>, key: string): string | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
 
 export const declineReasonText = (reason: string | null, w: ReturnsMessages = EN): string =>
@@ -56,8 +50,6 @@ export const STATUS_FILTERS = statusFilters();
 /** The queue's kind choices in a language. */
 export const kindFilters = (w: ReturnsMessages = EN): { value: ReturnQueueFilter["kind"]; label: string }[] =>
   (["all", "withdrawal", "return"] as const).map((value) => ({ value, label: w.labels.kindFilters[value] }));
-
-export const KIND_FILTERS = kindFilters();
 
 /** The queue's address for a filter: only what differs from the defaults is in it. */
 export function queueHref(base: string, filter: Partial<ReturnQueueFilter> & { page?: number; /** The exchange mark filter (D239). */ exchange?: string | null } = {}): string {
@@ -277,9 +269,6 @@ export function previewData(preview: { refund: Refund; refundableMinor: number; 
 /** A return's outcome in words, `exchanged` (D239) included. */
 export const outcomeLabel = (outcome: string, w: ReturnsMessages = EN): string => lookup(w.labels.outcome, outcome) ?? outcome.replaceAll("_", " ");
 
-/** How a customer's agreement reached staff (`STAFF_EXCHANGE_CHANNELS`, and `web` for the customer's own press). */
-export const CHANNEL_LABELS: Record<string, string> = EN.labels.channels;
-
 /** The queue's exchange marks (`EXCHANGE_QUEUE_MARKS`). */
 export const EXCHANGE_MARK_LABELS = EN.labels.exchangeMarks;
 export type ExchangeMark = keyof typeof returnsEn.labels.exchangeMarks;
@@ -289,8 +278,6 @@ export const exchangeFilters = (w: ReturnsMessages = EN): { value: ExchangeMark 
   { value: "", label: w.labels.exchangeFilters.any },
   ...(["wished", "proposed", "confirmed", "waiting_payment"] as const).map((value) => ({ value, label: w.labels.exchangeFilters[value] })),
 ];
-
-export const EXCHANGE_FILTERS = exchangeFilters();
 
 /** The queue's `exchange=` value, or null for anything else. */
 export function exchangeFilterOf(value: string | string[] | undefined): ExchangeMark | null {

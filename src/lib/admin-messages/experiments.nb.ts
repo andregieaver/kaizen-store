@@ -191,6 +191,7 @@ export const experimentsNb: ExperimentsMessages = {
     computer: "Datamaskin",
     phone: "Mobil",
     frameTitle: "{name} slik de besøkende ser den",
+    draft: "Utkast: ikke publisert ennå, så de besøkende ville ikke sett dette",
   },
   draftCard: {
     change: "Endre {name}",
@@ -205,6 +206,8 @@ export const experimentsNb: ExperimentsMessages = {
     readyTitle: "Klar til å starte?",
     changed: "{name} er forskjellig fra originalen",
     notChanged: "{name} er fortsatt lik originalen: endre den først",
+    unpublished: "De siste endringene i {name} er lagret, men ikke publisert: publiser dem i sidebyggeren",
+    publishChanges: "Publiser endringene i {name}",
     published: "Siden er publisert",
     notPublished: "Publiser siden først: en test starter fra det som er publisert",
     goalSet: "Testen teller {goal}",
@@ -289,6 +292,18 @@ export const experimentsNb: ExperimentsMessages = {
   },
   results: {
     harmed: "Versjon {key} selger tydelig mindre enn originalen.",
+    behaviour: {
+      title: "Slik oppførte besøkende seg",
+      lead: "Fra varmekart: hva besøkende som tillater statistikk gjorde på sidene i hver versjon.",
+      views: "Sidevisninger",
+      reachedHalf: "Kom halvveis ned på siden",
+      rage: "Sidevisninger med sinte klikk",
+      dead: "Sidevisninger med døde klikk",
+      heatmap: "Varmekart",
+      recordings: "Opptak",
+      tooFew: "For få sidevisninger ennå",
+      frustrated: "{name} får tydelig flere sinte eller døde klikk enn originalen. Opptakene viser hvorfor. Testen fortsetter.",
+    },
     unconverted: {
       one: "{n} bestilling var i en valuta uten kurs, så den telles som bestilling, men ikke i omsetningen.",
       many: "{n} bestillinger var i en valuta uten kurs, så de telles som bestillinger, men ikke i omsetningen.",
@@ -396,6 +411,7 @@ export const experimentsNb: ExperimentsMessages = {
     different: {
       title: "Hva som er forskjellig",
       none: "Ingenting er forskjellig fra originalen.",
+      unpublished: "Den har endringer som er lagret i sidebyggeren og ikke publisert ennå. De besøkende ville fått se det som er publisert.",
       more: { one: "og {n} endring til", many: "og {n} endringer til" },
       preview: "Forhåndsvis",
     },
@@ -513,6 +529,7 @@ export const experimentsNb: ExperimentsMessages = {
     applyPart: "Den versjonen kunne ikke tas i bruk: siden har ikke lenger {part}, eller versjonen kunne ikke leses.",
     applyPage: "Den versjonen kunne ikke leses.",
     same: "Versjon {key} er fortsatt lik originalen: endre den først, ellers har testen ingenting å finne.",
+    versionUnpublished: "De siste endringene i versjon {key} er lagret, men ikke publisert: publiser dem i sidebyggeren, for de besøkende får se det som er publisert.",
     workingWhole:
       "En arbeidsside testes med en del av den, rundt butikkens egen komponent, ikke som helhet: velg delen i sidebyggeren med «A/B-test dette».",
     needsOriginal: "En test trenger originalen og minst én annen versjon.",

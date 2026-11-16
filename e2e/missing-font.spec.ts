@@ -124,7 +124,7 @@ test("a design profile's preview whose font cannot be served draws one canvas", 
   // As the theme store's frame shows it, and as a visitor opens it.
   const problems = watch(page);
   for (const query of ["&embed=1", ""]) {
-    await page.goto(`/admin/account/design-profiles/${preset}/preview?starter=${starter}${query}`);
+    await page.goto(`/admin/account/themes/${preset}/preview?starter=${starter}${query}`);
     await settled(page);
     await expect(page.locator("[data-design-preview]")).toHaveCount(1);
     await expect(page.locator("[data-design-preview] main")).toBeVisible();

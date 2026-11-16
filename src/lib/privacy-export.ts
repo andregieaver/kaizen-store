@@ -385,6 +385,15 @@ export type ExportInput = {
   /** Staff's calls, meetings and tasks about the person (D468): what, when, done when, and what was written; never who did it; absent is none. */
   customerActivities?: { kind: string; title: string; note: string | null; dueAt: string; doneAt: string | null }[];
   customerDeals?: { title: string; stage: string | null; status: string; estimateMinor: number | null; currency: string; expectedCloseOn: string | null; closeReason: string | null; openedAt: string; closedAt: string | null }[];
+  /** Contracts sent to the person or naming them as a signer (D695): the title, status and what was sent, and each signer's steps; absent is none. */
+  customerContracts?: {
+    title: string;
+    status: string;
+    sentAt: string | null;
+    completedAt: string | null;
+    document: Json;
+    signers: { role: string; name: string; email: string; viewedAt: string | null; signedAt: string | null; signedName: string | null; declinedAt: string | null; declineReason: string | null }[];
+  }[];
   /** Welcome codes a sign-up form gave the person (D304 J3): the discount and when; absent is none. */
   signupCodes?: { discount: string; givenAt: string }[];
   /** The broadcasts sent to the person (D297): staff's name for each and when; absent is none. */
@@ -393,6 +402,8 @@ export type ExportInput = {
   automations?: { automation: string; sentAt: string | null }[];
   /** The person's back-in-stock requests (D298): the product, the status and when; absent is none. */
   stockRequests?: { product: string; status: string; askedAt: string | null; notifiedAt: string | null }[];
+  /** Products the person looked at while signed in, for the browse email (D691), with when. */
+  productViews?: { product: string; viewedAt: string }[];
   /** The person's numbers for marketing texts (D565): the number, its consent and history, and the texts sent to it; absent is none. */
   smsNumbers?: { phone: string; status: string; source: string; consentText: string; consentedAt: string; unsubscribedAt: string | null; unsubscribeSource: string | null; history: { kind: string; source: string; consentText: string | null; at: string }[]; texts: { text: string; sentAt: string | null }[] }[];
 };
@@ -777,7 +788,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
     comments: (input.comments ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length + (input.smsNumbers ?? []).length,
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerContracts ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.productViews ?? []).length + (input.signupCodes ?? []).length + (input.smsNumbers ?? []).length,
   };
 }
 
@@ -880,11 +891,13 @@ export function shapeExport(input: ExportInput): ExportFile {
       ...((input.customerTags ?? []).length > 0 ? [{ kind: "tags", tags: [...(input.customerTags ?? [])] }] : []),
       ...(input.customerNotes ?? []).map((n) => ({ kind: "staff_note", text: n.text, writtenAt: n.writtenAt })),
       ...(input.customerDeals ?? []).map((d) => ({ kind: "deal", ...d })),
+      ...(input.customerContracts ?? []).map((c) => ({ kind: "contract", ...c })),
       ...(input.customerActivities ?? []).map((a) => ({ kind: "activity", activity: a.kind, title: a.title, note: a.note, dueAt: a.dueAt, doneAt: a.doneAt })),
       ...(input.broadcasts ?? []).map((b) => ({ kind: "broadcast", broadcast: b.broadcast, sentAt: b.sentAt })),
       ...(input.automations ?? []).map((a) => ({ kind: "automation", automation: a.automation, sentAt: a.sentAt })),
       ...(input.signupCodes ?? []).map((c) => ({ kind: "signup_code", discount: c.discount, givenAt: c.givenAt })),
       ...(input.stockRequests ?? []).map((r) => ({ kind: "back_in_stock", product: r.product, status: r.status, askedAt: r.askedAt, notifiedAt: r.notifiedAt })),
+      ...(input.productViews ?? []).map((v) => ({ kind: "product_viewed", product: v.product, viewedAt: v.viewedAt })),
       ...(input.smsNumbers ?? []).map((n) => ({ kind: "sms", ...n })),
     ],
   };

@@ -155,5 +155,3 @@ export function merchandise(ids: readonly string[], rules: readonly SearchRule[]
   return [...pinned, ...up, ...middle, ...down];
 }
 
-/** Whether any rule a search met changes its order (so the catalogue's read is asked for the merchandised order). */
-export const changesOrder = (rules: readonly SearchRule[]) => rules.some((rule) => rule.action !== "redirect");

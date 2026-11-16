@@ -90,19 +90,6 @@ export function starterSettings(kind: TextStyleKind, theme: { accent: string; te
   }
 }
 
-/** The name a new style of a kind gets until the person names it. */
-export const KIND_NAMES: Record<TextStyleKind, string> = {
-  gradient: "Gradient text",
-  highlight: "Highlighter",
-  outline: "Outline",
-  underline: "Underline",
-  glow: "Glow",
-  colour: "Colour",
-  smallCaps: "Small caps",
-  spacedCaps: "Spaced capitals",
-  custom: "My style",
-};
-
 /** A style's declarations, as `property: value` pairs, written by code from its checked settings (or kept from its own CSS). */
 export function textStyleDeclarations(style: Pick<TextStyle, "kind" | "settings" | "css">): [string, string][] {
   const s = style.settings;

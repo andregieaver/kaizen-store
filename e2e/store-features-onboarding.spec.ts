@@ -12,7 +12,7 @@ import { expectSentToSignIn } from "./sign-in";
  */
 
 test("the setup wizard's steps, the question and the bookings step included, send a visitor without a session to sign in", async ({ page }) => {
-  for (const path of ["/admin/demo/setup", "/admin/demo/setup/features", "/admin/demo/setup/bookings", "/admin/demo/setup/launch", "/admin/platform/store-templates"]) {
+  for (const path of ["/admin/demo/setup", "/admin/demo/setup/features", "/admin/demo/setup/bookings", "/admin/demo/setup/launch", "/admin/platform/themes"]) {
     await page.goto(path);
     await expectSentToSignIn(page, path);
   }

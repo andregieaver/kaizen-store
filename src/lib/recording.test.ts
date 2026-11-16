@@ -18,6 +18,7 @@ import {
   sealedPath,
   seqName,
   sessionFor,
+  timelineMarks,
   type RecSession,
 } from "./recording";
 import { RETENTION_SEED } from "./retention";
@@ -113,5 +114,22 @@ describe("rrweb's options", () => {
     expect(balanced.maskTextFn("a long review written by a person")).toBe("•••");
     expect(balanced.maskTextFn("   ")).toBe("   ");
     expect(recorderOptions("strict", true)).toMatchObject({ maskTextSelector: "*", sampling: { mousemove: 150 } });
+  });
+});
+
+describe("the player's timeline", () => {
+  it("marks pages and frustrated clicks in order, and nothing else", () => {
+    const events = [
+      { type: 5, timestamp: 900, data: { tag: "kz-click", payload: { dead: true, rage: false } } },
+      { type: 5, timestamp: 100, data: { tag: "kz-page", payload: { path: "/no" } } },
+      { type: 5, timestamp: 1200, data: { tag: "kz-click", payload: { dead: false, rage: true } } },
+      { type: 3, timestamp: 1300, data: { source: 2 } },
+      { type: 5, timestamp: 1400, data: { tag: "kz-ab", payload: { tags: [] } } },
+    ];
+    expect(timelineMarks(events)).toEqual([
+      { at: 100, kind: "page", path: "/no" },
+      { at: 900, kind: "dead" },
+      { at: 1200, kind: "rage" },
+    ]);
   });
 });

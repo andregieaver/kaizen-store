@@ -22,7 +22,7 @@ type Row = Record<string, unknown>;
  * sign-up form and the link. Stripe's invoices are in `referral-billing.ts`.
  */
 
-/** Tag of the cached read of whether the program is on (`referralProgramOn()`); changed with the settings. */
+/** Tag of the cached read of whether the program is on (`referralPublicSettings()`); changed with the settings. */
 export const REFERRALS_TAG = "referrals";
 
 export type ReferralResult = { ok: true; message?: string } | { ok: false; problems: string[] };
@@ -63,11 +63,6 @@ export async function referralPublicSettings(): Promise<{ enabled: boolean; cook
   cacheTag(REFERRALS_TAG);
   const [row] = await readDb().execute<Row>(sql`select enabled, cookie_days from commerce.referral_program()`);
   return { enabled: Boolean(row?.enabled), cookieDays: Number(row?.cookie_days ?? REFERRAL_DEFAULTS.cookieDays) };
-}
-
-/** Whether the program is on, as the cookie banner and cookie page ask. */
-export async function referralProgramOn(): Promise<boolean> {
-  return (await referralPublicSettings()).enabled;
 }
 
 /**

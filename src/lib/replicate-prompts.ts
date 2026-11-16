@@ -1,5 +1,5 @@
 import type { PartInfo } from "./replicate-build";
-import { cssColour, firstFamily, runsText, walkLive, type CaptureNode, type PageCapture } from "./replicate-capture";
+import { cssColour, runsText, walkLive, type CaptureNode, type PageCapture } from "./replicate-capture";
 import { jsonOf } from "./replicate-patches";
 import type { ReplicaScore } from "./replicate";
 import type { StyleModel } from "./replicate-styles";
@@ -10,8 +10,6 @@ import type { StyleModel } from "./replicate-styles";
  * measured; everything it is told about the page is data between markers, never instructions; what it answers is a
  * small JSON object that is read and checked (`parseAnalysis()`, `parsePatchPlan()`), and nothing else it says is used.
  */
-
-export type ChatTextPart = { type: "text"; text: string };
 
 /** What the browser measured of the original, in a few lines for the model. */
 export function digestOf(capture: PageCapture): string {
@@ -136,16 +134,6 @@ export function assessUser(input: {
   ]
     .filter(Boolean)
     .join("\n\n");
-}
-
-/** The names of fonts used in a capture that a Google font may replace: the first family of each text run's styles. */
-export function familiesOf(capture: PageCapture): string[] {
-  const seen = new Map<string, number>();
-  for (const font of capture.fonts) {
-    const family = firstFamily(font.family);
-    if (family) seen.set(family, (seen.get(family) ?? 0) + font.chars);
-  }
-  return [...seen.entries()].sort((a, b) => b[1] - a[1]).map(([family]) => family);
 }
 
 /** The text nodes of a capture, in reading order, for counting and for the copy step's log. */

@@ -128,4 +128,3 @@ export const FIKEN_BLOCK_WORDS = {
   document_missing: "The document could not be read. Contact support.",
 } as const;
 
-export type FikenBlockWords = Record<keyof typeof FIKEN_BLOCK_WORDS, string>;

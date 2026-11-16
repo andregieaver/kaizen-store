@@ -17,10 +17,6 @@ export type ResponsibleArea = (typeof RESPONSIBLE_AREAS)[number];
 /** An area a responsible person can be established in. */
 export type EstablishedArea = Exclude<ResponsibleArea, "none">;
 
-/** Where a rule stands in law: in force there, or not (yet) part of that country's law. */
-export const RULE_STATUSES = ["in_force", "not_incorporated", "incorporated_not_in_force"] as const;
-export type RuleStatus = (typeof RULE_STATUSES)[number];
-
 /** The two classifications, as sets of ISO 3166-1 alpha-2 codes, and each destination's configured rule. */
 export type ProductSafety = {
   eu: ReadonlySet<string>;

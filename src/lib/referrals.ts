@@ -82,14 +82,6 @@ export function withinReferralWindow(createdAt: Date, months: number, paidAt: Da
 
 export type ReferralEntryKind = "earn" | "apply" | "restore" | "reverse" | "adjust";
 
-export const REFERRAL_KIND_LABELS: Record<ReferralEntryKind, string> = {
-  earn: "Earned",
-  apply: "Used on an invoice",
-  restore: "Returned",
-  reverse: "Taken back",
-  adjust: "Adjusted by Kaizena Flow",
-};
-
 /** An account's referral credit in one currency, in minor units. */
 export type ReferralBalance = {
   currency: string;

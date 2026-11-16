@@ -235,9 +235,6 @@ export function triggerWords(triggers: ModalTriggers, words: ModalSummaryWords["
  */
 export const MODAL_LEFT_OUT =
   "Not on your site yet: nothing in this row is shown there, so the modal is left out and no link or class can open it. A newsletter or email form is shown only once it has an address under Send to: add one, or put a heading or some text in the modal too.";
-/** The short form, beside a button's choice of modal. */
-export const MODAL_LEFT_OUT_SHORT =
-  "That modal is not on the site yet: nothing in its row is shown there (a form needs an address under Send to), so this link cannot open it.";
 
 /** The badge on a modal row in the builder's canvas. */
 export function modalSummary(modal: RowModal, words: ModalSummaryWords = SUMMARY_WORDS): string {

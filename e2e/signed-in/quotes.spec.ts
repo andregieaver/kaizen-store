@@ -59,12 +59,15 @@ test.beforeAll(async () => {
 
 test("the owner chooses who may request a quote under Settings, Orders", async ({ page }) => {
   await page.goto(`/admin/${STORE}/settings/orders`);
+  // Each setting is a row that opens in place (round 24, D692).
+  await page.locator("summary").filter({ hasText: "Request a quote" }).click();
   const section = page.getByRole("region", { name: "Request a quote" });
   await expect(section.getByRole("radio", { name: /^Off/ })).toBeChecked();
   await section.getByRole("radio", { name: /^For business customers only/ }).check();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved.").first()).toBeVisible();
   await page.reload();
+  await page.locator("summary").filter({ hasText: "Request a quote" }).click();
   await expect(page.getByRole("region", { name: "Request a quote" }).getByRole("radio", { name: /^For business customers only/ })).toBeChecked();
   const sql = testDb();
   try {

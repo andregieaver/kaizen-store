@@ -156,7 +156,6 @@ export const domainsEn = {
     consent: "I ask Kaizena Flow to register the domain as soon as it is paid, and I understand that I lose my right to withdraw once the registration is complete.",
     paidOutside: "The invoice is made. You'll find it under Buying and renewing.",
     closed: "Kaizena Flow doesn't sell domains on their own yet.",
-    priceChanged: "Look at the price again.",
   },
   assistant: {
     title: "Ask about your domains",

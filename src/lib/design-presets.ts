@@ -182,15 +182,6 @@ export function snapshotAsStored(snapshot: DesignSnapshot): DesignSnapshot {
 // Taking a snapshot
 // ---------------------------------------------------------------------------
 
-const STORAGE_PATH = "/storage/v1/object/public/";
-
-/** CSS a design profile may carry: clean (`cssProblem()`), and reaching into no store's files. Else none, and the reason. */
-export function carriedCss(value: string): { css: string; dropped: boolean } {
-  const trimmed = value.trim();
-  if (trimmed === "") return { css: "", dropped: false };
-  return cssProblem(trimmed) === null && !trimmed.includes(STORAGE_PATH) ? { css: trimmed, dropped: false } : { css: "", dropped: true };
-}
-
 /** Blocks that show the store's own data by id and cannot mean anything in another store: custom fields (D118) and field loops (D120). */
 const STORE_DATA_BLOCKS: ReadonlySet<PageBlock["type"]> = new Set(["customField", "fieldLoop"]);
 

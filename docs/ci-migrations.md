@@ -34,8 +34,8 @@ and the run stops there. Rules it enforces:
 Each starts `-- kaizen:baseline-through=20261111172838_sms_campaign_index.sql`. On an empty database (CI, a lane, `db-setup.mjs`,
 the tests' PGlite) they run like any file. In production `db-migrate.mjs` sees the ledger already has the file they name, and records
 them (`applied_by = 'baseline'`) without running them. The squashed files are in `supabase/archive/20261111172838/`, outside every
-path that applies migrations. A test that reads what an old migration said, or replays history to a point, finds it through
-`src/db/migration-files.ts` (`readMigration()`, `migrationHistory()`), and the runner counts the archive as applied history.
+path that applies migrations. Tests check the database the baseline and the newer files build; the archive is history that no
+test reads (bloat review step 0.39 removed `src/db/migration-files.ts`). The runner counts the archive as applied history.
 
 The script checks before it writes. It builds one database from the files and one from the baseline, and compares a `pg_dump` of each:
 the schema line by line (a line may differ only in a check's parentheses, which Postgres regroups on reading `(a AND b) AND c`; 63 did)

@@ -1,7 +1,7 @@
 import "server-only";
 
-import type { OwnerToolInput, OwnerToolName } from "@/lib/owner-tools";
-import { REDIRECT_TOOLS, overviewNotes, shapeCounts, shapeMissing } from "@/lib/redirect-tools";
+import type { OwnerToolInput } from "@/lib/owner-tools";
+import { overviewNotes, shapeCounts, shapeMissing } from "@/lib/redirect-tools";
 
 import type { Membership } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";
@@ -85,7 +85,4 @@ export async function preflightRedirectTool(ctx: Ctx, name: string, input: Recor
   }
   if (checked.findings.some((f) => f.code === "exists.same")) return fail(`There is already a redirect from ${checked.source} to ${checked.target}: nothing to add.`);
 }
-
-/** The two tools' names, for the registry's test. */
-export const REDIRECT_OWNER_TOOLS = REDIRECT_TOOLS satisfies readonly OwnerToolName[];
 

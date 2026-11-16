@@ -140,6 +140,9 @@ export const NAV_NB: Record<string, string> = {
     "Hvem som er i butikken nå, handlekurver og kasser som er i gang, og dagens ordrer så langt.",
   Speed: "Hastighet",
   Heatmaps: "Varmekart",
+  Recordings: "Opptak",
+  "Watch visits to your pages, for visitors who allow it, to see where they get stuck.":
+    "Se besøk på sidene dine, for besøkende som tillater det, for å se hvor de står fast.",
   "Where visitors click, how far they scroll and what they look at, and where they get stuck.":
     "Hvor besøkende klikker, hvor langt de blar og hva de ser på, og hvor de står fast.",
   "How fast your pages load for your visitors, measured in their browsers, and what to fix.":

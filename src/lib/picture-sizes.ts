@@ -80,8 +80,13 @@ export function gridSizes(columns: PerSize, options: { gaps?: PerSize; breakpoin
     .join(", ");
 }
 
-/** The `sizes` of a picture drawn at most `width` CSS pixels wide (its own size, D151), and never wider than the screen. */
-export function fixedSizes(width: number): string {
+/**
+ * The `sizes` of a picture drawn at most `width` CSS pixels wide (its own size, D151), and never wider than the screen. In a column
+ * that keeps its `share` (0 to 1, exclusive) of the screen on a phone (`phoneShare()` in `column-share.ts`), the picture is its own
+ * width once the column is that wide, and the column's share of the screen below that; any other share is the whole screen.
+ */
+export function fixedSizes(width: number, share = 1): string {
   const w = Math.max(1, Math.round(width));
-  return `(min-width: ${w}px) ${w}px, 100vw`;
+  if (!(share > 0 && share < 1)) return `(min-width: ${w}px) ${w}px, 100vw`;
+  return `(min-width: ${Math.ceil(w / share)}px) ${w}px, ${Math.round(share * 100)}vw`;
 }

@@ -12,6 +12,7 @@ import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { listPeriodTargets, listTargets } from "@/server/analytics-settings";
+import { recordingsOpenNow } from "@/server/recordings-admin";
 
 import {
   backfillCostsAction,
@@ -21,6 +22,7 @@ import {
   savePeriodTargetAction,
   saveTargetAction,
   setHeatmapsAction,
+  setRecordingsAction,
   setVisitCountingAction,
 } from "./actions";
 
@@ -60,6 +62,13 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
           periodTargets={periodTargets}
           visitCounting={store.visitCounting}
           heatmaps={store.heatmaps}
+          recordings={{
+            on: store.recordings,
+            share: store.recordingShare,
+            mask: store.recordingMask,
+            available: store.house || (await recordingsOpenNow()),
+            privacyHref: `${base}/settings/legal`,
+          }}
           actions={
             owner
               ? {
@@ -70,6 +79,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
                   deletePeriodTarget: deletePeriodTargetAction.bind(null, store.slug),
                   setVisitCounting: setVisitCountingAction.bind(null, store.slug),
                   setHeatmaps: setHeatmapsAction.bind(null, store.slug),
+                  setRecordings: setRecordingsAction.bind(null, store.slug),
                   backfillCosts: backfillCostsAction.bind(null, store.slug),
                 }
               : null

@@ -77,12 +77,12 @@ describe("switching Work on and off", () => {
     expect((await audited("work.disabled")).length).toBe(1);
   });
 
-  it("keeps the store's other modules", async () => {
-    await db().execute(sql`update commerce.stores set modules = array['bookings', 'work'] where id = ${storeId}::uuid`);
+  it("keeps the store's features", async () => {
+    await db().execute(sql`update commerce.stores set modules = array['work'], features = features || array['appointments', 'bookings'] where id = ${storeId}::uuid`);
     await setWorkModule(owner, false);
-    expect(await modules()).toEqual(["bookings"]);
+    expect(await modules()).toEqual([]);
     await setWorkModule(owner, true);
-    expect((await modules()).sort()).toEqual(["bookings", "work"]);
+    expect((await modules()).sort()).toEqual(["work"]);
   });
 });
 

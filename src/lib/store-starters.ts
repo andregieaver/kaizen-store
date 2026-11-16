@@ -77,14 +77,6 @@ export type StarterRow = OfferedStarter & {
 /** What content a copy can start from is (`contentSources()`, D275, D277). */
 export type ContentSourceKind = "pack" | "theme" | "template" | "demo";
 
-/** The kind of a content source as the platform admin reads it beside its name. */
-export const CONTENT_SOURCE_WORDS: Record<ContentSourceKind, string> = {
-  pack: "starting content",
-  theme: "a theme's content",
-  template: "older starting content",
-  demo: "demo store, as it is now",
-};
-
 /** A card to choose: a store template, or the Standard store (`id` empty). */
 export type StarterCard = Pick<OfferedStarter, "title" | "summary" | "description" | "pictureUrl"> & {
   /** What the form sends: a starter's id, or "" for the Standard store. */

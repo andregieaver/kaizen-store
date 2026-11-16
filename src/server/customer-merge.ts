@@ -189,6 +189,10 @@ export async function mergeCustomers(member: Membership, keep: string, remove: s
     }
     // Staff's deals with the person (D464) follow them to the kept account.
     await tx.execute(sql`update commerce.deals set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
+    // Their contracts too (D695): a sent one moves only in a merge, which says so.
+    await tx.execute(sql`select set_config('commerce.customer_merge', 'on', true)`);
+    await tx.execute(sql`update commerce.contracts set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
+    await tx.execute(sql`select set_config('commerce.customer_merge', '', true)`);
     await tx.execute(sql`update commerce.activities set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
     await tx.execute(sql`delete from commerce.customers where store_id = ${storeId}::uuid and id = ${remove}::uuid`);
     return plan;

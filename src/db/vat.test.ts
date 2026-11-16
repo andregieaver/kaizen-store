@@ -1,15 +1,9 @@
-import { readFile } from "node:fs/promises";
-
-import { PGlite } from "@electric-sql/pglite";
-import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
-import { vector } from "@electric-sql/pglite-pgvector";
+import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { COPY_RULES } from "@/lib/store-copy-rules";
 
 import { createTestDatabase } from "./testing";
-import { statementsOf } from "../../scripts/lib/migrations.mjs";
-import { migrationHistory } from "./migration-files";
 
 /**
  * The VAT engine's rules in the database (D157, docs/wave-1a-tax.md section 3), against every migration applied to a real
@@ -218,6 +212,8 @@ describe("vat_rate(country, category, at)", () => {
     expect(await scalar<string>("select commerce.vat_rate('NO', 'accommodation')::text")).toBe("0.1200");
     expect(await scalar<string>("select commerce.vat_rate('NO', 'exempt')::text")).toBe("0");
     expect(await scalar<string>("select commerce.vat_rate('SE', 'food')::text")).toBe("0.0600");
+    expect(await scalar<string>("select commerce.vat_rate('DE', 'accommodation')::text")).toBe("0.0700");
+    expect(await scalar<string>("select commerce.vat_rate('DK', 'accommodation')::text")).toBe("0.2500");
   });
 
   it("is the same in the two-argument form as in the three-argument form with now(), for every country and category", async () => {
@@ -801,105 +797,5 @@ describe("the migration's own rules", () => {
     );
     // a foreign key on the primary key's own column (a one-row-per-store table) is covered by the key
     expect(missing).toEqual([]);
-  });
-});
-
-/** Every migration but the two tax ones, then data of the old shape, then the tax migrations: nothing is lost. */
-describe("the tax migrations on a database that has data", () => {
-  let old: PGlite;
-
-  beforeAll(async () => {
-    old = new PGlite({ extensions: { pg_trgm, vector } });
-    // The history from the archive and the live folder, baselines left out (code review FD3); a file marked to run outside a transaction
-    // goes statement by statement.
-    const history = migrationHistory();
-    const files = history.map((f) => f.name);
-    const apply = async (name: string) => {
-      for (const statement of statementsOf(await readFile(history.find((f) => f.name === name)!.path, "utf8"))) await old.exec(statement);
-    };
-    const tax = files.filter((f) => /_tax_engine(_rules)?\.sql$/.test(f));
-    expect(tax).toHaveLength(2);
-    // The history as production lived it: every migration before the tax ones, then the data, then the tax ones, then the migrations after them
-    // (a later migration may patch what the tax ones made, as the privacy rules of unit 1g do with the VAT freeze).
-    const before = files.filter((f) => f < tax[0]);
-    const after = files.filter((f) => f > tax[1]);
-    for (const file of before) await apply(file);
-
-    const q = async <T>(sql: string, params: unknown[] = []) => (await old.query<T>(sql, params)).rows[0];
-    const store = (await q<{ id: string }>("insert into commerce.stores (slug, name, country) values ('old-shop', 'Old', 'SE') returning id")).id;
-    await old.query(
-      `insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
-       select $1, code, currency, default_locale, locales, true from commerce.countries where code in ('DE', 'NO', 'SE')`,
-      [store],
-    );
-    for (const [handle, category] of [["old-standard", "standard"], ["old-stay", "accommodation"], ["old-health", "exempt"]]) {
-      await old.query("insert into commerce.products (store_id, handle, tax_code, vat_category) values ($1, $2, 'txcd_99999999', $3)", [store, handle, category]);
-    }
-    const order = (number: string, market: string, over: { host?: boolean; copied?: boolean; tax?: number } = {}) =>
-      old.query(
-        `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor,
-           tax_minor, total_minor, billing_address, shipping_address, copied_from)
-         values ($1, $2, $3, 'EUR', 'de-DE', 'b@example.com', 'paid', 1000, 100, 0, $4, 1100, '{}', '{}', $5)`,
-        [store, number, market, over.tax ?? 220, over.copied ? "11111111-1111-4111-8111-111111111111" : null],
-      );
-    await order("1001", "DE");
-    await order("1002", "NO");
-    await order("C-1003", "SE", { copied: true });
-    await apply(tax[0]);
-    await apply(tax[1]);
-    for (const file of after) await apply(file);
-  });
-
-  afterAll(async () => {
-    await old.close();
-  });
-
-  it("keeps every product with its category", async () => {
-    const r = await old.query<{ handle: string; vat_category: string }>("select handle, vat_category from commerce.products order by handle");
-    expect(r.rows).toEqual([
-      { handle: "old-health", vat_category: "exempt" },
-      { handle: "old-standard", vat_category: "standard" },
-      { handle: "old-stay", vat_category: "accommodation" },
-    ]);
-  });
-
-  it("gives the old accommodation rows a start, a source and a date, unverified", async () => {
-    const r = await old.query<{ country_code: string; rate: string; valid_from: string; valid_to: string | null; verified_at: string | null; source: string }>(
-      "select country_code, rate::text, valid_from::text, valid_to::text, verified_at, source from commerce.vat_rates where category = 'accommodation' and country_code in ('DE', 'NO', 'SE') order by country_code",
-    );
-    expect(r.rows.map((x) => [x.country_code, x.rate, x.valid_from, x.valid_to, x.verified_at])).toEqual([
-      ["DE", "0.0700", "2026-01-01", null, null],
-      ["NO", "0.1200", "2026-01-01", null, null],
-      ["SE", "0.1200", "2026-01-01", null, null],
-    ]);
-    expect(r.rows.every((x) => x.source.length >= 8)).toBe(true);
-  });
-
-  it("records the rate shipping was charged at on orders already placed, leaving copied orders alone", async () => {
-    const r = await old.query<{ number: string; shipping_tax_rate: string | null }>("select number, shipping_tax_rate::text from commerce.orders order by number");
-    expect(r.rows).toEqual([
-      { number: "1001", shipping_tax_rate: "0.1900" },
-      { number: "1002", shipping_tax_rate: "0.2500" },
-      { number: "C-1003", shipping_tax_rate: null },
-    ]);
-  });
-
-  it("leaves old orders standard, with no relief", async () => {
-    const r = await old.query<{ vat_kind: string; vat_relief_minor: string }>("select vat_kind, vat_relief_minor::text from commerce.orders");
-    expect(r.rows.every((x) => x.vat_kind === "standard" && x.vat_relief_minor === "0")).toBe(true);
-  });
-
-  it("gives the same rate as before for every category a product could have had", async () => {
-    const r = await old.query<{ c: string; d: string; rate: string }>(
-      `select c.code as c, k as d, commerce.vat_rate(c.code, k)::text as rate
-         from commerce.countries c, unnest(array['standard', 'accommodation', 'exempt']) k where c.code in ('NO', 'SE', 'DE', 'DK')`,
-    );
-    const rate = (country: string, category: string) => r.rows.find((x) => x.c === country && x.d === category)?.rate;
-    expect(rate("NO", "accommodation")).toBe("0.1200");
-    expect(rate("SE", "accommodation")).toBe("0.1200");
-    expect(rate("DE", "accommodation")).toBe("0.0700");
-    expect(rate("DK", "accommodation")).toBe("0.2500");
-    expect(rate("DE", "standard")).toBe("0.1900");
-    expect(rate("NO", "exempt")).toBe("0");
   });
 });

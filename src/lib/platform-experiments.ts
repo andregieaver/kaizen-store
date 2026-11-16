@@ -22,9 +22,11 @@ export type TestLine = {
   verdict: string | null;
   /** The version that clearly lowers orders, for a running test whose results were read. */
   harmed: string | null;
+  /** The version that clearly meets more rage or dead clicks (`frustratedVersion()`, D656 step 12), for a running test. */
+  frustrated?: string | null;
 };
 
-export type Flag = { kind: "harmed" | "broken" | "quiet" | "overdue" | "schedule" | "undecided"; words: string };
+export type Flag = { kind: "harmed" | "frustrated" | "broken" | "quiet" | "overdue" | "schedule" | "undecided"; words: string };
 
 /** An uneven split, for a test of any unit (visitors, searches or tabs). */
 export const brokenFlag: Flag = { kind: "broken", words: "The visitors are not divided as planned, so its results cannot be trusted." };
@@ -39,6 +41,7 @@ export function flagsOf(test: TestLine, now: Date): Flag[] {
   if (test.status === "running" && test.startedAt) {
     const age = daysBetween(test.startedAt, now);
     if (test.harmed) flags.push({ kind: "harmed", words: `Version ${test.harmed.toUpperCase()} clearly lowers orders: the hourly check stops the test.` });
+    if (test.frustrated) flags.push({ kind: "frustrated", words: `Version ${test.frustrated.toUpperCase()} gets clearly more rage or dead clicks.` });
     if (test.verdict === "broken") flags.push(brokenFlag);
     if (test.exposed === 0 && age >= QUIET_AFTER_DAYS) flags.push({ kind: "quiet", words: `Nobody has seen it in ${dayWord(age)}.` });
     if (test.plannedEnd && now.getTime() >= test.plannedEnd.getTime()) {
@@ -59,7 +62,15 @@ export function flagsOf(test: TestLine, now: Date): Flag[] {
  * What a platform admin can usefully do about a test, in words, from its status and what it said: never to change it (the store's owner
  * does that), only to know when to say something to the owner. Used by the platform assistant (phase 8).
  */
-export function adviceFor(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; version?: string | null }): string[] {
+export function adviceFor(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; version?: string | null; frustrated?: string | null }): string[] {
+  const { status } = input;
+  const frustrated = input.frustrated && status === "running"
+    ? [`Version ${input.frustrated.toUpperCase()} gets clearly more rage or dead clicks than the original. The owner sees this on the test and in its recordings; nothing stops the test for it.`]
+    : [];
+  return [...frustrated, ...adviceOf(input)];
+}
+
+function adviceOf(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; version?: string | null }): string[] {
   const { status, verdict } = input;
   const owner = "You cannot change a store's test: tell the owner, who can in the store's admin.";
   if (status === "draft" || status === "scheduled") return ["Not started: nothing to say about results. The owner starts it."];

@@ -35,6 +35,7 @@ export const WORKING_SEGMENTS: readonly string[] = [
   "deliveries",
   "download",
   "order",
+  "request",
   "returns",
   "search",
   "subscription",

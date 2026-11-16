@@ -226,7 +226,6 @@ export const assistantEn = {
       pause: "Pause",
       stop: "Stop",
       started: "The plan is running.",
-      pausedNow: "The plan is paused.",
       stopped: "The plan is stopped.",
       stopConfirm: "Stop this plan for good? What it already did stays.",
       status: { draft: "Draft", running: "Running", paused: "Paused", done: "Done", stopped: "Stopped" },

@@ -87,6 +87,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Staging, and translating the whole site | Website | Kaizena Flow's store (D484) |
 | A/B tests of pages | Marketing → A/B tests | Kaizena Flow's store, on the site's pages (D484) |
 | Traffic and visits | Analytics → Traffic | Kaizena Flow's store: visits on kaizenaflow.com are counted (D484) |
+| Heatmaps and recordings of visits (D656) | Analytics → Heatmaps, Recordings; Analytics → Settings | Kaizena Flow's store: kaizenaflow.com is served from it (`site_from_store` on, read 16 November 2026), so its heatmaps and recordings are the site's; recordings run there while the platform's hold is closed for other stores. Usage and limits shows each store's count and holds the switch; platform admins never watch a store's recordings |
 | Company details, private mode, the accessibility statement | Settings | Kaizena Flow's store (D466, D484; private mode stays off while the store serves the site) |
 | Finance and VAT (D161, D496) | Analytics → Finance, VAT; Settings → Books | Plans → Analytics: what Kaizena Flow sold by month with its VAT (D507), posted into the books of the business behind it with codes 3 and 52 (D508), so in that business's VAT return and accounts, Stripe's fees with each payout |
 | Accounting (our ledger; Tripletex and Fiken compare with it) | Settings → Books | Plans → Analytics, *In the books* (D508): Kaizena Flow's sales, credit notes and Stripe payouts posted into the books the platform names (Human Web's) |

@@ -5,6 +5,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { targetLabel } from "@/lib/ab-site";
 import { GOAL_WORDS, STATUS_WORDS } from "@/lib/experiments";
+import { frustratedVersion } from "@/lib/heat-read";
+import { FLAG_VERSION_VIEWS } from "@/lib/page-heat";
 import type { PlatformToolInput } from "@/lib/manager-tools";
 import { adviceFor } from "@/lib/platform-experiments";
 import type { UnitTestRow } from "@/lib/platform-unit-tests";
@@ -13,6 +15,7 @@ import type { Account } from "./auth";
 import { getExperiment } from "./experiment-admin";
 import { explainResultsTool } from "./experiment-tools";
 import { OwnerToolError } from "./owner-tool-error";
+import { versionBehaviour } from "./page-heat-read";
 import { platformExperiments, type PlatformTest } from "./platform-experiments";
 import { platformUnitTest, platformUnitTests } from "./platform-unit-tests";
 import { getStore } from "./stores";
@@ -124,7 +127,13 @@ export async function explainAbTest(account: Account, { test }: PlatformToolInpu
       return {
         store: store.slug,
         ...owners,
-        what_next: adviceFor({ status: info.status, verdict, guardrail: info.stopReason === "guardrail", version: best }),
+        what_next: adviceFor({
+          status: info.status,
+          verdict,
+          guardrail: info.stopReason === "guardrail",
+          version: best,
+          frustrated: info.status === "running" ? frustratedVersion(await versionBehaviour(store.id, info.id), FLAG_VERSION_VIEWS) : null,
+        }),
         admin: "/admin/platform/experiments",
       };
     }

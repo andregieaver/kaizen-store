@@ -32,9 +32,6 @@ export const POSTNORD_SERVICES: { id: string; name: string; needsPickupPoint: bo
 
 export const postnordService = (id: string) => POSTNORD_SERVICES.find((s) => s.id === id) ?? null;
 
-/** The countries PostNord's own network covers, as the stores' markets are named. */
-export const POSTNORD_COUNTRIES = ["SE", "DK", "NO", "FI"];
-
 /** A postal code in each country to ask a harmless question about, for the connection check. */
 export const SAMPLE_POSTAL_CODES: Record<string, string> = { SE: "11122", DK: "1050", NO: "0150", FI: "00100" };
 
@@ -419,7 +416,6 @@ export function servicePointByIdUrl(host: string, apiKey: string, country: strin
 /** The return services a store can book: Return Drop Off (24), handed in at a PostNord service point, in all four Nordic countries. */
 export const POSTNORD_RETURN_SERVICES: { id: string; name: string; confirmed: boolean }[] = [{ id: "24", name: "PostNord Return Drop Off", confirmed: true }];
 export const POSTNORD_RETURN_DEFAULT = "24";
-export const POSTNORD_RETURN_COUNTRIES = ["SE", "DK", "NO", "FI"];
 
 /**
  * A return label: the shopper hands the parcel in (the consignor, with their email and phone, which PostNord's guide asks for on 24) and it goes

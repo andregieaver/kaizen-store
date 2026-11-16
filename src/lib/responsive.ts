@@ -1,5 +1,5 @@
 import { SIZES, SMALLER_SIZES, type Size, type SmallerSize } from "./breakpoints";
-import type { GridColumns, PageBlock, PageRow, PartSizeSettings, Sides, Spacing, TextAlign, TextAlignments } from "./page-content";
+import type { GridColumns, PageRow, PartSizeSettings, Sides, Spacing, TextAlign, TextAlignments } from "./page-content";
 import { foldTypography } from "./typography";
 
 /**
@@ -354,12 +354,6 @@ export function sideBySidePatch(row: Pick<PageRow, "stack" | "at" | "gap">, on: 
 export const rowReversedOnPhones = (row: Pick<PageRow, "reverse" | "at">): boolean => valueAt(row, "reverse", "sm") === true;
 export const reversePatch = (row: WithAt, on: boolean): Pick<PageRow, "at"> => ({ at: withAt(row.at, "sm", "reverse", on || undefined) });
 
-/** A dual button's two, one under another on phones. */
-export const stackedOnPhones = (block: Pick<PageBlock, "at"> & { stack?: boolean }): boolean => valueAt(block, "stack", "sm") === true;
-export const stackPatch = (block: WithAt, on: boolean): WithAt => ({ at: withAt(block.at, "sm", "stack", on || undefined) });
-
-/** A part left out on phones (a header's menu, say). */
-export const hiddenOnPhones = (part: { visibility?: { hideAt?: Size[] } }): boolean => hiddenAt(part, "sm");
 export function hideOnPhonesPatch(part: { visibility?: { hideAt?: Size[] } }, on: boolean): { visibility: { hideAt?: Size[] } | undefined } {
   const others = (part.visibility?.hideAt ?? []).filter((size) => size !== "sm");
   const hideAt = on ? SIZES.filter((size) => size === "sm" || others.includes(size)) : others;

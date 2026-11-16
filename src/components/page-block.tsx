@@ -64,6 +64,7 @@ export function PageBlockView({
   renderChildren,
   eager = false,
   preview = false,
+  share,
 }: {
   block: PageBlock;
   renderChildren?: ChildRenderer;
@@ -71,6 +72,8 @@ export function PageBlockView({
   preview?: boolean;
   /** In a row that may be on the first screen: its picture loads at once and before the others, never lazily. */
   eager?: boolean;
+  /** The part of the screen its column takes on a phone (`phoneShare()`), for a picture's `sizes`; the whole screen unless given. */
+  share?: number;
 }) {
   switch (block.type) {
     case "richText":
@@ -194,8 +197,9 @@ export function PageBlockView({
         <SizedPicture
           url={picture.url}
           small={picture.small}
+          medium={picture.medium}
           sourceWidth={picture.width}
-          sizes={fixedSizes(size.width)}
+          sizes={fixedSizes(size.width, share)}
           alt={picture.alt}
           width={size.width}
           height={size.height}
@@ -230,8 +234,9 @@ export function PageBlockView({
         <SizedPicture
           url={block.image.url}
           small={block.image.small}
+          medium={block.image.medium}
           sourceWidth={block.image.width}
-          sizes={fixedSizes(size.width)}
+          sizes={fixedSizes(size.width, share)}
           alt={block.image.alt}
           width={size.width}
           height={size.height}

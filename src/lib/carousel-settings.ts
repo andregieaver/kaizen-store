@@ -67,9 +67,6 @@ export function cleanCarousel(settings?: CarouselSettings | null): CarouselSetti
   return Object.keys(clean).length > 0 ? clean : undefined;
 }
 
-/** The part of the settings that is a key for effects: changes only when a setting does. */
-export const carouselKey = (settings?: CarouselSettings | null) => JSON.stringify(resolveCarousel(settings));
-
 /** The track's `data-snap`, for the style sheet: only where it is not the usual start. */
 export const snapAttribute = (settings?: CarouselSettings | null): "center" | "none" | undefined => {
   const { snap } = resolveCarousel(settings);

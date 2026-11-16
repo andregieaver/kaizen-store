@@ -27,13 +27,6 @@ export function phaseSteps(progress: Pick<StoreCopyProgress, "status" | "phase" 
   });
 }
 
-export const PHASE_STATE_WORDS: Record<PhaseState, string> = {
-  done: "Done",
-  current: "In progress",
-  waiting: "Waiting",
-  stopped: "Stopped here",
-};
-
 const COUNT_LABELS = {
   pages: "Pages",
   products: "Products",

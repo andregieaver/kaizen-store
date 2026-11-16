@@ -14,7 +14,7 @@ import { renderEmail } from "@/lib/email-layout";
 import { isEvent, type IntegrationEvent } from "@/lib/integrations";
 import { safeClientName } from "@/lib/oauth";
 import { siteUrl } from "@/lib/site";
-import { decryptSecret, encryptSecret } from "@/lib/secret-box";
+import { encryptSecret } from "@/lib/secret-box";
 import { checkEndpointUrl } from "@/lib/webhook-signature";
 
 import { syncAppEndpoints } from "./app-endpoints";
@@ -269,17 +269,6 @@ export async function renewAppSecret(account: Account, appId: string, which: "cl
   });
   await audit(account.id, null, "account.app_webhook_secret_renewed", { app: app.name, client_id: app.clientId }, { area: "account", target: { type: "app", id: app.id } });
   return { ok: true, id: app.id, shown: { clientId: app.clientId, webhookSecret } };
-}
-
-/** The app's events address and secret in the clear, for its installations' endpoints (D2); null when it has no address. */
-export async function appWebhook(appId: string): Promise<{ url: string; secret: string; topics: IntegrationEvent[] } | null> {
-  const row = await typedRow(
-    z.object({ url: col.textOrNull, secret: col.textOrNull, topics: z.array(z.string()) }),
-    sql`select webhook_url_encrypted as url, webhook_secret_encrypted as secret, webhook_topics as topics from commerce.apps where id = ${appId}::uuid`,
-  );
-  const key = encryptionKey();
-  if (!row?.url || !row.secret || !key) return null;
-  return { url: decryptSecret(row.url, key), secret: decryptSecret(row.secret, key), topics: row.topics.filter(isEvent) };
 }
 
 // Listing (D3) --------------------------------------------------------------------------------------------------------------------

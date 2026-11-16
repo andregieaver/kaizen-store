@@ -4,9 +4,6 @@ import { formatMoney } from "@/lib/money";
 import type { PlanInvoice } from "@/server/billing";
 import { platformEn, type PlatformMessages } from "@/lib/admin-messages/platform.en";
 
-/** Stripe's invoice statuses, in the admin's words (D35); a page in another language reads `platform.invoiceList.status` (D312 A11). */
-export const INVOICE_STATUS: Record<string, string> = platformEn.invoiceList.status;
-
 /** A store's plan invoices, each opening its own page; or why they cannot be shown. */
 export function InvoiceList({
   storeSlug,

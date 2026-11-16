@@ -656,7 +656,6 @@ export const analyticsEn = {
       period: "Period",
       periods: { week: "Week", month: "Month", quarter: "Quarter", custom: "Days I choose" },
       start: "Any day in the period",
-      startCustom: "First day",
       end: "Last day",
       endHint: "Only for days you choose.",
       value: "Target",

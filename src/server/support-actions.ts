@@ -312,8 +312,18 @@ export async function requestStaffAction(ctx: ActionContext, kind: string, numbe
     values (${ctx.conversationId}::uuid, ${ctx.site.store.id}::uuid, ${kind as StaffRequestKind}, 'staff', ${JSON.stringify(args)}::jsonb, ${summary.slice(0, 500)}, ${details.slice(0, 500)})
     returning id
   `);
+  // A request by email that code could carry out once confirmed (B3, D685): the order's own address gets a link to confirm it.
+  const { offerRequestConfirmation } = await import("./request-confirm");
+  const linked = await offerRequestConfirmation(String(row.id));
+  const emailed = linked === "sent" || linked === "logged" || linked === "duplicate";
   return {
-    result: { ok: true, summary, note: "A person at the store will decide, and the customer is told here (and by email when away). Never promise the outcome." },
+    result: {
+      ok: true,
+      summary,
+      note: emailed
+        ? "A link to confirm it was emailed to the order's own address. Tell the customer to press Confirm in that email; until then nothing is done. Never promise the outcome."
+        : "A person at the store will decide, and the customer is told here (and by email when away). Never promise the outcome.",
+    },
     actionId: String(row.id),
   };
 }
