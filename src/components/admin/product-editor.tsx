@@ -34,6 +34,7 @@ import { ProductCategoryCard } from "@/components/admin/product-category-card";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { EMPTY_DATA, changesFrom, withParents, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
+import { compressPicture, mediumCopy } from "@/lib/image-compress";
 import { shrinkImage } from "@/lib/image-resize";
 import { addressChangeWords } from "@/lib/address-change";
 import type { CountryOption } from "@/lib/iso-countries";
@@ -845,20 +846,24 @@ function TextSection({
   );
 }
 
-/** A picture from the owner's computer, shrunk in the browser (1600 px and a 480 px copy) and uploaded to the store. */
+/** A picture from the owner's computer, shrunk in the browser (1600 px, an 800 px copy when wider and a 480 px copy) and uploaded to the store. */
 async function uploadPicture(
   storeSlug: string,
   file: File,
   unreadable: string,
 ): Promise<{ url: string; thumbnailUrl: string } | { problem: string }> {
   try {
-    const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
+    const [large, thumbnail] = await Promise.all([compressPicture(file, 1600), shrinkImage(file, 480)]);
+    const image = large.blob;
+    // Its 800 px copy (bloat review step 0.33), for a picture wider than that: what a product tile takes on a 3x phone.
+    const medium = await mediumCopy(file, large);
     const data = new FormData();
     const ext = image.type === "image/webp" ? "webp" : "jpg";
     data.set("image", new File([image], `image.${ext}`, { type: image.type }));
     // Its name as it was on the owner's computer, for the media library (D88).
     data.set("name", file.name);
     data.set("thumbnail", new File([thumbnail], `thumb.${ext}`, { type: thumbnail.type }));
+    if (medium) data.set("medium", new File([medium.blob], `image-800.${ext}`, { type: medium.type }));
     // Compressed until it was as small as it could be while it looked the same (D213).
     data.set("compressed", "1");
     const outcome = await uploadImageAction(storeSlug, data);
