@@ -112,7 +112,7 @@ describe("the marketing tools", () => {
     await expect(run("write_email_automation", { kind: "welcome", brief: "A sale" })).rejects.toThrow(/claims/);
   });
 
-  it("writes a follow-up with the same writer, only after the first and in order, and lists it (D657)", async () => {
+  it("writes a follow-up with the same writer, only after the first and in order, and lists it (D653)", async () => {
     const c = await ctx();
     await expect(ownerTools.preflightOwnerTool(c, "write_email_automation", { kind: "win_back", brief: "Come back", step: 2 })).rejects.toThrow(/write step 1 first/);
     await expect(ownerTools.preflightOwnerTool(c, "write_email_automation", { kind: "welcome", brief: "Again", step: 3 })).rejects.toThrow(/write step 2 first/);
@@ -127,7 +127,7 @@ describe("the marketing tools", () => {
     expect(listed.automations.find((a) => a.kind === "cross_sell")?.products).toMatch(/chooses for the reader/);
   });
 
-  it("lists, writes and switches the cart reminders, refusing claims, a code the store lacks and a time outside its range (D657)", async () => {
+  it("lists, writes and switches the cart reminders, refusing claims, a code the store lacks and a time outside its range (D653)", async () => {
     const c = await ctx();
     const before = (await run("cart_reminder_stats", {})) as { on: boolean; reminders: unknown[] };
     expect(before).toMatchObject({ on: false, reminders: [] });

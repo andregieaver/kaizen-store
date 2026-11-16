@@ -19,7 +19,7 @@ import { deleteFollowUpAction, saveFollowUpAction, testFollowUpAction } from "..
 export const metadata: Metadata = { title: "Follow-up email" };
 
 /**
- * One follow-up of a lifecycle automation (D657): its days after the email before and its words, a test to yourself and delete. `new` starts
+ * One follow-up of a lifecycle automation (D653): its days after the email before and its words, a test to yourself and delete. `new` starts
  * from the first email's words; its first save keeps it and moves here under its position.
  */
 export default async function FollowUpPage({ params }: PageProps<"/admin/[store]/automations/[kind]/follow-ups/[position]">) {

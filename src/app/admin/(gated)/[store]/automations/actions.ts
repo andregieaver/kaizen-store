@@ -67,7 +67,7 @@ export async function testAutomationAction(storeSlug: string, kind: string, loca
 }
 
 /**
- * A follow-up (D657) is named `{kind}` plus its position, as `{kind}:2`, or `{kind}:new` for one not yet saved, so the editor's save and test
+ * A follow-up (D653) is named `{kind}` plus its position, as `{kind}:2`, or `{kind}:new` for one not yet saved, so the editor's save and test
  * take it as they take a kind.
  */
 function followUpOf(name: string): { kind: (typeof LIFECYCLE_KINDS)[number]; position: FollowUpPosition | null } | null {

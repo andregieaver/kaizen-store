@@ -70,7 +70,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
       ) : (
         <p className="text-body text-muted">{wa.mayNotChange}</p>
       )}
-      {/* D657: the flow's further emails, one step away from the first; each its days after the one before. */}
+      {/* D653: the flow's further emails, one step away from the first; each its days after the one before. */}
       {automation.saved && (
         <Card title={wf.title} description={automation.followUps.length === 0 ? wf.none : wf.stops} compact>
           <div className="flex flex-col gap-3">

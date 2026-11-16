@@ -368,7 +368,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   sms_settings: "A store's 46elks account for marketing texts (D565): its API username, an encrypted password, the sender name, the store's reply number, its hours and the month's cap, and the staff account that changed them; never a shopper's data.",
   broadcasts: "A store's broadcast (D297): its name, its words in each language and who it was for in words (a segment's name and rules); never a person.",
   automations: "A store's automation settings (D298): whether each is on, its days and its words in each language; never a person.",
-  automation_steps: "An automation's follow-up emails (D657): their days and their words in each language; never a person.",
+  automation_steps: "An automation's follow-up emails (D653): their days and their words in each language; never a person.",
   broadcast_link_clicks: "Presses on a broadcast's links (D297): a link's key and a count, nothing of who pressed or when.",
   segments: "A store's saved segment (D296): a title and rules over its people, never a list of people; a rule may name a tag or a customer group, not a person.",
   payouts: "A store's payouts from its Stripe account to its bank (D290): amounts, dates, status and Stripe's ids; the store's money, no person's.",

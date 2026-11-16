@@ -307,7 +307,7 @@ async function automationDays(store: Store, kind: LifecycleKind, days: number | 
   return chosen;
 }
 
-/** The follow-up a write is for (D657): the one at that step, or the next one to add; refused for a gap, before the first is saved, or past three. */
+/** The follow-up a write is for (D653): the one at that step, or the next one to add; refused for a gap, before the first is saved, or past three. */
 function followUpTarget(automation: Automation, step: FollowUpPosition): { position: FollowUpPosition; exists: boolean } {
   const title = AUTOMATION_WORDS[automation.kind].title;
   if (!automation.saved) fail(`${title} has no first email saved yet: write step 1 first.`);
@@ -365,7 +365,7 @@ export async function writeAutomationTool(ctx: Ctx, input: OwnerToolInput<"write
   };
 }
 
-/** A follow-up's words (D657), by the same writer for the same readers, told it is a later email to those who have not ordered since. */
+/** A follow-up's words (D653), by the same writer for the same readers, told it is a later email to those who have not ordered since. */
 async function writeFollowUp({ account, store }: Ctx, input: OwnerToolInput<"write_email_automation">, step: FollowUpPosition) {
   const automation = await getAutomation(store, input.kind);
   const target = followUpTarget(automation, step);
@@ -391,7 +391,7 @@ async function writeFollowUp({ account, store }: Ctx, input: OwnerToolInput<"wri
   };
 }
 
-// Cart reminders (D33, D657) -------------------------------------------------------------------------------
+// Cart reminders (D33, D653) -------------------------------------------------------------------------------
 
 const hoursWords = (minutes: number) => {
   const hours = minutes / 60;
@@ -400,7 +400,7 @@ const hoursWords = (minutes: number) => {
 
 const CODE_ROW = z.object({ id: z.string(), code: z.string() });
 
-/** `cart_reminder_stats`: the reminders as the page lists them (D657), and the last 30 days. */
+/** `cart_reminder_stats`: the reminders as the page lists them (D653), and the last 30 days. */
 export async function listCartRemindersTool({ store }: Ctx) {
   const [settings, stats] = await Promise.all([getCartReminderSettings(store.id), cartReminderStats(store.id)]);
   const codes = new Map<string, string>();
