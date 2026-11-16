@@ -486,13 +486,14 @@ export function RuleList({
       title={w.rules}
       aside={
         canWrite && editing !== "new" ? (
-          <Button kind={rules.length === 0 && examples.length > 0 ? "link" : "strong"} onClick={() => { setPreset(null); setEditing("new"); }}>
+          <Button kind="strong" onClick={() => { setPreset(null); setEditing("new"); }}>
             {w.newRule}
           </Button>
         ) : undefined
       }
     >
-      {canWrite && rules.length === 0 && editing !== "new" && examples.length > 0 && (
+      {/* Round 24 (D692): the examples to start from open with Add, above a blank rule, rather than before anyone wants one. */}
+      {canWrite && rules.length === 0 && editing === "new" && preset === null && examples.length > 0 && (
         <>
           <p className="mb-2 text-sm text-muted">{w.examplesStart}</p>
           <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
@@ -508,7 +509,7 @@ export function RuleList({
       )}
       {editing === "new" && (
         <div className="mb-4 flex flex-col gap-2">
-          <RuleEditor start={preset ? { ...preset, id: null } : null} choices={choices} save={actions.saveRule} onDone={() => { setEditing(null); setPreset(null); }} />
+          <RuleEditor key={preset?.name ?? "blank"} start={preset ? { ...preset, id: null } : null} choices={choices} save={actions.saveRule} onDone={() => { setEditing(null); setPreset(null); }} />
           <p className="text-sm text-muted">{w.savedOff}</p>
         </div>
       )}
@@ -921,13 +922,13 @@ export function FieldList({
       description={shown.length === 0 && examples.length > 0 && editing !== "new" ? undefined : w.fieldsHint}
       aside={
         canWrite && editing !== "new" ? (
-          <Button kind={shown.length === 0 && examples.length > 0 ? "link" : "strong"} onClick={() => { setPreset(null); setEditing("new"); }}>
+          <Button kind="strong" onClick={() => { setPreset(null); setEditing("new"); }}>
             {w.newField}
           </Button>
         ) : undefined
       }
     >
-      {canWrite && shown.length === 0 && editing !== "new" && examples.length > 0 && (
+      {canWrite && shown.length === 0 && editing === "new" && preset === null && examples.length > 0 && (
         <>
           <p className="mb-2 text-sm text-muted">{w.examplesStart}</p>
           <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
@@ -946,6 +947,7 @@ export function FieldList({
           {/* The rule on sensitive questions (GDPR article 9) is said where a question is written (round 7). */}
           {examples.length > 0 && <p className="text-sm text-muted">{w.fieldsHint}</p>}
           <FieldEditor
+            key={preset?.label.text ?? "blank"}
             start={preset ? { id: "", enabled: true, sensitive: false, ...preset, options: undefined } : null}
             choices={choices}
             locales={locales}

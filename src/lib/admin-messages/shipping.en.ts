@@ -506,6 +506,7 @@ export const shippingEn = {
   },
   /** One card for what the checkout asks (round 7, D624): accounts, the phone and the name, with one Save and a picture of the form. */
   checkoutAsks: {
+    seeIt: "See it",
     title: "What the checkout asks",
     accounts: "Customer accounts",
     shortHints: { optional: "Guests welcome", required: "Members only", off: "Guests only" },

@@ -1,5 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { FoldRow } from "@/components/admin/fold-row";
 import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { RETURN_SERVICES } from "@/lib/return-services";
 import type { CarrierId } from "@/lib/shipping-carriers";
@@ -7,7 +7,6 @@ import type { CarrierId } from "@/lib/shipping-carriers";
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
-const card = `flex flex-col gap-4 p-5 ${CARD_CLASS}`;
 
 export type ExchangeSettingsValues = { exchanges: boolean; labelCarrier: string | null; labelService: string | null; labelAuto: boolean };
 
@@ -36,10 +35,9 @@ export function ExchangeSettingsForm({
   return (
     <ActionForm action={action} successMessage={t.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
-        <section aria-labelledby="exchanges" className={card}>
-          <h2 id="exchanges" className="text-title text-ink">
-            {t.exchanges}
-          </h2>
+        <ul className="divide-y divide-line rounded-lg border border-line bg-card px-5">
+        <FoldRow title={t.exchanges} sub={values.exchanges ? t.subOffered : t.subNotOffered} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">{t.exchangesText}</p>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="exchanges" defaultChecked={values.exchanges} className="mt-0.5 size-4" />
@@ -47,12 +45,11 @@ export function ExchangeSettingsForm({
               {t.offer} <span className={hint}>{t.offerHint}</span>
             </span>
           </label>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="labels" className={card}>
-          <h2 id="labels" className="text-title text-ink">
-            {t.labels}
-          </h2>
+        <FoldRow title={t.labels} sub={carriers.length === 0 ? t.subNoCarrier : values.labelAuto ? t.subAuto : t.subByHand} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">{t.labelsText}</p>
           {carriers.length === 0 ? (
             <p className="text-sm">
@@ -104,7 +101,9 @@ export function ExchangeSettingsForm({
               {t.auto} <span className={hint}>{t.autoHint}</span>
             </span>
           </label>
-        </section>
+          </div>
+        </FoldRow>
+        </ul>
 
         {canEdit && (
           <div>

@@ -2,14 +2,15 @@
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { useAdminText } from "@/components/admin/admin-text";
+import { FoldRow } from "@/components/admin/fold-row";
 import { fillWords } from "@/lib/admin-fill";
+import { submitClass } from "@/lib/submit-class";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, GIFT_NAME_MAX } from "@/lib/order-limits";
 import { CAPTURE_SETTINGS, DEFAULT_HOLD_DAYS } from "@/lib/capture";
 import { QUOTE_MODES } from "@/lib/quotes";
 import type { OrderSettings } from "@/server/order-settings";
 
 const input = "min-h-10 w-28 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
-const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
 const hint = "text-sm text-muted";
 
 /**
@@ -31,21 +32,19 @@ export function OrderSettingsForm({
   return (
     <ActionForm action={action} successMessage={w.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
-        <section aria-labelledby="gift" className={card}>
-          <h2 id="gift" className="text-title text-ink">
-            {w.giftTitle}
-          </h2>
+        <ul className="divide-y divide-line rounded-lg border border-line bg-card px-5">
+        <FoldRow title={w.giftTitle} sub={settings.giftMessages ? w.subOn : w.subOff} action={w.change}>
+          <div className="flex flex-col gap-3">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="giftMessages" defaultChecked={settings.giftMessages} className="mt-0.5 size-4" />
             <span>{w.gift}</span>
           </label>
           <p className={hint}>{fillWords(w.giftHint, { name: GIFT_NAME_MAX, message: GIFT_MESSAGE_MAX })}</p>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="archive" className={card}>
-          <h2 id="archive" className="text-title text-ink">
-            {w.archiveTitle}
-          </h2>
+        <FoldRow title={w.archiveTitle} sub={settings.autoArchiveDays === null ? w.subOff : fillWords(w.subArchive, { days: settings.autoArchiveDays })} action={w.change}>
+          <div className="flex flex-col gap-3">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="autoArchive" defaultChecked={settings.autoArchiveDays !== null} className="mt-0.5 size-4" />
             <span>{w.archive}</span>
@@ -64,24 +63,22 @@ export function OrderSettingsForm({
             />
           </label>
           <p className={hint}>{fillWords(w.archiveHint, { min: AUTO_ARCHIVE_MIN_DAYS })}</p>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="links" className={card}>
-          <h2 id="links" className="text-title text-ink">
-            {w.draftsTitle}
-          </h2>
+        <FoldRow title={w.draftsTitle} sub={fillWords(w.subDraft, { days: settings.draftValidDays })} action={w.change}>
+          <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {w.draftDays}{" "}
             <span className="font-normal text-muted">{fillWords(w.range, { min: DRAFT_VALID_DAYS_MIN, max: DRAFT_VALID_DAYS_MAX })}</span>
             <input name="draftValidDays" type="number" inputMode="numeric" min={DRAFT_VALID_DAYS_MIN} max={DRAFT_VALID_DAYS_MAX} defaultValue={settings.draftValidDays} required className={input} />
           </label>
           <p className={hint}>{w.draftHint}</p>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="quotes" className={card}>
-          <h2 id="quotes" className="text-title text-ink">
-            {w.quotesTitle}
-          </h2>
+        <FoldRow title={w.quotesTitle} sub={w.quotes[settings.quoteRequests].label} action={w.change}>
+          <div className="flex flex-col gap-3">
           <fieldset className="flex flex-col gap-2">
             <legend className="sr-only">{w.quotesLegend}</legend>
             {QUOTE_MODES.map((value) => (
@@ -95,12 +92,11 @@ export function OrderSettingsForm({
             ))}
           </fieldset>
           <p className={hint}>{w.quotesHint}</p>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="outside" className={card}>
-          <h2 id="outside" className="text-title text-ink">
-            {w.outsideTitle}
-          </h2>
+        <FoldRow title={w.outsideTitle} sub={settings.staffMarkPaid ? w.outsideOn : w.subOwnerOnly} action={w.change}>
+          <div className="flex flex-col gap-3">
           {isOwner ? (
             <>
               <input type="hidden" name="staffMarkPaidShown" value="1" />
@@ -114,12 +110,11 @@ export function OrderSettingsForm({
           )}
           <p className={hint}>{w.outsideHint}</p>
           {isOwner ? null : <p className={hint}>{w.ownerChoice}</p>}
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="capture" className={card}>
-          <h2 id="capture" className="text-title text-ink">
-            {w.captureTitle}
-          </h2>
+        <FoldRow title={w.captureTitle} sub={w.capture[settings.capture].label} action={w.change}>
+          <div className="flex flex-col gap-3">
           {isOwner ? (
             <fieldset className="flex flex-col gap-2">
               <legend className="sr-only">{w.captureLegend}</legend>
@@ -139,10 +134,13 @@ export function OrderSettingsForm({
           )}
           <p className={hint}>{fillWords(w.captureHint, { days: DEFAULT_HOLD_DAYS })}</p>
           {isOwner ? null : <p className={hint}>{w.ownerChoice}</p>}
-        </section>
+          </div>
+        </FoldRow>
+        </ul>
 
+        {/* Round 24 (D692): each setting a row saying its choice, opening in place; one Save right under them. */}
         <div>
-          <SubmitButton disabled={!canEdit}>{w.save}</SubmitButton>
+          <SubmitButton disabled={!canEdit} className={`${submitClass("primary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>{w.save}</SubmitButton>
           {!canEdit && <p className={`${hint} mt-2`}>{w.readOnly}</p>}
         </div>
       </fieldset>

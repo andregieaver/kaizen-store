@@ -210,6 +210,12 @@ export const paymentsEn = {
   waysSoon: "How shoppers will pay: card, Apple Pay and Google Pay, and in some countries Vipps or Klarna. You choose them here once payments are on.",
   /** The Orders settings page (D173, D289). */
   orders: {
+    subOn: "On",
+    subOff: "Off",
+    subArchive: "After {days} days without news",
+    subDraft: "Pay links last {days} days",
+    subOwnerOnly: "Only the owner records it",
+    change: "Change",
     title: "Orders",
     intro:
       "How the store handles orders after they are placed: whether shoppers can send a gift message, whether finished orders are archived for you, and how draft orders are paid.",

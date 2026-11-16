@@ -203,6 +203,12 @@ export const paymentsNb: PaymentsMessages = {
   },
   waysSoon: "Slik vil kundene betale: kort, Apple Pay og Google Pay, og i noen land Vipps eller Klarna. Du velger dem her når betaling er på.",
   orders: {
+    subOn: "På",
+    subOff: "Av",
+    subArchive: "Etter {days} dager uten nytt",
+    subDraft: "Betalingslenker varer i {days} dager",
+    subOwnerOnly: "Bare eieren registrerer det",
+    change: "Endre",
     title: "Bestillinger",
     intro:
       "Hvordan butikken håndterer bestillinger etter at de er lagt inn: om kundene kan sende en gavehilsen, om ferdige bestillinger arkiveres for deg, og hvordan utkast til bestillinger betales.",
