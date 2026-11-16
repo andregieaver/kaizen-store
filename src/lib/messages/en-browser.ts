@@ -4,6 +4,8 @@
  * A new text a visitor's client component reads goes here and in `nb-browser.ts`, `sv-browser.ts` and `da-browser.ts`.
  */
 export const enBrowser = {
+/** The Cookies page's button that deletes this browser's recordings of visits on the shop (D656). */
+recordings: { delete: "Delete my recordings", deleted: "The recordings this browser made on this shop are deleted." },
 /** Shown when a store page fails to render (`[market]/error.tsx`). Plain strings: the AI catalogue translates them for other languages. */
 pageError: {
   title: "This page could not be shown",

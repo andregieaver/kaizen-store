@@ -3,6 +3,14 @@ ignoredBuiltDependencies:
   - unrs-resolver
 # Transitive packages held above a version with a known advisory (pnpm audit), until their parents require it themselves.
 overrides:
+  # Recordings of visits (D656): the rrweb family held to one exact release that has been out two weeks; @rrweb/record asks for ^2.2.0.
+  rrweb: "2.2.0"
+  "@rrweb/types": "2.2.0"
+  "@rrweb/utils": "2.2.0"
+  "@rrweb/rrdom": "2.2.0"
+  "@rrweb/rrweb-snapshot": "2.2.0"
+  rrweb-snapshot: "2.2.0"
+  rrdom: "2.2.0"
   source-map-js: ">=1.2.2"
   # @vercel/functions > @vercel/oidc > @vercel/cli-config pins zod 4.1.11 (reads local Vercel CLI config only); same major as ours.
   "@vercel/cli-config>zod": "4.6.7"
