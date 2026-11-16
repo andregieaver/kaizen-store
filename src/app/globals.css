@@ -60,9 +60,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --radius-button: var(--button-radius);
   /*
-   * The admin's colour roles (docs/admin-style.md section 4), set only inside the admin by its scheme (`src/app/admin/schemes/*.css`):
+   * The admin's colour roles (docs/admin-style.md section 4), set inside the admin by its scheme (`src/app/admin/schemes/*.css`):
    * `bg-canvas`, `bg-card`, `text-ink`, `bg-brand text-brand-ink`, `bg-warning-soft text-warning-text` and so on. Outside the admin
-   * nothing sets them, so they are for admin pages only.
+   * the thirteen that shared admin parts read follow the site's own colours (the :where(html:not([data-admin])) block below); shop
+   * and site code writes the site's names, never these.
    */
   --color-canvas: var(--canvas);
   --color-card: var(--card);
@@ -166,6 +167,41 @@
   --muted: #a3a3a3;
   --surface: #1c1c1c;
   --border: #2e2e2e;
+}
+
+/*
+ * The admin's colour roles outside the admin (bloat review step 0.34, docs/admin-style.md section 4). A few admin parts are drawn on
+ * public pages (ActionForm and its buttons on /status, /report, sign-up and get-domain; the print button on a hosted invoice; the
+ * on-site editor's toolbar, text styles, colour field and modal). There the roles follow the site's own colours, as admin.css gives the
+ * site's names the roles' values inside the admin. The selector never matches inside the admin, so the two can never form a loop.
+ * Shop and site code still writes the site's names: src/lib/stylesheet-sources.scan.test.ts holds both rules. Every selector is inside
+ * :where() (specificity 0), so an owner's own CSS or an outside theme that sets one of these names on :root (custom-css.test.ts's
+ * `:root { --brand: ... }`) still wins.
+ */
+:where(html:not([data-admin])) {
+  --canvas: var(--background);
+  --card: var(--background);
+  --sunken: var(--surface);
+  --line: var(--border);
+  --edge: var(--border);
+  --ink: var(--foreground);
+  --ink-2: var(--muted);
+  --inverse: var(--foreground);
+  --inverse-ink: var(--background);
+  --brand: var(--accent);
+  --brand-ink: var(--accent-foreground);
+  --danger-text: #b91c1c;
+  --warning-text: #b45309;
+}
+@media (prefers-color-scheme: dark) {
+  :where(html:not([data-admin]):not([data-color-mode="light"])) {
+    --danger-text: #f87171;
+    --warning-text: #fbbf24;
+  }
+}
+:where(html:not([data-admin])[data-color-mode="dark"]) {
+  --danger-text: #f87171;
+  --warning-text: #fbbf24;
 }
 
 /*

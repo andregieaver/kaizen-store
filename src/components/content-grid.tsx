@@ -209,7 +209,7 @@ export function ContentGridView({
                     href={g.href}
                     aria-label={`${item.group!.option}: ${g.value}`}
                     title={g.value}
-                    className={g.swatch ? "block size-5 rounded-full border border-line focus-visible:outline-2" : "block rounded-full border border-line px-2 text-xs leading-5 focus-visible:outline-2"}
+                    className={g.swatch ? "block size-5 rounded-full border border-border focus-visible:outline-2" : "block rounded-full border border-border px-2 text-xs leading-5 focus-visible:outline-2"}
                     style={g.swatch ? { backgroundColor: g.swatch } : undefined}
                   >
                     {g.swatch ? null : g.value}

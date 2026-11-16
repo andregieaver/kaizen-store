@@ -107,8 +107,8 @@ export function GroupSwatches({ group, base, m }: { group: NonNullable<ProductSu
             title={item.value}
             className={
               item.swatch
-                ? "block size-5 rounded-full border border-line focus-visible:outline-2"
-                : "block rounded-full border border-line px-2 text-xs leading-5 focus-visible:outline-2"
+                ? "block size-5 rounded-full border border-border focus-visible:outline-2"
+                : "block rounded-full border border-border px-2 text-xs leading-5 focus-visible:outline-2"
             }
             style={item.swatch ? { backgroundColor: item.swatch } : undefined}
           >

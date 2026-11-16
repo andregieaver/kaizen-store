@@ -45,3 +45,17 @@ test("a notice without a sender is refused at the fields that need one, unless i
   await page.getByRole("button", { name: "Send the notice" }).click();
   await expect(page.getByRole("status")).toContainText("We have your notice");
 });
+
+test("the main button on the report and status pages is filled, in light and in dark (bloat review 0.34)", async ({ browser }) => {
+  for (const scheme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: scheme });
+    const page = await context.newPage();
+    await page.goto("/report");
+    const send = page.getByRole("button", { name: "Send the notice" });
+    expect(await send.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    await page.goto("/status");
+    const submit = page.locator('button[type="submit"]').first();
+    expect(await submit.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    await context.close();
+  }
+});
