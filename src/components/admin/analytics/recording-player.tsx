@@ -38,6 +38,9 @@ const clock = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
+/** A page as the owner reads it: without the storefront's `/s/{store}` prefix, which a store on its own address does not have. */
+const shownPath = (path: string) => path.replace(/^\/s\/[^/]+(?=\/|$)/, "") || "/";
+
 export function RecordingPlayer({ eventsUrl, words }: { eventsUrl: string; words: PlayerWords }) {
   const stage = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -85,6 +88,8 @@ export function RecordingPlayer({ eventsUrl, words }: { eventsUrl: string; words
           wrapper.style.transform = `scale(${scale})`;
           wrapper.style.transformOrigin = "top left";
           box.current.style.height = `${Math.round(height * scale)}px`;
+          // A phone's narrow screen sits in the middle of the column.
+          if (stage.current) stage.current.style.left = `${Math.max(0, Math.round((box.current.clientWidth - width * scale) / 2))}px`;
         };
         observer = new ResizeObserver(fit);
         if (box.current) observer.observe(box.current);
@@ -130,7 +135,7 @@ export function RecordingPlayer({ eventsUrl, words }: { eventsUrl: string; words
     }
   };
   const label = (mark: TimelineMark) =>
-    mark.kind === "page" ? words.page.replace("{path}", mark.path ?? "") : mark.kind === "rage" ? words.rageClick : mark.kind === "dead" ? words.deadClick : words.click;
+    mark.kind === "page" ? words.page.replace("{path}", shownPath(mark.path ?? "")) : mark.kind === "rage" ? words.rageClick : mark.kind === "dead" ? words.deadClick : words.click;
   // Marks are times from the session's start; the replayer counts from its first event.
   const offsetOf = (mark: TimelineMark) => mark.at - start;
 
