@@ -195,3 +195,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Next: 0.27 (migrations, two pushes with a deploy between), 0.28, 0.29, 0.30, then 0.33.
 - Step 0.27 commit 1 pushed as 02f27b4a (migrations 20261115224024_outgoing_spitfire.sql table + 20261115224037_knowledge_sources_fill.sql). Fill checked read-only on prod: 55 of 55 pages with passages get a row. Waiting for CI to apply + deploy; then commit 2 (executor) and write-up.
 - 0.27 commit 1 DEPLOYED: run 1352 (after re-running its flaky signed-in job) applied 20261115224024_outgoing_spitfire + 20261115224037_knowledge_sources_fill at 23:33 UTC; prod knowledge_sources 55 rows, RLS on; prod on 9696056e. Commit 2 asked of executor ad77b64895666fbc7.
+- Step 0.27 DONE: commit 2 deployed 98374fe1 (00:05 UTC 16 Nov); job idle after 23:40; write-up 58974b22 (D649). Left: unreadable article re-fetched each run (rare).
+- Next: 0.28 (depends 0.27: done; migrations 3 files add-only), 0.29, 0.30, 0.33...
