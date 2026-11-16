@@ -1,5 +1,5 @@
 {
- "version": "1.30",
+ "version": "1.31",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2412,6 +2412,8 @@
   "mcp oss_return_data <- store (required)",
   "mcp owed_to_customers",
   "mcp owed_to_customers <- store (required)",
+  "mcp page_behaviour",
+  "mcp page_behaviour <- store (required)",
   "mcp parcel_tracking",
   "mcp parcel_tracking <- order (required)",
   "mcp parcel_tracking <- store (required)",
@@ -2814,6 +2816,9 @@
   "mcp verify_domain_for <- domain (required)",
   "mcp verify_domain_for <- store (required)",
   "mcp verify_domain_for <- value (required)",
+  "mcp version_behaviour",
+  "mcp version_behaviour <- experiment (required)",
+  "mcp version_behaviour <- store (required)",
   "mcp wallet_status",
   "mcp wallet_status <- store (required)",
   "mcp wishlist_insights",

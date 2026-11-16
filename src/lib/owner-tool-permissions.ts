@@ -196,6 +196,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   explain_change: "analytics:read",
   analytics_alerts: "analytics:read",
   speed_report: "analytics:read",
+  page_behaviour: "analytics:read",
+  version_behaviour: "analytics:read",
   // Reports (D345): read like the Reports page; saving one is `analytics:write`, as the page's Save.
   report_catalogue: "analytics:read",
   run_report: "analytics:read",
