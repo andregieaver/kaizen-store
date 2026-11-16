@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -11,7 +13,6 @@ import { OWNER_TOOLS } from "./owner-tools";
 import { ADMIN_API, ADMIN_API_BY_NAME, API_ROUTES, bodyProblems, discountBody, errorsOf, fieldUpdateBody, routeOf, ruleUpdateBody, tagBody } from "./admin-api-routes";
 import { jsonSchemaOf, pathParams } from "./openapi";
 import { isPermissionKey } from "./permission-keys";
-import { readMigration } from "@/db/migration-files";
 
 const ID = "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d";
 const sample = (path: string) => path.replace("{tag}", "vip").replace(/\{\w+\}/g, ID).split("/").filter(Boolean);
@@ -239,9 +240,10 @@ describe("the scopes a token holds (D440 review)", () => {
   });
 
   it("gives picture uploads a bucket of their own, whose limit is the API's", () => {
-    const sql = readMigration("20261103201100_api_review.sql");
-    const bucket = /VALUES \('api-uploads', 'api-uploads', false, (\d+), ARRAY\[([^\]]+)\]\)/.exec(sql);
-    expect(bucket).not.toBeNull();
+    const dir = join(process.cwd(), "supabase/migrations");
+    const sql = readdirSync(dir).filter((name) => name.endsWith(".sql")).sort().map((name) => readFileSync(join(dir, name), "utf8")).join("\n");
+    const bucket = [...sql.matchAll(/\('api-uploads', 'api-uploads', false, (\d+), ARRAY\[([^\]]+)\]/g)].at(-1);
+    expect(bucket).toBeDefined();
     expect(Number(bucket![1])).toBe(UPLOAD_MAX_BYTES);
     expect(bucket![2].split(",").map((t) => t.trim().replace(/'/g, "")).sort()).toEqual([...UPLOAD_TYPES].sort());
   });

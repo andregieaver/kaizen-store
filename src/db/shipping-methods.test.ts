@@ -9,7 +9,6 @@ import { COPY_RULES } from "@/lib/store-copy-rules";
 
 import { createInvoiceStore, one as q1, placeOrder, scalar as q0 } from "./invoice-fixture";
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * Shipping methods, zones and profiles, pickup and local delivery (wave 3, D237, `docs/wave-3-shipping-methods.md` 3.3): every rule the database holds,
@@ -651,9 +650,6 @@ describe("the plan comparison's rows (2.6)", () => {
     expect(
       await scalar<number>("select count(*)::int from commerce.plan_feature_grants g join commerce.plan_features f on f.id = g.feature_id where f.name = any($1)", [NAMES]),
     ).toBe(0);
-    const sql = readMigration("20261014230237_shipping_plan_features.sql");
-    expect(sql).toMatch(/160 km/);
-    expect(sql).not.toMatch(/delete|drop/i);
   });
 });
 

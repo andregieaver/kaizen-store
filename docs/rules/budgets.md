@@ -23,6 +23,11 @@ that no code defines.
 
 Steps of the bloat review write their sentence under a heading of their own below this line.
 
+### Migrations in tests (step 0.39)
+
+Never edit a baseline; tests check the database the live files build, and the archive is history no test reads
+(src/lib/ci-once.scan.test.ts fails when a test reads it).
+
 ## Searches
 
 Default searches (ripgrep and the tools built on it) skip docs/shopify-parity.md, docs/wave-10-notes, docs/ab-testing-spike,

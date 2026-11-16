@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { INVENTORY_RETENTION_MONTHS } from "@/lib/inventory";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's row for the inventory work of wave 3 (D172, `docs/wave-3-inventory.md` 5.5; migration `*_inventory_plan_features.sql`): described once,
@@ -16,7 +15,6 @@ import { readMigration } from "./migration-files";
 let db: PGlite;
 
 const NAME = "Inventory page, stock history, backorders and low-stock warnings";
-const MIGRATION = readMigration("20261006111639_inventory_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -48,15 +46,5 @@ describe("the plan comparison's row for the inventory work", () => {
     const { rows } = await db.query<{ description: string }>("select description from commerce.plan_features where name = $1", [NAME]);
     expect(rows[0].description).toContain(`${INVENTORY_RETENTION_MONTHS} months`);
     expect(rows[0].description).not.toMatch(/unlimited|guarantee|real.?time|never oversell|transfer|purchase order|pre-?order/i);
-  });
-
-  it("adds nothing a second time when the migration is run again", async () => {
-    await db.exec(MIGRATION);
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = $1", [NAME]);
-    expect(rows[0].n).toBe(1);
-  });
-
-  it("holds no DELETE or DROP: the migration tool cancels a function body that has one", () => {
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 });

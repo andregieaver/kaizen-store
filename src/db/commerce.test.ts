@@ -8,7 +8,6 @@ import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 let db: PGlite;
 /** The store most tests work in: sells to Germany, Norway, Sweden, Denmark. */
@@ -6810,22 +6809,6 @@ describe("usage and limits (D314)", () => {
     await expect(db.query("insert into commerce.limit_overrides (store_id, key, value, reason) values ($1, 'staff_seats', 1, ' ')", [store])).rejects.toThrow();
   });
 
-  it("gives the four plans their recommended limits by name, keeps an admin's own, and sets no default", async () => {
-    const seed = readMigration("20261023122903_capacity_plan_limits.sql");
-    // The migration ran before any plan existed here: nothing was written.
-    expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.plan_limits where key = 'storage_bytes' and plan_id is not null")).n)).toBe(0);
-    const { id: basic } = await one<{ id: string }>("insert into commerce.plans (name) values ('Basic') returning id");
-    const { id: plus } = await one<{ id: string }>("insert into commerce.plans (name) values ('Plus') returning id");
-    await db.query("insert into commerce.plan_limits (plan_id, key, value) values ($1, 'products', 42)", [basic]);
-    await db.exec(seed);
-    const value = async (plan: string, key: string) => (await one<{ value: string | null }>("select value from commerce.plan_limits where plan_id = $1 and key = $2", [plan, key]))?.value;
-    expect(Number(await value(basic, "storage_bytes"))).toBe(5 * 1024 ** 3);
-    expect(Number(await value(basic, "products"))).toBe(42);
-    expect(await value(plus, "products")).toBeNull();
-    expect(Number(await value(plus, "stores_owned"))).toBe(25);
-    expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.plan_limits where plan_id is null and key = 'storage_bytes'")).n)).toBe(0);
-  });
-
   it("keeps a busy time to at most 14 days", async () => {
     await db.query("insert into commerce.capacity_events (store_id, starts_at, ends_at, expected) values ($1, '2026-11-27', '2026-11-30', 'very_busy')", [store]);
     await expect(db.query("insert into commerce.capacity_events (store_id, starts_at, ends_at, expected) values ($1, '2026-11-01', '2026-11-20', 'busy')", [store])).rejects.toThrow();
@@ -7475,23 +7458,6 @@ describe("private mode (wave 7 unit E, D339)", () => {
     const { id: page } = await one<{ id: string }>("insert into commerce.pages (store_id, slug, draft, published, published_at) values ($1, 'apner-snart', '{}', '{}', now()) returning id", [shop]);
     await db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, 'private', $2)", [shop, page]);
     await expect(db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, 'locked', $2)", [shop, page])).rejects.toThrow(/page_roles_role/);
-  });
-
-  it("left every store that had opened, and every store template and demo store, public when it came", async () => {
-    // The migration's own rule, run again on stores as they were: an open store, a demo store and a store in setup.
-    const open = await createStore(`private-open-${Date.now()}`, ["NO"]);
-    const demo = await createStore(`private-demo-${Date.now()}`, ["NO"]);
-    const setup = await createStore(`private-setup-${Date.now()}`, ["NO"]);
-    await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [open]);
-    await db.query("update commerce.stores set starter = true where id = $1", [demo]);
-    const rule = readMigration("20261027165146_private_mode_sql.sql").replace(
-      "where ",
-      "where id = any($1::uuid[]) and (",
-    );
-    await db.query(`${rule.trim().replace(/;$/, "")})`, [[open, demo, setup]]);
-    const rows = await db.query<{ id: string; private_mode: boolean }>("select id, private_mode from commerce.stores where id = any($1::uuid[])", [[open, demo, setup]]);
-    const kept = Object.fromEntries(rows.rows.map((r) => [r.id, r.private_mode]));
-    expect(kept).toEqual({ [open]: false, [demo]: false, [setup]: true });
   });
 });
 

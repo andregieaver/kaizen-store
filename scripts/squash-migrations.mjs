@@ -12,8 +12,8 @@
 // such step of a squashed file that it does not have yet (the check lists the squashed files with one).
 //
 // The check builds a second database from the baseline and compares the two (pg_dump of the schema, and of the data): they must be the
-// same. With --write the squashed files move to supabase/archive/<cut's version>/ (out of every path that applies migrations; tests that
-// read an old file find it through `src/db/migration-files.ts`) and Drizzle's journal lists the baseline in their place.
+// same. With --write the squashed files move to supabase/archive/<cut's version>/ (out of every path that applies migrations; no test
+// reads them, bloat review step 0.39) and Drizzle's journal lists the baseline in their place.
 //
 // Production has applied the squashed files already: `scripts/db-migrate.mjs` records a baseline file without running it where the
 // ledger has the file it names, and runs it on an empty database.

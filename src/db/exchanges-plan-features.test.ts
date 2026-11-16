@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CARRIERS, carrierInfo as carrierInfoOf } from "@/lib/shipping-carriers";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's rows for exchanges and return labels (D239, `docs/wave-3-exchanges.md` 3.8 item 3 and 5.5; migration `*_exchanges_plan_features.sql`):
@@ -16,7 +15,6 @@ import { readMigration } from "./migration-files";
 let db: PGlite;
 
 const NAMES = ["Exchanges", "Return labels from your carrier"] as const;
-const MIGRATION = readMigration("20261015065442_exchanges_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -74,15 +72,5 @@ describe("the plan comparison's rows for exchanges and return labels", () => {
     expect(labels).toContain("Posten / Bring in Norway");
     // Section 7 of the spec: none of these is built.
     expect(`${exchanges} ${labels}`).not.toMatch(/unlimited|guarantee|instant|store credit|gift card|qr code|any carrier|every carrier|ai[- ]powered/i);
-  });
-
-  it("adds nothing a second time when the migration is run again", async () => {
-    await db.exec(MIGRATION);
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = any($1)", [[...NAMES]]);
-    expect(rows[0].n).toBe(NAMES.length);
-  });
-
-  it("holds no DELETE or DROP: the migration tool cancels a function body that has one", () => {
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 });

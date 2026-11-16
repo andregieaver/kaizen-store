@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BULK_MAX, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, TAGS_PER_ORDER, TAG_MAX_LENGTH, VIEWS_MAX } from "@/lib/order-limits";
 
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's rows for the order work of wave 3, run 2 (D173, `docs/wave-3-orders.md` 5.5; migration `*_orders_ops_plan_features.sql`): four rows described once in the
@@ -21,7 +20,6 @@ const NAMES = [
   "Draft orders and payment links",
   "Gift messages",
 ] as const;
-const MIGRATION = readMigration("20261006172421_orders_ops_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
@@ -67,15 +65,5 @@ describe("the plan comparison's rows for the order work", () => {
     expect(text).toContain(`${DRAFT_VALID_DAYS_MIN} to ${DRAFT_VALID_DAYS_MAX} days`);
     expect(text).toContain(`${GIFT_MESSAGE_MAX} characters`);
     expect(text).not.toMatch(/unlimited|guarantee|real.?time|ai[- ]powered|automatic(ally)? refund|gift wrap|gift card/i);
-  });
-
-  it("adds nothing a second time when the migration is run again", async () => {
-    await db.exec(MIGRATION);
-    const { rows } = await db.query<{ n: number }>("select count(*)::int as n from commerce.plan_features where name = any($1)", [[...NAMES]]);
-    expect(rows[0].n).toBe(NAMES.length);
-  });
-
-  it("holds no DELETE or DROP: the migration tool cancels a function body that has one", () => {
-    expect(MIGRATION).not.toMatch(/\b(delete|drop)\b/i);
   });
 });

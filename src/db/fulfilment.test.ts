@@ -14,7 +14,6 @@ import { createInvoiceStore, one as q1, placeOrder, refund, scalar as q0, type O
 import * as fx from "./order-edit-fixture";
 import { tax, tokenHash, writeChange, type Tx } from "./order-edit-fixture";
 import { createTestDatabase } from "./testing";
-import { readMigration } from "./migration-files";
 
 /**
  * Sending in parts and changing an order after purchase (wave 3, run 3, D174, docs/wave-3-fulfilment.md 3.3): every rule the database holds, against every
@@ -185,26 +184,6 @@ describe("parcels name their lines (3.3 point 1)", () => {
     expect(await scalar("select commerce.line_to_send($1)", [old.lineIds[0]])).toBe(0);
   });
 
-  it("marks a parcel the old code recorded during the deploy legacy and back-fills its order's lines, by the follow-up migration's own statements", async () => {
-    const o = await paid({ lines: [{ sku: "A", quantity: 2, unit: 1000 }, { sku: "DL", unit: 500, delivery: "digital" }] });
-    const sent = await paid();
-    const text = readMigration(/_shipment_lines_required_rule\.sql$/);
-    const statements = text.slice(text.indexOf("UPDATE commerce.shipments"), text.indexOf("CREATE FUNCTION"));
-    // Written before the rule existed (so, here, in the transaction that runs the migration's statements, which leave it legacy before commit).
-    await db.transaction(async (tx) => {
-      await tx.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'posten', 'WINDOW')", [store, o.id]);
-      await tx.exec(statements.replaceAll("--> statement-breakpoint", ""));
-    });
-    expect(await rows("select order_line_id, quantity from commerce.shipment_lines where order_line_id = any($1)", [o.lineIds])).toEqual([{ order_line_id: o.lineIds[0], quantity: 2 }]);
-    expect(await scalar("select bool_and(legacy) from commerce.shipments where order_id = $1", [o.id])).toBe(true);
-    expect(await scalar("select commerce.order_fulfilment($1)", [o.id])).toBe("sent");
-    // A parcel made since names its lines and is left as it is; running the statements again writes nothing more.
-    const parcel = await ship(sent.id, [[sent.lineIds[0], 1]]);
-    await db.exec(statements.replaceAll("--> statement-breakpoint", ""));
-    expect(await scalar<boolean>("select legacy from commerce.shipments where id = $1", [parcel])).toBe(false);
-    expect(await scalar<number>("select count(*)::int from commerce.shipment_lines where order_line_id = any($1)", [[...o.lineIds, ...sent.lineIds]])).toBe(2);
-  });
-
   it("refuses a parcel for a copied order (D129)", async () => {
     const copy = await placeOrder(db, store, { lines: [{ sku: "A", unit: 1000 }], copied: true });
     await expect(ship(copy.id, [])).rejects.toThrow(/copied_order/);
@@ -212,32 +191,6 @@ describe("parcels name their lines (3.3 point 1)", () => {
 });
 
 describe("the parcels from before parcels named their lines (3.3 point 2)", () => {
-  it("marks them legacy and writes the order's physical lines into its first parcel, by the migration's own statements", async () => {
-    const o = await paid({ lines: [{ sku: "A", quantity: 2, unit: 1000 }, { sku: "DL", unit: 500, delivery: "digital" }, { sku: "B", unit: 700 }] });
-    const text = readMigration(/_fulfilment_rules\.sql$/);
-    const update = text.match(/UPDATE commerce\.shipments SET legacy = true WHERE NOT legacy;/)![0];
-    const insert = text.match(/INSERT INTO commerce\.shipment_lines[\s\S]*?;\n/)![0];
-    // Two parcels as the old markSent() wrote them: no lines, not legacy. The migration ran before the rule that a parcel names its lines
-    // (`shipments_have_lines`, checked at commit), so they are written and back-filled in one transaction: at commit they are legacy, as the migration left them.
-    await db.transaction(async (tx) => {
-      await tx.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at) values ($1, $2, 'posten', 'OLD1', now() - interval '2 days')", [store, o.id]);
-      await tx.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at) values ($1, $2, 'posten', 'OLD2', now() - interval '1 day')", [store, o.id]);
-      await tx.exec(update + "\n" + insert);
-    });
-    const lines = await rows<any>(
-      "select s.tracking_number, sl.order_line_id, sl.quantity from commerce.shipment_lines sl join commerce.shipments s on s.id = sl.shipment_id where s.order_id = $1 order by sl.quantity desc",
-      [o.id],
-    );
-    expect(lines).toEqual([
-      { tracking_number: "OLD1", order_line_id: o.lineIds[0], quantity: 2 },
-      { tracking_number: "OLD1", order_line_id: o.lineIds[2], quantity: 1 },
-    ]);
-    expect(await scalar("select bool_and(legacy) from commerce.shipments where order_id = $1", [o.id])).toBe(true);
-    expect(await scalar("select commerce.order_fulfilment($1)", [o.id])).toBe("sent");
-    // Running it again writes nothing more.
-    await db.exec(insert);
-    expect(await scalar<number>("select count(*)::int from commerce.shipment_lines sl join commerce.shipments s on s.id = sl.shipment_id where s.order_id = $1", [o.id])).toBe(2);
-  });
 
   it("counts every unit of an order with a legacy parcel as sent, whatever its lines say", async () => {
     const o = await paid();

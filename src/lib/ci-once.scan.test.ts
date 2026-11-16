@@ -132,4 +132,13 @@ describe("the unit tests load only what they use (bloat review 0.39)", async () 
     }
     expect(existsSync(join(root, "vitest.config.mts"))).toBe(true);
   });
+
+  it("has no test that reads the archived migrations", () => {
+    expect(existsSync(join(root, "src/db/migration-files.ts"))).toBe(false);
+    for (const file of walk("src", ".test.ts")) {
+      const text = readFileSync(join(root, file), "utf8");
+      // The words are split here so that a search for them finds no test, this one included.
+      for (const word of ["read" + "Migration", "find" + "Migration", "migration" + "History", "supabase/" + "archive"]) expect(text.includes(word), `${file}: ${word}`).toBe(false);
+    }
+  });
 });

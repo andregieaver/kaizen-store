@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -9,7 +7,6 @@ import { RETENTION_KINDS, RETENTION_SEED, periodFor, retentionCutoff } from "@/l
 
 import { createInvoiceStore, one as q1, placeOrder, refund, scalar as q0, type OrderSpec } from "./invoice-fixture";
 import { createTestDatabase } from "./testing";
-import { migrationHistory } from "./migration-files";
 
 /**
  * GDPR export, erasure and retention (D162, docs/wave-1g-gdpr.md): the rules that live in SQL, against every migration applied to a real
@@ -709,21 +706,14 @@ describe("copying a store", () => {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 describe("what the migrations and the registries say", () => {
-  const found = migrationHistory().filter((f) => /_gdpr(_rules|_audit)?\.sql$/.test(f.name));
-  const files = found.map((f) => f.name);
-
-  it("has three migration files of this unit", () => {
-    expect(files).toHaveLength(3);
-  });
-
-  it("has no DELETE, TRUNCATE or DROP in anything it adds (the production migration tool cancels them): deletion is application code", () => {
-    for (const file of files) {
-      const sql = readFileSync(found.find((f) => f.name === file)!.path, "utf8")
-        .split("\n")
-        .filter((line) => !line.trim().startsWith("--"))
-        .join("\n");
-      expect([file, /\bDELETE\s+FROM\b|\bTRUNCATE\b|\bDROP\s+(TABLE|FUNCTION|TRIGGER|INDEX|COLUMN|CONSTRAINT|SCHEMA|POLICY|VIEW)\b/i.test(sql)]).toEqual([file, false]);
-    }
+  it("has no DELETE, TRUNCATE or DROP in any of its functions: deletion is application code (docs/wave-1g-gdpr.md 3.2)", async () => {
+    const { rows } = await db.query<{ proname: string; def: string }>(
+      `select p.proname, pg_get_functiondef(p.oid) as def from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'commerce' and p.proname = any($1)`,
+      [["retention_rules_guard", "retention_rule", "set_retention_rule", "verify_retention_rule", "privacy_requests_rules", "order_class", "order_anchor", "order_anonymisable_on", "anonymise_order", "anonymise_expired_orders"]],
+    );
+    expect(rows).toHaveLength(10);
+    for (const r of rows) expect([r.proname, /\b(delete\s+from|truncate\b|drop\s+(table|function|trigger|column))/i.test(r.def)]).toEqual([r.proname, false]);
   });
 
   it("gives every function it adds a fixed search path", async () => {

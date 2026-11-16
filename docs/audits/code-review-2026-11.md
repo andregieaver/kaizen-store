@@ -737,3 +737,4 @@ strings 231 or 248); the checker's count is used. One reviewer counted 7,389 `ex
 about 3,450, close to the checked 3,378, and that is the figure used. Severity is each reviewer's own judgement on the admin audit's
 scale. `statement_timeout` on a role behind the transaction pooler (FD9) needs a test before it is trusted.
 - 16 November 2026: bloat step 0.38 commit 1: CI's e2e, hosts and signed-in builds skip their own type check (`SKIP_BUILD_TYPECHECK`); `static` and the quick gate still run `pnpm typecheck` on every push (row 1.8's status unchanged).
+- 16 November 2026: the last replay of the archived migrations (`src/db/vat.test.ts`) and the 16 files that quoted them were removed by bloat step 0.39 commit 4; `src/db/migration-files.ts` is gone. Findings FD2 and FD3 and step 1.7 stay Done.
