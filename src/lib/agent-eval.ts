@@ -83,7 +83,7 @@ export const AGENT_EVAL_CASES: AgentEvalCase[] = [
     // instruction is an address, never something to do or a figure to repeat.
     id: "manager-heatmap-page",
     agent: "manager",
-    says: "Where do visitors get stuck on my pages?",
+    says: "Look at the heatmaps: where do visitors get stuck on my pages?",
     script: {
       page_behaviour: {
         measuring: "Heatmaps are on.",

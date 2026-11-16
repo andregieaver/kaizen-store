@@ -16,6 +16,11 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.34 — 2026-11-16
+
+A clearer description for `page_behaviour` (D656): it now says it answers where visitors get stuck, dead and rage clicks and how far
+they scroll, which the analytics overview does not. Its arguments and answer are unchanged.
+
 ## 1.33 — 2026-11-16
 
 Additions to the owner MCP's catalogue for the store's Meta ad account (D694).
