@@ -16,7 +16,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => 
 const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 vi.mock("./experiments", async (importOriginal) => ({ ...(await importOriginal<typeof import("./experiments")>()), runningExperiments: async () => [{ id: EXP }] }));
 
-const { recordSegment, forgetRecordings, pruneRecordings, forgetRecordingMemos } = await import("./recordings");
+const { recordSegment, forgetRecordings, pruneRecordings, forgetRecordingMemos, sealRecordings } = await import("./recordings");
 const { mintUnlock } = await import("./private-mode");
 const { forgetLimitMemos } = await import("./limits");
 const { unlockCookieName } = await import("@/lib/unlock-pass");
@@ -279,5 +279,87 @@ describe("forget and prune (D656)", () => {
     expect(await recording(old)).toBeUndefined();
     expect(await recording(fresh)).toBeDefined();
     expect([...files.files.keys()]).toEqual([`${storeId}/${fresh}/000.gz`]);
+  });
+});
+
+describe("sealing (D656 step 10)", () => {
+  type Files = ReturnType<typeof memoryFiles>;
+  /** A recording of three segments, each with its own events, finished `minutes` ago. */
+  async function finished(files: Files, minutes = 50): Promise<string> {
+    const id = uuid();
+    for (const seq of [0, 1, 2]) {
+      const events = [
+        { type: seq === 0 ? 4 : 3, timestamp: seq * 1000, data: seq === 0 ? { href: `http://localhost:3000/s/${slug}/no`, width: 1, height: 1 } : { source: 2, n: seq } },
+        ...(seq === 0 ? [{ type: 2, timestamp: 1, data: { node: {} } }] : []),
+      ];
+      expect(await send(id, seq, segment({ events }), files)).toBe(204);
+    }
+    await db().execute(sql`update commerce.recordings set last_at = now() - make_interval(mins => ${minutes}) where id = ${id}::uuid`);
+    return id;
+  }
+  const later = () => ({ deadline: Date.now() + 10_000 });
+  const folder = (files: Files, id: string) => [...files.files.keys()].filter((p) => p.includes(id)).sort();
+
+  it("merges a finished recording's segments into one file with the events in order, and removes the segments", async () => {
+    const files = memoryFiles();
+    const id = await finished(files);
+    expect(await sealRecordings(later(), { files })).toEqual({ sealed: 1 });
+    expect(folder(files, id)).toEqual([`${storeId}/${id}/all.gz`]);
+    const all = JSON.parse(gunzipSync(files.files.get(`${storeId}/${id}/all.gz`)!).toString("utf8")) as { events: { timestamp: number }[] };
+    expect(all.events.map((e) => e.timestamp)).toEqual([0, 1, 1000, 2000]);
+    expect(await recording(id)).toMatchObject({ sealed: true });
+  });
+
+  it("leaves a recording that may still send alone, the one whose floored last time is 40 minutes old too", async () => {
+    const files = memoryFiles();
+    const recent = await finished(files, 10);
+    const close = await finished(files, 40);
+    expect(await sealRecordings(later(), { files })).toEqual({ sealed: 0 });
+    for (const id of [recent, close]) expect((await recording(id)).sealed).toBe(false);
+  });
+
+  it("steps back when a segment arrives during sealing: the merged file goes and the segments stay", async () => {
+    const files = memoryFiles();
+    const id = await finished(files);
+    const upload = files.upload.bind(files);
+    files.upload = async (path: string, bytes: Uint8Array) => {
+      if (path.endsWith("all.gz")) await db().execute(sql`update commerce.recordings set seqs = array_append(seqs, 3::smallint), segments = 4 where id = ${id}::uuid`);
+      return upload(path, bytes);
+    };
+    expect(await sealRecordings(later(), { files })).toEqual({ sealed: 0 });
+    expect(folder(files, id)).toEqual([0, 1, 2].map((s) => `${storeId}/${id}/00${s}.gz`));
+    expect((await recording(id)).sealed).toBe(false);
+  });
+
+  it("leaves no file when the visitor's browser deletes the recording during sealing", async () => {
+    const files = memoryFiles();
+    const id = await finished(files);
+    const upload = files.upload.bind(files);
+    files.upload = async (path: string, bytes: Uint8Array) => {
+      if (path.endsWith("all.gz")) await forgetRecordings({ store: slug, ids: [id] }, { files });
+      return upload(path, bytes);
+    };
+    await sealRecordings(later(), { files });
+    expect(folder(files, id)).toEqual([]);
+    expect(await recording(id)).toBeUndefined();
+  });
+
+  it("never picks again a recording that failed three times", async () => {
+    const files = memoryFiles();
+    const id = await finished(files);
+    files.files.delete(`${storeId}/${id}/001.gz`);
+    for (let i = 0; i < 4; i++) await sealRecordings(later(), { files });
+    expect(await recording(id)).toMatchObject({ sealed: false, seal_tries: 3 });
+  });
+
+  it("makes one query when there is nothing to seal", async () => {
+    await db().execute(sql`update commerce.recordings set sealed = true where not sealed`);
+    const spy = vi.spyOn(db(), "execute");
+    try {
+      expect(await sealRecordings(later(), { files: memoryFiles() })).toEqual({ sealed: 0 });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

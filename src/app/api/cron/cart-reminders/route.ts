@@ -58,6 +58,7 @@ import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
 import { pruneApiIdempotency } from "@/server/api-idempotency";
 import { pruneOAuthTokens } from "@/server/oauth";
+import { sealRecordings } from "@/server/recordings";
 import { runContentModeration } from "@/server/content-moderation";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
@@ -258,6 +259,8 @@ async function dispatch() {
     // Interface text added since (D436): once a night from 02:00 Oslo time, the texts the translated languages lack, by the platform's AI,
     // at most 300 a language; the day is claimed and the run kept as `daily.ui-translations`.
     uiTranslations: () => runNightlyUiTranslations(),
+    // Merges a finished recording's segments into one file: each Storage object is a Postgres row (D656).
+    sealRecordings: () => sealRecordings({ deadline: Date.now() + 60_000 }),
   });
   // Kept 24 hours, so pruned once an hour (the first five minutes of the hour), not every run (bloat review step 0.31).
   const hourly = new Date().getUTCMinutes() < 5;

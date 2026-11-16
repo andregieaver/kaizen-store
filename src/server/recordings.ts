@@ -24,6 +24,7 @@ import {
   REC_MAX_SEGMENTS,
   REC_MAX_TAGS,
   REC_UNPACKED_MAX_BYTES,
+  sealedPath,
   segmentPath,
 } from "@/lib/recording";
 import { speedKind } from "@/lib/speed";
@@ -290,4 +291,79 @@ export async function pruneRecordings(now: Date = new Date(), deadline: number =
     total += gone.length;
   }
   return total;
+}
+
+/** A recording is sealed only once it can send nothing more: `REC_IDLE_MS`, plus the 10-minute floor of `last_at`, plus five minutes. */
+export const SEAL_AFTER_MINUTES = 45;
+const SEAL_TRIES = 3;
+const SEAL_BATCH = 50;
+
+const TO_SEAL = z.object({ id: col.uuid, store_id: col.uuid, seqs: z.array(z.union([z.number(), z.string()]).transform(Number)) });
+
+/** Reads one segment file's events, in order, or null when it cannot be read. */
+async function segmentEvents(files: RecordingFiles, path: string): Promise<unknown[] | null> {
+  const bytes = await files.download(path);
+  if (!bytes) return null;
+  const body = JSON.parse(gunzipSync(bytes, { maxOutputLength: REC_UNPACKED_MAX_BYTES }).toString("utf8")) as { events?: unknown };
+  return Array.isArray(body.events) ? body.events : null;
+}
+
+/**
+ * Merges finished recordings' segments into one file each (D656 8.7): every Storage object is a Postgres row, so a sealed recording costs
+ * one. A recording is chosen once it can send nothing more and has more than one segment; the merged file is written first, then the
+ * row is marked sealed only if its segments are still the ones read (a late segment or a forget makes the seal step back and its file go);
+ * then exactly the segment files read are removed. A failure is logged and tried again on a later run, three times at most. An idle run
+ * is one query.
+ */
+export async function sealRecordings({ deadline }: { deadline: number }, deps: RecordingDeps = {}): Promise<{ sealed: number }> {
+  const files = filesOf(deps);
+  if (!files) {
+    log("warn", "recordings.no_storage", { action: "seal" });
+    return { sealed: 0 };
+  }
+  const due = await typedRows(
+    TO_SEAL,
+    sql`select id, store_id, seqs from commerce.recordings
+        where not sealed and segments > 1 and seal_tries < ${SEAL_TRIES} and last_at < now() - make_interval(mins => ${SEAL_AFTER_MINUTES})
+        order by last_at limit ${SEAL_BATCH}`,
+  );
+  let sealed = 0;
+  for (const row of due) {
+    if (Date.now() >= deadline) break;
+    const allPath = sealedPath(row.store_id, row.id);
+    try {
+      await db().execute(sql`update commerce.recordings set seal_tries = seal_tries + 1 where id = ${row.id}::uuid and store_id = ${row.store_id}::uuid`);
+      const seqs = [...row.seqs].sort((a, b) => a - b);
+      const events: unknown[] = [];
+      for (const seq of seqs) {
+        const part = await segmentEvents(files, segmentPath(row.store_id, row.id, seq));
+        if (!part) throw new Error("A segment could not be read.");
+        events.push(...part);
+      }
+      const file = new Uint8Array(gzipSync(JSON.stringify({ v: 1, events })));
+      let uploaded = await files.upload(allPath, file);
+      if (uploaded === "exists") {
+        // Left by an earlier try that stopped half way: never trusted, written again.
+        await files.remove([allPath]);
+        uploaded = await files.upload(allPath, file);
+      }
+      if (uploaded !== "ok") throw new Error("The sealed file could not be stored.");
+      const marked = await typedRows(
+        z.object({ ok: col.int }),
+        sql`update commerce.recordings set sealed = true, bytes = ${Math.min(file.length, REC_MAX_BYTES)}
+            where id = ${row.id}::uuid and store_id = ${row.store_id}::uuid and not sealed and seqs = ${`{${row.seqs.join(",")}}`}::smallint[]
+            returning 1 as ok`,
+      );
+      if (marked.length === 0) {
+        // Deleted, or a late segment arrived: the segments stay as they are, and the merged file goes.
+        await files.remove([allPath]);
+        continue;
+      }
+      await files.remove(seqs.map((seq) => segmentPath(row.store_id, row.id, seq)));
+      sealed++;
+    } catch (error) {
+      log("warn", "recordings.seal_failed", { storeId: row.store_id }, error);
+    }
+  }
+  return { sealed };
 }

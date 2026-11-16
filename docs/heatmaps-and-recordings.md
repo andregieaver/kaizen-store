@@ -2038,6 +2038,10 @@ account page round trip and the cart drawer's pause are not in the e2e yet.
 
 **Done when:** the tests pass and the DPIA draft is committed.
 
+*As built (16 Nov 2026):* a sealed file is `{ v: 1, events }`, the segments' events in seq order; an `all.gz` left by an earlier try that
+stopped half way is removed and written again. The DPIA draft is `docs/dpia-recordings.md`; it marks the player's sanitising and CSP as not
+yet built (step 11).
+
 ### Step 11: The recordings screens, and the recordings switch
 
 **Files:**
