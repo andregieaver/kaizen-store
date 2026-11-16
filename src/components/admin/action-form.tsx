@@ -117,6 +117,13 @@ export function ActionForm({
   );
 }
 
+/** A submit button's look by variant, for a caller that adds to it (a wide one-press step, round 18) rather than replacing it. */
+export function submitClass(variant: "primary" | "secondary" = "primary"): string {
+  return variant === "primary"
+    ? "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
+    : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40";
+}
+
 export function SubmitButton({
   children,
   disabled,
@@ -148,12 +155,7 @@ export function SubmitButton({
       value={value}
       formNoValidate={skipValidation || undefined}
       disabled={disabled || pending}
-      className={
-        className ??
-        (variant === "primary"
-          ? "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
-          : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40")
-      }
+      className={className ?? submitClass(variant)}
     >
       {pending ? working : children}
     </button>

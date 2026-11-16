@@ -1,4 +1,4 @@
-import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { ActionForm, SubmitButton, submitClass, type FormState } from "@/components/admin/action-form";
 import type { LocalDelivery, PickupDelivery } from "@/lib/delivery-options";
 import { parseOpeningHours } from "@/lib/opening-hours-schema";
 import { weekSummary } from "@/lib/opening-hours";
@@ -104,7 +104,7 @@ export function PickupPanel({
             <ActionForm action={ready} className="flex flex-col gap-2">
               <input type="hidden" name="seen" value={state.basis} />
               <StockConfirm units={state.waitingUnits} w={w} />
-              <SubmitButton className="min-h-12 w-full justify-center sm:w-auto">{w.ready}</SubmitButton>
+              <SubmitButton className={`${submitClass("primary")} min-h-12 w-full sm:w-auto sm:min-w-56`}>{w.ready}</SubmitButton>
               <p className="text-muted">{w.readyEmail}</p>
             </ActionForm>
           )}
@@ -112,7 +112,7 @@ export function PickupPanel({
             <input type="hidden" name="seen" value={state.basis} />
             <input type="hidden" name="on" value={today} />
             {readyAt && <StockConfirm units={state.waitingUnits} w={w} />}
-            <SubmitButton variant={readyAt ? "primary" : "secondary"} className="min-h-12 w-full justify-center sm:w-auto">
+            <SubmitButton className={`${submitClass(readyAt ? "primary" : "secondary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>
               {w.collectedToday}
             </SubmitButton>
           </ActionForm>

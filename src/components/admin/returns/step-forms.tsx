@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 
-import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { ActionForm, SubmitButton, submitClass, type FormState } from "@/components/admin/action-form";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import type { RefundPreviewData } from "@/lib/return-admin";
@@ -173,7 +173,7 @@ export function DayStepForm({
   if (quick) {
     return (
       <ActionForm action={action} successMessage={successMessage} className="flex flex-col gap-2">
-        <SubmitButton variant={secondary ? "secondary" : "primary"} className="min-h-12 w-full justify-center">
+        <SubmitButton className={`${submitClass(secondary ? "secondary" : "primary")} min-h-12 w-full font-medium sm:min-w-56`}>
           {button}
         </SubmitButton>
       </ActionForm>
