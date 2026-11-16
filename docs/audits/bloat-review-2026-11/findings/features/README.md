@@ -20,6 +20,7 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 | [FT-9](FT-9.md) ✓ | Campaigns and discount codes overlap at their edges; one page is planned, one engine is not worth it *(your choice)* | duplicate | P3 | S | tolerated |
 | [FT-10](FT-10.md) ✓ | Four store engines have a platform twin with its own tables and runner: about 2,100 lines, built by the owner's own rule *(your choice)* | duplicate | P3 | L | your choice |
 | [FT-13](FT-13.md) ✓ | Bonus, referrals and creators are three reward models; whether to fold creators into referrals is a product choice *(your choice)* | duplicate | P3 | L | your choice |
+| [FT-16](FT-16.md) | Order invoices and Work invoices are two engines for two kinds of legal document, already joined at the number series, the e-invoice sender and the books | duplicate | P3 | S | tolerated |
 
 ## Refuted by the second reviewer
 
