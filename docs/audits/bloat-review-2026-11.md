@@ -113,7 +113,7 @@ commit as the fix.
 | 0.37 | Remove the old admin redirects and the bookings and deliveries twin switch | DD-11 | M | review | 0.36 | Open | |
 | 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | Open | |
 | 0.39 | Let a test load only what it uses | TC-3, TC-13, DD-13, DD-10 | M | review | 0.38 | Open | |
-| 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | In progress | 16 Nov, local: prose over 500 chars rules 168 to 0, other docs 3,252 to 0 wrappable (27 unbreakable code-span lines left); table rows 715 left; rg files docs 927 to 905, supabase 841 to 51. |
+| 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Done | 16 Nov: Done (430fd72c, 5d94f8b9, 49d1dea9; D676). 585 docs wrapped, no word changed; 0 prose lines over 500 that can be wrapped; 27 one-code-span lines and 715 table rows left. rg --files: docs 927 to 905, supabase 841 to 51. |
 | 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Open | |
 | 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Done | 16 Nov: Done (6b903353), counted on b6b4c1f2. FT-16 and FT-17 tolerated: 0 shared 10-line windows each; 16 and 5 shared modules. |
 | 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
@@ -304,6 +304,7 @@ Change log:
 - 16 Nov 2026: step 0.43 Done (D668): CLAUDE.md's bytes outside its Storefront and Admin index are held at 13,252 and only fall, an index line is at most 200 characters, and docs/rules/budgets.md is the home for sentences about budgets and checks.
 - 16 Nov 2026: step 0.42 Done: order invoices beside Work invoices (FT-16) and orders on payment terms beside Work's unpaid invoices (FT-17) compared by job; both tolerated, with their shared parts and numbers, so no phase-3 fold step.
 - 16 Nov 2026: step 0.45 Done (ecc6f773, D674): the five-minute dispatcher runs four jobs at a time on its pool of five connections, and a job past 60 s gives its lane to the next while it goes on and is recorded when it ends.
+- 16 Nov 2026: step 0.40 Done (49d1dea9, D676): the long lines of docs/rules and every living doc are wrapped at 130 characters by a script that proves no word changed, and three .rgignore files keep dated reports, review evidence, archived migrations and Drizzle's snapshot out of default searches.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 ## 1. The headline
