@@ -521,7 +521,7 @@ answers `to_see_each_version`: each version's page id (the original's is the pag
 is not a page and is not looked at. The plan named a `look_at_versions` tool: the tools a turn carries are at 128, and a page id in an answer
 changes no tool's description, so no eval run was needed.
 
-## What phase 16 built: the original and a version side by side (D683)
+## What phase 16 built: the original and a version side by side (D684)
 
 Step 2b of `docs/ab-testing-usability.md`, no migration. **The frame route** (`/admin/frame/{store}/{pageId}`, outside the admin's frame,
 so a frame holds only the page): signed in with `marketing:read`, it draws one page of one of the store's tests alone (`testFrame()` in

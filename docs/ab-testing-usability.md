@@ -2,7 +2,7 @@
 
 A review of the A/B tests (D148, [`ab-testing.md`](ab-testing.md)) for people who have never run one, and for the AI that helps
 them. The page with the findings, screenshots of the screens as they were and mockups: https://claude.ai/artifact/Ep8Vp5BbKEs7QMpECrZqfs.
-Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); step 3b is built (D670, D673); step 4 is built (D677, D678, D680); step 2b is built (D683). Every step of the plan is built.
+Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); step 3b is built (D670, D673); step 4 is built (D677, D678, D680); step 2b is built (D684). Every step of the plan is built.
 
 The engine is sound and stays as it is: rules fixed before results, no verdict before the minimum, the split check, the guardrail,
 the words written in code (`verdictOf()`), approval for start, stop and apply. What the person saw was the problem: three tables, an
@@ -51,7 +51,7 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
 2. **No numbers to guess, and a calmer start (phase 13, D660, built 16 November 2026).** See `ab-testing.md`, "What phase 13 built". Small
    shops meet the honest answer often (a 20 % change takes months at 70 visitors a day), so the form names the smallest change that could
    be found within six weeks and offers it in one press.
-   2b. **The original and B side by side (no migration).** Built (D683, phase 16 of `ab-testing.md`). A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
+   2b. **The original and B side by side (no migration).** Built (D684, phase 16 of `ab-testing.md`). A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
    the same access checks), drawn in two scaled frames on the draft page and under *What is different* on a started test.
 3. **News and a memory (phase 14, D662, built 16 November 2026).** See `ab-testing.md`, "What phase 14 built".
    3b. **The AI side of news and memory.** Part 1 built (D670): the autopilot's `test_answered` event. Part 2 built (D673): an optional
