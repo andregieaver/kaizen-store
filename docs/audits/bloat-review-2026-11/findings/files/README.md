@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The files the repo stores are lean (102 MB tracked, all 150 files in public/ referenced, pictures and fonts stored once); the waste is in what every server function carries and in what a browser is sent, and none of it rests on a feature being unused. sharp's native library (19.8 MB) is in 742 of 832 route traces and the taxonomy (13.3 MB) in 831, 33 MB of the median trace's 52.6 MB, and sharp loads at each cold start of the proxy (35 to 57 ms, 22.5 MB) though no shopper's page draws with it. Four small fixes go first (P0): search thumbnails of uploaded photographs answer 400 today (measured on the built app), font files are not kept by the CDN, the build's page worker runs with source maps on at 4.7 MB of heap per MB of code it loads (+498 MB for 107 MB, measured) on a build that already ran out of its 8 GB once, and nothing reports what a function carries. The completeness check added two: on 3x phones and Retina laptops every product tile downloads the 1600 px file because nothing is kept between 480 and 1600 px (measured in Chromium), and videos, 3D models and theme photographs are stored with a one-hour or five-minute cache where pictures get a year.
+**In short.** The files the repo stores are lean (102 MB tracked, all 150 files in public/ referenced, pictures and fonts stored
+once); the waste is in what every server function carries and in what a browser is sent, and none of it rests on a feature being
+unused. sharp's native library (19.8 MB) is in 742 of 832 route traces and the taxonomy (13.3 MB) in 831, 33 MB of the median
+trace's 52.6 MB, and sharp loads at each cold start of the proxy (35 to 57 ms, 22.5 MB) though no shopper's page draws with it.
+Four small fixes go first (P0): search thumbnails of uploaded photographs answer 400 today (measured on the built app), font files
+are not kept by the CDN, the build's page worker runs with source maps on at 4.7 MB of heap per MB of code it loads (+498 MB for
+107 MB, measured) on a build that already ran out of its 8 GB once, and nothing reports what a function carries. The completeness
+check added two: on 3x phones and Retina laptops every product tile downloads the 1600 px file because nothing is kept between 480
+and 1600 px (measured in Chromium), and videos, 3D models and theme photographs are stored with a one-hour or five-minute cache
+where pictures get a year.
 
 ## Findings
 

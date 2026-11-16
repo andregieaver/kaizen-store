@@ -1,7 +1,15 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662) (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659, [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662)
+(13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659,
+[`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9:
+modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and
+recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of
+one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product
+layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What
+phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on
+[`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 

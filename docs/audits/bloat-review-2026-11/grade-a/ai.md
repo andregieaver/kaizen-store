@@ -1,6 +1,12 @@
 # Grade A for: AI calls
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** C, in its lower half; the steward's grade holds against the verified findings. The base is sound and partly held: the shopper chat sends about 5,100 characters a call, the other agents are small, search answers are kept, tools of switched-off features are dropped, and a turn has ceilings of time and tokens. But the dearest call, the AI manager's, sends 161,661 characters on every round (3.3 times a lean round, up to 11 times a turn), nothing counts cached or output tokens, the only size budget is a tool count set at the provider's cap, and four upkeep jobs and 12.4 connection reads per AI call run with no model called. It is not a D because the waste sits in one agent and follows use, and not an E because nobody is hurt and the money is cents while only the team uses it.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** C, in its lower half; the steward's grade holds against the verified
+findings. The base is sound and partly held: the shopper chat sends about 5,100 characters a call, the other agents are small,
+search answers are kept, tools of switched-off features are dropped, and a turn has ceilings of time and tokens. But the dearest
+call, the AI manager's, sends 161,661 characters on every round (3.3 times a lean round, up to 11 times a turn), nothing counts
+cached or output tokens, the only size budget is a tool count set at the provider's cap, and four upkeep jobs and 12.4 connection
+reads per AI call run with no model called. It is not a D because the waste sits in one agent and follows use, and not an E
+because nobody is hurt and the money is cents while only the team uses it.
 
 **The bar, in a sentence.** The AI manager's first round is a third of today's size or less (at most 56,000 characters, and a median of 15,000 real tokens a call), at least half of its input comes from the provider's cache, and an eval shows it still finds its tools. Small jobs run on a small model, nothing reads the AI connection or walks the stores when no model is called, and a test or a daily figure holds every agent's size, output and ceiling.
 
@@ -23,9 +29,36 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Steps that take it there:** 0.2, 0.11, 0.21, 0.27, 0.28, 0.29, 1.9, 1.10, 1.13, 1.19, 2.34, 2.36, 2.37, 2.38, 2.39, 4.5.
 
-**Can the steps reach an A?** Yes, with one answer. Step 2.36 waits for your yes that the AI manager's 17 plan, reminder and skill tools load when the talk turns to them; kept on every round, this area stops at a B. No step was missing: six done-whens were tightened, the page groups are made once in step 2.36, and cached tokens are counted from step 1.19 so every figure has its 'before'. A week of real use must be read after step 2.38, in step 4.5, and a person with platform access runs the eval in production after each prompt step.
+**Can the steps reach an A?** Yes, with one answer. Step 2.36 waits for your yes that the AI manager's 17 plan, reminder and skill
+tools load when the talk turns to them; kept on every round, this area stops at a B. No step was missing: six done-whens were
+tightened, the page groups are made once in step 2.36, and cached tokens are counted from step 1.19 so every figure has its
+'before'. A week of real use must be read after step 2.38, in step 4.5, and a person with platform access runs the eval in
+production after each prompt step.
 
-**The challenger on the bar.** FLOOR CHECKED. I ran the planners' bundle of the app's own functions again: the floor is 33,198 characters (prompt 14,772, the 12 core tools with load_tools 13,482, the manager's 9 own tools 4,944). The chat chunk is 496,206 bytes, the eval has 9 manager cases and none finds a tool, and src holds no cache marker. KEPT: the cached share (50% in all, 80% after a turn's first round), 2 connection reads per AI call, all 8 small jobs on a quick model, a baseline for every agent. TIGHTENED. (1) The round. The steward's 50,000 and 70,000 are for a round drawn with no question. But the lean round of step 2.36 also sends the area a router picks from the question, and on the planners' own 20 questions that doubles the first round's tools (66,168 characters against 33,009). The bar now covers any first round, question included. (2) The 17 plan, reminder and skill tools are 15,384 characters, a third of a lean round with no page. That is not a small tolerance. The bar is written with them loaded on demand (34,000 and 56,000) and gives the figures if the owner keeps them (48,000 and 70,000; the steward had 50,000). (3) The chat script: 130,000 bytes, the plan's own figure, not 140,000; the sum gives 125,143. (4) Lean eval cases: 12, not 8. Page groups add a new way to fail: the model sees some of an area's tools and stops looking. (5) A small job moves to the quick model only if it passes fixed cases of its own; 5 of the 8 have none today. (6) The listings' check joins the upkeep jobs: it can waste model calls, not only statements. LOOSENED: the median turn from 40,000 to 45,000 tokens, because three calls at the call bar of 15,000 are 45,000. DROPPED: 'under 300 reads on a day with no AI call', a number for today's traffic; the upkeep test holds the idle part (an idle run reads no connection). ADDED: output tokens. An output token costs 8 times an input token at the seeded price (2.00 against 0.25 dollars a million), the two tool loops set no reasoning effort, and after the lean round and the cache, output can be a third to a half of a turn's cost. The steward showed it but set no bar. Also added: a scanned list of public paths that can reach a model, and a daily flag, so a production figure cannot slip unseen. NOT MEASURABLE AS WRITTEN: the median turn and the cached share after a turn's first round (commerce.ai_usage has no turn or round, and the round log is a log line nobody keeps); any figure read with feature = 'ai_manager' alone, because rounds after a report tool are filed under analytics_question (src/server/owner-assistant.ts:824); and the cached figure that step 1.19 shows, whose column step 2.38 adds a phase later. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 1 and 2: the first round, and tokens per call: The A is 34,000 characters with no page, 56,000 for any first round and a median call of 15,000 tokens. With the 17 tools kept on every round the measure is a B, with their 15,400 characters named.
+**The challenger on the bar.** FLOOR CHECKED. I ran the planners' bundle of the app's own functions again: the floor is 33,198
+characters (prompt 14,772, the 12 core tools with load_tools 13,482, the manager's 9 own tools 4,944). The chat chunk is 496,206
+bytes, the eval has 9 manager cases and none finds a tool, and src holds no cache marker. KEPT: the cached share (50% in all, 80%
+after a turn's first round), 2 connection reads per AI call, all 8 small jobs on a quick model, a baseline for every agent.
+TIGHTENED. (1) The round. The steward's 50,000 and 70,000 are for a round drawn with no question. But the lean round of step 2.36
+also sends the area a router picks from the question, and on the planners' own 20 questions that doubles the first round's tools
+(66,168 characters against 33,009). The bar now covers any first round, question included. (2) The 17 plan, reminder and skill
+tools are 15,384 characters, a third of a lean round with no page. That is not a small tolerance. The bar is written with them
+loaded on demand (34,000 and 56,000) and gives the figures if the owner keeps them (48,000 and 70,000; the steward had 50,000).
+(3) The chat script: 130,000 bytes, the plan's own figure, not 140,000; the sum gives 125,143. (4) Lean eval cases: 12, not 8.
+Page groups add a new way to fail: the model sees some of an area's tools and stops looking. (5) A small job moves to the quick
+model only if it passes fixed cases of its own; 5 of the 8 have none today. (6) The listings' check joins the upkeep jobs: it can
+waste model calls, not only statements. LOOSENED: the median turn from 40,000 to 45,000 tokens, because three calls at the call
+bar of 15,000 are 45,000. DROPPED: 'under 300 reads on a day with no AI call', a number for today's traffic; the upkeep test holds
+the idle part (an idle run reads no connection). ADDED: output tokens. An output token costs 8 times an input token at the seeded
+price (2.00 against 0.25 dollars a million), the two tool loops set no reasoning effort, and after the lean round and the cache,
+output can be a third to a half of a turn's cost. The steward showed it but set no bar. Also added: a scanned list of public paths
+that can reach a model, and a daily flag, so a production figure cannot slip unseen. NOT MEASURABLE AS WRITTEN: the median turn
+and the cached share after a turn's first round (commerce.ai_usage has no turn or round, and the round log is a log line nobody
+keeps); any figure read with feature = 'ai_manager' alone, because rounds after a report tool are filed under analytics_question
+(src/server/owner-assistant.ts:824); and the cached figure that step 1.19 shows, whose column step 2.38 adds a phase later.
+AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 1 and 2: the first round, and tokens per call: The
+A is 34,000 characters with no page, 56,000 for any first round and a median call of 15,000 tokens. With the 17 tools kept on
+every round the measure is a B, with their 15,400 characters named.
 
 ## What the challenger found missing, and how it was settled
 
@@ -51,7 +84,12 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 ## The owner's choices here
 
-- Step 2.36, the 17 plan, reminder and saved-skill tools. (a) Keep all 17 on every round: about 3,850 tokens a call, 48,000 and 70,000 characters and a median call of 19,000 tokens. The panel ruled that this is a B on measures 1 and 2, not an A. (b) Load them when the talk turns to them or a plan, goal or reminder is alive, with one line in the prompt so the manager still offers them unprompted: 34,000 and 56,000 characters and a median call of 15,000 tokens. This is the panel's bar. (c) Keep the four that start something (make a plan, set a goal, set a reminder, save a skill: 7,500 characters) and load the 13 that manage what exists: saves 7,900 characters a round. Every tool stays one call away in all three.
+- Step 2.36, the 17 plan, reminder and saved-skill tools. (a) Keep all 17 on every round: about 3,850 tokens a call, 48,000 and
+  70,000 characters and a median call of 19,000 tokens. The panel ruled that this is a B on measures 1 and 2, not an A. (b) Load
+  them when the talk turns to them or a plan, goal or reminder is alive, with one line in the prompt so the manager still offers
+  them unprompted: 34,000 and 56,000 characters and a median call of 15,000 tokens. This is the panel's bar. (c) Keep the four
+  that start something (make a plan, set a goal, set a reminder, save a skill: 7,500 characters) and load the 13 that manage what
+  exists: saves 7,900 characters a round. Every tool stays one call away in all three.
 - Step 2.34: may the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? It shows at once on the next click and stays at one minute while an approval waits. No AI measure moves; it closes the area's last finding.
 - The eval is run by a person with platform access in production, and its recording committed, at least four times: after steps 1.19, 2.36 with 2.38, 2.37 and 2.39. Each of those steps waits for that run. Who does it?
 - Step 2.39: the listings' check is a legal duty. Should it stay on the main model whatever the price, or move to the quick model if its cases pass?

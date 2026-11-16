@@ -39,7 +39,14 @@ Read in the code and the sources while writing this spec. Each is handled in the
 7. **A nonce-based CSP cannot be used on the prerendered store shell** (Next.js's own guide: nonces need dynamic rendering and are
    incompatible with static shells; `cacheComponents` is on). The policy is therefore hash- or allowlist-based (section 4.4), and its
    strength is stated honestly.
-8. **The extras must come off the pay routes and still stay across the store's other pages.** `StoreChat`, `SiteConsent` (with the owner's custom code), `StoreAffiliate` and `BuyerQuestion` are mounted in the market layout, which every page shares. The first design (a parallel slot `@extras` like `@drawer`, empty on the three routes) was built and **failed its own end-to-end test**: a slot remounts when its page changes, so an open chat closed and the consent manager would have loaded its tools again on every navigation. Built instead: the layout draws them inside `OffPayRoutes` (`src/components/off-pay-routes.tsx`), a client component that reads the address (`usePathname()`, known on the server for a page loaded afresh) and draws nothing on a pay route; the layout stays mounted across the other pages, so nothing remounts, and children that are not drawn are never hydrated.
+8. **The extras must come off the pay routes and still stay across the store's other pages.** `StoreChat`, `SiteConsent` (with the
+   owner's custom code), `StoreAffiliate` and `BuyerQuestion` are mounted in the market layout, which every page shares. The first
+   design (a parallel slot `@extras` like `@drawer`, empty on the three routes) was built and **failed its own end-to-end test**:
+   a slot remounts when its page changes, so an open chat closed and the consent manager would have loaded its tools again on
+   every navigation. Built instead: the layout draws them inside `OffPayRoutes` (`src/components/off-pay-routes.tsx`), a client
+   component that reads the address (`usePathname()`, known on the server for a page loaded afresh) and draws nothing on a pay
+   route; the layout stays mounted across the other pages, so nothing remounts, and children that are not drawn are never
+   hydrated.
 9. **There is no signed-in admin in CI** (no Supabase there; `getAccount()` returns null). Axe over signed-in admin screens cannot run in
    CI; the contract covers the admin's signed-out entry pages and says so (section 6).
 10. **The Stripe payment form cannot be reached by e2e** (the demo store takes no payments, `payments off`). Terms-at-checkout and CSP
@@ -356,7 +363,11 @@ why ("{Store} requires two-step sign-in" or "Platform admins must use two-step s
 
 `src/server/permissions.ts`: `requirePermission(storeSlug, key)` for pages and route handlers (sign in, held at two-step, or 404),
 `checkPermission(storeSlug, key)` for actions (returns the membership or `null`; the action returns its refusal), `requireOwnerRole(storeSlug)`
-for the `owner` key, `requireAnyPermission`/`checkAnyPermission` for what any of several keys opens (the page builder's side actions: pictures, saved rows, templates, a grid's preview, which a website editor, a product-layout editor and an A/B version editor all call) and `requirePageTypeAccess`/`checkPageTypeAccess` for the kinds of page (`PAGE_TYPE_AREA`: pages, articles, headers and footers are the website's, product layouts the products', an A/B test's versions marketing's). All replace every call of `requireMember()` in admin pages, actions, routes and helpers; `requireMember()` stays
+for the `owner` key, `requireAnyPermission`/`checkAnyPermission` for what any of several keys opens (the page builder's side
+actions: pictures, saved rows, templates, a grid's preview, which a website editor, a product-layout editor and an A/B version
+editor all call) and `requirePageTypeAccess`/`checkPageTypeAccess` for the kinds of page (`PAGE_TYPE_AREA`: pages, articles,
+headers and footers are the website's, product layouts the products', an A/B test's versions marketing's). All replace every call
+of `requireMember()` in admin pages, actions, routes and helpers; `requireMember()` stays
 exported for `src/server/auth.ts`'s own internals and the Home/membership-only pages through `requireMemberAny()`. After the sweep, **no
 file outside `src/server/auth.ts` and `src/server/permissions.ts` compares `role` with `"owner"`**; they ask `memberCan(member, "owner")` (server build: `Membership` is a plain object that tests build by hand, so the check is a function of it, `memberCan()` in `src/server/permissions.ts`, not a method).
 
@@ -567,7 +578,11 @@ order `terms_accepted_at` and a snapshot") is met by `order_terms.accepted_at` k
 platform's customer page). It is set when an account's own `aal2` session is seen and cleared when an `aal1` session's server-side
 `getUser()` shows no verified factor. It is **never** used to decide access (finding 4).
 
-It also gains `two_step_reenrol_at timestamptz null`: set when a recovery code is used or a platform admin resets an account's two-step, cleared when a factor is next verified. While it is set and the account has no factor, `assuranceOf()` returns `enrol` for **that account whether or not any store or the platform requires two-step** (the frame's "forces re-enrolment at the next sign-in"); the page says why and offers no skip. Unlike the mirror, this column is a decision the server made, so it is read for access.
+It also gains `two_step_reenrol_at timestamptz null`: set when a recovery code is used or a platform admin resets an account's
+two-step, cleared when a factor is next verified. While it is set and the account has no factor, `assuranceOf()` returns `enrol`
+for **that account whether or not any store or the platform requires two-step** (the frame's "forces re-enrolment at the next
+sign-in"); the page says why and offers no skip. Unlike the mirror, this column is a decision the server made, so it is read for
+access.
 
 **`commerce.stores`** gains `require_two_step boolean not null default false`.
 
@@ -1014,7 +1029,10 @@ Test kinds: **U** unit (`pnpm test`), **P** PGlite (`src/db/commerce.test.ts`), 
 | The AI manager's tools and the store's MCP server respect the member's permissions | **U** `owner-tool-permissions.test.ts` (exhaustive; reads `:read`, changes and gated tools `:write`, owner-only pages `owner`); **I** `owner-tool-permissions.int.test.ts`: a synthetic principal without the key is refused, with it is served; `find_pages` omits pages the member cannot open; **I** `store-mcp.int.test.ts`: a token below `aal2` is refused for a store that requires two-step and for a platform admin |
 | One active owner always; a role change is audit-logged | **P** existing owner test kept; **I** `role.created/updated/deleted` and `staff.role_assigned` rows with before and after |
 
-**`platform.staff-accounts-and-roles`**: criterion 1 as the roles row; criterion 2 **I** `collaborators.int.test.ts` (invite with role and expiry, the badge data, never owner and no `staff`/`billing` keys, access ends at `expires_at` through `getMembership`, `endExpiredCollaborators(now)` with a fixed clock writes `disabled_at` and the audit entry, extend and end early); criterion 3 as the two-step row (with the change below); criterion 4 as the activity-log row (by person, action and date, role changes included).
+**`platform.staff-accounts-and-roles`**: criterion 1 as the roles row; criterion 2 **I** `collaborators.int.test.ts` (invite with
+role and expiry, the badge data, never owner and no `staff`/`billing` keys, access ends at `expires_at` through `getMembership`,
+`endExpiredCollaborators(now)` with a fixed clock writes `disabled_at` and the audit entry, extend and end early); criterion 3 as
+the two-step row (with the change below); criterion 4 as the activity-log row (by person, action and date, role changes included).
 
 **`international.audit-log-of-admin-changes`**
 
@@ -1029,7 +1047,15 @@ Test kinds: **U** unit (`pnpm test`), **P** PGlite (`src/db/commerce.test.ts`), 
 
 1. **`platform.staff-accounts-and-roles`, criterion 3**: "(authenticator app or passkey)" becomes "(authenticator app)". The frame defers passkeys; Supabase's client now has an experimental WebAuthn factor but its public docs and platform page do not offer it (finding 5). Proposed text: *"A staff member can switch on two-step authentication (authenticator app), is asked for it at sign-in, and an owner can require it for the whole store."*
 2. **`platform.staff-accounts-and-roles`, criterion 2**: "invited for a store by an agency's account" is ambiguous. Built: the **owner invites an agency's account** as a collaborator with a role and an expiry. Proposed text: *"An owner can invite an agency's account to the store as a collaborator with a limited role and an expiry; it shows as a collaborator in the staff list and loses access when it expires."*
-3. **`international.accessibility-wcag-eaa-and-statement`, criterion 1** and **`storefront.accessibility-and-theme-quality-guarantees`, criterion 1**: CI has neither Stripe nor a signed-in admin, so "checkout, order, account and withdraw pages and admin entry pages" can only be scanned in these states: the checkout's reachable states, a seeded order, the account page signed out, the withdraw page, and the admin's sign-in, forgot-password and sign-up pages. Dark mode is scanned where the store's theme follows the device (the demo store's template does; the agent verifies). Proposed text for the first: *"CI runs an automated WCAG check over the storefront's front, product, cart, order, account (signed out) and withdraw pages, the checkout in the states reachable without a payment session, and the admin's signed-out entry pages, in light and dark where the theme allows, and fails on serious or critical violations. The payment form and signed-in admin screens are checked by hand and recorded."*
+3. **`international.accessibility-wcag-eaa-and-statement`, criterion 1**
+   and **`storefront.accessibility-and-theme-quality-guarantees`, criterion 1**: CI has neither Stripe nor a signed-in admin, so
+   "checkout, order, account and withdraw pages and admin entry pages" can only be scanned in these states: the checkout's
+   reachable states, a seeded order, the account page signed out, the withdraw page, and the admin's sign-in, forgot-password and
+   sign-up pages. Dark mode is scanned where the store's theme follows the device (the demo store's template does; the agent
+   verifies). Proposed text for the first: *"CI runs an automated WCAG check over the storefront's front, product, cart, order,
+   account (signed out) and withdraw pages, the checkout in the states reachable without a payment session, and the admin's
+   signed-out entry pages, in light and dark where the theme allows, and fails on serious or critical violations. The payment form
+   and signed-in admin screens are checked by hand and recorded."*
 4. **`international.staff-roles-and-permissions`, criterion 3**: not a change of text but a limit: the assistant is owner-only, so "respect the signed-in member's permissions" cannot be observed in production until it is opened to staff; it is held with synthetic principals (6.1) and the assistant stays owner-only (section 7).
 5. **`international.pci-dss`**: criterion 3 says "checkout, order and cart routes (test of the header)"; the header test cannot see a live Stripe session, so the lead's manual test-mode payment (section 9) is part of the evidence. No text change.
 6. **Duplicate rows**: `platform.staff-accounts-and-roles` and `international.staff-roles-and-permissions` are one Shopify feature in two domains (`docs/parity/README.md` rule 8). The lead merges them: the survivor takes both rows' criteria (the platform row's collaborator and two-step criteria; the international row's roles, AI and MCP criteria), and keeps one weight.
@@ -1155,29 +1181,96 @@ unindexed or unused-then-needed.
 
 *(The wave's spec is D156; renumber to the next free numbers when the money lane has taken its own.)*
 
-**D1xx (1e)**, 2026-10-03: **Legal starters, terms at checkout, accessibility checks and a strict checkout policy** (`docs/wave-1-trust.md`, `docs/pci.md`). A store makes **draft** starter pages for terms, privacy, returns, shipping, withdrawal information and an imprint (and an accessibility statement) in nb, sv, da and en from its own facts (`legalFacts()`, `src/lib/legal-starters/*`), hand-written, each with a review notice and `[[placeholders]]` where a fact is missing; they are published only by the owner and are linked roles (`LEGAL_ROLES`, in `page_roles`, served at their own address, never A/B tested). Checkout shows a terms and privacy link or a required checkbox (`stores.terms_at_checkout`), and the pay press records `order_terms` with immutable `legal_snapshots` of the pages as shown. The builder checks a draft for missing alt text, empty links, heading order and contrast and asks before publishing with a blocking issue (recorded in the audit log); CI scans the storefront and the admin's entry pages with axe. The cart, checkout and order routes send a Content-Security-Policy (`src/lib/csp.ts`), draw no consent manager, owner code or chat widget (`OffPayRoutes`), are entered by full page loads, and refuse an HTML block on the checkout page. Texts need legal review; the SAQ A attestation and the accessibility audit are the company's.
+**D1xx (1e)**, 2026-10-03: **Legal starters, terms at checkout, accessibility checks and a strict checkout policy**
+(`docs/wave-1-trust.md`, `docs/pci.md`). A store makes **draft** starter pages for terms, privacy, returns, shipping, withdrawal
+information and an imprint (and an accessibility statement) in nb, sv, da and en from its own facts (`legalFacts()`,
+`src/lib/legal-starters/*`), hand-written, each with a review notice and `[[placeholders]]` where a fact is missing; they are
+published only by the owner and are linked roles (`LEGAL_ROLES`, in `page_roles`, served at their own address, never A/B tested).
+Checkout shows a terms and privacy link or a required checkbox (`stores.terms_at_checkout`), and the pay press records
+`order_terms` with immutable `legal_snapshots` of the pages as shown. The builder checks a draft for missing alt text, empty
+links, heading order and contrast and asks before publishing with a blocking issue (recorded in the audit log); CI scans the
+storefront and the admin's entry pages with axe. The cart, checkout and order routes send a Content-Security-Policy
+(`src/lib/csp.ts`), draw no consent manager, owner code or chat widget (`OffPayRoutes`), are entered by full page loads, and
+refuse an HTML block on the checkout page. Texts need legal review; the SAQ A attestation and the accessibility audit are the
+company's.
 *Why:* Asked for by the owner (wave 1). The policy keeps `'unsafe-inline'` for scripts unless the SRI form passes (a static shell cannot carry a nonce); the starters link no ODR platform (repealed 2025).
 
-**D1xx (1f)**, 2026-10-03: **Two-step sign-in, roles and permissions, and an activity log for staff.** TOTP through Supabase Auth with our own single-use recovery codes (`commerce.account_recovery_codes`); required of platform admins and, by the owner's switch (`stores.require_two_step`), of a store's members; `getAccount()` fails closed for an enrolled session at `aal1` and enrolment is read from the signed claim or a server-side `getUser()`, never the cookie. Roles are `commerce.store_roles` of `{section}:{read|write}` keys plus the system roles; `staff:write` and `billing:write` and every owner-only page stay the owner's; every admin page, action and route asks `requirePermission()` / `checkPermission()` (scan tests fail on a missed one, a baseline proves owner and admin lost and gained nothing); collaborators are members with a role and an expiry. `audit_log` gains area, target and allowlisted changes (never secrets), has a page with filters and an owner's CSV, refuses edits, and is pruned at 24 months by application code through `commerce.guard_audit_log()`.
+**D1xx (1f)**, 2026-10-03: **Two-step sign-in, roles and permissions, and an activity log for staff.** TOTP through Supabase Auth
+with our own single-use recovery codes (`commerce.account_recovery_codes`); required of platform admins and, by the owner's switch
+(`stores.require_two_step`), of a store's members; `getAccount()` fails closed for an enrolled session at `aal1` and enrolment is
+read from the signed claim or a server-side `getUser()`, never the cookie. Roles are `commerce.store_roles` of
+`{section}:{read|write}` keys plus the system roles; `staff:write` and `billing:write` and every owner-only page stay the owner's;
+every admin page, action and route asks `requirePermission()` / `checkPermission()` (scan tests fail on a missed one, a baseline
+proves owner and admin lost and gained nothing); collaborators are members with a role and an expiry. `audit_log` gains area,
+target and allowlisted changes (never secrets), has a page with filters and an owner's CSV, refuses edits, and is pruned at 24
+months by application code through `commerce.guard_audit_log()`.
 *Why:* Asked for by the owner (wave 1). Passkeys and native recovery codes wait: Supabase's client has them as experimental and its docs do not offer them.
 
 ### 9.6 Draft `CLAUDE.md` bullets
 
-- **Legal pages and terms at checkout (D1xx, `docs/wave-1-trust.md`)**: a store's terms, privacy, returns, shipping, withdrawal-information, imprint and accessibility pages are *linked roles* (`LEGAL_ROLES` in `src/lib/legal-roles.ts`, rows of `page_roles`, served at their own address, in the sitemap when published, never A/B tested, `isLegalPage()`); starters are made as drafts from `legalFacts()` by `legalStarter()` (`src/lib/legal-starters/{nb,sv,da,en}.ts`, hand-written, never AI, each with the `legal-review-notice` row and `[[placeholders]]`, which the builder's checker blocks publishing over). Never link the EU ODR platform (repealed). Checkout's `stores.terms_at_checkout` (`link`, `checkbox`, `off`) draws the `checkout_terms` piece (and `CheckoutPayment` when the page has none); the pay press calls `recordTermsAcceptance()` before Stripe's `confirm`, writing `order_terms` and the immutable `legal_snapshots` (never columns on `orders`; copied orders refuse). A new legal kind is a role, a starter in each language with its `REQUIRED_TOPICS`, and an entry in `LEGAL_REVIEW_MANIFEST`.
+- **Legal pages and terms at checkout (D1xx, `docs/wave-1-trust.md`)**: a store's terms, privacy, returns, shipping,
+  withdrawal-information, imprint and accessibility pages are *linked roles* (`LEGAL_ROLES` in `src/lib/legal-roles.ts`, rows of
+  `page_roles`, served at their own address, in the sitemap when published, never A/B tested, `isLegalPage()`); starters are made
+  as drafts from `legalFacts()` by `legalStarter()` (`src/lib/legal-starters/{nb,sv,da,en}.ts`, hand-written, never AI, each with
+  the `legal-review-notice` row and `[[placeholders]]`, which the builder's checker blocks publishing over). Never link the EU ODR
+  platform (repealed). Checkout's `stores.terms_at_checkout` (`link`, `checkbox`, `off`) draws the `checkout_terms` piece (and
+  `CheckoutPayment` when the page has none); the pay press calls `recordTermsAcceptance()` before Stripe's `confirm`, writing
+  `order_terms` and the immutable `legal_snapshots` (never columns on `orders`; copied orders refuse). A new legal kind is a role,
+  a starter in each language with its `REQUIRED_TOPICS`, and an entry in `LEGAL_REVIEW_MANIFEST`.
 - **Accessibility (D1xx)**: `pageIssues()` (`src/lib/page-a11y.ts`) is the one checker; `savePage()` re-runs it and publishing with a blocking issue needs `acknowledgedIssues` and writes `page.published_with_issues`. The statement (`src/lib/a11y-statement.ts`) never says "conforms" without an audit entry; `ENFORCEMENT_BODIES` entries carry `verified`. CI: `e2e/a11y.spec.ts` (axe, tags up to `wcag22aa`, fails on serious and critical; the admin's signed-out pages only).
-- **Pay routes (D1xx, `docs/pci.md`)**: `/cart`, `/checkout` and `/order` send `checkoutCsp()` (`next.config.ts` `headers()`, both address shapes; `CSP_ENFORCE` is the one-line Report-Only fallback), draw nothing from `OffPayRoutes` (consent manager, owner code, chat, affiliate capture, business popup), and are entered by full page loads (`PayRouteGuard`, a scan test); the checkout page may not hold an `html` or embed-video block. A test fails if the layout or a pay route imports a module in `FORBIDDEN_ON_PAY_ROUTES`. Never add a script origin to the policy without a reason in `docs/pci.md`.
-- **Staff security (D1xx)**: `getAccount()` is the *assured* account (null for an enrolled `aal1` session and for a platform admin without `aal2`); `getSessionAccount()` is for the sign-in and two-step pages only. Enrolment is read from the signed `aal` claim or a server-side `getUser()` for `aal1`, **never the cookie's `user`**; `accounts.two_step_since` is a display mirror. Recovery codes are `account_recovery_codes` (HMAC, single use, ten per set); using one deletes the account's factors with `SUPABASE_SECRET_KEY`. `ADMIN_TWO_STEP=off` is the break-glass. Two-step pages live under `/admin/sign-in/two-step` and `/admin/account` (a new `/admin/{word}` would take a store address).
-- **Permissions (D1xx)**: every store admin page, action, route and helper asks `requirePermission(slug, key)`, `checkPermission`, `requireOwnerRole`, `requireAnyPermission`/`checkAnyPermission` (the page builder's side actions) or `requirePageTypeAccess`/`checkPageTypeAccess` (a kind of page has its own area, `PAGE_TYPE_AREA`) (`src/server/permissions.ts`, the names in `src/lib/permission-guards.ts`); Work's screens ask `settings:*`; nothing else compares `role` with `"owner"` or calls `requireMember`/`getMembership` (`permissions.scan.test.ts`). A page's key is its navigation section (`sectionOf`), `/staff…` → `staff`, `/billing` → `billing`; owner-only pages (`needs: "owner"`) need `owner`; `staff:write` and `billing:write` are owner-held. Roles are `store_roles` made by `ensureStoreRoles()` (not by `clone_store()`); a custom-role member has the enum `admin` and a `role_id`. A new page: one nav item, `ADMIN_PAGES`, a guard with its area. A new owner tool: a row in `TOOL_PERMISSIONS` (`runOwnerTool()` and `preflightOwnerTool()` hold it to the member's role; the MCP server serves a store that requires two-step, and a platform admin, to `aal2` tokens only). Collaborators are members with `kind = 'collaborator'` and `expires_at`.
+- **Pay routes (D1xx, `docs/pci.md`)**: `/cart`, `/checkout` and `/order` send `checkoutCsp()` (`next.config.ts` `headers()`, both
+  address shapes; `CSP_ENFORCE` is the one-line Report-Only fallback), draw nothing from `OffPayRoutes` (consent manager, owner
+  code, chat, affiliate capture, business popup), and are entered by full page loads (`PayRouteGuard`, a scan test); the checkout
+  page may not hold an `html` or embed-video block. A test fails if the layout or a pay route imports a module in
+  `FORBIDDEN_ON_PAY_ROUTES`. Never add a script origin to the policy without a reason in `docs/pci.md`.
+- **Staff security (D1xx)**: `getAccount()` is the *assured* account (null for an enrolled `aal1` session and for a platform admin
+  without `aal2`); `getSessionAccount()` is for the sign-in and two-step pages only. Enrolment is read from the signed `aal` claim
+  or a server-side `getUser()` for `aal1`, **never the cookie's `user`**; `accounts.two_step_since` is a display mirror. Recovery
+  codes are `account_recovery_codes` (HMAC, single use, ten per set); using one deletes the account's factors with
+  `SUPABASE_SECRET_KEY`. `ADMIN_TWO_STEP=off` is the break-glass. Two-step pages live under `/admin/sign-in/two-step` and
+  `/admin/account` (a new `/admin/{word}` would take a store address).
+- **Permissions (D1xx)**: every store admin page, action, route and helper asks `requirePermission(slug, key)`, `checkPermission`,
+  `requireOwnerRole`, `requireAnyPermission`/`checkAnyPermission` (the page builder's side actions) or
+  `requirePageTypeAccess`/`checkPageTypeAccess` (a kind of page has its own area, `PAGE_TYPE_AREA`) (`src/server/permissions.ts`,
+  the names in `src/lib/permission-guards.ts`); Work's screens ask `settings:*`; nothing else compares `role` with `"owner"` or
+  calls `requireMember`/`getMembership` (`permissions.scan.test.ts`). A page's key is its navigation section (`sectionOf`),
+  `/staff…` → `staff`, `/billing` → `billing`; owner-only pages (`needs: "owner"`) need `owner`; `staff:write` and `billing:write`
+  are owner-held. Roles are `store_roles` made by `ensureStoreRoles()` (not by `clone_store()`); a custom-role member has the enum
+  `admin` and a `role_id`. A new page: one nav item, `ADMIN_PAGES`, a guard with its area. A new owner tool: a row in
+  `TOOL_PERMISSIONS` (`runOwnerTool()` and `preflightOwnerTool()` hold it to the member's role; the MCP server serves a store that
+  requires two-step, and a platform admin, to `aal2` tokens only). Collaborators are members with `kind = 'collaborator'` and
+  `expires_at`.
 - **Audit log (D1xx)**: `audit()` keeps its signature and takes an optional `{ area, target, changes }`; `auditChange()` writes allowlisted diffs (`ALLOWED_FIELDS`), never secrets; a new action needs an area in `AUDIT_AREAS` (a scan test). The log is append-only, deletable only after 24 months by `pruneAuditLog()` (`commerce.guard_audit_log()`); `/admin/{store}/activity` shows an owner everything and others their readable areas; the CSV is owners'.
 
 ## 10. Changes after the adversarial review
 
 Six findings were taken at their cause; each has a test. They change the spec above as follows (where this section and an earlier one disagree, this one stands).
 
-1. **Translations are checked (2.2).** `pageIssues()` also runs the placeholder check over every translation as `localizePage()` draws it (the title and each block's words), once for a block the main language does not already report; the message names the language. Filling the brackets in the main language alone no longer publishes silently. *Not done:* a translation made stale by a later edit of the main text is still shown as it was (D55's general behaviour, not changed in this lane); only a bracket left in it is caught.
-2. **Withdrawal information follows what the store sells (4.1).** With bookings on, the withdrawal page and the terms say the period for services runs from the contract (CRD Annex I(A), Art. 9(2)), add the proportional-payment sentence (Art. 14(3)) and the Art. 16(a) and (l) exclusions (a fully performed service; accommodation, car rental, catering or leisure with a fixed date); with deliveries on, they say the period for regular delivery runs from the first delivery. The goods exclusions stay for every store and are followed by a `[[Check: …]]` line asking the store to delete those that do not fit what it sells, so the page cannot publish unnoticed. Eight new texts in each of nb, sv, da and en (`terms.withdrawal.services|regular`, `withdrawal.right.services|regular`, `withdrawal.effects.services`, `excl.dated_service|service_performed`, and the placeholder label `exclusionsFit`) are on the legal review list.
+1. **Translations are checked (2.2).** `pageIssues()` also runs the placeholder check over every translation as `localizePage()`
+   draws it (the title and each block's words), once for a block the main language does not already report; the message names the
+   language. Filling the brackets in the main language alone no longer publishes silently. *Not done:* a translation made stale by
+   a later edit of the main text is still shown as it was (D55's general behaviour, not changed in this lane); only a bracket left
+   in it is caught.
+2. **Withdrawal information follows what the store sells (4.1).** With bookings on, the withdrawal page and the terms say the
+   period for services runs from the contract (CRD Annex I(A), Art. 9(2)), add the proportional-payment sentence (Art. 14(3)) and
+   the Art. 16(a) and (l) exclusions (a fully performed service; accommodation, car rental, catering or leisure with a fixed
+   date); with deliveries on, they say the period for regular delivery runs from the first delivery. The goods exclusions stay for
+   every store and are followed by a `[[Check: …]]` line asking the store to delete those that do not fit what it sells, so the
+   page cannot publish unnoticed. Eight new texts in each of nb, sv, da and en (`terms.withdrawal.services|regular`,
+   `withdrawal.right.services|regular`, `withdrawal.effects.services`, `excl.dated_service|service_performed`, and the placeholder
+   label `exclusionsFit`) are on the legal review list.
 3. **The pay routes' policy allows `https://maps.googleapis.com` (4.4).** In `script-src` and `connect-src` only, because Stripe lists it for Stripe.js and the checkout mounts the Address Element (`docs/pci.md`, "Address autocomplete"). **Not verified against a live Stripe session**; the manual test-mode payment must check it, or the owner may remove `ADDRESS_AUTOCOMPLETE` from `src/lib/csp.ts` and live without autocomplete.
-4. **Home and the control center follow the role and the expiry (2.7).** `controlCenter()` ignores a collaborator whose `expires_at` has passed and counts sales, orders waiting, the latest orders and returns only where the member holds `orders:read`, stock only with `products:read`, the plan only with `billing:read`; what is withheld is named in `StoreFigures.hides` and left out of the views, never drawn as zero. Home's Analytics alerts need `analytics:read`. The expiry predicate was added to `listStores()`, `signInAccount()`, `visibleTo()` of templates, Work's people lists and its store switch, the running timer and `roleIn()`; `store-members-expiry.test.ts` fails when another reader of `commerce.store_members` ignores it without a reason.
-5. **The second step's limit is atomic (2.6).** A try is reserved before the code is checked, under a per-account advisory lock (`reserveAttempt()`), as an `account.two_step_attempt` entry (platform row only); it counts until the success entry (`two_step_passed`, `two_step_enrolled`, `recovery_code_used`) names it, or until it is cleared (`account.two_step_attempt_cleared`) because Supabase Auth could not be asked. The wrong code's own `two_step_failed` entry is still written, with the attempt's key. Parallel guesses therefore make at most five `verify` calls per window. No migration.
+4. **Home and the control center follow the role and the expiry (2.7).** `controlCenter()` ignores a collaborator whose
+   `expires_at` has passed and counts sales, orders waiting, the latest orders and returns only where the member holds
+   `orders:read`, stock only with `products:read`, the plan only with `billing:read`; what is withheld is named in
+   `StoreFigures.hides` and left out of the views, never drawn as zero. Home's Analytics alerts need `analytics:read`. The expiry
+   predicate was added to `listStores()`, `signInAccount()`, `visibleTo()` of templates, Work's people lists and its store switch,
+   the running timer and `roleIn()`; `store-members-expiry.test.ts` fails when another reader of `commerce.store_members` ignores
+   it without a reason.
+5. **The second step's limit is atomic (2.6).** A try is reserved before the code is checked, under a per-account advisory lock
+   (`reserveAttempt()`), as an `account.two_step_attempt` entry (platform row only); it counts until the success entry
+   (`two_step_passed`, `two_step_enrolled`, `recovery_code_used`) names it, or until it is cleared
+   (`account.two_step_attempt_cleared`) because Supabase Auth could not be asked. The wrong code's own `two_step_failed` entry is
+   still written, with the attempt's key. Parallel guesses therefore make at most five `verify` calls per window. No migration.
 6. **A referral code survives the pay routes' reload (D131).** `PayRouteGuard` carries a code held only in the page's memory in the reload address (`?ref=`, as the capture does for links that leave the market), and `attachReferral()` falls back to the code on this browser's open cart. A visit may be counted a second time when the address carries the code again (the same as for the market links).
 

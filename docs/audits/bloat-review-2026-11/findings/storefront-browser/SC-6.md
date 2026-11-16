@@ -5,7 +5,15 @@ What a shopper's browser loads (`README.md` beside this file), part of `docs/aud
 - **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.3.
 - **Second check:** corrected.
 - **Where:** `e2e/performance.spec.ts:10`, `e2e/performance.spec.ts:16`, `e2e/performance.spec.ts:40`, `e2e/performance.spec.ts:126`, `e2e/signed-in/admin-scripts.spec.ts:18`, `src/lib/storefront-bundle.scan.test.ts:16`, `docs/performance.md:110`, `docs/audits/psi-followups.md:135`
-- **Evidence:** FIRST_SCRIPTS_MAX is 972,000, set when the page measured 965 to 972 KB (the comment at line 10); D461 cut the page on 5 November and the budget stayed. The test sums every script[src] in the DOM after load (lines 16-19), so it counts the nomodule polyfill (112,594 bytes) and whatever lazy chunks were added by then. On this build that is about 811,890 bytes: room of about 160 KB, 16 %. Product: 890,379 against 1,040,000: 150 KB, 14 %. FIRST_SCRIPTS_BUDGETS has seven entries, one of them a storefront route (line 41); category, search, cart, checkout and account have none. The only after-load check is a total of 450,000 bytes until 2 s after load (line 127; home measured 406,542) with no count of requests. The import scan forbids four modules. The admin's spec already measures the better way: from the HTML the server sends, with a switch that prints the figures (admin-scripts.spec.ts:18-25). Growth that passed unseen: the cart's forms on the product page (SC-4, 10 November) and the tiles' call and scripts on every grid page (SC-12, 10 and 11 November).
+- **Evidence:** FIRST_SCRIPTS_MAX is 972,000, set when the page measured 965 to 972 KB (the comment at line 10); D461 cut the page
+  on 5 November and the budget stayed. The test sums every script[src] in the DOM after load (lines 16-19), so it counts the
+  nomodule polyfill (112,594 bytes) and whatever lazy chunks were added by then. On this build that is about 811,890 bytes: room
+  of about 160 KB, 16 %. Product: 890,379 against 1,040,000: 150 KB, 14 %. FIRST_SCRIPTS_BUDGETS has seven entries, one of them a
+  storefront route (line 41); category, search, cart, checkout and account have none. The only after-load check is a total of
+  450,000 bytes until 2 s after load (line 127; home measured 406,542) with no count of requests. The import scan forbids four
+  modules. The admin's spec already measures the better way: from the HTML the server sends, with a switch that prints the figures
+  (admin-scripts.spec.ts:18-25). Growth that passed unseen: the cart's forms on the product page (SC-4, 10 November) and the
+  tiles' call and scripts on every grid page (SC-12, 10 and 11 November).
 - **Cost today:** About 150 to 160 KB of scripts can be added to the two budgeted storefront pages before a test fails. The working routes, and what a page asks for after load, are not held at all. Paid by: CI (it runs the check), then every shopper
 - **Saving:** None by itself; it keeps what the other findings save and would have caught SC-4 and SC-12 on the day they arrived.
 - **Risk:** Low: a tight budget fails on honest growth, which is its purpose. If the loop of SC-9 is real in CI, step 5 fails on the category and search pages: that is a result, not a flake; land step 5 for home and the content page first and treat the rest under SC-9.

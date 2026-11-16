@@ -5,11 +5,53 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Data in and out (wave 2, D165, `docs/wave-2-data.md`)
 
-- **Data in and out (wave 2, D165, `docs/wave-2-data.md`)**: imports and exports are `commerce.data_jobs` (`src/server/data-jobs.ts`; run in ticks by `after()`, the open page's tick route and the five-minute cron, each claim with an expiry; files are in the private `imports` and `exports` buckets, written only by the server through `DataStorage` in `src/server/data-job-store.ts`, deleted after 7 days by `pruneDataJobs()`, which lists the job's folder `{store}/{job}/` instead of trusting the row and sweeps folders no row names). Every CSV is written and read only by `src/lib/csv.ts` (`writeCsv()`, OWASP's formula characters escaped; amounts by `amountCell()` from integer minor units, never `decimalAmount()`, which is the D161 files'; Excel (Nordic) is a dialect); never join cells by hand (`csv-writers.test.ts`). A product import goes only through `getProductForEdit()` and `saveProduct()` (`product-import-writers.test.ts`), after the picture fetches and the term creation, reading the store again immediately before saving; it never deletes, never changes a handle, never imports a compare-at price, never turns `Vendor` into a manufacturer or `Charge tax` into the exempt VAT category, and fetches pictures only through `safeFetch()`. A product's `price_on_request` and its words around the price (`price_words`, `price_prefix[:locale]`, `price_suffix[:locale]`, D434) are read as the editor's own: each word checked by `priceWordProblem()`, a blank flag or choice and an absent column keeping the product's; a new product-level column follows the same rule (absent keeps, compared in `canonical()`, a finding code with its `FIX_FOR`). `saveProduct()` takes an optional `StockMode`, so an import or a bulk edit never writes back a stock it read before a sale was paid (the bulk 'adjust' is relative). A bulk action does the same and records before and after in `bulk_edit_items` for the undo; one audit entry per batch or job, never per product. Order and customer files are owner-only (`requireOwnerRole`), minimal by default, mark copied (`C-`), host and Stripe test-mode (`test_payment`) orders, carry no personal field of an erased person's order, never a secret or token (canary tests), are never emailed, and an erasure deletes only the ready files that can hold the person (`removePersonalExports()` with an `ExportScope`); the end of a date range is the store's next local midnight (the date plus one, never an interval on a timestamptz); the customer file's `marketing_consent` is `not_recorded` until wave 5 records consent. Main-currency columns are indicative and blank without a rate; a new money read here needs a euro scenario in `checkout-kinds.int.test.ts`. Every analytics table is in `ANALYTICS_TABLES` with a CSV button (`analytics-export-views.test.ts` fails for a table with none); its figures come from the page's own loaders, and the VAT, OSS and IOSS tables keep D161's files. New tables are `never` in `COPY_RULES`.
+- **Data in and out (wave 2, D165, `docs/wave-2-data.md`)**: imports and exports are `commerce.data_jobs`
+  (`src/server/data-jobs.ts`; run in ticks by `after()`, the open page's tick route and the five-minute cron, each claim with an
+  expiry; files are in the private `imports` and `exports` buckets, written only by the server through `DataStorage` in
+  `src/server/data-job-store.ts`, deleted after 7 days by `pruneDataJobs()`, which lists the job's folder `{store}/{job}/` instead
+  of trusting the row and sweeps folders no row names). Every CSV is written and read only by `src/lib/csv.ts` (`writeCsv()`,
+  OWASP's formula characters escaped; amounts by `amountCell()` from integer minor units, never `decimalAmount()`, which is the
+  D161 files'; Excel (Nordic) is a dialect); never join cells by hand (`csv-writers.test.ts`). A product import goes only through
+  `getProductForEdit()` and `saveProduct()` (`product-import-writers.test.ts`), after the picture fetches and the term creation,
+  reading the store again immediately before saving; it never deletes, never changes a handle, never imports a compare-at price,
+  never turns `Vendor` into a manufacturer or `Charge tax` into the exempt VAT category, and fetches pictures only through
+  `safeFetch()`. A product's `price_on_request` and its words around the price (`price_words`, `price_prefix[:locale]`,
+  `price_suffix[:locale]`, D434) are read as the editor's own: each word checked by `priceWordProblem()`, a blank flag or choice
+  and an absent column keeping the product's; a new product-level column follows the same rule (absent keeps, compared in
+  `canonical()`, a finding code with its `FIX_FOR`). `saveProduct()` takes an optional `StockMode`, so an import or a bulk edit
+  never writes back a stock it read before a sale was paid (the bulk 'adjust' is relative). A bulk action does the same and
+  records before and after in `bulk_edit_items` for the undo; one audit entry per batch or job, never per product. Order and
+  customer files are owner-only (`requireOwnerRole`), minimal by default, mark copied (`C-`), host and Stripe test-mode
+  (`test_payment`) orders, carry no personal field of an erased person's order, never a secret or token (canary tests), are never
+  emailed, and an erasure deletes only the ready files that can hold the person (`removePersonalExports()` with an `ExportScope`);
+  the end of a date range is the store's next local midnight (the date plus one, never an interval on a timestamptz); the customer
+  file's `marketing_consent` is `not_recorded` until wave 5 records consent. Main-currency columns are indicative and blank
+  without a rate; a new money read here needs a euro scenario in `checkout-kinds.int.test.ts`. Every analytics table is in
+  `ANALYTICS_TABLES` with a CSV button (`analytics-export-views.test.ts` fails for a table with none); its figures come from the
+  page's own loaders, and the VAT, OSS and IOSS tables keep D161's files. New tables are `never` in `COPY_RULES`.
 
 ## The WordPress plugin (D169, `docs/wordpress-plugin.md`, `wordpress-plugin/kaizen-store/`, `public/downloads/kaizen-store-wordpress.zip`)
 
-- **The WordPress plugin (D169, `docs/wordpress-plugin.md`, `wordpress-plugin/kaizen-store/`, `public/downloads/kaizen-store-wordpress.zip`)**: a site is connected by an owner's approval at `/admin/account/wordpress/connect` (`readApproval()` in `src/lib/wordpress.ts`: https only, the return address on the site's own origin) and a one-time code swapped for a token with a verifier (`exchangeCode()`); tokens and codes are kept only as hashes in `commerce.wordpress_connections`, written only by `src/server/wordpress.ts`. `/api/wordpress/v1/*` is read-only and starts with `asPlugin()`/`asPluginForStore()` (`src/server/wordpress-route.ts`: token, rate limit, the account's membership looked up on every call, a store that is not theirs is a plain 404); a view of products is `viewQuery` through `listGridProducts()` (the grid's own read) and its prices are written by `wordpressPrice()` from `<Price>`'s rules, so the plugin never works out a price, a VAT label, a reduction or a unit price. A view with nothing chosen shows nothing, never everything. Nothing private (orders, customers, settings) is ever served there, and a new route reads only what a shopper can see. The zip is built by `node scripts/build-wordpress-plugin.mjs` to the same bytes every time, and `src/lib/wordpress-plugin.test.ts` fails when it is not the plugin as it is: change the plugin, rebuild, commit both. **Product page and cart (D170)**: a cart held on the site is priced by `quoteCart()` (`src/server/wordpress-shop.ts`, live price, stock and words, a subtotal and nothing else) and handed over by `createHandoffCart()` (`src/server/cart-handoff.ts`): the same checks as adding in the store (`sellableQuantity()`), goods and downloads only (`cartableReason()` in `src/lib/wordpress-cart.ts`), never a cart when nothing can be bought, a link kept as a hash (`carts.handoff_hash`) that `/s/{store}/{market}/cart/resume` opens once to set the cart cookie; a new kind of product that needs more than a variant (a time, a plan, a choice) is not cartable until the store's own page can be bypassed for it, and anything that changes how the store prices a cart gets a case in `wordpress.int.test.ts`, which holds the quote to the cart the store shows. The plugin registers its scripts at `init` (block themes draw content before they queue scripts), and `node scripts/build-wordpress-plugin.mjs` is run after any change to it.
+- **The WordPress plugin (D169, `docs/wordpress-plugin.md`, `wordpress-plugin/kaizen-store/`,
+  `public/downloads/kaizen-store-wordpress.zip`)**: a site is connected by an owner's approval at
+  `/admin/account/wordpress/connect` (`readApproval()` in `src/lib/wordpress.ts`: https only, the return address on the site's own
+  origin) and a one-time code swapped for a token with a verifier (`exchangeCode()`); tokens and codes are kept only as hashes in
+  `commerce.wordpress_connections`, written only by `src/server/wordpress.ts`. `/api/wordpress/v1/*` is read-only and starts with
+  `asPlugin()`/`asPluginForStore()` (`src/server/wordpress-route.ts`: token, rate limit, the account's membership looked up on
+  every call, a store that is not theirs is a plain 404); a view of products is `viewQuery` through `listGridProducts()` (the
+  grid's own read) and its prices are written by `wordpressPrice()` from `<Price>`'s rules, so the plugin never works out a price,
+  a VAT label, a reduction or a unit price. A view with nothing chosen shows nothing, never everything. Nothing private (orders,
+  customers, settings) is ever served there, and a new route reads only what a shopper can see. The zip is built by
+  `node scripts/build-wordpress-plugin.mjs` to the same bytes every time, and `src/lib/wordpress-plugin.test.ts` fails when it is
+  not the plugin as it is: change the plugin, rebuild, commit both. **Product page and cart (D170)**: a cart held on the site is
+  priced by `quoteCart()` (`src/server/wordpress-shop.ts`, live price, stock and words, a subtotal and nothing else) and handed
+  over by `createHandoffCart()` (`src/server/cart-handoff.ts`): the same checks as adding in the store (`sellableQuantity()`),
+  goods and downloads only (`cartableReason()` in `src/lib/wordpress-cart.ts`), never a cart when nothing can be bought, a link
+  kept as a hash (`carts.handoff_hash`) that `/s/{store}/{market}/cart/resume` opens once to set the cart cookie; a new kind of
+  product that needs more than a variant (a time, a plan, a choice) is not cartable until the store's own page can be bypassed for
+  it, and anything that changes how the store prices a cart gets a case in `wordpress.int.test.ts`, which holds the quote to the
+  cart the store shows. The plugin registers its scripts at `init` (block themes draw content before they queue scripts), and
+  `node scripts/build-wordpress-plugin.mjs` is run after any change to it.
 
 ## Events to an owner's own endpoints (wave 9 unit A, D354, `src/lib/webhook-signature.ts`, `src/server/webhook-endpoints.ts`)
 
@@ -183,11 +225,73 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 
-- **Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`, `src/server/order-history-import.ts`)**: WooCommerce's product export is read by `readWooCommerce()` into the product import's neutral rows, so it is planned and saved only as any product file is (D165); a product the import makes leaves a manual redirect from `oldProductAddress()` through `addRedirects()` in the starter's name read again (`ImportOptions.redirects`), so a new source shop's file is a reader, a format in `FileFormat` and the `data_jobs_format` check, and its old address there. Shopify's order export is the job kind `order_history_import` (the owner's), each order written only by `insertHistoryOrder()` in `order-insert.ts` as a copied order (`C-{name}`, `copied_from` a key of the store and the name), tied to a customer only by an email the store already has; nothing pays, emails, invoices or counts it, so a reader that skips copied orders needs nothing more. Moving from Shopify and the other platforms is planned in `docs/moving-from-*.md` (D445 to D451); a mover's writes go through these same writers, never its own, and the old shop's links are checked by D445 step 1 (`docs/rules/admin/website.md`, Redirects).
+- **Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,
+  `src/server/order-history-import.ts`)**: WooCommerce's product export is read by `readWooCommerce()` into the product import's
+  neutral rows, so it is planned and saved only as any product file is (D165); a product the import makes leaves a manual redirect
+  from `oldProductAddress()` through `addRedirects()` in the starter's name read again (`ImportOptions.redirects`), so a new
+  source shop's file is a reader, a format in `FileFormat` and the `data_jobs_format` check, and its old address there. Shopify's
+  order export is the job kind `order_history_import` (the owner's), each order written only by `insertHistoryOrder()` in
+  `order-insert.ts` as a copied order (`C-{name}`, `copied_from` a key of the store and the name), tied to a customer only by an
+  email the store already has; nothing pays, emails, invoices or counts it, so a reader that skips copied orders needs nothing
+  more. Moving from Shopify and the other platforms is planned in `docs/moving-from-*.md` (D445 to D451); a mover's writes go
+  through these same writers, never its own, and the old shop's links are checked by D445 step 1 (`docs/rules/admin/website.md`,
+  Redirects).
 
 ## Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
 
-- **Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)**: built in the plan's steps (section 17 says which). Step 1, the old shop's links, is a rule of Redirects (`docs/rules/admin/website.md`). Step 2 connects Kaizena Flow's own Shopify app (`shopify/shopify.app.toml`, `shopifyEnv()`; off without `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`) at Settings → Moving in, the owner's alone: read scopes only (`SHOPIFY_SCOPES`, never a `write_`, the file and the code kept equal by `shopify.test.ts`), Shopify's authorization code grant with `expiring=1`, its callback checked for the sealed state (store, account, shop), Shopify's HMAC and an anchored `myshopify.com` name before the code is spent, the tokens encrypted in `commerce.shop_moves` (written only by `shopify-connect.ts`, `never` in `COPY_RULES`, `secret` in the store's file), refreshed under the row's lock (`shopifyAccess()`; a refused refresh or a 401 disconnects), and every call to Shopify built only from a name `isMyshopify()` passed. A later step reads Shopify only through `shopifyGraphql()`. Step 4's copy (`src/server/shopify-copy.ts`) writes no table but `shop_moves.copy`: each feed becomes Shopify's own export file (`src/lib/shopify-copy.ts`) and goes through its import's register, check and apply, never a writer of its own; a new feed is a bulk query, a file its import reads back (tested by reading the file with the import's own reader in `shopify-copy.test.ts`) and a row of `STEPS`. Where no import exists (pages, blog posts, menus) a feed goes to that table's own writer (`savePage()`, `saveBlog()`, `saveStoreMenu()`), never SQL of its own, leaves an address or name already taken alone, and turns HTML into rich text only through `htmlToRichText()` (`src/lib/html-rich-text.ts`), whose output `cleanRichText()` always takes. The shop's settings (countries, shipping, discount codes, look; `src/server/shopify-settings-copy.ts`) go only through `setMarkets()`, `saveShippingSettings()`, `saveDiscount()` and `design_look`: a country is only ever added, a rate or code of the store's own is never overwritten, every copied code is saved switched off and the look never made live, and what ours cannot say as Shopify did is counted, never bent to fit. *Who makes your products?* (step 6, `src/server/shopify-makers.ts`) never takes a vendor as the manufacturer without the owner's press, keeps a company only through `chooseOperator()`, and changes products only through the bulk editor (`manufacturer`, then `status`), so every change has its undo. Move day (step 7a, `src/server/shopify-move.ts`) writes only `shop_moves.move`; each step goes through its owner's writer (the copy's imports through `startCatchUp()`, `fixOldShop()`, `setPrivateMode()`), is safe to repeat and runs under the move's lease; a scheduled move runs only as the owner who chose it, checked again by `passMembership()` each time, and a new step is a case of `MOVE_STEPS` and of `advanceMove()`. The address (step 7b, `src/server/shopify-address.ts`) writes no domain itself: it goes through `addStoreDomain()`, `connectOwnedDomain()` (only where `storeRegistration()` or `storeZone()` says the domain is the store's), `checkStoreDomain()` and `setPrimaryDomain()`, and never touches Shopify; a new DNS host is a pattern in `dnsHostOf()` and a sentence in the catalogues. The 14 days after (step 7c) read Shopify only through the catch-up (`startCatchUp()` with customers and orders), at most once a day while `watchDue()`, and only show what to press; closing Shopify is always the owner's own act there. Whatever a move makes is written down in `commerce.shop_move_items` (`recordMoveItems()`, never an address) as it is made, so a new thing a move makes is a kind there and a line in `undoCopy()`; *Undo this copy* (`src/server/shopify-undo.ts`) takes back only those, through each thing's writer, only before the first real order, and never emails anyone; a copied order goes only through `commerce.delete_copied_order()`. Step 3's report (`src/server/shopify-report.ts`) keeps nothing it reads and shows a figure Shopify did not give as unknown, never as 0; a new figure is a field of one of its query groups and of `shopReport()`, with its case in `shopify-report.test.ts`. Shopify's webhooks (`/api/shopify/webhooks`) answer 401 without its HMAC over the raw body; `app/uninstalled` drops the tokens, `shop/redact` deletes the rows; a new topic is a case in `handleShopifyWebhook()` and in the app's file. Moving from WooCommerce (D446, `docs/moving-from-woocommerce.md` 17) is the same engine: a WooCommerce shop is a `shop_moves` row with `source` `woocommerce`, connected only by WooCommerce's own read-only key (`wc-auth`, `scope=read`; a key that can write is refused) posted to `/api/woocommerce/callback` with a note sealed here, checked again by `passMembership()`; every call to the owner's site goes through `safeFetch()` over HTTPS, the key only to the site's own origin (`wooGet()`). A store has one connected shop at a time, and the copy works from whichever it is (`copySource()`); a WooCommerce feed is a converter in `src/lib/woocommerce-copy.ts` to the lines `fileOfFeed()` already reads, tested by reading its file back with the import's own reader, and a case of `readWoo()`, never a writer of its own. Moved reviews go only through `importReviews()` as `import` reviews, never as a buyer's: a review is a verified purchase only when it is of an order line in this store. Our WordPress plugin's mover (`class-kaizen-store-mover.php`) only reads, through `GET` routes that refuse any call not signed with its secret within five minutes (`moverSignature()` and the PHP `verify()` held equal by a test that runs the PHP); its secret goes only to the Kaizena Flow address the plugin is set up with, never to one from a link, and is kept here only encrypted (`shop_moves.mover_secret`, written only by `woocommerce-connect.ts`). A new thing it reads is a route there, a reader in `src/lib/woocommerce-mover.ts` and a part of the copy that goes through the table's own writer. Yoast's and Rank Math's fields are all kept: the words shoppers saw as the SEO title and description, and every field as written in the custom field group `seo-from-wordpress` (`SEO_FIELDS`); a new field is a key in the plugin's `POST_FIELDS`/`TERM_FIELDS` and an entry of `SEO_FIELDS`.
+- **Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`,
+  `src/server/shopify-connect.ts`)**: built in the plan's steps (section 17 says which). Step 1, the old shop's links, is a rule
+  of Redirects (`docs/rules/admin/website.md`). Step 2 connects Kaizena Flow's own Shopify app (`shopify/shopify.app.toml`,
+  `shopifyEnv()`; off without `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`) at Settings → Moving in, the owner's alone: read
+  scopes only (`SHOPIFY_SCOPES`, never a `write_`, the file and the code kept equal by `shopify.test.ts`), Shopify's authorization
+  code grant with `expiring=1`, its callback checked for the sealed state (store, account, shop), Shopify's HMAC and an anchored
+  `myshopify.com` name before the code is spent, the tokens encrypted in `commerce.shop_moves` (written only by
+  `shopify-connect.ts`, `never` in `COPY_RULES`, `secret` in the store's file), refreshed under the row's lock (`shopifyAccess()`;
+  a refused refresh or a 401 disconnects), and every call to Shopify built only from a name `isMyshopify()` passed. A later step
+  reads Shopify only through `shopifyGraphql()`. Step 4's copy (`src/server/shopify-copy.ts`) writes no table but
+  `shop_moves.copy`: each feed becomes Shopify's own export file (`src/lib/shopify-copy.ts`) and goes through its import's
+  register, check and apply, never a writer of its own; a new feed is a bulk query, a file its import reads back (tested by
+  reading the file with the import's own reader in `shopify-copy.test.ts`) and a row of `STEPS`. Where no import exists (pages,
+  blog posts, menus) a feed goes to that table's own writer (`savePage()`, `saveBlog()`, `saveStoreMenu()`), never SQL of its own,
+  leaves an address or name already taken alone, and turns HTML into rich text only through `htmlToRichText()`
+  (`src/lib/html-rich-text.ts`), whose output `cleanRichText()` always takes. The shop's settings (countries, shipping, discount
+  codes, look; `src/server/shopify-settings-copy.ts`) go only through `setMarkets()`, `saveShippingSettings()`, `saveDiscount()`
+  and `design_look`: a country is only ever added, a rate or code of the store's own is never overwritten, every copied code is
+  saved switched off and the look never made live, and what ours cannot say as Shopify did is counted, never bent to fit. *Who
+  makes your products?* (step 6, `src/server/shopify-makers.ts`) never takes a vendor as the manufacturer without the owner's
+  press, keeps a company only through `chooseOperator()`, and changes products only through the bulk editor (`manufacturer`, then
+  `status`), so every change has its undo. Move day (step 7a, `src/server/shopify-move.ts`) writes only `shop_moves.move`; each
+  step goes through its owner's writer (the copy's imports through `startCatchUp()`, `fixOldShop()`, `setPrivateMode()`), is safe
+  to repeat and runs under the move's lease; a scheduled move runs only as the owner who chose it, checked again by
+  `passMembership()` each time, and a new step is a case of `MOVE_STEPS` and of `advanceMove()`. The address (step 7b,
+  `src/server/shopify-address.ts`) writes no domain itself: it goes through `addStoreDomain()`, `connectOwnedDomain()` (only where
+  `storeRegistration()` or `storeZone()` says the domain is the store's), `checkStoreDomain()` and `setPrimaryDomain()`, and never
+  touches Shopify; a new DNS host is a pattern in `dnsHostOf()` and a sentence in the catalogues. The 14 days after (step 7c) read
+  Shopify only through the catch-up (`startCatchUp()` with customers and orders), at most once a day while `watchDue()`, and only
+  show what to press; closing Shopify is always the owner's own act there. Whatever a move makes is written down in
+  `commerce.shop_move_items` (`recordMoveItems()`, never an address) as it is made, so a new thing a move makes is a kind there
+  and a line in `undoCopy()`; *Undo this copy* (`src/server/shopify-undo.ts`) takes back only those, through each thing's writer,
+  only before the first real order, and never emails anyone; a copied order goes only through `commerce.delete_copied_order()`.
+  Step 3's report (`src/server/shopify-report.ts`) keeps nothing it reads and shows a figure Shopify did not give as unknown,
+  never as 0; a new figure is a field of one of its query groups and of `shopReport()`, with its case in `shopify-report.test.ts`.
+  Shopify's webhooks (`/api/shopify/webhooks`) answer 401 without its HMAC over the raw body; `app/uninstalled` drops the tokens,
+  `shop/redact` deletes the rows; a new topic is a case in `handleShopifyWebhook()` and in the app's file. Moving from WooCommerce
+  (D446, `docs/moving-from-woocommerce.md` 17) is the same engine: a WooCommerce shop is a `shop_moves` row with `source`
+  `woocommerce`, connected only by WooCommerce's own read-only key (`wc-auth`, `scope=read`; a key that can write is refused)
+  posted to `/api/woocommerce/callback` with a note sealed here, checked again by `passMembership()`; every call to the owner's
+  site goes through `safeFetch()` over HTTPS, the key only to the site's own origin (`wooGet()`). A store has one connected shop
+  at a time, and the copy works from whichever it is (`copySource()`); a WooCommerce feed is a converter in
+  `src/lib/woocommerce-copy.ts` to the lines `fileOfFeed()` already reads, tested by reading its file back with the import's own
+  reader, and a case of `readWoo()`, never a writer of its own. Moved reviews go only through `importReviews()` as `import`
+  reviews, never as a buyer's: a review is a verified purchase only when it is of an order line in this store. Our WordPress
+  plugin's mover (`class-kaizen-store-mover.php`) only reads, through `GET` routes that refuse any call not signed with its secret
+  within five minutes (`moverSignature()` and the PHP `verify()` held equal by a test that runs the PHP); its secret goes only to
+  the Kaizena Flow address the plugin is set up with, never to one from a link, and is kept here only encrypted
+  (`shop_moves.mover_secret`, written only by `woocommerce-connect.ts`). A new thing it reads is a route there, a reader in
+  `src/lib/woocommerce-mover.ts` and a part of the copy that goes through the table's own writer. Yoast's and Rank Math's fields
+  are all kept: the words shoppers saw as the SEO title and description, and every field as written in the custom field group
+  `seo-from-wordpress` (`SEO_FIELDS`); a new field is a key in the plugin's `POST_FIELDS`/`TERM_FIELDS` and an entry of
+  `SEO_FIELDS`.
 
 ## Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)
 
@@ -358,7 +462,15 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
 
-- Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`, `commerce.duplicate_store()`): the content step is one SQL transaction, pictures, customers and orders follow as a resumable job run from the five-minute cron. Every store-owned table is classified in `COPY_RULES` (settings, catalogue, pages, people, orders, derived, never) and a test fails when a table is missing, so a new store-owned table, secret or per-store identifier needs a decision there, in `duplicate_store()` if it is copied, and in the media rewriting if it holds file addresses. A copied order is history (`orders.copied_from`, number `C-…`): never add code that pays, refunds, ships, invoices, emails, reserves stock for or counts one in revenue; new readers of `orders` that add up money or act on orders skip `copied_from is not null`. Customers are copied without credentials or consents; never copy a Stripe account, payment credential, domain, integration, AI key, invoice series or Work data.
+- Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`,
+  `src/server/store-copy.ts`, `commerce.duplicate_store()`): the content step is one SQL transaction, pictures, customers and
+  orders follow as a resumable job run from the five-minute cron. Every store-owned table is classified in `COPY_RULES` (settings,
+  catalogue, pages, people, orders, derived, never) and a test fails when a table is missing, so a new store-owned table, secret
+  or per-store identifier needs a decision there, in `duplicate_store()` if it is copied, and in the media rewriting if it holds
+  file addresses. A copied order is history (`orders.copied_from`, number `C-…`): never add code that pays, refunds, ships,
+  invoices, emails, reserves stock for or counts one in revenue; new readers of `orders` that add up money or act on orders skip
+  `copied_from is not null`. Customers are copied without credentials or consents; never copy a Stripe account, payment
+  credential, domain, integration, AI key, invoice series or Work data.
 
 ## Slack (D101, `src/lib/slack.ts`, `src/server/slack.ts`)
 
@@ -556,4 +668,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)
 
-- **eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)**: a marketplace connection is a row of `commerce.marketplace_connections`, written only by `src/server/ebay.ts` with every action the owner's (D41); its grant is encrypted with `SETTINGS_ENCRYPTION_KEY` and never leaves the module. Every call to eBay goes through `ebayCall()` with an injectable `fetch` (the tests' stand-in), and what is sent follows eBay's published OpenAPI documents (`src/lib/ebay.ts`). A listing's price is the store's own for a market in the marketplace's currency, its quantity the store's own stock; an eBay order draws stock from own locations with a stock context and is never a shop order (eBay takes the payment and gives the receipt). Another marketplace gets its own module beside it and its own `channel` value.
+- **eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)**: a marketplace
+  connection is a row of `commerce.marketplace_connections`, written only by `src/server/ebay.ts` with every action the owner's
+  (D41); its grant is encrypted with `SETTINGS_ENCRYPTION_KEY` and never leaves the module. Every call to eBay goes through
+  `ebayCall()` with an injectable `fetch` (the tests' stand-in), and what is sent follows eBay's published OpenAPI documents
+  (`src/lib/ebay.ts`). A listing's price is the store's own for a market in the marketplace's currency, its quantity the store's
+  own stock; an eBay order draws stock from own locations with a stock context and is never a shop order (eBay takes the payment
+  and gives the receipt). Another marketplace gets its own module beside it and its own `channel` value.

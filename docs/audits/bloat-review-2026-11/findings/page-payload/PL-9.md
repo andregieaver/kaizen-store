@@ -5,7 +5,15 @@ What a page sends: document, payload and requests (`README.md` beside this file)
 - **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.8.
 - **Second check:** corrected.
 - **Where:** `src/server/ui-text.ts:47`, `src/server/ui-text.ts:53`, `src/server/ui-text.ts:127`, `src/app/s/[store]/[market]/layout.tsx:131`, `src/app/s/[store]/[market]/layout.tsx:160`, `src/components/ui-texts.tsx:17`, `src/lib/ui-catalog-all.ts:6`, `src/lib/returns-text.ts:15`, `src/lib/messages/en-browser.ts:6`
-- **Evidence:** Only nb, sv, da and en are written by hand (ui-catalog-all.ts:6). For any other language loadLanguage() keeps every stored text that is not an email (ui-text.ts:47-54), uiTextsFor() returns that whole map (line 127), and the layout hands it to the UiTexts client component as a prop (layout.tsx:131, 160). The browser lays it over only its own subset (browserText, ui-texts.tsx:21) and keeps the rest for one reader, the withdrawal function (returns-text.ts:15-20). Sizes read in this pass: the English source is 95,362 bytes (src/lib/messages/en.ts); the browser's own files are 8,659 (en-browser.ts) and 9,480 bytes (en-returns.ts). Not measured in a document: the demo is Norwegian (the prop is null in both layout copies) and no translated language exists yet. That is not the argument: selling EU-wide in German, French or Finnish is what the product is for, and each such store will pay this on every page. The prop will be in the payload once, not twice: both layout copies are handed the same object.
+- **Evidence:** Only nb, sv, da and en are written by hand (ui-catalog-all.ts:6). For any other language loadLanguage() keeps
+  every stored text that is not an email (ui-text.ts:47-54), uiTextsFor() returns that whole map (line 127), and the layout hands
+  it to the UiTexts client component as a prop (layout.tsx:131, 160). The browser lays it over only its own subset (browserText,
+  ui-texts.tsx:21) and keeps the rest for one reader, the withdrawal function (returns-text.ts:15-20). Sizes read in this pass:
+  the English source is 95,362 bytes (src/lib/messages/en.ts); the browser's own files are 8,659 (en-browser.ts) and 9,480 bytes
+  (en-returns.ts). Not measured in a document: the demo is Norwegian (the prop is null in both layout copies) and no translated
+  language exists yet. That is not the argument: selling EU-wide in German, French or Finnish is what the product is for, and each
+  such store will pay this on every page. The prop will be in the payload once, not twice: both layout copies are handed the same
+  object.
 - **Cost today:** Estimate: about 100 KB raw (roughly 30 KB gzipped) in every document of every store in a language without hand-written text. Nothing until such a store exists; then it is as large as the rest of the document. Paid by: A shopper's browser on every page of such a store; the server per render.
 - **Saving:** Estimate: about 85% of the prop, some 80 KB raw (about 25 KB gzipped) per document of a store in a translated language. Nothing changes for nb, sv, da and en.
 - **Risk:** Low: a client component that reads a key outside the browser set shows English; the same would already be wrong for the hand-written languages, whose browser files are that set.

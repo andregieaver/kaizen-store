@@ -4,8 +4,19 @@ What the server does for an admin navigation (`README.md` beside this file), par
 
 - **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.28.
 - **Second check:** confirmed.
-- **Where:** `src/app/admin/(gated)/layout.tsx:45`, `src/app/admin/(gated)/[store]/layout.tsx:114`, `src/app/admin/(gated)/platform/layout.tsx:83`, `src/app/admin/(gated)/[store]/page.tsx:117`, `src/app/admin/(gated)/[store]/products/page.tsx:114`, `src/components/admin/admin-text.tsx:33-49`, `src/components/admin/ai-manager-launcher.tsx:74`, `src/components/admin/ai-manager-launcher.tsx:107-127`, `src/lib/admin-text.ts:302-309`, `src/lib/store-nav.ts:432-462`, `e2e/signed-in/admin-text-fallbacks.spec.ts:7-14`
-- **Evidence:** Layouts hand whole catalogue areas to client components as props. Measured as JSON by the skeptic: common+setup+shell 20.4 KB (7.0 KB gzip); the assistant area 13.7 KB in English and 24.9 KB in Norwegian, sent for every owner though the panel is closed until pressed; the menu's tabs and areas 16.9 to 19.5 KB, each page address present three times. No client component reads the setup area (my rg: 0 matches for useAdminText("setup") and for useHandedText("setup")), so its 6.9 KB is dead in every payload. The Home hands the whole home area (23.7 KB) to serve one streamed card, and the products list the whole products area (26.8 KB). In the measured Home document every long string of setup, assistant and home is present, and the handed words and menu are about 75 KB of the 106 KB of page data. A redraw after refresh() serialises all layouts again. The pattern is general: adminTexts() is called at 208 sites in 189 files of src/app and src/components.
+- **Where:** `src/app/admin/(gated)/layout.tsx:45`, `src/app/admin/(gated)/[store]/layout.tsx:114`,
+  `src/app/admin/(gated)/platform/layout.tsx:83`, `src/app/admin/(gated)/[store]/page.tsx:117`,
+  `src/app/admin/(gated)/[store]/products/page.tsx:114`, `src/components/admin/admin-text.tsx:33-49`,
+  `src/components/admin/ai-manager-launcher.tsx:74`, `src/components/admin/ai-manager-launcher.tsx:107-127`,
+  `src/lib/admin-text.ts:302-309`, `src/lib/store-nav.ts:432-462`, `e2e/signed-in/admin-text-fallbacks.spec.ts:7-14`
+- **Evidence:** Layouts hand whole catalogue areas to client components as props. Measured as JSON by the skeptic:
+  common+setup+shell 20.4 KB (7.0 KB gzip); the assistant area 13.7 KB in English and 24.9 KB in Norwegian, sent for every owner
+  though the panel is closed until pressed; the menu's tabs and areas 16.9 to 19.5 KB, each page address present three times. No
+  client component reads the setup area (my rg: 0 matches for useAdminText("setup") and for useHandedText("setup")), so its 6.9 KB
+  is dead in every payload. The Home hands the whole home area (23.7 KB) to serve one streamed card, and the products list the
+  whole products area (26.8 KB). In the measured Home document every long string of setup, assistant and home is present, and the
+  handed words and menu are about 75 KB of the 106 KB of page data. A redraw after refresh() serialises all layouts again. The
+  pattern is general: adminTexts() is called at 208 sites in 189 files of src/app and src/components.
 - **Cost today:** 51 to 54 KB (English) or 63 to 66 KB (Norwegian) of JSON per shell redraw for a store owner, about 14.5 to 18 KB gzipped; 24 to 27 KB more per view on Home and Products. Server time to serialise and browser time to parse and reconcile it, on every save and poll tick. Paid by: The owner's browser and the server per shell render.
 - **Saving:** Estimate from the measured parts: 6.9 KB (setup) plus 12 to 23 KB (assistant) plus about 7.5 KB (menu addresses) less JSON per shell redraw, roughly half; about 8 to 11 KB gzipped. About 20 KB less JSON on each Home view.
 - **Risk:** Low to medium. D540 makes a missing area a fault, so the split must be done in the catalogue's types first and the chat's words must arrive before the chat draws. A missed reader shows as an English string in a Norwegian account and as a failure of admin-text-fallbacks.spec.ts. Step 1 alone is safe today.

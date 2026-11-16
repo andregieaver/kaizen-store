@@ -1,6 +1,11 @@
 # Grade A for: What a shopper's browser gets
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** C stands. The base is sound and partly held: 447 KB of a store page's 680 to 778 KB of first scripts is React and Next, a default store loads no third-party script and no font file, the extras are lazy, and two script budgets and an import scan exist. But every view sends the layout twice, makes one or two server calls for nothing and 11 to 47 router requests with 33 to 205 KB of scripts for pages nobody asked for, and eleven working routes share a bundle 98 KB too large. The budgets cover 2 of 58 store routes with 14 to 16% of room, and no themed store, filled cart, checkout or time on a phone was ever measured.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** C stands. The base is sound and partly held: 447 KB of a store page's
+680 to 778 KB of first scripts is React and Next, a default store loads no third-party script and no font file, the extras are
+lazy, and two script budgets and an import scan exist. But every view sends the layout twice, makes one or two server calls for
+nothing and 11 to 47 router requests with 33 to 205 KB of scripts for pages nobody asked for, and eleven working routes share a
+bundle 98 KB too large. The budgets cover 2 of 58 store routes with 14 to 16% of room, and no themed store, filled cart, checkout
+or time on a phone was ever measured.
 
 **The bar, in a sentence.** A shopper's first page loads React and Next plus at most 168 KB of the store's own script on a built page (203 to 223 KB where it sells or pays), one document with nothing in it twice, and no more than 350 KB on the wire in all; left alone it fetches at most 6 answers ahead and calls the server for nothing. A themed store in production scores 90 on a slow phone every night, and a check fails on the day any of this slips.
 
@@ -23,9 +28,31 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Steps that take it there:** 0.1, 0.8, 0.12, 0.13, 0.14, 0.15, 0.16, 0.32, 0.33, 0.44, 1.2, 1.3, 1.6, 1.7, 1.11, 1.14, 1.27, 2.2, 2.3, 2.4, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.45, 2.49, 4.5.
 
-**Can the steps reach an A?** Yes, if one answer is a yes and one new step finds its cuts. Step 2.8 waits for your yes on what a full listing fetches ahead, and on the main menu's links waiting for the pointer on a computer. No themed store page has yet been measured at 90 on a slow phone (kaizenaflow.com scored 83 to 88), so the A rests on the new step 2.45 cutting what the largest paint waits for until seven nights in a row hold; if its table names something no step cuts, the plan gets a step and the bar does not move.
+**Can the steps reach an A?** Yes, if one answer is a yes and one new step finds its cuts. Step 2.8 waits for your yes on what a
+full listing fetches ahead, and on the main menu's links waiting for the pointer on a computer. No themed store page has yet been
+measured at 90 on a slow phone (kaizenaflow.com scored 83 to 88), so the A rests on the new step 2.45 cutting what the largest
+paint waits for until seven nights in a row hold; if its table names something no step cuts, the plan gets a step and the bar does
+not move.
 
-**The challenger on the bar.** Kept: the floor is real. I measured it on the build: seven files, 447,102 bytes raw (133,758 gzip, 114,997 Brotli), in the first-load list of all 560 routes; the leanest page route is 479,303. On that floor 615,000 for a built page, 650,000 for a listing, 135,000 for the stylesheet, a home document of 112,000 with nothing twice, 0 calls of the page's own, 6 router requests on a phone, the press costs and Lighthouse 90 are what a strict engineer would ask. Tightened, because the steward's own sums go further: product page 690,000 to 670,000 (690,000 is the figure with four pickers a plain product never draws still loaded); cart and checkout 700,000 to 670,000 and account 700,000 to 650,000 (700,000 passes with 30 to 70 KB of other routes' parts still on board); /products 150,000 to 120,000 (the layout fix alone reaches 140,674, so 150,000 tests nothing); a recommending grid 335,000 to 140,000 (335,000 still holds zod and the page model). Added: what a visit weighs in all, and the scripts fetched after the page's own (33 to 205 KB raw per page today, seen by no check, and the way the 19 KB of 10 November got in); a bar at 1280 px, since the steward's was phone only; no request to another host, held; and the themed store and the money path must meet the bars, not only be recorded at a first figure. The two after-load measures are merged into one to make room. Loosened: no number, but two tolerances are now named. The filter's button stays in first scripts and only its panel loads late, and a product picker stays if a press test shows it must (25,423 bytes at most): the written rule says a press before a part's script runs is lost, and step 0.16 as written breaks it. Not measurable as written: font bytes in CI are stand-in files, so they are read in production each night; the field figure needs 20 page loads; the duplicate-row and client-module counters (flight.mjs, route.mjs) are not among the seven scripts in the repo and step 0.1 does not name them. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 2: the store document: at most 80,000 (82,000 until step 2.3). 7: time, the field figure: with 100 loads or more of a kind of page in 28 days; until then the nightly lab figure stands in. 6: pictures on real pages: no picture from a file more than 1.5 times as wide as its box needs (2.25 times the pixels), at 390 px 2x and 3x and at 360 px 3x.
+**The challenger on the bar.** Kept: the floor is real. I measured it on the build: seven files, 447,102 bytes raw (133,758 gzip,
+114,997 Brotli), in the first-load list of all 560 routes; the leanest page route is 479,303. On that floor 615,000 for a built
+page, 650,000 for a listing, 135,000 for the stylesheet, a home document of 112,000 with nothing twice, 0 calls of the page's own,
+6 router requests on a phone, the press costs and Lighthouse 90 are what a strict engineer would ask. Tightened, because the
+steward's own sums go further: product page 690,000 to 670,000 (690,000 is the figure with four pickers a plain product never
+draws still loaded); cart and checkout 700,000 to 670,000 and account 700,000 to 650,000 (700,000 passes with 30 to 70 KB of other
+routes' parts still on board); /products 150,000 to 120,000 (the layout fix alone reaches 140,674, so 150,000 tests nothing); a
+recommending grid 335,000 to 140,000 (335,000 still holds zod and the page model). Added: what a visit weighs in all, and the
+scripts fetched after the page's own (33 to 205 KB raw per page today, seen by no check, and the way the 19 KB of 10 November got
+in); a bar at 1280 px, since the steward's was phone only; no request to another host, held; and the themed store and the money
+path must meet the bars, not only be recorded at a first figure. The two after-load measures are merged into one to make room.
+Loosened: no number, but two tolerances are now named. The filter's button stays in first scripts and only its panel loads late,
+and a product picker stays if a press test shows it must (25,423 bytes at most): the written rule says a press before a part's
+script runs is lost, and step 0.16 as written breaks it. Not measurable as written: font bytes in CI are stand-in files, so they
+are read in production each night; the field figure needs 20 page loads; the duplicate-row and client-module counters (flight.mjs,
+route.mjs) are not among the seven scripts in the repo and step 0.1 does not name them. AMENDED BY THE PANEL'S CRITIC, so that one
+thing has one number in every area: 2: the store document: at most 80,000 (82,000 until step 2.3). 7: time, the field figure: with
+100 loads or more of a kind of page in 28 days; until then the nightly lab figure stands in. 6: pictures on real pages: no picture
+from a file more than 1.5 times as wide as its box needs (2.25 times the pixels), at 390 px 2x and 3x and at 360 px 3x.
 
 ## What the challenger found missing, and how it was settled
 

@@ -1,6 +1,12 @@
 # Grade A for: The code itself
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The steward's C stands. The base is the tidiest in the review and its edges are held (0.35% of the code is dead, 0.87% is an exact copy, no package is unimported, all 150 public files are used; lint, the storefront's import scan and seven admin script budgets guard part of it), but the waste is real and none of its own numbers is held: 41 twin pairs (14 over 50 lines), kaizenaflow.com built twice, 354 KB of libraries on every admin page that never calls them, the 1,600 px file for each product tile on a 3x phone, and search thumbnails that answer 400. It is not a D only because the three faults its own audits found at every cold start (the unused schema, sharp, both languages of the admin's words) are graded once, in the server area; counted here as well, they would make it one.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The steward's C stands. The base is the tidiest in the review and its
+edges are held (0.35% of the code is dead, 0.87% is an exact copy, no package is unimported, all 150 public files are used; lint,
+the storefront's import scan and seven admin script budgets guard part of it), but the waste is real and none of its own numbers
+is held: 41 twin pairs (14 over 50 lines), kaizenaflow.com built twice, 354 KB of libraries on every admin page that never calls
+them, the 1,600 px file for each product tile on a 3x phone, and search thumbnails that answer 400. It is not a D only because the
+three faults its own audits found at every cold start (the unused schema, sharp, both languages of the admin's words) are graded
+once, in the server area; counted here as well, they would make it one.
 
 **The bar, in a sentence.** Nothing in the code is kept without a caller or written twice beyond a short list with reasons: no unused export, at most five small twin pairs, exact copies under half a percent, one site, one of each helper, no package or stored file that is not used, and no library or picture sent that the screen does not need. Eight checks, each proven by a planted mistake, fail the build when one of these numbers rises.
 
@@ -25,7 +31,31 @@ After phase 0: C. After phase 1: B. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes, with one answer from you. The amended steps take unused exports to 0, exact copies under 0.45%, twins to 5 and every picture to an 800 px copy (new step 0.44), and steps 4.1 to 4.3 now end before step 4.5 instead of 'when next touched'. Step 3.9 waits for your word that the switch of 7 November is final: until the old kaizenaflow.com goes, the site is built twice and this area stops at a B.
 
-**The challenger on the bar.** I re-ran the review's own counters on the repo before judging: the twin counter (41 pairs), the copy detector (4,803 exact lines, 4,098 across files, 705 inside a file; 22,429 near), the helper counter (84) and the import walker (a beacon reaches 1,308 files, 146 with the import swapped). Then I ran the copy detector again with every copy that lies inside one planned fold removed, to find the floor. KEPT: 0 exports used by nothing; at most 130 exports kept for tests; near-copies at 3.7% (the floor is 3.44%, and the rest is forms that look alike once names are blanked); one kaizenaflow.com; one home per named helper; class constants under 100; no local guard wrapper; 0 unimported packages; the lifetimes; /_next/image closed; beacons under 160 files; the schema in 0 chunks; every check proven by a planted case. TIGHTENED: (1) Exact copies across files from 0.6% to 0.45%. The planned folds can take 2,403 of the 4,098 lines, which leaves 0.36%; 0.6% would pass with half the folds undone. (2) Twins from 8 pairs to 5, and from 50 shared lines to 45. The plan's own folds leave 5. The steward's 8 had room for three pairs in Work's server reads, which keep one rule (which invoice still needs attention) in three files. (3) Hand-made tables get a number, 60 of 154, because CP-3's saving counts on about 100 of them; 'only falls' is a B. (4) Lifetimes now name theme photographs and copied videos, stored for 5 minutes outside the 9 upload calls. (5) Pictures: the bar covers pictures in page content too, not only product tiles. (6) Beacons under 125 files once step 2.22 lands (120 measured with the page model and Stripe edges cut). (7) Packages: a new package fails until it is listed with a reason. LOOSENED: lines kept for tests from 500 to 1,300. DD-2 removes about 1,700 of 2,959 lines, so about 1,260 stay; a bar of 500 would delete oracles that tests compare the SQL with. ADDED: copies inside one file (705), near-copies and tests' copies as held numbers, and the count of identical helpers (84), which no copy detector can see. NOT MEASURABLE AS WRITTEN: 'dead lines under 0.05%' (no script counts dead lines apart from kept ones) is replaced by exact lists with a line count; 'no package over 5 MB for under 1% of its content' (nothing measures the share used) is replaced by the reasoned list. CORRECTED: the picture tolerance is a file up to 1.5 times as wide as its box needs (a 360 px 3x phone), not 'a third wider'. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 6: pictures: no more than 1.5 times as wide as its box needs (2.25 times the pixels), at 390 px 2x and 3x and at 360 px 3x. 7: what the lightest routes load: each of the five beacons under 130. 2: copied lines in tests: printed in the copy report, not held. 4: admin class constants and hand-made tables: The kit's parts exist, no new file may declare a class constant or a hand-made table, and the per-file counts only fall as areas are touched (296 constants and 154 tables today, under 0.15% of the code). The 23 local guard wrappers still go to 0.
+**The challenger on the bar.** I re-ran the review's own counters on the repo before judging: the twin counter (41 pairs), the
+copy detector (4,803 exact lines, 4,098 across files, 705 inside a file; 22,429 near), the helper counter (84) and the import
+walker (a beacon reaches 1,308 files, 146 with the import swapped). Then I ran the copy detector again with every copy that lies
+inside one planned fold removed, to find the floor. KEPT: 0 exports used by nothing; at most 130 exports kept for tests;
+near-copies at 3.7% (the floor is 3.44%, and the rest is forms that look alike once names are blanked); one kaizenaflow.com; one
+home per named helper; class constants under 100; no local guard wrapper; 0 unimported packages; the lifetimes; /_next/image
+closed; beacons under 160 files; the schema in 0 chunks; every check proven by a planted case. TIGHTENED: (1) Exact copies across
+files from 0.6% to 0.45%. The planned folds can take 2,403 of the 4,098 lines, which leaves 0.36%; 0.6% would pass with half the
+folds undone. (2) Twins from 8 pairs to 5, and from 50 shared lines to 45. The plan's own folds leave 5. The steward's 8 had room
+for three pairs in Work's server reads, which keep one rule (which invoice still needs attention) in three files. (3) Hand-made
+tables get a number, 60 of 154, because CP-3's saving counts on about 100 of them; 'only falls' is a B. (4) Lifetimes now name
+theme photographs and copied videos, stored for 5 minutes outside the 9 upload calls. (5) Pictures: the bar covers pictures in
+page content too, not only product tiles. (6) Beacons under 125 files once step 2.22 lands (120 measured with the page model and
+Stripe edges cut). (7) Packages: a new package fails until it is listed with a reason. LOOSENED: lines kept for tests from 500 to
+1,300. DD-2 removes about 1,700 of 2,959 lines, so about 1,260 stay; a bar of 500 would delete oracles that tests compare the SQL
+with. ADDED: copies inside one file (705), near-copies and tests' copies as held numbers, and the count of identical helpers (84),
+which no copy detector can see. NOT MEASURABLE AS WRITTEN: 'dead lines under 0.05%' (no script counts dead lines apart from kept
+ones) is replaced by exact lists with a line count; 'no package over 5 MB for under 1% of its content' (nothing measures the share
+used) is replaced by the reasoned list. CORRECTED: the picture tolerance is a file up to 1.5 times as wide as its box needs (a 360
+px 3x phone), not 'a third wider'. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 6: pictures: no
+more than 1.5 times as wide as its box needs (2.25 times the pixels), at 390 px 2x and 3x and at 360 px 3x. 7: what the lightest
+routes load: each of the five beacons under 130. 2: copied lines in tests: printed in the copy report, not held. 4: admin class
+constants and hand-made tables: The kit's parts exist, no new file may declare a class constant or a hand-made table, and the
+per-file counts only fall as areas are touched (296 constants and 154 tables today, under 0.15% of the code). The 23 local guard
+wrappers still go to 0.
 
 ## What the challenger found missing, and how it was settled
 

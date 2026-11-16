@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** Copied code is not where this codebase's bloat is, and that holds after a third look: 1.0% of non-test code is an exact copy (4,803 of 472,586 lines) and 4.75% a near-copy with every name and literal normalised; unit and integration tests (1.8% and 3.2%) and the e2e folder (1.7% and 7.4%) are no worse. The fourteen checked findings are true duplicates or missing checks, none rests on a feature being unused, and their corrected savings add up to about 5,500 lines (1.2%); my two additions are small too: about 1,100 to 1,500 test lines of repeated scaffolding (448 integration tests stub a module the test config already stubs) and helpers re-solved under one name (addDays in 10 files, countryName exported from 6 with three different answers for a missing code). Do first, because they are small and safe: one store-address helper for the 27 hand-written lookups behind production's most-called statement (560,090 calls with no shoppers), and a copy ratchet in CI. Do before opening, while every table holds only test rows: one import definition, one engine with a scope for the platform's workflows and deliveries, and one Work view for store and account.
+**In short.** Copied code is not where this codebase's bloat is, and that holds after a third look: 1.0% of non-test code is an
+exact copy (4,803 of 472,586 lines) and 4.75% a near-copy with every name and literal normalised; unit and integration tests (1.8%
+and 3.2%) and the e2e folder (1.7% and 7.4%) are no worse. The fourteen checked findings are true duplicates or missing checks,
+none rests on a feature being unused, and their corrected savings add up to about 5,500 lines (1.2%); my two additions are small
+too: about 1,100 to 1,500 test lines of repeated scaffolding (448 integration tests stub a module the test config already stubs)
+and helpers re-solved under one name (addDays in 10 files, countryName exported from 6 with three different answers for a missing
+code). Do first, because they are small and safe: one store-address helper for the 27 hand-written lookups behind production's
+most-called statement (560,090 calls with no shoppers), and a copy ratchet in CI. Do before opening, while every table holds only
+test rows: one import definition, one engine with a scope for the platform's workflows and deliveries, and one Work view for store
+and account.
 
 ## Findings
 

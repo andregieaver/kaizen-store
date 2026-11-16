@@ -5,7 +5,12 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 - **Kind:** duplicate. **Priority:** P2. **Effort:** L. **Confidence:** medium. **Step:** 1.17.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/ui/list.tsx:14`, `src/components/admin/ui/index.ts:1`, `docs/audits/code-review-2026-11.md:69`, `docs/audits/code-review-2026-11.md:72`, `scripts/lib/ratchet-count.mjs:72`
-- **Evidence:** Counted by the planner over src/app/admin and src/components/admin (1,155 TSX files): 154 tables in 116 files; 436 native selects in 198 files; Europe/Oslo in 67 files and slice(0, 10) in 46; confirm( in 42 files; 31 files with a hand-made GET filter form; no shared pager (0 uses of one). The kit (src/components/admin/ui: bars, button, card, chip, focus-frame, insight, list, page-header) has no table, select, date or confirm part; its List is used in 89 files. The verified report measured 6,110 lines inside the tables, 2,000 of them in headers. Code review steps 1.12 to 1.15 plan the kit and scan tests at the end of each step; all four are open.
+- **Evidence:** Counted by the planner over src/app/admin and src/components/admin (1,155 TSX files): 154 tables in 116 files; 436
+  native selects in 198 files; Europe/Oslo in 67 files and slice(0, 10) in 46; confirm( in 42 files; 31 files with a hand-made GET
+  filter form; no shared pager (0 uses of one). The kit (src/components/admin/ui: bars, button, card, chip, focus-frame, insight,
+  list, page-header) has no table, select, date or confirm part; its List is used in 89 files. The verified report measured 6,110
+  lines inside the tables, 2,000 of them in headers. Code review steps 1.12 to 1.15 plan the kit and scan tests at the end of each
+  step; all four are open.
 - **Cost today:** Up to about 2,000 lines of table markup a column-list part would not need (estimate: the header lines), and dates on the wrong day for a store outside Norway (FS5 in the code review), which matters once stores in other countries open. Paid by: The owner's admin and an agent's session.
 - **Saving:** Up to about 2,000 lines of markup once the kit is used (estimate). The larger gain is one behaviour everywhere.
 - **Risk:** Low. Step 1 is S and changes no screen. What could annoy: a count that blocks a screen with a good reason for a native select; the ratchet has no way to raise a number, so such a screen waits for the kit's Select or the count's pattern is narrowed with a note.

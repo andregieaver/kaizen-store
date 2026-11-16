@@ -5,7 +5,13 @@ The product's surface (`README.md` beside this file), part of `docs/audits/bloat
 - **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** high. **Step:** tolerated. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `src/lib/store-features.ts:16`, `src/lib/store-features.ts:8`, `src/lib/store-nav.ts:388`, `src/lib/owner-tool-features.ts:13`, `src/lib/admin-view.ts:14`, `src/server/owner-assistant.ts:733`, `src/server/bonus.ts:550`
-- **Evidence:** The registry has 14 ids, 13 optional. Of 110 store links, 16 stand behind an optional switch, 1 behind shop-or-Deals, 40 behind 'shop' and 53 behind none (my re-run of the parser). Of 254 AI tools, 20 stand behind an optional switch, 101 behind 'shop' and 133 behind none. What an unswitched feature costs a store that does not use it: in the navigation its links are in Advanced unless marked basic, and Basic is the default (29 links for a shop-only store); in an AI round nothing more, because a round is cut to 124 definitions either way (FT-4); in scheduled work one or a few statements per job for the whole platform (FT-3); in the build and CI no switch changes anything. The one per-request cost I found is not cured by a switch either: Bonus and Referrals have switches and the cart still asks about them (FT-15).
+- **Evidence:** The registry has 14 ids, 13 optional. Of 110 store links, 16 stand behind an optional switch, 1 behind
+  shop-or-Deals, 40 behind 'shop' and 53 behind none (my re-run of the parser). Of 254 AI tools, 20 stand behind an optional
+  switch, 101 behind 'shop' and 133 behind none. What an unswitched feature costs a store that does not use it: in the navigation
+  its links are in Advanced unless marked basic, and Basic is the default (29 links for a shop-only store); in an AI round nothing
+  more, because a round is cut to 124 definitions either way (FT-4); in scheduled work one or a few statements per job for the
+  whole platform (FT-3); in the build and CI no switch changes anything. The one per-request cost I found is not cured by a switch
+  either: Bonus and Referrals have switches and the cart still asks about them (FT-15).
 - **Cost today:** For an owner in Advanced: 94 links in a shop-only store. In run time: close to nothing per store. Paid by: An owner's admin in Advanced view
 - **Saving:** None in running cost. The earlier 'up to 100,406 lines, 41,575 test lines and 146 tables' is withdrawn: it argued from features being unused before opening.
 - **Risk:** More switches make the Features page longer and add one more thing to keep in step for every feature (navigation, map, tools, SQL). None from writing the paragraph.

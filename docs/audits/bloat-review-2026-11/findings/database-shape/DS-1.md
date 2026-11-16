@@ -5,7 +5,11 @@ The database's shape (`README.md` beside this file), part of `docs/audits/bloat-
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `src/instrumentation.ts:8`, `src/server/ui-text.ts:5`, `src/db/schema.ts:1`, `drizzle.config.ts:7`, `src/server/store-export.scan.test.ts:4`, `docs/audits/code-review-2026-11.md:116`, `docs/audits/code-review-2026-11.md:268`, `docs/audits/code-review-2026-11.md:484`
-- **Evidence:** client.ts imports the whole schema (line 11) and hands it to drizzle() (line 78). No file uses the query builder: my rg for select, insert, update, delete, query or findMany on db() or tx finds only tests' own tx.query on PGlite. The only other importers of schema.ts are one scan test and drizzle.config.ts. The instance-start hook loads client.ts through ui-text.ts (instrumentation.ts:8). In the finished build 6 server chunk files hold the schema-only name orders_store_placed_idx. The verified timing, 11 runs: 85 to 100 ms to evaluate the module, 30 to 37 ms for drizzle to index it, 9 to 12 MB of heap.
+- **Evidence:** client.ts imports the whole schema (line 11) and hands it to drizzle() (line 78). No file uses the query builder:
+  my rg for select, insert, update, delete, query or findMany on db() or tx finds only tests' own tx.query on PGlite. The only
+  other importers of schema.ts are one scan test and drizzle.config.ts. The instance-start hook loads client.ts through ui-text.ts
+  (instrumentation.ts:8). In the finished build 6 server chunk files hold the schema-only name orders_store_placed_idx. The
+  verified timing, 11 runs: 85 to 100 ms to evaluate the module, 30 to 37 ms for drizzle to index it, 9 to 12 MB of heap.
 - **Cost today:** About 115 to 135 ms of CPU and 9 to 12 MB of memory at every cold instance start (measured on this machine, not on Vercel); the schema's 652 KB of minified code in 6 server chunk files. Per cold instance, so it grows with traffic spread and deploys, not with stores. Paid by: The first shopper or owner on every cold instance; the build
 - **Saving:** Measured here: about 115 to 135 ms and 9 to 12 MB per cold start, and the schema's code out of 6 server chunk files.
 - **Risk:** Low. Nothing reads db().query or a table object. What could break: a type that used NodePgDatabase<typeof schema>; pnpm typecheck shows it at once.

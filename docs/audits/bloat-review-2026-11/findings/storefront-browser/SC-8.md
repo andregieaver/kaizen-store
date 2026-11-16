@@ -4,9 +4,29 @@ What a shopper's browser loads (`README.md` beside this file), part of `docs/aud
 
 - **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.2.
 - **Second check:** confirmed.
-- **Where:** `src/app/s/[store]/[market]/layout.tsx:104`, `src/app/s/[store]/[market]/layout.tsx:214`, `src/app/s/[store]/[market]/not-found.tsx:16`, `src/app/s/[store]/[market]/@drawer/default.tsx:1`, `node_modules/next/dist/server/app-render/create-component-tree.js:551`, `node_modules/next/dist/server/app-render/create-component-tree.js:657`, `src/server/cart.ts:544`, `src/components/cart-link.tsx:26`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/intercepting-routes.md:53`
-- **Evidence:** Re-run in this pass: docs/audits/bloat-review-2026-11/scripts/flight.mjs finds 26,534 bytes of duplicate rows in the home page's inline payload (the bottom bar 2,058 twice, the theme's CSS 1,822 twice, the header, menu and footer); the skeptic measured 24,766 to 26,534 on five pages, about 1.1 KB gzip. Next's source, read in this pass: a root layout with a children slot and at least one more slot is wrapped in a boundary whose not-found fallback is the layout drawn again around the segment's not-found element, and its comment says this 'renders the RootLayout twice' (create-component-tree.js:551, 657-668). The fallback exists only because the segment has both a not-found file and a second slot: the market layout is a root layout with the @drawer slot (layout.tsx:104) and src/app/s/[store]/[market]/not-found.tsx. Added in this pass: the copy carries the store's 404 page too. The 404 page's words ('Siden finnes ikke.') are in the payload of all five measured pages, once each, and nowhere in their visible HTML. not-found.tsx:19-21 draws the store's own 404 page built in the builder when it has one, so a store with a built 404 page sends that whole page inside every page. The copies are not only static: the skeptic found the cart link's per-request rows resolved in both. getCartCount() is not memoised (cart.ts:544) and is called by the header's and the bottom bar's link (cart-link.tsx:26), so a shopper with a cart costs up to four count queries a page view.
-- **Cost today:** About 25 KB raw (29 to 37 %) of each page's inline payload and of every prefetch that carries the layout; about 1.1 KB gzip on the wire; twice the parsing. On the server each per-request part of the layout is rendered twice on every page view. The copy grows with the header, the footer and the 404 page, so a store that built them in the builder pays more than the demo's standard ones (production's demo home payload is 149 KB against 86 KB here). Paid by: A shopper's browser (parse, memory); the server per request; the database for shoppers with a cart
+- **Where:** `src/app/s/[store]/[market]/layout.tsx:104`, `src/app/s/[store]/[market]/layout.tsx:214`,
+  `src/app/s/[store]/[market]/not-found.tsx:16`, `src/app/s/[store]/[market]/@drawer/default.tsx:1`,
+  `node_modules/next/dist/server/app-render/create-component-tree.js:551`,
+  `node_modules/next/dist/server/app-render/create-component-tree.js:657`, `src/server/cart.ts:544`,
+  `src/components/cart-link.tsx:26`,
+  `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/intercepting-routes.md:53`
+- **Evidence:** Re-run in this pass: docs/audits/bloat-review-2026-11/scripts/flight.mjs finds 26,534 bytes of duplicate rows in
+  the home page's inline payload (the bottom bar 2,058 twice, the theme's CSS 1,822 twice, the header, menu and footer); the
+  skeptic measured 24,766 to 26,534 on five pages, about 1.1 KB gzip. Next's source, read in this pass: a root layout with a
+  children slot and at least one more slot is wrapped in a boundary whose not-found fallback is the layout drawn again around the
+  segment's not-found element, and its comment says this 'renders the RootLayout twice' (create-component-tree.js:551, 657-668).
+  The fallback exists only because the segment has both a not-found file and a second slot: the market layout is a root layout
+  with the @drawer slot (layout.tsx:104) and src/app/s/[store]/[market]/not-found.tsx. Added in this pass: the copy carries the
+  store's 404 page too. The 404 page's words ('Siden finnes ikke.') are in the payload of all five measured pages, once each, and
+  nowhere in their visible HTML. not-found.tsx:19-21 draws the store's own 404 page built in the builder when it has one, so a
+  store with a built 404 page sends that whole page inside every page. The copies are not only static: the skeptic found the cart
+  link's per-request rows resolved in both. getCartCount() is not memoised (cart.ts:544) and is called by the header's and the
+  bottom bar's link (cart-link.tsx:26), so a shopper with a cart costs up to four count queries a page view.
+- **Cost today:** About 25 KB raw (29 to 37 %) of each page's inline payload and of every prefetch that carries the layout; about
+  1.1 KB gzip on the wire; twice the parsing. On the server each per-request part of the layout is rendered twice on every page
+  view. The copy grows with the header, the footer and the 404 page, so a store that built them in the builder pays more than the
+  demo's standard ones (production's demo home payload is 149 KB against 86 KB here). Paid by: A shopper's browser (parse,
+  memory); the server per request; the database for shoppers with a cart
 - **Saving:** Measured: 24,766 to 26,534 bytes raw off each page's inline payload, about 1.1 KB gzip; the store's 404 page no longer sent with every page. Estimate: one render of the layout's per-request parts per page view instead of two; with step 1, one cart-count query instead of up to four.
 - **Risk:** Medium. Many files move, so a missed import or a scan test's path fails the type check or the unit tests at once. What only a browser shows: the intercepted cart on phones, the store's own 404 page, and the PDF routes' traced files; the cart, page-roles and document specs cover the first two, step 6 the third.
 

@@ -5,7 +5,14 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 - **Kind:** duplicate. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 4.2.
 - **Second check:** confirmed.
 - **Where:** `src/server/fiken-sync.ts:71-602`, `src/server/tripletex-sync.ts:82-740`, `src/app/admin/(gated)/[store]/integrations/fiken/page.tsx:1`, `src/app/admin/(gated)/[store]/integrations/tripletex/page.tsx:1`, `src/app/admin/(gated)/[store]/integrations/fiken/actions.ts:1`, `src/app/admin/(gated)/[store]/integrations/tripletex/actions.ts:1`, `src/server/checkout.ts:1243`, `src/server/after-answer.ts:7`, `docs/audits/code-review-2026-11.md:114`, `docs/audits/code-review-2026-11.md:275`
-- **Evidence:** lcs.mjs: fiken-sync against tripletex-sync 205 lines in runs of five or more; the two pages 220; the two action files 75; fiken.ts and tripletex.ts 59. The two files declare the same functions in the same order (sweep, claim, release, ensure the customer, booked, blockRow, failRow, onFailure, sendOne, attachable, attachPdfs, noteConnection, syncStore, syncDue, retry, check, post again: my rg listing). The two HTTP clients are not copies (7 lines in runs). A `try { after(fn) }` block is written 16 times in 12 files (multi-line rg), but I read each catch and there are two endings, not one: about seven run the work at once when there is no request (checkout.ts five times, booking-changes.ts:57, company-approvals.ts:147) and about nine leave it to a scheduled job (design-tools.ts:47, setup-tools.ts:110, site-tools.ts:126, store-drafts.ts:141, stripe-webhooks.ts:121, data-job-store.ts:419, store-copy.ts:357, search-cache.ts:54, after-answer.ts:7).
+- **Evidence:** lcs.mjs: fiken-sync against tripletex-sync 205 lines in runs of five or more; the two pages 220; the two action
+  files 75; fiken.ts and tripletex.ts 59. The two files declare the same functions in the same order (sweep, claim, release,
+  ensure the customer, booked, blockRow, failRow, onFailure, sendOne, attachable, attachPdfs, noteConnection, syncStore, syncDue,
+  retry, check, post again: my rg listing). The two HTTP clients are not copies (7 lines in runs). A `try { after(fn) }` block is
+  written 16 times in 12 files (multi-line rg), but I read each catch and there are two endings, not one: about seven run the work
+  at once when there is no request (checkout.ts five times, booking-changes.ts:57, company-approvals.ts:147) and about nine leave
+  it to a scheduled job (design-tools.ts:47, setup-tools.ts:110, site-tools.ts:126, store-drafts.ts:141, stripe-webhooks.ts:121,
+  data-job-store.ts:419, store-copy.ts:357, search-cache.ts:54, after-answer.ts:7).
 - **Cost today:** About 560 near-copied lines today; a retry fix is made twice. A third accounting system would be made by copying again. Paid by: The build, an agent's session, and owners when a retry fix reaches one system only.
 - **Saving:** About 400 to 450 lines (estimate).
 - **Risk:** Bookkeeping postings: a wrong retry or a double post would show in fiken.int.test.ts and tripletex-sync.int.test.ts, which cover block, fail, retry and post again. The after() helpers change nothing a request sees; the risk is picking the wrong one of the two, which would run work twice (now and again from the scheduled job) or not at all in a test, so each block's own catch decides.
@@ -13,7 +20,12 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 
 ## The fix
 
-1. Add src/server/after-or-now.ts with two helpers, because the 16 blocks end in two ways. afterOrNow(fn) runs after(fn) and, outside a request, awaits fn(): use it for the blocks whose catch awaits the work (checkout.ts:1321, :1348, :1373, :1517 and :1584, booking-changes.ts:57, company-approvals.ts:147). afterOrLeave(fn) runs after(fn) and does nothing outside a request: use it for the blocks whose catch only holds a comment (design-tools.ts:47, setup-tools.ts:110, site-tools.ts:126, store-drafts.ts:141, stripe-webhooks.ts:121, data-job-store.ts:419, store-copy.ts:357, search-cache.ts:54). Read each catch before replacing it; keep after-answer.ts as it is.
+1. Add src/server/after-or-now.ts with two helpers, because the 16 blocks end in two ways. afterOrNow(fn) runs after(fn) and,
+   outside a request, awaits fn(): use it for the blocks whose catch awaits the work (checkout.ts:1321, :1348, :1373, :1517 and
+   :1584, booking-changes.ts:57, company-approvals.ts:147). afterOrLeave(fn) runs after(fn) and does nothing outside a request:
+   use it for the blocks whose catch only holds a comment (design-tools.ts:47, setup-tools.ts:110, site-tools.ts:126,
+   store-drafts.ts:141, stripe-webhooks.ts:121, data-job-store.ts:419, store-copy.ts:357, search-cache.ts:54). Read each catch
+   before replacing it; keep after-answer.ts as it is.
 2. Add src/server/books/accounting-sync.ts: the runner (sweep, claim, release, block, fail, onFailure, attachable, attachPdfs, noteConnection, syncStore, syncDue, retry, checkDocument, postAgain) taking an AccountingAdapter { system, ensureParty, send, attach, failureOf, grantRefused } and the system's table fragments, as carriers do behind src/server/carriers/index.ts.
 3. src/server/fiken-sync.ts and tripletex-sync.ts keep their exported names (syncDueFiken, retryFiken, checkFikenDocument, postFikenAgain and the Tripletex four) as calls into the runner with their adapter; adoptTripletexCustomers stays Tripletex's own.
 4. One connection page component for integrations/fiken/page.tsx and integrations/tripletex/page.tsx taking the adapter's words and fields, and one factory for the two actions.ts files.

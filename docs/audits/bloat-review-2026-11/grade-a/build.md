@@ -1,6 +1,16 @@
 # Grade A for: Tests, CI and the build
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, moved from C by the panel's critic so that the thirteen grades compare. Every push runs 5 type checks for 1, a gate 3.5 times its floor and a pre-push rule 2.3 times its floor; about 27 runner-minutes of every push are repeats; 0 of 12 numbers are held; and it is the one area where the waste has already failed something (a deploy killed for memory on 11 November, with 10% of the machine left). The owner's browser is a D on the same shape: about 43% of each screen's script is not needed and 9 of 449 routes are held. The card's reason for a C, that most runner time is needed work, is true of the owner's browser as well, where 447 KB of each screen is the framework. What the card wrote for its C: C stands, at the low end of the band. The base is sound (325,579 lines of tests with no snapshots, a test database built once, a docs-only push that runs nothing, a gate before each deploy), but one push type-checks the same commit five times and builds it three times in CI, the gate takes 5 min 11 s where 90 s would do, and about 27 runner-minutes of every push are repeats. It is not a B because not one number is held while the production build runs at 90% of its machine and was killed once on 11 November; it is not a D because the integration and browser suites, most of a push's runner time, run close to what they need, and nobody is hurt.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, moved from C by the panel's critic so that the thirteen grades
+compare. Every push runs 5 type checks for 1, a gate 3.5 times its floor and a pre-push rule 2.3 times its floor; about 27
+runner-minutes of every push are repeats; 0 of 12 numbers are held; and it is the one area where the waste has already failed
+something (a deploy killed for memory on 11 November, with 10% of the machine left). The owner's browser is a D on the same shape:
+about 43% of each screen's script is not needed and 9 of 449 routes are held. The card's reason for a C, that most runner time is
+needed work, is true of the owner's browser as well, where 447 KB of each screen is the framework. What the card wrote for its C:
+C stands, at the low end of the band. The base is sound (325,579 lines of tests with no snapshots, a test database built once, a
+docs-only push that runs nothing, a gate before each deploy), but one push type-checks the same commit five times and builds it
+three times in CI, the gate takes 5 min 11 s where 90 s would do, and about 27 runner-minutes of every push are repeats. It is not
+a B because not one number is held while the production build runs at 90% of its machine and was killed once on 11 November; it is
+not a D because the integration and browser suites, most of a push's runner time, run close to what they need, and nobody is hurt.
 
 **The bar, in a sentence.** One push lints, checks and type-checks a commit once and builds it twice in CI; the gate before a deploy takes 90 seconds, a job a release waits for repeats no work and never runs over 10 minutes, the unit run 3 and a half, and a session's checks before a push 5. The production build keeps a quarter of its machine free, and a failing check holds every one of these numbers.
 
@@ -22,14 +32,55 @@ After phase 0: C. After phase 1: B. After phase 2: B. After all phases: A.
 
 **Steps that take it there:** 0.4, 0.6, 0.38, 0.39, 1.20, 1.21, 2.42, 2.43, 2.44, 3.18, 3.19, 4.3, 4.5.
 
-**Can the steps reach an A?** Yes, if the production build gets room. Step 1.20 first measures the two free source-map switches; if they do not bring the peak to 6.0 GB, step 1.21 waits for your choice between the 16 GB build machine and a build made in CI. One bar moved: a job a release waits for must repeat no work and never run over 10 minutes, in place of a median of 8 minutes; and a session's first push may take about 7 min 30 s if the native compiler fails its trial. For step 2.43 any answer written down reaches the bar.
+**Can the steps reach an A?** Yes, if the production build gets room. Step 1.20 first measures the two free source-map switches;
+if they do not bring the peak to 6.0 GB, step 1.21 waits for your choice between the 16 GB build machine and a build made in CI.
+One bar moved: a job a release waits for must repeat no work and never run over 10 minutes, in place of a median of 8 minutes; and
+a session's first push may take about 7 min 30 s if the native compiler fails its trial. For step 2.43 any answer written down
+reaches the bar.
 
-**The challenger on the bar.** KEPT, after checking each floor. One lint, one schema check and one check of the whole program per push, and 2 builds in CI. Once is the floor, and I checked that the hosts build cannot be shared: with the store domain set, every /s/ address redirects to the store's own host (src/lib/store-hosts.ts:89), so the main suite cannot run on that build. The unit run at 3 min 30 s: I redid the sum from the file counts (934, 214 and 67, counted again) and it is what step 0.39 reaches with 7 s to spare. A stricter figure would rest on trials that may show a fresh worker is needed, and the bar already makes the ceiling follow them. 8 minutes for the slowest job a release waits for, and 3 shards a suite. The type check at 60 s: Next 16.4 runs the project's own tsc and its docs cover TypeScript 7 (node_modules/next/dist/docs, the typescript config page), whose native compiler should check the whole program well inside that. I could not time it (a type check was ruled out for the panel), so the line stays at 60 s and the ratchet takes it lower. TIGHTENED. (1) The gate: 90 s, not 120. The steward's own three lines (15, 60 and 15 s) add up to 90 and nothing explained the other 30. (2) The build's memory: 75% of the machine stays as the outer line, and a ceiling at the median of ten builds plus 10% is added. On a 16 GB machine this review's build sits at 46%, so a 75% line alone lets the build grow by more than half unseen, and it used up 0.8 GB of room between 28 October and 11 November. (3) The pre-push rule: the bar now covers a session's first push. A cloud session starts with no lint cache and no build info and many push once, so a tolerance for 'the first' exempted the common case. (4) One type check means one. The gate may check the app without tests only while the whole program takes over 60 s, so step 2.42 should try the native compiler before it makes a second tsconfig. (5) Seconds with a 25% band do not hold this area. Three of phase 0's gains are smaller than the band: the schema back in the database client is 6% of a shard, Drizzle unbundled 9%, the test database built again for the gate 7%. So the configuration that makes each gain is held exactly, the setup share is read from Vitest's own line, and a weekly check keeps every ceiling near its median. (6) The slowest job is a median that must be reached, with 10 minutes for a single run. In step 1.20 it is only a ceiling written into a file. CORRECTED. The 4 GB line for the type check stays, for a session's memory. Its stated reason goes: 4 GB on top of a 5.8 GB compile does not fit an 8 GB build machine, and a check inside the production build would be a second check of a commit the gate has passed. A cold lint after a lockfile change is recorded under its own label, not held to 15 s. The import cycle leaves this area's count: it is the server's measure and step 1.8 holds it. ADDED. The time from push to live, recorded and held. It is what the owner waits for and nothing records it. No honest number exists before the first ten readings, so the bar is its parts (a 90 s gate, a held build) and a ceiling that only falls. Runner-minutes per push and install seconds, printed. And a count that all 1,215 unit test files still run after the split into projects. NOT MEASURABLE AS WRITTEN. scripts/timed.mjs and scripts/ci-budgets.json do not exist; step 1.20 makes them. 'The median of the last ten runs' had nothing that reads ten runs, and the per-file figures were samples timed by hand. The first proposed addition covers both. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 4: the jobs a migration release waits for: no repeated work inside a job, each job's median held within 25%, no single run over 10 minutes, and step 3.18 may not make the slowest job longer. 6: a session's first push: 5 min 30 s if the native compiler passes its trial; otherwise the cold type check's own time is the stated tolerance (about 3 minutes, so about 7 min 30 s), and nothing else in the rule runs cold.
+**The challenger on the bar.** KEPT, after checking each floor. One lint, one schema check and one check of the whole program per
+push, and 2 builds in CI. Once is the floor, and I checked that the hosts build cannot be shared: with the store domain set, every
+/s/ address redirects to the store's own host (src/lib/store-hosts.ts:89), so the main suite cannot run on that build. The unit
+run at 3 min 30 s: I redid the sum from the file counts (934, 214 and 67, counted again) and it is what step 0.39 reaches with 7 s
+to spare. A stricter figure would rest on trials that may show a fresh worker is needed, and the bar already makes the ceiling
+follow them. 8 minutes for the slowest job a release waits for, and 3 shards a suite. The type check at 60 s: Next 16.4 runs the
+project's own tsc and its docs cover TypeScript 7 (node_modules/next/dist/docs, the typescript config page), whose native compiler
+should check the whole program well inside that. I could not time it (a type check was ruled out for the panel), so the line stays
+at 60 s and the ratchet takes it lower. TIGHTENED. (1) The gate: 90 s, not 120. The steward's own three lines (15, 60 and 15 s)
+add up to 90 and nothing explained the other 30. (2) The build's memory: 75% of the machine stays as the outer line, and a ceiling
+at the median of ten builds plus 10% is added. On a 16 GB machine this review's build sits at 46%, so a 75% line alone lets the
+build grow by more than half unseen, and it used up 0.8 GB of room between 28 October and 11 November. (3) The pre-push rule: the
+bar now covers a session's first push. A cloud session starts with no lint cache and no build info and many push once, so a
+tolerance for 'the first' exempted the common case. (4) One type check means one. The gate may check the app without tests only
+while the whole program takes over 60 s, so step 2.42 should try the native compiler before it makes a second tsconfig. (5)
+Seconds with a 25% band do not hold this area. Three of phase 0's gains are smaller than the band: the schema back in the database
+client is 6% of a shard, Drizzle unbundled 9%, the test database built again for the gate 7%. So the configuration that makes each
+gain is held exactly, the setup share is read from Vitest's own line, and a weekly check keeps every ceiling near its median. (6)
+The slowest job is a median that must be reached, with 10 minutes for a single run. In step 1.20 it is only a ceiling written into
+a file. CORRECTED. The 4 GB line for the type check stays, for a session's memory. Its stated reason goes: 4 GB on top of a 5.8 GB
+compile does not fit an 8 GB build machine, and a check inside the production build would be a second check of a commit the gate
+has passed. A cold lint after a lockfile change is recorded under its own label, not held to 15 s. The import cycle leaves this
+area's count: it is the server's measure and step 1.8 holds it. ADDED. The time from push to live, recorded and held. It is what
+the owner waits for and nothing records it. No honest number exists before the first ten readings, so the bar is its parts (a 90 s
+gate, a held build) and a ceiling that only falls. Runner-minutes per push and install seconds, printed. And a count that all
+1,215 unit test files still run after the split into projects. NOT MEASURABLE AS WRITTEN. scripts/timed.mjs and
+scripts/ci-budgets.json do not exist; step 1.20 makes them. 'The median of the last ten runs' had nothing that reads ten runs, and
+the per-file figures were samples timed by hand. The first proposed addition covers both. AMENDED BY THE PANEL'S CRITIC, so that
+one thing has one number in every area: 4: the jobs a migration release waits for: no repeated work inside a job, each job's
+median held within 25%, no single run over 10 minutes, and step 3.18 may not make the slowest job longer. 6: a session's first
+push: 5 min 30 s if the native compiler passes its trial; otherwise the cold type check's own time is the stated tolerance (about
+3 minutes, so about 7 min 30 s), and nothing else in the rule runs cold.
 
 ## What the challenger found missing, and how it was settled
 
 - 1. Step 1.20 holds seconds with ceilings 25% above a median. TIGHTENED: step 1.20 carries it; the text or done-when of steps 0.38, 0.39 changed with it.
-- 2. The bar asks 8 minutes or less for the slowest job a migration release waits for. BAR MOVED, no step: New target for the jobs a migration release waits for: no repeated work inside a job (the database client's import at 0.10 s a file or less, no type check inside a build), each job's median held within 25% by step 1.20, no single run over 10 minutes, and step 3.18 may not make the slowest job longer: if one browser job behind one build would be slower than today's slowest, it keeps two test jobs and hands them the one build as an artifact. An A is still an A because a shard that runs each file once wastes nothing. 8 minutes was a round number about 50 seconds under what the cuts reach, and running a shard's files side by side on databases of their own is a speed project, to take up when the recorder shows the wait matters.
+- 2. The bar asks 8 minutes or less for the slowest job a migration release waits for. BAR MOVED, no step: New target for the jobs
+  a migration release waits for: no repeated work inside a job (the database client's import at 0.10 s a file or less, no type
+  check inside a build), each job's median held within 25% by step 1.20, no single run over 10 minutes, and step 3.18 may not make
+  the slowest job longer: if one browser job behind one build would be slower than today's slowest, it keeps two test jobs and
+  hands them the one build as an artifact. An A is still an A because a shard that runs each file once wastes nothing. 8 minutes
+  was a round number about 50 seconds under what the cuts reach, and running a shard's files side by side on databases of their
+  own is a speed project, to take up when the recorder shows the wait matters.
 - 3. Step 1.21's only line is 75% of the machine. TIGHTENED: step 1.21 carries it; the text or done-when of step 1.20 changed with it.
 - 4. Steps 1.20 and 2.43 hold the pre-push rule at 5 minutes 'for a push after a session's first'. TIGHTENED: step 2.43 carries it; the text or done-when of step 2.42 changed with it.
 - 5. Five done-whens say less than the bar, and one small step sits two phases late. TIGHTENED: step 0.38 carries it; the text or done-when of steps 0.39, 1.20, 2.42, 3.18 changed with it.
@@ -52,6 +103,16 @@ After phase 0: C. After phase 1: B. After phase 2: B. After all phases: A.
 
 ## The owner's choices here
 
-- Step 1.21: pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? The build runs at 90% of its 8 GB machine and was killed once on 11 November. On 16 GB it sits near 46%, and the build cache and extra workers can come back, which makes each deploy faster; it is paid per build minute, at about 35 builds a day now. The prebuilt route needs no new machine and makes the deployed build the one CI made, but it puts production's settings and database address into GitHub. Turning source maps off in the build is free and is measured first; it may put this choice off by some weeks, not remove it. Without one of the two this area stops at a B.
-- Step 2.43: what must run before a push? A: everything, as today: about 5 minutes after these fixes, 11 to 12 now. B: lint, the type check and the tests the change can reach, about 2 minutes, with the whole unit suite moved into the deploy gate. Nothing then deploys with a failing unit test, but the gate goes from 90 s back to about 5 minutes, where it is today. C: as B before the push with the gate unchanged; a failing unit test outside the six money files can be live until someone reads the red run. A fourth way, which the panel suggests: the gate runs the same related tests as the session, 85 to 200 files, and the whole suite reports beside the deploy. The gate is then about 2.5 minutes.
+- Step 1.21: pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? The build runs at 90% of its 8
+  GB machine and was killed once on 11 November. On 16 GB it sits near 46%, and the build cache and extra workers can come back,
+  which makes each deploy faster; it is paid per build minute, at about 35 builds a day now. The prebuilt route needs no new
+  machine and makes the deployed build the one CI made, but it puts production's settings and database address into GitHub.
+  Turning source maps off in the build is free and is measured first; it may put this choice off by some weeks, not remove it.
+  Without one of the two this area stops at a B.
+- Step 2.43: what must run before a push? A: everything, as today: about 5 minutes after these fixes, 11 to 12 now. B: lint, the
+  type check and the tests the change can reach, about 2 minutes, with the whole unit suite moved into the deploy gate. Nothing
+  then deploys with a failing unit test, but the gate goes from 90 s back to about 5 minutes, where it is today. C: as B before
+  the push with the gate unchanged; a failing unit test outside the six money files can be live until someone reads the red run. A
+  fourth way, which the panel suggests: the gate runs the same related tests as the session, 85 to 200 files, and the whole suite
+  reports beside the deploy. The gate is then about 2.5 minutes.
 - Step 3.19: once stores are open, may a CI run skip its deploy when a newer commit is already on main, so a burst of pushes shares one deploy? Each deploy is a whole production build and empties every store's cached pages; there were up to 52 on 11 November. A yes also closes a gap: today the deploy hook builds the head of main, so a second push can go live on the first push's gate before its own gate has finished (ci.yml:306-309). It changes D5's 'at once' by a few minutes.

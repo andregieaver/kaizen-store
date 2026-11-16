@@ -2,7 +2,14 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** Next's default (fetch every link in view) decides for all but 4 of 947 links, and no test or budget watches it. Re-measured here: a phone shopper who reads the demo store's home page to the footer makes 47 router requests (729 KB decoded) for pages not asked for, 24 of them for the home pages of eight other language, currency and country views; the admin home makes 28; and a multi-country store's front door makes 12 (254 KB) for links whose press loads a whole document anyway. The endless prefetch loop is real but local and CI only (624 router requests in 4 s on the search results page as built, 55 with route guessing off), and one config line stops it. The plan is three changes of a few lines first (the loop, the other views, the links that leave their root layout), then one small link wrapper that states a policy per link group, held by a request budget; none of it argues from an unused feature, and all of it is cheapest before opening.
+**In short.** Next's default (fetch every link in view) decides for all but 4 of 947 links, and no test or budget watches it.
+Re-measured here: a phone shopper who reads the demo store's home page to the footer makes 47 router requests (729 KB decoded) for
+pages not asked for, 24 of them for the home pages of eight other language, currency and country views; the admin home makes 28;
+and a multi-country store's front door makes 12 (254 KB) for links whose press loads a whole document anyway. The endless prefetch
+loop is real but local and CI only (624 router requests in 4 s on the search results page as built, 55 with route guessing off),
+and one config line stops it. The plan is three changes of a few lines first (the loop, the other views, the links that leave
+their root layout), then one small link wrapper that states a policy per link group, held by a request budget; none of it argues
+from an unused feature, and all of it is cheapest before opening.
 
 ## Findings
 

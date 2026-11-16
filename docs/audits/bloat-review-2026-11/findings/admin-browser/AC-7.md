@@ -4,8 +4,20 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 
 - **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.11.
 - **Second check:** confirmed.
-- **Where:** `src/components/admin/work/invoice-draft-editor.tsx:43`, `src/components/admin/work/invoice-draft-editor.tsx:44`, `src/components/admin/work/invoice-issue-dialog.tsx:12`, `src/components/admin/work/invoice-readiness.tsx:8`, `src/components/admin/work/invoice-totals.tsx:5`, `src/lib/work-text.ts:4`, `src/lib/work-text.ts:11`, `src/components/admin/work/invoice-issued.tsx:18`, `src/app/admin/(gated)/(owner)/account/work/layout.tsx:22`, `src/components/admin/admin-catalogues.scan.test.ts:44`
-- **Evidence:** /admin/account/work/s/[store]/invoices/[invoiceId] is the largest admin route: 4,274,839 bytes raw / 1,335,794 gzip. Its chunk 3fqt1dd2f0p1k.js is 1,704,595 bytes (526,391 gzip) and is on that one route. The client editor imports invoice-readiness.tsx and invoice-totals.tsx, written for the server (no "use client"), which import lib/work-text.ts, which imports lib/admin-text.ts: every area in both languages. I searched the closure of every "use client" file in src: exactly two have a path to admin-text.ts, invoice-draft-editor.tsx and invoice-issue-dialog.tsx, both through invoice-readiness.tsx. ReadinessList is imported only by those two client files; InvoiceTotalsView also by the server's invoice-issued.tsx. work-text.ts keeps the language in React's cache(), which holds per request on the server only, so in the browser these two parts read English whatever the account's language. The scan test meant to stop this matches only a direct import of a .en file in a "use client" file.
+- **Where:** `src/components/admin/work/invoice-draft-editor.tsx:43`, `src/components/admin/work/invoice-draft-editor.tsx:44`,
+  `src/components/admin/work/invoice-issue-dialog.tsx:12`, `src/components/admin/work/invoice-readiness.tsx:8`,
+  `src/components/admin/work/invoice-totals.tsx:5`, `src/lib/work-text.ts:4`, `src/lib/work-text.ts:11`,
+  `src/components/admin/work/invoice-issued.tsx:18`, `src/app/admin/(gated)/(owner)/account/work/layout.tsx:22`,
+  `src/components/admin/admin-catalogues.scan.test.ts:44`
+- **Evidence:** /admin/account/work/s/[store]/invoices/[invoiceId] is the largest admin route: 4,274,839 bytes raw / 1,335,794
+  gzip. Its chunk 3fqt1dd2f0p1k.js is 1,704,595 bytes (526,391 gzip) and is on that one route. The client editor imports
+  invoice-readiness.tsx and invoice-totals.tsx, written for the server (no "use client"), which import lib/work-text.ts, which
+  imports lib/admin-text.ts: every area in both languages. I searched the closure of every "use client" file in src: exactly two
+  have a path to admin-text.ts, invoice-draft-editor.tsx and invoice-issue-dialog.tsx, both through invoice-readiness.tsx.
+  ReadinessList is imported only by those two client files; InvoiceTotalsView also by the server's invoice-issued.tsx.
+  work-text.ts keeps the language in React's cache(), which holds per request on the server only, so in the browser these two
+  parts read English whatever the account's language. The scan test meant to stop this matches only a direct import of a .en file
+  in a "use client" file.
 - **Cost today:** About 1.66 MB raw / about 520 KB gzip of text on each first open of a Work invoice, and again after every deploy that changes any admin word (the chunk holds them all). Paid by: An owner's browser, on the Work invoice screen only. The cost already follows use; it is 1.7 MB too large.
 - **Saving:** Measured chunk: about 1.66 MB raw / about 520 KB gzip; the route falls from 4.27 MB to about 2.6 MB raw.
 - **Risk:** Low. Side effect to check in a browser: a Norwegian account likely sees these two parts in English today, or a mismatch when the page wakes up; after the fix they follow the account's language. It would show in invoice-editor.test.ts and e2e/work.spec.ts.

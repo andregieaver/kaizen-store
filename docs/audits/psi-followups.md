@@ -134,15 +134,32 @@ maturity for the run-up to launch. Point IDs are the audit's.
       the website, look and settings as one JSON file, never a secret or a person, the owner's), beside the CSV files.
 - [x] **REL-09, PERF-01, PERF-02, PERF-11** Status page and SLOs; real-user vitals; a Dublin-side measurement of `/admin`; per-route
       bundle budgets. Real-user vitals of Kaizena Flow's own site and the admin are measured (D390, Platform → Usage and limits); the
-      status page is D360; its SLOs since 30 October 2026 (each part's objective over 30 days from the same checks, `SLO_TARGETS` and `sloOf()` in `src/lib/status.ts`: 99.9 % for stores, sign-in and payments, 99.5 % for email and background work, shown with the minutes of failed checks still allowed); per-route budgets since 30 October 2026 (`e2e/performance.spec.ts` `FIRST_SCRIPTS_BUDGETS`: the product page, Kaizena Flow's front page, sign-up, status, sign-in and forgot password, beside the front page's), set after measuring them found the signed-out pages loading the admin's whole English text (2.0 to 2.1 MB of first scripts, now 0.71 to 0.84 MB): `ActionForm`, `PasswordField` and the sign-in panels read their words through `admin-text-context.tsx` (`useCommonText()`, `useSignInText()`), whose provider carries no catalogue. A Dublin-side measurement of `/admin` since 30 October 2026: the status checks' website probe also fetches `/admin/sign-in` from the functions' region (Dublin) to its last byte and keeps the time in `status_checks.duration_ms` (never a reason to call the website down); Platform → Usage and limits shows the median and slowest 5 % over 7 days (`adminFromDublin()`).
+      status page is D360; its SLOs since 30 October 2026 (each part's objective over 30 days from the same checks, `SLO_TARGETS`
+      and `sloOf()` in `src/lib/status.ts`: 99.9 % for stores, sign-in and payments, 99.5 % for email and background work, shown
+      with the minutes of failed checks still allowed); per-route budgets since 30 October 2026 (`e2e/performance.spec.ts`
+      `FIRST_SCRIPTS_BUDGETS`: the product page, Kaizena Flow's front page, sign-up, status, sign-in and forgot password, beside
+      the front page's), set after measuring them found the signed-out pages loading the admin's whole English text (2.0 to 2.1 MB
+      of first scripts, now 0.71 to 0.84 MB): `ActionForm`, `PasswordField` and the sign-in panels read their words through
+      `admin-text-context.tsx` (`useCommonText()`, `useSignInText()`), whose provider carries no catalogue. A Dublin-side
+      measurement of `/admin` since 30 October 2026: the status checks' website probe also fetches `/admin/sign-in` from the
+      functions' region (Dublin) to its last byte and keeps the time in `status_checks.duration_ms` (never a reason to call the
+      website down); Platform → Usage and limits shows the median and slowest 5 % over 7 days (`adminFromDublin()`).
 - [x] **SEC-02** Leaked-password protection is on (Supabase Auth, the owner, 25 October 2026), and the admin's password sign-in has
       its own limit per email: 10 wrong tries in 15 minutes stop it for that address, counted alike for every address under a keyed
       hash (`src/server/sign-in-limit.ts`); a sign-in link still works.
 - [x] **SEC-05, SEC-10, SEC-11** Nonce-based CSP on admin and storefront (Report-Only first); budgets on `/api/consent` and
-      `/api/ab/*`; logging failed sign-ins and permission denials. Done (D389): a site-wide `Content-Security-Policy-Report-Only` (`siteReportOnlyCsp()`, without a nonce, which the prerendered pages cannot carry) reporting to `/api/csp-report`, counted as `csp.violation` log lines with the directive, the blocked origin and the area only; `takeBudget()` on `/api/consent` (`consent`) and `/api/ab/assign` (`ab`); `admin_sign_in.failed`, `admin_sign_in.locked`, `admin_sign_in.two_step_failed` and `auth.permission_refused` log lines with ids only. Enforcing it waits for what the reports show.
+      `/api/ab/*`; logging failed sign-ins and permission denials. Done (D389): a site-wide `Content-Security-Policy-Report-Only`
+      (`siteReportOnlyCsp()`, without a nonce, which the prerendered pages cannot carry) reporting to `/api/csp-report`, counted
+      as `csp.violation` log lines with the directive, the blocked origin and the area only; `takeBudget()` on `/api/consent`
+      (`consent`) and `/api/ab/assign` (`ab`); `admin_sign_in.failed`, `admin_sign_in.locked`, `admin_sign_in.two_step_failed` and
+      `auth.permission_refused` log lines with ids only. Enforcing it waits for what the reports show.
 - [x] **SEC (advisor)** `public.rls_auto_enable()`: EXECUTE revoked from PUBLIC, `anon` and `authenticated` (migration
       `revoke_rls_auto_enable`; the event trigger still fires, tested).
-- [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e. WebKit since 30 October 2026: CI's e2e job runs the store's pages, search, the cookie notice, withdrawal, the cart, the shopper's account and the All products page in Safari's engine too (`webkit` project, `WEBKIT_SPECS` in `playwright.config.ts`, 32 tests), through HTTPS (`e2e/fixtures/https-proxy.mjs`, a certificate made for the run): a production build sets its cookies `Secure`, which WebKit refuses on `http://localhost`. The screen-reader pass remains a person's.
+- [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e.
+  WebKit since 30 October 2026: CI's e2e job runs the store's pages, search, the cookie notice, withdrawal, the cart, the
+  shopper's account and the All products page in Safari's engine too (`webkit` project, `WEBKIT_SPECS` in `playwright.config.ts`,
+  32 tests), through HTTPS (`e2e/fixtures/https-proxy.mjs`, a certificate made for the run): a production build sets its cookies
+  `Secure`, which WebKit refuses on `http://localhost`. The screen-reader pass remains a person's.
 
 ## From the re-score of 2026-10-30
 

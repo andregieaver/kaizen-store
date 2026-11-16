@@ -2,7 +2,17 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** Shoppers' pages are lean and the admin is where the weight is: a store page's first scripts are 680 to 778 thousand bytes, about 447 thousand of them React and Next, while the 432 signed-in admin routes have a median of 1,155,530 bytes and every one carries Supabase's client (253 KB) and zod (114 KB) before it is used. Seven small import changes (BN-1, BN-3, BN-4, BN-5, BN-7, BN-14, BN-2) take the admin's median to about 604 KB in a simulation on the built chunks, 13 preview screens from 3.2 MB to 0.8 to 1.4 MB, one Work screen from 4.27 MB to about 1.4 MB, and stop Kaizena Flow's front page from downloading 437 KB of admin scripts it cannot use; routes over 1.3 MB fall from 90 to about 26, the builder's own. This pass added three things the report missed: the previews that load the whole builder, the AI manager's chat script (496 KB, about 95% of it three tables read for two labels) and a store's recommending grid, which downloads 650 KB (204 KB gzip) of zod, the page model and all four languages into a shopper's page. Nothing here argues from a feature being unused: each figure is bytes an owner or a shopper downloads and parses per page load, the cuts move imports and remove no feature, and before opening is the cheapest time to make them; one check over all 560 routes after each build (BN-11) keeps them.
+**In short.** Shoppers' pages are lean and the admin is where the weight is: a store page's first scripts are 680 to 778 thousand
+bytes, about 447 thousand of them React and Next, while the 432 signed-in admin routes have a median of 1,155,530 bytes and every
+one carries Supabase's client (253 KB) and zod (114 KB) before it is used. Seven small import changes (BN-1, BN-3, BN-4, BN-5,
+BN-7, BN-14, BN-2) take the admin's median to about 604 KB in a simulation on the built chunks, 13 preview screens from 3.2 MB to
+0.8 to 1.4 MB, one Work screen from 4.27 MB to about 1.4 MB, and stop Kaizena Flow's front page from downloading 437 KB of admin
+scripts it cannot use; routes over 1.3 MB fall from 90 to about 26, the builder's own. This pass added three things the report
+missed: the previews that load the whole builder, the AI manager's chat script (496 KB, about 95% of it three tables read for two
+labels) and a store's recommending grid, which downloads 650 KB (204 KB gzip) of zod, the page model and all four languages into a
+shopper's page. Nothing here argues from a feature being unused: each figure is bytes an owner or a shopper downloads and parses
+per page load, the cuts move imports and remove no feature, and before opening is the cheapest time to make them; one check over
+all 560 routes after each build (BN-11) keeps them.
 
 ## Findings
 

@@ -5,7 +5,12 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 - **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 2.39.
 - **Second check:** confirmed.
 - **Where:** `src/server/ai.ts:46-48`, `src/server/ai.ts:229-232`, `src/server/ai.ts:529-536`, `src/server/owner-assistant.ts:843-848`, `src/server/assistant-memory.ts:341-358`, `src/server/support-tone.ts:44-50`, `src/server/query-understanding.ts:81-85`, `src/server/recommend.ts:581-590`, `src/server/content-moderation.ts:43-46`
-- **Evidence:** A connection has one textModel. The same model runs the AI manager's tool loop, the shopper chat, a memory pass after every manager turn (on by default), search understanding for a shopper's new search, the recommendation rerank, tone rating of each customer message (on by default with support on; 60 tokens of answer), support summaries and the check of 10 listings a dispatcher run. 33 completeText call sites in 25 files take whatever model the platform or the store chose (my rg). seeing() at ai.ts:229-232 already shows the pattern for a second model: a copy of the connection with another model as its text model.
+- **Evidence:** A connection has one textModel. The same model runs the AI manager's tool loop, the shopper chat, a memory pass
+  after every manager turn (on by default), search understanding for a shopper's new search, the recommendation rerank, tone
+  rating of each customer message (on by default with support on; 60 tokens of answer), support summaries and the check of 10
+  listings a dispatcher run. 33 completeText call sites in 25 files take whatever model the platform or the store chose (my rg).
+  seeing() at ai.ts:229-232 already shows the pattern for a second model: a copy of the connection with another model as its text
+  model.
 - **Cost today:** Each small job is billed and timed at the price and speed of the model chosen for multi-step work. Not measurable from here without usage by feature and model. The one price seeded is gpt-5-mini at 0.25 dollars a million input tokens, already a small model, so the gap is small until the platform or a store picks a larger one for the manager. Paid by: The server per AI call and the store's AI allowance; a shopper waits for search understanding on a new query.
 - **Saving:** Not measured: it is the price gap between the two models times the small jobs' tokens, and with gpt-5-mini as the main model the gap is small. The jobs named are the frequent ones (per message, per new search, per turn).
 - **Risk:** A weaker model may read tone or a search's filters worse: the search-understanding eval and the agents' eval exist to check, and tone leaves a message 'not measured' rather than wrong when the answer cannot be read.

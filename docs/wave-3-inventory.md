@@ -469,11 +469,20 @@ low-stock notices").
 
 The migrations are `20261006081000_inventory.sql` (generated), `20261006081019_inventory_rules.sql` (custom); the plan-features file is the analytics area's. Where the foundation differs from or adds to the text above:
 
-- `data_job_items.kind` gains `stock` (one row of a stock file); the item kinds are `product`, `redirect`, `stock`, `file`. The finding codes of a stock file are in `FINDINGS` (`src/lib/data-job.ts`, prefix `stockfile.`, plus `file.not_inventory`), each with its line in `FIX_FOR` (`data-job-help.ts`), and listed in `INVENTORY_FINDING_CODES` (`src/lib/inventory-csv.ts`). `inventory.continue_selling_ignored` (the product import's warning) now says the setting is made per variant, with its delivery time. `JOB_KEY`: `inventory_import` is `products:write`, `inventory_export` is `products:read`.
+- `data_job_items.kind` gains `stock` (one row of a stock file); the item kinds are `product`, `redirect`, `stock`, `file`. The
+  finding codes of a stock file are in `FINDINGS` (`src/lib/data-job.ts`, prefix `stockfile.`, plus `file.not_inventory`), each
+  with its line in `FIX_FOR` (`data-job-help.ts`), and listed in `INVENTORY_FINDING_CODES` (`src/lib/inventory-csv.ts`).
+  `inventory.continue_selling_ignored` (the product import's warning) now says the setting is made per variant, with its delivery
+  time. `JOB_KEY`: `inventory_import` is `products:write`, `inventory_export` is `products:read`.
 - The two checks "days only with continue" and "continue needs days" are one check, `product_variants_backorder_days_policy` (`(stock_policy = 'continue') = (backorder_days is not null)`). `inventory_locations` also has `priority >= 0` and `length(name) between 1 and 60` checks. `order_lines.backorder_days` is `between 1 and 90`.
 - `commerce.stock_context_clear()` exists (the TypeScript helper clears after its block), and the context also carries the helper `commerce.stock_context_uuid()`. A context that names an order or return that is not the store's is recorded without it (`system`), never raised.
 - `commerce.variant_availability` has one more column, `delivery` (a download or a service has no stock row: `in_stock` 0 and `can_buy` false, so its reader asks `delivery` first, as readers always did).
-- The level trigger refuses **a new level for a variant that is not goods** (`stock.not_goods`, on insert only: a level made while the variant was goods stays when it becomes a download, and may be changed, because stores and tests do exactly that; nothing reads it). So `clone_store()` and `duplicate_store()` copy levels of goods only, copy a **negative level as 0** (what is owed on orders that are not copied is not copied), and write their level inserts with the context `opening` / `copy`. The existing D129 test no longer gives a download a level; the movements of a copy are its own openings (the test of "nothing is copied by a `never` table" counts them as made by the level inserts).
+- The level trigger refuses **a new level for a variant that is not goods** (`stock.not_goods`, on insert only: a level made while
+  the variant was goods stays when it becomes a download, and may be changed, because stores and tests do exactly that; nothing
+  reads it). So `clone_store()` and `duplicate_store()` copy levels of goods only, copy a **negative level as 0** (what is owed on
+  orders that are not copied is not copied), and write their level inserts with the context `opening` / `copy`. The existing D129
+  test no longer gives a download a level; the movements of a copy are its own openings (the test of "nothing is copied by a
+  `never` table" counts them as made by the level inserts).
 - The deactivation trigger sets and clears `deactivated_at` itself (the server need not). `stock_alerts` has `ON DELETE CASCADE` to its variant. The two order-line columns' freeze is a trigger (`order_lines_backorder_frozen`): the units change only inside `draw_order_stock()` (marked by the transaction-local setting `kaizen.drawing`), the stated days never.
 - The rules file starts with `LOCK TABLE commerce.inventory_levels IN SHARE ROW EXCLUSIVE MODE` and writes the opening movements as `on_hand - what the movements already sum to`, so a sale made by old code while the file runs cannot be counted twice. Because the generated file drops `inventory_levels_on_hand_non_negative` and the rules file adds the stricter trigger, the two files are applied one after the other by CI; old code never writes a negative figure in between.
 - `stock.backordered` is written by `draw_order_stock()` itself, so it comes before `order.paid` in the order's events.
@@ -486,7 +495,11 @@ The migrations are `20261006081000_inventory.sql` (generated), `20261006081019_i
 - **Interface text and the confirmation email sentence** (`m.backorder.*`, `emailText().backorder`, the `CHOOSING` entries) were written by the server area, not the shopper area, because `placeOrder()`, the order view and the email need them; the shopper area uses them.
 - **The WordPress routes** (`wordpress-shop.ts`) serve a backorder variant on the product page as `out` with a `backorder_days` figure (null for the rest, so a plugin before 1.2 shows it sold out), and a quote line carries `backorder: { units, days } | null`, all read from the same `variantStockOf()`; a quote and a handoff cart accept it up to the cart cap (`sellableQuantity()`).
 - **`ledgerProblems(storeId)`** (`inventory.ts`) reads `inventory_ledger_check()`; the AI manager's `store_checkup` tool lists what it finds. A level that moved with no movement is a problem reported there, never repaired by code.
-- **The product editor, the bulk stock action and the product import** write a level only for a store with exactly one active location (a correction, or an opening for a new variant); with several they write none and the import warns (`inventory.multi_location_stock_ignored`). The editor leaves a **negative** level untouched unless a different number is typed (a stale form cannot erase what is owed). The bulk grid's stock column refuses a store with several active locations with a plain sentence (`bulk-edit.ts`); the list's bulk stock action goes through the same check.
+- **The product editor, the bulk stock action and the product import** write a level only for a store with exactly one active
+  location (a correction, or an opening for a new variant); with several they write none and the import warns
+  (`inventory.multi_location_stock_ignored`). The editor leaves a **negative** level untouched unless a different number is typed
+  (a stale form cannot erase what is owed). The bulk grid's stock column refuses a store with several active locations with a
+  plain sentence (`bulk-edit.ts`); the list's bulk stock action goes through the same check.
 - **Owed units** (`InventoryRow.owed`, the count above the list) are the sum of `backorder_quantity` of **paid, not yet sent** orders' lines; a sent order no longer owes.
 - **The stock file's export** writes the figure as it is (a negative level is exported as a negative number, so an owed backorder is visible) and has no `on_hand_was` column of its own beyond the one the page's own export writes; a file edited from an older export conflicts when the stored figure moved.
 - **Reads on the Inventory page and its counts run through `setBased()`** (nested loops off, read only): without it a store of 5 000 variants with no planner statistics took 3 to 18 seconds for the first page and a search (found by `inventory-perf.int.test.ts`); with it 30 to 90 ms.
@@ -496,7 +509,12 @@ The migrations are `20261006081000_inventory.sql` (generated), `20261006081019_i
 
 ### 3.11 As built by the shopper area (deviations and additions; this paragraph changes the text above)
 
-- **The product page** reads `getVariantStock()` (per request, inside the existing `<Suspense>`, never cached) and words it with `stockNote()` / `canOffer()` (`src/lib/stock-words.ts`): in stock, only n left, **on backorder with the days**, or sold out. A `continue` variant whose days are missing (the database makes that impossible) is *not* offered rather than sold without a delivery time. The phone's bar and the wishlist use the same `canOffer()`. `getAvailability()` has no caller left (`inventory-readers.test.ts` no longer allowlists the two surfaces); the wrapper and its allowlist entry in `catalog.ts` and that test can be deleted.
+- **The product page** reads `getVariantStock()` (per request, inside the existing `<Suspense>`, never cached) and words it with
+  `stockNote()` / `canOffer()` (`src/lib/stock-words.ts`): in stock, only n left, **on backorder with the days**, or sold out. A
+  `continue` variant whose days are missing (the database makes that impossible) is *not* offered rather than sold without a
+  delivery time. The phone's bar and the wishlist use the same `canOffer()`. `getAvailability()` has no caller left
+  (`inventory-readers.test.ts` no longer allowlists the two surfaces); the wrapper and its allowlist entry in `catalog.ts` and
+  that test can be deleted.
 - **Structured data**: `productJsonLd()` takes `availability: (variantId) => 'in_stock' | 'backorder' | 'out_of_stock'` instead of `inStock`; `BackOrder` for a variant that keeps selling with nothing in stock.
 - **Cart, slide-out cart and checkout** draw `<BackorderLine>` (`src/components/backorder-note.tsx`, `m.backorder.line()`, not an alert); the **order page and My account** draw `<BackorderOrderLine>` (`m.backorder.order()`). The confirmation email's sentence was written by the server area (`shopper-emails.ts`, from `m.backorder.order()` of the order's language); `backorder-email.int.test.ts` holds it.
 - **One addition not in the spec: `m.backorder.capped(max)`** (nb, sv, da, en), said by the product page's add button and the phone's bar when a cart line of a `continue` variant is at the line maximum. The old sentence (`m.capped`, "your cart now holds all the stock we have") would be untrue for it, since the stock is no limit. The wishlist's own capped sentence was not changed (it still says "as many as are in stock"); it can only be reached for a `continue` variant at 20 in the cart.
@@ -505,13 +523,47 @@ The migrations are `20261006081000_inventory.sql` (generated), `20261006081019_i
 
 ### 3.12 As built by the admin area (deviations and additions; this paragraph changes the text above)
 
-- **Pages** (all under `/admin/{store}/inventory`, each with `loading.tsx`, `products:read` to open, the actions `products:write`): the list, `history`, `locations`, `import`, `import/[jobId]` (with `tick` and `problems` routes) and `export` (with `file` and `[jobId]/tick` routes). `ADMIN_PAGES` has `inventory`, `inventory.history`, `inventory.locations`, `inventory.import`, `inventory.import.job` and **`inventory.export`** (not listed in 5.6, because 2.4 names the page). The Products section's sidebar has one item, *Inventory*; the other four are tabs of `InventoryHead`. `permissions.scan.test.ts` lists the two read-only export routes (`READ_ONLY_ROUTES`) and the locations actions file (`OWNER_ONLY_EXTRA`: it holds the owner-only deactivate and reactivate beside the `products:write` add, rename and move).
-- **The list** (`InventoryTable`, a client component, `src/lib/inventory-admin.ts` for everything it decides): a person types *Set to* or *Adjust by* in a cell; *Review changes* lists each row before and after with the same `resultOf()` the server uses; *Save changes* sends one reason and one note. A figure is always one location's: with one active location (or a list filtered to a location) the row has the boxes, with several each row's *Locations* disclosure has one pair of boxes per location, and the summed figure is read-only. After a save the typed figures are cleared, the page refreshes, and a conflicting row is listed with the stored figure (the server's sentence). Selected rows can be set to keep selling (days required), to stop, or given a low-stock level (`setVariantPolicies()`).
+- **Pages** (all under `/admin/{store}/inventory`, each with `loading.tsx`, `products:read` to open, the actions
+  `products:write`): the list, `history`, `locations`, `import`, `import/[jobId]` (with `tick` and `problems` routes) and `export`
+  (with `file` and `[jobId]/tick` routes). `ADMIN_PAGES` has `inventory`, `inventory.history`, `inventory.locations`,
+  `inventory.import`, `inventory.import.job` and **`inventory.export`** (not listed in 5.6, because 2.4 names the page). The
+  Products section's sidebar has one item, *Inventory*; the other four are tabs of `InventoryHead`. `permissions.scan.test.ts`
+  lists the two read-only export routes (`READ_ONLY_ROUTES`) and the locations actions file (`OWNER_ONLY_EXTRA`: it holds the
+  owner-only deactivate and reactivate beside the `products:write` add, rename and move).
+- **The list** (`InventoryTable`, a client component, `src/lib/inventory-admin.ts` for everything it decides): a person types *Set
+  to* or *Adjust by* in a cell; *Review changes* lists each row before and after with the same `resultOf()` the server uses; *Save
+  changes* sends one reason and one note. A figure is always one location's: with one active location (or a list filtered to a
+  location) the row has the boxes, with several each row's *Locations* disclosure has one pair of boxes per location, and the
+  summed figure is read-only. After a save the typed figures are cleared, the page refreshes, and a conflicting row is listed with
+  the stored figure (the server's sentence). Selected rows can be set to keep selling (days required), to stop, or given a
+  low-stock level (`setVariantPolicies()`).
 - **Deactivating a location**: the page reads `locationImpact()` for each active location when it is drawn (owners only), the dialog shows the four figures and the confirm button *sends the unit figure it showed* rather than asking the owner to type it; if the server's figure has changed it answers with the new impact, the dialog shows it and asks again. Refused in the dialog (button disabled) for the last active location and while checkouts hold stock there.
-- **Stock files**: `ExportPage` in `data-routes.ts` gained `"inventory"` (one line each in the type, the import and the `request` table; `requestInventoryExport()` was already there). **The export has no `on_hand_was` column** (the server area's decision, 3.10), so a file edited from an export has no conflict check unless the person copies `on_hand` into a new `on_hand_was` column first; the export page and the import page say so. That is a gap against 2.4, where the file is "the figure the file was made from": the cleaner fix is a server change that writes `on_hand_was` in the export. The import has no options (unlike the product import), so its page is `StockCheck` (one button) instead of an options form.
-- **Orders**: `listOrders()` gained `waiting` (paid, not sent, a line with `backorder_quantity > 0`) and every row an `owed` figure (a small edit in `src/server/orders.ts`; the spec said the admin area edits no server file, but the chip needs the filter). The orders list has the *Waiting for stock* chip and shows owed units on a row; the order page has a *Waiting for stock* notice, a *Backordered: n of qty, to ship within d days* line, *Taken from Oslo 2, Bergen 1* (the order's own `sale` movements through `orderStockHistory()`), the event `stock.backordered`, and the location in the *back in stock* history line. The refund dialog's *Put back at* select (only with more than one active location) is the form field `restockAt:{lineId}`; empty means where the units were taken from, and the line says in words what that will be (`putBackWords()`, a sentence, never a promise: `restockPlan()` decides). The refund action passes `locationId` to `refundOrder()`, which refuses a place that is not an active location of the store.
-- **The product editor**: each shipped variant has a *Stock rules* section (own `<details>`: *Keep selling when sold out*, *Expected to ship within (days)* required with it, the 30-day hint `BACKORDER_LONG_HINT` above 30, *Warn me when stock is at or below*) and, with two or more such variants, a product-wide switch (*Keep selling every variant when sold out* with one number of days) that sets the variants together; the data stays per variant. With several active locations the stock cell is the total, read-only, with *By location* to `/inventory?q={sku}`. A variant that stops being goods that are shipped loses its policy and level in the editor.
-- **Not done by this area:** the store Home and control-center attention (5.5 gives them to the analytics-and-AI area), `store-translate.ts` (no new translatable store text), a return's own "put back at" choice (a return restocks as 2.6 says), and any e2e of a signed-in page (there is no admin fixture, D158): the screens are held by `renderToString` tests of `inventory-views.test.ts` and `product-editor-stock.test.ts`, the pure rules by `inventory-admin.test.ts`, and the order pages' reads by `inventory-admin.int.test.ts`. The click path is the by-hand check of 9.7 item 1.
+- **Stock files**: `ExportPage` in `data-routes.ts` gained `"inventory"` (one line each in the type, the import and the `request`
+  table; `requestInventoryExport()` was already there). **The export has no `on_hand_was` column** (the server area's decision,
+  3.10), so a file edited from an export has no conflict check unless the person copies `on_hand` into a new `on_hand_was` column
+  first; the export page and the import page say so. That is a gap against 2.4, where the file is "the figure the file was made
+  from": the cleaner fix is a server change that writes `on_hand_was` in the export. The import has no options (unlike the product
+  import), so its page is `StockCheck` (one button) instead of an options form.
+- **Orders**: `listOrders()` gained `waiting` (paid, not sent, a line with `backorder_quantity > 0`) and every row an `owed`
+  figure (a small edit in `src/server/orders.ts`; the spec said the admin area edits no server file, but the chip needs the
+  filter). The orders list has the *Waiting for stock* chip and shows owed units on a row; the order page has a *Waiting for
+  stock* notice, a *Backordered: n of qty, to ship within d days* line, *Taken from Oslo 2, Bergen 1* (the order's own `sale`
+  movements through `orderStockHistory()`), the event `stock.backordered`, and the location in the *back in stock* history line.
+  The refund dialog's *Put back at* select (only with more than one active location) is the form field `restockAt:{lineId}`; empty
+  means where the units were taken from, and the line says in words what that will be (`putBackWords()`, a sentence, never a
+  promise: `restockPlan()` decides). The refund action passes `locationId` to `refundOrder()`, which refuses a place that is not
+  an active location of the store.
+- **The product editor**: each shipped variant has a *Stock rules* section (own `<details>`: *Keep selling when sold
+  out*, *Expected to ship within (days)* required with it, the 30-day hint `BACKORDER_LONG_HINT` above 30, *Warn me when stock is
+  at or below*) and, with two or more such variants, a product-wide switch (*Keep selling every variant when sold out* with one
+  number of days) that sets the variants together; the data stays per variant. With several active locations the stock cell is the
+  total, read-only, with *By location* to `/inventory?q={sku}`. A variant that stops being goods that are shipped loses its policy
+  and level in the editor.
+- **Not done by this area:** the store Home and control-center attention (5.5 gives them to the analytics-and-AI area),
+  `store-translate.ts` (no new translatable store text), a return's own "put back at" choice (a return restocks as 2.6 says), and
+  any e2e of a signed-in page (there is no admin fixture, D158): the screens are held by `renderToString` tests of
+  `inventory-views.test.ts` and `product-editor-stock.test.ts`, the pure rules by `inventory-admin.test.ts`, and the order pages'
+  reads by `inventory-admin.int.test.ts`. The click path is the by-hand check of 9.7 item 1.
 
 ### 3.13 As built by the review fixes (deviations and additions; this paragraph changes the text above)
 

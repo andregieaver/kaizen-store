@@ -4,8 +4,24 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 
 - **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 3.13.
 - **Second check:** corrected.
-- **Where:** `src/server/customer-import.ts:89-197`, `src/server/customer-import.ts:265-317`, `src/server/inventory-jobs.ts:212-323`, `src/server/redirect-import.ts:62-179`, `src/server/order-history-import.ts:68-170`, `src/server/product-import.ts:91-240`, `src/server/data-jobs.ts:63-76`, `src/server/data-jobs.ts:296`, `src/server/data-jobs.ts:425-437`, `src/server/data-jobs.ts:617-653`, `src/server/data-job-store.ts:134-160`, `src/components/admin/customer-import-flow.tsx:27-60`, `src/components/admin/inventory/stock-import-flow.tsx:36-115`, `src/components/admin/redirects/redirect-import-flow.tsx:40`, `src/components/admin/data/import-flow.tsx:37`, `src/components/admin/data/findings-table.tsx:30`, `src/app/admin/(gated)/[store]/customers/import/[jobId]/tick/route.ts:8-13`, `src/app/admin/(gated)/[store]/customers/import/[jobId]/problems/route.ts:12-21`, `src/app/admin/(gated)/[store]/customers/export/[jobId]/tick/route.ts:8-13`, `src/lib/permissions.scan.test.ts:57-84`
-- **Evidence:** Read side by side: customer-import.ts:89-197 and inventory-jobs.ts:212-323 are the same upload, register, check and apply code with another kind string, permission key and default file name. Measured against customer-import.ts (lcs.mjs, lines in runs of five or more after normalising): inventory-jobs 204, redirect 128, order history 106, product 79. The four upload flows share 68 to 117 lines in runs pair by pair, and the findings table exists four times (89 to 99 lines in runs against data/findings-table.tsx). My own checks: `insert into commerce.data_jobs` is written in five server files, one per kind, and `storage.signedUpload(path)` starts an upload in the same five; runJob() picks a kind's runners with a five-way nested conditional (data-jobs.ts:296); all 15 job routes of the store admin (10 tick, 5 problems) guard with exactly the key JOB_KEY gives their kind, and jobFor() already applies that key (data-jobs.ts:236-239). Not copied: claim, lease, retry, progress and finish live once in data-job-store.ts (claimJob :134, releaseJob :158).
+- **Where:** `src/server/customer-import.ts:89-197`, `src/server/customer-import.ts:265-317`,
+  `src/server/inventory-jobs.ts:212-323`, `src/server/redirect-import.ts:62-179`, `src/server/order-history-import.ts:68-170`,
+  `src/server/product-import.ts:91-240`, `src/server/data-jobs.ts:63-76`, `src/server/data-jobs.ts:296`,
+  `src/server/data-jobs.ts:425-437`, `src/server/data-jobs.ts:617-653`, `src/server/data-job-store.ts:134-160`,
+  `src/components/admin/customer-import-flow.tsx:27-60`, `src/components/admin/inventory/stock-import-flow.tsx:36-115`,
+  `src/components/admin/redirects/redirect-import-flow.tsx:40`, `src/components/admin/data/import-flow.tsx:37`,
+  `src/components/admin/data/findings-table.tsx:30`, `src/app/admin/(gated)/[store]/customers/import/[jobId]/tick/route.ts:8-13`,
+  `src/app/admin/(gated)/[store]/customers/import/[jobId]/problems/route.ts:12-21`,
+  `src/app/admin/(gated)/[store]/customers/export/[jobId]/tick/route.ts:8-13`, `src/lib/permissions.scan.test.ts:57-84`
+- **Evidence:** Read side by side: customer-import.ts:89-197 and inventory-jobs.ts:212-323 are the same upload, register, check
+  and apply code with another kind string, permission key and default file name. Measured against customer-import.ts (lcs.mjs,
+  lines in runs of five or more after normalising): inventory-jobs 204, redirect 128, order history 106, product 79. The four
+  upload flows share 68 to 117 lines in runs pair by pair, and the findings table exists four times (89 to 99 lines in runs
+  against data/findings-table.tsx). My own checks: `insert into commerce.data_jobs` is written in five server files, one per kind,
+  and `storage.signedUpload(path)` starts an upload in the same five; runJob() picks a kind's runners with a five-way nested
+  conditional (data-jobs.ts:296); all 15 job routes of the store admin (10 tick, 5 problems) guard with exactly the key JOB_KEY
+  gives their kind, and jobFor() already applies that key (data-jobs.ts:236-239). Not copied: claim, lease, retry, progress and
+  finish live once in data-job-store.ts (claimJob :134, releaseJob :158).
 - **Cost today:** About 6,000 file lines for five kinds, of which roughly 1,300 to 1,600 are repeats; 15 route handlers where two would do; a fix to the upload, the register step or the check loop is made five times (a fix to leases or retries is made once). Paid by: The build and CI (15 routes, ten pages), an agent's session (five copies to read and keep alike), and owners when a fix reaches one import and not the others.
 - **Saving:** About 1,300 to 1,600 code lines (estimate from the measured runs: server about 500, components about 570, pages, actions and routes 300 to 500) and 13 route handlers (15 become 2).
 - **Risk:** Imports write customers, stock, orders, products and redirects. A slip shows as a failing integration test for that kind, or as an import that will not start; the product import differs most and moves last. The shared routes move the permission check from a line the scan test reads to JOB_KEY at run time: without the two new tests a wrong key would not be noticed, which is why step 8 is separable. Medium.
@@ -32,4 +48,8 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 - src/server/ratchet.scan.test.ts: a new file starts with no unchecked reads; after the per-kind reads go, run node scripts/ratchet.mjs to lower src/server/ratchet.baseline.json.
 - Docs that name the per-kind functions: docs/wave-2-data.md, docs/wave-2-redirects.md, docs/wave-3-inventory.md, docs/rules/admin/integrations.md (Data in and out), docs/security.md. No written rule asks for a file per kind. Record the change in docs/decisions.md.
 
-**Notes:** Corrections kept from the second check: leases and retries are not copied, and a page file cannot go away, so the saving is 1,300 to 1,600 lines. The route count is mine: the five export tick routes guard with JOB_KEY's key too, so 15 routes can become 2 (the report counted the 10 import routes). The five export request functions repeat 13 lines each and are not worth a step. Before opening is the cheap time: commerce.data_jobs holds only test jobs, so the tick and problems addresses can change without anyone holding an old page.
+**Notes:** Corrections kept from the second check: leases and retries are not copied, and a page file cannot go away, so the
+saving is 1,300 to 1,600 lines. The route count is mine: the five export tick routes guard with JOB_KEY's key too, so 15 routes
+can become 2 (the report counted the 10 import routes). The five export request functions repeat 13 lines each and are not worth a
+step. Before opening is the cheap time: commerce.data_jobs holds only test jobs, so the tick and problems addresses can change
+without anyone holding an old page.

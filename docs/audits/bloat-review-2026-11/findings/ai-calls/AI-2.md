@@ -5,15 +5,31 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 - **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.21.
 - **Second check:** corrected.
 - **Where:** `src/server/ai.ts:206-222`, `src/server/ai.ts:235-239`, `src/server/limits.ts:122-144`, `src/server/support-inbox.ts:90-98`, `src/lib/support-realtime.ts:36-38`, `src/app/admin/(gated)/[store]/pages/context.ts:165-168`, `src/server/page-change-ai.ts:25-27`, `src/server/picture-maker.ts:74-76`, `src/server/picture-editor.ts:44-46`, `src/server/products.ts:196`, `src/server/owner-assistant.ts:183-191`, `src/server/page-ai.ts:168-178`, `docs/capacity.md:612`, `docs/capacity.md:640`
-- **Evidence:** aiFor() has no cache: each call runs 'select * from commerce.ai_providers', decrypts up to three API keys and, for a store on Kaizena Flow's key whose plan sets an AI limit, reads the limits and sums the month's ai_usage (a 60-second memo per server instance, limits.ts:122-144). My rg finds it on 89 lines in 64 files outside ai.ts and tests. Many want only a yes or no: the staff's open conversation calls it on every poll for the Translate button (support-inbox.ts:98; every 2 seconds without a realtime connection, every 15 with one or while hidden); opening a page in the builder calls it three times in a row through canMakePictures(), canEditPictures() and canChangePages() (pages/context.ts:165-168); the product editor once (products.ts:196); the AI manager's panel and the page studio once each for their abilities. Production: 237,563 provider reads and 8,514 cost sums against 19,104 recorded AI calls. Those counts are scheduled work, builds and the team's own testing, not shoppers.
-- **Cost today:** Today small: each provider read is a sub-millisecond query on a tiny table plus a round trip; the dear part is the cost sum (37 to 57 ms, about 352 s in 78 days). What grows: the sum runs only for stores whose plan sets an AI limit, which today's template and demo stores mostly are not and paying stores will be; and every open support conversation, builder page and product editor adds reads in step with the owners at work. Paid by: The database and the server per request: owners' editors and staff with a conversation open. (The five-minute jobs' share is AI-5 and AI-13; the cost sum itself is DQ-4.)
+- **Evidence:** aiFor() has no cache: each call runs 'select * from commerce.ai_providers', decrypts up to three API keys and, for
+  a store on Kaizena Flow's key whose plan sets an AI limit, reads the limits and sums the month's ai_usage (a 60-second memo per
+  server instance, limits.ts:122-144). My rg finds it on 89 lines in 64 files outside ai.ts and tests. Many want only a yes or no:
+  the staff's open conversation calls it on every poll for the Translate button (support-inbox.ts:98; every 2 seconds without a
+  realtime connection, every 15 with one or while hidden); opening a page in the builder calls it three times in a row through
+  canMakePictures(), canEditPictures() and canChangePages() (pages/context.ts:165-168); the product editor once (products.ts:196);
+  the AI manager's panel and the page studio once each for their abilities. Production: 237,563 provider reads and 8,514 cost sums
+  against 19,104 recorded AI calls. Those counts are scheduled work, builds and the team's own testing, not shoppers.
+- **Cost today:** Today small: each provider read is a sub-millisecond query on a tiny table plus a round trip; the dear part is
+  the cost sum (37 to 57 ms, about 352 s in 78 days). What grows: the sum runs only for stores whose plan sets an AI limit, which
+  today's template and demo stores mostly are not and paying stores will be; and every open support conversation, builder page and
+  product editor adds reads in step with the owners at work. Paid by: The database and the server per request: owners' editors and
+  staff with a conversation open. (The five-minute jobs' share is AI-5 and AI-13; the cost sum itself is DQ-4.)
 - **Saving:** Estimate, the split is not measurable from the statistics: an open support conversation goes from 4 to 30 provider reads a minute to at most one a minute per server instance; a builder page from 3 to at most 1; with AI-5 and AI-13 most provider reads go. In today's absolute terms a few seconds of database time a day; the point is that the cost stops rising with every owner at work.
 - **Risk:** A button can be up to a minute stale after an owner changes AI settings or a store crosses its allowance on another server instance; the action behind it still calls aiFor() and refuses in plain words, so check each such action has those words. The 60 seconds must not be longer than the limit memo's, or a store over its allowance keeps buttons longer than today.
 - **Already tracked:** No. docs/capacity.md:612 notes that aiFor() 'is called often' and adds the 60-second memo for the sum; no step covers the callers. The sum itself is DQ-4 of this review.
 
 ## The fix
 
-1. src/server/ai.ts: add `aiAbilities(storeId)` returning only booleans and the source: `{ text, sees, pictures, pictureEdit, hear, speak, live, embeds, source }`. It calls aiFor() inside, so a store at its allowance still answers 'no AI' as docs/capacity.md:640 says, and keeps the answer per server instance for 60 seconds in a Map, in the manner of storeLimits() (src/server/limits.ts:41-48). No key stays in memory beyond the call. Add `forgetAiAbilities(storeId?)` and call it in saveAiSettings() and removeAiSettings() (ai.ts:251, 357), and from forgetLimitMemos() for tests.
+1. src/server/ai.ts: add `aiAbilities(storeId)` returning only booleans and the source:
+   `{ text, sees, pictures, pictureEdit, hear, speak, live, embeds, source }`. It calls aiFor() inside, so a store at its
+   allowance still answers 'no AI' as docs/capacity.md:640 says, and keeps the answer per server instance for 60 seconds in a Map,
+   in the manner of storeLimits() (src/server/limits.ts:41-48). No key stays in memory beyond the call. Add
+   `forgetAiAbilities(storeId?)` and call it in saveAiSettings() and removeAiSettings() (ai.ts:251, 357), and from
+   forgetLimitMemos() for tests.
 2. Use it where a screen only draws a button: src/server/support-inbox.ts:98 (the poll's `translate`), src/server/page-change-ai.ts:26, src/server/picture-maker.ts:75, src/server/picture-editor.ts:45, src/server/products.ts:196, assistantAbilities() in src/server/owner-assistant.ts:183-191 and studioAbilities() in src/server/page-ai.ts:168-178. Open each caller first: one that shows a model's name or whose key pays keeps aiFor().
 3. Leave aiFor() wherever the code is about to call a model (turns, writers, searches, jobs with work found). Do not cache the connection itself.
 4. The month's cost sum behind aiRoomLeft(): do DQ-4 (daily rows plus today's live part); nothing separate here.

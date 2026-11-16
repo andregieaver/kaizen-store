@@ -5,7 +5,12 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 - **Kind:** no check. **Priority:** P1. **Effort:** L. **Confidence:** high. **Step:** 4.1.
 - **Second check:** confirmed.
 - **Where:** `src/server/store-action.ts:33-50`, `src/server/ratchet.scan.test.ts:22-56`, `src/server/ratchet.baseline.json:1`, `scripts/lib/ratchet-count.mjs:72`, `scripts/ratchet.mjs:26-36`, `docs/audits/code-review-2026-11.md:61`, `docs/rules/admin/platform.md:87-89`, `src/app/admin/(gated)/platform/themes/actions.ts:130-142`, `src/app/admin/(gated)/[store]/customers/actions.ts:54-68`, `src/app/admin/(gated)/[store]/orders/actions.ts:71`
-- **Evidence:** 271 files start with 'use server' (24,583 lines) and export 1,372 actions. Under src/app/admin there are 235 such files and 3 import store-action (orders, returns, books: 45 actions); my rg confirms 232 off the wrapper. 31 of the 271 files contain a catch. 23 admin action files define a local guard wrapper (asOwner 11, member 4, owner 3, change 3, guarded 1, act 1). The ratchet (ratchet.scan.test.ts, five tests) counts unchecked reads, casts and store-less writes, not actions off the wrapper. Admin files named actions.ts went from 183 at the code review to 191 now. Where the wrapper is used it costs one line per action (orders/actions.ts:71).
+- **Evidence:** 271 files start with 'use server' (24,583 lines) and export 1,372 actions. Under src/app/admin there are 235 such
+  files and 3 import store-action (orders, returns, books: 45 actions); my rg confirms 232 off the wrapper. 31 of the 271 files
+  contain a catch. 23 admin action files define a local guard wrapper (asOwner 11, member 4, owner 3, change 3, guarded 1, act 1).
+  The ratchet (ratchet.scan.test.ts, five tests) counts unchecked reads, casts and store-less writes, not actions off the wrapper.
+  Admin files named actions.ts went from 183 at the code review to 191 now. Where the wrapper is used it costs one line per action
+  (orders/actions.ts:71).
 - **Cost today:** Few lines; the cost is that the hand-written shape stays the default for every new action file (8 more admin action files since the review), and an unplanned failure in the 232 files shows Next's error page instead of a line in the form. Paid by: Owners (an error page instead of a line in the form) and agents (each new file copies a hand-written neighbour).
 - **Saving:** About 150 lines of local wrappers; the gain is one failure path for the admin's actions and a number that can only fall.
 - **Risk:** The ratchet alone is small and cannot break a screen. Moving a file can change what a form shows on refusal; each action's refusal shape differs, which is what answer() is for, and the area's integration tests show a wrong one.

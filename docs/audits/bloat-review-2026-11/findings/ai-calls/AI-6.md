@@ -5,7 +5,11 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 - **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.36. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `src/lib/manager-tools.ts:19-160`, `src/lib/tool-budget.ts:66-68`, `src/lib/tool-budget.ts:115-124`, `src/server/owner-assistant.ts:438`, `src/server/owner-assistant.ts:471`, `src/server/owner-assistant.ts:726-730`
-- **Evidence:** The manager's own 26 tools are always sent and never cut (tool-budget.ts:66-68; owner-assistant.ts:726-730). 12 are the autopilot's (make_autopilot_plan 3,508 characters, revise_autopilot_plan 3,055, set_goal 1,868 and nine more: 12,417), 3 are follow-ups (1,708) and 2 are for saving skills (1,259): 15,384 characters a round, for every store and every question; the other 9 are 4,944 (my bundle, the same split as the skeptic's). The prompt also tells the model to use follow_up and save_skill (owner-assistant.ts:438, 471).
+- **Evidence:** The manager's own 26 tools are always sent and never cut (tool-budget.ts:66-68; owner-assistant.ts:726-730). 12
+  are the autopilot's (make_autopilot_plan 3,508 characters, revise_autopilot_plan 3,055, set_goal 1,868 and nine more: 12,417), 3
+  are follow-ups (1,708) and 2 are for saving skills (1,259): 15,384 characters a round, for every store and every question; the
+  other 9 are 4,944 (my bundle, the same split as the skeptic's). The prompt also tells the model to use follow_up and save_skill
+  (owner-assistant.ts:438, 471).
 - **Cost today:** About 3,800 tokens on every AI manager round (estimate at 4 characters a token): about 10% of today's round, and 46% of the 33,800 characters of tools a lean round on Home would send after AI-1. Paid by: The server per AI manager call and the store's AI allowance.
 - **Saving:** 15,384 characters a round (measured) on rounds where the group is not loaded; none if the owner keeps them always present.
 - **Risk:** A model that does not see the tools will offer plans and reminders less often: that is the product question. A reminder asked for in words outside the list costs one load_tools round. Noticed by the eval cases and by the share of turns that end with a follow-up or goal in the round log.
@@ -16,7 +20,13 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 1. Put it to the owner with question 8 of the code review, as one choice: (a) the manager always holds these tools, so it can offer a plan or a reminder unprompted, at 3,800 tokens a round; or (b) they load when the talk turns to them. The steps below are (b).
 2. src/lib/manager-tools.ts: export `AUTOMATION_TOOLS`, a set naming the 17 (save_skill, delete_skill, follow_up, list_follow_ups, cancel_follow_up, set_goal, list_goals, drop_goal and the nine *_autopilot_* tools).
 3. src/lib/tool-budget.ts: `ToolArea` becomes the permission areas plus "automation", with `TOOL_AREAS = [...AREAS, "automation"]` used by the held-back loop (lines 89-94), loadToolsDefinition() and readLoadTools() (line 120 filters by AREAS today). AREAS itself, which permissions read, is not touched.
-4. src/server/owner-assistant.ts, runTurn(): in a person's own turn pass the 17 through chooseTools() as offered tools of area "automation" instead of in the always-sent list (lines 726-730, 735). They are picked when one was used earlier in the conversation (`used`), when load_tools asks for automation, when the store has something of theirs alive, or when the message's words match. 'Alive' is one read beside those at lines 663-683: exists a row in commerce.assistant_goals, commerce.assistant_plans or commerce.assistant_follow_ups for this store and person that is not ended (open each table's status values when building). The words go in src/lib/tool-router.ts (AI-1): remind, reminder, follow up, every day, every week, every month, goal, plan, autopilot, skill, and the Norwegian påminn, minn meg, hver dag, hver uke, mål, plan, ferdighet.
+4. src/server/owner-assistant.ts, runTurn(): in a person's own turn pass the 17 through chooseTools() as offered tools of area
+   "automation" instead of in the always-sent list (lines 726-730, 735). They are picked when one was used earlier in the
+   conversation (`used`), when load_tools asks for automation, when the store has something of theirs alive, or when the message's
+   words match. 'Alive' is one read beside those at lines 663-683: exists a row in commerce.assistant_goals,
+   commerce.assistant_plans or commerce.assistant_follow_ups for this store and person that is not ended (open each table's status
+   values when building). The words go in src/lib/tool-router.ts (AI-1): remind, reminder, follow up, every day, every week, every
+   month, goal, plan, autopilot, skill, and the Norwegian påminn, minn meg, hver dag, hver uke, mål, plan, ferdighet.
 5. Outside assistants' turns (OUTSIDE_MANAGER_TOOLS), autopilot steps and scheduled follow-ups keep exactly what they get today.
 6. managerPrompt() lines 438 and 471: keep both hints and add that these tools are in the area automation, loaded with load_tools when missing. Without that the prompt names a tool the model cannot see.
 7. Eval cases (with AI-14): 'Remind me on Friday at 9 to check order 1042' must call follow_up; 'Set a goal: 20% more repeat orders by March' must call set_goal; a question about orders must call neither.

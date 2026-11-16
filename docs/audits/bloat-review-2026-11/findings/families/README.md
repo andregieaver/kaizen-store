@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clones and 41 twin pairs were found in 3,974 files, and carriers, payment providers, emails, CSV, PDF and the AI tools each have one core. What matters is two loading faults that every store pays at each cold start whatever it uses: both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, and three small helpers imported through the chat modules make 11 routes, the four visit beacons and the recommendations beacon among them, load about 11.4 MB of server code each where a beacon needs about 2 MB; both fixes are small and safe and come first, with a server-side import check to hold them. The true duplicates are kaizenaflow.com kept twice (parity plan step 7, up to 4,400 lines, cheapest before opening), the platform's events pipeline written beside the stores', five CSV import flows and Fiken's engine copied from Tripletex's: beyond step 7 they come to a few thousand lines of 768,000 (2,600 to 6,700 by the estimates, the top being upper bounds), so each is folded when its area is next opened. Nothing in this plan rests on a feature being unused.
+**In short.** Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clones and 41 twin pairs were found in
+3,974 files, and carriers, payment providers, emails, CSV, PDF and the AI tools each have one core. What matters is two loading
+faults that every store pays at each cold start whatever it uses: both languages of the admin's words (2.8 MB built) load with 802
+of 830 server entries, and three small helpers imported through the chat modules make 11 routes, the four visit beacons and the
+recommendations beacon among them, load about 11.4 MB of server code each where a beacon needs about 2 MB; both fixes are small
+and safe and come first, with a server-side import check to hold them. The true duplicates are kaizenaflow.com kept twice (parity
+plan step 7, up to 4,400 lines, cheapest before opening), the platform's events pipeline written beside the stores', five CSV
+import flows and Fiken's engine copied from Tripletex's: beyond step 7 they come to a few thousand lines of 768,000 (2,600 to
+6,700 by the estimates, the top being upper bounds), so each is folded when its area is next opened. Nothing in this plan rests on
+a feature being unused.
 
 ## Findings
 

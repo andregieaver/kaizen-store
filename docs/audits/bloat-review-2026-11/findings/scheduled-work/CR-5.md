@@ -12,7 +12,11 @@ Scheduled and background work (`README.md` beside this file), part of `docs/audi
 
 ## The fix
 
-1. One custom migration (name it cron_log_retention), inside the same guard as the baseline's cron block: cron.schedule('kaizen-cron-log-retention', '41 * * * *', a delete from cron.job_run_details where runid in (select runid from cron.job_run_details where end_time < now() - interval '7 days' limit 20000)). Delete in batches because the postgres role's 15 s statement limit (code review 1.5) most likely applies to pg_cron's own sessions too (not tested here); 24 batches of 20,000 clear the backlog in a day.
+1. One custom migration (name it cron_log_retention), inside the same guard as the baseline's cron block:
+   cron.schedule('kaizen-cron-log-retention', '41 * * * *', a delete from cron.job_run_details where runid in (select runid from
+   cron.job_run_details where end_time < now() - interval '7 days' limit 20000)). Delete in batches because the postgres role's 15
+   s statement limit (code review 1.5) most likely applies to pg_cron's own sessions too (not tested here); 24 batches of 20,000
+   clear the backlog in a day.
 2. Once, by a person in the Supabase SQL editor after the first day: read the size (the 'size by schema' query in prod-db-stats.md), then truncate or vacuum full cron.job_run_details if the role is allowed. If it is not, do nothing more: the deleted space is reused and the file stops growing.
 3. Record the migration's version and the decision in docs/decisions.md, and add the log to the retention list in docs/capacity.md.
 

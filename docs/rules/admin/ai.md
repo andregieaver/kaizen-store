@@ -17,7 +17,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`src/lib/manager-tools.ts`, `src/server/manager-tools.ts`: find and open
   admin pages, skills, memory). A round sends at most `TOOLS_PER_TURN` tools (D333, `chooseTools()`
   in `src/lib/tool-budget.ts`; providers refuse more than 128): the rest are one `load_tools` call away by area, so a new
-  store tool needs a permission key (its area) and nothing else; a new tool that most questions need goes in `CORE_TOOLS`. A turn has a budget (D539, `src/lib/turn-budget.ts`): 240 s from its first round, with the last 45 s for a round without tools in which the model must answer, 400,000 tokens, the store's month of AI on Kaizena Flow's key looked at again between rounds, and US$25 a day of the platform's AI manager per platform admin; past a limit the turn stops with a plain message and keeps the tools that ran. A caller with less time (the autopilot's steps) passes its own `limits`. A new tool has zod arguments and a
+  store tool needs a permission key (its area) and nothing else; a new tool that most questions need goes in `CORE_TOOLS`. A turn
+  has a budget (D539, `src/lib/turn-budget.ts`): 240 s from its first round, with the last 45 s for a round without tools in which
+  the model must answer, 400,000 tokens, the store's month of AI on Kaizena Flow's key looked at again between rounds, and US$25 a
+  day of the platform's AI manager per platform admin; past a limit the turn stops with a plain message and keeps the tools that
+  ran. A caller with less time (the autopilot's steps) passes its own `limits`. A new tool has zod arguments and a
   description, answers from the site's own data with amounts written by
   `formatMoney` and sums done in code, a line in `TOOL_WORDS`, and a `gate`
   (`send`, `public`, `spend`) if it emails, changes a site or costs money:
@@ -56,7 +60,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   call is wrapped in `metered()` with the provider's own token figures
   (`tokensOrEstimate()`). Reports: `/admin/platform/ai/usage` and
   `/admin/account/usage` (`UsageReport`); sums are worked out in
-  `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`, `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when it was made (`priceFor`, `costMicrosSql`, `unpricedSql` in `src/server/ai-price-sql.ts`, the one place SQL reads a price; `matchPrice()` and `callCost()` in code). D146: pictures, speech and live calls are priced too (`per_image`, `per_audio_minute`, `per_million_characters`, null = no price); a new kind of use gets its own unit price there, never a new SQL copy. Any new page that shows tokens or other usage shows `costWords()` beside it, and a model with no price shows as such ("No price", a "+" on totals), never as free. Never a price in code. The two assistant action files load `@/server/owner-assistant` with `import()` inside each action, after the permission check; they never import it at the top (bloat review step 0.5).
+  `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`,
+  `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when
+  it was made (`priceFor`, `costMicrosSql`, `unpricedSql` in `src/server/ai-price-sql.ts`, the one place SQL reads a price;
+  `matchPrice()` and `callCost()` in code). D146: pictures, speech and live calls are priced too (`per_image`, `per_audio_minute`,
+  `per_million_characters`, null = no price); a new kind of use gets its own unit price there, never a new SQL copy. Any new page
+  that shows tokens or other usage shows `costWords()` beside it, and a model with no price shows as such ("No price", a "+" on
+  totals), never as free. Never a price in code. The two assistant action files load `@/server/owner-assistant` with `import()`
+  inside each action, after the permission check; they never import it at the top (bloat review step 0.5).
 
   Public paths to a model (bloat review step 0.21, `src/server/public-model-paths.scan.test.ts`): code a visitor can make run (a page,
   route, layout or server action under `src/app` outside the admin and the cron routes) calls a model only under a ceiling. The scan
@@ -82,35 +93,127 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
 
-- **The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)**: broadcasts, segments, customer tags and email automations, only through the screens' functions (`suggestBroadcast()` then `saveBroadcast()` as a draft; `startBroadcast()`/`scheduleBroadcast()` behind the `send` gate, checked by `preflightSendBroadcast()` and described by `broadcastApprovalSummary()`; `addTag()`/`removeTag()`; `switchAutomation()` behind the `send` gate; `write_email_automation` (D632) writes a lifecycle automation's words with the store's own writer (`suggestBroadcast()` with the kind's readers as its audience, claims and the brand's words to avoid refused) and saves them and its days through `saveAutomation()` behind the `send` gate, its days checked by `preflightWriteAutomation()`; `list_email_automations` carries each kind's paid orders within `ORDER_AFTER_DAYS` of its emails (`automationStats().revenue`); since D653 `write_email_automation` with `step` 2 or 3 writes a follow-up by the same writer, told it is a later email to those who have not ordered since, through `saveFollowUp()` (a missing one only as the next, after the first was saved: `followUpTarget()`) behind the `send` gate (removing one has no tool: the owner's screen), and the list names each follow-up and that cross-sell and restock show products the shop chooses; the cart reminders through the screen's own functions (`cart_reminder_stats` lists them with its figures; `write_cart_reminder` through `saveCartReminderStep()`, the main language's words written by the manager and checked by `findClaims()` and `findAvoided()` in `preflightWriteCartReminder()`, a discount code only one the store has, other languages keeping theirs; `switch_email_automation` with `cart_reminders` through `setCartRemindersEnabled()`; both behind the `send` gate; one tool more in the marketing area, as a turn's tool budget allows, D333); text messages (D565) through `saveSmsCampaign()` as a draft (`draft_text_message`, its words through `findClaims()` and `findAvoided()`) and `startSmsCampaign()` behind the `send` gate (`send_text_message`, never automatic, checked by `preflightSendTextMessage()` with 46elks's own price against the cap); `issue_gift_card` through `issueGiftCard()` behind the `spend` gate, always emailed, its code never in an answer). Answers carry counts, never who is on a list. Review moderation has no tool: a review's words never reach a model.
+- **The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)**: broadcasts, segments, customer tags
+  and email automations, only through the screens' functions (`suggestBroadcast()` then `saveBroadcast()` as a draft;
+  `startBroadcast()`/`scheduleBroadcast()` behind the `send` gate, checked by `preflightSendBroadcast()` and described by
+  `broadcastApprovalSummary()`; `addTag()`/`removeTag()`; `switchAutomation()` behind the `send` gate; `write_email_automation`
+  (D632) writes a lifecycle automation's words with the store's own writer (`suggestBroadcast()` with the kind's readers as its
+  audience, claims and the brand's words to avoid refused) and saves them and its days through `saveAutomation()` behind the
+  `send` gate, its days checked by `preflightWriteAutomation()`; `list_email_automations` carries each kind's paid orders within
+  `ORDER_AFTER_DAYS` of its emails (`automationStats().revenue`); since D653 `write_email_automation` with `step` 2 or 3 writes a
+  follow-up by the same writer, told it is a later email to those who have not ordered since, through `saveFollowUp()` (a missing
+  one only as the next, after the first was saved: `followUpTarget()`) behind the `send` gate (removing one has no tool: the
+  owner's screen), and the list names each follow-up and that cross-sell and restock show products the shop chooses; the cart
+  reminders through the screen's own functions (`cart_reminder_stats` lists them with its figures; `write_cart_reminder` through
+  `saveCartReminderStep()`, the main language's words written by the manager and checked by `findClaims()` and `findAvoided()` in
+  `preflightWriteCartReminder()`, a discount code only one the store has, other languages keeping theirs;
+  `switch_email_automation` with `cart_reminders` through `setCartRemindersEnabled()`; both behind the `send` gate; one tool more
+  in the marketing area, as a turn's tool budget allows, D333); text messages (D565) through `saveSmsCampaign()` as a draft
+  (`draft_text_message`, its words through `findClaims()` and `findAvoided()`) and `startSmsCampaign()` behind the `send` gate
+  (`send_text_message`, never automatic, checked by `preflightSendTextMessage()` with 46elks's own price against the cap);
+  `issue_gift_card` through `issueGiftCard()` behind the `spend` gate, always emailed, its code never in an answer). Answers carry
+  counts, never who is on a list. Review moderation has no tool: a review's words never reach a model.
 
 ## The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)
 
-- **The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)**: `list_staff`, `billing_overview` and the changes `invite_staff`, `change_staff_role`, `remove_staff` (gate `access`: who works in the store and what they may do) and `change_plan`, `end_plan` (gate `spend`) are the owner's (`TOOL_PERMISSIONS` `owner`, as the pages' `requireOwnerRole`), go only through the Staff and Billing pages' own functions (`inviteStaff()`, `inviteCollaborator()`, `assignRole()`, `disableStaff()`, `choosePlan()` for a running plan only, `cancelPlan()` at the period's end or undone, never at once) and read the membership again when they run (`passMembership()`), so a yes never outlives the person's ownership. The first plan is never chosen by a tool: it is paid by card on Stripe's page. A new gate category is a value of `GateCategory`, the `assistant_approvals_category` check widened in a migration and its words in the `assistant` catalogues' `gates`.
+- **The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)**:
+  `list_staff`, `billing_overview` and the changes `invite_staff`, `change_staff_role`, `remove_staff` (gate `access`: who works
+  in the store and what they may do) and `change_plan`, `end_plan` (gate `spend`) are the owner's (`TOOL_PERMISSIONS` `owner`, as
+  the pages' `requireOwnerRole`), go only through the Staff and Billing pages' own functions (`inviteStaff()`,
+  `inviteCollaborator()`, `assignRole()`, `disableStaff()`, `choosePlan()` for a running plan only, `cancelPlan()` at the period's
+  end or undone, never at once) and read the membership again when they run (`passMembership()`), so a yes never outlives the
+  person's ownership. The first plan is never chosen by a tool: it is paid by card on Stripe's page. A new gate category is a
+  value of `GateCategory`, the `assistant_approvals_category` check widened in a migration and its words in the `assistant`
+  catalogues' `gates`.
 
 ## The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)
 
-- **The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)**: `preview_order_change` and `change_order` (gate `spend`) go only through `previewOrderEdit()`, `applyOrderEdit()` (a lower or equal total, refunded) and `sendOrderEdit()` (a higher total, the pay link emailed to the order's own address); the order's state the owner was shown is kept with the approval (`approved_base`, written by `keepForApproval()`, never the model's) and the change refuses as changed when the order moved. `preview_exchange`, `propose_exchange` (gate `send`: emailed only, never a link, as a withdrawal requires) and `process_exchange` (gate `spend`) go only through `previewExchange()`, `proposeExchange()` and `processExchange()`, replacements at their list price as the order's market shows it (read from the builder's own preview, never priced by the tool) to the order's delivery address; a lower price stays the builder's, by a person.
+- **The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`,
+  `src/server/exchange-tools.ts`)**: `preview_order_change` and `change_order` (gate `spend`) go only through
+  `previewOrderEdit()`, `applyOrderEdit()` (a lower or equal total, refunded) and `sendOrderEdit()` (a higher total, the pay link
+  emailed to the order's own address); the order's state the owner was shown is kept with the approval (`approved_base`, written
+  by `keepForApproval()`, never the model's) and the change refuses as changed when the order moved. `preview_exchange`,
+  `propose_exchange` (gate `send`: emailed only, never a link, as a withdrawal requires) and `process_exchange` (gate `spend`) go
+  only through `previewExchange()`, `proposeExchange()` and `processExchange()`, replacements at their list price as the order's
+  market shows it (read from the builder's own preview, never priced by the tool) to the order's delivery address; a lower price
+  stays the builder's, by a person.
 
 ## The AI manager's Work tools (PSI AGT-01, D318, `src/server/work-tools.ts`)
 
-- **The AI manager's Work tools (PSI AGT-01, D318, `src/server/work-tools.ts`)**: `work_overview`, `list_work_clients`, `list_work_assignments` (`settings:read`), `log_time` and `issue_work_invoice` (`settings:write`, gate `send`) work only while the store has Work on (`store.workOn`) and go only through Work's own functions (`getWorkOverview()`, `logTime()`, `issueInvoice()`, which issues through `commerce.issue_work_invoice()`, and `sendInvoiceEmail()`), with the membership read again; an unready draft is refused before the owner is asked, and amounts stay per currency.
+- **The AI manager's Work tools (PSI AGT-01, D318, `src/server/work-tools.ts`)**: `work_overview`, `list_work_clients`,
+  `list_work_assignments` (`settings:read`), `log_time` and `issue_work_invoice` (`settings:write`, gate `send`) work only while
+  the store has Work on (`store.workOn`) and go only through Work's own functions (`getWorkOverview()`, `logTime()`,
+  `issueInvoice()`, which issues through `commerce.issue_work_invoice()`, and `sendInvoiceEmail()`), with the membership read
+  again; an unready draft is refused before the owner is asked, and amounts stay per currency.
 
 ## The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)
 
-- **The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)**: each goes through its page's own writer with the person behind it. `list_draft_orders` marks a shopper's request for a quote (`quote`), counts those waiting (`quote_requests_waiting`) and takes `quotes` to list only them; it never gives the shopper's note or the company they typed (`request_company`): those are their own words, read on the draft's page, so no shopper text reaches the model through a request beyond the name and email the draft tools already gave. `set_draft_prices` (`orders:write`, no gate: nothing is sent) types the price of an open draft's lines by SKU through the draft editor's own state (`formFromDraft()`, `inputFromForm()`, `saveDraft()`), so a line it does not name keeps its price, a line priced on request it does not name keeps waiting, and `""` takes a typed price away; sending stays `send_draft_order`'s (gate `send`), which sends a request as a quote. `decline_quote` (`orders:write`, gate `send`, autonomy area messages, as `decline_return`) goes through `declineQuote()`, checked first by `preflightDeclineQuote()` (a request, open, not declined; the reply by `checkQuoteReply()` and `findClaims()`). `price_display` (`settings:read`) reads `readPriceDisplay()`, the quote setting and the count waiting; `set_price_display` (`settings:write`, gate `public`, area setup) lays only what is given over `readPriceDisplay()` (a country by code among the store's, a language matched to the store's locales by `localeFor()`, words checked by `priceWordProblem()` before the owner is asked) and saves through `savePriceDisplay()`; `set_quote_requests` (`settings:write`, gate `public`, area setup) through `saveOrderSettings()`. `update_product` takes `price_on_request` (goods only) and `price_words` (`follow` store, none or own, with words by language, checked as the editor checks them) and saves through `saveProduct()`, so a product in a bundle priced from its parts is refused there (D433); `get_product` says both. Every one is a tool, so `toolsVersion()` changed: the agents' eval was recorded again on production and its recording committed (D391).
+- **The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)**: each goes through
+  its page's own writer with the person behind it. `list_draft_orders` marks a shopper's request for a quote (`quote`), counts
+  those waiting (`quote_requests_waiting`) and takes `quotes` to list only them; it never gives the shopper's note or the company
+  they typed (`request_company`): those are their own words, read on the draft's page, so no shopper text reaches the model
+  through a request beyond the name and email the draft tools already gave. `set_draft_prices` (`orders:write`, no gate: nothing
+  is sent) types the price of an open draft's lines by SKU through the draft editor's own state (`formFromDraft()`,
+  `inputFromForm()`, `saveDraft()`), so a line it does not name keeps its price, a line priced on request it does not name keeps
+  waiting, and `""` takes a typed price away; sending stays `send_draft_order`'s (gate `send`), which sends a request as a quote.
+  `decline_quote` (`orders:write`, gate `send`, autonomy area messages, as `decline_return`) goes through `declineQuote()`,
+  checked first by `preflightDeclineQuote()` (a request, open, not declined; the reply by `checkQuoteReply()` and `findClaims()`).
+  `price_display` (`settings:read`) reads `readPriceDisplay()`, the quote setting and the count waiting; `set_price_display`
+  (`settings:write`, gate `public`, area setup) lays only what is given over `readPriceDisplay()` (a country by code among the
+  store's, a language matched to the store's locales by `localeFor()`, words checked by `priceWordProblem()` before the owner is
+  asked) and saves through `savePriceDisplay()`; `set_quote_requests` (`settings:write`, gate `public`, area setup) through
+  `saveOrderSettings()`. `update_product` takes `price_on_request` (goods only) and `price_words` (`follow` store, none or own,
+  with words by language, checked as the editor checks them) and saves through `saveProduct()`, so a product in a bundle priced
+  from its parts is refused there (D433); `get_product` says both. Every one is a tool, so `toolsVersion()` changed: the agents'
+  eval was recorded again on production and its recording committed (D391).
 
 
 ## The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
 
-- **The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)**: `checkout_questions` (`settings:read`, feature shop) reads what Settings, Checkout rules lists under *Questions at checkout*, in order (`place` from 1), never a shopper's answer (personal data, on the order's page). `save_checkout_question` (`settings:write`, gate `public`, autonomy area setup) adds a question or changes one by `id`: only what is given is laid over the question as it is by `questionChange()` (a language matched to the store's locales by `localeFor()`, checked by `fieldInputSchema` and the limit), refused before the owner is asked by `preflightCheckoutQuestion()`, and saved only through the page's writers (`saveCheckoutField()`, `switchCheckoutField()`, `moveCheckoutField()`), so each change is audited in the person's name. The approval names a changed question by its own words (`checkoutQuestionApprovalWords()`). Deleting stays on the page. Its description carries the GDPR article 9 caution of the page. Both are tools, so `toolsVersion()` changed: the agents' eval is recorded again on production and its recording committed (D391).
+- **The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)**:
+  `checkout_questions` (`settings:read`, feature shop) reads what Settings, Checkout rules lists under *Questions at checkout*, in
+  order (`place` from 1), never a shopper's answer (personal data, on the order's page). `save_checkout_question`
+  (`settings:write`, gate `public`, autonomy area setup) adds a question or changes one by `id`: only what is given is laid over
+  the question as it is by `questionChange()` (a language matched to the store's locales by `localeFor()`, checked by
+  `fieldInputSchema` and the limit), refused before the owner is asked by `preflightCheckoutQuestion()`, and saved only through
+  the page's writers (`saveCheckoutField()`, `switchCheckoutField()`, `moveCheckoutField()`), so each change is audited in the
+  person's name. The approval names a changed question by its own words (`checkoutQuestionApprovalWords()`). Deleting stays on the
+  page. Its description carries the GDPR article 9 caution of the page. Both are tools, so `toolsVersion()` changed: the agents'
+  eval is recorded again on production and its recording committed (D391).
 ## The AI manager's tools for the newer screens (PSI AGT-01, `src/server/screen-tools.ts`)
 
-- **The AI manager's tools for the newer screens (PSI AGT-01, `src/server/screen-tools.ts`)**: each goes only through its screen's own service with the person behind it and asks what that screen asks. `receive_purchase_order` (`products:write`, gate `public`, autonomy area catalogue) counts an ordered purchase order in through `receivePurchaseOrder()`, found by its reference, or by its supplier while one order of theirs is open; with no lines it counts in all that is still to come. `schedule_report` (`analytics:write`, gate `send`, area messages) saves through `saveReportSchedule()`, the report by its title and the recipients by email among `reportRecipients()` (the asker when none is named). `set_customer_group` (`customers:write`, gate `spend`, never automatic: a group decides a customer's prices) goes through `setCustomerTier()`. `decide_creator` (`marketing:write`), `set_creator_rate` and `record_creator_payout` (the owner's, as on the Creators page) go through `decideCreator()`, `setCreatorRate()` and `recordCreatorPayout()`, each gate `spend` and never automatic, the creator by code or name and a payout never above what they are owed; `set_price_list_prices` (`customers:write`, gate `public`, area catalogue) goes through `setPrices()`, the list by name and each row by SKU and a currency of the store's markets. `set_price_list_buyers` (`customers:write`, gate `public`, never automatic: who a list is for decides who pays what) goes through `setAssignments()`, the groups and companies by name, replacing who it was for; `set_working_hours` (`bookings:write`, gate `public`, area setup, Appointments on) goes through `saveResource()` with only the days given changed; `switch_loyalty_reward` (`marketing:write`, gate `public`, area marketing) through `switchReward()`, and `list_loyalty_rewards` gives each reward's cost in the credits' own currency. Each is checked before the owner is asked (`preflightScreenTool()`, `SCREEN_CHECKED`): a name that fits nothing, or more than one thing, is a refusal in words, never a guess. The reads (`list_report_schedules`, `list_customer_groups`, `owed_to_customers` from `liabilityRows()`, `list_creators`, `booking_resources` behind Appointments or Stays and rentals) name people but never give their emails, and keep amounts per currency.
+- **The AI manager's tools for the newer screens (PSI AGT-01, `src/server/screen-tools.ts`)**: each goes only through its screen's
+  own service with the person behind it and asks what that screen asks. `receive_purchase_order` (`products:write`, gate `public`,
+  autonomy area catalogue) counts an ordered purchase order in through `receivePurchaseOrder()`, found by its reference, or by its
+  supplier while one order of theirs is open; with no lines it counts in all that is still to come. `schedule_report`
+  (`analytics:write`, gate `send`, area messages) saves through `saveReportSchedule()`, the report by its title and the recipients
+  by email among `reportRecipients()` (the asker when none is named). `set_customer_group` (`customers:write`, gate `spend`, never
+  automatic: a group decides a customer's prices) goes through `setCustomerTier()`. `decide_creator` (`marketing:write`),
+  `set_creator_rate` and `record_creator_payout` (the owner's, as on the Creators page) go through `decideCreator()`,
+  `setCreatorRate()` and `recordCreatorPayout()`, each gate `spend` and never automatic, the creator by code or name and a payout
+  never above what they are owed; `set_price_list_prices` (`customers:write`, gate `public`, area catalogue) goes through
+  `setPrices()`, the list by name and each row by SKU and a currency of the store's markets. `set_price_list_buyers`
+  (`customers:write`, gate `public`, never automatic: who a list is for decides who pays what) goes through `setAssignments()`,
+  the groups and companies by name, replacing who it was for; `set_working_hours` (`bookings:write`, gate `public`, area setup,
+  Appointments on) goes through `saveResource()` with only the days given changed; `switch_loyalty_reward` (`marketing:write`,
+  gate `public`, area marketing) through `switchReward()`, and `list_loyalty_rewards` gives each reward's cost in the credits' own
+  currency. Each is checked before the owner is asked (`preflightScreenTool()`, `SCREEN_CHECKED`): a name that fits nothing, or
+  more than one thing, is a refusal in words, never a guess. The reads (`list_report_schedules`, `list_customer_groups`,
+  `owed_to_customers` from `liabilityRows()`, `list_creators`, `booking_resources` behind Appointments or Stays and rentals) name
+  people but never give their emails, and keep amounts per currency.
 
 ## The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)
 
-- **The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)**: `follow_up` keeps a task in `commerce.assistant_follow_ups` (written only by those two modules); `runFollowUps()` in the five-minute dispatcher gives it back at its time as a `runTurn({ scheduled: true })` in the conversation it was asked in, in the person's name with what their role may do that day (gone member: cancelled; store not open: a day later). A scheduled turn sets no further follow-up and decides nothing in words (`ManagerContext.scheduled`); gated calls are kept as ever. The email (`assistant.follow_up`, `followUpEmail()`) says where the answer is, never the answer. A time from a tool is the store's wall clock through `localInstant()`, never a bare UTC string. An order rule's `ask` action is a follow-up too (`askAiManager()`, `origin = 'rule'`, the order's id): queued in the rule's transaction in the name of whoever last saved the rule while an owner (`saveRule()` refuses it from anyone else, `ASK_OWNER_ONLY`), at most `RULE_LIMITS.asksPerDay` a store in 24 hours.
+- **The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`,
+  `src/server/follow-up-runner.ts`)**: `follow_up` keeps a task in `commerce.assistant_follow_ups` (written only by those two
+  modules); `runFollowUps()` in the five-minute dispatcher gives it back at its time as a `runTurn({ scheduled: true })` in the
+  conversation it was asked in, in the person's name with what their role may do that day (gone member: cancelled; store not open:
+  a day later). A scheduled turn sets no further follow-up and decides nothing in words (`ManagerContext.scheduled`); gated calls
+  are kept as ever. The email (`assistant.follow_up`, `followUpEmail()`) says where the answer is, never the answer. A time from a
+  tool is the store's wall clock through `localInstant()`, never a bare UTC string. An order rule's `ask` action is a follow-up
+  too (`askAiManager()`, `origin = 'rule'`, the order's id): queued in the rule's transaction in the name of whoever last saved
+  the rule while an owner (`saveRule()` refuses it from anyone else, `ASK_OWNER_ONLY`), at most `RULE_LIMITS.asksPerDay` a store
+  in 24 hours.
 
 ## The AI manager's notices and saved skills (wave 8 unit F, D350)
 
@@ -137,23 +240,104 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## The autopilot's goals, plans and loop (D309, `docs/ai-autopilot.md` 7; built)
 
-- **The autopilot's goals, plans and loop (D309, `docs/ai-autopilot.md` 7; built)**: goals (`commerce.assistant_goals`, written only by `src/server/autopilot-goals.ts`) are the owner's vision and up to five targets of `GOAL_TARGETS`, measured only by `goalFigures()`/`targetProgress()` from the store's own figures (`periodTotals()`, the catalogue, the pages; not measured, never 0, when a figure cannot be known), and marked met by code. Plans (`commerce.assistant_plans`, `assistant_plan_steps`, written only by `src/server/autopilot-plans.ts` and the loop) are steps of `STEP_KINDS` checked by `checkPlan()` against `offeredTools()` (`src/server/offered-tools.ts`, the tools the turn offers) before anything is written, run in the name of whoever made them, in a conversation of their own; the database holds both life cycles. A plan starts or resumes only on its maker's yes (gate `plan`, `approved_version` kept by `keepForApproval()`, run by `decideApproval()` through `startPlanNow()`); stopping is never gated; a plan's question is answered only in a turn the person is in. The tools are manager tools named `*_autopilot_plan`, `set_goal`, `list_goals`, `drop_goal`. Who acted is `audit_log.acted_by` (`person`, `ai_manager`, `autopilot`), written by `audit()` from `actingAs()` (`src/server/actor.ts`): the AI manager's tool calls and approved calls run as `ai_manager`; a new audit writer in SQL of its own adds `acted_by` with `currentActor()`. The loop (B2, `src/server/autopilot-runner.ts`, `/api/cron/autopilot` every minute): one step per store under its advisory lock, in the plan maker's name read again (`passMembership()`; gone pauses the plan, a closed store stops it); a tool step runs by code, a task step is `runTurn({ scheduled: true, autopilot })` inside `actingAs("autopilot")` with only its tools; every gated call there goes through `autopilotDecision()` (`src/server/autopilot-gate.ts`, `autonomyDecision()` in `src/lib/autopilot-autonomy.ts`: the owner's level per area in `commerce.autopilot_settings`, written only by `saveAutonomy()`, and the budgets) and is run or kept for a yes with `plan_step_id`, which `decideApproval()` settles through `settleStepApproval()`; what worked is only `checkStep()`; three failed tries are a question. A new gated tool is in `TOOL_AREAS` or `NEVER_AUTOMATIC` (a test fails otherwise); a new budget is read as a fact before `autonomyDecision()`. The AI budget counts every call the autopilot made (`ai_usage.acted_by` from `currentActor()`, D334): a background job a turn queues keeps who asked (`acted_by`) and runs inside `actingAs()` as them, and a call no price covers stops the autopilot (`aiBudgetProblem()`); broadcasts are never automatic and emails to one customer are capped a week (`CUSTOMER_EMAIL_TOOLS`, `customerEmailsPerWeek`). The Autopilot page (B3a, `/admin/{store}/assistant/autopilot`, owners; `/admin/platform/assistant/autopilot`) is `AutopilotPage` over `autopilotOverview()`, its buttons `src/server/autopilot-actions.ts` (Start and Resume there are the person's yes for the version shown). The digest and weekly report (B3b) are only `sendAutopilotReports()` (`src/server/autopilot-reports.ts`, the only writer of `commerce.autopilot_reports`, in the five-minute dispatcher): each person read again before sending, a period's row claimed before its email, facts gathered by code (`ReportFacts`, figures from `periodTotals()`), the model's note kept only through `checkedNote()` (no digit, no claim); never a customer or a step's result in them.
+- **The autopilot's goals, plans and loop (D309, `docs/ai-autopilot.md` 7; built)**: goals (`commerce.assistant_goals`, written
+  only by `src/server/autopilot-goals.ts`) are the owner's vision and up to five targets of `GOAL_TARGETS`, measured only by
+  `goalFigures()`/`targetProgress()` from the store's own figures (`periodTotals()`, the catalogue, the pages; not measured, never
+  0, when a figure cannot be known), and marked met by code. Plans (`commerce.assistant_plans`, `assistant_plan_steps`, written
+  only by `src/server/autopilot-plans.ts` and the loop) are steps of `STEP_KINDS` checked by `checkPlan()` against
+  `offeredTools()` (`src/server/offered-tools.ts`, the tools the turn offers) before anything is written, run in the name of
+  whoever made them, in a conversation of their own; the database holds both life cycles. A plan starts or resumes only on its
+  maker's yes (gate `plan`, `approved_version` kept by `keepForApproval()`, run by `decideApproval()` through `startPlanNow()`);
+  stopping is never gated; a plan's question is answered only in a turn the person is in. The tools are manager tools named
+  `*_autopilot_plan`, `set_goal`, `list_goals`, `drop_goal`. Who acted is `audit_log.acted_by` (`person`, `ai_manager`,
+  `autopilot`), written by `audit()` from `actingAs()` (`src/server/actor.ts`): the AI manager's tool calls and approved calls run
+  as `ai_manager`; a new audit writer in SQL of its own adds `acted_by` with `currentActor()`. The loop (B2,
+  `src/server/autopilot-runner.ts`, `/api/cron/autopilot` every minute): one step per store under its advisory lock, in the plan
+  maker's name read again (`passMembership()`; gone pauses the plan, a closed store stops it); a tool step runs by code, a task
+  step is `runTurn({ scheduled: true, autopilot })` inside `actingAs("autopilot")` with only its tools; every gated call there
+  goes through `autopilotDecision()` (`src/server/autopilot-gate.ts`, `autonomyDecision()` in `src/lib/autopilot-autonomy.ts`: the
+  owner's level per area in `commerce.autopilot_settings`, written only by `saveAutonomy()`, and the budgets) and is run or kept
+  for a yes with `plan_step_id`, which `decideApproval()` settles through `settleStepApproval()`; what worked is only
+  `checkStep()`; three failed tries are a question. A new gated tool is in `TOOL_AREAS` or `NEVER_AUTOMATIC` (a test fails
+  otherwise); a new budget is read as a fact before `autonomyDecision()`. The AI budget counts every call the autopilot made
+  (`ai_usage.acted_by` from `currentActor()`, D334): a background job a turn queues keeps who asked (`acted_by`) and runs inside
+  `actingAs()` as them, and a call no price covers stops the autopilot (`aiBudgetProblem()`); broadcasts are never automatic and
+  emails to one customer are capped a week (`CUSTOMER_EMAIL_TOOLS`, `customerEmailsPerWeek`). The Autopilot page (B3a,
+  `/admin/{store}/assistant/autopilot`, owners; `/admin/platform/assistant/autopilot`) is `AutopilotPage` over
+  `autopilotOverview()`, its buttons `src/server/autopilot-actions.ts` (Start and Resume there are the person's yes for the
+  version shown). The digest and weekly report (B3b) are only `sendAutopilotReports()` (`src/server/autopilot-reports.ts`, the
+  only writer of `commerce.autopilot_reports`, in the five-minute dispatcher): each person read again before sending, a period's
+  row claimed before its email, facts gathered by code (`ReportFacts`, figures from `periodTotals()`), the model's note kept only
+  through `checkedNote()` (no digit, no claim); never a customer or a step's result in them.
 
 ## The AI manager's design tools (D308, `docs/ai-autopilot.md` 6.1, `src/lib/design-tools.ts` pure, `src/server/design-tools.ts`)
 
-- **The AI manager's design tools (D308, `docs/ai-autopilot.md` 6.1, `src/lib/design-tools.ts` pure, `src/server/design-tools.ts`)**: `list_themes`, `add_theme` (`installDesignPreset()`, at once: visitors see nothing), `try_theme` (the install's preview) and `make_theme_live` (`switchToInstall()` or `applyDesignPreset()`, always on the owner's yes) go only through Design settings' own functions. The charge the owner was shown is kept with the approval (`approved_charge`, `chargeKey()`, written by `liveApprovalDetails()`, never the model), the approval is a `spend` when the theme costs money (`chargeCosts()`), and the yes is refused when the charge read again differs (`CHARGE_CHANGED`); the autopilot never makes a theme that costs money live (`costsMoney` before `autonomyDecision()`). A new way a tool makes a theme live does the same.
+- **The AI manager's design tools (D308, `docs/ai-autopilot.md` 6.1, `src/lib/design-tools.ts` pure,
+  `src/server/design-tools.ts`)**: `list_themes`, `add_theme` (`installDesignPreset()`, at once: visitors see nothing),
+  `try_theme` (the install's preview) and `make_theme_live` (`switchToInstall()` or `applyDesignPreset()`, always on the owner's
+  yes) go only through Design settings' own functions. The charge the owner was shown is kept with the approval
+  (`approved_charge`, `chargeKey()`, written by `liveApprovalDetails()`, never the model), the approval is a `spend` when the
+  theme costs money (`chargeCosts()`), and the yes is refused when the charge read again differs (`CHARGE_CHANGED`); the autopilot
+  never makes a theme that costs money live (`costsMoney` before `autonomyDecision()`). A new way a tool makes a theme live does
+  the same.
 
 ## The agent's eyes (D310, `docs/ai-autopilot.md` 9, `src/lib/page-look.ts` pure, `src/lib/page-look-shoot.ts`, `src/server/page-looks.ts`)
 
-- **The agent's eyes (D310, `docs/ai-autopilot.md` 9, `src/lib/page-look.ts` pure, `src/lib/page-look-shoot.ts`, `src/server/page-looks.ts`)**: `look_at_page` (a page's draft through `/admin/account/look/{page}?t=`, a token for that page only, ten minutes), `look_at_store` (home, a product page, the cart, live) and `get_page_look` are read-only owner tools. A look is a row of `commerce.page_looks` (written only by `page-looks.ts`), taken by `/api/cron/page-looks` alone (asked at once by `triggerLook()`, else every minute), the only route that loads Chromium for it (`page-look-runner.ts`, one browser per width inside `looking()`); its findings are code's (`codeFindings()`), the model's through `seeing()` (feature `page_look`, `UNTRUSTED_TEXT`, read only by `readLookAnswer()` against `LOOK_CHECKS`) and, for a draft, `pageIssues()`'s blocking issues and claims; no photograph is kept, findings 30 days. At most `LOOKS_PER_PAGE` looks of a page an hour; the autopilot's page check with `looks` fails a try on a blocking finding, and the next try is told why. A new check the model may report is a key in `LOOK_CHECKS` with its words. A look of kind `appearance` (D528, *Analyse existing* on the Dream Factory's page, `src/lib/site-appearance.ts`) photographs the live front page, a product page and up to `APPEARANCE_PAGES_MAX` other published pages (those the header's and footer's menus link to first, `menuPageSlugs()`), judges only the aspects the owner ticked (`page_looks.aspects`, `readAspects()`; a new aspect is a key of `APPEARANCE_ASPECTS` with its line in `ASPECT_LINES` and its words in both languages) and keeps a `SiteAppearance` in `findings` (the model's summary, points and a suggested request, read only by `readAppearance()`); it is shown as text and said to be an AI's view, its suggestion only fills the owner's field and starts nothing, and `startAppearance()` refuses a private store.
+- **The agent's eyes (D310, `docs/ai-autopilot.md` 9, `src/lib/page-look.ts` pure, `src/lib/page-look-shoot.ts`,
+  `src/server/page-looks.ts`)**: `look_at_page` (a page's draft through `/admin/account/look/{page}?t=`, a token for that page
+  only, ten minutes), `look_at_store` (home, a product page, the cart, live) and `get_page_look` are read-only owner tools. A look
+  is a row of `commerce.page_looks` (written only by `page-looks.ts`), taken by `/api/cron/page-looks` alone (asked at once by
+  `triggerLook()`, else every minute), the only route that loads Chromium for it (`page-look-runner.ts`, one browser per width
+  inside `looking()`); its findings are code's (`codeFindings()`), the model's through `seeing()` (feature `page_look`,
+  `UNTRUSTED_TEXT`, read only by `readLookAnswer()` against `LOOK_CHECKS`) and, for a draft, `pageIssues()`'s blocking issues and
+  claims; no photograph is kept, findings 30 days. At most `LOOKS_PER_PAGE` looks of a page an hour; the autopilot's page check
+  with `looks` fails a try on a blocking finding, and the next try is told why. A new check the model may report is a key in
+  `LOOK_CHECKS` with its words. A look of kind `appearance` (D528, *Analyse existing* on the Dream Factory's page,
+  `src/lib/site-appearance.ts`) photographs the live front page, a product page and up to `APPEARANCE_PAGES_MAX` other published
+  pages (those the header's and footer's menus link to first, `menuPageSlugs()`), judges only the aspects the owner ticked
+  (`page_looks.aspects`, `readAspects()`; a new aspect is a key of `APPEARANCE_ASPECTS` with its line in `ASPECT_LINES` and its
+  words in both languages) and keeps a `SiteAppearance` in `findings` (the model's summary, points and a suggested request, read
+  only by `readAppearance()`); it is shown as text and said to be an AI's view, its suggestion only fills the owner's field and
+  starts nothing, and `startAppearance()` refuses a private store.
 
 ## Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)
 
-- **Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)**: the official texts a legal page may rest on are the register `LEGAL_SOURCES` (`src/lib/legal-sources.ts`: EU law from Cellar, Swedish from Riksdagen, Danish from Retsinformation, Norwegian from Lovdata's open data), each topic's articles or sections in `TOPIC_REFS`, complaint bodies and authorities as data; which law a store's pages rest on is only `jurisdictionsFor()`/`refsFor()`, never the model. Texts are fetched only from `LEGAL_SOURCE_HOSTS` through `officialFetch()` (`safeFetch()`), cut by `src/lib/legal-passages.ts` and kept only by `src/server/legal-sources.ts` (`legal_source_reads`, `legal_source_texts`, append-only; `readDueLegalSources()` in the five-minute dispatcher); a read that lacks a passage the register names fails and never replaces a good one, so a new reference is a passage the text as read holds. Never cite from a model's memory or a person's typing: pages read `currentLegalTexts()`. The writer (`src/lib/legal-writer.ts` pure, `src/server/legal-writer.ts`, the only writer of `commerce.legal_ai_writes`) plans a page's topics and passages in code, the model writes sentences only with tokens for every fact, link and body, `checkLegalDraft()` refuses a quote not word for word, a number in no cited quote, an address written out, a missing needed token, the ODR platform and claims, and code fills the tokens from `starterFactWords()` (the starters' own words), copies the model form from the law and adds Sources; a page is saved only by `savePageOf()` without the review notice (L3, 8.12): into the kind's page only while it is the AI's and unchanged since (`saved_hash`) or handed back, else a draft beside it (`kept`), never over a person's page; published only with the owner's `auto`, nothing missing and no running test. The owner turns it on once on the Legal page (`commerce.legal_ai_settings`, written only by that module); `runLegalUpkeep()` (five-minute dispatcher, daily per store, in the owner's name read again) queues `first`, `facts_changed` (`factsHash()`) and `source_changed` (`passageHash()` of each cited passage), at most `LEGAL_WRITES_PER_DAY`; a new fact a page uses goes in `legalFacts()` so its hash follows it. A new topic is a brief in `TOPIC_BRIEFS`, its passages in `TOPIC_REFS` and its tokens in `TOPIC_NEEDS`. The hand-written starters and `LEGAL_WORDING_NB` stay as they are.
+- **Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)**: the official texts a
+  legal page may rest on are the register `LEGAL_SOURCES` (`src/lib/legal-sources.ts`: EU law from Cellar, Swedish from Riksdagen,
+  Danish from Retsinformation, Norwegian from Lovdata's open data), each topic's articles or sections in `TOPIC_REFS`, complaint
+  bodies and authorities as data; which law a store's pages rest on is only `jurisdictionsFor()`/`refsFor()`, never the model.
+  Texts are fetched only from `LEGAL_SOURCE_HOSTS` through `officialFetch()` (`safeFetch()`), cut by `src/lib/legal-passages.ts`
+  and kept only by `src/server/legal-sources.ts` (`legal_source_reads`, `legal_source_texts`, append-only; `readDueLegalSources()`
+  in the five-minute dispatcher); a read that lacks a passage the register names fails and never replaces a good one, so a new
+  reference is a passage the text as read holds. Never cite from a model's memory or a person's typing: pages read
+  `currentLegalTexts()`. The writer (`src/lib/legal-writer.ts` pure, `src/server/legal-writer.ts`, the only writer of
+  `commerce.legal_ai_writes`) plans a page's topics and passages in code, the model writes sentences only with tokens for every
+  fact, link and body, `checkLegalDraft()` refuses a quote not word for word, a number in no cited quote, an address written out,
+  a missing needed token, the ODR platform and claims, and code fills the tokens from `starterFactWords()` (the starters' own
+  words), copies the model form from the law and adds Sources; a page is saved only by `savePageOf()` without the review notice
+  (L3, 8.12): into the kind's page only while it is the AI's and unchanged since (`saved_hash`) or handed back, else a draft
+  beside it (`kept`), never over a person's page; published only with the owner's `auto`, nothing missing and no running test. The
+  owner turns it on once on the Legal page (`commerce.legal_ai_settings`, written only by that module); `runLegalUpkeep()`
+  (five-minute dispatcher, daily per store, in the owner's name read again) queues `first`, `facts_changed` (`factsHash()`) and
+  `source_changed` (`passageHash()` of each cited passage), at most `LEGAL_WRITES_PER_DAY`; a new fact a page uses goes in
+  `legalFacts()` so its hash follows it. A new topic is a brief in `TOPIC_BRIEFS`, its passages in `TOPIC_REFS` and its tokens in
+  `TOPIC_NEEDS`. The hand-written starters and `LEGAL_WORDING_NB` stay as they are.
 
 ## The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)
 
-- **The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)**: goals (`src/server/autopilot-goals.ts`, progress only from `goalProgress()`), plans of fixed step kinds checked by `checkPlan()` (`src/server/autopilot-plans.ts`, the only writer of plans and steps besides the loop's runs), the loop `runAutopilot()` and the reviews `runGoalReviews()` in `/api/cron/autopilot`, within the owner's levels and budgets (`autonomyDecision()`, `NEVER_AUTOMATIC`). A goal's review (D328, only with *Keep working toward my goals*) may only read and make one plan; whether it starts is `startDecision()` by code, never the model, and `start_autopilot_plan` stays never automatic as a tool. Reviews are written only by `src/server/autopilot-reviews.ts`. Reacting to events (D331, `docs/ai-autopilot.md` 15, `src/lib/autopilot-events.ts`, `src/server/autopilot-events.ts`): with `planning.reacts` on, a customer waiting for a person, an A/B test that ended by itself and an urgent alert are rows of `commerce.autopilot_events` (written only by that module, once per store, kind and reference) answered by one headless turn with only `EVENT_TOOLS[kind]` and `EVENT_LINES[kind]`; a support event only leaves a staff note (never a word to the customer), a gated call meets `autopilotDecision()`, and an alert's plan starts only by `startDecision()`. A new kind of event is a kind in `EVENT_KINDS` (and the table's check), its finder in `detectEvents()`, its tools and lines, its facts in `eventMessage()`, its still-open check in `stillOpen()` and words in the `assistant` catalogues' `events`.
+- **The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)**: goals (`src/server/autopilot-goals.ts`, progress only from
+  `goalProgress()`), plans of fixed step kinds checked by `checkPlan()` (`src/server/autopilot-plans.ts`, the only writer of plans
+  and steps besides the loop's runs), the loop `runAutopilot()` and the reviews `runGoalReviews()` in `/api/cron/autopilot`,
+  within the owner's levels and budgets (`autonomyDecision()`, `NEVER_AUTOMATIC`). A goal's review (D328, only with *Keep working
+  toward my goals*) may only read and make one plan; whether it starts is `startDecision()` by code, never the model, and
+  `start_autopilot_plan` stays never automatic as a tool. Reviews are written only by `src/server/autopilot-reviews.ts`. Reacting
+  to events (D331, `docs/ai-autopilot.md` 15, `src/lib/autopilot-events.ts`, `src/server/autopilot-events.ts`): with
+  `planning.reacts` on, a customer waiting for a person, an A/B test that ended by itself and an urgent alert are rows of
+  `commerce.autopilot_events` (written only by that module, once per store, kind and reference) answered by one headless turn with
+  only `EVENT_TOOLS[kind]` and `EVENT_LINES[kind]`; a support event only leaves a staff note (never a word to the customer), a
+  gated call meets `autopilotDecision()`, and an alert's plan starts only by `startDecision()`. A new kind of event is a kind in
+  `EVENT_KINDS` (and the table's check), its finder in `detectEvents()`, its tools and lines, its facts in `eventMessage()`, its
+  still-open check in `stillOpen()` and words in the `assistant` catalogues' `events`.
 
 - **Pausing and budgets platform-wide (PSI AST-07)**: Platform → AI's *AI acting on its own* (`setAiAutonomyPaused()`, `src/server/ai-pause.ts`, a platform
   admin's, audited `platform.ai_autonomy_paused`) pauses every AI that acts without a person at once: `runAutopilot()`, `runEvents()`,
@@ -187,23 +371,72 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 
-- **Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)**: searches go only through `searchWeb()` to a `SEARCH_APIS` service at its one host (`searchHostOk()`), with the platform's key from `searchConnection()` (`commerce.search_settings`, written only by `src/server/web-search-settings.ts`), each recorded as `ai_usage` of kind `search` and priced only by `per_thousand_searches`; pages are read only through `readWebPage()` (`safeFetch()`, never a plain `fetch` of an address a model chose); a note cites only addresses in `research_sources` from the last 30 days; a comparison's totals are only `compareOptions()`. A new search service is an entry of `SEARCH_APIS` (request and reader), the `search_settings_provider` check widened, and its host in `SEARCH_HOSTS`.
+- **Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`,
+  `src/server/research.ts`)**: searches go only through `searchWeb()` to a `SEARCH_APIS` service at its one host
+  (`searchHostOk()`), with the platform's key from `searchConnection()` (`commerce.search_settings`, written only by
+  `src/server/web-search-settings.ts`), each recorded as `ai_usage` of kind `search` and priced only by `per_thousand_searches`;
+  pages are read only through `readWebPage()` (`safeFetch()`, never a plain `fetch` of an address a model chose); a note cites
+  only addresses in `research_sources` from the last 30 days; a comparison's totals are only `compareOptions()`. A new search
+  service is an entry of `SEARCH_APIS` (request and reader), the `search_settings_provider` check widened, and its host in
+  `SEARCH_HOSTS`.
 
 ## Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)
 
-- **Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)**: the brand in words is `commerce.brand_profiles`, written only by `setBrand()` (the tagline through `findClaims()`); a look of the store's own is made only by `designedTheme()` (every colour worked out in code, each pair `themeWarnings()` reads at 4.5:1, so never set a palette from a model's colours directly) and added only by `addOwnLook()` as an install that is not live; it reaches visitors only through `switchToInstall()`. A new named choice a designed look may set is a field of `designLookInput` laid over the base in `designedTheme()`. The logo and icon (F2a, `src/lib/brand-marks.ts`, `src/server/brand-marks.ts`, `src/server/font-outlines.ts`) are drawn by code from the font's outlines, never by a picture model: only `fontOutlines()` fetches a font file (`fonts.gstatic.com` alone), a mark's SVG holds only paths and fills (`pathOk()`), and it reaches visitors only through `set_header_footer`. The brand reaches the writers (F2b) only as `brandGuide()` (the chat's tone as `brandVoiceGuide()`), below each prompt's rules and never as facts, and its words to avoid are found only by `findAvoided()` beside the claims filter; a new AI writer of customer-facing words takes both.
+- **Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`,
+  `src/server/brand-tools.ts`)**: the brand in words is `commerce.brand_profiles`, written only by `setBrand()` (the tagline
+  through `findClaims()`); a look of the store's own is made only by `designedTheme()` (every colour worked out in code, each pair
+  `themeWarnings()` reads at 4.5:1, so never set a palette from a model's colours directly) and added only by `addOwnLook()` as an
+  install that is not live; it reaches visitors only through `switchToInstall()`. A new named choice a designed look may set is a
+  field of `designLookInput` laid over the base in `designedTheme()`. The logo and icon (F2a, `src/lib/brand-marks.ts`,
+  `src/server/brand-marks.ts`, `src/server/font-outlines.ts`) are drawn by code from the font's outlines, never by a picture
+  model: only `fontOutlines()` fetches a font file (`fonts.gstatic.com` alone), a mark's SVG holds only paths and fills
+  (`pathOk()`), and it reaches visitors only through `set_header_footer`. The brand reaches the writers (F2b) only as
+  `brandGuide()` (the chat's tone as `brandVoiceGuide()`), below each prompt's rules and never as facts, and its words to avoid
+  are found only by `findAvoided()` beside the claims filter; a new AI writer of customer-facing words takes both.
 
 ## The AI manager's catalogue tools (D308, `docs/ai-autopilot.md` 3, `src/lib/product-tools.ts` pure, `src/server/product-tools.ts`)
 
-- **The AI manager's catalogue tools (D308, `docs/ai-autopilot.md` 3, `src/lib/product-tools.ts` pure, `src/server/product-tools.ts`)**: `create_product`, `update_product`, `set_prices`, `set_product_status` and `write_product_texts` build `ProductInput` on the editor's own blank product or its own read (`emptyProduct()`, `getProductForEdit()`) and save only through `saveProduct()` with the person as actor; never write a product another way from a tool. A change lays only the fields given over what is there (variants by SKU, never deleted); an existing variant's stock is never written from them (`set_stock`), and a save passes the stock it read (`StockMode.loaded`, source `ai_manager`). New products are drafts; a tool in `GATED_WHEN_LIVE` waits for a yes only while its product is live (`gateNeeded()`, asked by the assistant and the MCP server), `set_product_status` always does, each checked first by `preflightProductTool()` and described by `productApprovalWords()`. Nothing is made (a term, a picture) before everything else is checked; pictures come from the store's own library or `makeSitePicture()`; texts from D76's writer with the product's own facts, through `findClaims()`. A new catalogue tool follows the same shape.
+- **The AI manager's catalogue tools (D308, `docs/ai-autopilot.md` 3, `src/lib/product-tools.ts` pure,
+  `src/server/product-tools.ts`)**: `create_product`, `update_product`, `set_prices`, `set_product_status` and
+  `write_product_texts` build `ProductInput` on the editor's own blank product or its own read (`emptyProduct()`,
+  `getProductForEdit()`) and save only through `saveProduct()` with the person as actor; never write a product another way from a
+  tool. A change lays only the fields given over what is there (variants by SKU, never deleted); an existing variant's stock is
+  never written from them (`set_stock`), and a save passes the stock it read (`StockMode.loaded`, source `ai_manager`). New
+  products are drafts; a tool in `GATED_WHEN_LIVE` waits for a yes only while its product is live (`gateNeeded()`, asked by the
+  assistant and the MCP server), `set_product_status` always does, each checked first by `preflightProductTool()` and described by
+  `productApprovalWords()`. Nothing is made (a term, a picture) before everything else is checked; pictures come from the store's
+  own library or `makeSitePicture()`; texts from D76's writer with the product's own facts, through `findClaims()`. A new
+  catalogue tool follows the same shape.
 
 ## The AI manager's website tools (D308, `docs/ai-autopilot.md` 4.1, `src/lib/site-tools.ts` pure, `src/server/site-tools.ts`)
 
-- **The AI manager's website tools (D308, `docs/ai-autopilot.md` 4.1, `src/lib/site-tools.ts` pure, `src/server/site-tools.ts`)**: pages, places, menus and the standard header and footer, for a store (`OWNER_TOOLS`) and Kaizena Flow's own site (`PLATFORM_TOOLS`) with the same handlers. A page is saved only by `savePage()`, as a draft unless `publish_page` (gated, never past a blocking accessibility issue or in a running test); changes go through the builder's own functions (`mapTexts()`, `replaceInPage()`, the row edits), tried first by `dryRunEdits()`, never inside a global part (`sharedTextKeys()`); sections are the page studio's (`sectionForPage()`, `buildDraft()`). A build and every picture run after the answer as rows of `commerce.page_ai_jobs` (`runPageJobs()`: `after()` and `/api/cron/page-jobs`), in the name of who asked, who must still be allowed to change the site, never for a store that is not open; never make a page or a picture from a tool inside the turn. The Pages and Articles lists show the jobs still going, *Being made by AI* (`PageJobsPanel`, `runningPageJobs()` in `src/server/page-jobs.ts`), with a Stop for who may change the site; a build is stopped only by `stopPageBuild()` (as `cancel_page_build` does) and a page's pictures by `stopPagePictures()`. Places, menus and the header go through `setFrontPage()`/`setProductsPage()`/`setPageRole()` (`setPlatformPageRole()`), `saveStoreMenu()`/`savePlatformMenu()` and `saveNavigation()`/`savePlatformNavigation()`; a store's menu never links into another store (`otherStoreAddress()`, other stores' domains), a menu waits for a yes only while shown (`menuGateNeeded()`), and the platform's gated calls are checked and gated by `preflightPlatformTool()`/`platformGateNeeded()`. A new site tool is a handler in both catalogues where it makes sense, with its approval words.
+- **The AI manager's website tools (D308, `docs/ai-autopilot.md` 4.1, `src/lib/site-tools.ts` pure, `src/server/site-tools.ts`)**:
+  pages, places, menus and the standard header and footer, for a store (`OWNER_TOOLS`) and Kaizena Flow's own site
+  (`PLATFORM_TOOLS`) with the same handlers. A page is saved only by `savePage()`, as a draft unless `publish_page` (gated, never
+  past a blocking accessibility issue or in a running test); changes go through the builder's own functions (`mapTexts()`,
+  `replaceInPage()`, the row edits), tried first by `dryRunEdits()`, never inside a global part (`sharedTextKeys()`); sections are
+  the page studio's (`sectionForPage()`, `buildDraft()`). A build and every picture run after the answer as rows of
+  `commerce.page_ai_jobs` (`runPageJobs()`: `after()` and `/api/cron/page-jobs`), in the name of who asked, who must still be
+  allowed to change the site, never for a store that is not open; never make a page or a picture from a tool inside the turn. The
+  Pages and Articles lists show the jobs still going, *Being made by AI* (`PageJobsPanel`, `runningPageJobs()` in
+  `src/server/page-jobs.ts`), with a Stop for who may change the site; a build is stopped only by `stopPageBuild()` (as
+  `cancel_page_build` does) and a page's pictures by `stopPagePictures()`. Places, menus and the header go through
+  `setFrontPage()`/`setProductsPage()`/`setPageRole()` (`setPlatformPageRole()`), `saveStoreMenu()`/`savePlatformMenu()` and
+  `saveNavigation()`/`savePlatformNavigation()`; a store's menu never links into another store (`otherStoreAddress()`, other
+  stores' domains), a menu waits for a yes only while shown (`menuGateNeeded()`), and the platform's gated calls are checked and
+  gated by `preflightPlatformTool()`/`platformGateNeeded()`. A new site tool is a handler in both catalogues where it makes sense,
+  with its approval words.
 
 ## The AI manager's setup tools (D308, `docs/ai-autopilot.md` 5.1, `src/lib/setup-tools.ts` pure, `src/server/setup-tools.ts`)
 
-- **The AI manager's setup tools (D308, `docs/ai-autopilot.md` 5.1, `src/lib/setup-tools.ts` pure, `src/server/setup-tools.ts`)**: `set_store_details`, `set_countries`, `set_languages`, `set_currencies`, `set_flat_shipping`, `save_shipping_method` and `open_store` save only through their screens' savers (`saveStoreDetails()`, `setMarkets()`, `saveLanguages()` with `languagesProblems()`, `saveCurrencies()`, `saveShippingSettings()`, `saveShippingMethod()`, `completeSetup()`), laying what is given over the store as it is, read with `currentStore()` (never the cached `getStore()` inside a turn that changes the store). They run at once while the store is being set up and wait for a yes once it is open (`GATED_WHEN_OPEN`, `setupGateNeeded()`); `open_store` always waits. `setup_progress` says each step's tool or the one thing only the owner can do (payments onboarding, the plan, DNS, a carrier's agreement): never try those. A new setup tool follows the same shape.
+- **The AI manager's setup tools (D308, `docs/ai-autopilot.md` 5.1, `src/lib/setup-tools.ts` pure, `src/server/setup-tools.ts`)**:
+  `set_store_details`, `set_countries`, `set_languages`, `set_currencies`, `set_flat_shipping`, `save_shipping_method` and
+  `open_store` save only through their screens' savers (`saveStoreDetails()`, `setMarkets()`, `saveLanguages()` with
+  `languagesProblems()`, `saveCurrencies()`, `saveShippingSettings()`, `saveShippingMethod()`, `completeSetup()`), laying what is
+  given over the store as it is, read with `currentStore()` (never the cached `getStore()` inside a turn that changes the store).
+  They run at once while the store is being set up and wait for a yes once it is open (`GATED_WHEN_OPEN`, `setupGateNeeded()`);
+  `open_store` always waits. `setup_progress` says each step's tool or the one thing only the owner can do (payments onboarding,
+  the plan, DNS, a carrier's agreement): never try those. A new setup tool follows the same shape.
 
 ## Shopping agents (wave 8 unit I, D353, `src/lib/shopping-agents.ts`, `src/server/shopping-agents.ts`)
 
@@ -233,7 +466,31 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   minute. Started by *Build my store with AI* at self-serve sign-up (`access_requests.dream`), on Your stores (`startDreamStore()`: a new
   store for an owner within their plan's stores or a platform admin, made as *Create a store* makes one, its run in their name; Platform →
   Stores and Platform → AI link there) or on `/admin/{store}/dream-factory`; scored
-  on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`; it counts as passed only once the run is ready, waiting until then and failed when the run failed or was stopped (`settleDreamDrills()`). Every run gives its store the free trial (`grantTrial()`, D420), which the plan step counts; the platform admin who asks for the drill is made an owner of its store for 14 days (`addDrillOwner()`; the test account stays the first owner), so they can look at it, change it and discard it, and the finished run's *See your store* goes through the members' preview (`/api/private/preview`). The run has two stages (D422): stage 1 ends on *Your look* (`approve`, an owner step: each change asked for is one turn of the AI limited to `LOOK_TOOLS`, at most `LOOK_ROUNDS`, until `approveLook()`), and stage 2's steps all need it; the business details are asked in stage 2 (`detailsQuestions()`, the `details` step, set by code with `saveStoreDetails()`), never in the brief. A new look tool goes in `LOOK_TOOLS` only if it changes nothing that sells, sends or costs. Before a store opens its owner may start over (`startDreamOver()`, D421: the newest run set aside and what it made cleared, its pages with the redirects their deletion left, products archived, goals dropped, a new run from the edited description) or discard the store (`closeStore()` as the owner closes it). **A rework (D527, `dream_runs.kind`, `REWORK_STEPS`)** changes a store that exists, open or not, from the owner's words, and nothing a visitor sees changes before the owner's *Make it live*: an open store is never built again (`startDreamRun()` refuses it), `startDreamRework()` starts one. Its plan is one answer held to the store's own pages and products (`reworkFacts()`, `readReworkPlan()`: one it does not have is dropped); its turns are limited to `REWORK_TOOLS` at *Ask me first* in every area (never `RUN_LEVELS`), so a tool goes in `REWORK_TOOLS` only if it leaves what visitors see alone (a draft, a look in the library, a drafted header or footer through `draft_header_footer`, a call the gate keeps for a yes such as `use_header_footer`) and never one that publishes, opens, sends or costs; what the turns kept is found by their conversations (`StepState.conversations`, `keptChanges()`). The review shows only the code's words from the store's rows (`reworkPrepared()`). Its plan's prompt is versioned as the agent `rework` with the eval case `rework-plan`; a new fact given to it goes through `reworkPromptInput()`, titles through `withoutInstructions()`. Going live is `applyStep()` alone, after `applyRework()` (the owner's press): `switchToInstall()`, `savePage()`, `setProductStatusTool()` and `decideApproval()`, each part refused or made on its own and said; a new kind of thing a rework prepares is made live there through its own saver. Setting a rework aside declines what it kept (`declineKept()`). The run ends `applied`.
+  on Platform → AI (`scoreOf()`); the live drill `dream_factory` signs up through the real path with `DRILL_PROMPT`; it counts as
+  passed only once the run is ready, waiting until then and failed when the run failed or was stopped (`settleDreamDrills()`).
+  Every run gives its store the free trial (`grantTrial()`, D420), which the plan step counts; the platform admin who asks for the
+  drill is made an owner of its store for 14 days (`addDrillOwner()`; the test account stays the first owner), so they can look at
+  it, change it and discard it, and the finished run's *See your store* goes through the members' preview
+  (`/api/private/preview`). The run has two stages (D422): stage 1 ends on *Your look* (`approve`, an owner step: each change
+  asked for is one turn of the AI limited to `LOOK_TOOLS`, at most `LOOK_ROUNDS`, until `approveLook()`), and stage 2's steps all
+  need it; the business details are asked in stage 2 (`detailsQuestions()`, the `details` step, set by code with
+  `saveStoreDetails()`), never in the brief. A new look tool goes in `LOOK_TOOLS` only if it changes nothing that sells, sends or
+  costs. Before a store opens its owner may start over (`startDreamOver()`, D421: the newest run set aside and what it made
+  cleared, its pages with the redirects their deletion left, products archived, goals dropped, a new run from the edited
+  description) or discard the store (`closeStore()` as the owner closes it). **A rework (D527, `dream_runs.kind`,
+  `REWORK_STEPS`)** changes a store that exists, open or not, from the owner's words, and nothing a visitor sees changes before
+  the owner's *Make it live*: an open store is never built again (`startDreamRun()` refuses it), `startDreamRework()` starts one.
+  Its plan is one answer held to the store's own pages and products (`reworkFacts()`, `readReworkPlan()`: one it does not have is
+  dropped); its turns are limited to `REWORK_TOOLS` at *Ask me first* in every area (never `RUN_LEVELS`), so a tool goes in
+  `REWORK_TOOLS` only if it leaves what visitors see alone (a draft, a look in the library, a drafted header or footer through
+  `draft_header_footer`, a call the gate keeps for a yes such as `use_header_footer`) and never one that publishes, opens, sends
+  or costs; what the turns kept is found by their conversations (`StepState.conversations`, `keptChanges()`). The review shows
+  only the code's words from the store's rows (`reworkPrepared()`). Its plan's prompt is versioned as the agent `rework` with the
+  eval case `rework-plan`; a new fact given to it goes through `reworkPromptInput()`, titles through `withoutInstructions()`.
+  Going live is `applyStep()` alone, after `applyRework()` (the owner's press): `switchToInstall()`, `savePage()`,
+  `setProductStatusTool()` and `decideApproval()`, each part refused or made on its own and said; a new kind of thing a rework
+  prepares is made live there through its own saver. Setting a rework aside declines what it kept (`declineKept()`). The run ends
+  `applied`.
 
 ## Watching the Dream Factory build (D419, `src/lib/dream-showcase.ts`, `src/server/dream-showcase.ts`, `src/components/admin/dream/dream-showcase.tsx`)
 
@@ -283,20 +540,83 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)
 
-- **The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)**: Platform → Settings → *100-day challenge* (`/admin/platform/challenges`) reads every store with `autopilot_settings.challenge` set through `challengeStores()` only: the stalls are the stall watch's own (`findChallengeStalls()`, said in its email's words), the people's actions `interventionsOf()` from `startsOn`, the AI cost `autopilotCostThisMonth()` against the challenge's `aiMonthlyUsd`, and the three ratios `challengeRatios()` over `scoredPeriod()` (Day 1 to today or Day 100) from `periodTotals()`/`derive()`, as `profit_overview` reads them; a ratio that cannot be measured is null and said so, never 0. Setting, changing and ending a challenge go only through `saveChallenge()`/`endChallenge()` in `platformAction()` with the settings area; every role reads. A new figure on the console is read by the same function the autopilot or the scoreboard reads, never a second way. Counts, ids and figures only, never what a customer wrote.
+- **The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure,
+  `src/server/challenge-console.ts`)**: Platform → Settings → *100-day challenge* (`/admin/platform/challenges`) reads every store
+  with `autopilot_settings.challenge` set through `challengeStores()` only: the stalls are the stall watch's own
+  (`findChallengeStalls()`, said in its email's words), the people's actions `interventionsOf()` from `startsOn`, the AI cost
+  `autopilotCostThisMonth()` against the challenge's `aiMonthlyUsd`, and the three ratios `challengeRatios()` over
+  `scoredPeriod()` (Day 1 to today or Day 100) from `periodTotals()`/`derive()`, as `profit_overview` reads them; a ratio that
+  cannot be measured is null and said so, never 0. Setting, changing and ending a challenge go only through
+  `saveChallenge()`/`endChallenge()` in `platformAction()` with the settings area; every role reads. A new figure on the console
+  is read by the same function the autopilot or the scoreboard reads, never a second way. Counts, ids and figures only, never what
+  a customer wrote.
 
 ## The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
 
-- **The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)**: `cancel_order` goes only through `cancelOrder()` and stays in `NEVER_AUTOMATIC` and `REFUND_TOOLS`, since it refunds; `create_purchase_order` only through `createPurchaseOrder()`/`placePurchaseOrder()`, and the autopilot places one itself only when `purchaseBudgetProblem()` says null (a new budget rule is a case there); `answer_supplier_order` only through `answerSupplierOrder()`. A supplier's reason reaches a prompt only as `suppliers_reason`, data. The order events are found only by `detectOrderEvents()` and answered with `EVENT_TOOLS[kind]`; a new kind of order event is a kind in `EVENT_KINDS` and the table's check (a migration), its finder there, its facts in `FACTS`, its message, reference, still-open check and words in both `assistant` catalogues, and it never lets the model write to a customer. An order's customer hears only `tell_customer_about_order` (D635, `src/server/order-updates.ts`): the store's fixed updates in `src/lib/order-update-email.ts` (each language by hand, no date, refund or amount), sent through `sendOrderUpdate()` once per order and update, and only when `factsFor()` finds the records bear them out (a delay: paid, goods left to send, not held; a parcel: its tracking in that phase). A new update is a kind in `ORDER_UPDATES` with its words in every language and its check in `factsFor()`. It counts with the customer emails a week (`CUSTOMER_EMAIL_TOOLS`). What to reorder is the demand forecast (D636, C4): `restockSuggestions()` reads `demandForecasts()` (`src/server/demand-forecast.ts`, checked reads) and its arithmetic is `forecast()` in `src/lib/demand-forecast.ts` alone (the weighted pace, the season, a planned price campaign by the product's own lift, the supplier's received orders' delivery time, the safety stock), each adjustment used only with enough data behind it, clamped, and named in the variant's `why`; a new adjustment is a case in `demand-forecast.test.ts` and a line in the answer's `rule`. A customer's request to staff is carried out by code only through `src/server/support-requests.ts` (D640): never unless the asker is the order's own customer signed in on the store's chat (`requestOf()`'s `verified`; never an email, never a visitor who typed a number) and nothing of the order is sent or held; the address is the request's own fields (`requestAddress`), never words a model wrote; the request is decided through `decideRequest()`, and a cancellation only through `cancel_order`, which closes its requests (`closeCancelRequests()`). The `staff_request` event's finder holds the same checks in SQL. The stock-out risk event (D638) is found only from that same `restockSuggestions()` (`detectStockoutRisks()`, every `STOCKOUT_CHECK_HOURS` hours), never from figures of its own, and not for a SKU with an open purchase order. Since D675 a confirmed exchange is an `exchange_confirmed` event (tools `get_order`, `process_exchange`, `add_order_note`), and in challenge mode `autonomyDecision()` runs `process_exchange` itself only when `exchangeRefundOf()` (the refund of `exchangeOutcome()` on the exchange as confirmed) is 0, area `messages`; one that refunds is kept for the owner.
+- **The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6,
+  `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)**: `cancel_order` goes only through `cancelOrder()` and stays in
+  `NEVER_AUTOMATIC` and `REFUND_TOOLS`, since it refunds; `create_purchase_order` only through
+  `createPurchaseOrder()`/`placePurchaseOrder()`, and the autopilot places one itself only when `purchaseBudgetProblem()` says
+  null (a new budget rule is a case there); `answer_supplier_order` only through `answerSupplierOrder()`. A supplier's reason
+  reaches a prompt only as `suppliers_reason`, data. The order events are found only by `detectOrderEvents()` and answered with
+  `EVENT_TOOLS[kind]`; a new kind of order event is a kind in `EVENT_KINDS` and the table's check (a migration), its finder there,
+  its facts in `FACTS`, its message, reference, still-open check and words in both `assistant` catalogues, and it never lets the
+  model write to a customer. An order's customer hears only `tell_customer_about_order` (D635, `src/server/order-updates.ts`): the
+  store's fixed updates in `src/lib/order-update-email.ts` (each language by hand, no date, refund or amount), sent through
+  `sendOrderUpdate()` once per order and update, and only when `factsFor()` finds the records bear them out (a delay: paid, goods
+  left to send, not held; a parcel: its tracking in that phase). A new update is a kind in `ORDER_UPDATES` with its words in every
+  language and its check in `factsFor()`. It counts with the customer emails a week (`CUSTOMER_EMAIL_TOOLS`). What to reorder is
+  the demand forecast (D636, C4): `restockSuggestions()` reads `demandForecasts()` (`src/server/demand-forecast.ts`, checked
+  reads) and its arithmetic is `forecast()` in `src/lib/demand-forecast.ts` alone (the weighted pace, the season, a planned price
+  campaign by the product's own lift, the supplier's received orders' delivery time, the safety stock), each adjustment used only
+  with enough data behind it, clamped, and named in the variant's `why`; a new adjustment is a case in `demand-forecast.test.ts`
+  and a line in the answer's `rule`. A customer's request to staff is carried out by code only through
+  `src/server/support-requests.ts` (D640): never unless the asker is the order's own customer signed in on the store's chat
+  (`requestOf()`'s `verified`; never an email, never a visitor who typed a number) and nothing of the order is sent or held; the
+  address is the request's own fields (`requestAddress`), never words a model wrote; the request is decided through
+  `decideRequest()`, and a cancellation only through `cancel_order`, which closes its requests (`closeCancelRequests()`). The
+  `staff_request` event's finder holds the same checks in SQL. The stock-out risk event (D638) is found only from that same
+  `restockSuggestions()` (`detectStockoutRisks()`, every `STOCKOUT_CHECK_HOURS` hours), never from figures of its own, and not for
+  a SKU with an open purchase order. Since D675 a confirmed exchange is an `exchange_confirmed` event (tools `get_order`,
+  `process_exchange`, `add_order_note`), and in challenge mode `autonomyDecision()` runs `process_exchange` itself only when
+  `exchangeRefundOf()` (the refund of `exchangeOutcome()` on the exchange as confirmed) is 0, area `messages`; one that refunds is
+  kept for the owner.
 
 ## The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
 
-- **The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)**: the baseline (D648, `src/lib/challenge-baseline.ts`) is frozen only by `freezeBaseline()`, a platform admin's before Day 1, and kept with the challenge (`KEPT_RECORDS`); once frozen the clone is counted with its frozen cost estimates and ad money, and a later change of an estimate, the ad money or a cost price is named in the notes, never counted silently. `scoreboardOf()` is the only reader: the clone over the days of the original's signed periods within Day 1 to Day 100 through `periodFiguresWithVisits()` (the analytics' own definition with visits), with the AI's cost and Kaizena Flow's plan subtracted as the clone's costs; the original only as signed (`challengeSchema.original`, written only by `saveOriginalPeriod()`/`removeOriginalPeriod()`, a platform admin's, audited). The ratios, the leader and the 80 % rule are only `board()`; a figure that cannot be known says why, never 0, and the platform never converts the original's currency. A new cost the clone carries is subtracted in `cloneSide()` and said on the page.
+- **The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure,
+  `src/server/challenge-scoreboard.ts`)**: the baseline (D648, `src/lib/challenge-baseline.ts`) is frozen only by
+  `freezeBaseline()`, a platform admin's before Day 1, and kept with the challenge (`KEPT_RECORDS`); once frozen the clone is
+  counted with its frozen cost estimates and ad money, and a later change of an estimate, the ad money or a cost price is named in
+  the notes, never counted silently. `scoreboardOf()` is the only reader: the clone over the days of the original's signed periods
+  within Day 1 to Day 100 through `periodFiguresWithVisits()` (the analytics' own definition with visits), with the AI's cost and
+  Kaizena Flow's plan subtracted as the clone's costs; the original only as signed (`challengeSchema.original`, written only by
+  `saveOriginalPeriod()`/`removeOriginalPeriod()`, a platform admin's, audited). The ratios, the leader and the 80 % rule are only
+  `board()`; a figure that cannot be known says why, never 0, and the platform never converts the original's currency. A new cost
+  the clone carries is subtracted in `cloneSide()` and said on the page.
 
 ## Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`, `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)
 
-- **Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`, `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)**: what a challenge store's AI runs on is `currentVersions()` (the agents' `promptVersions()`, `toolsVersion()` and the text model), pinned once by `pinChallenge()`; changes are found only by `watchChallengeVersions()` (dispatcher job `challengeVersions`) and logged on the challenge (`versionLog`, `withLog()`). A new thing the agents run on that a deploy can change is a field of `versionsSchema` and a line of `versionChanges()`. The deploy's smoke takes the challenge stores' pages only from `challengeSmokePages()` through `/api/health/smoke`, a module that imports nothing of the AI; `scripts/await-deploy.mjs` accepts only https addresses from it (`challengePagesFrom()`). The rollback is `docs/runbooks/challenge-rollback.md`.
+- **Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`,
+  `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)**: what a challenge store's AI runs on is `currentVersions()`
+  (the agents' `promptVersions()`, `toolsVersion()` and the text model), pinned once by `pinChallenge()`; changes are found only
+  by `watchChallengeVersions()` (dispatcher job `challengeVersions`) and logged on the challenge (`versionLog`, `withLog()`). A
+  new thing the agents run on that a deploy can change is a field of `versionsSchema` and a line of `versionChanges()`. The
+  deploy's smoke takes the challenge stores' pages only from `challengeSmokePages()` through `/api/health/smoke`, a module that
+  imports nothing of the AI; `scripts/await-deploy.mjs` accepts only https addresses from it (`challengePagesFrom()`). The
+  rollback is `docs/runbooks/challenge-rollback.md`.
 
 ## Watch and roll back the autopilot's changes (D628, `docs/100-day-challenge.md` F4, `src/lib/autopilot-watch.ts` pure, `src/server/autopilot-watch.ts`)
 
-- **Watch and roll back the autopilot's changes (D628, `docs/100-day-challenge.md` F4, `src/lib/autopilot-watch.ts` pure, `src/server/autopilot-watch.ts`)**: a page it published is undone only by `undoPage()` (D651): the version live before published again through `savePage()`, or the page taken off the site when it was never live before, and only while the page's live content and its draft are both still what the autopilot published and nobody published or unpublished it since (the audit log); only `watchAutopilotChanges()` (dispatcher job `autopilotWatch`) judges and undoes, and only changes of `REVERTIBLE_TOOLS`; the verdict is only `watchVerdict()` (a clear fall: enough visitors, far below and outside chance; or since D663 a clear rise in visitors meeting an error page, `errorReading()` smoothed so a rise from none counts, at least `MIN_ERRORS_AFTER` of them, from `visits.error_at`, which only `recordPageError()` writes, from the store's error page through `/api/visit/error`; or since D669 a clear rise in server errors per request, at least `MIN_SERVER_ERRORS_AFTER`, from `store_traffic_hourly`, which only `addTrafficHours()` writes from Vercel's log drain), the undo only from what the change itself left in the audit log, never over something changed since, and each verdict is one `ai.change_watched` entry. A new tool the watch undoes is a kind in `REVERTIBLE_TOOLS` and a case in `undo()` that reads what its tool audited before it.
+- **Watch and roll back the autopilot's changes (D628, `docs/100-day-challenge.md` F4, `src/lib/autopilot-watch.ts` pure,
+  `src/server/autopilot-watch.ts`)**: a page it published is undone only by `undoPage()` (D651): the version live before published
+  again through `savePage()`, or the page taken off the site when it was never live before, and only while the page's live content
+  and its draft are both still what the autopilot published and nobody published or unpublished it since (the audit log); only
+  `watchAutopilotChanges()` (dispatcher job `autopilotWatch`) judges and undoes, and only changes of `REVERTIBLE_TOOLS`; the
+  verdict is only `watchVerdict()` (a clear fall: enough visitors, far below and outside chance; or since D663 a clear rise in
+  visitors meeting an error page, `errorReading()` smoothed so a rise from none counts, at least `MIN_ERRORS_AFTER` of them, from
+  `visits.error_at`, which only `recordPageError()` writes, from the store's error page through `/api/visit/error`; or since D669
+  a clear rise in server errors per request, at least `MIN_SERVER_ERRORS_AFTER`, from `store_traffic_hourly`, which only
+  `addTrafficHours()` writes from Vercel's log drain), the undo only from what the change itself left in the audit log, never over
+  something changed since, and each verdict is one `ai.change_watched` entry. A new tool the watch undoes is a kind in
+  `REVERTIBLE_TOOLS` and a case in `undo()` that reads what its tool audited before it.

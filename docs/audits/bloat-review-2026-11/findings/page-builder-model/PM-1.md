@@ -4,9 +4,28 @@ The page builder's model and a built page's render (`README.md` beside this file
 
 - **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.2.
 - **Second check:** confirmed.
-- **Where:** `src/app/s/[store]/[market]/layout.tsx:104`, `src/app/s/[store]/[market]/layout.tsx:214`, `src/app/s/[store]/[market]/@drawer/default.tsx:1`, `src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:19`, `src/app/s/[store]/[market]/not-found.tsx:16`, `node_modules/next/dist/server/app-render/create-component-tree.js:551`, `node_modules/next/dist/server/app-render/create-component-tree.js:659`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/intercepting-routes.md:55`, `src/server/cart.ts:544`, `docs/rules/storefront.md:601`
-- **Evidence:** Next's own code, read again in this pass: a root layout that has `children` and one more slot is wrapped in a boundary whose notFound value is the root layout drawn a second time around the not-found page (create-component-tree.js:551 and :659-670; its comment says it 'renders the RootLayout twice'). The market layout is a root layout and takes `drawer` (layout.tsx:104, :214). Re-run in this pass with the skeptic's script (the review's working files (not kept)) on two captures: 27,070 bytes reachable only through that value in /s/demo/no/om-oss (38.9% of its 69,548 B payload) and in the home page (31.6%); Kaizena Flow's own front page has no such copy. The copy holds the header (4.7 KB), the phone menu (3.7 KB), the footer (3.5 KB), the bottom bar (2.1 KB), the theme's CSS (1.8 KB) and the breakpoint sheet (1.76 KB). The per-request cart link is in both copies, and getCartCount() is not memoised (cart.ts:544), so the layout's per-request work runs twice. Counted here: 22 route folders and page.tsx sit under the layout; 26 files import from the folder through the alias (44 import lines); 17 test files name the folder. The drawer is a <dialog> opened with showModal (cart-drawer.tsx:60), so where it sits in the markup does not show.
-- **Cost today:** 27 KB raw in every storefront document (0.7 to 1.3 KB gzip, about 0.3 KB Brotli, because it repeats), the same again in every layout segment file (54.7 KB against the page's 9.3 KB), and the header, footer, menus, the layout's per-request parts and the store's 404 page drawn a second time on each server render. A store with its own 404 page (not-found.tsx:19) ships that whole built page inside every page. Larger with a built header and footer: production's demo home is 203 KB with 149 KB of payload. Paid by: The server per render (most); a shopper's browser (parse and memory, little on the wire); the build
+- **Where:** `src/app/s/[store]/[market]/layout.tsx:104`, `src/app/s/[store]/[market]/layout.tsx:214`,
+  `src/app/s/[store]/[market]/@drawer/default.tsx:1`, `src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:19`,
+  `src/app/s/[store]/[market]/not-found.tsx:16`, `node_modules/next/dist/server/app-render/create-component-tree.js:551`,
+  `node_modules/next/dist/server/app-render/create-component-tree.js:659`,
+  `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/intercepting-routes.md:55`, `src/server/cart.ts:544`,
+  `docs/rules/storefront.md:601`
+- **Evidence:** Next's own code, read again in this pass: a root layout that has `children` and one more slot is wrapped in a
+  boundary whose notFound value is the root layout drawn a second time around the not-found page (create-component-tree.js:551 and
+  :659-670; its comment says it 'renders the RootLayout twice'). The market layout is a root layout and takes `drawer`
+  (layout.tsx:104, :214). Re-run in this pass with the skeptic's script (the review's working files (not kept)) on two captures:
+  27,070 bytes reachable only through that value in /s/demo/no/om-oss (38.9% of its 69,548 B payload) and in the home page
+  (31.6%); Kaizena Flow's own front page has no such copy. The copy holds the header (4.7 KB), the phone menu (3.7 KB), the footer
+  (3.5 KB), the bottom bar (2.1 KB), the theme's CSS (1.8 KB) and the breakpoint sheet (1.76 KB). The per-request cart link is in
+  both copies, and getCartCount() is not memoised (cart.ts:544), so the layout's per-request work runs twice. Counted here: 22
+  route folders and page.tsx sit under the layout; 26 files import from the folder through the alias (44 import lines); 17 test
+  files name the folder. The drawer is a <dialog> opened with showModal (cart-drawer.tsx:60), so where it sits in the markup does
+  not show.
+- **Cost today:** 27 KB raw in every storefront document (0.7 to 1.3 KB gzip, about 0.3 KB Brotli, because it repeats), the same
+  again in every layout segment file (54.7 KB against the page's 9.3 KB), and the header, footer, menus, the layout's per-request
+  parts and the store's 404 page drawn a second time on each server render. A store with its own 404 page (not-found.tsx:19) ships
+  that whole built page inside every page. Larger with a built header and footer: production's demo home is 203 KB with 149 KB of
+  payload. Paid by: The server per render (most); a shopper's browser (parse and memory, little on the wire); the build
 - **Saving:** Measured: 27 KB raw off every storefront document and about half of the 54.7 KB layout segment; 0.3 to 1.3 KB on the wire. One of two layout renders at prerender and on every dynamic request (not timed). Estimate: more in production, where headers and footers are built pages.
 - **Risk:** Medium. Many files move, so a missed import or a test's path fails the type check or a unit test at once. What only a browser shows: the phone's cart drawer opening and closing (the (.)cart folder still matches, since Next's convention counts route segments and a group is not one), the store's own 404 page with status 404, a footer revealed on scroll under a page that now also holds the drawer's node. The specs in step 7 cover these.
 
@@ -25,7 +44,12 @@ The page builder's model and a built page's render (`README.md` beside this file
 
 **Tests and rules that hold today's behaviour, and change with it:**
 
-- Scan and unit tests that read files under the folder by path: src/lib/pay-routes.graph.test.ts, src/lib/withdraw-no-storage.test.ts, src/lib/exchange-shopper.scan.test.ts, src/lib/gift-no-html.scan.test.ts, src/server/session-freshness.scan.test.ts, src/server/store-starters.scan.test.ts, src/server/redirect-writers.test.ts, src/lib/store-address.test.ts, src/lib/page-content.test.ts, and the component tests that import from the folder (checkout-terms, delivery-choice, variant-choice, shopper-documents); the full list is rg -l 'app/s/\[store\]/\[market\]' src e2e --glob '*.test.ts' --glob '*.spec.ts' (17 files).
+- Scan and unit tests that read files under the folder by path: src/lib/pay-routes.graph.test.ts,
+  src/lib/withdraw-no-storage.test.ts, src/lib/exchange-shopper.scan.test.ts, src/lib/gift-no-html.scan.test.ts,
+  src/server/session-freshness.scan.test.ts, src/server/store-starters.scan.test.ts, src/server/redirect-writers.test.ts,
+  src/lib/store-address.test.ts, src/lib/page-content.test.ts, and the component tests that import from the folder
+  (checkout-terms, delivery-choice, variant-choice, shopper-documents); the full list is rg -l 'app/s/\[store\]/\[market\]' src
+  e2e --glob '*.test.ts' --glob '*.spec.ts' (17 files).
 - e2e/cart.spec.ts, e2e/menus.spec.ts, e2e/page-roles.spec.ts, e2e/store-pages.spec.ts (the router patch D423 runs on these routes), e2e/performance.spec.ts.
 - Rule docs/rules/storefront.md:601 (D64): the market layout's @drawer slot intercepts /cart on client navigation and [...rest] closes it. Its reason is kept; only the slot's level changes, and the rule's wording with it.
 - The comment at layout.tsx:201-206 (React's 12.8 kB budget outside boundaries) is unaffected.

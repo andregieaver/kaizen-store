@@ -39,7 +39,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Order numbers (D141, `src/lib/order-numbers.ts`, `src/server/order-numbers.ts`) are one sequence per store, without gaps, as some countries require
 
-- Order numbers (D141, `src/lib/order-numbers.ts`, `src/server/order-numbers.ts`) are one sequence per store, without gaps, as some countries require: only `placeOrder()` and the subscription renewal insert an order, and each takes its number from `commerce.next_document_number(store, 'order')` in the same transaction (a unit test scans the source for this). The database refuses to renumber or delete an order, or to lower, skip or re-prefix an issued series; never write code that deletes an order (cancel it) or numbers one another way, and a test that needs fewer orders cancels them. Copied orders (`C-…`) are outside it. `commerce.order_number_audit()` checks a store, and `store_checkup` reports a broken sequence.
+- Order numbers (D141, `src/lib/order-numbers.ts`, `src/server/order-numbers.ts`) are one sequence per store, without gaps, as
+  some countries require: only `placeOrder()` and the subscription renewal insert an order, and each takes its number from
+  `commerce.next_document_number(store, 'order')` in the same transaction (a unit test scans the source for this). The database
+  refuses to renumber or delete an order, or to lower, skip or re-prefix an issued series; never write code that deletes an order
+  (cancel it) or numbers one another way, and a test that needs fewer orders cancels them. Copied orders (`C-…`) are outside it.
+  `commerce.order_number_audit()` checks a store, and `store_checkup` reports a broken sequence.
 
 ## Shipping is one flat rate per market (`commerce.shipping_rates`), optionally free above a basket value; a store with a carrier connected can also…
 
@@ -66,81 +71,463 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Withdrawals and returns (D153, `docs/returns.md`, `/s/{store}/{market}/withdraw`, `/admin/{store}/returns`)
 
-- Withdrawals and returns (D153, `docs/returns.md`, `/s/{store}/{market}/withdraw`, `/admin/{store}/returns`): the withdrawal function is two steps and a durable-medium acknowledgement (`src/server/withdrawals.ts`, `confirmWithdrawal()` sends the email in the same request; a failed email never undoes the withdrawal), the physical return is `returns` (`src/server/returns.ts`: lifecycle in `src/lib/return-status.ts` and mirrored by the database's rules, forward only; a withdrawal return is never declined or cancelled), eligibility and the 14-day clock are only `lineEligibility()`/`withdrawalWindow()` (`src/lib/withdrawal.ts`: the period counts from a recorded receipt, never an estimate), and the refund amount is only `refundFor()` (`src/lib/return-refund.ts`) paid through `refundOrder()`, never a second Stripe path (claimed on the return first). Never ask a reason for a withdrawal, never email an address the shopper typed (the order's own address), never answer differently for a wrong email or order number, set no cookie or storage there, and count abuse by hashed keys in the database, not by IP. `placeOrder()` keeps who pays return shipping and the standard delivery cost on the order (so refunds agree with what was shown); a new money read here needs a euro scenario. Every consumer text is hand-written and needs legal review; new tables are `never` in `COPY_RULES` except `return_settings`. A booked service keeps the right unless its product is `dated_service` (D407): its 14 days count from the order (`serviceEligibility()`), withdrawing cancels its booking, the express request is `orders.service_request_at` (recorded, never required by the server) and a part already provided is `serviceShare()`.
+- Withdrawals and returns (D153, `docs/returns.md`, `/s/{store}/{market}/withdraw`, `/admin/{store}/returns`): the withdrawal
+  function is two steps and a durable-medium acknowledgement (`src/server/withdrawals.ts`, `confirmWithdrawal()` sends the email
+  in the same request; a failed email never undoes the withdrawal), the physical return is `returns` (`src/server/returns.ts`:
+  lifecycle in `src/lib/return-status.ts` and mirrored by the database's rules, forward only; a withdrawal return is never
+  declined or cancelled), eligibility and the 14-day clock are only `lineEligibility()`/`withdrawalWindow()`
+  (`src/lib/withdrawal.ts`: the period counts from a recorded receipt, never an estimate), and the refund amount is only
+  `refundFor()` (`src/lib/return-refund.ts`) paid through `refundOrder()`, never a second Stripe path (claimed on the return
+  first). Never ask a reason for a withdrawal, never email an address the shopper typed (the order's own address), never answer
+  differently for a wrong email or order number, set no cookie or storage there, and count abuse by hashed keys in the database,
+  not by IP. `placeOrder()` keeps who pays return shipping and the standard delivery cost on the order (so refunds agree with what
+  was shown); a new money read here needs a euro scenario. Every consumer text is hand-written and needs legal review; new tables
+  are `never` in `COPY_RULES` except `return_settings`. A booked service keeps the right unless its product is `dated_service`
+  (D407): its 14 days count from the order (`serviceEligibility()`), withdrawing cancels its booking, the express request is
+  `orders.service_request_at` (recorded, never required by the server) and a part already provided is `serviceShare()`.
 
 ## Tax profile and VAT engine (D157, `docs/wave-1a-tax.md`, `src/lib/vat.ts`, `src/lib/vat-treatment.ts`, `src/lib/ioss.ts`,…
 
-- Tax profile and VAT engine (D157, `docs/wave-1a-tax.md`, `src/lib/vat.ts`, `src/lib/vat-treatment.ts`, `src/lib/ioss.ts`, `src/lib/tax-profile.ts`, `src/server/tax-treatment.ts`, `src/server/vat-checks.ts`, `src/server/vies.ts`, `src/server/vat-admin.ts`, `/admin/platform/vat`, `/admin/{store}/settings/tax`): VAT categories are rows (`commerce.vat_categories`; a product's `vat_category` is a foreign key); rates are `commerce.vat_rates` with validity dates, source, checked-on date and a verified flag, written only by `commerce.set_vat_rate()` (audit-logged, never edited in place) and read only through `commerce.vat_rate(country, category, at)` (`vat-readers.test.ts` scans the source); no row means the standard rate, and shipping takes the standard rate unless a person verified a country's rule (`shipping-vat.ts`). Never read `vat_rates` or `countries.standard_vat_rate` elsewhere. The store's registration is `store_tax_profile` (settings in `COPY_RULES`; `duplicate_store()` blanks the numbers, `clone_store()` copies none). What VAT an order carries is only `vatTreatment()` (pure, one reason code per refusal) through `decideTax()` in `tax-treatment.ts`, which `cartSummary()` and `placeOrder()` both call; a new money read needs a euro scenario in `checkout-kinds.int.test.ts`. Reverse charge: a private buyer, the seller's own country, a booking, subscription or host listing, goods sent from outside the EU or from the delivery country, a seller number not checked valid, a stale check or a number for another country all charge VAT; the VAT not charged is `orders.vat_relief_minor` inside `discount_minor` (like D130 credits), the order keeps `vat_kind`, the check and both numbers, and Stripe gets net amounts at quantity 1 with no coupon. IOSS marks only private buyers' shipped goods of at most 150 EUR sent from outside the EU to a listed market; downloads are no consignment. VIES (`vies.ts`) is reached only through an injectable fetch with the one constant host, 4 s, one retry; never call it while placing an order; its failure never blocks and never exempts; limits are taken atomically from `commerce.chat_usage` (buckets `vies:*`: cart 10, client 20, store 60 plus a reserve of 30, owner pool 20, per clock hour); answers are logged in `vat_checks` (24 h cache), and `pruneVatChecks()` clears carts' numbers 30 days after the cart ends, then old checks. A buyer's number and VIES's answer never appear in anything public. Consumer VAT texts (`vat-text.ts`) are hand-written nb/sv/da/en, flagged for legal review, and kept out of the AI catalogue.
+- Tax profile and VAT engine (D157, `docs/wave-1a-tax.md`, `src/lib/vat.ts`, `src/lib/vat-treatment.ts`, `src/lib/ioss.ts`,
+  `src/lib/tax-profile.ts`, `src/server/tax-treatment.ts`, `src/server/vat-checks.ts`, `src/server/vies.ts`,
+  `src/server/vat-admin.ts`, `/admin/platform/vat`, `/admin/{store}/settings/tax`): VAT categories are rows
+  (`commerce.vat_categories`; a product's `vat_category` is a foreign key); rates are `commerce.vat_rates` with validity dates,
+  source, checked-on date and a verified flag, written only by `commerce.set_vat_rate()` (audit-logged, never edited in place) and
+  read only through `commerce.vat_rate(country, category, at)` (`vat-readers.test.ts` scans the source); no row means the standard
+  rate, and shipping takes the standard rate unless a person verified a country's rule (`shipping-vat.ts`). Never read `vat_rates`
+  or `countries.standard_vat_rate` elsewhere. The store's registration is `store_tax_profile` (settings in `COPY_RULES`;
+  `duplicate_store()` blanks the numbers, `clone_store()` copies none). What VAT an order carries is only `vatTreatment()` (pure,
+  one reason code per refusal) through `decideTax()` in `tax-treatment.ts`, which `cartSummary()` and `placeOrder()` both call; a
+  new money read needs a euro scenario in `checkout-kinds.int.test.ts`. Reverse charge: a private buyer, the seller's own country,
+  a booking, subscription or host listing, goods sent from outside the EU or from the delivery country, a seller number not
+  checked valid, a stale check or a number for another country all charge VAT; the VAT not charged is `orders.vat_relief_minor`
+  inside `discount_minor` (like D130 credits), the order keeps `vat_kind`, the check and both numbers, and Stripe gets net amounts
+  at quantity 1 with no coupon. IOSS marks only private buyers' shipped goods of at most 150 EUR sent from outside the EU to a
+  listed market; downloads are no consignment. VIES (`vies.ts`) is reached only through an injectable fetch with the one constant
+  host, 4 s, one retry; never call it while placing an order; its failure never blocks and never exempts; limits are taken
+  atomically from `commerce.chat_usage` (buckets `vies:*`: cart 10, client 20, store 60 plus a reserve of 30, owner pool 20, per
+  clock hour); answers are logged in `vat_checks` (24 h cache), and `pruneVatChecks()` clears carts' numbers 30 days after the
+  cart ends, then old checks. A buyer's number and VIES's answer never appear in anything public. Consumer VAT texts
+  (`vat-text.ts`) are hand-written nb/sv/da/en, flagged for legal review, and kept out of the AI catalogue.
 
 ## Legal pages and terms at checkout (D158, `docs/wave-1-trust.md`)
 
-- **Legal pages and terms at checkout (D158, `docs/wave-1-trust.md`)**: a store's terms, privacy, returns, shipping, withdrawal-information, imprint and accessibility pages are *linked roles* (`LEGAL_ROLES` in `src/lib/legal-roles.ts`, rows of `page_roles`, served at their own address, in the sitemap when published, never A/B tested, `isLegalPage()`); starters are made as drafts from `legalFacts()` by `legalStarter()` (`src/lib/legal-starters/{nb,sv,da,en}.ts`, hand-written, never AI, each with the `legal-review-notice` row and `[[placeholders]]`, which the builder's checker blocks publishing over, in every language of the page). Never link the EU ODR platform (repealed). `stores.terms_at_checkout` (`link`, `checkbox`, `off`) draws the `checkout_terms` piece (and `CheckoutPayment` when the page has none); the pay press calls `recordTermsAcceptance()` before Stripe's `confirm`, writing `order_terms` and the immutable `legal_snapshots` (never columns on `orders`; copied orders refuse). A new legal kind is a role, a starter in each language with its `REQUIRED_TOPICS`, and an entry in `LEGAL_REVIEW_MANIFEST`. Where no payment page follows (an order on terms, gift cards that pay it all, a booking paid wholly at the venue, D379) the cart shows the sentence and records it through `startCheckout()`'s `recordTerms` before the order is confirmed; a subscription's renewal reads its first order's record (`termsForOrder()`), and the order confirmation links each accepted text (`termsBlocks()`). The privacy starter's automated-decisions section says only what the store does: the chat assistant (`privacy.automated.chat`), customer service answered by an AI on its own while the desk works AI first (`privacy.automated.answers`, D658), tone and summaries while on. Every text needs human review; the row stays partial until one has.
+- **Legal pages and terms at checkout (D158, `docs/wave-1-trust.md`)**: a store's terms, privacy, returns, shipping,
+  withdrawal-information, imprint and accessibility pages are *linked roles* (`LEGAL_ROLES` in `src/lib/legal-roles.ts`, rows of
+  `page_roles`, served at their own address, in the sitemap when published, never A/B tested, `isLegalPage()`); starters are made
+  as drafts from `legalFacts()` by `legalStarter()` (`src/lib/legal-starters/{nb,sv,da,en}.ts`, hand-written, never AI, each with
+  the `legal-review-notice` row and `[[placeholders]]`, which the builder's checker blocks publishing over, in every language of
+  the page). Never link the EU ODR platform (repealed). `stores.terms_at_checkout` (`link`, `checkbox`, `off`) draws the
+  `checkout_terms` piece (and `CheckoutPayment` when the page has none); the pay press calls `recordTermsAcceptance()` before
+  Stripe's `confirm`, writing `order_terms` and the immutable `legal_snapshots` (never columns on `orders`; copied orders refuse).
+  A new legal kind is a role, a starter in each language with its `REQUIRED_TOPICS`, and an entry in `LEGAL_REVIEW_MANIFEST`.
+  Where no payment page follows (an order on terms, gift cards that pay it all, a booking paid wholly at the venue, D379) the cart
+  shows the sentence and records it through `startCheckout()`'s `recordTerms` before the order is confirmed; a subscription's
+  renewal reads its first order's record (`termsForOrder()`), and the order confirmation links each accepted text
+  (`termsBlocks()`). The privacy starter's automated-decisions section says only what the store does: the chat assistant
+  (`privacy.automated.chat`), customer service answered by an AI on its own while the desk works AI first
+  (`privacy.automated.answers`, D658), tone and summaries while on. Every text needs human review; the row stays partial until one
+  has.
 
 ## Pay routes (D158, `docs/pci.md`)
 
-- **Pay routes (D158, `docs/pci.md`)**: `/cart`, `/checkout` and `/order` send `checkoutCsp()` (`next.config.ts` `headers()`, every address shape, with and without the market (D181); `CSP_ENFORCE` is the one-line Report-Only fallback), draw nothing from `OffPayRoutes` (consent manager, owner code, chat, affiliate capture, business popup), and are entered by full page loads (`PayRouteGuard`, a scan test); the checkout page may not hold an `html` or embed-video block. A test fails if the layout or a pay route imports a module in `FORBIDDEN_ON_PAY_ROUTES`. Never add a script origin to the policy without a reason in `docs/pci.md`. Keep zod out of the pay routes' client bundle (its JIT probe is reported as a CSP violation) or set it jitless there; the SAQ A is the company's. Every path also sends the site-wide `Content-Security-Policy-Report-Only` (D389, `siteReportOnlyCsp()`, no nonce: the pages are prerendered), reported to `/api/csp-report` and counted as `csp.violation` log lines only (`cspViolations()`: directive, blocked origin, area), so a new origin a page loads is named there; the failing-job alert is `alertFailingJob()` (`src/server/cron-alerts.ts`), and security events (`admin_sign_in.*`, `auth.permission_refused`) are `log()` lines with ids only.
+- **Pay routes (D158, `docs/pci.md`)**: `/cart`, `/checkout` and `/order` send `checkoutCsp()` (`next.config.ts` `headers()`,
+  every address shape, with and without the market (D181); `CSP_ENFORCE` is the one-line Report-Only fallback), draw nothing from
+  `OffPayRoutes` (consent manager, owner code, chat, affiliate capture, business popup), and are entered by full page loads
+  (`PayRouteGuard`, a scan test); the checkout page may not hold an `html` or embed-video block. A test fails if the layout or a
+  pay route imports a module in `FORBIDDEN_ON_PAY_ROUTES`. Never add a script origin to the policy without a reason in
+  `docs/pci.md`. Keep zod out of the pay routes' client bundle (its JIT probe is reported as a CSP violation) or set it jitless
+  there; the SAQ A is the company's. Every path also sends the site-wide `Content-Security-Policy-Report-Only` (D389,
+  `siteReportOnlyCsp()`, no nonce: the pages are prerendered), reported to `/api/csp-report` and counted as `csp.violation` log
+  lines only (`cspViolations()`: directive, blocked origin, area), so a new origin a page loads is named there; the failing-job
+  alert is `alertFailingJob()` (`src/server/cron-alerts.ts`), and security events (`admin_sign_in.*`, `auth.permission_refused`)
+  are `log()` lines with ids only.
 
 ## Checkout branding (wave 7 unit C, D337, `docs/wave-7-storefront.md` C)
 
-- **Checkout branding (wave 7 unit C, D337, `docs/wave-7-storefront.md` C)**: Stripe's payment form is drawn only by `stripeAppearance()`/`stripeFonts()` (`src/lib/checkout-appearance.ts`: no zod, types only from the theme, held by `pay-routes.graph.test.ts`) from the plain data `checkoutAppearanceFor()` (`src/lib/checkout-look.ts`) works out on the server from the theme: each colour set's colours, the body font's stack and our own stylesheet (`/api/fonts/css/{slug}?…&for=stripe`, on the page's own origin, never a font host's), the fields' corners from the theme's field corners and the buttons' from its button corners, in pixels. The checkout's own choices are `ThemeSettings.checkout` (`CheckoutLook`; the logo's switch is `mark`, as a theme holds no `logo`), edited in the theme editor's *Checkout look* card and saved with the theme; the page's pay button reads them through `themeCss()`'s `--checkout-*` variables under `.checkout-look` (globals.css), which the checkout section draws around the payment form. A new checkout choice is a key of `CheckoutLook` and its schema, read in `checkoutAppearanceFor()` (and `themeCss()` where the page draws it), a field in the card, words in the `design` catalogues and a case in `checkout-appearance.test.ts`; never a new origin in the pay routes' policy for it.
+- **Checkout branding (wave 7 unit C, D337, `docs/wave-7-storefront.md` C)**: Stripe's payment form is drawn only by
+  `stripeAppearance()`/`stripeFonts()` (`src/lib/checkout-appearance.ts`: no zod, types only from the theme, held by
+  `pay-routes.graph.test.ts`) from the plain data `checkoutAppearanceFor()` (`src/lib/checkout-look.ts`) works out on the server
+  from the theme: each colour set's colours, the body font's stack and our own stylesheet (`/api/fonts/css/{slug}?…&for=stripe`,
+  on the page's own origin, never a font host's), the fields' corners from the theme's field corners and the buttons' from its
+  button corners, in pixels. The checkout's own choices are `ThemeSettings.checkout` (`CheckoutLook`; the logo's switch is `mark`,
+  as a theme holds no `logo`), edited in the theme editor's *Checkout look* card and saved with the theme; the page's pay button
+  reads them through `themeCss()`'s `--checkout-*` variables under `.checkout-look` (globals.css), which the checkout section
+  draws around the payment form. A new checkout choice is a key of `CheckoutLook` and its schema, read in
+  `checkoutAppearanceFor()` (and `themeCss()` where the page draws it), a field in the card, words in the `design` catalogues and
+  a case in `checkout-appearance.test.ts`; never a new origin in the pay routes' policy for it.
 
 ## Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`)
 
-- Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`): an invoice is issued **only** by `commerce.issue_order_invoice()` inside `commerce.complete_order_payment()` (a sub-block: a failure rolls back only itself and never stops the payment) and a credit note **only** by `commerce.issue_credit_note()`, which a deferred constraint trigger runs at commit for every refund that becomes `succeeded`, by any path (`refundOrder()`, the Stripe `refund.created`/`refund.updated` handler `applyStripeRefund()`, D153 returns, a refund made in Stripe, raw SQL), and for a return refunded outside; never write code that inserts into `invoices` or `credit_notes` (a scan test), numbers one another way, or deletes or edits one (the database refuses; only a one-time `pdf_path` and `anonymise_expired_documents()` may change a row). A new refund path needs no call but must be listed in the enumeration of spec 2.6 and tested. Documents are the snapshot (`src/lib/invoice-snapshot.ts`: `buildInvoiceSnapshot()` is the oracle `invoice-parity.test.ts` holds the SQL to), drawn only from it by `OrderDocumentView`; a credit note never exceeds the invoice per rate (`creditAllocation()`, `creditVatConverted()`, `src/lib/credit-allocation.ts`) and a refund of a payment that is not on the invoice (a no-show fee) gets none (`payment_on_invoice()`). Copied (`C-…`), host, Stripe-test-mode (`payments.test_mode`) and invoicing-off orders get none; a store with incomplete details, a non-VAT-registered seller whose order charged VAT, or no exchange rate waits (`invoice_eligibility()`, `issueWaitingInvoices()`, the five-minute job). The VAT in the seller's currency is `vatHome` (`homeVatRequirement()`); `vatMain` and `buckets[*]` are what unit 1c reads. A new money read here needs a euro scenario in `checkout-kinds.int.test.ts` (it checks the invoice and its credit notes). A PDF is `renderToStaticMarkup()` of the same view loaded into Chromium with every request refused (`src/server/invoice-pdf.ts`; Chromium only there, the two PDF routes and `/api/cron/document-pdfs`, each in `outputFileTracingIncludes`), stored once in the private `documents` bucket, the print page the fallback. The hosted page is `/s/{store}/{market}/account/documents/{token}` (token `inv_`/`crn_`, no cookie, noindex, no tracking or chat extras: `isNoExtrasPath()`). Admin: `/admin/{store}/invoices` (`orders:read`; CSV and *Check again* `orders:write`), `/admin/{store}/settings/invoices` (owner). Invoicing is off for stores with live history until the owner turns it on. All consumer wording is `src/lib/invoice-text.ts`: hand-written, flagged for review, never in `i18n.ts` or the AI catalogue. A document as EN 16931
+- Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`): an invoice is issued **only** by
+  `commerce.issue_order_invoice()` inside `commerce.complete_order_payment()` (a sub-block: a failure rolls back only itself and
+  never stops the payment) and a credit note **only** by `commerce.issue_credit_note()`, which a deferred constraint trigger runs
+  at commit for every refund that becomes `succeeded`, by any path (`refundOrder()`, the Stripe `refund.created`/`refund.updated`
+  handler `applyStripeRefund()`, D153 returns, a refund made in Stripe, raw SQL), and for a return refunded outside; never write
+  code that inserts into `invoices` or `credit_notes` (a scan test), numbers one another way, or deletes or edits one (the
+  database refuses; only a one-time `pdf_path` and `anonymise_expired_documents()` may change a row). A new refund path needs no
+  call but must be listed in the enumeration of spec 2.6 and tested. Documents are the snapshot (`src/lib/invoice-snapshot.ts`:
+  `buildInvoiceSnapshot()` is the oracle `invoice-parity.test.ts` holds the SQL to), drawn only from it by `OrderDocumentView`; a
+  credit note never exceeds the invoice per rate (`creditAllocation()`, `creditVatConverted()`, `src/lib/credit-allocation.ts`)
+  and a refund of a payment that is not on the invoice (a no-show fee) gets none (`payment_on_invoice()`). Copied (`C-…`), host,
+  Stripe-test-mode (`payments.test_mode`) and invoicing-off orders get none; a store with incomplete details, a non-VAT-registered
+  seller whose order charged VAT, or no exchange rate waits (`invoice_eligibility()`, `issueWaitingInvoices()`, the five-minute
+  job). The VAT in the seller's currency is `vatHome` (`homeVatRequirement()`); `vatMain` and `buckets[*]` are what unit 1c reads.
+  A new money read here needs a euro scenario in `checkout-kinds.int.test.ts` (it checks the invoice and its credit notes). A PDF
+  is `renderToStaticMarkup()` of the same view loaded into Chromium with every request refused (`src/server/invoice-pdf.ts`;
+  Chromium only there, the two PDF routes and `/api/cron/document-pdfs`, each in `outputFileTracingIncludes`), stored once in the
+  private `documents` bucket, the print page the fallback. The hosted page is `/s/{store}/{market}/account/documents/{token}`
+  (token `inv_`/`crn_`, no cookie, noindex, no tracking or chat extras: `isNoExtrasPath()`). Admin: `/admin/{store}/invoices`
+  (`orders:read`; CSV and *Check again* `orders:write`), `/admin/{store}/settings/invoices` (owner). Invoicing is off for stores
+  with live history until the owner turns it on. All consumer wording is `src/lib/invoice-text.ts`: hand-written, flagged for
+  review, never in `i18n.ts` or the AI catalogue. A document as EN 16931
   UBL (D403) is only `invoiceUbl()`/`creditNoteUbl()` (`src/lib/einvoice.ts`) over its snapshot, never a figure worked out again: one that would not
   add up is refused with its reason (`documentUbl()`).
 
 ## Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`, `unit-price-editor.ts`)
 
-- Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`, `unit-price-editor.ts`): a goods variant's `measure_amount`/`measure_unit`/`measure_base` (the pack's total and the owner's preferred base) become the price per kg, litre, metre, m2 or piece beside every price. The per-measure figure is **only** worked out by `unitPrice()` (BigInt, half up to the minor unit) and asked for through `unitPriceShown()`, from the price **as the surface shows it** (after `shown()` for the currency and the VAT display, `withoutVat()` first for a business buyer). It is never converted from another currency's unit price and never taken from `referenceMinor`. It is `null` when it equals the price, the price is 0 or it rounds to nothing, and it never changes a total. `checkout-kinds.int.test.ts` holds it in every scenario through `expectUnitPrices()`, euro included, and `unit-price-readers.test.ts` keeps the arithmetic in one file. `order_lines.measure_*` is a frozen snapshot copied by `placeOrder()`, the subscription renewal and `copy_orders()`, so the order page, checkout, emails and subscription page never read the variant; the cart reads the variant live. Naming: `unitPriceMinor` is the price per item; the per-measure figure is `unit` or `measure`, never `unitPrice` as a field. Which base a market shows is `effectiveBase()` from `UNIT_PRICE_COUNTRY_RULES`: no country allows 100 g or 100 ml today (Germany, Norway and Sweden read, Denmark unread and closed), and the market's country decides, not its language or currency. Tests open a country with `allowSmallBase()` and restore it. Required: `commerce.unit_price_required()` (product `sold_by_measure`, or a product category or ancestor with `requires_unit_price`) and the deferred trigger `check_unit_price()` refuse an active product without a measure on an active physical goods variant, and a measure on a service or download; a category marked later grandfathers, reported by `productsNeedingMeasure()`. Basket-level reductions never change the line's unit price. Draw it with `<Price>` (its unit line), never by hand; a new surface that shows a price per item shows the unit price too, and a new money read needs a euro scenario. JSON-LD uses `priceSpecification` (`UnitPriceSpecification`, `referenceQuantity`, `valueReference`), not `unitPricingMeasure` (a feed attribute, wave 5). Words are in `m.unitPrice` (nb, sv, da and en by hand). No new table, so nothing new in `COPY_RULES`; `clone_store()`, `duplicate_store()` and `copy_orders()` are patched. Every rule that comes from a law is flagged for review.
+- Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`,
+  `unit-price-editor.ts`): a goods variant's `measure_amount`/`measure_unit`/`measure_base` (the pack's total and the owner's
+  preferred base) become the price per kg, litre, metre, m2 or piece beside every price. The per-measure figure is **only** worked
+  out by `unitPrice()` (BigInt, half up to the minor unit) and asked for through `unitPriceShown()`, from the price **as the
+  surface shows it** (after `shown()` for the currency and the VAT display, `withoutVat()` first for a business buyer). It is
+  never converted from another currency's unit price and never taken from `referenceMinor`. It is `null` when it equals the price,
+  the price is 0 or it rounds to nothing, and it never changes a total. `checkout-kinds.int.test.ts` holds it in every scenario
+  through `expectUnitPrices()`, euro included, and `unit-price-readers.test.ts` keeps the arithmetic in one file.
+  `order_lines.measure_*` is a frozen snapshot copied by `placeOrder()`, the subscription renewal and `copy_orders()`, so the
+  order page, checkout, emails and subscription page never read the variant; the cart reads the variant live. Naming:
+  `unitPriceMinor` is the price per item; the per-measure figure is `unit` or `measure`, never `unitPrice` as a field. Which base
+  a market shows is `effectiveBase()` from `UNIT_PRICE_COUNTRY_RULES`: no country allows 100 g or 100 ml today (Germany, Norway
+  and Sweden read, Denmark unread and closed), and the market's country decides, not its language or currency. Tests open a
+  country with `allowSmallBase()` and restore it. Required: `commerce.unit_price_required()` (product `sold_by_measure`, or a
+  product category or ancestor with `requires_unit_price`) and the deferred trigger `check_unit_price()` refuse an active product
+  without a measure on an active physical goods variant, and a measure on a service or download; a category marked later
+  grandfathers, reported by `productsNeedingMeasure()`. Basket-level reductions never change the line's unit price. Draw it with
+  `<Price>` (its unit line), never by hand; a new surface that shows a price per item shows the unit price too, and a new money
+  read needs a euro scenario. JSON-LD uses `priceSpecification` (`UnitPriceSpecification`, `referenceQuantity`, `valueReference`),
+  not `unitPricingMeasure` (a feed attribute, wave 5). Words are in `m.unitPrice` (nb, sv, da and en by hand). No new table, so
+  nothing new in `COPY_RULES`; `clone_store()`, `duplicate_store()` and `copy_orders()` are patched. Every rule that comes from a
+  law is flagged for review.
 
 ## VAT, OSS and IOSS reports (D161, `docs/wave-1c-reports.md`, `/admin/{store}/analytics/tax?view=vat|oss|ioss`, `src/lib/tax-*.ts`, `oss-return.ts`,…
 
-- **VAT, OSS and IOSS reports (D161, `docs/wave-1c-reports.md`, `/admin/{store}/analytics/tax?view=vat|oss|ioss`, `src/lib/tax-*.ts`, `oss-return.ts`, `ecb-history.ts`, `src/server/tax-reports.ts`, `tax-reconciliation.ts`, `tax-report-exports.ts`, `ecb-rates.ts`)**: the owner's data for their accountant, never a tax return or a filing; the page and every file say so. Reports read documents only (invoices and credit notes, D159) through the one reader `commerce.tax_document_groups()`; never recompute VAT from orders. An order with no document (invoicing off, waiting, test mode) is counted and itemised in the reconciliation by cause, never added. Delivery country is `orders.market_code`. Dispatch country, seller country and member state of identification are frozen on `orders.vat_treatment` (`dispatchCountry`, `sellerCountry`, `ossMemberState`; a live-profile fallback is counted as assumed), so editing the store later never moves a filed period. Where a sale is reported is only `classify()` (`tax-classes.ts`: Union 2a, 2b, 2d, non-Union NU, IOSS, national, or a named reason it is in no return); a non-EU market is the store's national return only when the store is established there, else `non_eu_market_foreign`. Euro figures of OSS and IOSS convert from the document's own currency, once per group in BigInt, at the ECB reference rate of the period's last day or the next publication day (`commerce.ecb_reference_rates`, append-only, filled by the daily job; the owner's audited override in `tax_rate_overrides`); never at today's rate and never through `vatMain`, which is used only for the main-currency VAT table. A missing rate makes the return incomplete and the return CSV is refused. Books mode counts a credit note in its own period; filing mode nets same-quarter credits and makes later ones Part 3 corrections of the original period, and negative Part 4 balances are not in Part 5. Part 2b and 2d are totalled per Member State of dispatch. The reconciliation ties the report to Finance's `periodTotals().vatMinor` and to sum(`tax_minor`) of PAID orders by named, counted causes, exact per currency; the page, the AI tools and exports read it in one REPEATABLE READ snapshot (`taxSnapshot()`). CSV layouts are fixed (`tax-csv.ts`, formula-safe, the reconciliation has a direction column); exports are POST with `analytics:write`, logged in `tax_report_exports` with a drift line; ECB rate fetch and override are owner-only, and ECB fetches are limited to 10 an hour per store and 60 in all (`takeEcbSlot()`, `chat_usage` bucket `ecb:fetch`). The AI manager's `vat_report` and `oss_return_data` are read-only and ungated. A new part of a return is a case in `classify()` with a test and a row in spec 4.3; a new money read gets a euro scenario. The classify() rules, the dating by payment day (Directive Art. 63 and 65, not 66a) and the euro conversion need an accountant before real use. The EC Sales List and national return mapping are not built (wave 2). Scheme users keep records 10 years (`retentionCutoff(..., { scheme })`).
+- **VAT, OSS and IOSS reports (D161, `docs/wave-1c-reports.md`, `/admin/{store}/analytics/tax?view=vat|oss|ioss`,
+  `src/lib/tax-*.ts`, `oss-return.ts`, `ecb-history.ts`, `src/server/tax-reports.ts`, `tax-reconciliation.ts`,
+  `tax-report-exports.ts`, `ecb-rates.ts`)**: the owner's data for their accountant, never a tax return or a filing; the page and
+  every file say so. Reports read documents only (invoices and credit notes, D159) through the one reader
+  `commerce.tax_document_groups()`; never recompute VAT from orders. An order with no document (invoicing off, waiting, test mode)
+  is counted and itemised in the reconciliation by cause, never added. Delivery country is `orders.market_code`. Dispatch country,
+  seller country and member state of identification are frozen on `orders.vat_treatment` (`dispatchCountry`, `sellerCountry`,
+  `ossMemberState`; a live-profile fallback is counted as assumed), so editing the store later never moves a filed period. Where a
+  sale is reported is only `classify()` (`tax-classes.ts`: Union 2a, 2b, 2d, non-Union NU, IOSS, national, or a named reason it is
+  in no return); a non-EU market is the store's national return only when the store is established there, else
+  `non_eu_market_foreign`. Euro figures of OSS and IOSS convert from the document's own currency, once per group in BigInt, at the
+  ECB reference rate of the period's last day or the next publication day (`commerce.ecb_reference_rates`, append-only, filled by
+  the daily job; the owner's audited override in `tax_rate_overrides`); never at today's rate and never through `vatMain`, which
+  is used only for the main-currency VAT table. A missing rate makes the return incomplete and the return CSV is refused. Books
+  mode counts a credit note in its own period; filing mode nets same-quarter credits and makes later ones Part 3 corrections of
+  the original period, and negative Part 4 balances are not in Part 5. Part 2b and 2d are totalled per Member State of dispatch.
+  The reconciliation ties the report to Finance's `periodTotals().vatMinor` and to sum(`tax_minor`) of PAID orders by named,
+  counted causes, exact per currency; the page, the AI tools and exports read it in one REPEATABLE READ snapshot
+  (`taxSnapshot()`). CSV layouts are fixed (`tax-csv.ts`, formula-safe, the reconciliation has a direction column); exports are
+  POST with `analytics:write`, logged in `tax_report_exports` with a drift line; ECB rate fetch and override are owner-only, and
+  ECB fetches are limited to 10 an hour per store and 60 in all (`takeEcbSlot()`, `chat_usage` bucket `ecb:fetch`). The AI
+  manager's `vat_report` and `oss_return_data` are read-only and ungated. A new part of a return is a case in `classify()` with a
+  test and a row in spec 4.3; a new money read gets a euro scenario. The classify() rules, the dating by payment day (Directive
+  Art. 63 and 65, not 66a) and the euro conversion need an accountant before real use. The EC Sales List and national return
+  mapping are not built (wave 2). Scheme users keep records 10 years (`retentionCutoff(..., { scheme })`).
 
 ## Inventory (wave 3, D172, `docs/wave-3-inventory.md`)
 
-- **Inventory (wave 3, D172, `docs/wave-3-inventory.md`)**: stock is `inventory_levels` per variant and location, and every change of it is an append-only row of `inventory_movements` written by a trigger (reason, source, account, order, return), with the why passed by `withStockContext()` (`src/server/stock-context.ts`; `stock-writers.scan.test.ts` fails for a writer without it). Never write a level another way, and never edit or delete a movement (the guard refuses; only `pruneInventoryMovements()` removes any older than 24 months, and the newest of each level stays). Stock is read only through `commerce.variant_availability` (`getVariantStock()`), never `available_stock` directly (`inventory-readers.test.ts`); `in_stock` floors each location at zero as `allocate()` does. A variant with `stock_policy = 'continue'` (physical only, `backorder_days` 1 to 90 required) may go below zero and nothing else may (trigger). `placeOrder()` allocates with `allocate()` (`src/lib/stock-routing.ts`: keep an order together, else by location rank, the backordered remainder at the first location that stocks the variant) and locks level rows in (variant, location) order. `commerce.draw_order_stock()` (inside `complete_order_payment()`) keeps each checkout's physical claim (`inventory_reservations.backorder_quantity` is the part beyond stock) and writes `order_lines.backorder_quantity`. Refunds, cancels and returns restock through `restockPlan()`/`restockRoom()` (never above what the order took) to the original location or one staff choose. Backorder wording is `m.backorder.*` and `emailText().backorder`: hand-written nb, sv, da and en, flagged for legal review, never machine-translated (`HAND_WRITTEN_ONLY` in `src/lib/ui-catalog.ts`); policy and days are read per request, never in a `'use cache'` function; a gift or a weekly box is never backordered (`noBackorder`). Locations: staff add, rename and rank, owners deactivate (`locationImpact()` first; refused while checkouts hold stock there or for the last active one), never delete one. Low-stock level per variant: `stock_alerts` and `sendLowStockNotices()` (one digest email per store per run, one per crossing; a variant created or set at or below its level is a crossing at once, read as not yet told by `untold()`/`UNTOLD_SQL`, D370). Stock files are D165 jobs (`inventory_import`, `inventory_export`); `on_hand_was` (written by the export, D370) makes a row a conflict when the stock moved. Transfers and purchase orders (wave 11 unit D1, D383) are written only by `src/server/stock-transfers.ts` and `src/server/purchase-orders.ts` (movements `transfer_out`/`transfer_in` and `received`, the document as `job_id`; the database moves both only forward, `stock_documents_rules()`); a variant's cost changes are kept by the trigger `variant_cost_keep()` in `variant_cost_history` (a writer naming its source sets `kaizen.cost_source`); a location with `fulfils_online` off is left out of `variant_availability` and `allocate()`, so a new reader of a store's sellable locations asks `active and fulfils_online`. Which location an order takes from first is `allocateStock()`'s `order_settings.stock_routing` (`rank`, or `nearest` through `routingOrder()` given the delivery country); a new caller passes the market's country. A read of a cart's or an order's lines takes the cart's lines first (`cartLinesFirst()`), never a filter the planner may scan the catalogue for. New money reads here need a euro scenario in `checkout-kinds.int.test.ts`; a new stock reason widens the `inventory_movements` check and `MOVEMENT_REASONS`; `inventory-perf.int.test.ts` guards the reads and the 20-line order (note: flaky on a busy or long-lived database). A pre-order (D396) is a variant that keeps selling with a release date (`preorder_until`): whether it is one is only `variant_availability`'s `preorder_until` (the date while in the future) through `availabilityOf()`, its words only `m.preorder` with `releaseDate()`, the order line keeps the date, and *To send* leaves out what waits for it (`PREORDER_WAITING`), so a new place that shows a variant's stock or an order line's backorder asks the same. With several active locations the product editor sets each one's level (D397, `VariantInput.locationStock`, each figure beside what was read): `writeStock()` writes only a changed figure to an active location of the store's own, so a new writer of a variant's levels from a form sends what it read too.
+- **Inventory (wave 3, D172, `docs/wave-3-inventory.md`)**: stock is `inventory_levels` per variant and location, and every change
+  of it is an append-only row of `inventory_movements` written by a trigger (reason, source, account, order, return), with the why
+  passed by `withStockContext()` (`src/server/stock-context.ts`; `stock-writers.scan.test.ts` fails for a writer without it).
+  Never write a level another way, and never edit or delete a movement (the guard refuses; only `pruneInventoryMovements()`
+  removes any older than 24 months, and the newest of each level stays). Stock is read only through
+  `commerce.variant_availability` (`getVariantStock()`), never `available_stock` directly (`inventory-readers.test.ts`);
+  `in_stock` floors each location at zero as `allocate()` does. A variant with `stock_policy = 'continue'` (physical only,
+  `backorder_days` 1 to 90 required) may go below zero and nothing else may (trigger). `placeOrder()` allocates with `allocate()`
+  (`src/lib/stock-routing.ts`: keep an order together, else by location rank, the backordered remainder at the first location that
+  stocks the variant) and locks level rows in (variant, location) order. `commerce.draw_order_stock()` (inside
+  `complete_order_payment()`) keeps each checkout's physical claim (`inventory_reservations.backorder_quantity` is the part beyond
+  stock) and writes `order_lines.backorder_quantity`. Refunds, cancels and returns restock through `restockPlan()`/`restockRoom()`
+  (never above what the order took) to the original location or one staff choose. Backorder wording is `m.backorder.*` and
+  `emailText().backorder`: hand-written nb, sv, da and en, flagged for legal review, never machine-translated (`HAND_WRITTEN_ONLY`
+  in `src/lib/ui-catalog.ts`); policy and days are read per request, never in a `'use cache'` function; a gift or a weekly box is
+  never backordered (`noBackorder`). Locations: staff add, rename and rank, owners deactivate (`locationImpact()` first; refused
+  while checkouts hold stock there or for the last active one), never delete one. Low-stock level per variant: `stock_alerts` and
+  `sendLowStockNotices()` (one digest email per store per run, one per crossing; a variant created or set at or below its level is
+  a crossing at once, read as not yet told by `untold()`/`UNTOLD_SQL`, D370). Stock files are D165 jobs (`inventory_import`,
+  `inventory_export`); `on_hand_was` (written by the export, D370) makes a row a conflict when the stock moved. Transfers and
+  purchase orders (wave 11 unit D1, D383) are written only by `src/server/stock-transfers.ts` and `src/server/purchase-orders.ts`
+  (movements `transfer_out`/`transfer_in` and `received`, the document as `job_id`; the database moves both only forward,
+  `stock_documents_rules()`); a variant's cost changes are kept by the trigger `variant_cost_keep()` in `variant_cost_history` (a
+  writer naming its source sets `kaizen.cost_source`); a location with `fulfils_online` off is left out of `variant_availability`
+  and `allocate()`, so a new reader of a store's sellable locations asks `active and fulfils_online`. Which location an order
+  takes from first is `allocateStock()`'s `order_settings.stock_routing` (`rank`, or `nearest` through `routingOrder()` given the
+  delivery country); a new caller passes the market's country. A read of a cart's or an order's lines takes the cart's lines first
+  (`cartLinesFirst()`), never a filter the planner may scan the catalogue for. New money reads here need a euro scenario in
+  `checkout-kinds.int.test.ts`; a new stock reason widens the `inventory_movements` check and `MOVEMENT_REASONS`;
+  `inventory-perf.int.test.ts` guards the reads and the 20-line order (note: flaky on a busy or long-lived database). A pre-order
+  (D396) is a variant that keeps selling with a release date (`preorder_until`): whether it is one is only
+  `variant_availability`'s `preorder_until` (the date while in the future) through `availabilityOf()`, its words only `m.preorder`
+  with `releaseDate()`, the order line keeps the date, and *To send* leaves out what waits for it (`PREORDER_WAITING`), so a new
+  place that shows a variant's stock or an order line's backorder asks the same. With several active locations the product editor
+  sets each one's level (D397, `VariantInput.locationStock`, each figure beside what was read): `writeStock()` writes only a
+  changed figure to an active location of the store's own, so a new writer of a variant's levels from a form sends what it read
+  too.
 
 ## Drop shipping (D550, D482, `docs/drop-shipping.md`, `src/lib/drop-shipping.ts`, `src/server/suppliers.ts`)
 
-- **Drop shipping (D550, D482, `docs/drop-shipping.md`, `src/lib/drop-shipping.ts`, `src/server/suppliers.ts`)**: a supplier that ships for the store is the row of `commerce.suppliers` its bills are booked on (D492) with `drop_ships` on, written only by `src/server/suppliers.ts` (`products:write` to add, edit and mark variants; stopping it is the owner's). It has one location of its own (`inventory_locations.supplier_id`, ranked above `SUPPLIER_PRIORITY_BASE`), which the Locations page and its changes leave out, a store's copies never take, and every routing reader takes after the store's own places: **own stock always goes first** (`routingOrder()`, `allocate()`). A drop-shipped variant names its supplier (`product_variants.supplier_id`, physical goods only). The store stays the seller in every text (contract, VAT, invoices, withdrawal, refunds). Supplier orders (D551) are written only by `src/server/supplier-orders.ts`: made by the five-minute job from the sale movements at a supplier's location, sent after the store's wait, answered on `/supply/{token}` (only the token's hash kept, never in the email log), the parcel recorded by `markSent()` for the supplier's lines alone and emailed by `sendShipped()`; a supplier's words are data, shown as text. A supplier's own system uses the supplier API (`/api/supply/v1`, D553) with a key only the owner makes (its hash kept, budget `supply`), seeing only its own orders, lines and variants; stock it posts is written at its own location with a stock context. Late suppliers are reminded once and the owners told once; the checkup's `supplier_late` carries them to the briefing. The plan and what is left are in `docs/drop-shipping.md` 10; a change there is made in that file first. Store-only: Kaizena Flow sells plans, not goods.
+- **Drop shipping (D550, D482, `docs/drop-shipping.md`, `src/lib/drop-shipping.ts`, `src/server/suppliers.ts`)**: a supplier that
+  ships for the store is the row of `commerce.suppliers` its bills are booked on (D492) with `drop_ships` on, written only by
+  `src/server/suppliers.ts` (`products:write` to add, edit and mark variants; stopping it is the owner's). It has one location of
+  its own (`inventory_locations.supplier_id`, ranked above `SUPPLIER_PRIORITY_BASE`), which the Locations page and its changes
+  leave out, a store's copies never take, and every routing reader takes after the store's own places: **own stock always goes
+  first** (`routingOrder()`, `allocate()`). A drop-shipped variant names its supplier (`product_variants.supplier_id`, physical
+  goods only). The store stays the seller in every text (contract, VAT, invoices, withdrawal, refunds). Supplier orders (D551) are
+  written only by `src/server/supplier-orders.ts`: made by the five-minute job from the sale movements at a supplier's location,
+  sent after the store's wait, answered on `/supply/{token}` (only the token's hash kept, never in the email log), the parcel
+  recorded by `markSent()` for the supplier's lines alone and emailed by `sendShipped()`; a supplier's words are data, shown as
+  text. A supplier's own system uses the supplier API (`/api/supply/v1`, D553) with a key only the owner makes (its hash kept,
+  budget `supply`), seeing only its own orders, lines and variants; stock it posts is written at its own location with a stock
+  context. Late suppliers are reminded once and the owners told once; the checkup's `supplier_late` carries them to the briefing.
+  The plan and what is left are in `docs/drop-shipping.md` 10; a change there is made in that file first. Store-only: Kaizena Flow
+  sells plans, not goods.
 
 ## Environmental claims (D552, `src/lib/green-claims.ts`, `src/server/green-claims.ts`, `/admin/{store}/products/claims`)
 
-- **Environmental claims (D552, `src/lib/green-claims.ts`, `src/server/green-claims.ts`, `/admin/{store}/products/claims`)**: vague environmental claims (the ECGT, from 27 September 2026) are found in what the store publishes, not only in AI text: `greenClaimsReport()` reads active products' texts in every language and published pages and articles (`textOfContent()`), and the checkup's `green_claims` points to the page that lists them. Its words are the claims filter's `green` stems (`src/lib/claims.ts`), so a word added there is found everywhere at once. It never changes a text and never blocks a save: the owner decides. A new place a store publishes text (a new content kind) is added to `greenClaimsReport()`.
+- **Environmental claims (D552, `src/lib/green-claims.ts`, `src/server/green-claims.ts`, `/admin/{store}/products/claims`)**:
+  vague environmental claims (the ECGT, from 27 September 2026) are found in what the store publishes, not only in AI text:
+  `greenClaimsReport()` reads active products' texts in every language and published pages and articles (`textOfContent()`), and
+  the checkup's `green_claims` points to the page that lists them. Its words are the claims filter's `green` stems
+  (`src/lib/claims.ts`), so a word added there is found everywhere at once. It never changes a text and never blocks a save: the
+  owner decides. A new place a store publishes text (a new content kind) is added to `greenClaimsReport()`.
 
 ## Digital Product Passports (D554, `src/lib/product-passport.ts`, `src/server/product-passports.ts`, `/passport/{id}`)
 
-- **Digital Product Passports (D554, `src/lib/product-passport.ts`, `src/server/product-passports.ts`, `/passport/{id}`)**: a product's passport is one row of `commerce.product_passports`, written only by `src/server/product-passports.ts` (`products:write`) and checked by `passportInput`; its id is printed on products as a QR code, so it never changes and a passport is taken offline (a draft) rather than deleted or given a new id. Facts the product already has (identifiers, manufacturer, responsible person) are read from the product, never typed twice. The public page and its JSON show only published passports and only the store's text, as text; links are https only. A product group's own required fields are added to `passportInput` when its delegated act applies, without breaking stored passports (`readPassport()` reads what no longer fits as empty).
+- **Digital Product Passports (D554, `src/lib/product-passport.ts`, `src/server/product-passports.ts`, `/passport/{id}`)**: a
+  product's passport is one row of `commerce.product_passports`, written only by `src/server/product-passports.ts`
+  (`products:write`) and checked by `passportInput`; its id is printed on products as a QR code, so it never changes and a
+  passport is taken offline (a draft) rather than deleted or given a new id. Facts the product already has (identifiers,
+  manufacturer, responsible person) are read from the product, never typed twice. The public page and its JSON show only published
+  passports and only the store's text, as text; links are https only. A product group's own required fields are added to
+  `passportInput` when its delegated act applies, without breaking stored passports (`readPassport()` reads what no longer fits as
+  empty).
 
 ## Orders: list, tags, archive, drafts, gift (wave 3, D173, `docs/wave-3-orders.md`)
 
-- **Orders: list, tags, archive, drafts, gift (wave 3, D173, `docs/wave-3-orders.md`)**: the Orders page's state is its address, parsed only by `parseOrderListParams()` (`src/lib/order-list.ts`; unknown keys dropped, invalid values ignored) and turned into SQL only by `orderListWhere()` (`src/server/order-list-sql.ts`: the list, the count, the bulk "all matching", saved views and the AI tool); never build a list condition elsewhere. Search matches number, email, name, line title and SKU, tag and tracking number, with `restricted_at is null` on email and name (D162) and every `LIKE` word escaped and bound; paging is keyset, and the total sort compares converted totals (`valueFactors()`), never `total_minor` across currencies. Saved views are `order_views` (the store's, 30 at most, `title` not `name`); bulk actions (`runBulk()`, 250 at most) run order by order and report each refusal; the actions behind the screen are `list-actions.ts` and `ops-actions.ts` (`orders:write`, held by `order-actions.int.test.ts`). Tags are `order_tags` (`normaliseTag()`: 40 code points, 250 per order, case-folded key; the history event carries the words in `data.note` so erasure covers it); archive is `orders.archived_at`, a visibility flag set only by `src/server/order-archive.ts` under `archiveBlock()`; both work on copied orders (the two copied-order guard functions allow exactly `archived_at` and three event types). **Orders are inserted and numbered only in `src/server/order-insert.ts`** (called by `placeOrder()`, the renewal and `placeDraftOrder()`; a scan test). A draft (`draft_orders`) is priced only by `priceDraft()` (`src/lib/draft-order.ts`, built from `decideTax()`, `basketShipping()`, `allocate()` and half-up rounding; equal to `cartSummary()` for the same goods) and becomes an order when **sent** (order `pending_payment`, `source = 'draft'`, stock held to the draft's expiry, tags carried over); sells goods and custom service items only (a custom item is for businesses until the legal review, `custom_consumer`; the delivery address must be in the market's country). The buyer pays through `/s/{store}/{market}/account/pay/{token}` (token kept only as a hash, only under the order's own market, Stripe's **hosted** session with an idempotency key per press, `isNoExtrasPath()`); `applySession()` never cancels a draft's order on a session expiry, `expireDrafts()` does at the draft's expiry; a Stripe session is closed only when Stripe says it is gone (`settleOrderSessions()`). Money taken outside Kaizen is a `payments` row with `provider = 'manual'`, a method and `received_on` (owner-only unless `order_settings.staff_mark_paid`; cash ceilings are data in `cash-limits.ts`, `verified: false`), the invoice says `paid_outside` and a staff discount is its own invoice kind, and a refund of it is a `refunds` row recorded `succeeded` with no Stripe call, capped under the order lock and by `refunds_manual_cap`; never add a reader of `payments.provider` outside `payment-readers.scan.test.ts`'s list. No campaigns, codes, credits or VAT-number checks on a draft; no AI tool records a payment; the gated `send_draft_order` sends only the version the owner was shown. A staff-made order counts everywhere except conversion, the funnel and channels (`docs/analytics.md`). Gift messages (`order_settings.gift_messages`, default off): `carts` and `orders` carry `is_gift`, `gift_to`, `gift_from`, `gift_message`, cleaned by `cleanShopperText()` (`src/lib/gift.ts`, no zod: the cart is a pay route), refused not cut, frozen by a trigger, shown to the buyer, staff and the price-free slip, never in `sendShipped()` and never emailed to anyone but `order.email` (`gift-shipping.int.test.ts`). New words are hand-written and flagged (`HAND_WRITTEN_ONLY`); consumer texts need legal review.
+- **Orders: list, tags, archive, drafts, gift (wave 3, D173, `docs/wave-3-orders.md`)**: the Orders page's state is its address,
+  parsed only by `parseOrderListParams()` (`src/lib/order-list.ts`; unknown keys dropped, invalid values ignored) and turned into
+  SQL only by `orderListWhere()` (`src/server/order-list-sql.ts`: the list, the count, the bulk "all matching", saved views and
+  the AI tool); never build a list condition elsewhere. Search matches number, email, name, line title and SKU, tag and tracking
+  number, with `restricted_at is null` on email and name (D162) and every `LIKE` word escaped and bound; paging is keyset, and the
+  total sort compares converted totals (`valueFactors()`), never `total_minor` across currencies. Saved views are `order_views`
+  (the store's, 30 at most, `title` not `name`); bulk actions (`runBulk()`, 250 at most) run order by order and report each
+  refusal; the actions behind the screen are `list-actions.ts` and `ops-actions.ts` (`orders:write`, held by
+  `order-actions.int.test.ts`). Tags are `order_tags` (`normaliseTag()`: 40 code points, 250 per order, case-folded key; the
+  history event carries the words in `data.note` so erasure covers it); archive is `orders.archived_at`, a visibility flag set
+  only by `src/server/order-archive.ts` under `archiveBlock()`; both work on copied orders (the two copied-order guard functions
+  allow exactly `archived_at` and three event types). **Orders are inserted and numbered only in `src/server/order-insert.ts`**
+  (called by `placeOrder()`, the renewal and `placeDraftOrder()`; a scan test). A draft (`draft_orders`) is priced only by
+  `priceDraft()` (`src/lib/draft-order.ts`, built from `decideTax()`, `basketShipping()`, `allocate()` and half-up rounding; equal
+  to `cartSummary()` for the same goods) and becomes an order when **sent** (order `pending_payment`, `source = 'draft'`, stock
+  held to the draft's expiry, tags carried over); sells goods and custom service items only (a custom item is for businesses until
+  the legal review, `custom_consumer`; the delivery address must be in the market's country). The buyer pays through
+  `/s/{store}/{market}/account/pay/{token}` (token kept only as a hash, only under the order's own market, Stripe's **hosted**
+  session with an idempotency key per press, `isNoExtrasPath()`); `applySession()` never cancels a draft's order on a session
+  expiry, `expireDrafts()` does at the draft's expiry; a Stripe session is closed only when Stripe says it is gone
+  (`settleOrderSessions()`). Money taken outside Kaizen is a `payments` row with `provider = 'manual'`, a method and `received_on`
+  (owner-only unless `order_settings.staff_mark_paid`; cash ceilings are data in `cash-limits.ts`, `verified: false`), the invoice
+  says `paid_outside` and a staff discount is its own invoice kind, and a refund of it is a `refunds` row recorded `succeeded`
+  with no Stripe call, capped under the order lock and by `refunds_manual_cap`; never add a reader of `payments.provider` outside
+  `payment-readers.scan.test.ts`'s list. No campaigns, codes, credits or VAT-number checks on a draft; no AI tool records a
+  payment; the gated `send_draft_order` sends only the version the owner was shown. A staff-made order counts everywhere except
+  conversion, the funnel and channels (`docs/analytics.md`). Gift messages (`order_settings.gift_messages`, default off): `carts`
+  and `orders` carry `is_gift`, `gift_to`, `gift_from`, `gift_message`, cleaned by `cleanShopperText()` (`src/lib/gift.ts`, no
+  zod: the cart is a pay route), refused not cut, frozen by a trigger, shown to the buyer, staff and the price-free slip, never in
+  `sendShipped()` and never emailed to anyone but `order.email` (`gift-shipping.int.test.ts`). New words are hand-written and
+  flagged (`HAND_WRITTEN_ONLY`); consumer texts need legal review.
 
 ## Request a quote and price on request (D431, `src/lib/quotes.ts`, `src/server/quote-requests.ts`, `src/lib/product-question.ts`, `src/server/product-questions.ts`)
 
-- **Request a quote and price on request (D431)**: who may ask is `order_settings.quote_requests` (`off` by default, `everyone`, `business`: a buyer for a business, `buysForBusiness()`: the store sells only to businesses or the shopper chose Business, D63, or a signed-in customer of a company account or a customer group, D108), saved under Settings, Orders. `products.price_on_request` (goods only, `products_price_on_request_goods`; not with purchase options) hides the price everywhere a shopper or an outside reader looks and offers *Request a quote* as the only way to buy, whatever the setting: the price part and cards say the words (`m.quotes.priceOnRequest`), a grid tile, the wishlist and marketing emails (`priceLines()`) too; the chat's tools tell the model it is priced on request and its cards carry `price: null`; the JSON-LD offers carry no price and no shipping; feeds leave it out (`price_on_request`); the WordPress plugin's lists, its product page and the storefront API's product (`productPageOf()` answers 404), the agents' catalogue (UCP) and a company's catalogue leave it out; `llms.txt` says "price on request". It is never put in a cart: `sellableQuantity()` (every add: the cart, the hand-over, the API's carts) refuses it, `getCart()` marks a line of it unavailable and `placeOrder()`'s read refuses it. It may be a part of a bundle with a price of its own, never of one priced from its products' prices (D433, under Bundles): those reads look only at the line's own product, so such a bundle is bought as any bundle at its own price; a new read that decides what is sold keeps to the line's own product. The price kept per market is staff's guide on a quote. A request (`/api/quotes`, `requestQuote()`) comes from the buy part (beside or instead of Add to cart, the buy part's `quote`; a product priced on request always), the cart (*Request a quote for these items*, only when every line is goods sent by post and bought once; the lines are read from the cart, never the browser) or a product layout's question part of kind *Request a quote*; it is checked by the pure `checkQuoteRequest()` in the browser and on the server (the email always required, the other fields as the part asks), held as forms are (a hidden field, the time taken, `VISITOR_HOURLY` per visitor across the store's forms through `form_submissions` of kind `quote`, `QUOTES_PER_STORE_DAY` a store) and made a draft order of `source = 'quote'` (D173) in the shopper's market view: its lines at the list price as shown, a product priced on request at 0 with `price_requested` (`draft_order_lines_price_requested`), the shopper's name in the shipping address, email, phone, `request_note` and the company they typed as `request_company` (their own words, shown to staff beside the note with how to invoice it: it never fills `company_name`, which would make the draft a business sale without the organisation number the editor asks for, so staff could not save it); a signed-in customer's own (`customer_id`, the form prefilled), whose company account's name and organisation number on record (D108) do become the draft's company. Staff who get new orders are emailed (`staff.quote_requested`, the number and lines, never who asked) and pushed (`sendQuotePush()`), the shopper gets a receipt in their language (`quote.received`: what they asked about, from the catalogue, and nothing they typed, as a form's confirmation, since the address is anyone's). In Orders, Drafts the filter *Quote requests* and the chip *Quote requested* / *Declined*; the draft editor shows the note and *Decline the request* one step away; a line priced on request blocks a send (`price_requested`) until a price is typed, and a product priced on request is never at its list price (`customPrice` on its lines, no stale-price warning); a line still waiting for its price is kept at 0 but has no custom price (`lineOf()`), so the editor's price box starts empty and a save of anything else leaves it waiting, never sent at 0; *Send quote* is `sendDraft()`, its pay link worded as a quote (`emailText().quote`, `sendDraftLink()`), and the pay page it opens reads as the quote (D435): `payPageFor()` reads the draft's `source` (typed, `draftByToken()`) and `PayView` takes `m.draftPay.quote` for the heading (*Your quote {number} from {store}*, the order's number as the email names it), the line that paying accepts the quote, the summary's name, the validity, the button (*Accept and pay*) and the paid, expired and processing sentences, while a staff draft keeps the order's words exactly; the words are hand-written nb, sv, da and en under `ui:draftPay.` (`HAND_WRITTEN_ONLY`), and a new sentence on that page that says "order" gets its quote word beside it; paying makes the order as any draft. `declineQuote()` (`orders:write`) keeps the reply on the draft (`quote_declined_at`, `quote_reply`, `draft_orders_quote`), emails it (`quote.declined`), blocks any send (`quote_declined`) and the daily clean-up removes the draft 30 days later; audited without the reply. Personal data: `draft_orders.request_note` and `quote_reply` are registered (D162) and exported with the account's drafts. The product question part (`part: "question"`, kind *Question* unless set) sends to `/api/product-question` (`askProductQuestion()`): the part's fields and copy addresses are read from the published layout (`findProductPart()`), never the browser; the question goes to the support inbox as a conversation of source `form` (`formToInbox()`, people only, D382) with the product's title, chosen variant and address as its first answer, a copy to the part's addresses; while the desk is off (or set to email) it is emailed to them, else the store's contact address, else its owners. The AI manager reads, prices and declines requests and changes who may ask (D437, `docs/rules/admin/ai.md`), never reading the shopper's note.
+- **Request a quote and price on request (D431)**: who may ask is `order_settings.quote_requests` (`off` by default, `everyone`,
+  `business`: a buyer for a business, `buysForBusiness()`: the store sells only to businesses or the shopper chose Business, D63,
+  or a signed-in customer of a company account or a customer group, D108), saved under Settings, Orders.
+  `products.price_on_request` (goods only, `products_price_on_request_goods`; not with purchase options) hides the price
+  everywhere a shopper or an outside reader looks and offers *Request a quote* as the only way to buy, whatever the setting: the
+  price part and cards say the words (`m.quotes.priceOnRequest`), a grid tile, the wishlist and marketing emails (`priceLines()`)
+  too; the chat's tools tell the model it is priced on request and its cards carry `price: null`; the JSON-LD offers carry no
+  price and no shipping; feeds leave it out (`price_on_request`); the WordPress plugin's lists, its product page and the
+  storefront API's product (`productPageOf()` answers 404), the agents' catalogue (UCP) and a company's catalogue leave it out;
+  `llms.txt` says "price on request". It is never put in a cart: `sellableQuantity()` (every add: the cart, the hand-over, the
+  API's carts) refuses it, `getCart()` marks a line of it unavailable and `placeOrder()`'s read refuses it. It may be a part of a
+  bundle with a price of its own, never of one priced from its products' prices (D433, under Bundles): those reads look only at
+  the line's own product, so such a bundle is bought as any bundle at its own price; a new read that decides what is sold keeps to
+  the line's own product. The price kept per market is staff's guide on a quote. A request (`/api/quotes`, `requestQuote()`) comes
+  from the buy part (beside or instead of Add to cart, the buy part's `quote`; a product priced on request always), the cart
+  (*Request a quote for these items*, only when every line is goods sent by post and bought once; the lines are read from the
+  cart, never the browser) or a product layout's question part of kind *Request a quote*; it is checked by the pure
+  `checkQuoteRequest()` in the browser and on the server (the email always required, the other fields as the part asks), held as
+  forms are (a hidden field, the time taken, `VISITOR_HOURLY` per visitor across the store's forms through `form_submissions` of
+  kind `quote`, `QUOTES_PER_STORE_DAY` a store) and made a draft order of `source = 'quote'` (D173) in the shopper's market view:
+  its lines at the list price as shown, a product priced on request at 0 with `price_requested`
+  (`draft_order_lines_price_requested`), the shopper's name in the shipping address, email, phone, `request_note` and the company
+  they typed as `request_company` (their own words, shown to staff beside the note with how to invoice it: it never fills
+  `company_name`, which would make the draft a business sale without the organisation number the editor asks for, so staff could
+  not save it); a signed-in customer's own (`customer_id`, the form prefilled), whose company account's name and organisation
+  number on record (D108) do become the draft's company. Staff who get new orders are emailed (`staff.quote_requested`, the number
+  and lines, never who asked) and pushed (`sendQuotePush()`), the shopper gets a receipt in their language (`quote.received`: what
+  they asked about, from the catalogue, and nothing they typed, as a form's confirmation, since the address is anyone's). In
+  Orders, Drafts the filter *Quote requests* and the chip *Quote requested* / *Declined*; the draft editor shows the note
+  and *Decline the request* one step away; a line priced on request blocks a send (`price_requested`) until a price is typed, and
+  a product priced on request is never at its list price (`customPrice` on its lines, no stale-price warning); a line still
+  waiting for its price is kept at 0 but has no custom price (`lineOf()`), so the editor's price box starts empty and a save of
+  anything else leaves it waiting, never sent at 0; *Send quote* is `sendDraft()`, its pay link worded as a quote
+  (`emailText().quote`, `sendDraftLink()`), and the pay page it opens reads as the quote (D435): `payPageFor()` reads the draft's
+  `source` (typed, `draftByToken()`) and `PayView` takes `m.draftPay.quote` for the heading (*Your quote {number} from {store}*,
+  the order's number as the email names it), the line that paying accepts the quote, the summary's name, the validity, the button
+  (*Accept and pay*) and the paid, expired and processing sentences, while a staff draft keeps the order's words exactly; the
+  words are hand-written nb, sv, da and en under `ui:draftPay.` (`HAND_WRITTEN_ONLY`), and a new sentence on that page that says
+  "order" gets its quote word beside it; paying makes the order as any draft. `declineQuote()` (`orders:write`) keeps the reply on
+  the draft (`quote_declined_at`, `quote_reply`, `draft_orders_quote`), emails it (`quote.declined`), blocks any send
+  (`quote_declined`) and the daily clean-up removes the draft 30 days later; audited without the reply. Personal data:
+  `draft_orders.request_note` and `quote_reply` are registered (D162) and exported with the account's drafts. The product question
+  part (`part: "question"`, kind *Question* unless set) sends to `/api/product-question` (`askProductQuestion()`): the part's
+  fields and copy addresses are read from the published layout (`findProductPart()`), never the browser; the question goes to the
+  support inbox as a conversation of source `form` (`formToInbox()`, people only, D382) with the product's title, chosen variant
+  and address as its first answer, a copy to the part's addresses; while the desk is off (or set to email) it is emailed to them,
+  else the store's contact address, else its owners. The AI manager reads, prices and declines requests and changes who may ask
+  (D437, `docs/rules/admin/ai.md`), never reading the shopper's note.
 
 ## Fulfilment and order editing (wave 3, D174, `docs/wave-3-fulfilment.md`)
 
-- **Fulfilment and order editing (wave 3, D174, `docs/wave-3-fulfilment.md`)**: shipments are written only by `markSent()`, which always writes `shipment_lines` (no lines = everything still to send; older shipments are `legacy`), and the database refuses a parcel that is not legacy and has no lines at commit (`shipments_have_lines`, a deferred constraint trigger: write a shipment and its lines in one transaction). Units still to send are read only through `toSend()`/`commerce.line_to_send()` (quantity − shipped − withdrawn − closed: withdrawal returns only, `withdrawn_quantity()`; units staff closed as never to be sent, `commerce.unsent_closures`, append-only, written by `refundOrder({ notSent })`), never computed elsewhere; a closed unit is counted as taken for withdrawals (`loadFacts()`). An order stays `paid` while *Partly sent* and becomes `fulfilled` only through `refresh_fulfilment()`; `markDelivered()` needs it sent in full, and each parcel has its own email listing its lines. A parcel is undone, never deleted, only by `undoShipment()` (`commerce.undo_shipment()`, under the order's lock; refused after a return or withdrawal made since the parcel, while a change waits for payment, on a copy or an order that is not paid or sent): an undone parcel (`shipments.undone_at`) counts nowhere (what is sent, the order's state, slips, labels, emails, the list, the shopper's page, the AI tools: a new reader of `shipments` filters `undone_at is null`), a `fulfilled` order goes back to `paid`, the receipt date is cleared, and a carrier's booking is not cancelled at the carrier (staff are told) nor is the customer emailed. An order's lines and amounts change after `pending_payment` **only** inside `applyOrderEdit()` and the change payment (`src/server/order-edits.ts`, edit context `kaizen.order_edit`; triggers refuse anything else; `order-edit-writers.scan.test.ts`): sold units keep their price and discounts (`splitLine()`), added goods are priced by `priceOrderEdit()` with `shown()` and `decideTax()` and equal `cartSummary()`, a lower total is claimed under the order lock before Stripe is asked and refunded through `refundOrder({ within: tx })`, a higher total applies only when the customer pays the link (`/s/{store}/{market}/account/change/{token}`, Stripe's hosted page; `applySession()` branches on `payments.order_edit_id`) or staff record it paid outside Kaizen under D173's cash ceiling (`checkEditCash()`). Never charge a saved card for a change and never renumber (D141). `refundOrder()` splits any refund over the order's captured payments (`splitRefund()`); a new refund path goes through it. Only orders `editBlock()` allows are edited. What a change's failed refund still owes is only `EDIT_REFUND_OWED_SQL` (the order page, the checkup, the control center's `editRefundsOwed` and the Orders filter `ship=edit_refund_owed`, D392). A carrier booking (Bring, Helthjem, Porterbuddy) takes the order's booking lock without waiting (`oneBookingAtATime()` in `src/server/carrier-booking.ts`, D372), checks the parcel under it (`bookingPrecheck()`, with the fulfilment the page showed as `seen`) before the carrier is asked or paid, and sends the parcel's own reference (`parcelReference()`, Porterbuddy's idempotency key); *Book labels* on the Orders list (D374, `src/server/bulk-labels.ts`) books through the same functions only, and a new carrier's booking does the same. A change issues documents only through `commerce.issue_edit_documents()` (an edit credit note and a `kind = 'order_edit'` invoice referring to the original); the order's documents are one pool for later credits; a change's refund gets no credit note and is not a refund in analytics; a late change payment is refunded in full and moves no bonus or affiliate credit (`commerce.payment_of_order()`). Slips print what is still to send (`packingSlipData()`) or one parcel (`parcelSlipData()`); the pick list is `pickList()` (`src/lib/pick-list.ts`). The change emails, the pay page, the parcel words and the edit documents are hand-written nb, sv, da and en (`HAND_WRITTEN_ONLY`), never tell a business buyer of a statutory withdrawal right, and need legal review.
+- **Fulfilment and order editing (wave 3, D174, `docs/wave-3-fulfilment.md`)**: shipments are written only by `markSent()`, which
+  always writes `shipment_lines` (no lines = everything still to send; older shipments are `legacy`), and the database refuses a
+  parcel that is not legacy and has no lines at commit (`shipments_have_lines`, a deferred constraint trigger: write a shipment
+  and its lines in one transaction). Units still to send are read only through `toSend()`/`commerce.line_to_send()` (quantity −
+  shipped − withdrawn − closed: withdrawal returns only, `withdrawn_quantity()`; units staff closed as never to be sent,
+  `commerce.unsent_closures`, append-only, written by `refundOrder({ notSent })`), never computed elsewhere; a closed unit is
+  counted as taken for withdrawals (`loadFacts()`). An order stays `paid` while *Partly sent* and becomes `fulfilled` only through
+  `refresh_fulfilment()`; `markDelivered()` needs it sent in full, and each parcel has its own email listing its lines. A parcel
+  is undone, never deleted, only by `undoShipment()` (`commerce.undo_shipment()`, under the order's lock; refused after a return
+  or withdrawal made since the parcel, while a change waits for payment, on a copy or an order that is not paid or sent): an
+  undone parcel (`shipments.undone_at`) counts nowhere (what is sent, the order's state, slips, labels, emails, the list, the
+  shopper's page, the AI tools: a new reader of `shipments` filters `undone_at is null`), a `fulfilled` order goes back to `paid`,
+  the receipt date is cleared, and a carrier's booking is not cancelled at the carrier (staff are told) nor is the customer
+  emailed. An order's lines and amounts change after `pending_payment` **only** inside `applyOrderEdit()` and the change payment
+  (`src/server/order-edits.ts`, edit context `kaizen.order_edit`; triggers refuse anything else;
+  `order-edit-writers.scan.test.ts`): sold units keep their price and discounts (`splitLine()`), added goods are priced by
+  `priceOrderEdit()` with `shown()` and `decideTax()` and equal `cartSummary()`, a lower total is claimed under the order lock
+  before Stripe is asked and refunded through `refundOrder({ within: tx })`, a higher total applies only when the customer pays
+  the link (`/s/{store}/{market}/account/change/{token}`, Stripe's hosted page; `applySession()` branches on
+  `payments.order_edit_id`) or staff record it paid outside Kaizen under D173's cash ceiling (`checkEditCash()`). Never charge a
+  saved card for a change and never renumber (D141). `refundOrder()` splits any refund over the order's captured payments
+  (`splitRefund()`); a new refund path goes through it. Only orders `editBlock()` allows are edited. What a change's failed refund
+  still owes is only `EDIT_REFUND_OWED_SQL` (the order page, the checkup, the control center's `editRefundsOwed` and the Orders
+  filter `ship=edit_refund_owed`, D392). A carrier booking (Bring, Helthjem, Porterbuddy) takes the order's booking lock without
+  waiting (`oneBookingAtATime()` in `src/server/carrier-booking.ts`, D372), checks the parcel under it (`bookingPrecheck()`, with
+  the fulfilment the page showed as `seen`) before the carrier is asked or paid, and sends the parcel's own reference
+  (`parcelReference()`, Porterbuddy's idempotency key); *Book labels* on the Orders list (D374, `src/server/bulk-labels.ts`) books
+  through the same functions only, and a new carrier's booking does the same. A change issues documents only through
+  `commerce.issue_edit_documents()` (an edit credit note and a `kind = 'order_edit'` invoice referring to the original); the
+  order's documents are one pool for later credits; a change's refund gets no credit note and is not a refund in analytics; a late
+  change payment is refunded in full and moves no bonus or affiliate credit (`commerce.payment_of_order()`). Slips print what is
+  still to send (`packingSlipData()`) or one parcel (`parcelSlipData()`); the pick list is `pickList()` (`src/lib/pick-list.ts`).
+  The change emails, the pay page, the parcel words and the edit documents are hand-written nb, sv, da and en
+  (`HAND_WRITTEN_ONLY`), never tell a business buyer of a statutory withdrawal right, and need legal review.
 
 ## Shipping methods, pickup and local delivery (wave 3, D237, `docs/wave-3-shipping-methods.md`)
 
-- **Shipping methods, pickup and local delivery (wave 3, D237, `docs/wave-3-shipping-methods.md`)**: **Methods.** A market's shipping is its methods (`shipping_methods`, rates in `shipping_method_rates` per zone and profile), priced only by `methodPrice()`/`deliveryOffer()` in `src/lib/shipping-methods.ts`. Tiers count the minimum and not the maximum, a mixed basket pays the sum per method, a zone with no rate for a profile offers no method, and goods without a weight weigh the store's default per unit (`shipping_settings`). **Flat rate.** The flat rate (`shipping_rates`) is the fallback, and the only shipping of subscriptions, weekly boxes (`placeOrder({ flatRateOnly })`) and drafts. **Zones, pickup, local areas.** Zones are postal patterns (`src/lib/postal-patterns.ts`, most specific wins). Pickup is per place (`pickup_options`). Local delivery is per area (`local_delivery_areas`); a radius is measured between `postal_points` centres, never by calling a geocoder. **The cart's choice.** The cart holds one choice. `chosenDelivery()` is still the one reader for `cartSummary()` and `placeOrder()` and re-prices on every read; `delivery-readers.scan.test.ts` lists who may read the rate tables. A new money read here needs a euro scenario in `checkout-kinds.int.test.ts`. **Refunds.** The standard delivery for refunds is `standardShippingMinor(offer)`, the cheapest option actually offered. **Handovers.** A handover is a `shipments` row of method `pickup` or `local`, written through `markSent()` by `markCollected()` (which also sets `delivered_at`; today before noon means now) and `markOutForDelivery()`. Pickup and local orders are never in *To send*. **Postal-code mismatch.** Never re-charge a postal-code mismatch: `flagDeliveryMismatch()` sets `orders.delivery_mismatch_at`. The event's codes are personal data, which `anonymise_order()` removes. **Places and copying.** A place with a pickup option or an area is not deleted while orders wait at it. New tables are `settings` in `COPY_RULES`. **Legal texts.** The legal starters show an `[[Add: …]]` placeholder for a market that methods price, never the fallback flat rate alone.
+- **Shipping methods, pickup and local delivery (wave 3, D237, `docs/wave-3-shipping-methods.md`)**: **Methods.** A market's
+  shipping is its methods (`shipping_methods`, rates in `shipping_method_rates` per zone and profile), priced only by
+  `methodPrice()`/`deliveryOffer()` in `src/lib/shipping-methods.ts`. Tiers count the minimum and not the maximum, a mixed basket
+  pays the sum per method, a zone with no rate for a profile offers no method, and goods without a weight weigh the store's
+  default per unit (`shipping_settings`). **Flat rate.** The flat rate (`shipping_rates`) is the fallback, and the only shipping
+  of subscriptions, weekly boxes (`placeOrder({ flatRateOnly })`) and drafts. **Zones, pickup, local areas.** Zones are postal
+  patterns (`src/lib/postal-patterns.ts`, most specific wins). Pickup is per place (`pickup_options`). Local delivery is per area
+  (`local_delivery_areas`); a radius is measured between `postal_points` centres, never by calling a geocoder. **The cart's
+  choice.** The cart holds one choice. `chosenDelivery()` is still the one reader for `cartSummary()` and `placeOrder()` and
+  re-prices on every read; `delivery-readers.scan.test.ts` lists who may read the rate tables. A new money read here needs a euro
+  scenario in `checkout-kinds.int.test.ts`. **Refunds.** The standard delivery for refunds is `standardShippingMinor(offer)`, the
+  cheapest option actually offered. **Handovers.** A handover is a `shipments` row of method `pickup` or `local`, written through
+  `markSent()` by `markCollected()` (which also sets `delivered_at`; today before noon means now) and `markOutForDelivery()`.
+  Pickup and local orders are never in *To send*. **Postal-code mismatch.** Never re-charge a postal-code mismatch:
+  `flagDeliveryMismatch()` sets `orders.delivery_mismatch_at`. The event's codes are personal data, which `anonymise_order()`
+  removes. **Places and copying.** A place with a pickup option or an area is not deleted while orders wait at it. New tables are
+  `settings` in `COPY_RULES`. **Legal texts.** The legal starters show an `[[Add: …]]` placeholder for a market that methods
+  price, never the fallback flat rate alone.
 
 ## Customer notifications, tracking and staff alerts (wave 3, D238, `docs/wave-3-notifications.md`)
 
-- **Customer notifications, tracking and staff alerts (wave 3, D238, `docs/wave-3-notifications.md`)**: the order and return emails are `NOTIFICATIONS` (`src/lib/notifications.ts`); every sender of one asks `notificationOn()` (`src/server/notifications.ts`, the only reader of `notification_settings` and `email_templates`) before an automatic or `notify` send, and required ones (confirmation, renewal, change, withdrawal acknowledgement, return decisions) cannot be off, also in the database; a refund email switched off still lets its credit note go out (`sendPendingDocumentNotices()`, `refundEmailOffSql()`). Owner text is only the subject, heading and intro of a notification per language, applied by `withTemplate()` with placeholders filled by `fillTemplate()` (`src/lib/email-template.ts`) after `templateProblems()` (named placeholders only, no web address by shape, no claim), checked again at send; the blocks the law and the money need stay the code's, and a missing slot is the fixed text of the order's language, amounts in the order's own currency; copied with a store only with *Email texts* (copy group `emails`). A new notification is an id in `NOTIFICATIONS`, `EMAIL_KINDS`, the database checks and its sender's `notificationOn()`. Carrier events are polled into `shipment_tracking` (`pollTracking()`, five-minute cron; parcels older than 30 days stopped, events pruned 90 days after), mapped by `phaseOf()` (`src/lib/tracking-phases.ts`: only a `verified` code, Bring's today, sends an email or records a delivery; a Bring consignment of several packages is delivered only when all are, `parseTracking()`), and shown to shoppers from the stored rows (`ParcelTracking`), never fetched while a page renders (the order page is a pay route); `delivered_at` from a carrier is written only by `commerce.record_carrier_delivery()` (sent in full, every parcel delivered, never before the order or over a date), and every writer of `delivered_at` sets `delivered_source`. Parcel emails and `m.tracking.*` are `HAND_WRITTEN_ONLY` until their legal review. Staff alerts read `store_events` (queued by triggers in the paying transaction, once per event, also for an order paid after it was cancelled) and go to `alertRecipients()` (members whose role may read the email, or the contact address; owners by default), with no shopper's name, email, phone or address; amounts are what was charged, with a venue balance as its own row. Rules (`order_rules`, a closed list in `src/lib/order-rules.ts`, at most 50) run once per event and log `order_rule_runs`; a held order (`orders.held_at`) cannot get a shipment (`shipments_not_held()`).
+- **Customer notifications, tracking and staff alerts (wave 3, D238, `docs/wave-3-notifications.md`)**: the order and return
+  emails are `NOTIFICATIONS` (`src/lib/notifications.ts`); every sender of one asks `notificationOn()`
+  (`src/server/notifications.ts`, the only reader of `notification_settings` and `email_templates`) before an automatic or
+  `notify` send, and required ones (confirmation, renewal, change, withdrawal acknowledgement, return decisions) cannot be off,
+  also in the database; a refund email switched off still lets its credit note go out (`sendPendingDocumentNotices()`,
+  `refundEmailOffSql()`). Owner text is only the subject, heading and intro of a notification per language, applied by
+  `withTemplate()` with placeholders filled by `fillTemplate()` (`src/lib/email-template.ts`) after `templateProblems()` (named
+  placeholders only, no web address by shape, no claim), checked again at send; the blocks the law and the money need stay the
+  code's, and a missing slot is the fixed text of the order's language, amounts in the order's own currency; copied with a store
+  only with *Email texts* (copy group `emails`). A new notification is an id in `NOTIFICATIONS`, `EMAIL_KINDS`, the database
+  checks and its sender's `notificationOn()`. Carrier events are polled into `shipment_tracking` (`pollTracking()`, five-minute
+  cron; parcels older than 30 days stopped, events pruned 90 days after), mapped by `phaseOf()` (`src/lib/tracking-phases.ts`:
+  only a `verified` code, Bring's today, sends an email or records a delivery; a Bring consignment of several packages is
+  delivered only when all are, `parseTracking()`), and shown to shoppers from the stored rows (`ParcelTracking`), never fetched
+  while a page renders (the order page is a pay route); `delivered_at` from a carrier is written only by
+  `commerce.record_carrier_delivery()` (sent in full, every parcel delivered, never before the order or over a date), and every
+  writer of `delivered_at` sets `delivered_source`. Parcel emails and `m.tracking.*` are `HAND_WRITTEN_ONLY` until their legal
+  review. Staff alerts read `store_events` (queued by triggers in the paying transaction, once per event, also for an order paid
+  after it was cancelled) and go to `alertRecipients()` (members whose role may read the email, or the contact address; owners by
+  default), with no shopper's name, email, phone or address; amounts are what was charged, with a venue balance as its own row.
+  Rules (`order_rules`, a closed list in `src/lib/order-rules.ts`, at most 50) run once per event and log `order_rule_runs`; a
+  held order (`orders.held_at`) cannot get a shipment (`shipments_not_held()`).
 
 ## Exchanges and return labels (wave 3, D239, `docs/wave-3-exchanges.md`)
 
-- **Exchanges and return labels (wave 3, D239, `docs/wave-3-exchanges.md`)**: **What an exchange is.** A D153 return whose credit pays for a new order: `return_exchanges` and `return_exchange_lines`, with the lifecycle in the database. **Pricing and credit.** Replacements are priced only by `priceExchange()` (over `priceDraft()`, equal to `cartSummary()`, in the original order's market view, no order-level discount). The credit is only `refundFor()`'s and is never lowered. **Agreement.** It is the customer's own press on `/account/exchange/{token}` (a no-extras path; a token kept as a hash). Staff may record agreement for a voluntary return only. A withdrawal's proposal goes only by email to the order's own address, with no share link (`link_withdrawal`), and is refused once staff changed the order's email after the withdrawal (`email_changed`, `emailChangedSinceReturn()`). The once-shown share link is held by `ExchangeLinkHolder` (`exchange-link.tsx`), above the builder, so the refresh after a proposal keeps it on screen. **Processing.** `processExchange()`, offered where the refund would be, makes the order through `insertOrder()` (`source = 'exchange'`, D141), and only then is stock held. **Moving the money.** The credit moves as a `refunds.kind = 'transfer'` row and an `exchange` payment, with no Stripe call. The rest goes through `refundOrder()`'s exchange option, whose `restockIf` puts stock back once, or through a pay link to Stripe's hosted page (`applySession()` branches on `payments.exchange_id`), or is recorded as paid outside Kaizen. **Documents.** One `return_exchange` credit note per exchanged return, none for its refunds. **Later refunds.** A refund of the `exchange` payment is made at the original order's Stripe payment. A return's refund split over several payments (D174) is recorded by its first part with every part named in `kaizen.return_refund_parts` (D392), so a new writer of `returns.refund_id` that records a split refund does the same. The bonus and affiliate refund triggers count `exchange` payments in the paid base. **Return labels.** `bookReturn?()` on `ShippingCarrierAdapter` (feature `return_labels`, Bring only), booked from the return's page or by `bookPendingLabels()` for withdrawals with `label_auto`, one booking at a time under an advisory lock. The booking is kept as `returns.label_*`. The shopper's label is fetched by `/returns/{token}/label` from the carrier's own host with the store's keys, and is never stored or attached. **Label cost.** It is recorded at booking and taken off only at refund, through `labelDeduction()`: when staff confirm the parcel came with the label, the shopper pays, it is never above the cost and never for a test label. **Words and money reads.** New words are hand-written (`HAND_WRITTEN_ONLY`) and need legal review. A new money read here needs a euro scenario. **Pages that read the time.** A storefront page that reads the time calls `await connection()` inside its `<Suspense>`.
+- **Exchanges and return labels (wave 3, D239, `docs/wave-3-exchanges.md`)**: **What an exchange is.** A D153 return whose credit
+  pays for a new order: `return_exchanges` and `return_exchange_lines`, with the lifecycle in the database. **Pricing and
+  credit.** Replacements are priced only by `priceExchange()` (over `priceDraft()`, equal to `cartSummary()`, in the original
+  order's market view, no order-level discount). The credit is only `refundFor()`'s and is never lowered. **Agreement.** It is the
+  customer's own press on `/account/exchange/{token}` (a no-extras path; a token kept as a hash). Staff may record agreement for a
+  voluntary return only. A withdrawal's proposal goes only by email to the order's own address, with no share link
+  (`link_withdrawal`), and is refused once staff changed the order's email after the withdrawal (`email_changed`,
+  `emailChangedSinceReturn()`). The once-shown share link is held by `ExchangeLinkHolder` (`exchange-link.tsx`), above the
+  builder, so the refresh after a proposal keeps it on screen. **Processing.** `processExchange()`, offered where the refund would
+  be, makes the order through `insertOrder()` (`source = 'exchange'`, D141), and only then is stock held. **Moving the money.**
+  The credit moves as a `refunds.kind = 'transfer'` row and an `exchange` payment, with no Stripe call. The rest goes through
+  `refundOrder()`'s exchange option, whose `restockIf` puts stock back once, or through a pay link to Stripe's hosted page
+  (`applySession()` branches on `payments.exchange_id`), or is recorded as paid outside Kaizen. **Documents.** One
+  `return_exchange` credit note per exchanged return, none for its refunds. **Later refunds.** A refund of the `exchange` payment
+  is made at the original order's Stripe payment. A return's refund split over several payments (D174) is recorded by its first
+  part with every part named in `kaizen.return_refund_parts` (D392), so a new writer of `returns.refund_id` that records a split
+  refund does the same. The bonus and affiliate refund triggers count `exchange` payments in the paid base. **Return labels.**
+  `bookReturn?()` on `ShippingCarrierAdapter` (feature `return_labels`, Bring only), booked from the return's page or by
+  `bookPendingLabels()` for withdrawals with `label_auto`, one booking at a time under an advisory lock. The booking is kept as
+  `returns.label_*`. The shopper's label is fetched by `/returns/{token}/label` from the carrier's own host with the store's keys,
+  and is never stored or attached. **Label cost.** It is recorded at booking and taken off only at refund, through
+  `labelDeduction()`: when staff confirm the parcel came with the label, the shopper pays, it is never above the cost and never
+  for a test label. **Words and money reads.** New words are hand-written (`HAND_WRITTEN_ONLY`) and need legal review. A new money
+  read here needs a euro scenario. **Pages that read the time.** A storefront page that reads the time calls `await connection()`
+  inside its `<Suspense>`.
 
 ## Payment facts, risk and disputes (wave 4 unit A, D288, `docs/wave-4-payments.md` 3, `src/lib/payment-facts.ts`, `src/server/payment-facts.ts`,…
 
-- **Payment facts, risk and disputes (wave 4 unit A, D288, `docs/wave-4-payments.md` 3, `src/lib/payment-facts.ts`, `src/server/payment-facts.ts`, `src/server/payment-disputes.ts`)**: what a Stripe payment was (`payments.method_type`, `wallet`, `card_brand`, `risk_level`, `risk_score`, `charge_reference`, `facts_read_at`) is read once from its charge through the store's connected account by `readPaymentFacts()` (in `after()` from `applySession()`, and `readMissingPaymentFacts()` in the five-minute job), kept as Stripe gave it through `factsOfCharge()`; an unread payment is *Unknown*, never guessed, and other providers have none (a check). A payment's method in words is only `methodGroup()`/`methodWords()`. Disputes are `commerce.payment_disputes`, written only by `applyStripeDispute()` from `charge.dispute.*` (`DISPUTE_EVENTS`, in `WEBHOOK_EVENTS`), one row per provider reference, identity fixed and a closed one kept as it closed by a trigger, never deleted; staff hear through the staff alert event `dispute` (`sendDisputeAlert()`, once per recipient, and `sendDueDisputeReminders()` three days before the deadline), never with a shopper's name or address. A lost dispute is money out in the Finance bridge (`Totals.lostDisputesMinor`, line `lostDisputes`, in the period it closed, without VAT plus the fee where known), never a refund, a credit note or a restock. Stripe's risk is shown only when elevated or highest (`riskShown()`), filtered by `pay=elevated_risk`/`pay=disputed` and the rule condition `risk` (never met while unread; `ruleFacts()` reads the charge first). *Payments by method* is a Finance section (`paymentMethodsReport()`, `paymentsByMethod()`, with VAT as the money moved, CSV `finance.payment_methods`). A new reader of `payments.provider` goes in `payment-readers.scan.test.ts`.
+- **Payment facts, risk and disputes (wave 4 unit A, D288, `docs/wave-4-payments.md` 3, `src/lib/payment-facts.ts`,
+  `src/server/payment-facts.ts`, `src/server/payment-disputes.ts`)**: what a Stripe payment was (`payments.method_type`, `wallet`,
+  `card_brand`, `risk_level`, `risk_score`, `charge_reference`, `facts_read_at`) is read once from its charge through the store's
+  connected account by `readPaymentFacts()` (in `after()` from `applySession()`, and `readMissingPaymentFacts()` in the
+  five-minute job), kept as Stripe gave it through `factsOfCharge()`; an unread payment is *Unknown*, never guessed, and other
+  providers have none (a check). A payment's method in words is only `methodGroup()`/`methodWords()`. Disputes are
+  `commerce.payment_disputes`, written only by `applyStripeDispute()` from `charge.dispute.*` (`DISPUTE_EVENTS`, in
+  `WEBHOOK_EVENTS`), one row per provider reference, identity fixed and a closed one kept as it closed by a trigger, never
+  deleted; staff hear through the staff alert event `dispute` (`sendDisputeAlert()`, once per recipient, and
+  `sendDueDisputeReminders()` three days before the deadline), never with a shopper's name or address. A lost dispute is money out
+  in the Finance bridge (`Totals.lostDisputesMinor`, line `lostDisputes`, in the period it closed, without VAT plus the fee where
+  known), never a refund, a credit note or a restock. Stripe's risk is shown only when elevated or highest (`riskShown()`),
+  filtered by `pay=elevated_risk`/`pay=disputed` and the rule condition `risk` (never met while unread; `ruleFacts()` reads the
+  charge first). *Payments by method* is a Finance section (`paymentMethodsReport()`, `paymentsByMethod()`, with VAT as the money
+  moved, CSV `finance.payment_methods`). A new reader of `payments.provider` goes in `payment-readers.scan.test.ts`.
 
 ## The chargeback assistant and customers who return a lot (D417, `src/lib/dispute-evidence.ts`, `src/server/dispute-evidence.ts`)
 
@@ -154,15 +541,48 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Authorise now, capture later (wave 4 unit B, D289, `docs/wave-4-payments.md` 4, `src/lib/capture.ts`, `src/server/payment-capture.ts`)
 
-- **Authorise now, capture later (wave 4 unit B, D289, `docs/wave-4-payments.md` 4, `src/lib/capture.ts`, `src/server/payment-capture.ts`)**: when the card is charged is the owner's `order_settings.capture` (`at_checkout`, `when_sent`, `by_hand`); which orders may wait is only `captureModeFor()`, kept on the order as `orders.capture_mode` by `prepareCapture()` in `startCheckout()` (the only session made with `captureLater`; drafts, pay links, changes, exchanges and boxes never are). A held card's order is `authorized` (between `pending_payment` and `paid`, with `capture_before`), made only by `commerce.authorize_order_payment()` from `authorizeFromSession()`; it is not a paid order anywhere (no captured payment), so a reader that means "bought" keeps asking for a captured payment or `paid`. It becomes paid only through `capturePayment()` (Stripe first, then `complete_order_payment()`; less than held is a `refunds.kind = 'release'` row for the rest, succeeded, no provider reference, credited like any refund), and ends only through `voidAuthorization()`, `applyIntentCanceled()` or `runCaptureJobs()` (`cancel_unpaid_order()`). Anything that sends or hands over goods calls `captureForSending()` first and records nothing when it fails; a carrier booking waits for the capture. A trigger that acts on `pending_payment → paid` acts on `authorized → paid` too. The order page reads `orderCapture()` (stored rows), never Stripe.
+- **Authorise now, capture later (wave 4 unit B, D289, `docs/wave-4-payments.md` 4, `src/lib/capture.ts`,
+  `src/server/payment-capture.ts`)**: when the card is charged is the owner's `order_settings.capture` (`at_checkout`,
+  `when_sent`, `by_hand`); which orders may wait is only `captureModeFor()`, kept on the order as `orders.capture_mode` by
+  `prepareCapture()` in `startCheckout()` (the only session made with `captureLater`; drafts, pay links, changes, exchanges and
+  boxes never are). A held card's order is `authorized` (between `pending_payment` and `paid`, with `capture_before`), made only
+  by `commerce.authorize_order_payment()` from `authorizeFromSession()`; it is not a paid order anywhere (no captured payment), so
+  a reader that means "bought" keeps asking for a captured payment or `paid`. It becomes paid only through `capturePayment()`
+  (Stripe first, then `complete_order_payment()`; less than held is a `refunds.kind = 'release'` row for the rest, succeeded, no
+  provider reference, credited like any refund), and ends only through `voidAuthorization()`, `applyIntentCanceled()` or
+  `runCaptureJobs()` (`cancel_unpaid_order()`). Anything that sends or hands over goods calls `captureForSending()` first and
+  records nothing when it fails; a carrier booking waits for the capture. A trigger that acts on `pending_payment → paid` acts on
+  `authorized → paid` too. The order page reads `orderCapture()` (stored rows), never Stripe.
 
 ## Payouts and real fees (wave 4 unit C, D290, `docs/wave-4-payments.md` 5, `src/lib/payouts.ts`, `src/server/payouts.ts`,…
 
-- **Payouts and real fees (wave 4 unit C, D290, `docs/wave-4-payments.md` 5, `src/lib/payouts.ts`, `src/server/payouts.ts`, `src/server/payouts-report.ts`)**: a store's Stripe payouts (`commerce.payouts`) and their balance transactions (`payout_lines`) are written only by `applyPayout()` (the `payout.*` webhook events, `PAYOUT_EVENTS`) and `runPayoutJobs()` (daily per store through `payout_reads`, in the five-minute dispatcher), for the store's own account in `stripe_accounts` only (never a host's); append-only by trigger (no delete, identity fixed, a line's tie set once, a line in its payout's currency). Whether a payout adds up is only `reconcilePayout()` (lines' net against its amount; money not tied to an order named; a manual, unpaid or incomplete payout says so, never guessed). A payment's real fee (`payments.provider_fee_minor`, `application_fee_minor`, `fee_currency`) is written once, by `writeFee()`, from the charge's balance transaction; Finance's payment fees take it for each order whose every captured Stripe payment has one in a convertible currency and the estimate for the rest (`Totals.realFeeOrders`; the label says *estimated* unless all are real), as *Payments by method* does per payment. Analytics → Payouts and one payout's page show each payout in its own currency, totals of paid live payouts in the main one (`payoutReportOf()`, a currency without a rate left out and counted); the CSV `payouts.list` has a currency per row (`rowCurrency`). A new money read here needs a euro case in `payouts.int.test.ts`.
+- **Payouts and real fees (wave 4 unit C, D290, `docs/wave-4-payments.md` 5, `src/lib/payouts.ts`, `src/server/payouts.ts`,
+  `src/server/payouts-report.ts`)**: a store's Stripe payouts (`commerce.payouts`) and their balance transactions (`payout_lines`)
+  are written only by `applyPayout()` (the `payout.*` webhook events, `PAYOUT_EVENTS`) and `runPayoutJobs()` (daily per store
+  through `payout_reads`, in the five-minute dispatcher), for the store's own account in `stripe_accounts` only (never a host's);
+  append-only by trigger (no delete, identity fixed, a line's tie set once, a line in its payout's currency). Whether a payout
+  adds up is only `reconcilePayout()` (lines' net against its amount; money not tied to an order named; a manual, unpaid or
+  incomplete payout says so, never guessed). A payment's real fee (`payments.provider_fee_minor`, `application_fee_minor`,
+  `fee_currency`) is written once, by `writeFee()`, from the charge's balance transaction; Finance's payment fees take it for each
+  order whose every captured Stripe payment has one in a convertible currency and the estimate for the rest
+  (`Totals.realFeeOrders`; the label says *estimated* unless all are real), as *Payments by method* does per payment. Analytics →
+  Payouts and one payout's page show each payout in its own currency, totals of paid live payouts in the main one
+  (`payoutReportOf()`, a currency without a rate left out and counted); the CSV `payouts.list` has a currency per row
+  (`rowCurrency`). A new money read here needs a euro case in `payouts.int.test.ts`.
 
 ## Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6, `src/lib/payment-methods.ts`, `src/server/payment-methods.ts`)
 
-- **Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6, `src/lib/payment-methods.ts`, `src/server/payment-methods.ts`)**: the methods are `PAYMENT_METHODS` (a new one is an entry there with its Stripe type and capability); an account is made with `BASE_CAPABILITIES` and `ensureStorePaymentMethods()` asks for the rest, one at a time when refused together; Stripe's state of each is `stripe_accounts.method_states` (`capabilityStates()` in `saveStatus()`), shown by `PaymentMethodsCard`. The owner's switch is `commerce.payment_methods` (`enabled = false` is off, no row is on, cards always on), written only by `saveMethodChoices()`, and a country's checkout leaves out only `excludedPaymentMethods()` in `excluded_payment_method_types` (`openPaymentSession()`, for the order's own country); never pass `payment_method_types`. A completed unpaid session with no card held is a bank payment on its way: only `awaitBankPayment()`/`commerce.await_bank_payment()` makes the order wait (`orders.awaiting_bank_since`, stock and booked times held `BANK_WAIT_DAYS`), and it stays `pending_payment`, not a sale, until `async_payment_succeeded`; `OrderView.awaitingBank` is what pages say.
+- **Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6, `src/lib/payment-methods.ts`,
+  `src/server/payment-methods.ts`)**: the methods are `PAYMENT_METHODS` (a new one is an entry there with its Stripe type and
+  capability); an account is made with `BASE_CAPABILITIES` and `ensureStorePaymentMethods()` asks for the rest, one at a time when
+  refused together; Stripe's state of each is `stripe_accounts.method_states` (`capabilityStates()` in `saveStatus()`), shown by
+  `PaymentMethodsCard`. The owner's switch is `commerce.payment_methods` (`enabled = false` is off, no row is on, cards always
+  on), written only by `saveMethodChoices()`, and a country's checkout leaves out only `excludedPaymentMethods()` in
+  `excluded_payment_method_types` (`openPaymentSession()`, for the order's own country); never pass `payment_method_types`. A
+  completed unpaid session with no card held is a bank payment on its way: only
+  `awaitBankPayment()`/`commerce.await_bank_payment()` makes the order wait (`orders.awaiting_bank_since`, stock and booked times
+  held `BANK_WAIT_DAYS`), and it stays `pending_payment`, not a sale, until `async_payment_succeeded`; `OrderView.awaitingBank` is
+  what pages say.
 
 ## Express checkout and wallets (wave 10 unit J, D373, `src/lib/express-checkout.ts`, `src/server/express-checkout.ts`)
 
@@ -176,15 +596,78 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Payment providers (wave 4 unit E, D292, `docs/wave-4-payments.md` 7, `src/lib/payment-providers.ts`, `src/server/payment-providers/`,…
 
-- **Payment providers (wave 4 unit E, D292, `docs/wave-4-payments.md` 7, `src/lib/payment-providers.ts`, `src/server/payment-providers/`, `src/server/payment-outcome.ts`)**: what becomes of an order from its payment is decided once, for every provider: the provider's answer is a `PaymentAnswer` (`open`, `paid`, `unsettled`, `failed`, `expired`, who paid), `paymentFate()` decides and `applyPaymentAnswer()` acts (Stripe's `applySession()` only makes the answer, `stripeAnswer()`, and passes Stripe's own steps as hooks). Anything done to a payment already taken goes to its own provider through `providerOf()` (`refresh()` for the late read, `close()` for an open payment, `refund()` for each refund part); never call a provider's API for a payment from elsewhere, and a new provider is an id in `PAYMENT_PROVIDERS` and a `PaymentProvider`. Mollie (E2, `src/server/mollie.ts`, `src/server/payment-providers/mollie.ts`, `src/lib/mollie.ts`): a store's connection is `mollie_connections` (OAuth by the owner, tokens encrypted, written only by `src/server/mollie.ts`, which makes every call to Mollie through `mollieCall()` with an injectable fetch) and its checkout's provider per mode `checkout_providers` (`checkoutProviderOf()`); Mollie's page asks for no address, so a Mollie cart asks who pays first (`cleanPayer()`, no zod) and the order keeps it; a webhook names only an id and the payment is always fetched from Mollie (`handleMollieWebhook()`), its refunds through `applyRefundReport()` and chargebacks through `writeDispute()` (the writers Stripe's use); a Mollie payment keeps its mode in `payments.test_mode` (a test payment never gets an invoice number); what only Stripe does (subscriptions, deposits, hosts, boxes, pay links) stays Stripe's; never send Mollie card data or open a Mollie frame on a pay route.
+- **Payment providers (wave 4 unit E, D292, `docs/wave-4-payments.md` 7, `src/lib/payment-providers.ts`,
+  `src/server/payment-providers/`, `src/server/payment-outcome.ts`)**: what becomes of an order from its payment is decided once,
+  for every provider: the provider's answer is a `PaymentAnswer` (`open`, `paid`, `unsettled`, `failed`, `expired`, who paid),
+  `paymentFate()` decides and `applyPaymentAnswer()` acts (Stripe's `applySession()` only makes the answer, `stripeAnswer()`, and
+  passes Stripe's own steps as hooks). Anything done to a payment already taken goes to its own provider through `providerOf()`
+  (`refresh()` for the late read, `close()` for an open payment, `refund()` for each refund part); never call a provider's API for
+  a payment from elsewhere, and a new provider is an id in `PAYMENT_PROVIDERS` and a `PaymentProvider`. Mollie (E2,
+  `src/server/mollie.ts`, `src/server/payment-providers/mollie.ts`, `src/lib/mollie.ts`): a store's connection is
+  `mollie_connections` (OAuth by the owner, tokens encrypted, written only by `src/server/mollie.ts`, which makes every call to
+  Mollie through `mollieCall()` with an injectable fetch) and its checkout's provider per mode `checkout_providers`
+  (`checkoutProviderOf()`); Mollie's page asks for no address, so a Mollie cart asks who pays first (`cleanPayer()`, no zod) and
+  the order keeps it; a webhook names only an id and the payment is always fetched from Mollie (`handleMollieWebhook()`), its
+  refunds through `applyRefundReport()` and chargebacks through `writeDispute()` (the writers Stripe's use); a Mollie payment
+  keeps its mode in `payments.test_mode` (a test payment never gets an invoice number); what only Stripe does (subscriptions,
+  deposits, hosts, boxes, pay links) stays Stripe's; never send Mollie card data or open a Mollie frame on a pay route.
 
 ## Payment terms for company accounts (wave 4 unit F, D293, `docs/wave-4-payments.md` 8, `src/lib/payment-terms.ts`, `src/server/payment-terms.ts`)
 
-- **Payment terms for company accounts (wave 4 unit F, D293, `docs/wave-4-payments.md` 8, `src/lib/payment-terms.ts`, `src/server/payment-terms.ts`)**: who may buy on terms is only `termsOffer()` through `decideTerms()` (the business feature, a signed-in owner or employee of an active company with `payment_terms`, goods bought once only, the credit limit in `credit_currency` with what the company owes converted at the store's rates, never guessed); `placeOrder({ terms })` checks it again under the company's row lock and writes `order_payment_terms` (`due_on` fixed, claims and `paid_at` set once, by trigger) with the whole total as `balance_minor`, and `confirmOnTerms()` completes it with a pending `terms` payment (never money: the order page's key, so every reader of that key lists `'terms'`, and what a cancellation voids). An order on terms is `paid` as a shop status but no sale until a captured payment (`PAID` unchanged): it is paid only by `settleTerms()` (`applyPaymentAnswer()`'s `terms` purpose, any later Stripe payment of an order with terms that is not an edit's or exchange's) or `recordTermsPaidOutside()`, and cancelled unpaid only by `voidTerms()` from `cancelOrder()` (a `void` refund: its credit note, no money; `NOT_EDIT_REFUND` and every refund reader leave `kind = 'void'` out). The venue's *Mark paid* (`markBalancePaid()`), order changes (`terms_unpaid`) and the `balance_due` filter leave orders on terms out; a company that owes is not deleted (`releaseCompanyTerms()`). Reminders are `runTermsJobs()` in the five-minute payment jobs (`order.payment_due`, `order.payment_overdue`, the staff alert `payment_overdue`, never a customer's name in it). Shopper and email words are `m.paymentTerms` and `TERMS_EMAIL_TEXT`, hand-written nb, sv, da and en (`HAND_WRITTEN_ONLY`), and need legal review; the invoice's are `invoice-text.ts` (`dueDate`, `termsDays`, `toPayBy`). A new money read here needs a euro case in `checkout-kinds.int.test.ts`. Since D387 a balance may be paid in part (`applyTermsMoney()`: money outside with an amount, or a payment; paid when it reaches zero), *Pay now* goes through Mollie for a store whose checkout is Mollie's, and an order on terms counts as a sale when its balance is paid in full (`orders.sold_at`, written only by the trigger `order_payment_terms_sold()`; `infinity` until then): an analytics reader dates a sale by `SOLD_AT` and filters by `soldIn()` (`analytics-sql.ts`), never `placed_at` alone.
+- **Payment terms for company accounts (wave 4 unit F, D293, `docs/wave-4-payments.md` 8, `src/lib/payment-terms.ts`,
+  `src/server/payment-terms.ts`)**: who may buy on terms is only `termsOffer()` through `decideTerms()` (the business feature, a
+  signed-in owner or employee of an active company with `payment_terms`, goods bought once only, the credit limit in
+  `credit_currency` with what the company owes converted at the store's rates, never guessed); `placeOrder({ terms })` checks it
+  again under the company's row lock and writes `order_payment_terms` (`due_on` fixed, claims and `paid_at` set once, by trigger)
+  with the whole total as `balance_minor`, and `confirmOnTerms()` completes it with a pending `terms` payment (never money: the
+  order page's key, so every reader of that key lists `'terms'`, and what a cancellation voids). An order on terms is `paid` as a
+  shop status but no sale until a captured payment (`PAID` unchanged): it is paid only by `settleTerms()`
+  (`applyPaymentAnswer()`'s `terms` purpose, any later Stripe payment of an order with terms that is not an edit's or exchange's)
+  or `recordTermsPaidOutside()`, and cancelled unpaid only by `voidTerms()` from `cancelOrder()` (a `void` refund: its credit
+  note, no money; `NOT_EDIT_REFUND` and every refund reader leave `kind = 'void'` out). The venue's *Mark paid*
+  (`markBalancePaid()`), order changes (`terms_unpaid`) and the `balance_due` filter leave orders on terms out; a company that
+  owes is not deleted (`releaseCompanyTerms()`). Reminders are `runTermsJobs()` in the five-minute payment jobs
+  (`order.payment_due`, `order.payment_overdue`, the staff alert `payment_overdue`, never a customer's name in it). Shopper and
+  email words are `m.paymentTerms` and `TERMS_EMAIL_TEXT`, hand-written nb, sv, da and en (`HAND_WRITTEN_ONLY`), and need legal
+  review; the invoice's are `invoice-text.ts` (`dueDate`, `termsDays`, `toPayBy`). A new money read here needs a euro case in
+  `checkout-kinds.int.test.ts`. Since D387 a balance may be paid in part (`applyTermsMoney()`: money outside with an amount, or a
+  payment; paid when it reaches zero), *Pay now* goes through Mollie for a store whose checkout is Mollie's, and an order on terms
+  counts as a sale when its balance is paid in full (`orders.sold_at`, written only by the trigger `order_payment_terms_sold()`;
+  `infinity` until then): an analytics reader dates a sale by `SOLD_AT` and filters by `soldIn()` (`analytics-sql.ts`), never
+  `placed_at` alone.
 
 ## Gift cards (wave 5 unit F, D300, `docs/wave-5-marketing.md` 8, built in steps; F1 the model, F2 selling, F3 spending, F4 the owner's screens and…
 
-- **Gift cards (wave 5 unit F, D300, `docs/wave-5-marketing.md` 8, built in steps; F1 the model, F2 selling, F3 spending, F4 the owner's screens and figures)**: multi-purpose vouchers only. A card keeps no code (`code_hash`, `hashGiftCode()` in `src/server/gift-card-codes.ts`; a code is shown once, in its email or to the staff member who issues it), and its balance is only `commerce.gift_card_balance()` over `gift_card_entries`, written only by the `gift_card_*` SQL functions (issue, hold, release, spend, refund, adjust, expire, void; triggers refuse any other writer and keep cards and entries as written); never compute a balance in code or write a card or an entry another way; a delivered card's code changes only through `commerce.gift_card_new_code()` (D381, `sendNewGiftCardCode()`). A card is money, never a discount: it pays at checkout (F3). Selling one (F2): a product of kind `gift_card` (feature `gift_cards`, VAT category `voucher` and only it, every variant `digital`) is cartable like goods with who it is for on its line (`src/lib/gift-card-line.ts`: `cleanGiftCardRecipient()`, `giftCardKey()`, which the cart's forms send back as `giftCardKey`); nothing comes off a gift card line and it counts towards no threshold, in `cartSummary()` and `placeOrder()` alike (`voucher`), so a new discount or threshold skips it in both; it is no download (no tick, no downloads block). Cards are issued only by the database when the order is paid with a captured payment (`issue_order_gift_cards()`), codes are made and emailed only by `deliverGiftCards()` (the log keeps `[code]`, `sendEmail({ secrets })`), and a withdrawal voids only whole cards (`gift_card_withdraw()`). Spending one (F3): a card is found only by `findGiftCard()` and kept on a cart only by its id (`cart_gift_cards`, `addCartGiftCard()`, tries counted); what cards pay is only `giftCardsPay()` (`cartSummary()` and `placeOrder()` alike), each card a `payments` row of provider `gift_card`, held, spent, released and refunded by the database's triggers (`payments_gift_card()`, `orders_gift_card_payments()`, `refunds_gift_card()`), never a discount; a card never pays for a gift card, a subscription, a host's listing, terms, a change or an exchange; an order the cards pay in full is confirmed by `confirmPaidByGiftCards()`, who pays asked on the cart; a new list that finds an order by its payment's reference, a new test-mode rule or a new refund path includes `gift_card`. The owner's screens (F4, `src/server/gift-cards-admin.ts`, `src/lib/gift-card-admin.ts`, `/admin/{store}/gift-cards`): a card's state is only `cardState()`; issuing by hand (`issueGiftCard()`, `products:write`) shows the code once and keeps it nowhere; changing, deactivating and expiring (`expireGiftCards()`, daily) go through the ledger's functions. A card moved from Shopify (D445 step 8, `src/server/shopify-gift-cards.ts`) is made only on move day by `commerce.gift_card_issue_moved()` (one for each Shopify card, `moved_from`; its balance, currency and expiry as Shopify's), emailed to its holder or left for the owner to issue (code shown once); a spend of its old code on Shopify in the 14 days after is taken off it by `gift_card_adjust()`, `moved_balance_minor` kept by `gift_card_moved_seen()`. Finance leaves a gift card sold out of every sales figure (`GIFT_CARD_LINE`, `VOUCHER_NET` in `analytics-sql.ts`), so a new sales figure leaves it out too, and reports what customers hold per currency (`giftCardLiability()`, never converted or added across currencies, CSV `finance.gift_cards`); the invoice marks a gift card line `voucher` (SQL and `buildInvoiceSnapshot()` alike).
+- **Gift cards (wave 5 unit F, D300, `docs/wave-5-marketing.md` 8, built in steps; F1 the model, F2 selling, F3 spending, F4 the
+  owner's screens and figures)**: multi-purpose vouchers only. A card keeps no code (`code_hash`, `hashGiftCode()` in
+  `src/server/gift-card-codes.ts`; a code is shown once, in its email or to the staff member who issues it), and its balance is
+  only `commerce.gift_card_balance()` over `gift_card_entries`, written only by the `gift_card_*` SQL functions (issue, hold,
+  release, spend, refund, adjust, expire, void; triggers refuse any other writer and keep cards and entries as written); never
+  compute a balance in code or write a card or an entry another way; a delivered card's code changes only through
+  `commerce.gift_card_new_code()` (D381, `sendNewGiftCardCode()`). A card is money, never a discount: it pays at checkout (F3).
+  Selling one (F2): a product of kind `gift_card` (feature `gift_cards`, VAT category `voucher` and only it, every variant
+  `digital`) is cartable like goods with who it is for on its line (`src/lib/gift-card-line.ts`: `cleanGiftCardRecipient()`,
+  `giftCardKey()`, which the cart's forms send back as `giftCardKey`); nothing comes off a gift card line and it counts towards no
+  threshold, in `cartSummary()` and `placeOrder()` alike (`voucher`), so a new discount or threshold skips it in both; it is no
+  download (no tick, no downloads block). Cards are issued only by the database when the order is paid with a captured payment
+  (`issue_order_gift_cards()`), codes are made and emailed only by `deliverGiftCards()` (the log keeps `[code]`,
+  `sendEmail({ secrets })`), and a withdrawal voids only whole cards (`gift_card_withdraw()`). Spending one (F3): a card is found
+  only by `findGiftCard()` and kept on a cart only by its id (`cart_gift_cards`, `addCartGiftCard()`, tries counted); what cards
+  pay is only `giftCardsPay()` (`cartSummary()` and `placeOrder()` alike), each card a `payments` row of provider `gift_card`,
+  held, spent, released and refunded by the database's triggers (`payments_gift_card()`, `orders_gift_card_payments()`,
+  `refunds_gift_card()`), never a discount; a card never pays for a gift card, a subscription, a host's listing, terms, a change
+  or an exchange; an order the cards pay in full is confirmed by `confirmPaidByGiftCards()`, who pays asked on the cart; a new
+  list that finds an order by its payment's reference, a new test-mode rule or a new refund path includes `gift_card`. The owner's
+  screens (F4, `src/server/gift-cards-admin.ts`, `src/lib/gift-card-admin.ts`, `/admin/{store}/gift-cards`): a card's state is
+  only `cardState()`; issuing by hand (`issueGiftCard()`, `products:write`) shows the code once and keeps it nowhere; changing,
+  deactivating and expiring (`expireGiftCards()`, daily) go through the ledger's functions. A card moved from Shopify (D445 step
+  8, `src/server/shopify-gift-cards.ts`) is made only on move day by `commerce.gift_card_issue_moved()` (one for each Shopify
+  card, `moved_from`; its balance, currency and expiry as Shopify's), emailed to its holder or left for the owner to issue (code
+  shown once); a spend of its old code on Shopify in the 14 days after is taken off it by `gift_card_adjust()`,
+  `moved_balance_minor` kept by `gift_card_moved_seen()`. Finance leaves a gift card sold out of every sales figure
+  (`GIFT_CARD_LINE`, `VOUCHER_NET` in `analytics-sql.ts`), so a new sales figure leaves it out too, and reports what customers
+  hold per currency (`giftCardLiability()`, never converted or added across currencies, CSV `finance.gift_cards`); the invoice
+  marks a gift card line `voucher` (SQL and `buildInvoiceSnapshot()` alike).
 
 ## Owed to customers (wave 11 unit B, D381)
 
@@ -202,7 +685,24 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`customerId`). A new condition or effect is a kind in `CONDITION_KINDS`/`EFFECT_KINDS`, its schema in `checkout-rules-schema.ts`, its case in
   `conditionHolds()`/`goneIn()` and the editor, and a test; a rule never changes a product's price, VAT or a legal page, and prices a delivery
   option only as `delivery_price` (D402) through `pricedBy()` in `rulesOnOffer()`, never below zero. Payment methods a rule left out are
-  `orders.rule_hidden_methods`, read by `excludedPaymentMethods()` given the order. A rule that orders delivery options (`order_delivery`, D399) only moves them (`orderedBy()`), never the default. The phone and a person's name besides the email (D594) are `stores.checkout_phone` and `stores.checkout_name`, written only by `saveCheckoutContact()` and read through `contactAsked()`; what a shopper typed is kept on the order only by `saveOrderContact()`, and a paid session keeps it where it gives none. A question may be a tick list (D598, `checklist`: options kept by id, a `none` option clearing the others, and a `sensitive` one refused by `cleanAnswers()` without the shopper's explicit consent), a dropdown or a choice of one (D601, `select` drawn with `Dropdown`, never a native select, and `radio`: 2 to 30 options, no `none`, the answer of kind `choice`), or longer text (D601, `textarea`: its lines kept, at most 2,000 characters), a whole number, a date, an email address or a phone number (D613: `number` and `date` with optional `bounds`, a date's days counted from the store's today by `storeToday()`; each checked for its shape by `cleanAnswers()` with `AnswerContext`, once when the cart keeps it and again when the order is placed), and asked only for some baskets (D618, `checkout_fields.conditions`: the rules' conditions, all holding, `fieldAsked()`; the cart, the kept answers and `placeOrder()` read `askedFields()`, which reads the basket through `cartFacts()`, the rules' own reader). Options belong only to `checklist`, `select` and `radio` (`hasOptions()`); a question turned into another kind is checked against its kept options. A question is `full` or `half` width (D596, only `half` kept, the order deciding the side; a change without a width keeps it). Questions are asked in their `position`, changed only by `moveCheckoutField()` (the store's questions locked while it writes them; the Admin API's `position` goes through it too). The Admin API reaches rules and questions only through this module's writers (scopes `checkout:*`). Answers are kept on the cart through `cleanAnswers()` and copied
+  `orders.rule_hidden_methods`, read by `excludedPaymentMethods()` given the order. A rule that orders delivery options
+  (`order_delivery`, D399) only moves them (`orderedBy()`), never the default. The phone and a person's name besides the email
+  (D594) are `stores.checkout_phone` and `stores.checkout_name`, written only by `saveCheckoutContact()` and read through
+  `contactAsked()`; what a shopper typed is kept on the order only by `saveOrderContact()`, and a paid session keeps it where it
+  gives none. A question may be a tick list (D598, `checklist`: options kept by id, a `none` option clearing the others, and a
+  `sensitive` one refused by `cleanAnswers()` without the shopper's explicit consent), a dropdown or a choice of one (D601,
+  `select` drawn with `Dropdown`, never a native select, and `radio`: 2 to 30 options, no `none`, the answer of kind `choice`), or
+  longer text (D601, `textarea`: its lines kept, at most 2,000 characters), a whole number, a date, an email address or a phone
+  number (D613: `number` and `date` with optional `bounds`, a date's days counted from the store's today by `storeToday()`; each
+  checked for its shape by `cleanAnswers()` with `AnswerContext`, once when the cart keeps it and again when the order is placed),
+  and asked only for some baskets (D618, `checkout_fields.conditions`: the rules' conditions, all holding, `fieldAsked()`; the
+  cart, the kept answers and `placeOrder()` read `askedFields()`, which reads the basket through `cartFacts()`, the rules' own
+  reader). Options belong only to `checklist`, `select` and `radio` (`hasOptions()`); a question turned into another kind is
+  checked against its kept options. A question is `full` or `half` width (D596, only `half` kept, the order deciding the side; a
+  change without a width keeps it). Questions are asked in their `position`, changed only by `moveCheckoutField()` (the store's
+  questions locked while it writes them; the Admin API's `position` goes through it too). The Admin API reaches rules and
+  questions only through this module's writers (scopes `checkout:*`). Answers are kept on the cart through `cleanAnswers()` and
+  copied
   by `placeOrder()` (`orders.checkout_answers`, read by `readAnswers()`): personal data, in the export, erasure, retention and `anonymise_order()`.
 
 ## Refund to store credit and customer accounts (wave 10 units A and B, D364, D365, `docs/wave-10-must-haves.md`)
@@ -219,35 +719,101 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Shipping carriers (D133, `docs/shipping-carriers.md`, `src/lib/shipping-carriers.ts`, `src/server/shipping-carriers.ts`,…
 
-- Shipping carriers (D133, `docs/shipping-carriers.md`, `src/lib/shipping-carriers.ts`, `src/server/shipping-carriers.ts`, `/admin/{store}/integrations/shipping/{carrier}`): Posten / Bring (D134), PostNord (D136, booking D459), Porterbuddy (D137), Helthjem (D138), Instabox, DHL Express and UPS (D458), DHL Paket and nShift (D459) are connected, each as far as its `available` features in the registry say: the store's own agreement (non-secret details, encrypted secrets with hints) is saved in `commerce.shipping_carriers`. A carrier's connection implements `ShippingCarrierAdapter`, gets its agreement only from `carrierContext()` (secrets never reach a page or an action), confirms its credential fields against the carrier's documentation, falls back to the flat rate when the carrier fails, and keeps `cartSummary()` and `placeOrder()` in agreement. A new carrier is an id in `CARRIER_IDS` (the three checks that name carriers follow it: write a migration), an entry in `CARRIERS` with its words in both `shipping.*.ts` catalogues, a mark colour in `IntegrationMark` and a name in `parcel-tracking.tsx`, its adapter in `carriers/index.ts`, its label fetcher in `carrier-label.ts`, its services in `CHECKOUT_SERVICES`/`CHECKOUT_COUNTRIES`/`CHECKOUT_PRICING`, its tracking codes in `tracking-phases.ts` (unverified until read in its documentation), and it stays out of store copies. A carrier that ships from anywhere asks for `senderCountry` (`format: "country"`); read the sender through `senderAddress()`, never assume Norway. Sendcloud (D483, `docs/sendcloud-labels.md`, `src/lib/sendcloud.ts`, `src/server/carriers/sendcloud.ts`, `src/server/sendcloud-shipping.ts`) is the shop's own Sendcloud account on API v3: `checkable` lets its connection be checked before any feature is `available` (`canCheck()`), and its sender address is a `pick` field chosen from the account's own addresses, never typed. Its keys go only to Sendcloud's host (`nextPage()` follows a page only there), and its test environment will book only `SENDCLOUD_TEST_OPTION`, as Sendcloud has no sandbox.
+- Shipping carriers (D133, `docs/shipping-carriers.md`, `src/lib/shipping-carriers.ts`, `src/server/shipping-carriers.ts`,
+  `/admin/{store}/integrations/shipping/{carrier}`): Posten / Bring (D134), PostNord (D136, booking D459), Porterbuddy (D137),
+  Helthjem (D138), Instabox, DHL Express and UPS (D458), DHL Paket and nShift (D459) are connected, each as far as its `available`
+  features in the registry say: the store's own agreement (non-secret details, encrypted secrets with hints) is saved in
+  `commerce.shipping_carriers`. A carrier's connection implements `ShippingCarrierAdapter`, gets its agreement only from
+  `carrierContext()` (secrets never reach a page or an action), confirms its credential fields against the carrier's
+  documentation, falls back to the flat rate when the carrier fails, and keeps `cartSummary()` and `placeOrder()` in agreement. A
+  new carrier is an id in `CARRIER_IDS` (the three checks that name carriers follow it: write a migration), an entry in `CARRIERS`
+  with its words in both `shipping.*.ts` catalogues, a mark colour in `IntegrationMark` and a name in `parcel-tracking.tsx`, its
+  adapter in `carriers/index.ts`, its label fetcher in `carrier-label.ts`, its services in
+  `CHECKOUT_SERVICES`/`CHECKOUT_COUNTRIES`/`CHECKOUT_PRICING`, its tracking codes in `tracking-phases.ts` (unverified until read
+  in its documentation), and it stays out of store copies. A carrier that ships from anywhere asks for `senderCountry`
+  (`format: "country"`); read the sender through `senderAddress()`, never assume Norway. Sendcloud (D483,
+  `docs/sendcloud-labels.md`, `src/lib/sendcloud.ts`, `src/server/carriers/sendcloud.ts`, `src/server/sendcloud-shipping.ts`) is
+  the shop's own Sendcloud account on API v3: `checkable` lets its connection be checked before any feature is `available`
+  (`canCheck()`), and its sender address is a `pick` field chosen from the account's own addresses, never typed. Its keys go only
+  to Sendcloud's host (`nextPage()` follows a page only there), and its test environment will book only `SENDCLOUD_TEST_OPTION`,
+  as Sendcloud has no sandbox.
 
 ## Posten / Bring (D134, `src/lib/bring.ts`, `src/server/carriers/bring.ts`, `src/server/bring-shipping.ts`)
 
-- Posten / Bring (D134, `src/lib/bring.ts`, `src/server/carriers/bring.ts`, `src/server/bring-shipping.ts`): the first carrier connection. Pure request/response code lives in `lib/bring.ts`; the adapter takes an injectable `fetch` and never throws raw errors to a page (plain sentences); orders are booked only through `bringBook()`, which in the store's test environment books a test shipment and does NOT mark the order sent, and otherwise marks it sent through `markSent()` with its `booking` (carrier id, consignment number, label address). Labels are fetched from Bring when printed and never stored; only `api.bring.com` addresses are fetched, with the agreement's keys, for staff. A new carrier connection follows the same shape and is registered in `carriers/index.ts` with its `available` features in the registry.
+- Posten / Bring (D134, `src/lib/bring.ts`, `src/server/carriers/bring.ts`, `src/server/bring-shipping.ts`): the first carrier
+  connection. Pure request/response code lives in `lib/bring.ts`; the adapter takes an injectable `fetch` and never throws raw
+  errors to a page (plain sentences); orders are booked only through `bringBook()`, which in the store's test environment books a
+  test shipment and does NOT mark the order sent, and otherwise marks it sent through `markSent()` with its `booking` (carrier id,
+  consignment number, label address). Labels are fetched from Bring when printed and never stored; only `api.bring.com` addresses
+  are fetched, with the agreement's keys, for staff. A new carrier connection follows the same shape and is registered in
+  `carriers/index.ts` with its `available` features in the registry.
 
 ## Delivery options at checkout (D135, `src/lib/delivery-options.ts`, `src/server/delivery-options.ts`, `src/server/delivery-choice.ts`,…
 
-- Delivery options at checkout (D135, `src/lib/delivery-options.ts`, `src/server/delivery-options.ts`, `src/server/delivery-choice.ts`, `DeliveryChoice`, piece `checkout_delivery`): the shopper gives a postal code, `quoteDelivery()` keeps the carrier's services for the cart as `commerce.delivery_quotes` (price = carrier price + the country's standard VAT + the store's percentage and amount, via `shopperPrice()`, in the country's own currency; shown with `shown()`), `chooseDelivery()` puts one on `carts.delivery_quote_id`, and `chosenDelivery()` is the only reader: a quote of the cart, its country, not expired, pickup point chosen when needed. `cartSummary()` and `placeOrder()` both use it as the basket's shipping rate in place of the flat rate (`commerce.shipping_rates`, which stays as the default and the fallback, so stores keep it set up), so they agree (scenarios in `checkout-kinds.int.test.ts`; a new delivery kind or price rule gets one, euro included). Never call a carrier while placing an order, and never read a quote's price from anywhere but `chosenDelivery()`. Subscriptions ignore the choice (flat rate on each delivery). The order keeps `orders.delivery` (`readOrderDelivery()`); name the service with `order.delivery?.label ?? m.shipping`, the pickup point with `pickupPointLine()`. A new carrier's checkout services add to `CHECKOUT_SERVICES`, `CHECKOUT_COUNTRIES` and its adapter's `rates`/`pickupPoints`.
+- Delivery options at checkout (D135, `src/lib/delivery-options.ts`, `src/server/delivery-options.ts`,
+  `src/server/delivery-choice.ts`, `DeliveryChoice`, piece `checkout_delivery`): the shopper gives a postal code,
+  `quoteDelivery()` keeps the carrier's services for the cart as `commerce.delivery_quotes` (price = carrier price + the country's
+  standard VAT + the store's percentage and amount, via `shopperPrice()`, in the country's own currency; shown with `shown()`),
+  `chooseDelivery()` puts one on `carts.delivery_quote_id`, and `chosenDelivery()` is the only reader: a quote of the cart, its
+  country, not expired, pickup point chosen when needed. `cartSummary()` and `placeOrder()` both use it as the basket's shipping
+  rate in place of the flat rate (`commerce.shipping_rates`, which stays as the default and the fallback, so stores keep it set
+  up), so they agree (scenarios in `checkout-kinds.int.test.ts`; a new delivery kind or price rule gets one, euro included). Never
+  call a carrier while placing an order, and never read a quote's price from anywhere but `chosenDelivery()`. Subscriptions ignore
+  the choice (flat rate on each delivery). The order keeps `orders.delivery` (`readOrderDelivery()`); name the service with
+  `order.delivery?.label ?? m.shipping`, the pickup point with `pickupPointLine()`. A new carrier's checkout services add to
+  `CHECKOUT_SERVICES`, `CHECKOUT_COUNTRIES` and its adapter's `rates`/`pickupPoints`.
 
 ## PostNord (D136, `src/lib/postnord.ts`, `src/server/carriers/postnord.ts`)
 
-- PostNord (D136, `src/lib/postnord.ts`, `src/server/carriers/postnord.ts`): connected for the check, service points and tracking only; the adapter has no `rates` or `book`. A carrier's checkout services are priced by `CHECKOUT_PRICING`: `carrier` (its `rates()` plus `shopperPrice()`) or `store` (what the owner entered in `checkout_prices`, with VAT, per country: never add VAT or a markup to it). `quoteDelivery()` asks every active carrier (`activeCarriers()`) and lists their services together; a new carrier with its own price service is `carrier`, one without is `store`. Booking and labels for PostNord wait for its EDI specification.
+- PostNord (D136, `src/lib/postnord.ts`, `src/server/carriers/postnord.ts`): connected for the check, service points and tracking
+  only; the adapter has no `rates` or `book`. A carrier's checkout services are priced by `CHECKOUT_PRICING`: `carrier` (its
+  `rates()` plus `shopperPrice()`) or `store` (what the owner entered in `checkout_prices`, with VAT, per country: never add VAT
+  or a markup to it). `quoteDelivery()` asks every active carrier (`activeCarriers()`) and lists their services together; a new
+  carrier with its own price service is `carrier`, one without is `store`. Booking and labels for PostNord wait for its EDI
+  specification.
 
 ## Porterbuddy (D137, `src/lib/porterbuddy.ts`, `src/server/carriers/porterbuddy.ts`, `src/server/porterbuddy-shipping.ts`)
 
-- Porterbuddy (D137, `src/lib/porterbuddy.ts`, `src/server/carriers/porterbuddy.ts`, `src/server/porterbuddy-shipping.ts`): sells delivery *windows*. `rates()` is an availability request and returns options with a `window` (and `includesVat` for a price made for the shopper); at checkout each is a quote with `window_start/window_end` (read with `chosenDelivery()`, kept on `orders.delivery.window`, shown with `formatWindow()` in the store's time zone). Never book with the token the shopper saw: `porterbuddyBook()` asks again and uses the fresh one, and books nothing when the window is gone. Labels of every connected carrier are served by `carrierLabel()` (only the carrier's own hosts are fetched, never kept).
+- Porterbuddy (D137, `src/lib/porterbuddy.ts`, `src/server/carriers/porterbuddy.ts`, `src/server/porterbuddy-shipping.ts`): sells
+  delivery *windows*. `rates()` is an availability request and returns options with a `window` (and `includesVat` for a price made
+  for the shopper); at checkout each is a quote with `window_start/window_end` (read with `chosenDelivery()`, kept on
+  `orders.delivery.window`, shown with `formatWindow()` in the store's time zone). Never book with the token the shopper saw:
+  `porterbuddyBook()` asks again and uses the fresh one, and books nothing when the window is gone. Labels of every connected
+  carrier are served by `carrierLabel()` (only the carrier's own hosts are fetched, never kept).
 
 ## Helthjem (D138, `src/lib/helthjem.ts`, `src/server/carriers/helthjem.ts`, `src/server/helthjem-shipping.ts`)
 
-- Helthjem (D138, `src/lib/helthjem.ts`, `src/server/carriers/helthjem.ts`, `src/server/helthjem-shipping.ts`): `store`-priced like PostNord, with a weight limit per service (`CHECKOUT_SERVICES[...].maxWeightGrams`, checked against the cart's weight in `offersFrom()`). Our service ids are `home` and `collect`; what Helthjem books is the store's own transport solution for each (`solutionFor()`), never a fixed id in code. The token lives in a module-level cache (`forgetHelthjemTokens()` in tests). Only Helthjem's own hosts are sent the token (`isHelthjemUrl()`).
+- Helthjem (D138, `src/lib/helthjem.ts`, `src/server/carriers/helthjem.ts`, `src/server/helthjem-shipping.ts`): `store`-priced
+  like PostNord, with a weight limit per service (`CHECKOUT_SERVICES[...].maxWeightGrams`, checked against the cart's weight in
+  `offersFrom()`). Our service ids are `home` and `collect`; what Helthjem books is the store's own transport solution for each
+  (`solutionFor()`), never a fixed id in code. The token lives in a module-level cache (`forgetHelthjemTokens()` in tests). Only
+  Helthjem's own hosts are sent the token (`isHelthjemUrl()`).
 
 ## Instabox, DHL Express and UPS (D458, `src/lib/{instabox,dhl,ups}.ts`, `src/server/carriers/{instabox,dhl,ups}.ts`, `src/server/carrier-delivery-booking.ts`)
 
-- The three book through `bookCarrierDelivery()`, the one path for the order page and *Book labels*: the customer's choice with that carrier, or for UPS and DHL (`STAFF_CHOSEN`) a door service staff choose on an order whose customer chose no carrier and that is shipped; never an order whose customer paid for another carrier. A label a carrier gives only once (`BookingResult.labelPdf`, DHL Express) goes to `commerce.carrier_labels` through `keepLabel()` and nowhere else; retention kind `carrier_labels` deletes it after 30 days and erasure with the person's orders. Instabox's parcels are not polled (`FOLLOWED_CARRIERS`). DHL books the product code Rates gives the lane for the store's service, never a code fixed in code. UPS's label is fetched again through Label Recovery (`labelUrl()` holds the tracking number after `#`; only UPS's hosts are sent the token). A carrier price in another currency than the market's is converted at the store's rates in `offersFrom()`, and dropped when the store has none.
+- The three book through `bookCarrierDelivery()`, the one path for the order page and *Book labels*: the customer's choice with
+  that carrier, or for UPS and DHL (`STAFF_CHOSEN`) a door service staff choose on an order whose customer chose no carrier and
+  that is shipped; never an order whose customer paid for another carrier. A label a carrier gives only once
+  (`BookingResult.labelPdf`, DHL Express) goes to `commerce.carrier_labels` through `keepLabel()` and nowhere else; retention kind
+  `carrier_labels` deletes it after 30 days and erasure with the person's orders. Instabox's parcels are not polled
+  (`FOLLOWED_CARRIERS`). DHL books the product code Rates gives the lane for the store's service, never a code fixed in code.
+  UPS's label is fetched again through Label Recovery (`labelUrl()` holds the tracking number after `#`; only UPS's hosts are sent
+  the token). A carrier price in another currency than the market's is converted at the store's rates in `offersFrom()`, and
+  dropped when the store has none.
 
 ## DHL Paket, nShift, PostNord's booking, collection, cancelling and return labels (D459, `src/server/carrier-cancel.ts`, `src/lib/carrier-collection.ts`, `src/lib/return-services.ts`)
 
-- PostNord, DHL Paket and nShift book through `bookCarrierDelivery()` like D458's carriers. A carrier's features say what the shared code does: `collection` (the booking box offers *Ask … to collect it* when the carrier page has `collectionHours`, and only from `collectionCountries` when the carrier lists them; the adapter reads `BookingRequest.collection` and answers `BookingResult.collection`, never failing the booking for it), `cancel` (`cancelAtCarrier()` after `undoShipment()`, the parcel undone whatever the carrier answers, a kept label deleted when it cancels), `return_labels` (a service in `RETURN_SERVICES` and `returnCountries`; a service chosen for another carrier is never sent). A label given only in the carrier's answer goes to `carrier_labels` through `keepLabel()` (a parcel) or `keepReturnLabel()` (a return), never anywhere else, and is printed from there before any fetch. nShift's options are the store's own nShift checkout: `checkout` switched on offers all of them (`switchedOnOption()`), each with its own pickup points, named by the carrier that delivers, never "nShift"; no label cost is kept from its prices. PostNord's 19 is MyPack Collect and 17 MyPack Home (PostNord's own examples). Packstation is never offered (it needs the shopper's DHL Postnummer).
+- PostNord, DHL Paket and nShift book through `bookCarrierDelivery()` like D458's carriers. A carrier's features say what the
+  shared code does: `collection` (the booking box offers *Ask … to collect it* when the carrier page has `collectionHours`, and
+  only from `collectionCountries` when the carrier lists them; the adapter reads `BookingRequest.collection` and answers
+  `BookingResult.collection`, never failing the booking for it), `cancel` (`cancelAtCarrier()` after `undoShipment()`, the parcel
+  undone whatever the carrier answers, a kept label deleted when it cancels), `return_labels` (a service in `RETURN_SERVICES` and
+  `returnCountries`; a service chosen for another carrier is never sent). A label given only in the carrier's answer goes to
+  `carrier_labels` through `keepLabel()` (a parcel) or `keepReturnLabel()` (a return), never anywhere else, and is printed from
+  there before any fetch. nShift's options are the store's own nShift checkout: `checkout` switched on offers all of them
+  (`switchedOnOption()`), each with its own pickup points, named by the carrier that delivers, never "nShift"; no label cost is
+  kept from its prices. PostNord's 19 is MyPack Collect and 17 MyPack Home (PostNord's own examples). Packstation is never offered
+  (it needs the shopper's DHL Postnummer).
 
 ## Custom fields (D118, `docs/custom-fields.md`, `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`)
 
@@ -333,7 +899,41 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Work (D122, D123, `docs/work.md`, module `work` switched on per store in the owner's Work settings, at the store OWNER's level
 
-- Work (D122, D123, `docs/work.md`, module `work` switched on per store in the owner's Work settings, at the store OWNER's level: `/admin/account/work` is the combined view over all the account's stores (`src/server/work-owner.ts`, money per currency, never added across currencies) and one store's screens are `/admin/account/work/s/{store}/…`; build every Work link with `workBase()` from `src/lib/work-paths.ts`, never by hand; old `/admin/{store}/work…` addresses redirect; one running timer per person across stores): clients, assignments and tasks, time entries and timers, invoices and credit notes, ported from Kaizen Life's Work area. Tables are `commerce.work_*` (`db/schema.ts`), all with `store_id` and composite keys; money is integer minor units, hours integer minutes, invoice quantities hundredths of an hour: the maths is only in `src/lib/work-calc.ts` (BigInt, no floats), VAT in `work-vat.ts`, dates in the store's time zone in `work-dates.ts`, input schemas shared with the browser in `work-input.ts`. Servers: `src/server/work.ts` (clients, assignments, tasks), `work-time.ts` (entries, timers), `work-invoices.ts` (drafts, lines, issue, credit, payments, document data), `work-settings.ts`, `work-overview.ts`; refusals of the SQL rules are `work_*.reason` codes mapped to plain messages by `work-errors.ts` (`workGuard()`); actions are in `.../work/actions.ts`, `invoice-actions.ts`, `settings-actions.ts`, each behind `requireMember` and the module switch, owner-only for settings, credit notes and deletes. **An invoice is issued only by `commerce.issue_work_invoice()`** (gap-free number from series `work_invoice`, readiness checks, frozen snapshot; the server never computes an issued amount itself) and afterwards is immutable, corrected by `credit_work_invoice()` (the one exception is `imported = true`, WP15: history from Kaizen Life with its own number in `legacy_number`, shown as the `document_number` label, no series number, made only under `commerce.work_importing`: by `scripts/import-life-work.mjs`'s SQL, the Tripletex import (D494), or `recordIssuedElsewhere()` (D499: a draft recorded as an invoice sent before from elsewhere, with its own number and days, the draft deleted; refused with time logged on it), never emailed; deleted or merged only through `deleteImportedInvoice()`/`mergeImportedInvoice()`, D501: owners, nothing hanging on it, its entry in the books reversed first); payments are append-only and set the status by trigger, which also writes the payment and invoice events (never write them again in code); a loss (D500, `work_invoice_losses`, owners only through `markInvoiceLost()`) is append-only the same way, never more than is outstanding, and makes the invoice `lost` when payments, credit notes and losses cover it (a reversal takes one back in full; never delete or edit one). Tasks and time keep their draft invoice line in step in the same transaction (`work-draft-sync.ts`). Documents are drawn from the snapshot by `InvoiceDocumentView` (print routes under the `(print)` route group, no admin chrome); the customer-facing texts are hand-written in `work-invoice-text.ts` and need review before real use. Sending and exports (`work-emails.ts`: `sendInvoiceEmail()` idempotent by key, the hosted page `/s/{store}/{market}/account/invoice/{token}` from `work_invoices.public_token`, CSVs in `work-exports.ts`); recurring invoices (`work-recurring.ts`, `prepareDueRecurringWork()` in the five-minute cron: drafts within 40 days, a deleted draft's period is skipped for good, auto-issue off by default and an email failure never undoes an issued invoice); reports (`work-reports.ts`: per currency, a fixed fee counts once in the period it is invoiced) and `workAttention()` feeding the control center. A client can be filled in from Brønnøysundregistrene's open register (D124: `src/lib/brreg.ts`, `src/server/brreg.ts`, `BrregLookup` on the client form and on a shop's company accounts (`CompanyFields`); a number or a name, only that is sent, nothing is saved from the lookup). Work's screens follow the account's language (D312 A10, the `work` catalogue, `workWords()` on the server); the invoice documents' words stay in `work-invoice-text.ts`.
+- Work (D122, D123, `docs/work.md`, module `work` switched on per store in the owner's Work settings, at the store OWNER's level:
+  `/admin/account/work` is the combined view over all the account's stores (`src/server/work-owner.ts`, money per currency, never
+  added across currencies) and one store's screens are `/admin/account/work/s/{store}/…`; build every Work link with `workBase()`
+  from `src/lib/work-paths.ts`, never by hand; old `/admin/{store}/work…` addresses redirect; one running timer per person across
+  stores): clients, assignments and tasks, time entries and timers, invoices and credit notes, ported from Kaizen Life's Work
+  area. Tables are `commerce.work_*` (`db/schema.ts`), all with `store_id` and composite keys; money is integer minor units, hours
+  integer minutes, invoice quantities hundredths of an hour: the maths is only in `src/lib/work-calc.ts` (BigInt, no floats), VAT
+  in `work-vat.ts`, dates in the store's time zone in `work-dates.ts`, input schemas shared with the browser in `work-input.ts`.
+  Servers: `src/server/work.ts` (clients, assignments, tasks), `work-time.ts` (entries, timers), `work-invoices.ts` (drafts,
+  lines, issue, credit, payments, document data), `work-settings.ts`, `work-overview.ts`; refusals of the SQL rules are
+  `work_*.reason` codes mapped to plain messages by `work-errors.ts` (`workGuard()`); actions are in `.../work/actions.ts`,
+  `invoice-actions.ts`, `settings-actions.ts`, each behind `requireMember` and the module switch, owner-only for settings, credit
+  notes and deletes. **An invoice is issued only by `commerce.issue_work_invoice()`** (gap-free number from series `work_invoice`,
+  readiness checks, frozen snapshot; the server never computes an issued amount itself) and afterwards is immutable, corrected by
+  `credit_work_invoice()` (the one exception is `imported = true`, WP15: history from Kaizen Life with its own number in
+  `legacy_number`, shown as the `document_number` label, no series number, made only under `commerce.work_importing`: by
+  `scripts/import-life-work.mjs`'s SQL, the Tripletex import (D494), or `recordIssuedElsewhere()` (D499: a draft recorded as an
+  invoice sent before from elsewhere, with its own number and days, the draft deleted; refused with time logged on it), never
+  emailed; deleted or merged only through `deleteImportedInvoice()`/`mergeImportedInvoice()`, D501: owners, nothing hanging on it,
+  its entry in the books reversed first); payments are append-only and set the status by trigger, which also writes the payment
+  and invoice events (never write them again in code); a loss (D500, `work_invoice_losses`, owners only through
+  `markInvoiceLost()`) is append-only the same way, never more than is outstanding, and makes the invoice `lost` when payments,
+  credit notes and losses cover it (a reversal takes one back in full; never delete or edit one). Tasks and time keep their draft
+  invoice line in step in the same transaction (`work-draft-sync.ts`). Documents are drawn from the snapshot by
+  `InvoiceDocumentView` (print routes under the `(print)` route group, no admin chrome); the customer-facing texts are
+  hand-written in `work-invoice-text.ts` and need review before real use. Sending and exports (`work-emails.ts`:
+  `sendInvoiceEmail()` idempotent by key, the hosted page `/s/{store}/{market}/account/invoice/{token}` from
+  `work_invoices.public_token`, CSVs in `work-exports.ts`); recurring invoices (`work-recurring.ts`, `prepareDueRecurringWork()`
+  in the five-minute cron: drafts within 40 days, a deleted draft's period is skipped for good, auto-issue off by default and an
+  email failure never undoes an issued invoice); reports (`work-reports.ts`: per currency, a fixed fee counts once in the period
+  it is invoiced) and `workAttention()` feeding the control center. A client can be filled in from Brønnøysundregistrene's open
+  register (D124: `src/lib/brreg.ts`, `src/server/brreg.ts`, `BrregLookup` on the client form and on a shop's company accounts
+  (`CompanyFields`); a number or a name, only that is sent, nothing is saved from the lookup). Work's screens follow the account's
+  language (D312 A10, the `work` catalogue, `workWords()` on the server); the invoice documents' words stay in
+  `work-invoice-text.ts`.
 
 ## Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`)
 

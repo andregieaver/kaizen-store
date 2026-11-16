@@ -24,7 +24,12 @@ A shopper's first page is mostly well kept, and nothing here argues for removing
 
 ## The built client bundles, by page (BN)
 
-Shoppers' pages are lean and the admin is where the weight is: a store page's first scripts are 680 to 778 thousand bytes, about 447 thousand of them React and Next, while the 432 signed-in admin routes have a median of 1,155,530 bytes and every one carries Supabase's client (253 KB) and zod (114 KB) before it is used. Seven small import changes (BN-1, BN-3, BN-4, BN-5, BN-7, BN-14, BN-2) take the admin's median to about 604 KB in a simulation on the built chunks, 13 preview screens from 3.2 MB to 0.8 to 1.4 MB, one Work screen from 4.27 MB to about 1.4 MB, and stop Kaizena Flow's front page from downloading 437 KB of admin scripts it cannot use; routes over 1.3 MB fall from 90 to about 26, the builder's own. Folder: `client-bundles/`.
+Shoppers' pages are lean and the admin is where the weight is: a store page's first scripts are 680 to 778 thousand bytes, about
+447 thousand of them React and Next, while the 432 signed-in admin routes have a median of 1,155,530 bytes and every one carries
+Supabase's client (253 KB) and zod (114 KB) before it is used. Seven small import changes (BN-1, BN-3, BN-4, BN-5, BN-7, BN-14,
+BN-2) take the admin's median to about 604 KB in a simulation on the built chunks, 13 preview screens from 3.2 MB to 0.8 to 1.4
+MB, one Work screen from 4.27 MB to about 1.4 MB, and stop Kaizena Flow's front page from downloading 437 KB of admin scripts it
+cannot use; routes over 1.3 MB fall from 90 to about 26, the builder's own. Folder: `client-bundles/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -47,7 +52,13 @@ Shoppers' pages are lean and the admin is where the weight is: a store page's fi
 
 ## What a page sends: document, payload and requests (PL)
 
-On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped); only the admin's two editors are heavy (108 and 136 thousand), and about 70% of that is message catalogues, of which the product editor's parts read a third (239 KB handed, 79 KB read). The waste is in what repeats and in what follows a load: the store's layout is rendered and sent twice for a 404 nobody sees (29.7 thousand bytes raw per document, and again inside the 79 KB every Add to cart sends back), a visitor who does nothing causes 11 to 50 prefetches and one or two uncached server calls per storefront view (the wishlist, the tiles, and on a search page a suggestion call nobody typed for), and Kaizena Flow's own pages pull about 141 KB of admin sign-in files. Folder: `page-payload/`.
+On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped); only the admin's two editors are heavy (108 and
+136 thousand), and about 70% of that is message catalogues, of which the product editor's parts read a third (239 KB handed, 79 KB
+read). The waste is in what repeats and in what follows a load: the store's layout is rendered and sent twice for a 404 nobody
+sees (29.7 thousand bytes raw per document, and again inside the 79 KB every Add to cart sends back), a visitor who does nothing
+causes 11 to 50 prefetches and one or two uncached server calls per storefront view (the wishlist, the tiles, and on a search page
+a suggestion call nobody typed for), and Kaizena Flow's own pages pull about 141 KB of admin sign-in files. Folder:
+`page-payload/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -68,7 +79,10 @@ On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped)
 
 ## Prefetching: what the router asks for unasked (PF)
 
-Next's default (fetch every link in view) decides for all but 4 of 947 links, and no test or budget watches it. Re-measured here: a phone shopper who reads the demo store's home page to the footer makes 47 router requests (729 KB decoded) for pages not asked for, 24 of them for the home pages of eight other language, currency and country views; the admin home makes 28; and a multi-country store's front door makes 12 (254 KB) for links whose press loads a whole document anyway. Folder: `prefetching/`.
+Next's default (fetch every link in view) decides for all but 4 of 947 links, and no test or budget watches it. Re-measured here:
+a phone shopper who reads the demo store's home page to the footer makes 47 router requests (729 KB decoded) for pages not asked
+for, 24 of them for the home pages of eight other language, currency and country views; the admin home makes 28; and a
+multi-country store's front door makes 12 (254 KB) for links whose press loads a whole document anyway. Folder: `prefetching/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -88,7 +102,10 @@ Next's default (fetch every link in view) decides for all but 4 of 947 links, an
 
 ## Styles (CS)
 
-Styles are one of the leaner areas, and no finding here rests on a feature being unused. Every page of every surface loads one stylesheet of 183 KB (25.8 KB Brotli); compiling the proposed split with the project's own Tailwind gives shoppers a sheet of 130 KB (19.8 KB Brotli: 28% less raw, 22% less on the wire), leaves the admin's as it is, needs no more scan memory than today (204-212 MB against 221-223 MB), and stops admin-only and test-only edits from renaming the shoppers' file. Folder: `styles/`.
+Styles are one of the leaner areas, and no finding here rests on a feature being unused. Every page of every surface loads one
+stylesheet of 183 KB (25.8 KB Brotli); compiling the proposed split with the project's own Tailwind gives shoppers a sheet of 130
+KB (19.8 KB Brotli: 28% less raw, 22% less on the wire), leaves the admin's as it is, needs no more scan memory than today
+(204-212 MB against 221-223 MB), and stops admin-only and test-only edits from renaming the shoppers' file. Folder: `styles/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -125,7 +142,12 @@ The admin's browser load is moderately bloated, and the worst of it is cheap to 
 
 ## What the server does for a storefront request (SD)
 
-A warm, cached storefront page is lean (a prerendered home page or a store's own page makes no database read of its own); the cost sits around the page and none of it depends on which features a store uses, so every store pays it once the platform opens. A product page asks the database about 18 times a view where only stock changes per view, the proxy in front of every page loads 1,311 modules (0.8 to 0.95 s and 168 MB cold on this machine) where its five reads need about 50 to 100, and every page load makes a second function call to learn the wishlist is empty and, with a product grid, a third (3 statements) for tile stock that is off by default. Folder: `storefront-server/`.
+A warm, cached storefront page is lean (a prerendered home page or a store's own page makes no database read of its own); the cost
+sits around the page and none of it depends on which features a store uses, so every store pays it once the platform opens. A
+product page asks the database about 18 times a view where only stock changes per view, the proxy in front of every page loads
+1,311 modules (0.8 to 0.95 s and 168 MB cold on this machine) where its five reads need about 50 to 100, and every page load makes
+a second function call to learn the wishlist is empty and, with a product grid, a third (3 statements) for tile stock that is off
+by default. Folder: `storefront-server/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -170,7 +192,11 @@ All 12 findings of the audit stand (8 confirmed, 4 corrected) and this pass adde
 
 ## The server code every route loads (SG)
 
-One import cycle of 229 files in src/server makes 181 of 268 route handlers, 559 of 562 pages and the proxy each load about 10 MB of server code (the AI manager's tools, the admin's whole text in two languages, the schema, Stripe, sharp): a fat route takes 0.9 to 1.3 s and 97 MB of heap to load cold on this machine against 0.16 to 0.24 s and 26 MB for /api/health, and every instance first pays 0.27 to 0.30 s for a start hook and about 0.09 s to read a 10.4 MB list of server references. None of it depends on what a store uses, so it grows with stores, traffic and the deploy on every push once the platform opens. Folder: `server-module-graph/`.
+One import cycle of 229 files in src/server makes 181 of 268 route handlers, 559 of 562 pages and the proxy each load about 10 MB
+of server code (the AI manager's tools, the admin's whole text in two languages, the schema, Stripe, sharp): a fat route takes 0.9
+to 1.3 s and 97 MB of heap to load cold on this machine against 0.16 to 0.24 s and 26 MB for /api/health, and every instance first
+pays 0.27 to 0.30 s for a start hook and about 0.09 s to read a 10.4 MB list of server references. None of it depends on what a
+store uses, so it grows with stores, traffic and the deploy on every push once the platform opens. Folder: `server-module-graph/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -195,7 +221,11 @@ One import cycle of 229 files in src/server makes 181 of 268 route handlers, 559
 
 ## Server functions: size, cold start, per-request overhead (SF)
 
-One import cycle of 229 server modules makes 559 of 562 pages, 181 of 268 route handlers and the proxy load the same 11 MB of server code: re-measured in this pass, such an entry needs 0.84 to 1.09 s and 71 to 83 MB to start where a route outside the cycle needs 0.16 s and 14 MB, and a start hook adds 0.33 s before any request. None of this rests on a feature being unused; every store pays it after each deploy (90 commits to main on 11 November), on scale-out and after idle, and it grows at opening as many quiet stores meet cold instances. Folder: `server-functions/`.
+One import cycle of 229 server modules makes 559 of 562 pages, 181 of 268 route handlers and the proxy load the same 11 MB of
+server code: re-measured in this pass, such an entry needs 0.84 to 1.09 s and 71 to 83 MB to start where a route outside the cycle
+needs 0.16 s and 14 MB, and a start hook adds 0.33 s before any request. None of this rests on a feature being unused; every store
+pays it after each deploy (90 commits to main on 11 November), on scale-out and after idle, and it grows at opening as many quiet
+stores meet cold instances. Folder: `server-functions/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -215,7 +245,12 @@ One import cycle of 229 server modules makes 559 of 562 pages, 181 of 268 route 
 
 ## Caching and rendering (CA)
 
-The caching code is sound, not bloated: 85 cached reads in 49 files, 82 tagged, tags per store, and Kaizena Flow's own site and docs truly static. What is left is rendering that runs per request for little, and it grows with shoppers and stores, not with any unused feature: every store page view runs a render function, and on home, built and blog pages its only job is two cart badges and a country hint (97,919 of the demo home's 138,523 bytes); one Add to cart redraws the whole page and re-fetches 15 links (193 KB, measured); Bing, Google's shop and ads crawlers and every link preview get a full render even of the 508 static pages; and links prefetch pages nobody opens (11 to 50 requests a store page, 23 to 46 an admin screen). Folder: `caching/`.
+The caching code is sound, not bloated: 85 cached reads in 49 files, 82 tagged, tags per store, and Kaizena Flow's own site and
+docs truly static. What is left is rendering that runs per request for little, and it grows with shoppers and stores, not with any
+unused feature: every store page view runs a render function, and on home, built and blog pages its only job is two cart badges
+and a country hint (97,919 of the demo home's 138,523 bytes); one Add to cart redraws the whole page and re-fetches 15 links (193
+KB, measured); Bing, Google's shop and ads crawlers and every link preview get a full render even of the 508 static pages; and
+links prefetch pages nobody opens (11 to 50 requests a store page, 23 to 46 an admin screen). Folder: `caching/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -285,7 +320,12 @@ Scheduled work is a fixed floor today, not a load: Supabase calls the app 13,250
 
 ## How data is asked for (DQ)
 
-All 14 verified findings stand, none argues from a feature being unused, and each now has ordered steps, the tests and rules that hold it, and one check; two were added. Today's cost is small (the listed app statements total about 39 minutes of database time in 78 days) because production holds only the team's demo stores, so what counts before opening is shape: one read fetches every published page whole to find one page (79,778 calls, 781 s), 122 store filters are written so the store index cannot serve them, the five-minute dispatcher starts 78 jobs on 5 connections, and 91,200 of 216,877 transactions deleted nothing. Folder: `queries/`.
+All 14 verified findings stand, none argues from a feature being unused, and each now has ordered steps, the tests and rules that
+hold it, and one check; two were added. Today's cost is small (the listed app statements total about 39 minutes of database time
+in 78 days) because production holds only the team's demo stores, so what counts before opening is shape: one read fetches every
+published page whole to find one page (79,778 calls, 781 s), 122 store filters are written so the store index cannot serve them,
+the five-minute dispatcher starts 78 jobs on 5 connections, and 91,200 of 216,877 transactions deleted nothing. Folder:
+`queries/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -308,7 +348,13 @@ All 14 verified findings stand, none argues from a feature being unused, and eac
 
 ## The database's shape (DS)
 
-The database's shape is sound for a platform about to open: dead objects are rare (1 table, 5 columns, 34 leftover tables), triggers are gated by column and nearly every log has a retention rule; that 245 of 486 tables have held no row says only that the doors are still closed, and nothing is retired for it. What is worth fixing before opening is where cost does not follow use or grows with stores: pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it, every cold start evaluates a 1 MB schema file that no query uses (115 to 135 ms and 9 to 12 MB measured), 122 store filters are written so the store index cannot serve them, and page lists read whole documents (4.2 ms a call against 0.8 ms from a plain column, measured in a local Postgres 18). Folder: `database-shape/`.
+The database's shape is sound for a platform about to open: dead objects are rare (1 table, 5 columns, 34 leftover tables),
+triggers are gated by column and nearly every log has a retention rule; that 245 of 486 tables have held no row says only that the
+doors are still closed, and nothing is retired for it. What is worth fixing before opening is where cost does not follow use or
+grows with stores: pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it, every cold start evaluates a 1 MB
+schema file that no query uses (115 to 135 ms and 9 to 12 MB measured), 122 store filters are written so the store index cannot
+serve them, and page lists read whole documents (4.2 ms a call against 0.8 ms from a plain column, measured in a local Postgres
+18). Folder: `database-shape/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -330,7 +376,11 @@ The database's shape is sound for a platform about to open: dead objects are rar
 
 ## What every AI call carries (AI)
 
-The shopper chat is lean (about 5,000 characters of prompt and tools a call); the AI manager is the heavy part: about 161,700 characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, on up to 11 calls a turn. A lean default drawn with the app's own functions is 48,600 characters on Home and 77,000 on an orders page; it is already step 3.18 of the code review, still Open, and the eval meant to guard it does not test whether the model finds a tool (9 manager cases, none uses load_tools), so that check comes first. Folder: `ai-calls/`.
+The shopper chat is lean (about 5,000 characters of prompt and tools a call); the AI manager is the heavy part: about 161,700
+characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend
+on the question, on up to 11 calls a turn. A lean default drawn with the app's own functions is 48,600 characters on Home and
+77,000 on an orders page; it is already step 3.18 of the code review, still Open, and the eval meant to guard it does not test
+whether the model finds a tool (9 manager cases, none uses load_tools), so that check comes first. Folder: `ai-calls/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -370,7 +420,11 @@ The words themselves are in good order: 2,003 storefront keys in four languages 
 
 ## The product's surface (FT)
 
-The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables) but it is built with care: a new shop's default Basic view has 29 links, no admin screen is orphaned, and a feature a store does not use costs it close to nothing in the navigation, an AI round or scheduled work. One place breaks that and is cheap to fix before shoppers arrive: the cart page works out the whole basket twice per view (at least 14 statements too many), and every basket spends 5 statements learning that bonus, referrals and checkout rules are not in use. Folder: `features/`.
+The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables) but it is built with
+care: a new shop's default Basic view has 29 links, no admin screen is orphaned, and a feature a store does not use costs it close
+to nothing in the navigation, an AI round or scheduled work. One place breaks that and is cheap to fix before shoppers arrive: the
+cart page works out the whole basket twice per view (at least 14 statements too many), and every basket spends 5 statements
+learning that bonus, referrals and checkout rules are not in use. Folder: `features/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -389,7 +443,12 @@ The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-
 
 ## Families and twins (FM)
 
-Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clones and 41 twin pairs were found in 3,974 files, and carriers, payment providers, emails, CSV, PDF and the AI tools each have one core. What matters is two loading faults that every store pays at each cold start whatever it uses: both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, and three small helpers imported through the chat modules make 11 routes, the four visit beacons and the recommendations beacon among them, load about 11.4 MB of server code each where a beacon needs about 2 MB; both fixes are small and safe and come first, with a server-side import check to hold them. Folder: `families/`.
+Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clones and 41 twin pairs were found in 3,974 files,
+and carriers, payment providers, emails, CSV, PDF and the AI tools each have one core. What matters is two loading faults that
+every store pays at each cold start whatever it uses: both languages of the admin's words (2.8 MB built) load with 802 of 830
+server entries, and three small helpers imported through the chat modules make 11 routes, the four visit beacons and the
+recommendations beacon among them, load about 11.4 MB of server code each where a beacon needs about 2 MB; both fixes are small
+and safe and come first, with a server-side import check to hold them. Folder: `families/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -410,7 +469,11 @@ Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clon
 
 ## Dependencies (DP)
 
-The dependency list is lean, and none of this dimension's case rests on what stores use today: 51 runtime packages, none without an importer, and every heavy browser library loads only on the press that needs it. The cost is in when server code loads: the page-view beacon takes about 1.0 s and 177 MB before its first answer where a lean route takes 0.22 s and 64 MB, and with three small import cuts (DP-10, DP-1, DP-3 step 1) its own code, bundled here, loads in 128-144 ms and 50 MB against 549-590 ms and 158 MB today. Folder: `dependencies/`.
+The dependency list is lean, and none of this dimension's case rests on what stores use today: 51 runtime packages, none without
+an importer, and every heavy browser library loads only on the press that needs it. The cost is in when server code loads: the
+page-view beacon takes about 1.0 s and 177 MB before its first answer where a lean route takes 0.22 s and 64 MB, and with three
+small import cuts (DP-10, DP-1, DP-3 step 1) its own code, bundled here, loads in 128-144 ms and 50 MB against 549-590 ms and 158
+MB today. Folder: `dependencies/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -429,7 +492,11 @@ The dependency list is lean, and none of this dimension's case rests on what sto
 
 ## Files that ship or are stored (AS)
 
-The files the repo stores are lean (102 MB tracked, all 150 files in public/ referenced, pictures and fonts stored once); the waste is in what every server function carries and in what a browser is sent, and none of it rests on a feature being unused. sharp's native library (19.8 MB) is in 742 of 832 route traces and the taxonomy (13.3 MB) in 831, 33 MB of the median trace's 52.6 MB, and sharp loads at each cold start of the proxy (35 to 57 ms, 22.5 MB) though no shopper's page draws with it. Folder: `files/`.
+The files the repo stores are lean (102 MB tracked, all 150 files in public/ referenced, pictures and fonts stored once); the
+waste is in what every server function carries and in what a browser is sent, and none of it rests on a feature being unused.
+sharp's native library (19.8 MB) is in 742 of 832 route traces and the taxonomy (13.3 MB) in 831, 33 MB of the median trace's 52.6
+MB, and sharp loads at each cold start of the proxy (35 to 57 ms, 22.5 MB) though no shopper's page draws with it. Folder:
+`files/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -468,7 +535,13 @@ There is little dead code: about 2,700 lines of 772,000 (0.35%), thin over some 
 
 ## Copied code (CP)
 
-Copied code is not where this codebase's bloat is, and that holds after a third look: 1.0% of non-test code is an exact copy (4,803 of 472,586 lines) and 4.75% a near-copy with every name and literal normalised; unit and integration tests (1.8% and 3.2%) and the e2e folder (1.7% and 7.4%) are no worse. The fourteen checked findings are true duplicates or missing checks, none rests on a feature being unused, and their corrected savings add up to about 5,500 lines (1.2%); my two additions are small too: about 1,100 to 1,500 test lines of repeated scaffolding (448 integration tests stub a module the test config already stubs) and helpers re-solved under one name (addDays in 10 files, countryName exported from 6 with three different answers for a missing code). Folder: `copied-code/`.
+Copied code is not where this codebase's bloat is, and that holds after a third look: 1.0% of non-test code is an exact copy
+(4,803 of 472,586 lines) and 4.75% a near-copy with every name and literal normalised; unit and integration tests (1.8% and 3.2%)
+and the e2e folder (1.7% and 7.4%) are no worse. The fourteen checked findings are true duplicates or missing checks, none rests
+on a feature being unused, and their corrected savings add up to about 5,500 lines (1.2%); my two additions are small too: about
+1,100 to 1,500 test lines of repeated scaffolding (448 integration tests stub a module the test config already stubs) and helpers
+re-solved under one name (addDays in 10 files, countryName exported from 6 with three different answers for a missing code).
+Folder: `copied-code/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
@@ -491,7 +564,12 @@ Copied code is not where this codebase's bloat is, and that holds after a third 
 
 ## Tests, CI and the build (TC)
 
-The tests are not the bloat: 325,579 lines of tests against 768,202 of source, no snapshots, and the browser suite does not repeat the unit tests (37 of 781 end-to-end tests use no page). The waste is in how the checks run, and it is paid per push whoever uses the platform: one push type-checks the same commit five times (183 s each here, 70% of the build) and builds it four times; every unit test file first loads 1.9 MB of admin English in a fresh worker (a 187-file sample takes 90 s today and 27 s without both); lint re-reads about 6,200 files on one thread (about 3 minutes, 1 s with a cache); and 229 server modules form one import cycle that 12 import lines close. Folder: `tests-ci-build/`.
+The tests are not the bloat: 325,579 lines of tests against 768,202 of source, no snapshots, and the browser suite does not repeat
+the unit tests (37 of 781 end-to-end tests use no page). The waste is in how the checks run, and it is paid per push whoever uses
+the platform: one push type-checks the same commit five times (183 s each here, 70% of the build) and builds it four times; every
+unit test file first loads 1.9 MB of admin English in a fresh worker (a 187-file sample takes 90 s today and 27 s without both);
+lint re-reads about 6,200 files on one thread (about 3 minutes, 1 s with a cache); and 229 server modules form one import cycle
+that 12 import lines close. Folder: `tests-ci-build/`.
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|

@@ -4,8 +4,25 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 
 - **Kind:** eager. **Priority:** P0. **Effort:** M. **Confidence:** high. **Step:** 0.10.
 - **Second check:** corrected.
-- **Where:** `src/components/admin/fields-form.tsx:41`, `src/components/admin/fields-form.tsx:451`, `src/components/admin/term-page-fields.tsx:10`, `src/components/admin/terms.tsx:23`, `src/components/admin/terms.tsx:504`, `src/components/admin/product-editor.tsx:32`, `src/app/admin/(gated)/[store]/pages/views.tsx:9`, `src/app/admin/(gated)/[store]/pages/views.tsx:229`, `src/app/admin/(gated)/platform/pages/views.tsx:8`, `src/app/admin/(gated)/platform/pages/views.tsx:152`, `src/components/admin/content-views.tsx:6`, `src/components/admin/content-views.tsx:8`, `src/components/admin/staff-fields-section.tsx:2`, `src/components/lazy/lazy-view.tsx:13`, `src/lib/permission-guards.ts:45`
-- **Evidence:** Chunk 3lclkawi229rq.js (tiptap and prosemirror, 435,421 bytes, 136,081 gzip) is in the first-load list of 73 routes: 39 of the builder's family and 34 others. The 34 are thirteen lists of pages, articles, headers, footers and product layouts with their category screens, the product categories screen, twelve content screens, three custom field screens, the order, customer and deal pages and the product editor twice (list printed by rte2.mjs). The verified report measured 0% of the chunk run on the pages list and 6% on the product editor. Outside the builder the editor has two importers: fields-form.tsx line 41, which draws it only for a custom field of the rich text kind (line 451), and term-page-fields.tsx line 10, a term's own page, drawn inside the terms manager's edit form (terms.tsx:504). The lists reach it because their server module views.tsx imports TermsManager for the categories view (line 9, used from 229); the product editor because TermPicker lives in the same file as the manager (product-editor.tsx:32); the order, customer and deal pages through StaffFieldsSection; the content lists because content-views.tsx holds lists and editors together (lines 6 and 8). A route loads every client component its server modules import, drawn or not (docs/performance.md lines 38 to 41). Simulated: with those two imports made lazy, the editor leaves all 34 routes, 439 KB each.
+- **Where:** `src/components/admin/fields-form.tsx:41`, `src/components/admin/fields-form.tsx:451`,
+  `src/components/admin/term-page-fields.tsx:10`, `src/components/admin/terms.tsx:23`, `src/components/admin/terms.tsx:504`,
+  `src/components/admin/product-editor.tsx:32`, `src/app/admin/(gated)/[store]/pages/views.tsx:9`,
+  `src/app/admin/(gated)/[store]/pages/views.tsx:229`, `src/app/admin/(gated)/platform/pages/views.tsx:8`,
+  `src/app/admin/(gated)/platform/pages/views.tsx:152`, `src/components/admin/content-views.tsx:6`,
+  `src/components/admin/content-views.tsx:8`, `src/components/admin/staff-fields-section.tsx:2`,
+  `src/components/lazy/lazy-view.tsx:13`, `src/lib/permission-guards.ts:45`
+- **Evidence:** Chunk 3lclkawi229rq.js (tiptap and prosemirror, 435,421 bytes, 136,081 gzip) is in the first-load list of 73
+  routes: 39 of the builder's family and 34 others. The 34 are thirteen lists of pages, articles, headers, footers and product
+  layouts with their category screens, the product categories screen, twelve content screens, three custom field screens, the
+  order, customer and deal pages and the product editor twice (list printed by rte2.mjs). The verified report measured 0% of the
+  chunk run on the pages list and 6% on the product editor. Outside the builder the editor has two importers: fields-form.tsx line
+  41, which draws it only for a custom field of the rich text kind (line 451), and term-page-fields.tsx line 10, a term's own
+  page, drawn inside the terms manager's edit form (terms.tsx:504). The lists reach it because their server module views.tsx
+  imports TermsManager for the categories view (line 9, used from 229); the product editor because TermPicker lives in the same
+  file as the manager (product-editor.tsx:32); the order, customer and deal pages through StaffFieldsSection; the content lists
+  because content-views.tsx holds lists and editors together (lines 6 and 8). A route loads every client component its server
+  modules import, drawn or not (docs/performance.md lines 38 to 41). Simulated: with those two imports made lazy, the editor
+  leaves all 34 routes, 439 KB each.
 - **Cost today:** 439 KB raw (about 137 KB gzip) on 34 routes that draw no rich text at first paint; 654 KB on each of the nine page lists with the terms manager, drag and drop and the custom fields form. Paid by: An owner's browser on lists, orders, customers, deals and the product editor: the screens an owner with a running shop opens most.
 - **Saving:** Simulated on the real chunks: steps 1 and 2 take 439 KB off all 34 routes (product editor 2,047 to 1,608 KB, order page 1,918 to 1,479, pages list 1,922 to 1,483). Step 4 takes the nine page lists to 1,269 KB (654 KB in all; the skeptic's figure). With the frame cuts: pages list about 919 KB, order page 1,130, product editor 1,259.
 - **Risk:** Low for steps 4 and 5: files move; a wrong path or a guard entry left on the old file is caught by the type check and permissions.scan.test.ts. Low to medium for steps 1 and 2: a rich text field wakes up a moment after its form; a missing fallback height would make the form jump. It would show in the content type, customer and deal specs.
@@ -13,10 +30,18 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 
 ## The fix
 
-1. New file src/components/admin/lazy/editors.tsx ('use client'), after src/components/lazy/blocks.tsx: export const RichTextEditor = lazyView(dynamic(() => import('../rich-text-editor').then((m) => m.RichTextEditor)), fallback), with lazyView from '@/components/lazy/lazy-view', the import() written inside dynamic() as lazy-view.tsx lines 10 to 11 require, and a fallback that is a bordered box of the editor's usual height. The server still draws the editor into a page that shows one and asks for its script with the page's own.
+1. New file src/components/admin/lazy/editors.tsx ('use client'), after src/components/lazy/blocks.tsx: export const
+   RichTextEditor = lazyView(dynamic(() => import('../rich-text-editor').then((m) => m.RichTextEditor)), fallback), with lazyView
+   from '@/components/lazy/lazy-view', the import() written inside dynamic() as lazy-view.tsx lines 10 to 11 require, and a
+   fallback that is a bordered box of the editor's usual height. The server still draws the editor into a page that shows one and
+   asks for its script with the page's own.
 2. src/components/admin/fields-form.tsx line 41 and src/components/admin/term-page-fields.tsx line 10: import RichTextEditor from './lazy/editors'. Leave page-builder.tsx line 96 and block-fields.tsx line 33 on the direct import (the builder is code review step 3.4).
 3. src/test/eager-lazy-views.ts: add vi.mock('@/components/admin/lazy/editors', ...) with the real component, as the file does for the storefront's stand-ins, so unit tests that draw with renderToStaticMarkup see the editor.
-4. The categories view out of the lists' module: new file src/app/admin/(gated)/[store]/pages/terms-views.tsx with StorePageTermsView (views.tsx line 229 on) and the TermsManager import (line 9); remove both from views.tsx. Point pages/categories/page.tsx and articles/categories/page.tsx at it. The same for the platform: PageTermsView (platform/pages/views.tsx lines 8 and 152) into platform/pages/terms-views.tsx and its two route files. Update src/lib/permission-guards.ts line 45 to name the new file.
+4. The categories view out of the lists' module: new file src/app/admin/(gated)/[store]/pages/terms-views.tsx with
+   StorePageTermsView (views.tsx line 229 on) and the TermsManager import (line 9); remove both from views.tsx. Point
+   pages/categories/page.tsx and articles/categories/page.tsx at it. The same for the platform: PageTermsView
+   (platform/pages/views.tsx lines 8 and 152) into platform/pages/terms-views.tsx and its two route files. Update
+   src/lib/permission-guards.ts line 45 to name the new file.
 5. Split src/components/admin/content-views.tsx by what it imports: ContentListView and ContentEntriesView stay (no editor import); NewContentTypeView and ContentTypeSettingsView move to content-type-views.tsx with ContentTypeEditor; EntryView moves to content-entry-views.tsx with EntryEditor. Point the twelve route files under [store]/content and platform/content at the right file.
 6. Optional, when the product editor is next touched: move TermPicker out of terms.tsx into term-picker.tsx, so the product editor stops carrying the terms manager and @dnd-kit (about 72 KB).
 7. e2e/signed-in/admin-scripts.spec.ts: lower the '/pages' and '/products/new' budgets and add an order page to BUDGETS.

@@ -1,6 +1,12 @@
 # Grade A for: Scheduled work
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, at the top of the band; the steward's reasons hold against the code and the verified findings: nearly every one of the scheduler's 13,250 calls a day finds nothing (the posts alone cost about 150 s of database time a day at the measured 11.3 ms each), all 83 dispatcher jobs share one cadence with 78 started at once on five connections, and the scheduler's log is 564 MB of a 731 MB database. The one test holds a time limit and a ledger row, never a cost, and at least 11 dispatcher jobs swallow their own errors, so the ledger says ok for them whatever happens. It is not an E: nothing here hurts a person or costs money today, and the base is sound (claimed queues, mostly set-based jobs, a ledger that emails on a failing job).
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, at the top of the band; the steward's reasons hold against the
+code and the verified findings: nearly every one of the scheduler's 13,250 calls a day finds nothing (the posts alone cost about
+150 s of database time a day at the measured 11.3 ms each), all 83 dispatcher jobs share one cadence with 78 started at once on
+five connections, and the scheduler's log is 564 MB of a 731 MB database. The one test holds a time limit and a ledger row, never
+a cost, and at least 11 dispatcher jobs swallow their own errors, so the ledger says ok for them whatever happens. It is not an E:
+nothing here hurts a person or costs money today, and the base is sound (claimed queues, mostly set-based jobs, a ledger that
+emails on a failing job).
 
 **The bar, in a sentence.** On a quiet day the scheduler makes at most 1,350 calls and 45,000 statements, none of them per store, and every job runs at the pace of its work, four at a time, inside a time budget. Every scheduled function has a ledger row that shows its work and its failures, due work starts within minutes, and a test or a daily production figure holds each of these.
 
@@ -23,9 +29,30 @@ After phase 0: C. After phase 1: C. After phase 2: C. After all phases: A.
 
 **Steps that take it there:** 0.2, 0.23, 0.25, 0.27, 0.28, 0.29, 0.30, 0.31, 0.45, 1.9, 1.10, 1.13, 1.18, 1.22, 1.26, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.20, 4.5.
 
-**Can the steps reach an A?** Yes. No answer of yours must be a yes: step 3.5 needs a period for guest carts, webhook events and old page versions, step 3.7 either choice on invoice PDFs, and the new step 3.20 a waiting time (3 minutes is assumed). Two steps were added so that no job hides its failure (1.26) and due work is seen to start in time (3.20), and the cap of four jobs at a time moved before opening (0.45). The quiet-day figures can only be read after steps 3.1 to 3.3 have run for a day in production; step 4.5 reads them.
+**Can the steps reach an A?** Yes. No answer of yours must be a yes: step 3.5 needs a period for guest carts, webhook events and
+old page versions, step 3.7 either choice on invoice PDFs, and the new step 3.20 a waiting time (3 minutes is assumed). Two steps
+were added so that no job hides its failure (1.26) and due work is seen to start in time (3.20), and the cap of four jobs at a
+time moved before opening (0.45). The quiet-day figures can only be read after steps 3.1 to 3.3 have run for a day in production;
+step 4.5 reads them.
 
-**The challenger on the bar.** Kept: per-store idle work at 0, a cadence and a reason per job, four jobs at a time inside 150 s, and the counters of repeated work. Loosened, because the sums did not hold: calls from 1,200 to 1,350. The steward's 1,154 leaves out the watcher and the PDF route that the plan itself adds; by the plan's own steps a quiet day is 1,274, so step 3.2's '1,200 or fewer' fails the day step 3.7 lands. Reaching 1,200 would mean an hourly watcher or no safety sweep for PDFs. Idle statements from 40,000 to 45,000: the bar's own parts add up to about 40,500 with the dispatcher at its 125, and a sweep call must run every runner without asking the gate. Otherwise the sweep of the three feature routes guards nothing, since after step 3.2 the route and the tick read the same function. Tightened: the run log from 60 MB to 25 MB once the tick runs (a week is then about 12,300 rows, 7 MB); a stopped scheduler told within 30 minutes, not an hour (an hourly watcher is 75 minutes at worst); 'no silent failure' now covers the dispatcher's jobs and not only the daily route's 19 console catches; picture re-stamps from under 100 to changes plus 20, the steward's own rule; a job starts only if its budget fits before the run's limit; a five-minute job names who waits. Added: how long due work waits, because the gate trades a poll for a predicate and nothing said the work still starts on time; the tick's own statement in the per-store budget; and a count of runs that did work, without which 'calls that take no work' cannot be read. Not measurable as written: the per-store test (its seed does not switch the features on), idle calls (no counter), and step 3.4's rg -c, which prints 6 today and not 19. Calls and statements are merged into one measure to stay at eight. The floor holds: 288 dispatcher runs always measure the status page, and 2 statements per five-minute job is the tolerance, named below. What a cron function loads at a cold start (about 11 MiB of JavaScript) is the server area's measure; it matters more here once most scheduler calls are cold sweeps. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 4: pg_cron's run log: under 20 MB.
+**The challenger on the bar.** Kept: per-store idle work at 0, a cadence and a reason per job, four jobs at a time inside 150 s,
+and the counters of repeated work. Loosened, because the sums did not hold: calls from 1,200 to 1,350. The steward's 1,154 leaves
+out the watcher and the PDF route that the plan itself adds; by the plan's own steps a quiet day is 1,274, so step 3.2's '1,200 or
+fewer' fails the day step 3.7 lands. Reaching 1,200 would mean an hourly watcher or no safety sweep for PDFs. Idle statements from
+40,000 to 45,000: the bar's own parts add up to about 40,500 with the dispatcher at its 125, and a sweep call must run every
+runner without asking the gate. Otherwise the sweep of the three feature routes guards nothing, since after step 3.2 the route and
+the tick read the same function. Tightened: the run log from 60 MB to 25 MB once the tick runs (a week is then about 12,300 rows,
+7 MB); a stopped scheduler told within 30 minutes, not an hour (an hourly watcher is 75 minutes at worst); 'no silent failure' now
+covers the dispatcher's jobs and not only the daily route's 19 console catches; picture re-stamps from under 100 to changes plus
+20, the steward's own rule; a job starts only if its budget fits before the run's limit; a five-minute job names who waits. Added:
+how long due work waits, because the gate trades a poll for a predicate and nothing said the work still starts on time; the tick's
+own statement in the per-store budget; and a count of runs that did work, without which 'calls that take no work' cannot be read.
+Not measurable as written: the per-store test (its seed does not switch the features on), idle calls (no counter), and step 3.4's
+rg -c, which prints 6 today and not 19. Calls and statements are merged into one measure to stay at eight. The floor holds: 288
+dispatcher runs always measure the status page, and 2 statements per five-minute job is the tolerance, named below. What a cron
+function loads at a cold start (about 11 MiB of JavaScript) is the server area's measure; it matters more here once most scheduler
+calls are cold sweeps. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 4: pg_cron's run log: under
+20 MB.
 
 ## What the challenger found missing, and how it was settled
 
