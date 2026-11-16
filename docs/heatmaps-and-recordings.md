@@ -1,4 +1,4 @@
-# Heatmaps and recordings (decision D652, planned)
+# Heatmaps and recordings (decision D656, planned)
 
 A built-in alternative to Microsoft Clarity and Hotjar, for store owners and for Kaizena Flow's own site. It covers:
 
@@ -42,8 +42,8 @@ It is written for an implementer who has not seen the research. Read sections 0,
    - the attribute `data-kz-block` (inline editing).
 
    The names to use are fixed in section 5.4.
-5. **Decision number.** Use D652 if it is still free (`grep -o "D65[0-9]" docs/decisions.md | sort -u | tail -3`), otherwise the next
-   free number, and replace D652 in this file. Each step adds its own sentence to that decision row, and its migration versions under
+5. **Decision number.** Use D656 if it is still free (`grep -o "D6[0-9][0-9]" docs/decisions.md | sort -u | tail -3`), otherwise the next
+   free number, and replace D656 in this file. Each step adds its own sentence to that decision row, and its migration versions under
    "Migration versions" (CLAUDE.md, Database).
 6. **Send the owner screenshots** of each new or changed screen as you build it (CLAUDE.md, Workflow). Steps 5, 7, 11 and 12 say when.
 7. **Read section 16 (pitfalls) before step 1, and again before steps 4, 9 and 11.**
@@ -1206,7 +1206,7 @@ adding the new ones to it is optional.
 line shape the scan counts: four spaces, a camelCase key, and the comment on the line above.
 
 ```ts
-    // Merges a finished recording's segments into one file: each Storage object is a Postgres row (D652).
+    // Merges a finished recording's segments into one file: each Storage object is a Postgres row (D656).
     sealRecordings: () => sealRecordings({ deadline: Date.now() + 60_000 }),
 ```
 
@@ -1588,7 +1588,7 @@ and decide each hit; `pnpm typecheck` finds the rest. Known places:
 
 **Docs:**
 
-- the decision row (D652, step 1);
+- the decision row (D656, step 1);
 - `docs/rules/storefront.md` "Cookie consent": the fourth category, the `heat` token, and that owner code and notes cannot choose
   recordings;
 - `docs/analytics.md`: a short "Heatmaps and recordings" section pointing here.
@@ -2138,7 +2138,7 @@ There are no new tables and no per-visitor rows: behaviour per version comes fro
 
 - Write each rule as a `## ` heading in `docs/rules/storefront.md` and in `docs/rules/admin/marketing.md` (check
   `docs/rules/admin/README.md` for the right file).
-- Each heading's text starts with exactly the words of its CLAUDE.md line: "Heatmaps and recordings (D652, `docs/heatmaps-and-recordings.md`, …)".
+- Each heading's text starts with exactly the words of its CLAUDE.md line: "Heatmaps and recordings (D656, `docs/heatmaps-and-recordings.md`, …)".
 - Write the heading and the line **in the same push**. `src/lib/rules-index.test.ts` fails otherwise.
 
 **The other docs:**
