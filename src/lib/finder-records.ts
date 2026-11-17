@@ -8,7 +8,7 @@
 
 import type { PermissionKey } from "./permissions";
 import { escapeLike, normaliseSearch } from "./order-search";
-import type { FinderGroup } from "./page-finder";
+import type { FinderGroup } from "./finder-groups";
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
 import { CUSTOMERS_FEATURE } from "./store-nav";
 

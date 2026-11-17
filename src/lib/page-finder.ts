@@ -10,9 +10,10 @@
 import type { AdminLang } from "./admin-lang";
 import { findPages, pageHref, pageParams, type SiteFlags } from "./admin-map";
 import { PAGES_NB } from "./admin-messages/pages.nb";
-import type { FinderGroup, FinderItem } from "./finder-items";
+import type { FinderItem } from "./finder-groups";
 
-export { finderOptions, type FinderGroup, type FinderItem } from "./finder-items";
+// The answer's shape and its pure helpers live in `finder-groups.ts`, which the browser imports without the admin map.
+export { finderAnswer, finderOptions, type FinderGroup, type FinderItem } from "./finder-groups";
 
 /** The longest question looked at: anything longer is cut, never refused. */
 export const FINDER_QUERY_MAX = 100;
@@ -35,9 +36,4 @@ export function finderResults(
     if (items.length === limit) break;
   }
   return items;
-}
-
-/** The finder's answer: the pages (when any matched) and then each kind of record, as given. */
-export function finderAnswer(pages: FinderItem[], records: readonly FinderGroup[] = []): FinderGroup[] {
-  return [...(pages.length > 0 ? [{ kind: "pages" as const, items: pages }] : []), ...records.filter((group) => group.items.length > 0)];
 }

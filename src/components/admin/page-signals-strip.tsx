@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui";
 import type { ReactNode } from "react";
 
 // Never `heatmaps-view.tsx` for its addresses: a route loads every client component its modules import (PSI PERF-01), and the editor's must
@@ -67,42 +67,42 @@ export async function PageSignalsStrip({
   const links: ReactNode[] = [];
   if (facts.heat?.topKey) {
     links.push(
-      <Link key="map" prefetch={false} href={`${base}/analytics/heatmaps?${new URLSearchParams({ page: facts.heat.topKey }).toString()}`} className={link}>
+      <Link key="map" href={`${base}/analytics/heatmaps?${new URLSearchParams({ page: facts.heat.topKey }).toString()}`} className={link}>
         {words.heatmap}
       </Link>,
     );
   }
   if (facts.recordings && facts.recordings.count > 0) {
     links.push(
-      <Link key="recordings" prefetch={false} href={`${base}/analytics/recordings?${new URLSearchParams({ page: facts.recordings.page }).toString()}`} className={link}>
+      <Link key="recordings" href={`${base}/analytics/recordings?${new URLSearchParams({ page: facts.recordings.page }).toString()}`} className={link}>
         {fillWords(facts.recordings.count === 1 ? words.recordings.one : words.recordings.many, { n: facts.recordings.count })}
       </Link>,
     );
   }
   if (facts.speed) {
     links.push(
-      <Link key="speed" prefetch={false} href={`${base}/analytics/speed`} className={link}>
+      <Link key="speed" href={`${base}/analytics/speed`} className={link}>
         {words.speedLink}
       </Link>,
     );
   }
   if (what === "product") {
     links.push(
-      <Link key="products" prefetch={false} href={`${base}/analytics/products`} className={link}>
+      <Link key="products" href={`${base}/analytics/products`} className={link}>
         {words.productLink}
       </Link>,
     );
   }
   if (facts.test && tests) {
     links.push(
-      <Link key="test" prefetch={false} href={`${base}/experiments/${facts.test.id}`} className={link}>
+      <Link key="test" href={`${base}/experiments/${facts.test.id}`} className={link}>
         {words.testLink}
       </Link>,
     );
   }
   if (owner && text.switchOn) {
     links.push(
-      <Link key="on" prefetch={false} href={`${base}/analytics/settings#${text.switchOn === "heatmaps" ? "signals" : "visits"}`} className={link}>
+      <Link key="on" href={`${base}/analytics/settings#${text.switchOn === "heatmaps" ? "signals" : "visits"}`} className={link}>
         {words.turnOn[text.switchOn]}
       </Link>,
     );

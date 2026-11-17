@@ -4,6 +4,8 @@
  * raise, and when a briefing is due. Worked out in code; nothing here is a model's.
  */
 
+import type { SpeedRow } from "./speed";
+
 export const TARGET_METRICS = ["mrr", "sales", "paying", "new_stores"] as const;
 export type TargetMetric = (typeof TARGET_METRICS)[number];
 export const isTargetMetric = (value: unknown): value is TargetMetric => (TARGET_METRICS as readonly unknown[]).includes(value);
@@ -59,13 +61,31 @@ export type PlatformSnapshot = {
   signUpsToday: { asked: number; opened: number };
   requests: { waiting: number; oldestHours: number | null };
   targets: { target: PlatformTarget; progress: TargetProgress }[];
+  /** The admin's own speed over 28 days, a row per kind of screen and screen size (step 1.15). */
+  adminSpeed?: SpeedRow[];
 };
 
-export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending";
+export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow";
 export type PlatformAlert = { id: AlertId; severity: "urgent" | "warning" | "info"; values: Record<string, string | number>; href: string };
 
 /** A request older than two days waits too long. */
 export const REQUEST_HOURS = 48;
+
+/** A kind of admin screen needs this many page loads in 28 days before a slow figure is a line in the briefing. */
+export const ADMIN_SPEED_LOADS = 100;
+
+/** A line for each kind of admin screen with enough loads whose largest paint or interaction time at p75 is not 'good' (the rating is `rateMetric()`'s). */
+export function adminSpeedAlerts(rows: readonly SpeedRow[]): PlatformAlert[] {
+  const alerts: PlatformAlert[] = [];
+  for (const row of rows) {
+    if (row.loads < ADMIN_SPEED_LOADS) continue;
+    for (const cell of row.cells) {
+      if ((cell.metric !== "lcp" && cell.metric !== "inp") || cell.rating === null || cell.rating === "good") continue;
+      alerts.push({ id: "admin_slow", severity: "warning", values: { kind: row.kind, screen: row.screen, metric: cell.metric, value: cell.value }, href: "/admin/platform/capacity#speed" });
+    }
+  }
+  return alerts;
+}
 
 /** What the figures raise, the most pressing first: a request waiting too long, stores not paying, revenue falling, a target behind, trials ending. */
 export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
@@ -83,6 +103,7 @@ export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
     }
   }
   if (s.trialsEnding > 0) alerts.push({ id: "trials_ending", severity: "info", values: { n: s.trialsEnding }, href: "/admin/platform/stores" });
+  alerts.push(...adminSpeedAlerts(s.adminSpeed ?? []));
   const order = { urgent: 0, warning: 1, info: 2 } as const;
   return alerts.sort((a, b) => order[a.severity] - order[b.severity]);
 }

@@ -170,7 +170,8 @@ const ADMIN_LISTS = new Set(["orders", "products", "customers", "stores", "reque
 /**
  * The kind of a page of Kaizena Flow's own site or of the admin, by the address's shape only (never kept): for the site, its front page,
  * a theme's page (`product`), the theme store and the blog (`list`) and any other page; for the admin, an overview (`/admin`,
- * `/admin/{store}`, `/admin/platform`: `home`), a list of records (`list`), a product's or page's editor (`product`) and any other page.
+ * `/admin/{store}`, `/admin/platform`: `home`), a list of records (`list`), a product's editor (`product`), the page builder for a page or
+ * an article (`category`, which the admin never used otherwise) and any other page.
  * Sign-in and the API are not measured.
  */
 export function ownSpeedKind(site: OwnSpeedSite, path: string): SpeedKind | null {
@@ -189,6 +190,7 @@ export function ownSpeedKind(site: OwnSpeedSite, path: string): SpeedKind | null
   if (segments[1] === "sign-in" || segments[1] === "forgot-password" || segments[1] === "oauth") return null;
   if (segments.length <= 2) return "home";
   if (segments.length === 3 && ADMIN_LISTS.has(segments[2])) return "list";
-  if (segments.length === 4 && (segments[2] === "products" || segments[2] === "pages" || segments[2] === "articles")) return "product";
+  if (segments.length === 4 && (segments[2] === "pages" || segments[2] === "articles") && segments[3] !== "new") return "category";
+  if (segments.length === 4 && segments[2] === "products") return "product";
   return "page";
 }

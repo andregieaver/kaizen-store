@@ -381,6 +381,7 @@ export const platformEn = {
       mrr_down: "Recurring revenue fell by {amount} in the last 7 days.",
       target_behind: "{metric} is behind its target this month ({pct} %).",
       trials_ending: { one: "1 trial ends in the next 3 days.", many: "{n} trials end in the next 3 days." },
+      admin_slow: "The admin is slow: {kind} on a {screen}, {metric} {value} at the 75th percentile over 28 days.",
     },
     asked: { one: "1 asked for a store", many: "{n} asked for a store" },
     opened: { one: "1 store opened", many: "{n} stores opened" },

@@ -195,6 +195,24 @@ the first-scripts budgets above do not yet cover for signed-in routes. Kaizena F
 72 ms, CLS 0.001, TTFB 113 ms. The next step is a first-scripts budget for the product editor and the page builder, and this table read
 again once a month of loads is in.
 
+**Held by the morning briefing (step 1.15).** A kind of screen with 100 loads or more whose largest paint or interaction time at p75 over
+28 days is not "good" is a line in the platform's morning briefing (`adminSpeedAlerts()`). The page builder is its own row from this change
+(kind `category` on site `admin`; a product's editor stays `product`), so rows of `product` recorded before it mix editors and the builder
+and are not comparable with October's for 28 days. Read from Platform, Usage and limits; a kind with 100 loads or more that misses 2.5 s
+or 200 ms gets a step in the plan.
+
+28 days to <date>, after phase 0:
+
+| Kind | Screen | Loads | LCP | INP | CLS | TTFB |
+|---|---|---:|---:|---:|---:|---:|
+|  |  |  |  |  |  |  |
+
+28 days to <date>, after phase 2:
+
+| Kind | Screen | Loads | LCP | INP | CLS | TTFB |
+|---|---|---:|---:|---:|---:|---:|
+|  |  |  |  |  |  |  |
+
 **First scripts, signed in (31 October 2026, again 4 November).** `e2e/signed-in/admin-scripts.spec.ts` holds seven screens to budgets,
 counted from the HTML the server sends (what a page has loaded by the time it is looked at grows with what it does after, and moved by
 1.7 MB between two runs). Raw, before compression:

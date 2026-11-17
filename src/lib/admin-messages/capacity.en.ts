@@ -134,7 +134,7 @@ export const capacityEn = {
     loads: "{n} page loads",
     kinds: {
       platform: { home: "Front page", product: "A theme's page", category: "Other pages", list: "The theme store and the blog", page: "Other pages" },
-      admin: { home: "Overviews", product: "Editors (products, pages)", category: "Other pages", list: "Lists (orders, products, customers …)", page: "Other pages" },
+      admin: { home: "Overviews", product: "Product editor", category: "Page builder (pages, articles)", list: "Lists (orders, products, customers …)", page: "Other pages" },
     },
   },
   jobs: {

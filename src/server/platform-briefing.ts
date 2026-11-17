@@ -6,6 +6,8 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { ANALYTICS_WORDS } from "@/lib/admin-words/analytics";
+import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { renderEmail } from "@/lib/email-layout";
 import { formatMoney } from "@/lib/money";
@@ -24,11 +26,13 @@ import {
   type TargetMetric,
 } from "@/lib/platform-briefing";
 import { localNow } from "@/lib/staff-alerts";
+import { speedValueText, type SpeedKind, type SpeedMetric, type SpeedScreen } from "@/lib/speed";
 import { siteUrl } from "@/lib/site";
 
 import { audit, platformCan, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { log } from "./log";
+import { ownSpeedReport } from "./own-speed";
 import { planAnalytics } from "./plan-analytics";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -83,7 +87,7 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
   const month = monthOf(today);
   const lastMonth = monthOf(new Date(Date.parse(`${month}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10));
   const sameDayLastMonth = `${lastMonth.slice(0, 8)}${today.slice(8, 10)}`;
-  const [analytics, moved, sales, figures, targets] = await Promise.all([
+  const [analytics, moved, sales, figures, targets, speed] = await Promise.all([
     planAnalytics(30),
     typedRows(
       z.object({ currency: col.currency, month_moved: col.minor, week_moved: col.minor }),
@@ -112,6 +116,7 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
             (select extract(epoch from now() - min(created_at)) / 3600 from commerce.access_requests where status = 'pending')::float8 as oldest_hours`,
     ),
     platformTargets(month),
+    ownSpeedReport("admin", now),
   ]);
   const live = analytics.live;
   const mrr = live.mrr.map((m) => {
@@ -142,6 +147,7 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
     signUpsToday: { asked: figures?.asked_today ?? 0, opened: figures?.opened_today ?? 0 },
     requests: { waiting: figures?.waiting ?? 0, oldestHours: figures?.oldest_hours === null || figures?.oldest_hours === undefined ? null : Math.floor(figures.oldest_hours) },
     targets: targets.map((target) => ({ target, progress: targetProgress(target, actualOf(target), today) })),
+    adminSpeed: speed.rows,
   };
 }
 
@@ -198,6 +204,14 @@ export function alertText(alert: PlatformAlert, lang: AdminLang): string {
   if (alert.id === "late_payments") return countWords(Number(v.n), w.late_payments);
   if (alert.id === "mrr_down") return fillWords(w.mrr_down, { amount: formatMoney(Number(v.minor), String(v.currency), locale) });
   if (alert.id === "target_behind") return fillWords(w.target_behind, { metric: PLATFORM_WORDS[lang].briefing.metrics[v.metric as TargetMetric], pct: v.pct });
+  if (alert.id === "admin_slow") {
+    return fillWords(w.admin_slow, {
+      kind: CAPACITY_WORDS[lang].speed.kinds.admin[v.kind as SpeedKind],
+      screen: ANALYTICS_WORDS[lang].speed.screens[v.screen as SpeedScreen],
+      metric: ANALYTICS_WORDS[lang].speed.metrics[v.metric as SpeedMetric].short,
+      value: speedValueText(v.metric as SpeedMetric, Number(v.value), locale),
+    });
+  }
   return countWords(Number(v.n), w.trials_ending);
 }
 
