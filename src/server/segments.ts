@@ -28,6 +28,7 @@ import { audit } from "./auth";
 import { rfmGroups } from "./analytics-customers-data";
 import { NOT_EDIT_REFUND, PAID } from "./analytics-sql";
 import { applySegmentFacts, readSegmentFacts } from "./segment-facts";
+import { uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
 import { normaliseEmail } from "@/lib/email-address";
@@ -326,7 +327,8 @@ export async function deleteSegment(storeId: string, accountId: string, id: stri
 // ---------------------------------------------------------------------------
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const uuidArray = (ids: readonly string[]) => `{${ids.filter((id) => UUID.test(id)).join(",")}}`;
+/** The ids that are uuids, as one query value (`uuidList()`): a rule may hold an id that is not one, which matches nothing. */
+const uuidArray = (ids: readonly string[]) => uuidList(ids.filter((id) => UUID.test(id)));
 
 /** A product's title in the store's first language, else its first, else its address; `p` is the product. */
 const productTitle = (locale: string) => sql`coalesce(
@@ -346,7 +348,7 @@ async function productCategories(storeId: string, ids: readonly string[] | null)
         where t.store_id = ${storeId}::uuid and t.content_type = 'product' and t.kind = 'category' and tree.depth < 8
       )
       select id, path as name from tree
-      where ${ids === null}::boolean or id = any(${uuidArray(ids ?? [])}::uuid[])
+      where ${ids === null}::boolean or id = any(${uuidArray(ids ?? [])})
       order by lower(path)
     `,
   );
@@ -361,7 +363,7 @@ export async function segmentNames(store: Pick<Store, "id" | "localization">, se
       : typedRows(
           z.object({ id: col.uuid, title: col.text }),
           sql`select p.id, ${productTitle(store.localization.locales[0] ?? "en")} as title from commerce.products p
-            where p.store_id = ${store.id}::uuid and p.id = any(${uuidArray(products)}::uuid[])`,
+            where p.store_id = ${store.id}::uuid and p.id = any(${uuidArray(products)})`,
         ),
     categories.length === 0 ? [] : productCategories(store.id, categories),
   ]);

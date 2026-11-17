@@ -65,8 +65,9 @@ describe("who reads a buyer's VAT number and VIES's answer", () => {
     // `owner-tools.ts` mentions the column's name in a comment on what the assistant is told (kind and relief only).
     // `personal-data.ts` (the register of personal data, D162) names the keys erasure removes from it; it reads nothing. The data export reads the treatment's
     // reason code only (never the number or VIES's answer). The owner's order file (D165) reads the kind, the relief and the buyer's own number, for the
-    // owner's accounting, and writes them to a file that is only ever downloaded by the owner.
-    expect(orders).toEqual(["src/lib/personal-data.ts", "src/server/order-export.ts", "src/server/order-insert.ts", "src/server/orders.ts", "src/server/owner-tools.ts", "src/server/privacy-export.ts", "src/server/tax-treatment.ts"]);
+    // owner's accounting, and writes them to a file that is only ever downloaded by the owner. `webhook-topics.ts` and `integrations.ts` carry a Work
+    // client's own treatment in the `work_client.created` event (ecosystem plan E3.2, D718), read from `work_clients`, not an order's.
+    expect(orders).toEqual(["src/lib/personal-data.ts", "src/lib/webhook-topics.ts", "src/server/integrations.ts", "src/server/order-export.ts", "src/server/order-insert.ts", "src/server/orders.ts", "src/server/owner-tools.ts", "src/server/privacy-export.ts", "src/server/tax-treatment.ts"]);
   });
 
   it("is not in a shopper's view of an order: `OrderView.vat` has no registered name or address", () => {

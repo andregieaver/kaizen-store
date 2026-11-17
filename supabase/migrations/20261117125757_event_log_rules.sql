@@ -107,7 +107,8 @@ BEGIN
 END;
 $$;
 --> statement-breakpoint
-CREATE TRIGGER events_append_only BEFORE UPDATE OR DELETE ON commerce.events FOR EACH ROW EXECUTE FUNCTION commerce.guard_events();
+-- A sandbox being purged (D457) takes its events with it, as its other append-only rows.
+CREATE TRIGGER events_append_only BEFORE UPDATE OR DELETE ON commerce.events FOR EACH ROW WHEN ((NOT commerce.sandbox_purging(old.store_id))) EXECUTE FUNCTION commerce.guard_events();
 --> statement-breakpoint
 
 -- A deal (D464): made, moved to another stage, won or lost. A reopen is no event. Deals moved in from Pipedrive (D477) send none: their
