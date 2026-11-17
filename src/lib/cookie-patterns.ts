@@ -67,6 +67,12 @@ export const COOKIE_PATTERNS = [
     category: "statistics",
   },
   {
+    // Set only when someone opens a preview link the store shared (D148 phase 20): what they asked to see, never counted.
+    name: "kaizen_ab_preview",
+    pattern: /^kaizen_ab_preview$/,
+    category: "necessary",
+  },
+  {
     name: "kaizen_ab_…",
     pattern: /^kaizen_ab(_[0-9a-f-]{36}|_reload)?$/,
     category: "statistics",

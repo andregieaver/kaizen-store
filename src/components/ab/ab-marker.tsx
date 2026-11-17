@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { previewedTest } from "@/lib/ab-preview";
 import { showVersion } from "@/lib/ab-shown";
 import { dataCookieName, decodeAssignments, OUTSIDE } from "@/lib/experiments";
 
@@ -22,7 +23,7 @@ const reported = new Set<string>();
  * Sits on a page under an A/B test (D148) and says which version of it this is. If the visitor's cookie gives them this
  * version, the page reports the exposure (and listens for clicks on the block the test counts). If it gives them another
  * (the browser still held this page from before they were assigned), it reloads once to get theirs. A visitor outside the
- * test, or with no answer, is not reported: nothing is recorded about them.
+ * test, with no answer, or looking through a preview link of it, is not reported: nothing is recorded about them.
  */
 export function AbMarker({
   storeId,
@@ -40,6 +41,8 @@ export function AbMarker({
   goalBlock: string | null;
 }) {
   useEffect(() => {
+    // Looking through a preview link of this test (D148 phase 20): the version is the link's, and nothing is reported or tagged.
+    if (previewedTest(read) === experiment) return;
     const mine = decodeAssignments(read(dataCookieName(storeId)))?.versions[experiment];
     if (!mine || mine === OUTSIDE) return;
     if (mine !== variant) {

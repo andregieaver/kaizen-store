@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { AbMarker } from "@/components/ab/ab-marker";
+import { PageGoal } from "@/components/ab/page-goal";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";
 
@@ -171,6 +172,8 @@ export async function StorePageView({ params, searchParams, variant }: { params:
       />
       <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
       {marker && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={marker.experiment} variant={marker.variant} goalBlock={marker.goalBlock} />}
+      {/* A test whose goal is going on to this page (D148 phase 20). */}
+      <PageGoal storeId={store.id} store={store.slug} pageId={page.id} />
     </>
   );
 }

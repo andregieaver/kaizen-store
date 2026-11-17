@@ -1,12 +1,15 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { db, readDb } from "@/db/client";
 import { isTestedPlace, targetKindOf, testToken, TESTED_PLACES, type TargetKind, type TestedPlace } from "@/lib/ab-site";
 import { decodeConsent, consentCookieName } from "@/lib/cookie-consent";
+import { PREVIEW_COOKIE } from "@/lib/ab-preview";
+import { readPreviewCookie } from "@/lib/ab-preview-sign";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 import {
   dataCookieName,
@@ -21,6 +24,8 @@ import {
 } from "@/lib/experiments";
 
 import { log } from "./log";
+import { col, typedRows } from "./typed-rows";
+import { unlockSecret } from "./private-secret";
 import { withPageAlts } from "./media-alts";
 
 type Row = Record<string, unknown>;
@@ -151,6 +156,27 @@ export async function experimentOfPage(storeId: string, pageId: string): Promise
   };
 }
 
+/**
+ * The running tests whose goal is going on to this page (D148 phase 20), by id: the page draws a marker for them (`AbPageGoal`). Cached with the
+ * store's tests, so a page no test counts stays as static as it was.
+ */
+export async function pageGoalTests(storeId: string, pageId: string): Promise<string[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(experimentsTag(storeId));
+  if (!isUuid(pageId)) return [];
+  const rows = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`
+      select e.id from commerce.experiments e
+      where e.store_id = ${storeId}::uuid and e.status = 'running' and e.primary_goal = 'page' and e.goal_params ->> 'page' = ${pageId}
+      order by e.id
+    `,
+    readDb(),
+  );
+  return rows.map((r) => r.id);
+}
+
 /** Whether a store has a running test: the cookie banner and the assignment script are there only then. Cached with the tests. */
 export async function storeHasExperiments(storeId: string): Promise<boolean> {
   "use cache";
@@ -249,9 +275,14 @@ export async function acceptedStatistics(storeId: string): Promise<boolean> {
   return stored?.choices.statistics === true;
 }
 
-/** What this browser holds for the store, read from its cookie; null when it holds nothing valid. */
+/**
+ * What this browser holds for the store, read from its cookie; null when it holds nothing valid, and while it holds a good preview link of the
+ * store (D148 phase 20): a browser looking through a preview is never counted, for that test or any other of the store's.
+ */
 export async function readAssignments(storeId: string): Promise<Assignments | null> {
-  return decodeAssignments((await cookies()).get(dataCookieName(storeId))?.value);
+  const jar = await cookies();
+  if (readPreviewCookie(unlockSecret(), jar.get(PREVIEW_COOKIE)?.value)?.storeId === storeId) return null;
+  return decodeAssignments(jar.get(dataCookieName(storeId))?.value);
 }
 
 export type Visit = { market: string; device: Device };
@@ -300,6 +331,35 @@ export async function recordClick(storeId: string, experimentId: string, block: 
     return rows.length > 0;
   } catch (error) {
     log("error", "experiments.click_record_failed", {}, error);
+    return false;
+  }
+}
+
+/**
+ * A visitor in a test who then opened the page its goal names (D148 phase 20): only from an exposed visitor (so after they saw the version, in the
+ * version they saw), once, only for the test's own page and while it runs.
+ */
+export async function recordPageGoal(storeId: string, experimentId: string, pageId: string): Promise<boolean> {
+  if (!isUuid(experimentId) || !isUuid(pageId)) return false;
+  if (!(await acceptedStatistics(storeId))) return false;
+  const mine = await readAssignments(storeId);
+  if (!mine || !mine.versions[experimentId] || mine.versions[experimentId] === OUTSIDE) return false;
+  try {
+    const rows = await typedRows(
+      z.object({ one: col.int }),
+      sql`
+        insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref)
+        select x.store_id, x.experiment_id, x.visitor, x.variant, 'page', ${pageId}
+        from commerce.experiment_exposures x join commerce.experiments e on e.id = x.experiment_id and e.status = 'running'
+        where x.experiment_id = ${experimentId}::uuid and x.store_id = ${storeId}::uuid and x.visitor = ${mine.visitor}
+          and e.primary_goal = 'page' and e.goal_params ->> 'page' = ${pageId}
+        on conflict do nothing
+        returning 1 as one
+      `,
+    );
+    return rows.length > 0;
+  } catch (error) {
+    log("error", "experiments.page_goal_record_failed", {}, error);
     return false;
   }
 }

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -311,8 +311,8 @@ describe("what a test finds (D148)", () => {
 
     const test = (await admin.getExperiment(storeId, id))!;
     const r = await results.experimentResults(store, test);
-    expect(r.funnel.a).toEqual({ visitors: 1, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0 });
-    expect(r.funnel.b).toEqual({ visitors: 2, carts: 2, checkouts: 1, buyers: 1, clicks: 0, forms: 0, signups: 0 });
+    expect(r.funnel.a).toEqual({ visitors: 1, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 });
+    expect(r.funnel.b).toEqual({ visitors: 2, carts: 2, checkouts: 1, buyers: 1, clicks: 0, forms: 0, signups: 0, pages: 0 });
     expect(r.revenue.b.plain).toBe(8000);
     expect(r.currency).toBe(home().currency);
     expect(r.unconverted).toBe(0);
@@ -684,7 +684,7 @@ describe("ending a test (D148)", () => {
     const harmed = {
       harmed: "b",
       days: 5,
-      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0, forms: 0, signups: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0, forms: 0, signups: 0 } },
+      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0, forms: 0, signups: 0, pages: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0, forms: 0, signups: 0, pages: 0 } },
     } satisfies Parameters<typeof emails.notifyGuardrailStop>[2];
     const outcomes = await emails.notifyGuardrailStop(store, test, harmed);
     expect(outcomes).toHaveLength(2);
@@ -1329,6 +1329,123 @@ describe("a sign-up to Kaizena Flow as the goal (D148 phase 19)", () => {
     expect(r.funnel.b).toMatchObject({ visitors: 1, signups: 1 });
     expect(r.figures.find((f) => f.key === "b")).toMatchObject({ visitors: 1, conversions: 1 });
     await admin.stopExperiment(account, storeId, made.id);
+    await admin.discardExperiment(account, storeId, made.id);
+  }, 30_000);
+});
+
+describe("phase 20: going on to a page, forms elsewhere, new or returning visitors, preview links", () => {
+  const preview = () => import("./ab-preview");
+  let front = "";
+  beforeAll(async () => {
+    process.env.SETTINGS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+    const destinations = await admin.goalDestinations(storeId);
+    front = destinations.find((d) => d.role === "front")!.id;
+    expect(destinations.some((d) => d.id === aboutId)).toBe(true);
+  });
+
+  it("asks for a page to go on to, not the page under test, and keeps it through a draft's changes", async () => {
+    await endAll();
+    expect(await admin.createExperiment(account, storeId, { name: "No page", pageId: aboutId, goal: "page" })).toMatchObject({ ok: false });
+    expect(await admin.createExperiment(account, storeId, { name: "Same page", pageId: aboutId, goal: "page", goalPage: aboutId })).toEqual({
+      ok: false,
+      problems: ["Choose another page than the one you are testing: a visitor is already on it."],
+    });
+    expect(await admin.createExperiment(account, storeId, { name: "Not a page", pageId: aboutId, goal: "page", goalPage: uuid() })).toMatchObject({ ok: false });
+    const made = await admin.createExperiment(account, storeId, { name: "Go to the front", pageId: aboutId, goal: "page", goalPage: front });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect(await admin.getExperiment(storeId, made.id)).toMatchObject({ goal: "page", goalPage: front });
+    expect(await admin.updateDraft(account, storeId, made.id, { name: "Go to the front page" })).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, made.id))!.goalPage).toBe(front);
+    await admin.discardExperiment(account, storeId, made.id);
+  });
+
+  it("counts a visitor who opened the page after seeing a version, once, in that version, and nobody before", async () => {
+    await endAll();
+    const made = await admin.createExperiment(account, storeId, { name: "Go on", pageId: aboutId, goal: "page", goalPage: front });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+    expect(await engine.pageGoalTests(storeId, front)).toEqual([made.id]);
+    expect(await engine.pageGoalTests(storeId, aboutId)).toEqual([]);
+
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    // Opened before seeing the version: not counted.
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(false);
+    await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+    expect(await engine.recordPageGoal(storeId, made.id, aboutId)).toBe(false);
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(true);
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(false);
+    browser({ statistics: false, versions: { [made.id]: "b" }, visitor });
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(false);
+
+    const r = await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!);
+    expect(r.funnel.b).toMatchObject({ visitors: 1, pages: 1 });
+    expect(r.figures.find((f) => f.key === "b")).toMatchObject({ conversions: 1 });
+    await admin.stopExperiment(account, storeId, made.id);
+    await admin.discardExperiment(account, storeId, made.id);
+  }, 30_000);
+
+  it("counts a form sent elsewhere on the site, but a click only on the page under test", async () => {
+    await endAll();
+    const formId = `news-p20-${run}`;
+    const row = { ...newRow("1", () => `p20-${run}`), id: `r-${formId}` };
+    const block = { ...(newBlock("newsletter", () => formId) as unknown as Record<string, unknown>), recipients: [`list-${run}@example.com`], confirm: false };
+    const json = (content: PageContent) => JSON.stringify({ ...content, rows: [...content.rows, { ...row, columns: [{ ...row.columns[0], blocks: [block] }] }] });
+    const [current] = await db().execute<Row>(sql`select published from commerce.pages where id = ${front}::uuid`);
+    const before = current.published;
+    await db().execute(sql`update commerce.pages set published = ${json(current.published as PageContent)}::jsonb where id = ${front}::uuid`);
+    try {
+      const elsewhere = await admin.siteForms(storeId, aboutId);
+      expect(elsewhere.find((f) => f.id === formId)).toMatchObject({ place: { kind: "page" } });
+      expect((await admin.siteForms(storeId, front)).some((f) => f.id === formId)).toBe(false);
+      const made = await admin.createExperiment(account, storeId, { name: "Front form", pageId: aboutId, goal: "form", goalBlock: formId });
+      expect(made).toMatchObject({ ok: true });
+      if (made.ok) await admin.discardExperiment(account, storeId, made.id);
+      expect(await admin.createExperiment(account, storeId, { name: "Front click", pageId: aboutId, goal: "click", goalBlock: formId })).toMatchObject({ ok: false });
+    } finally {
+      await db().execute(sql`update commerce.pages set published = ${JSON.stringify(before)}::jsonb where id = ${front}::uuid`);
+    }
+  });
+
+  it("keeps who takes part: new or returning visitors", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Newcomers", pageId: aboutId, goal: "orders", audience: { returning: "new" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect((await admin.getExperiment(storeId, made.id))!.audience).toEqual({ returning: "new" });
+    expect(await admin.updateDraft(account, storeId, made.id, { audience: { returning: "returning" } })).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, made.id))!.audience).toEqual({ returning: "returning" });
+    await admin.discardExperiment(account, storeId, made.id);
+  });
+
+  it("makes a preview link of a running test's version that lands on its page, counts nothing, and ends with the test", async () => {
+    await endAll();
+    const { previewLink, openPreview } = await preview();
+    const made = await admin.createExperiment(account, storeId, { name: "Show it", pageId: aboutId, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    expect(await previewLink(store, made.id, "b")).toBeNull(); // a draft
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+    expect(await previewLink(store, made.id, "c")).toBeNull();
+    const url = (await previewLink(store, made.id, "b"))!;
+    expect(url).toMatch(/\/api\/ab\/preview\?t=/);
+    const token = decodeURIComponent(url.split("t=")[1]);
+    expect(await openPreview(token)).toMatchObject({ keep: true, to: expect.stringMatching(/\/om-oss$/), experiment: made.id });
+    expect(await openPreview(`${token}x`)).toBeNull();
+
+    // A browser holding the preview is never counted, even with statistics allowed and the version in its own cookie.
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    jar.set("kaizen_ab_preview", `${made.id}:${token}`);
+    expect(await engine.readAssignments(storeId)).toBeNull();
+    expect(await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" })).toBe(false);
+    jar.delete("kaizen_ab_preview");
+    expect(await engine.readAssignments(storeId)).not.toBeNull();
+
+    await admin.stopExperiment(account, storeId, made.id);
+    engine.forgetRunning(storeId);
+    expect(await openPreview(token)).toMatchObject({ keep: false, to: expect.any(String) });
     await admin.discardExperiment(account, storeId, made.id);
   }, 30_000);
 });

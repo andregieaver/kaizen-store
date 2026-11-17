@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { ExperimentForm } from "@/components/admin/experiment-form";
 import { requirePermission } from "@/server/permissions";
 import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
-import { buttonsOf, formsOf, listExperiments, publishedContentOf, testablePages } from "@/server/experiment-admin";
+import { buttonsOf, formsOf, goalDestinations, listExperiments, publishedContentOf, siteForms, testablePages, type FormPlace } from "@/server/experiment-admin";
+
+/** No page: every published page's forms are offered, and the form leaves out the chosen page's own. */
+const NO_PAGE = "00000000-0000-4000-8000-000000000000";
 import { experimentTraffic } from "@/server/experiment-traffic";
 import { houseStoreId } from "@/server/house-customers";
 import type { TargetHistory } from "@/components/admin/experiment-form";
@@ -37,7 +40,17 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
     }),
   );
   // The shop's own traffic and each target's last test (D660): how soon each goal answers, and what was tried before.
-  const [traffic, tests, houseId] = await Promise.all([experimentTraffic(store, pages), listExperiments(store.id), houseStoreId()]);
+  // The pages a visitor can go on to and the forms elsewhere on the site (phase 20): the form leaves out the chosen page's own.
+  const [traffic, tests, houseId, destinations, formsElsewhere] = await Promise.all([
+    experimentTraffic(store, pages),
+    listExperiments(store.id),
+    houseStoreId(),
+    goalDestinations(store.id),
+    siteForms(store.id, pages.length === 1 ? pages[0].id : NO_PAGE),
+  ]);
+  const placeOf = (place: FormPlace) => (place.kind === "page" ? place.title : w.kinds[place.kind].name);
+  const elsewhere = formsElsewhere.map((f) => ({ id: f.id, label: `${f.label} · ${placeOf(f.place)}` }));
+  const goesTo = destinations.map((d) => ({ id: d.id, title: d.role === "front" || d.role === "products" ? w.roles[d.role] : d.title }));
   const history: Record<string, TargetHistory> = {};
   for (const t of [...tests].filter((x) => x.status !== "draft").sort((a, b) => (b.startedAt ?? b.createdAt).localeCompare(a.startedAt ?? a.createdAt))) {
     if (history[t.page.id] || t.status === "draft") continue;
@@ -65,7 +78,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
           {w.newTest.cannotPart}
         </p>
       ) : (
-        <ExperimentForm pages={withButtons} markets={markets} create={createExperimentAction.bind(null, store.slug)} base={base} part={part} traffic={traffic} history={history} house={houseId === store.id} />
+        <ExperimentForm pages={withButtons} markets={markets} create={createExperimentAction.bind(null, store.slug)} base={base} part={part} traffic={traffic} history={history} house={houseId === store.id} destinations={goesTo} siteForms={elsewhere} />
       )}
     </div>
     </AdminTextScope>

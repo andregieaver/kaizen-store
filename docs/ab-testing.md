@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 16 and 19 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is next") (19: the guardrails as designed, and a sign-up goal for Kaizena Flow's store, D712) (16: the original and a version side by side, D684) (15: the list, ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it taught, D662)
+its place. Status: **phases 1 to 16, 19 and 20 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is next") (20: going on to a page, forms elsewhere, new or returning visitors and preview links to share, D715) (19: the guardrails as designed, and a sign-up goal for Kaizena Flow's store, D712) (16: the original and a version side by side, D684) (15: the list, ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it taught, D662)
 (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659,
 [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9:
 modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and
@@ -584,6 +584,43 @@ counts), the hourly check in `runExperimentJobs()`.
   details, and the new-test form of Kaizena Flow's own store with sign-ups first (`e2e/signed-in/ab-guardrails.spec.ts`).
 - **Not done here**: running the plans-page test (the owner's, phase 22); a speed guardrail for a store that does not count visits.
 
+## What phase 20 built: the goals and the reach left for later (D715)
+
+Migration `20261117121405_sticky_gateway` (the goal `page` added to the two goal checks).
+
+- **Going on to a page** (`page`, *More people going on to a page*): the share of the visitors in a test who then open a chosen page of the
+  store, once each, in the version they saw. The page is one of `goalDestinations()` (the store's published pages, its front page and its All
+  products page; never the page under test, never a working page), kept in `goal_params.page` and checked by `createExperiment()`,
+  `updateDraft()` (which now keeps the page through a draft's other changes) and the start checks. Counting: a page that a running test names
+  draws `AbPageGoal` (`PageGoal`, from the cached `pageGoalTests()`; nothing on a page no test counts), which sends the page to
+  `/api/ab/event`; `recordPageGoal()` keeps one event per visitor only when the visitor was exposed before, so opening the page first counts
+  nothing. On the new-test form it is one of the goals behind *More goals* (and the one there on Kaizena Flow's own store), with *Which page
+  should they go on to?*. Like a click or a form it has no rate the store counts, so how long it takes is the owner's own figures.
+- **A form elsewhere on the site** (phase 11's *Not done*): the form goal also offers the forms in the store's header and footer and on its other
+  published pages (`siteForms()`, each labelled with where it is: *On this page* first, then *Elsewhere on the site*). A form sent is counted by
+  its id wherever it is (`recordFormSent()`, unchanged), so a visitor who saw the version and then signs up in the footer on any page counts. A
+  click goal stays on the page or the part under test.
+- **New or returning visitors** in *Customise* on the new-test form and on a draft: *New and returning*, *New visitors only*, *Returning visitors
+  only* (the engine's `Audience.returning` since phase 1). A visitor is returning when their browser already held the store's A/B cookie.
+- **A preview link to share** (`src/lib/ab-preview.ts`, `ab-preview-sign.ts`, `src/server/ab-preview.ts`, `/api/ab/preview`): *Show it to
+  someone* on a running test's page makes, with one press per version, a link that shows that version on the live site to whoever opens it. The
+  link carries a token signed with a key made from the server's own secret for this use alone, naming the store, the test and the version, good
+  for 30 days; opening it keeps the token in the cookie `kaizen_ab_preview` for a day, after the test's id in plain (`{test}:{token}`, so the page's
+  own script tells which test without decoding anything; only the checked token is trusted), with the marker so the proxy looks, and lands on the page
+  the version is seen on. The proxy serves that version for that test (`withPreview()`), with `noindex` and no caching. Nothing is counted: while
+  a browser holds a good preview of a store, `readAssignments()` reads nothing for it, so no exposure, click, form, cart, sign-up or page is
+  recorded, and the page's marker neither reports nor tags heatmaps. Once the test stops, the link lands on the store's front door and keeps
+  nothing. The cookie is listed as necessary (set only for someone who opened a link). Making a link needs `marketing:write` and is audited.
+- **The AI manager** offers neither `page` nor `signup` in its tools (`TOOL_GOALS`, so their schema and the eval recording are unchanged);
+  `explain_results` reads any test (`went_on_to_the_page`). The Admin API's and the `experiment.answered` webhook's `goal` can be `page`
+  (contract 1.38).
+- Tested: tokens and their checks (`ab-preview.test.ts`), the database's checks (`commerce.test.ts`), the form's and the share card's words
+  (`experiment-ui.test.ts`), against a database the page goal refused and kept, counted once and never first, a form on another page accepted
+  and a click there refused, new or returning kept, and a preview link made, landing, counting nothing and ending with the test
+  (`experiments.int.test.ts`); in the browser, a visitor going on to the page and a form on another page counted in version B, and a preview link
+  showing B, `noindex`, with nothing counted (`e2e/ab-phase-20.spec.ts`), and the owner making a page-goal test for new visitors and a preview
+  link (`e2e/signed-in/ab-phase-20.spec.ts`).
+
 ## What is next: phases 17 to 23 (plan, 17 November 2026)
 
 Phases 1 to 16 built what this file designed, and [`ab-testing-usability.md`](ab-testing-usability.md) is built to its last step.
@@ -626,7 +663,7 @@ since phase 1, so the numbers can now come from production rather than a preview
 - The guardrail email and the platform's view say which guardrail stopped or warned. Done when: each guardrail has a test of its
   own kind of trouble, and none fires on a person's stop or on a version below the minimum.
 
-**Phase 20: the goals and the reach that were left for later.**
+**Phase 20: the goals and the reach that were left for later (built, D715: see "What phase 20 built" above).**
 
 - The goal **Viewed another page** (Goals above): the share who then open a chosen page of the store, counted as clicks and forms are,
   once per visitor in the version they saw.
@@ -720,7 +757,7 @@ A goal is one of a fixed set, each with a defined way of counting, so no one wri
 | Added to cart | Share who put something in the cart | Higher baseline: reaches an answer sooner |
 | Reached checkout | Share who started checkout | |
 | Clicked this | Share who clicked a chosen button or link in the variant | For a part: picked by clicking it in the builder; tracked by a data attribute, never by owner script |
-| Viewed another page | Share who then opened a chosen page | For landing pages and article tests |
+| Went on to a page | Share who then opened a chosen page | Phase 20 (D715); for landing pages and article tests |
 | Sent a form | Share who submitted a chosen form, or signed up for the newsletter | Phase 11 |
 | Signed up to Kaizena Flow | Share who sent Kaizena Flow's sign-up form | Kaizena Flow's own store only (phase 19, D712) |
 
@@ -1003,7 +1040,7 @@ reports (D106, D145).
 | **17** | Measure in production what the spike could not: speed with and without the cookie, the proxy's region | The figures and the region are in this file; phase 0's row says built |
 | **18** | The legal note, then signed-in customers assigned from their account where it allows | The note is written; one customer sees the same version on two browsers |
 | **19** (built, D712) | The guardrails as designed: speed and failed payments at checkout stop a test, refunds and returns are read late; and the sign-up goal of 22 | Each guardrail tested on its own kind of trouble, never firing on a person's stop |
-| **20** | Viewed another page, a form outside the part, new or returning visitors, a preview link to share | A browser test per goal; the preview link counts no exposure |
+| **20** (built, D715) | Viewed another page, a form outside the part, new or returning visitors, a preview link to share | A browser test per goal; the preview link counts no exposure |
 | **21** | The paid-plan feature read in code, once the owner chooses on/off or a limit per plan | Each kind of plan tested; a downgrade keeps its running tests |
 | **22** (the sign-up goal built, D712) | Kaizena Flow's plans-page test (with a sign-up goal for the house store), and the moderated check with two owners | The plans-page test has an answer; two owners made a test in a few minutes |
 | **23** | A line on consent skew; the daily rollup when its measured trigger fires | The consent line tested; the rollup built or its trigger logged |

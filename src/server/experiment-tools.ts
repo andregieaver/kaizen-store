@@ -242,8 +242,8 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       : undefined,
     versions,
     what_visitors_did: test.variants.map((v) => {
-      const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0 };
-      return { version: v.name, saw_it: f.visitors, added_to_cart: f.carts, started_checkout: f.checkouts, ordered: f.buyers, clicked: test.goal === "click" ? f.clicks : undefined, sent_the_form: test.goal === "form" ? f.forms : undefined, signed_up: test.goal === "signup" ? f.signups : undefined };
+      const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 };
+      return { version: v.name, saw_it: f.visitors, added_to_cart: f.carts, started_checkout: f.checkouts, ordered: f.buyers, clicked: test.goal === "click" ? f.clicks : undefined, sent_the_form: test.goal === "form" ? f.forms : undefined, signed_up: test.goal === "signup" ? f.signups : undefined, went_on_to_the_page: test.goal === "page" ? f.pages : undefined };
     }),
     revenue_without_vat: test.variants.map((v) => ({ version: v.name, revenue: formatMoney(Math.round(r.revenue[v.key]?.plain ?? 0), r.currency, locale) })),
     split_between_versions: r.splitP < 0.001 ? "Wrong: the versions did not get the share of visitors they should." : "As promised.",
