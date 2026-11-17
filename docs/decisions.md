@@ -733,6 +733,7 @@ this file wins.
 | D731 | **Admin redesign round 39: Settings, Export orders and VAT reports on a phone** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 | D732 | **Email events on the event log: email.bounced, email.complained, broadcast.sent, marketing.paused (email plan M1.2)** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 | D733 | **Every route's first scripts held against a baseline** (claimed 2026-11-17, text follows) | 2026-11-17 | |
+| D734 | **Next.js 16.4.6 for GHSA-mfr8-8qww-v76h** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 
 ### Selling from Norway to Sweden and Denmark
 
