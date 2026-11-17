@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
+import { PageSignalsStrip } from "@/components/admin/page-signals-strip";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { signalPlan } from "@/lib/page-signals";
 import { editorOptions } from "@/lib/variant-grid";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { fieldsForEditor } from "@/server/custom-fields";
 import { getEditorContext, getProductForEdit } from "@/server/products";
 
@@ -34,6 +37,20 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   const fields = await fieldsForEditor(store.id, "product", productId);
   const lang = adminLangOf(gated.account.adminLocale);
   const w = adminText(lang, "product").page;
+  // How it performs (ecosystem plan E2.3, D713), for those who may read the analytics: streamed after the editor, never in its way.
+  const insight = memberCan(gated, "analytics:read") ? (
+    <Suspense fallback={null}>
+      <PageSignalsStrip
+        store={store}
+        target={{ ...signalPlan({ type: "product", handle: stored.handle }, store.allMarkets.map((m) => m.code)), productId }}
+        what="product"
+        name={stored.translations.find((t) => t.locale === context.primaryLocale)?.title || stored.handle}
+        lang={lang}
+        owner={memberCan(gated, "owner")}
+        tests={memberCan(gated, "marketing:read")}
+      />
+    </Suspense>
+  ) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,7 +60,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
         </p>
       )}
       <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builder", "website"])}>
-        <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} />
+        <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} insight={insight} />
       </AdminTextScope>
       <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <Link href={`/admin/${store.slug}/products/${productId}/listing`} className="underline underline-offset-2">

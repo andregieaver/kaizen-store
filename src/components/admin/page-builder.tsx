@@ -54,6 +54,7 @@ import { AnimationFields, MotionFields } from "./motion-fields";
 import { ShopPartIcon } from "./shop-part-icons";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import { menuHoverStyle } from "@/lib/menu-hover";
+import { findPart as findPagePart } from "@/lib/experiment-parts";
 import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type FormBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType, type MenuDrawer, MENU_TYPES, MENU_SIDES } from "@/lib/page-content";
 import { DRAWER_PARTS, isDrawerPart, menuLook, ownDrawer, type DrawerPart } from "@/lib/menu-drawer";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
@@ -657,7 +658,13 @@ export function PageBuilder({
   themeTab = null,
   onThemeState,
   dual = null,
+  openPart = null,
 }: {
+  /**
+   * A row, column or component whose settings open with the builder, as a press on it would (the heatmap's "Edit this part", ecosystem
+   * plan E2.3, D713: `?part={id}`); a part the page does not have opens nothing.
+   */
+  openPart?: string | null;
   /** One of the two documents of a dual page (D412), inside its `DualFrame`; null on a page alone. */
   dual?: DualBuilder | null;
   /** Told when a saved part goes onto the canvas to be edited and when the page comes back: the editor's undo is the page's, so it rests meanwhile. */
@@ -760,7 +767,8 @@ export function PageBuilder({
   const [target, setTarget] = useState<{ id: string; after: boolean } | null>(null);
   /** The column last worked in, where pressing a component adds it. */
   const [lastColumn, setLastColumn] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<Dialog | null>(null);
+  // Opened on a part when the address names one (`openPart`): worked out from the rows alone, so the server and the browser draw the same.
+  const [dialog, setDialog] = useState<Dialog | null>(() => (openPart && findPagePart(pageRows, openPart) ? displayDialog(pageRows, openPart) : null));
   // The heading or text edited where it stands (D191): one at a time; opening a component's settings ends it.
   const [inline, setInline] = useState<{ blockId: string; point: { x: number; y: number } | null; side?: DualSide } | null>(null);
   /** A saved part by id. */

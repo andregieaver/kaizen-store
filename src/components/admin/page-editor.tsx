@@ -175,7 +175,16 @@ export function PageEditor({
   context,
   dual = null,
   template = null,
+  insight = null,
+  openPart = null,
 }: {
+  /** A part whose settings open with the builder (`?part={id}`, the heatmap's "Edit this part", E2.3, D713). */
+  openPart?: string | null;
+  /**
+   * How the page performs (ecosystem plan E2.3, D713): the server's strip under its title and address, streamed in its own Suspense boundary
+   * so the editor never waits for it; null where the person may not read analytics, or the page has no visitors to measure.
+   */
+  insight?: ReactNode;
   /**
    * A saved template (D412 step 5) edited as one of a dual page's documents: its name and its rows (the part's content as `partRows()`
    * draws it), saved back into it (`updatePart`); nothing to publish, no address, versions or schedule.
@@ -755,6 +764,7 @@ export function PageEditor({
         productParts={shape === "product_layout"}
         fieldGroups={context.fields?.groups ?? null}
         onTestPart={context.experimentsHref && saved?.published ? testPart : undefined}
+        openPart={translating ? null : openPart}
         checks={
           issues
             ? { count: issues.length, panel: <PageIssuesPanel issues={issues} /> }
@@ -881,6 +891,8 @@ export function PageEditor({
                 </p>
               )}
             </section>
+            {/* How the page performs (E2.3, D713): the server's strip, in the main language only. */}
+            {!translating && insight}
             {!translating && context.type === "footer" && (
               <section className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
                 <h2 className="text-title text-ink">{ew.reveal}</h2>
