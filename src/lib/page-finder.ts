@@ -10,13 +10,9 @@
 import type { AdminLang } from "./admin-lang";
 import { findPages, pageHref, pageParams, type SiteFlags } from "./admin-map";
 import { PAGES_NB } from "./admin-messages/pages.nb";
-import type { RecordKind } from "./finder-records";
+import type { FinderGroup, FinderItem } from "./finder-items";
 
-/** One row of the finder: what it is called, a word on the right (a page's section, a record's store), a line under it, and where it opens. */
-export type FinderItem = { title: string; group: string; what: string; href: string };
-
-/** The rows under one heading: the pages, or one kind of record. */
-export type FinderGroup = { kind: "pages" | RecordKind; items: FinderItem[] };
+export { finderOptions, type FinderGroup, type FinderItem } from "./finder-items";
 
 /** The longest question looked at: anything longer is cut, never refused. */
 export const FINDER_QUERY_MAX = 100;
@@ -45,6 +41,3 @@ export function finderResults(
 export function finderAnswer(pages: FinderItem[], records: readonly FinderGroup[] = []): FinderGroup[] {
   return [...(pages.length > 0 ? [{ kind: "pages" as const, items: pages }] : []), ...records.filter((group) => group.items.length > 0)];
 }
-
-/** The rows of an answer in the order they are drawn, for the arrow keys and the active option. */
-export const finderOptions = (groups: readonly FinderGroup[]): FinderItem[] => groups.flatMap((group) => group.items);

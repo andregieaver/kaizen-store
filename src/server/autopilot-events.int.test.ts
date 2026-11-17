@@ -169,7 +169,7 @@ describe("reacting to events", () => {
     await react();
     const row = (await eventsOf()).find((r) => r.kind === "test_ended");
     expect(row).toMatchObject({ ref: String(test.id), status: "done" });
-    expect(turns[0].autopilot?.tools).toEqual(["list_experiments", "explain_results", "apply_winner", "get_brand"]);
+    expect(turns[0].autopilot?.tools).toEqual(["list_experiments", "explain_results", "version_behaviour", "apply_winner", "get_brand"]);
     expect(turns[0].message).toContain(`"Bigger photos" (id ${String(test.id)})`);
     expect(await eventsOf(other.id)).toHaveLength(0);
   });
@@ -190,7 +190,7 @@ describe("reacting to events", () => {
     const row = (await eventsOf()).find((r) => r.kind === "test_answered");
     expect(row).toMatchObject({ ref: made.id, status: "done" });
     const turn = turns.find((t) => t.message.includes('"Shorter hero"'))!;
-    expect(turn.autopilot?.tools).toEqual(["list_experiments", "explain_results", "apply_winner", "get_brand"]);
+    expect(turn.autopilot?.tools).toEqual(["list_experiments", "explain_results", "version_behaviour", "apply_winner", "get_brand"]);
     expect(turn.message).toContain("it is still running");
     // Found again later: kept once.
     await react();

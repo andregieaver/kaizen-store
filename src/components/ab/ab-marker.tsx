@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { showVersion } from "@/lib/ab-shown";
-import { dataCookieName, decodeAssignments, OUTSIDE } from "@/lib/experiments";
+import { dataCookieName, decodeAssignments, OUTSIDE } from "@/lib/ab-cookie";
 
 const read = (name: string): string | undefined => {
   const hit = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
