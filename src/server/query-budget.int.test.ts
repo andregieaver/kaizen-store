@@ -16,6 +16,9 @@ import type { StatementRecord } from "@/db/statement-count";
  * ran on before, a few jobs read more rows or send other statements (the status checks keep their own history, the legal sources and the
  * cookie scan were due once, the daily run did its first catch-up): seed again rather than lower the baseline.
  *
+ * It counts twice: with the database as the seed made it ("one", the demo store and Kaizena Flow's), and with 20 stores more that have
+ * every per-store feature on (`budget-seed-test-support.ts`, removed afterwards), and holds what the 20 stores add ("growth").
+ *
  * Each figure is the second run of the work: the first warms what is kept per process and lets a job do its catch-up. The clock is
  * fixed at `idleClock()` (a Wednesday at 10:23 UTC), so no job is at its hour, and no job reaches the network: `fetch` answers with an
  * error, and the jobs that try are named in REACHES_NETWORK. The routes' work after the answer (`after()`) is run and counted with them.
@@ -46,6 +49,7 @@ process.env.CRON_SECRET = "query-budget";
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const support = await import("./query-budget-test-support");
+type QueryBudget = import("./query-budget-test-support").QueryBudget;
 const { closeDb } = await import("@/db/client");
 const { kebab } = await import("./cron-runs");
 const { DISPATCHER_JOBS } = await import("./dispatcher-jobs");
@@ -60,6 +64,11 @@ const { siteStoreCached } = await import("./site-store");
 const { siteCookies } = await import("./site-cookies");
 const { liveCustomCode } = await import("@/lib/custom-code");
 const { featureOn } = await import("@/lib/store-features");
+const { db } = await import("@/db/client");
+const { sql } = await import("drizzle-orm");
+const { listPublishedPages } = await import("./pages");
+const { runLedgerPosting } = await import("./ledger");
+const { SEEDED_FEATURES, seedStores, removeSeed } = await import("./budget-seed-test-support");
 
 type Figures = { statements: number; rowsRead: number };
 
@@ -80,6 +89,8 @@ const REACHES_NETWORK: readonly string[] = [
   "route.subscription-reminders",
   // The official legal texts (D311): on a fresh database every source is due, so each run tries a few (EUR-Lex, Lovdata, and the rest).
   "dispatcher.legal-sources",
+  // With 20 stores: their chat agents' knowledge cut from the 30 published pages each has, with vectors asked of the store's own AI (D81).
+  "dispatcher.knowledge",
 ];
 
 const ROUTES = Object.fromEntries(
@@ -93,7 +104,8 @@ const originals: (() => unknown)[] = [];
 const reached = network.reached;
 
 /** The figures this run measured, by group, and their records, by name. */
-const measured: { one: Record<string, Figures> } = { one: {} };
+type Group = "one" | "twenty";
+const measured: Record<Group, Record<string, Figures>> = { one: {}, twenty: {} };
 const records: Record<string, StatementRecord[]> = {};
 
 beforeAll(async () => {
@@ -150,7 +162,7 @@ async function callRoute(name: string): Promise<Response> {
 }
 
 /** Runs `work` once to warm it, then measures a second run; a run that throws fails with the work's name. */
-async function count(group: keyof typeof measured, name: string, work: () => Promise<unknown>): Promise<Figures> {
+async function count(group: Group, name: string, work: () => Promise<unknown>): Promise<Figures> {
   network.current = name;
   try {
     await work();
@@ -170,7 +182,7 @@ async function count(group: keyof typeof measured, name: string, work: () => Pro
 }
 
 /** A figure above the baseline fails with both numbers and what was sent most; one below asks for the baseline to be lowered. */
-function compare(group: keyof typeof measured, name: string, now: Figures): void {
+function compare(group: Group, name: string, now: Figures): void {
   // With UPDATE_BASELINE=1 the figures are written in afterAll, which refuses a rise without FIRST=1.
   if (WRITE) return;
   const held = support.readBaseline()[group]?.[name];
@@ -191,12 +203,33 @@ function compare(group: keyof typeof measured, name: string, now: Figures): void
   }
 }
 
-/** Writes the measured figures; a figure above its baseline only with FIRST=1. */
+/** What 20 stores add to a name's figures: the measure of work that grows with the number of stores (0 once it does not). */
+const growthOf = (name: string): Figures | null => {
+  const [one, twenty] = [measured.one[name], measured.twenty[name]];
+  return one && twenty ? { statements: twenty.statements - one.statements, rowsRead: twenty.rowsRead - one.rowsRead } : null;
+};
+
+/** The growth from 1 to 20 stores may not rise, and when it fell the baseline is lowered. */
+function compareGrowth(name: string): void {
+  if (WRITE) return;
+  const now = growthOf(name);
+  const held = support.readBaseline().growth?.[name];
+  if (!now || !held) return;
+  for (const key of ["statements", "rowsRead"] as const) {
+    if (now[key] > held[key]) {
+      throw new Error(`${name}'s growth from 1 to 20 stores is now ${now[key]} ${key}, baseline ${held[key]}: it does more per store than it did (read the stores' work in one statement), or accept it with FIRST=1 ${FIX} and say why in the commit message`);
+    }
+    if (now[key] < held[key]) throw new Error(`${name}'s growth from 1 to 20 stores is now ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
+  }
+}
+
+/** Writes the measured figures and the growth; a figure above its baseline only with FIRST=1. */
 function write(): void {
   const before = support.readBaseline();
-  const next = { ...before };
-  for (const group of Object.keys(measured) as (keyof typeof measured)[]) {
-    const now = measured[group];
+  const growth = Object.fromEntries(Object.keys(measured.twenty).flatMap((name) => (growthOf(name) ? [[name, growthOf(name)!]] : [])));
+  const next: QueryBudget = { ...before };
+  for (const [group, now] of [["one", measured.one], ["twenty", measured.twenty], ["growth", growth]] as const) {
+    if (Object.keys(now).length === 0) continue;
     const held = before[group] ?? {};
     const raised = Object.entries(now).filter(([name, f]) => held[name] && (f.statements > held[name].statements || f.rowsRead > held[name].rowsRead));
     if (raised.length > 0 && !RAISE) {
@@ -228,11 +261,26 @@ async function platformFrame(): Promise<void> {
 
 const T = 120_000;
 
-describe("query budget with one store", () => {
+/** Parts A to D for one group: the idle jobs one by one, the minute and the daily routes, and the two cold frames. */
+function parts(group: Group): void {
+  // Both comparisons run, so a statement per store added fails with the figure and with the growth it raised.
+  const check = (name: string, figures: Figures) => {
+    const runs = [() => compare(group, name, figures), () => (group === "twenty" ? compareGrowth(name) : undefined)];
+    const problems = runs.flatMap((run) => {
+      try {
+        run();
+        return [];
+      } catch (error) {
+        return [error instanceof Error ? error.message : String(error)];
+      }
+    });
+    if (problems.length > 0) throw new Error(problems.join("\n\n"));
+  };
+
   describe("A: the dispatcher's idle tick, job by job", () => {
     for (const key of Object.keys(DISPATCHER_JOBS) as (keyof typeof DISPATCHER_JOBS)[]) {
       const name = `dispatcher.${kebab(key)}`;
-      it(name, async () => compare("one", name, await count("one", name, () => DISPATCHER_JOBS[key]())), T);
+      it(name, async () => check(name, await count(group, name, () => DISPATCHER_JOBS[key]())), T);
     }
   });
 
@@ -242,7 +290,7 @@ describe("query budget with one store", () => {
       it(name, async () => {
         network.current = name;
         expect((await callRoute(route)).status, name).toBe(200);
-        compare("one", name, await count("one", name, () => callRoute(route)));
+        check(name, await count(group, name, () => callRoute(route)));
       }, T);
     }
   });
@@ -255,13 +303,97 @@ describe("query budget with one store", () => {
       await support.side()`vacuum full`;
     }, T);
 
-    it("frame.store", async () => compare("one", "frame.store", await count("one", "frame.store", () => storeFrame("demo", "no"))), T);
-    it("frame.platform", async () => compare("one", "frame.platform", await count("one", "frame.platform", () => platformFrame())), T);
+    it("frame.store", async () => check("frame.store", await count(group, "frame.store", () => storeFrame("demo", "no"))), T);
+    it("frame.platform", async () => check("frame.platform", await count(group, "frame.platform", () => platformFrame())), T);
+  });
+}
+
+/** The demo store's published pages read as `listPublishedPages()` reads them, and by a copy that filters as step 0.23 stopped. */
+const demoId = async () => (await getStore("demo"))!.id;
+const pagesAsBefore = async (storeId: string) =>
+  db().execute(sql`
+    select id, slug, published, published_at, first_published_at from commerce.pages
+    where store_id is not distinct from ${storeId}::uuid and type = 'page' and published_at is not null order by created_at
+  `);
+const pageReads: Partial<Record<Group, { fn: Figures; copy: Figures }>> = {};
+async function measurePageReads(group: Group): Promise<void> {
+  const id = await demoId();
+  await listPublishedPages(id);
+  await pagesAsBefore(id);
+  const fn = await support.measure(() => listPublishedPages(id));
+  const copy = await support.measure(() => pagesAsBefore(id));
+  pageReads[group] = { fn: { statements: fn.statements, rowsRead: fn.rowsRead }, copy: { statements: copy.statements, rowsRead: copy.rowsRead } };
+}
+
+describe("query budget with one store", () => {
+  parts("one");
+
+  it("measures the demo store's published pages, for the 20 stores to compare", async () => {
+    await measurePageReads("one");
+    expect(pageReads.one!.fn.statements).toBe(1);
+  }, T);
+});
+
+describe("query budget with 20 stores", () => {
+  // A fixed run: what some reads fetch moves with the names the seed writes. What an earlier run left, if it stopped half way, goes first.
+  const run = "qb";
+
+  beforeAll(async () => {
+    await removeSeed(run);
+    // 20 stores of their own with every per-store feature on (the demo store is left as the seed made it, so the next run on this database
+    // counts the same one store).
+    await seedStores({ count: 20, features: "all", run });
+    await support.side()`vacuum analyze`;
+  }, 300_000);
+
+  afterAll(async () => {
+    await removeSeed(run);
+  }, T);
+
+  it("seeds the 14 features it says", () => {
+    console.info(`query budget: 20 stores with ${SEEDED_FEATURES.join(", ")}`);
+    expect(SEEDED_FEATURES).toHaveLength(14);
   });
 
-  it("reaches the network only where REACHES_NETWORK says", () => {
-    const now = [...reached.keys()].sort();
-    for (const name of now) expect(REACHES_NETWORK, `${name} tried ${[...reached.get(name)!].join(", ")}`).toContain(name);
-    for (const name of REACHES_NETWORK) expect(now, `${name} no longer tries the network: take it off REACHES_NETWORK`).toContain(name);
-  });
+  parts("twenty");
+
+  it("would notice one more statement per store beside a job", async () => {
+    const job = measured.twenty["dispatcher.alt-texts"];
+    expect(job, "dispatcher.alt-texts was measured with 20 stores").toBeDefined();
+    const ids = await db().execute<{ id: string }>(sql`select id from commerce.stores where slug like ${`budget-${run}-%`}`);
+    expect(ids).toHaveLength(20);
+    const more = await support.measure(async () => {
+      await DISPATCHER_JOBS.altTexts();
+      for (const { id } of ids) await db().execute(sql`select 1 from commerce.stores where id = ${id}::uuid`);
+    });
+    expect(more.statements).toBe(job.statements + 20);
+  }, T);
+
+  it("would notice a read that filters a store's pages so no index serves it", async () => {
+    await measurePageReads("twenty");
+    const { one, twenty } = pageReads;
+    expect(one && twenty, "both groups measured").toBeTruthy();
+    // listPublishedPages() filters with owned() (step 0.23): the other stores' pages are never read (with one store's few pages the planner
+    // may read the small table whole, so it reads no more, not exactly as many).
+    expect(twenty!.fn.rowsRead).toBeLessThanOrEqual(one!.fn.rowsRead);
+    // The old filter reads every store's pages: 20 stores of 30 pages and more.
+    expect(twenty!.copy.rowsRead).toBeGreaterThan(one!.copy.rowsRead + 20 * 30);
+  }, T);
+
+  it("holds the ledger's statements with 20 open books, so one more per book fails", async () => {
+    const held = support.readBaseline().twenty?.["dispatcher.ledger"];
+    const books = await db().execute<{ n: number }>(sql`select count(*)::int as n from commerce.ledger_books where closed_on is null`);
+    expect(books[0].n).toBeGreaterThanOrEqual(20);
+    await runLedgerPosting();
+    const now = await support.measure(() => runLedgerPosting());
+    // The baseline holds what 20 books cost; a statement more per book is 20 more and fails dispatcher.ledger above.
+    if (!WRITE) expect(now.statements).toBe(held!.statements);
+    expect(now.statements - measured.one["dispatcher.ledger"]!.statements).toBeGreaterThanOrEqual(20);
+  }, T);
+});
+
+it("reaches the network only where REACHES_NETWORK says", () => {
+  const now = [...reached.keys()].sort();
+  for (const name of now) expect(REACHES_NETWORK, `${name} tried ${[...reached.get(name)!].join(", ")}`).toContain(name);
+  for (const name of REACHES_NETWORK) expect(now, `${name} no longer tries the network: take it off REACHES_NETWORK`).toContain(name);
 });

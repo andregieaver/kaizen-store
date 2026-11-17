@@ -931,6 +931,738 @@
         "statements": 22,
         "rowsRead": 13
       }
+    },
+    "twenty": {
+      "dispatcher.activities": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.ad-spend": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.affiliates": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.agent-purchases": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.ai-picture-marks": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.alt-texts": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.analytics-alerts": {
+        "statements": 1,
+        "rowsRead": 990
+      },
+      "dispatcher.approval-expiry": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.assistant-approvals": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.auto-archive": {
+        "statements": 21,
+        "rowsRead": 526
+      },
+      "dispatcher.autopilot-budgets": {
+        "statements": 21,
+        "rowsRead": 1326
+      },
+      "dispatcher.autopilot-effects": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.autopilot-reports": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.autopilot-tests": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.autopilot-watch": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.bonus": {
+        "statements": 4,
+        "rowsRead": 0
+      },
+      "dispatcher.bookings": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.business-changes": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.calendars": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.carts": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.challenge-stalls": {
+        "statements": 1,
+        "rowsRead": 21
+      },
+      "dispatcher.challenge-versions": {
+        "statements": 1,
+        "rowsRead": 20
+      },
+      "dispatcher.commissions": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.content-moderation": {
+        "statements": 4,
+        "rowsRead": 8442
+      },
+      "dispatcher.data-jobs": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.deliveries": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.docs-guide-idle": {
+        "statements": 2,
+        "rowsRead": 20
+      },
+      "dispatcher.docs-index": {
+        "statements": 2,
+        "rowsRead": 21
+      },
+      "dispatcher.domain-watch": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.draft-expiry": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.ebay": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.edit-expiry": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.einvoices": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.embeddings": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.experiments": {
+        "statements": 3,
+        "rowsRead": 0
+      },
+      "dispatcher.fiken": {
+        "statements": 81,
+        "rowsRead": 232
+      },
+      "dispatcher.follow-ups": {
+        "statements": 2,
+        "rowsRead": 1
+      },
+      "dispatcher.fonts": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.house-customers": {
+        "statements": 14,
+        "rowsRead": 1418
+      },
+      "dispatcher.instagram": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.invoices": {
+        "statements": 6,
+        "rowsRead": 0
+      },
+      "dispatcher.knowledge": {
+        "statements": 161,
+        "rowsRead": 39700
+      },
+      "dispatcher.ledger": {
+        "statements": 52,
+        "rowsRead": 220
+      },
+      "dispatcher.legal-sources": {
+        "statements": 6,
+        "rowsRead": 21
+      },
+      "dispatcher.legal-upkeep": {
+        "statements": 2,
+        "rowsRead": 1
+      },
+      "dispatcher.legal-writes": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.life-handoffs": {
+        "statements": 6,
+        "rowsRead": 1
+      },
+      "dispatcher.live-drills": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.low-stock": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.media": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.payments": {
+        "statements": 7,
+        "rowsRead": 0
+      },
+      "dispatcher.pipedrive": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.plans": {
+        "statements": 3,
+        "rowsRead": 0
+      },
+      "dispatcher.platform-books": {
+        "statements": 1,
+        "rowsRead": 2
+      },
+      "dispatcher.platform-briefing": {
+        "statements": 1,
+        "rowsRead": 1
+      },
+      "dispatcher.recurring": {
+        "statements": 41,
+        "rowsRead": 842
+      },
+      "dispatcher.report-emails": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.returns": {
+        "statements": 4,
+        "rowsRead": 0
+      },
+      "dispatcher.sandboxes": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.schedules": {
+        "statements": 4,
+        "rowsRead": 0
+      },
+      "dispatcher.seal-recordings": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.secret-rotation": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.shop-moves": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.sms": {
+        "statements": 4,
+        "rowsRead": 0
+      },
+      "dispatcher.status": {
+        "statements": 7,
+        "rowsRead": 146
+      },
+      "dispatcher.store-copies": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.stripe-webhooks": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.summaries": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.supplier-orders": {
+        "statements": 4,
+        "rowsRead": 22
+      },
+      "dispatcher.support-actions": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.support-idle": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.support-summaries": {
+        "statements": 1,
+        "rowsRead": 0
+      },
+      "dispatcher.tracking": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.trials": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "dispatcher.tripletex": {
+        "statements": 81,
+        "rowsRead": 232
+      },
+      "dispatcher.ui-translations": {
+        "statements": 1,
+        "rowsRead": 1
+      },
+      "dispatcher.vat-labels": {
+        "statements": 1,
+        "rowsRead": 29
+      },
+      "dispatcher.widget-sites": {
+        "statements": 2,
+        "rowsRead": 0
+      },
+      "frame.platform": {
+        "statements": 17,
+        "rowsRead": 329
+      },
+      "frame.store": {
+        "statements": 5,
+        "rowsRead": 444
+      },
+      "route.autopilot": {
+        "statements": 26,
+        "rowsRead": 33
+      },
+      "route.broadcasts": {
+        "statements": 116,
+        "rowsRead": 7229
+      },
+      "route.cookie-scan": {
+        "statements": 14,
+        "rowsRead": 810
+      },
+      "route.dream-factory": {
+        "statements": 4,
+        "rowsRead": 3
+      },
+      "route.integrations": {
+        "statements": 13,
+        "rowsRead": 2
+      },
+      "route.pack-pictures": {
+        "statements": 3,
+        "rowsRead": 1
+      },
+      "route.page-jobs": {
+        "statements": 3,
+        "rowsRead": 1
+      },
+      "route.page-looks": {
+        "statements": 2,
+        "rowsRead": 1
+      },
+      "route.subscription-reminders": {
+        "statements": 314,
+        "rowsRead": 5565
+      },
+      "route.theme-shots": {
+        "statements": 9,
+        "rowsRead": 1
+      },
+      "route.usage": {
+        "statements": 22,
+        "rowsRead": 223
+      }
+    },
+    "growth": {
+      "dispatcher.activities": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.ad-spend": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.affiliates": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.agent-purchases": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.ai-picture-marks": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.alt-texts": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.analytics-alerts": {
+        "statements": 0,
+        "rowsRead": 980
+      },
+      "dispatcher.approval-expiry": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.assistant-approvals": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.auto-archive": {
+        "statements": 20,
+        "rowsRead": 526
+      },
+      "dispatcher.autopilot-budgets": {
+        "statements": 20,
+        "rowsRead": 1326
+      },
+      "dispatcher.autopilot-effects": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.autopilot-reports": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.autopilot-tests": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.autopilot-watch": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.bonus": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.bookings": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.business-changes": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.calendars": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.carts": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.challenge-stalls": {
+        "statements": 0,
+        "rowsRead": 21
+      },
+      "dispatcher.challenge-versions": {
+        "statements": 0,
+        "rowsRead": 20
+      },
+      "dispatcher.commissions": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.content-moderation": {
+        "statements": 0,
+        "rowsRead": 8129
+      },
+      "dispatcher.data-jobs": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.deliveries": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.docs-guide-idle": {
+        "statements": 0,
+        "rowsRead": 20
+      },
+      "dispatcher.docs-index": {
+        "statements": 0,
+        "rowsRead": 20
+      },
+      "dispatcher.domain-watch": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.draft-expiry": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.ebay": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.edit-expiry": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.einvoices": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.embeddings": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.experiments": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.fiken": {
+        "statements": 80,
+        "rowsRead": 232
+      },
+      "dispatcher.follow-ups": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.fonts": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.house-customers": {
+        "statements": 2,
+        "rowsRead": 1416
+      },
+      "dispatcher.instagram": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.invoices": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.knowledge": {
+        "statements": 160,
+        "rowsRead": 39700
+      },
+      "dispatcher.ledger": {
+        "statements": 50,
+        "rowsRead": 220
+      },
+      "dispatcher.legal-sources": {
+        "statements": 0,
+        "rowsRead": 12
+      },
+      "dispatcher.legal-upkeep": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.legal-writes": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.life-handoffs": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.live-drills": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.low-stock": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.media": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.payments": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.pipedrive": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.plans": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.platform-books": {
+        "statements": 0,
+        "rowsRead": -1
+      },
+      "dispatcher.platform-briefing": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.recurring": {
+        "statements": 40,
+        "rowsRead": 840
+      },
+      "dispatcher.report-emails": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.returns": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.sandboxes": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.schedules": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.seal-recordings": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.secret-rotation": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.shop-moves": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.sms": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.status": {
+        "statements": 0,
+        "rowsRead": 136
+      },
+      "dispatcher.store-copies": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.stripe-webhooks": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.summaries": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.supplier-orders": {
+        "statements": 0,
+        "rowsRead": 19
+      },
+      "dispatcher.support-actions": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.support-idle": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.support-summaries": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.tracking": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.trials": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.tripletex": {
+        "statements": 80,
+        "rowsRead": 232
+      },
+      "dispatcher.ui-translations": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.vat-labels": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "dispatcher.widget-sites": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "frame.platform": {
+        "statements": 0,
+        "rowsRead": 282
+      },
+      "frame.store": {
+        "statements": 0,
+        "rowsRead": 390
+      },
+      "route.autopilot": {
+        "statements": 0,
+        "rowsRead": -9
+      },
+      "route.broadcasts": {
+        "statements": 100,
+        "rowsRead": 7225
+      },
+      "route.cookie-scan": {
+        "statements": 0,
+        "rowsRead": 746
+      },
+      "route.dream-factory": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "route.integrations": {
+        "statements": 0,
+        "rowsRead": 1
+      },
+      "route.pack-pictures": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "route.page-jobs": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "route.page-looks": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "route.subscription-reminders": {
+        "statements": 140,
+        "rowsRead": 2821
+      },
+      "route.theme-shots": {
+        "statements": 0,
+        "rowsRead": 0
+      },
+      "route.usage": {
+        "statements": 0,
+        "rowsRead": 210
+      }
     }
   }
 }

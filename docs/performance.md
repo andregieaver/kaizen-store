@@ -365,6 +365,25 @@ A change that adds a read to the shell or to a home screen raises its number in 
 counts); one that removes a read lowers it. Waves are not held: they move with how many of the pool's five connections are free.
 To count anything else, wrap it in `countStatements()`. Production's figure is the `admin.render` log line: `statements` and `ms`, nothing else.
 
+### Scheduled work (bloat review step 1.10)
+
+`src/server/query-budget.int.test.ts` runs each of the dispatcher's 78 jobs idle, the nine minute routes, the two daily routes and two
+cold frames, on the freshly seeded database (the demo store and Kaizena Flow's) and again with 20 stores of 200 products and 30 pages
+that have every per-store feature a job looks at switched on, and holds statements and rows read in the key `queryBudget` of
+`src/server/ratchet.baseline.json` (17 November 2026, local Postgres 16):
+
+| | Statements, 1 store | Rows read, 1 store | Statements, 20 stores | Rows read, 20 stores |
+|---|---|---|---|---|
+| The idle tick (78 jobs, one by one) | 143 | 387 | 595 | 54,235 |
+| The minute and daily routes (11) | 286 | 2,875 | 526 | 13,869 |
+| A store's cold frame (the demo store) | 5 | 54 | 5 | 444 |
+| Kaizena Flow's cold frame | 17 | 47 | 17 | 329 |
+
+What 20 stores add is held too (growth, which only falls; 0 once a job reads every store's work in one statement): one statement or more
+per store in auto-archive (+20), the autopilot's budget alerts (+20), Tripletex and Fiken (+80 each, ten stores each), the knowledge base
+(+160), the ledger (+50), repeating Work invoices (+40), the broadcasts route (+100) and the daily route (+140). The frames send no more
+statements with 20 stores, but read more rows.
+
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
 The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the
