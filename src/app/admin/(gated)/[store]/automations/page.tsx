@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AutomationSwitch } from "@/components/admin/automation-editor";
-import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, CARD_CLASS, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -72,7 +72,42 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
         resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
       />
       <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* On a phone (round 40, D735) each automation is a row of one card: its name, on or off and when it goes, and its one press. */}
+      <ul className={`flex flex-col divide-y divide-line px-4 sm:hidden ${CARD_CLASS}`}>
+        {LIFECYCLE_KINDS.map((kind) => {
+          const a = automations[kind];
+          const first = kind === startKind;
+          return (
+            <li key={kind} className="flex min-h-16 items-center gap-3 py-2.5">
+              <AdminLink href={`${base}/${kind}`} className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-body text-ink">{wa.kinds[kind].title}</span>
+                <span className="text-caption text-ink-2">
+                  {a.enabled ? w.common.on : w.common.off} · {automationDays(kind, a.delayDays ?? 0, wa)}
+                </span>
+              </AdminLink>
+              {mayWrite && a.saved ? (
+                <AutomationSwitch storeSlug={store.slug} kind={kind} on={a.enabled} toggle={switchAutomationAction} />
+              ) : (
+                <ButtonLink href={`${base}/${kind}`} kind={first ? "main" : "quiet"} size="dense" className="shrink-0">
+                  {a.saved ? wa.edit : wa.setUp}
+                </ButtonLink>
+              )}
+            </li>
+          );
+        })}
+        <li className="flex min-h-16 items-center gap-3 py-2.5">
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-body text-ink">{wa.backInStock.title}</span>
+            <span className="text-caption text-ink-2">
+              {!shop
+                ? wa.needsShop
+                : `${stock.enabled ? w.common.on : w.common.off} · ${stats.waiting === 0 ? wa.nobodyWaiting : countWords(stats.waiting, wa.waiting, { n: n(stats.waiting) })}`}
+            </span>
+          </span>
+          {shop && mayWrite && <AutomationSwitch storeSlug={store.slug} kind="back_in_stock" on={stock.enabled} toggle={switchAutomationAction} quiet={startKind !== null} />}
+        </li>
+      </ul>
+      <div className="grid gap-4 lg:grid-cols-2 max-sm:hidden">
         {LIFECYCLE_KINDS.map((kind) => {
           const a = automations[kind];
           const words = wa.kinds[kind];

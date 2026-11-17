@@ -13,7 +13,7 @@ import { listNotifications } from "@/server/notifications";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStoreDomains } from "@/server/domains";
 import { listPickupPlaces } from "@/server/pickup";
-import { getSendingDomain } from "@/server/sending-domains";
+import { getSendingDomain, sendingDomainView } from "@/server/sending-domains";
 
 import { sendingDomainAction, switchNotificationAction } from "./actions";
 
@@ -57,7 +57,7 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
         }
       />
       <SendingDomainCard
-        domain={sending && { domain: sending.domain, fromLocal: sending.fromLocal, from: sending.from, status: sending.status, records: sending.records, recordsWritten: sending.recordsWritten, checkedAt: sending.checkedAt }}
+        domain={sending && sendingDomainView(sending)}
         suggested={ownDomain ? apexOf(ownDomain) : null}
         words={words.sendingDomain}
         action={canWrite ? sendingDomainAction.bind(null, store.slug) : null}

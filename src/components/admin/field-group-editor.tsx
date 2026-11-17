@@ -20,7 +20,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 import {
   EMPTY_DATA,
@@ -120,6 +121,7 @@ export function FieldGroupEditor({
 }) {
   const fw = useAdminText("fields");
   const w = fw.group;
+  const p = w.phone;
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(initial as Draft);
   const [dirty, setDirty] = useState(false);
@@ -265,8 +267,9 @@ export function FieldGroupEditor({
           {announcement}
         </p>
 
-        <section aria-labelledby="group-heading" className={card}>
-          <h2 id="group-heading" className="text-title text-ink">
+        {/* On a phone (round 40, D735) the name stays open and the rest of the group is rows: used on, where it applies, web name. */}
+        <section aria-labelledby="group-heading" className={`${card} max-sm:gap-0`}>
+          <h2 id="group-heading" className="text-title text-ink max-sm:sr-only">
             {w.theGroup}
           </h2>
           <label className={label}>
@@ -286,8 +289,10 @@ export function FieldGroupEditor({
               {w.nameHint}
             </span>
           </label>
+          <div className="flex flex-col gap-4 max-sm:mt-3 max-sm:gap-0 max-sm:border-t max-sm:border-line">
+          <PhoneRow inset title={w.webName} sub={slugFollows || !draft.slug ? p.fromName : draft.slug} change={p.change} done={p.done}>
           <label className={label}>
-            {w.webName}
+            <span className="max-sm:sr-only">{w.webName}</span>
             <input
               value={draft.slug}
               onChange={(event) => {
@@ -303,6 +308,16 @@ export function FieldGroupEditor({
               {w.webNameHint}
             </span>
           </label>
+          </PhoneRow>
+          <PhoneRow
+            inset
+            last
+            title={w.usedOn}
+            sub={`${draft.entities.map((e) => fw.entities[e]).join(", ")} · ${fw.positions[draft.position].toLocaleLowerCase()} · ${draft.active ? p.on : p.off}`}
+            change={p.change}
+            done={p.done}
+          >
+          <div className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-1">
             <legend className="mb-1 text-sm font-medium">{w.usedOn}</legend>
             {FIELD_ENTITY_KEYS.filter((entity) => entity !== "deal" || salesOn || draft.entities.includes(entity)).map((entity) => (
@@ -349,10 +364,15 @@ export function FieldGroupEditor({
               <span className={`block ${hint}`}>{w.switchedOnHint}</span>
             </span>
           </label>
+          </div>
+          </PhoneRow>
+          </div>
         </section>
 
+        <PhoneRows>
+        <PhoneRow flat last title={w.where} sub={draft.location.length === 0 ? p.everywhere : countWords(draft.location.length, p.rules)} change={p.change} done={p.done}>
         <section aria-labelledby="where-heading" className={card}>
-          <h2 id="where-heading" className="text-title text-ink">
+          <h2 id="where-heading" className="text-title text-ink max-sm:sr-only">
             {w.where}
           </h2>
           <LocationBuilder
@@ -363,6 +383,8 @@ export function FieldGroupEditor({
             onChange={(location) => change((g) => ({ ...g, location }))}
           />
         </section>
+        </PhoneRow>
+        </PhoneRows>
 
         <section aria-labelledby="fields-heading" className={card}>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -392,7 +414,7 @@ export function FieldGroupEditor({
               onRemove={removeField}
             />
           )}
-          <p className={hint}>{w.orderHint}</p>
+          <p className={`${hint} ${fields.length === 0 ? "max-sm:hidden" : ""}`}>{w.orderHint}</p>
         </section>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -414,6 +436,8 @@ export function FieldGroupEditor({
       </form>
 
       <aside aria-labelledby="preview-heading" className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+        <PhoneRows>
+        <PhoneRow flat last title={w.preview} sub={p.previewSub} change={p.open} done={p.close}>
         <div className={card}>
           <div>
             <h2 id="preview-heading" className="text-title text-ink">
@@ -441,6 +465,8 @@ export function FieldGroupEditor({
             languageName={languageName}
           />
         </div>
+        </PhoneRow>
+        </PhoneRows>
       </aside>
 
       <FieldTypePicker open={picking} onClose={() => setPicking(false)} onPick={addField} />

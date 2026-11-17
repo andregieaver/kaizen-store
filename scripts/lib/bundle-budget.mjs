@@ -93,7 +93,7 @@ export function problems(now, baseline) {
       list.push(`${route}: new route at ${bytes} bytes; run node scripts/bundle-budget.mjs --write to add it`);
     } else if (bytes > old + ROOM) {
       list.push(
-        `${route}: ${bytes} bytes, baseline ${old} (+${bytes - old}). Find the import that grew it (node docs/audits/bloat-review-2026-11/scripts/markers.mjs and docs/performance.md say how); a budget is not raised to pass.`,
+        `${route}: ${bytes} bytes, baseline ${old} (+${bytes - old}). Find the import that grew it (node docs/audits/bloat-review-2026-11/scripts/markers.mjs and docs/performance.md say how); if the page needs it, take it on purpose with node scripts/bundle-budget.mjs --write --accept after pnpm build, so the growth shows in the baseline's diff.`,
       );
     }
   }

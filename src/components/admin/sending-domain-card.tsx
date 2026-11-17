@@ -2,7 +2,7 @@
 
 import { fillWords } from "@/lib/admin-fill";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
-import { hostForForm, type SendingRecord, type SendingStatus } from "@/lib/sending-domains";
+import type { SendingStatus } from "@/lib/sending-domains";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 import { Card } from "./ui";
@@ -13,7 +13,8 @@ export type SendingDomainView = {
   fromLocal: string;
   from: string;
   status: SendingStatus;
-  records: SendingRecord[];
+  /** Each record as a DNS provider's form asks for it, its name worked out on the server (`sendingDomainView()`), so this card loads no DNS code. */
+  records: { type: string; name: string; value: string; priority?: number; seen: boolean }[];
   recordsWritten: boolean;
   checkedAt: string | null;
 };
@@ -85,14 +86,14 @@ export function SendingDomainCard({
             {/* On a phone each record is a block of its own, so a long value wraps on the card's width rather than a column's. */}
             <ul className="flex flex-col gap-2 sm:hidden" aria-label={w.records}>
               {domain.records.map((r) => (
-                <li key={`${r.type}-${r.host}-${r.value}`} className="flex flex-col gap-1 rounded-md border border-line p-3 text-sm">
+                <li key={`${r.type}-${r.name}-${r.value}`} className="flex flex-col gap-1 rounded-md border border-line p-3 text-sm">
                   <span className="flex flex-wrap justify-between gap-2">
                     <span>
-                      {r.type} <span className="font-mono text-xs select-all">{hostForForm(r.host, domain.domain)}</span>
+                      {r.type} <span className="font-mono text-xs select-all">{r.name}</span>
                       {r.priority !== undefined && ` · ${w.columns.priority} ${r.priority}`}
                     </span>
                     <span className="text-muted">
-                      {w.columns.seen}: {r.status === "verified" ? w.seen : w.notSeen}
+                      {w.columns.seen}: {r.seen ? w.seen : w.notSeen}
                     </span>
                   </span>
                   <span className="font-mono text-xs break-all select-all">{r.value}</span>
@@ -113,12 +114,12 @@ export function SendingDomainCard({
                 </thead>
                 <tbody>
                   {domain.records.map((r) => (
-                    <tr key={`${r.type}-${r.host}-${r.value}`} className="border-t border-line align-top">
+                    <tr key={`${r.type}-${r.name}-${r.value}`} className="border-t border-line align-top">
                       <td className="px-3 py-2">{r.type}</td>
-                      <td className="px-3 py-2 font-mono text-xs break-all select-all">{hostForForm(r.host, domain.domain)}</td>
+                      <td className="px-3 py-2 font-mono text-xs break-all select-all">{r.name}</td>
                       <td className="max-w-80 px-3 py-2 font-mono text-xs break-all select-all">{r.value}</td>
                       <td className="px-3 py-2">{r.priority ?? ""}</td>
-                      <td className="px-3 py-2">{r.status === "verified" ? w.seen : w.notSeen}</td>
+                      <td className="px-3 py-2">{r.seen ? w.seen : w.notSeen}</td>
                     </tr>
                   ))}
                 </tbody>

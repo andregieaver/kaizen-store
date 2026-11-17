@@ -490,6 +490,12 @@ export const websiteEn = {
     newMenu: "New menu",
     or: "or",
     createNew: "create a new menu",
+    phone: {
+      addTitle: "Add links",
+      addSub: "Pages, products, categories, a link of your own",
+      add: "Add",
+      done: "Done",
+    },
     structure: "Menu structure",
     name: "Menu name",
     saving: "Saving …",
@@ -562,6 +568,7 @@ export const websiteEn = {
     title: "Menus",
     description:
       "Lists of links to use around {store}: in the standard header and footer (chosen under Header and footer), and with a Menu component in any page, header or footer. A link to a page, article, category or tag shows once it is published, and follows it to a new address.",
+    lead: "Lists of links for the header, the footer and pages.",
     kinds: {
       home: "Front page",
       products: "All products",
