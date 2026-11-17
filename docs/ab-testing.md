@@ -1,7 +1,11 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 16, 19 and 20 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is next") (20: going on to a page, forms elsewhere, new or returning visitors and preview links to share, D715) (19: the guardrails as designed, and a sign-up goal for Kaizena Flow's store, D712) (16: the original and a version side by side, D684) (15: the list, ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it taught, D662)
+its place. Status: **phases 1 to 16, 19 and 20 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is
+next") (20: going on to a page, forms elsewhere, new or returning visitors and preview links to share, D715) (19: the guardrails
+as designed, and a sign-up goal for Kaizena Flow's store, D712) (16: the original and a version side by side, D684) (15: the list,
+ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it
+taught, D662)
 (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659,
 [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9:
 modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and
@@ -620,6 +624,24 @@ Migration `20261117121405_sticky_gateway` (the goal `page` added to the two goal
   (`experiments.int.test.ts`); in the browser, a visitor going on to the page and a form on another page counted in version B, and a preview link
   showing B, `noindex`, with nothing counted (`e2e/ab-phase-20.spec.ts`), and the owner making a page-goal test for new visitors and a preview
   link (`e2e/signed-in/ab-phase-20.spec.ts`).
+
+## Rules of phases 19 and 20
+
+For anyone changing the A/B code (moved here from `docs/rules/admin/marketing.md`, whose rule points here):
+
+- The guardrails (`src/lib/experiment-guardrails.ts` pure, `guardrailCounts()` in `src/server/experiment-results.ts`) are decided only by
+  `checkGuardrail()` and `guardrailStop()`: orders, speed (`speed_samples.ab`, tagged only through `verifiedTags()`, only while the store counts
+  visits) and failed payments at checkout stop a test, with the kind kept in `experiments.stop_guardrail`; refunds and returns are said, never a
+  stop. A new guardrail is a rule in `GUARDRAIL_RULES`, a count there, its words on the page, in the email and in `explain_results`, and a test of
+  its own kind of trouble.
+- The goal `signup` is Kaizena Flow's own store's alone (`HOUSE_GOALS`, refused elsewhere by `createExperiment()` and `updateDraft()`), counted
+  by `recordSignup()` from the sign-up form. The AI manager's tools offer `TOOL_GOALS`, never `GOALS`, so a goal no store's owner can choose does
+  not change their schema.
+- The goal `page` keeps its page in `goal_params.page`, one of `goalDestinations()`, and is counted only by `recordPageGoal()` from `AbPageGoal`,
+  drawn by `PageGoal` on a page a running test names (a new kind of page a visitor can go on to draws it too). A form goal may name a form
+  elsewhere (`siteForms()`), a click goal never. A draft's changes go through `goalParamsOf()`, so they keep the goal's choice.
+- A preview link (`src/lib/ab-preview.ts`) is made only by `previewLink()` and read only by `readPreviewCookie()`; while a browser holds a good
+  one for a store, `readAssignments()` is null, so a new recorder reads the visitor through it and never the cookie directly.
 
 ## What is next: phases 17 to 23 (plan, 17 November 2026)
 

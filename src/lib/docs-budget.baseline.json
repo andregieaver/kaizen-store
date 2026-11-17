@@ -134,7 +134,7 @@
     "docs/rules/admin/integrations.md#Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)": 5606,
     "docs/rules/admin/integrations.md#Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, D519 and D521, `docs/assistants-together.md`)": 8553,
     "docs/rules/admin/integrations.md#Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)": 5317,
-    "docs/rules/admin/marketing.md#A/B tests of pages (D148, `docs/ab-testing.md`, `src/lib/experiments.ts`, `src/server/experiments.ts`, `experiment-admin.ts`,…": 9828,
+    "docs/rules/admin/marketing.md#A/B tests of pages (D148, `docs/ab-testing.md`, `src/lib/experiments.ts`, `src/server/experiments.ts`, `experiment-admin.ts`,…": 9057,
     "docs/rules/admin/platform.md#The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)": 6174,
     "docs/rules/admin/platform.md#Store features (D178, `docs/store-features.md`, `src/lib/store-features.ts`, `src/server/store-features.ts`, `/admin/{store}/settings/features`)": 7025,
     "docs/rules/admin/website.md#Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)": 11321,
