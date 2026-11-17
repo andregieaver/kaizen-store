@@ -241,3 +241,11 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Running: 1.9 (kaizen-store, commits 2–3 adapting), 1.2 (kz-b, allowed-absent markers), 1.4 then 1.17 (kz-c).
 - Next.js 16.4.3 has GHSA-mfr8-8qww-v76h (moderate): upgrade to 16.4.6 after 1.2's build (check patches/next.patch applies; e2e/store-pages.spec.ts).
 - Next steps: 1.5, 1.8, 1.18, 1.23, 1.3 (then 1.6, 1.7, 1.14), 1.10–1.13, 1.16, 1.19, 1.20, 1.21, 1.25, 1.26.
+
+## 17 Nov 21:55 UTC
+- Phase 1 Done: 1.1 (D719) 1.2 (D733) 1.4 (D726) 1.9 (D736) 1.13 (D744) 1.15 (D722) 1.24 (D723) 1.25 (D745) 1.27 (D716) 1.28 (D717). Next.js 16.4.6 (D734).
+- 1.22 pushed, waits CRON_SECRET in Vercel (owner).
+- Bundle budget room = max(15,000, 5%); taken growths: /admin/platform/emails (7cdef388), /admin/[store]/settings/notifications (ac7399da).
+- cache events: build prerenders no longer counted (e6dd7843); today's cache_events_daily row inflated (~2,000 build draws), not deleted.
+- Running: 1.10→1.12 (Opus, kz-c), 1.11 (Sonnet, kz-b).
+- Owner open: CRON_SECRET; 68 unread admin texts; growth policy; invoices drill; >1600px upload; unwired.md; VAT twice.
