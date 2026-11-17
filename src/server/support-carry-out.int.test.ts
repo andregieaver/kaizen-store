@@ -27,6 +27,7 @@ vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublish
 const { closeDb, db } = await import("@/db/client");
 const carry = await import("./support-carry-out");
 const { memberDesk } = await import("./support-desk");
+const { decideRequest } = await import("./support-actions");
 const { newStore } = await import("./inventory-test-support");
 
 type Row = Record<string, unknown>;
@@ -205,5 +206,17 @@ describe("carrying a request out from the conversation (E2.7)", () => {
     const decided = await db().execute<Row>(sql`select id from commerce.support_actions where conversation_id = ${conversation}::uuid and status = 'done'`);
     expect(decided.length).toBeGreaterThan(0);
     for (const d of decided) expect(open.map((r) => r.id)).not.toContain(String(d.id));
+  });
+
+  it("keeps a person's own Done or Decline waiting while someone carries the request out", async () => {
+    const id = await request("exception", { order: "1", reason: "Wants a gift note" });
+    // Someone's carry-out holds the request (the claim it takes before money moves).
+    await db().execute(sql`update commerce.support_actions set result = jsonb_build_object('carryingOut', now()) where id = ${id}::uuid`);
+    const byHand = await decideRequest(memberDesk(store.member), id, "declined", null, { byHand: true });
+    expect(byHand).toMatchObject({ ok: false, problem: expect.stringContaining("being carried out") });
+    expect(await statusOf(id)).toBe("proposed");
+    // The carry-out's own decision is not held back by its claim.
+    expect(await decideRequest(memberDesk(store.member), id, "done", null)).toMatchObject({ ok: true });
+    expect(await statusOf(id)).toBe("done");
   });
 });

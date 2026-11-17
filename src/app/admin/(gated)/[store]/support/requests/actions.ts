@@ -34,6 +34,7 @@ export async function decideRequestAction(
     actionId,
     decision,
     typeof note === "string" ? note : null,
+    { byHand: true },
   );
   if (!result.ok) return { status: "error", messages: [result.problem] };
   after(() => sendRequestDecisionEmail(result.conversationId, actionId));

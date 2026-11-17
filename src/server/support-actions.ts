@@ -464,7 +464,14 @@ export type DecideResult = { ok: true; conversationId: string } | { ok: false; p
  * A line in the conversation tells the customer (`request_done` or `request_declined`), and an email when they are away
  * (`sendRequestDecisionEmail()`, the caller's `after()`); the activity log has it (`support.request_decided`). Decided once.
  */
-export async function decideRequest(staff: StaffDesk, actionId: string, decision: "done" | "declined", rawNote: string | null): Promise<DecideResult> {
+export async function decideRequest(
+  staff: StaffDesk,
+  actionId: string,
+  decision: "done" | "declined",
+  rawNote: string | null,
+  /** A person's own Done or Decline waits while someone carries the request out (ecosystem plan E2.7, D713): it holds a claim for two minutes. */
+  { byHand = false }: { byHand?: boolean } = {},
+): Promise<DecideResult> {
   if (!staff.canWrite) return { ok: false, problem: "You can read this desk's requests but not decide them." };
   const note = rawNote?.trim().slice(0, REQUEST_NOTE_MAX) || null;
   const desk = staff.desk;
@@ -473,9 +480,15 @@ export async function decideRequest(staff: StaffDesk, actionId: string, decision
       result = ${JSON.stringify(note ? { note } : {})}::jsonb
     where id = ${actionId}::uuid and confirmer = 'staff' and status = 'proposed'
       and ${desk.storeId ? sql`store_id = ${desk.storeId}::uuid` : sql`store_id is null`}
+      and (${!byHand} or result ->> 'carryingOut' is null or (result ->> 'carryingOut')::timestamptz < now() - interval '120 seconds')
     returning conversation_id, kind, summary
   `);
-  if (!row) return { ok: false, problem: "This request was already decided, or is not this desk's." };
+  if (!row) {
+    return {
+      ok: false,
+      problem: byHand ? "This request was already decided, is being carried out by someone right now, or is not this desk's." : "This request was already decided, or is not this desk's.",
+    };
+  }
   const conversationId = String(row.conversation_id);
   try {
     await addMessage(desk, conversationId, "system", staff.account.id, "", { kind: decision === "done" ? "request_done" : "request_declined", data: { actionId, summary: String(row.summary), ...(note ? { note } : {}) } });
