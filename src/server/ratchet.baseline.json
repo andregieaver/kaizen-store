@@ -1664,5 +1664,29 @@
         "rowsRead": 210
       }
     }
+  },
+  "orderWrites": {
+    "order": {
+      "statements": 46,
+      "rowsInserted": 9,
+      "rowsUpdated": 1,
+      "tables": [
+        "document_series",
+        "events",
+        "inventory_reservations",
+        "order_events",
+        "order_lines",
+        "orders"
+      ]
+    },
+    "visit": {
+      "statements": 5,
+      "rowsInserted": 3,
+      "rowsUpdated": 0,
+      "tables": [
+        "chat_usage",
+        "visits"
+      ]
+    }
   }
 }

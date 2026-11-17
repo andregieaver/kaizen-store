@@ -386,6 +386,43 @@ statements with 20 stores, but read more rows. Two rows-read figures are written
 follows the database's own clock (29 rows, 257 in the minutes around a country's midnight), and the broadcasts route's with 20 stores,
 which moves by a few rows between runs; their statements are held.
 
+## What one order writes (bloat review step 1.12)
+
+`src/server/order-writes.int.test.ts` places one guest order of three lines in a store with only the shop on, and counts one visit, and
+holds what they send and write in the key `orderWrites` of `src/server/ratchet.baseline.json` (17 November 2026):
+
+| | Statements | Rows inserted | Rows updated | Tables written |
+|---|---|---|---|---|
+| One guest order of three lines (`placeOrder()`) | 46 | 9 | 1 | document_series, events, inventory_reservations, order_events, order_lines, orders |
+| One counted visit (`recordVisit()`) | 5 | 3 | 0 | chat_usage, visits |
+
+A trigger that writes a row, or a write to a table not in the list, fails the test with the table's name. The time each trigger of
+`commerce.orders` took on one insert of an order row (one run, `explain (analyze, buffers)` inside a transaction rolled back, on a local
+seeded database; written once, not held):
+
+| Trigger | Time (ms) | Calls |
+|---|---|---|
+| integration_order_events | 3.211 | 1 |
+| orders_store_open | 1.069 | 1 |
+| orders_ad_consent | 0.815 | 1 |
+| constraint orders_market_fk | 0.431 | 1 |
+| constraint orders_held_by_accounts_id_fk | 0.353 | 1 |
+| orders_exchange_rules | 0.277 | 1 |
+| constraint orders_cart_fk | 0.264 | 1 |
+| orders_delivered_source | 0.169 | 1 |
+| constraint orders_customer_fk | 0.169 | 1 |
+| store_event_order_paid | 0.129 | 1 |
+| constraint orders_discount_code_fk | 0.105 | 1 |
+| constraint orders_vat_check_fk | 0.075 | 1 |
+| constraint orders_host_fk | 0.074 | 1 |
+| constraint orders_subscription_fk | 0.069 | 1 |
+| orders_copied_is_history | 0.043 | 1 |
+| constraint orders_replaces_fk | 0.010 | 1 |
+| constraint orders_exchange_fk | 0.007 | 1 |
+| constraint orders_made_by_accounts_id_fk | 0.004 | 1 |
+
+The insert took 9.2 ms in all, of which the triggers 7.3 ms.
+
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
 The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the
