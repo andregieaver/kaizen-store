@@ -66,7 +66,7 @@ behaviour joins pages, never people.
 | Id | Step | Size | Status |
 |---|---|---|---|
 | E4.1 | The autopilot tests its page changes as A/B tests where traffic allows | L | Open |
-| E4.2 | Frustration, slow-page and domain alerts; the autopilot driven by the event log instead of its own scans | M | Open |
+| E4.2 | Frustration, slow-page and domain alerts; the autopilot driven by the event log instead of its own scans | M | Done, 17 Nov 2026 (0fef317c) |
 | E4.3 | Questions the assistant could not answer feed its knowledge | M | Open |
 | E4.4 | A sending domain per store | M | Moved to M1.1 of `email-marketing-2026-11.md` (D720) |
 | E4.5 | Split tests of broadcasts and email automations | L | Moved to M2.5 of `email-marketing-2026-11.md` (D720) |
