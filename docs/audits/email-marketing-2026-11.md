@@ -86,7 +86,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 | M1.3 | Clicks kept per person (M0.1 b) | M | Open | One row per click (subscriber, message, link, time), kept 180 days, in the person's export and erased with them, said in the privacy notice. The counts per link stay. No open pixel: Apple Mail's privacy protection makes opens unreliable anyway |
 | M1.4 | Revenue per email by one rule | S | Open | The 7-day count of paid orders (`ORDER_AFTER_DAYS`, `src/lib/automations.ts`) moves to one pure function used by broadcasts, flows, texts and Analytics → Marketing; a broadcast's report shows its orders and revenue |
 | M1.5 | One contact policy across email and text (was E3.5) | M | Open | A cap per person per week across broadcasts, flows and texts, spacing, quiet hours in the reader's own time zone, priority (a cart reminder before a broadcast; order emails never counted); a skipped message is `suppressed` with its reason |
-| M1.6 | A guard on each store's sending | S | Done, 17 Nov 2026 (D730) | Bounce and complaint rates per store over 7 days; above the line (Google asks bulk senders to stay under 0.1 % spam reports) broadcasts pause and the owner is told why. It protects every store's mail until M1.1 |
+| M1.6 | A guard on each store's sending | S | Done, 17 Nov 2026 (2c315c24, D730) | Bounce and complaint rates per store over 7 days; above the line (Google asks bulk senders to stay under 0.1 % spam reports) broadcasts pause and the owner is told why. It protects every store's mail until M1.1 |
 
 ## Phase 2: one flow engine
 
