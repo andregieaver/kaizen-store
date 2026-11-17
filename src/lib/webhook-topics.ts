@@ -242,8 +242,10 @@ export const WEBHOOK_SUBJECTS = {
     id,
     name: z.string(),
     goal: z
-      .enum(["orders", "revenue", "cart", "checkout", "click", "form", "signup"])
-      .describe("What the test counts: paid orders, revenue per visitor, adding to the cart, reaching checkout, a click, a form sent or (Kaizena Flow's own store only) a sign-up to Kaizena Flow."),
+      .enum(["orders", "revenue", "cart", "checkout", "click", "form", "signup", "page"])
+      .describe(
+        "What the test counts: paid orders, revenue per visitor, adding to the cart, reaching checkout, a click, a form sent, going on to a chosen page or (Kaizena Flow's own store only) a sign-up to Kaizena Flow.",
+      ),
     target: z.object({
       kind: z.enum(["page", "layout", "header", "footer", "role"]).describe("A page, a product layout, the header, the footer, or a page with a place of its own (the front page, the cart, …)."),
       title: z.string(),

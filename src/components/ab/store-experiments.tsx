@@ -1,6 +1,6 @@
 import { runningExperimentIds } from "@/server/experiments";
 
-import { AbAssign } from "./ab-assign";
+import { AbAssign } from "../lazy/blocks";
 
 /**
  * Gives visitors their versions of a store's running A/B tests (D148), where there are any: nothing at all on a store

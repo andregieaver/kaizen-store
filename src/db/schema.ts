@@ -13513,7 +13513,7 @@ export const experiments = commerce.table(
     audience: jsonb("audience").notNull().default({}),
     /**
      * What counts as success: `orders`, `revenue`, `cart`, `checkout`, `click` or `form` (with the block in `goal_params`), or `signup` (a sign-up to
-     * Kaizena Flow, only on its own store, D148 phase 19).
+     * Kaizena Flow, only on its own store, D148 phase 19), or `page` (a chosen page opened after the version, its id in `goal_params.page`, phase 20).
      */
     primaryGoal: text("primary_goal").notNull(),
     goalParams: jsonb("goal_params").notNull().default({}),
@@ -13551,7 +13551,7 @@ export const experiments = commerce.table(
       sql`(${t.targetPart} is null and ${t.targetPartKind} is null) or (${t.targetPart} is not null and length(${t.targetPart}) between 1 and 64 and coalesce(${t.targetPartKind} in ('row', 'column', 'block'), false))`,
     ),
     check("experiments_scheduled", sql`${t.status} <> 'scheduled' or ${t.scheduledStart} is not null`),
-    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form', 'signup')`),
+    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form', 'signup', 'page')`),
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
     check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
@@ -13627,7 +13627,7 @@ export const experimentEvents = commerce.table(
     visitor: text("visitor").notNull(),
     variant: text("variant").notNull(),
     goal: text("goal").notNull(),
-    /** What was clicked (the block's id), empty for a cart or a checkout. */
+    /** What was clicked or sent (the block's id), the page opened for `page`, empty for a cart, a checkout or a sign-up. */
     ref: text("ref").notNull().default(""),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -13635,7 +13635,7 @@ export const experimentEvents = commerce.table(
     unique("experiment_events_once_key").on(t.experimentId, t.visitor, t.goal, t.ref),
     foreignKey({ name: "experiment_events_exposure_fk", columns: [t.experimentId, t.visitor], foreignColumns: [experimentExposures.experimentId, experimentExposures.visitor] }).onDelete("cascade"),
     index("experiment_events_store_idx").on(t.storeId, t.occurredAt),
-    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form', 'signup')`),
+    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form', 'signup', 'page')`),
     check("experiment_events_ref", sql`length(${t.ref}) <= 80`),
   ],
 );

@@ -140,7 +140,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations
   (`ADMIN_API`) and the storefront's routes (`STOREFRONT_ROUTES`) as OpenAPI 3.1 (`adminOpenApi()`, `storefrontOpenApi()`, `jsonSchemaOf()`
   over `z.toJSONSchema()`), the webhook topics (`WEBHOOK_TOPICS`, `webhookCatalogue()`, also the Admin API document's `webhooks`), the owner
-  MCP's tools (`MCP_TOOLS`, `mcpCatalogue()`) and the shopping agents' (`UCP_TOOLS`, `ucpCatalogue()`). They are served public, cached an
+  MCP's tools (`mcpTools()`, `mcpCatalogue()`) and the shopping agents' (`UCP_TOOLS`, `ucpCatalogue()`). They are served public, cached an
   hour and with no store's data at `/api/admin/v1/openapi.json`, `/api/storefront/v1/openapi.json`, `/api/webhooks/v1/topics.json`,
   `/api/mcp/catalogue.json` and `/api/ucp/catalogue.json`; never write a reference page or a list of routes, topics or tools by hand. A tool's
   title and MCP annotations are worked out beside it (`toolTitle()`, `toolAnnotations()`), never by changing its description or input (that

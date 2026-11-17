@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { parseAudience, type Audience } from "@/lib/experiments";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
+import { previewLink } from "@/server/ab-preview";
+import { audit } from "@/server/auth";
 import {
   addVariant,
   applyVariant,
@@ -40,6 +42,7 @@ const newExperiment = z.object({
   pageId: z.uuid(),
   goal: z.string().max(40),
   goalBlock: z.string().max(80).nullable().optional(),
+  goalPage: z.uuid().nullable().optional(),
   trafficShare: z.number().min(0.01).max(1).optional(),
   audience: z.unknown().optional(),
   minDays: z.number().int().min(1).max(90).optional(),
@@ -62,6 +65,7 @@ const draftChanges = z.object({
   hypothesis: z.string().max(1000).optional(),
   goal: z.string().max(40).optional(),
   goalBlock: z.string().max(80).nullable().optional(),
+  goalPage: z.uuid().nullable().optional(),
   trafficShare: z.number().min(0.01).max(1).optional(),
   audience: z.unknown().optional(),
   minDays: z.number().int().min(1).max(90).optional(),
@@ -209,4 +213,18 @@ export async function deleteDraftAction(storeSlug: string, id: string): Promise<
   const result = await deleteDraft(member.account, member.store.id, id);
   if (result.ok) refresh();
   return result;
+}
+
+/**
+ * A link that shows one version of a running test on the live site to whoever opens it (D148 phase 20, `src/server/ab-preview.ts`): never counted,
+ * never indexed, over when the test stops. Made for a member who may change the store's marketing, and audited (without the link).
+ */
+export async function previewLinkAction(storeSlug: string, id: string, version: string): Promise<Outcome<{ url: string }>> {
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
+  if (!isId(id) || !/^[b-d]$/.test(version)) return { ok: false, problems: ["Unknown test."] };
+  const url = await previewLink(member.store, id, version);
+  if (!url) return { ok: false, problems: ["A preview link is made while the test runs."] };
+  await audit(member.account.id, member.store.id, "experiment.preview_link", { experiment: id, version });
+  return { ok: true, url };
 }

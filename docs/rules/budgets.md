@@ -4,6 +4,33 @@ Numbers the repository holds, and the checks that hold them. A sentence about a 
 CLAUDE.md: CLAUDE.md is loaded by every session and is held at its size (below). Step 1.1 of the bloat review
 (docs/audits/bloat-review-2026-11.md) adds the table of every baseline file.
 
+## Every budget
+
+A number only falls. When a scan test fails it says which command to run.
+A number rises only where its row says so, with a decision.
+
+| Baseline file | Test that holds it | How to lower it | What it counts |
+|---|---|---|---|
+| src/server/ratchet.baseline.json | src/server/ratchet.scan.test.ts | node scripts/ratchet.mjs | unchecked reads, casts through unknown, switched-off any rules, writes by id without the store |
+| src/lib/admin-strings.baseline.json | src/lib/admin-strings.scan.test.ts | UPDATE_ADMIN_STRINGS=1 pnpm exec vitest run src/lib/admin-strings.scan.test.ts | English written into admin markup, per file |
+| src/lib/permissions.baseline.json | src/lib/permissions.scan.test.ts and src/lib/permissions.matrix.test.ts | never rewritten (the oracle from before roles; scripts/permission-baseline.mjs made it once) | what each admin entry point asked for before roles |
+| src/lib/docs-budget.baseline.json | src/lib/docs-budget.scan.test.ts | node scripts/docs-ratchet.mjs | the written rules (see The written rules below) |
+
+## The written rules
+
+`node scripts/docs-ratchet.mjs --check` and src/lib/docs-budget.scan.test.ts hold, against src/lib/docs-budget.baseline.json:
+
+- CLAUDE.md's bytes and lines, and the bytes loaded in every session (CLAUDE.md, its imports, unpathed .claude/rules files), are
+  reported; what is held is the part outside the Storefront and Admin index (above), since a new rule adds its index line.
+- No new import in CLAUDE.md, and no .claude/rules file without a paths list.
+- Lines over 500 characters: none in CLAUDE.md; counts that only fall in the rules, the decisions' prose and the living docs.
+- Table rows over 500 characters, per file, which only fall (not docs/decisions.md, whose rows the 4,000-byte rule holds).
+- A new rule or decision is at most 4,000 bytes; the old large ones are listed and may not grow.
+- A rule file's headings are at most 10,000 bytes together; a decision number stands once.
+- The ten never-sentences stay in CLAUDE.md; a tracker row is at most 300 characters; one line of CLAUDE.md names the plan.
+- A dated report or evidence folder under docs/audits has an ignore file that covers it.
+- `node scripts/docs-ratchet.mjs` lowers the baseline; no flag raises it.
+
 ## CLAUDE.md
 
 The bytes of CLAUDE.md outside its Storefront and Admin sections only fall: src/lib/docs-budget.scan.test.ts fails when they rise
@@ -40,7 +67,10 @@ entry gets an empty reason, which the test refuses until you write why it cannot
 
 src/components/admin/admin-words-handed.scan.test.ts holds every site that hands words to the browser (src/components/admin/admin-words-handed.baseline.json):
 bytes handed in English and Norwegian, bytes named by the client parts, areas nothing names. Rewrite it with
-`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`; the writer never raises a site's bytes.
+`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`. A site fails when it grows
+by more than 2,000 bytes or a tenth, or hands an area nothing under it reads; a new site passes unless it hands over 50 KB. The writer
+writes today's figures, so a rewrite is the deliberate step that accepts growth, shown in the baseline's diff; it never writes in a
+newly handed area that nothing reads.
 
 ## Searches
 

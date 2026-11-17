@@ -355,6 +355,9 @@ describe("A/B tests of pages (D148)", () => {
     // A sign-up to Kaizena Flow is a goal (phase 19; the code offers it only on Kaizena Flow's own store).
     await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'signups', $2, 'signup')", [t.store, t.target]);
     await db.query("delete from commerce.experiments where store_id = $1 and name = 'signups'", [t.store]);
+    // Going on to a chosen page is a goal (phase 20).
+    await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, goal_params) values ($1, 'onward', $2, 'page', $3::jsonb)", [t.store, t.target, JSON.stringify({ page: t.target })]);
+    await db.query("delete from commerce.experiments where store_id = $1 and name = 'onward'", [t.store]);
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, traffic_share) values ($1, 'x', $2, 'orders', 1.5)", [t.store, t.target])).rejects.toThrow(/experiments_traffic/);
     // Another store's page cannot be tested.
     const other = await made();

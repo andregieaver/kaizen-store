@@ -32,6 +32,7 @@ import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 import { DraftActions, DraftPanel, LearningCard, TestActions } from "./experiment-controls";
 import { ExperimentResultsView, GuardrailsSection, ReturnsLine, type BehaviourProps } from "./experiment-results-view";
+import { ExperimentShare } from "./experiment-share";
 import { ExperimentForm } from "./experiment-form";
 
 /** What a person reads before any script runs. */
@@ -48,6 +49,7 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
   status: "draft",
   goal: "orders",
   goalBlock: null,
+  goalPage: null,
   trafficShare: 1,
   audience: {},
   minDays: 14,
@@ -119,11 +121,21 @@ describe("making a test on one screen (D660)", () => {
     expect(house).toContain('data-goal="signup"');
     expect(house).toMatch(/data-goal="signup"><input type="radio" class="sr-only" name="goal" checked=""/);
     expect(house).not.toContain('data-goal="orders"');
-    expect(house).not.toContain("More goals");
+    expect(house).not.toContain("more people adding to the cart");
     expect(house).toContain("How long a test of sign-ups takes depends on how many of a page's visitors sign up today");
     const shop = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic }));
     expect(shop).not.toContain('data-goal="signup"');
     expect(shop).not.toContain("sign-ups to Kaizena Flow");
+  });
+
+  it("offers going on to a page among the more goals, and new or returning visitors under Customise (D148 phase 20)", () => {
+    const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic, destinations: [{ id: pages[1].id, title: "Front page" }] }));
+    expect(out).toContain("more people going on to a page");
+    expect(out).toMatch(/<select[^>]*data-returning[^>]*>/);
+    expect(out).toContain("New visitors only");
+    expect(out).toContain("Returning visitors only");
+    const house = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/kaizenaflow/experiments", traffic, house: true }));
+    expect(house).toContain("More goals: more people going on to a page");
   });
 
   it("says why there is no estimate, and asks for nothing before the main button", () => {
@@ -230,7 +242,7 @@ describe("what a started test found (D659)", () => {
   const rate = (key: string, visitors: number, conversions: number) => ({ key, name: key, visitors, conversions, money: null });
   const results = (figures: ReturnType<typeof rate>[], days: number) => {
     const verdict = verdictOf({ goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
-    const funnel = Object.fromEntries(figures.map((f) => [f.key, { visitors: f.visitors, carts: f.conversions, checkouts: Math.round(f.conversions / 2), buyers: 0, clicks: 0, forms: 0, signups: 0 }]));
+    const funnel = Object.fromEntries(figures.map((f) => [f.key, { visitors: f.visitors, carts: f.conversions, checkouts: Math.round(f.conversions / 2), buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 }]));
     const daily = Array.from({ length: days }, (_, i) => ({
       day: `2026-11-${String(i + 1).padStart(2, "0")}`,
       variants: Object.fromEntries(figures.map((f) => [f.key, { visitors: Math.round(f.visitors / days), conversions: Math.round(f.conversions / days) }])),
@@ -356,6 +368,17 @@ describe("what keeps a test safe (D148 phase 19)", () => {
     const out = html(createElement(ReturnsLine, { test: t, guardrails, words: experimentsEn, numberLocale: "en-GB" }));
     expect(out).toContain("More of Version B's buyers sent something back or got a refund: 15 % against 5 % with the original.");
     expect(out).toContain("never stops the test");
+  });
+});
+
+describe("preview links to share (D148 phase 20)", () => {
+  it("offers one link per version and says what it does", () => {
+    const make = async () => ({ ok: true as const, url: "https://demo.example/api/ab/preview?t=x" });
+    const out = html(createElement(ExperimentShare, { versions: [{ key: "b", name: "Version B" }, { key: "c", name: "Version C" }], make }));
+    expect(out).toContain("Show it to someone");
+    expect(out).toContain("Copy a link to Version B");
+    expect(out).toContain("Copy a link to Version C");
+    expect(out).toContain("It is never counted in the test and stops working when the test stops.");
   });
 });
 

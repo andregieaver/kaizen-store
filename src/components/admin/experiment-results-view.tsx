@@ -606,7 +606,7 @@ export function ExperimentResultsView({
               </thead>
               <tbody>
                 {test.variants.map((v) => {
-                  const f = results.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0 };
+                  const f = results.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 };
                   const share = (n: number) => (f.visitors ? ` (${percent(n / f.visitors)})` : "");
                   return (
                     <tr key={v.key} className="border-b border-line last:border-0">
@@ -635,6 +635,11 @@ export function ExperimentResultsView({
           {test.goal === "signup" && (
             <p className="text-xs text-muted">
               {fillWords(r.signups, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.signups ?? 0)}`).join(", ") })}
+            </p>
+          )}
+          {test.goal === "page" && (
+            <p className="text-xs text-muted">
+              {fillWords(r.pages, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.pages ?? 0)}`).join(", ") })}
             </p>
           )}
         </section>

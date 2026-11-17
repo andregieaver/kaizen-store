@@ -45,12 +45,12 @@ export const AFTER_PLANNED_END_DAYS = 7;
 export const MIN_DAYS = 14;
 export { VARIANT_KEYS, type VariantKey } from "./ab-cookie";
 
-export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form", "signup"] as const;
+export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form", "signup", "page"] as const;
 export type Goal = (typeof GOALS)[number];
 
 /**
- * The goals the AI manager's tools offer: every goal but `signup`, which only Kaizena Flow's own store has (D148 phase 19). Kept apart so the
- * tools' schema, and with it the agents' eval recording, does not change with a goal no store's owner can choose.
+ * The goals the AI manager's tools offer: every goal but `signup`, which only Kaizena Flow's own store has (D148 phase 19), and `page` (phase
+ * 20), chosen on the new-test form. Kept apart so the tools' schema, and with it the agents' eval recording, changes only with a new eval run.
  */
 export const TOOL_GOALS = ["orders", "revenue", "cart", "checkout", "click", "form"] as const satisfies readonly Goal[];
 
@@ -59,7 +59,7 @@ export const HOUSE_GOALS = ["signup"] as const satisfies readonly Goal[];
 export const isHouseGoal = (goal: Goal): boolean => (HOUSE_GOALS as readonly Goal[]).includes(goal);
 
 /** What each goal measures, in the words the admin uses. */
-export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean; block?: "button" | "form" }> = {
+export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean; block?: "button" | "form"; needsPage?: boolean }> = {
   orders: { label: "More orders", asks: "get more of the visitors to buy", per: "placed an order", kind: "rate", needsBlock: false },
   revenue: { label: "More revenue per visitor", asks: "sell more per visitor", per: "revenue per visitor", kind: "money", needsBlock: false },
   cart: { label: "More people adding to the cart", asks: "get more visitors to add something to the cart", per: "added to the cart", kind: "rate", needsBlock: false },
@@ -69,6 +69,8 @@ export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string
   form: { label: "More people sending a form", asks: "get more visitors to send a chosen form or sign up to a newsletter", per: "sent the form", kind: "rate", needsBlock: true, block: "form" },
   // A sign-up to Kaizena Flow sent from its sign-up page by a visitor in the test (D148 phase 19): only Kaizena Flow's own store.
   signup: { label: "More sign-ups to Kaizena Flow", asks: "get more visitors to sign up to Kaizena Flow", per: "signed up", kind: "rate", needsBlock: false },
+  // A visitor in the test who then opened a chosen page of the store (D148 phase 20): its id in `goal_params.page`.
+  page: { label: "More people going on to a page", asks: "get more visitors to go on to a chosen page", per: "opened the page", kind: "rate", needsBlock: false, needsPage: true },
 };
 
 /** What an owner chooses for a goal that counts something on the page, in words: "the button or link whose clicks you want more of". */
@@ -150,6 +152,8 @@ export function startProblems(test: {
   name: string;
   goal: Goal | string;
   goalBlock: string | null;
+  /** The page the goal `page` counts (phase 20). */
+  goalPage?: string | null;
   trafficShare: number;
   variants: VariantDraft[];
   pagePublished: boolean;
@@ -164,6 +168,7 @@ export function startProblems(test: {
   if (test.name.trim() === "") problems.push("Give the test a name.");
   if (!isGoal(test.goal)) problems.push("Choose what the test should improve.");
   else if (GOAL_WORDS[test.goal].needsBlock && !test.goalBlock) problems.push(BLOCK_CHOICE[GOAL_WORDS[test.goal].block ?? "button"].problem);
+  else if (GOAL_WORDS[test.goal].needsPage && !test.goalPage) problems.push("Choose the page you want more visitors to go on to: one of the store's published pages.");
   if (!(test.trafficShare > 0 && test.trafficShare <= 1)) problems.push("The share of visitors in the test is more than 0 and at most 100 %.");
   if (!test.pagePublished) problems.push("Publish the page before testing it: a test shows it to real visitors.");
   if (test.pageIsSpecial) problems.push("The cookies page and the blog, search, 404, category and tag pages cannot be tested yet.");
