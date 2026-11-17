@@ -42,6 +42,9 @@ let flushScheduled = false;
 
 /** Adds one event to the buffer and makes sure it is written after the response. Never throws. */
 export function countCacheEvent(kind: CacheEventKind, family: string, subject: string, source: CacheEventSource, statements = 0): void {
+  // Not while Next builds: the build prerenders every store page against production's database, and those draws are no visitor's
+  // (17 November 2026: the first deploy counted about 2,000 build draws in an hour of about 60 real ones).
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
   try {
     const key = `${kind}|${family}|${subject}|${source}`;
     const entry = pending.get(key);

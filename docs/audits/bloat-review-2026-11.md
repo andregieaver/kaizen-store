@@ -137,7 +137,7 @@ commit as the fix.
 | 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | Open | |
 | 1.11 | Hold the storefront's server side: statements per page, cached reads and render modes | SD-13, CA-16, GAP-page-model-s2 | M | review | 1.9, 0.1, 0.3, 1.1 | Open | |
 | 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Open | |
-| 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | In progress | 17 Nov: commits 1 to 3 done locally (eight rules, 14 cases; migration platform_readings_kinds; Flags card, briefing line); build and e2e not run. |
+| 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | Done | 17 Nov (14db07a9; D744): eight database flags over two daily readings, on Usage and limits and in the briefing; migration live, advisors INFO. |
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
 | 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Done | 17 Nov (23a841e2; D722): the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not good at p75. |
 | 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
@@ -149,7 +149,7 @@ commit as the fix.
 | 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | In progress | 17 Nov: pushed (8976b6ae). The watcher runs only once CRON_SECRET is set in Vercel (not set: Vercel's cron calls answer 401); the daily job is pg_cron's alone. |
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | Open | |
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Done | 17 Nov (a0c1757f; D723): session-load.mjs measures what a session loads (1 of 20 samples); files over 100 KB (17) and 2,000 lines (12) only fall. |
-| 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | In progress | 17 Nov: commits 1 to 3 done locally (table, refresh counting, draw line, #cache card); 1340 unit files pass; int cases pass; production reading follows. |
+| 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Done | 17 Nov (e6dd7843; D745): refreshes and store draws counted per day; a job refreshing one subject 11+ times flagged; build draws not counted. |
 | 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
 | 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Done | 17 Nov (9d9ad9b5; D717): 229 hand-down sites counted; 12.7 MB handed, 3.9 MB named; 63 hand an area nothing reads. |
@@ -320,6 +320,8 @@ Change log:
 - 17 Nov 2026: step 1.4 Done (15485362, D726): the admin's client modules are under an import walk, catalogues hold text only, and unread admin texts are held.
 - 17 Nov 2026: step 1.2 Done (9c029e2e, D733): every route's first scripts and eight markers are held against a baseline after CI's build.
 - 17 Nov 2026: step 1.9 Done (0fe09cbe, D736): one statement counter in the database client, five admin screens' statements held in a baseline, and one log line per admin render.
+- 17 Nov 2026: step 1.13 Done (14db07a9, D744): eight database flags from two daily readings, on Usage and limits and in the morning briefing.
+- 17 Nov 2026: step 1.25 Done (e6dd7843, D745): tag refreshes and store page draws are counted per day in production, and a job that refreshes too much is flagged.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
