@@ -633,11 +633,15 @@ async function sendBatch(
 }
 
 async function finishDone(only: string | null): Promise<number> {
+  // A finished broadcast is an event (email plan M1.2, D732), queued in the same statement that marks it sent.
   const rows = await db().execute<Row>(sql`
-    update commerce.broadcasts b set status = 'sent', finished_at = now()
-    where b.status = 'sending' ${only ? sql`and b.id = ${only}::uuid` : sql``}
-      and not exists (select 1 from commerce.broadcast_recipients r where r.broadcast_id = b.id and r.status = 'queued')
-    returning id
+    with done as (
+      update commerce.broadcasts b set status = 'sent', finished_at = now()
+      where b.status = 'sending' ${only ? sql`and b.id = ${only}::uuid` : sql``}
+        and not exists (select 1 from commerce.broadcast_recipients r where r.broadcast_id = b.id and r.status = 'queued')
+      returning b.id, b.store_id
+    )
+    select done.id, commerce.queue_integration_event(done.store_id, 'broadcast.sent', done.id) from done
   `);
   return rows.length;
 }

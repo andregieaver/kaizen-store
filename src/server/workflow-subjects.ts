@@ -65,6 +65,14 @@ function newerSubject(storeId: string, trigger: WorkflowTrigger) {
     case "work_invoice.paid":
     case "work_invoice.credited":
       return sql`select id from commerce.work_invoices where store_id = ${storeId}::uuid and status <> 'draft' order by updated_at desc limit 1`;
+    // Email plan M1.2 (D732).
+    case "email.bounced":
+    case "email.complained":
+      return sql`select id from commerce.email_messages where store_id = ${storeId}::uuid and status = ${trigger === "email.bounced" ? "bounced" : "complained"}::commerce.email_status order by created_at desc limit 1`;
+    case "broadcast.sent":
+      return sql`select id from commerce.broadcasts where store_id = ${storeId}::uuid and status = 'sent' order by finished_at desc nulls last limit 1`;
+    case "marketing.paused":
+      return sql`select id from commerce.sending_pauses where store_id = ${storeId}::uuid limit 1`;
     default:
       return null;
   }

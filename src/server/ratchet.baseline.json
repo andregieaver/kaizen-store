@@ -472,7 +472,7 @@
     "src/server/autopilot-runner.ts": 6,
     "src/server/bank-statements.ts": 1,
     "src/server/blog-comments.ts": 1,
-    "src/server/broadcasts.ts": 8,
+    "src/server/broadcasts.ts": 7,
     "src/server/business-change.ts": 1,
     "src/server/cart-reminders.ts": 1,
     "src/server/companies.ts": 1,

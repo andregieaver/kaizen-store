@@ -734,6 +734,9 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
       union all select id from commerce.abandoned_checkouts where store_id = ${sid}::uuid and lower(email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
       union all select id from commerce.support_conversations where store_id = ${sid}::uuid and (customer_id = ${cid}::uuid
         or lower(contact_email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))}))
+      -- Email plan M1.2 (D732): their emails that bounced or were marked as spam (the email.* payloads carry the address).
+      union all select id from commerce.email_messages where store_id = ${sid}::uuid and status in ('bounced', 'complained')
+        and lower(to_address) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
     )
     update commerce.integration_deliveries d set
       payload = null,

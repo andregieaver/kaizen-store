@@ -181,6 +181,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   recipients (they wait, queued) and `runAutomations()` skips it; its owners get one email in their admin language. The Marketing,
   Broadcasts and Email automations pages show the pause, or a warning at 2 % bounces or 0.1 % spam reports, and an owner with
   `marketing:write` resumes it; counting then starts again from the resume. Platform, Emails lists the stores held now.
+  Email reaches the event log (D732): `email.bounced`, `email.complained`, `broadcast.sent` and `marketing.paused` are queued through
+  `queue_integration_event()` in the statement that makes them, so they are workflow triggers and webhook topics; a new email event does the same.
 
 ## SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
 
