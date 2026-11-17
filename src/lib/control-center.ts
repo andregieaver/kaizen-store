@@ -1,6 +1,7 @@
 import { countWords, fillWords } from "./admin-fill";
 import { homeEn, type HomeMessages } from "./admin-messages/home.en";
 import { withoutStoreName } from "./home";
+import { HOUSE_SLUG } from "./house-routing";
 import { formatMoney } from "./money";
 
 /**
@@ -236,7 +237,11 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     const days = (n: number) => countWords(n, w.days);
     if (s.suspended) items.push({ kind: "suspended", text: say(w.suspended), href: base, action: a.open, urgent: true });
     if (owner && !s.open) items.push({ kind: "not_open", text: say(w.notOpen), href: `${base}/setup`, action: a.finishSetup });
-    if (owner && s.open && s.plan?.status && ["past_due", "unpaid"].includes(s.plan.status)) {
+    // Kaizena Flow's own store (D466) runs the platform and never pays for a plan: no reminder to choose one.
+    const house = s.slug === HOUSE_SLUG;
+    if (house) {
+      /* no plan items */
+    } else if (owner && s.open && s.plan?.status && ["past_due", "unpaid"].includes(s.plan.status)) {
       items.push({ kind: "plan", text: say(w.planOverdue), href: `${base}/billing`, action: a.openBilling, urgent: true });
     } else if (owner && s.open && !s.plan) {
       items.push({ kind: "plan", text: say(w.noPlan), href: `${base}/billing`, action: a.choosePlan });

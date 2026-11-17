@@ -537,6 +537,8 @@ describe("the facts", () => {
     expect(missing).toEqual(expect.arrayContaining(["the business's legal name", "the organisation number", "the postal address", "the contact email", "the country", "the countries the store sells to"]));
     expect(missingFacts(VARIANTS.consumersStoreShopper)).not.toEqual(expect.arrayContaining([expect.stringContaining("VAT number")]));
     expect(missingFacts(assembleLegalFacts(input({ shippingRates: [] })))).toContain("a shipping price for every country");
+    // A website without a shop, or a shop of downloads only, sends no parcels: no shipping price is asked for.
+    expect(missingFacts(assembleLegalFacts(input({ shippingRates: [], shipsGoods: false })))).not.toContain("a shipping price for every country");
   });
 });
 

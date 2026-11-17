@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { assembleLegalFacts, type LegalFacts } from "@/lib/legal-facts";
 import { marketPath } from "@/lib/paths";
+import { featureOn } from "@/lib/store-features";
 import { carrierInfo } from "@/lib/shipping-carriers";
 
 import { chatWidgetFor } from "./chat-agent";
@@ -35,7 +36,8 @@ export async function taxFactsOf(storeId: string): Promise<{ vatNumber: string |
  * null there and becomes a visible `[[Add: …]]` placeholder in the text, never an invented sentence.
  */
 export async function legalFacts(store: Store): Promise<LegalFacts> {
-  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow, recipients, browse] = await Promise.all([
+  const shopOn = featureOn(store, "shop");
+  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow, recipients, browse, goods] = await Promise.all([
     db().execute<Row>(sql`
       select market_code, currency, amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${store.id}::uuid
     `),
@@ -68,7 +70,23 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     `),
     // The browse email (D691): the privacy starter says what a signed-in subscriber's product views are kept for, while it is on.
     typedRows(z.object({ on: col.bool }), sql`select true as on from commerce.automations where store_id = ${store.id}::uuid and kind = 'browse' and enabled limit 1`),
+    // Whether the shop sends parcels: a shop of digital products only (or services) needs no shipping price per country.
+    shopOn
+      ? typedRows(
+          z.object({ any: col.bool, physical: col.bool }),
+          sql`
+            select exists (select 1 from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'active') as any,
+                   exists (
+                     select 1 from commerce.products p
+                     join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id
+                     where p.store_id = ${store.id}::uuid and p.status = 'active' and v.delivery = 'physical'
+                   ) as physical
+          `,
+        )
+      : Promise.resolve([]),
   ]);
+  // No products yet counts as goods: the owner is asked for shipping until the shop shows it sells only downloads.
+  const shipsGoods = shopOn && (!goods[0]?.any || goods[0].physical);
   const main = store.markets[0];
   const offered = new Set(store.markets.map((m) => m.code.toUpperCase()));
   const modules = [store.bookingsOn ? "bookings" : null, store.deliveriesOn ? "deliveries" : null, store.workOn ? "work" : null].filter((m): m is string => m !== null);
@@ -127,6 +145,7 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     noShowFee: noShow.length > 0,
     browseEmails: browse.length > 0,
     // Where the site's own pages are, in the store's main market: the withdrawal function (D153) and the cookies page.
+    shipsGoods,
     links: main ? { withdraw: marketPath(store.slug, main.slug, "/withdraw"), cookies: marketPath(store.slug, main.slug, "/cookies") } : {},
   });
 }

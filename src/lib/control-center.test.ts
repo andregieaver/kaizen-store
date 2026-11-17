@@ -104,6 +104,11 @@ describe("the control center (D107)", () => {
     expect(items[2].text).toBe("A: 2 products are running low.");
   });
 
+  it("never asks Kaizena Flow's own store to choose a plan (D466)", () => {
+    expect(attentionFor([store({ plan: null })]).map((i) => i.kind)).toContain("plan");
+    expect(attentionFor([store({ slug: "kaizenaflow", name: "Kaizena Flow", plan: null })]).map((i) => i.kind)).not.toContain("plan");
+  });
+
   it("asks staff only for what they can do", () => {
     const items = attentionFor([store({ role: "admin", open: false, plan: null, payments: "off", toSend: 1 })]);
     expect(items.map((i) => i.action)).toEqual(["Send"]);

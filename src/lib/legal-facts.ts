@@ -75,6 +75,8 @@ export type LegalFacts = {
   audience: LegalAudience;
   /** Addresses on the site the texts link to, where the store has them; left out otherwise. */
   links: { withdraw?: string; cookies?: string };
+  /** Set (false) only for a store that sends no parcels (`LegalFactsInput.shipsGoods`): no shipping price is asked for then. */
+  shipsGoods?: false;
 };
 
 const clean = (value: string | null | undefined): string | null => {
@@ -126,6 +128,11 @@ export type LegalFactsInput = {
   browseEmails?: boolean;
   links?: { withdraw?: string; cookies?: string };
   phone?: string | null;
+  /**
+   * The store sends parcels: its online shop is on and it sells something physical (or has no products yet). False for a website without a
+   * shop or a shop of digital products only, which needs no shipping price per country; true when left out.
+   */
+  shipsGoods?: boolean;
 };
 
 export const TRACKING_TOOL_NAMES = {
@@ -196,6 +203,7 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
     aiAnswers: input.supportAi?.answers ?? false,
     audience: store.audience,
     links: input.links ?? {},
+    ...(input.shipsGoods === false ? { shipsGoods: false as const } : {}),
   };
 }
 
@@ -209,6 +217,6 @@ export function missingFacts(facts: LegalFacts): string[] {
   if (!facts.country) missing.push("the country");
   if (facts.vat.registered !== false && !facts.vat.number) missing.push("the VAT number, or that the business is not registered for VAT");
   if (facts.markets.length === 0) missing.push("the countries the store sells to");
-  if (facts.shipping.some((s) => s.rateMinor === null)) missing.push("a shipping price for every country");
+  if (facts.shipsGoods !== false && facts.shipping.some((s) => s.rateMinor === null)) missing.push("a shipping price for every country");
   return missing;
 }

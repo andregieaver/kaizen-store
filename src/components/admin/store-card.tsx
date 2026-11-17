@@ -3,6 +3,7 @@ import Link from "next/link";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { homeEn, type HomeMessages } from "@/lib/admin-messages/home.en";
 import { changeText, hidden, money, type StoreFigures } from "@/lib/control-center";
+import { HOUSE_SLUG } from "@/lib/house-routing";
 import { storeBase, storeHref } from "@/lib/paths";
 
 import { CARD_CLASS, Chip } from "./ui";
@@ -47,7 +48,8 @@ export function StoreCard({
   // What this member's role does not open is left out, never drawn as a zero.
   const noSales = hidden(store, "sales");
   const noStock = hidden(store, "stock");
-  const noPlan = hidden(store, "plan");
+  // Kaizena Flow's own store has no plan (D466): no "No plan" line on its card.
+  const noPlan = hidden(store, "plan") || store.slug === HOUSE_SLUG;
   return (
     <article aria-labelledby={`store-${store.slug}`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
       <div className="flex flex-wrap items-center gap-2">
