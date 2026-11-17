@@ -12,11 +12,11 @@ vi.mock("next/cache", () => ({
 const { closeDb, db } = await import("@/db/client");
 const { tracked } = await import("./cron-runs");
 const { refreshTag } = await import("./refresh");
-const { cacheEventsWeek, flushCacheEvents, tagParts } = await import("./cache-events");
+const { cacheEventsWeek, countCacheEvent, flushCacheEvents, tagParts } = await import("./cache-events");
 
 const JOB = "test.cache-events";
 const clean = async () => {
-  await db().execute(sql`delete from commerce.cache_events_daily where subject in ('cache-events-test', 'cache-events-ten') or family = 'platform-chrome-test'`);
+  await db().execute(sql`delete from commerce.cache_events_daily where subject in ('cache-events-test', 'cache-events-ten') or family = 'platform-chrome-test' or subject = 'cache-events-build'`);
   await db().execute(sql`delete from commerce.cron_jobs where job = ${JOB}`);
 };
 
@@ -64,5 +64,17 @@ describe("cache events (bloat review step 1.25)", () => {
     expect(rows.find((r) => r.subject === "cache-events-ten" && r.source === "route")).toMatchObject({ count: 1 });
     expect(rows.find((r) => r.family === "platform-chrome-test")).toMatchObject({ subject: "", source: "route", count: 1 });
     expect(flagged.find((r) => r.family === "platform-chrome-test")).toBeUndefined();
+  });
+
+  it("counts nothing while Next builds: the build's prerenders are no visitor's draws", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    try {
+      countCacheEvent("draw", "store", "cache-events-build", "render");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    await flushCacheEvents();
+    const { rows } = await cacheEventsWeek();
+    expect(rows.find((r) => r.subject === "cache-events-build")).toBeUndefined();
   });
 });
