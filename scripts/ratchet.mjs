@@ -40,7 +40,8 @@ if (before && !process.argv.includes("--first")) {
     process.exit(1);
   }
 }
-writeFileSync(out, `${JSON.stringify(now, null, 2)}\n`);
+// Keys another writer keeps in the same file (the query budget of step 1.10, written by its integration test) are carried over as they were.
+writeFileSync(out, `${JSON.stringify({ ...(before ?? {}), ...now }, null, 2)}\n`);
 const sum = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 console.log(
   `Wrote ${path.relative(root, out)}: ${sum(now.untypedReads)} unchecked reads in ${Object.keys(now.untypedReads).length} files, ` +

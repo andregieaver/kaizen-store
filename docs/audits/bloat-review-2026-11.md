@@ -134,7 +134,7 @@ commit as the fix.
 | 1.7 | Put a cart with products and the checkout's payment step into the measured set | GAP-shopper-browser-2 | M | strong | 1.3, 0.1 | Open | |
 | 1.8 | Hold what a server entry loads and carries | SG-14, SF-7, DP-6, AS-3, SG-16, GAP-server-s3 | M | review | 0.1, 0.4, 0.36, 1.1 | Open | |
 | 1.9 | Count statements: one counter, and the admin's five screens | AD-12 | M | review | 1.1 | Done | 17 Nov (0fe09cbe; D736): statement counter; five admin screens held (4, 33, 6, 5, 22); admin.render logged. Two faults fixed at review. |
-| 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | In progress | 17 Nov: commit 1 done locally: the 78 dispatcher jobs (not 69) in src/server/dispatcher-jobs.ts. |
+| 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | In progress | 17 Nov: commits 1, 2 local; 78 jobs (not 69); idle tick 143 statements. |
 | 1.11 | Hold the storefront's server side: statements per page, cached reads and render modes | SD-13, CA-16, GAP-page-model-s2 | M | review | 1.9, 0.1, 0.3, 1.1 | Open | |
 | 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Open | |
 | 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | Done | 17 Nov (14db07a9; D744): eight database flags over two daily readings, on Usage and limits and in the briefing; migration live, advisors INFO. |

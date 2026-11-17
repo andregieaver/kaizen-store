@@ -120,8 +120,11 @@ jobs:
         run: pnpm db:check
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
+      - name: Query budget on the fresh database (src/server/query-budget.int.test.ts)
+        if: matrix.shard == 1
+        run: pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts
       - name: Integration tests against the database
-        run: pnpm test:int --shard=${{ matrix.shard }}/3
+        run: pnpm test:int --shard=${{ matrix.shard }}/3 --exclude src/server/query-budget.int.test.ts
 
   e2e:
     if: github.event_name != 'workflow_dispatch'
