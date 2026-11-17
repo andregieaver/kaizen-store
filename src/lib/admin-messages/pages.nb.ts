@@ -543,6 +543,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:translate": { title: "Oversett butikken", keywords: ["oversett", "oversettelse", "språk", "ki", "flerspråklig", "produkter"] },
   "store:search": { title: "Søk", keywords: ["søk", "søk på nettstedet", "søkeord", "søk uten treff"] },
   "store:chat": { title: "Chatassistent", keywords: ["chatassistent", "kundechat", "chatbot", "kunnskapsbase", "chat"] },
+  "store:chat.questions": { title: "Spørsmål assistenten ikke kunne svare på", keywords: ["ubesvarte spørsmål", "spørsmål", "kunnskapsbase", "chatassistent", "svar"] },
   "store:support": {
     title: "Innboks for kundestøtte",
     keywords: ["kundestøtte", "innboks", "livechat", "kundeservice", "samtaler", "henvendelser", "support"],
@@ -914,6 +915,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:ai.dream": { title: "Dream Factory-kjøring", keywords: ["dream factory", "øvelse", "testkjøring", "se på", "bygging"] },
   "platform:ai.prices": { title: "KI-priser", keywords: ["ki-priser", "pris", "kostnad", "dollar", "modell"] },
   "platform:chat": { title: "Chatassistent", keywords: ["chatassistent", "chatbot", "kunnskapsbase", "chat"] },
+  "platform:chat.questions": { title: "Spørsmål assistenten ikke kunne svare på", keywords: ["ubesvarte spørsmål", "spørsmål", "kunnskapsbase", "chatassistent", "svar"] },
   "platform:integrations": { title: "Integrasjoner", keywords: ["integrasjoner", "zapier", "make", "slack", "webhooks", "varsler"] },
   "platform:workflows": { title: "Arbeidsflyter", keywords: ["arbeidsflyter", "automatisering", "regler", "utløsere"] },
   "platform:integrations.api": { title: "API", keywords: ["api", "nøkler", "utviklere", "integrasjon"] },
