@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition
 import { fillWords } from "@/lib/admin-fill";
 import type { ShellMessages } from "@/lib/admin-messages/shell.en";
 import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
-import { finderOptions, type FinderGroup, type FinderItem } from "@/lib/page-finder";
+import { finderOptions, type FinderGroup, type FinderItem } from "@/lib/finder-groups";
 
 export type FinderWords = ShellMessages["finder"];
 

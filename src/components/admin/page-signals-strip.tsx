@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui";
 import type { ReactNode } from "react";
 
 // Never `heatmaps-view.tsx` for its addresses: a route loads every client component its modules import (PSI PERF-01), and the editor's must
