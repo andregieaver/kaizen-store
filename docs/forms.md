@@ -396,3 +396,5 @@ manager's tools and its words for *New form* with one eval run by the owner.
 - The admin map's *New form* says templates (Kaizena Flow's, the store's own, the marketplace's, or a blank form) and what a form can do
   now. Both change what the model is offered (the tools' version), so they reach `main` together with a new recording of the eval, run on
   Platform → AI; the payment is chosen in the editor, not by the AI manager.
+- **Recorded.** Deployed in `ee708312`; the owner ran the eval on production the same evening (run eda8b21f, gpt-4.1-mini, 32 of 32,
+  tools `90afa45aa472`), and its recording is `src/data/agent-eval-recording.json`.
