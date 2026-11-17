@@ -118,7 +118,10 @@ describe("where Chromium is loaded for documents", () => {
 
   it("is `invoice-pdf.ts` for the renderer, imported only by the routes that render and the job's route", () => {
     expect(importers(/from "(\.\/|@\/server\/)invoice-pdf"/)).toEqual(
-      importers(/from "(\.\/|@\/server\/)invoice-pdf"/).filter((file) => /\/pdf\/route\.ts$|^src\/app\/api\/cron\/document-pdfs\/route\.ts$/.test(file)),
+      // A contract's send (D695 step 3) draws its PDF from the contract's page, whose route carries Chromium too.
+      importers(/from "(\.\/|@\/server\/)invoice-pdf"/).filter((file) =>
+        /\/pdf\/route\.ts$|^src\/app\/api\/cron\/document-pdfs\/route\.ts$|^src\/app\/admin\/\(gated\)\/\[store\]\/deals\/contract-send-actions\.ts$/.test(file),
+      ),
     );
   });
 

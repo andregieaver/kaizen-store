@@ -15,6 +15,7 @@ import { siteUrl } from "@/lib/site";
 import { audit, type Membership } from "./auth";
 import { sendContract, type SendDeps, type SendResult } from "./contracts";
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
+import { documentStorage, type DocumentStorage } from "./invoice-storage";
 import { log } from "./log";
 import { memberCan } from "./permissions";
 import { emailContext, emailFooter, storeById } from "./shopper-emails";
@@ -22,9 +23,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Signing a contract on our own page (D695 step 3, `docs/contracts.md` 5). Sending asks the first signer: the store's signer is told in the
- * admin (and by email when someone else sent it), the customer's by an email with their own link (`/s/{store}/{market}/sign/{token}`).
+ * admin (and by email when someone else sent it), the customer's by an email with their own link (`/s/{store}/{market}/account/sign/{token}`).
  * A signer on the page proves their email with a six-digit code (kept as a hash, ten minutes, five tries, at most five an hour), types
- * their name and agrees; the store's signer signs inside the admin, where they are already signed in with two-step. Each signature is
+ * their name and agrees; the store's signer signs inside the admin, signed in as themselves (with two-step where the store asks it). Each signature is
  * against the SHA-256 of the PDF that was sent, which the database checks; the database also signs the contract when the last signer has,
  * wins its deal and declines it on one decline. Then the next signer is asked; the signed PDF is made by the job
  * (`contract-signed-pdf.ts`). Every email is in the contract's language; a code is never kept in the email log.
@@ -182,7 +183,7 @@ async function mailContext(storeId: string, language: string) {
 }
 
 /** The link a customer's signer signs on: on the store's own site, at its home market. */
-const signUrl = (storeSlug: string, marketSlug: string, token: string) => marketUrl(storeSlug, marketSlug, `/sign/${token}`);
+const signUrl = (storeSlug: string, marketSlug: string, token: string) => marketUrl(storeSlug, marketSlug, `/account/sign/${token}`);
 
 /** The contract's page in the admin, for the store's signer and staff. */
 const adminContractUrl = (storeSlug: string, dealId: string | null, contractId: string) =>
@@ -470,8 +471,8 @@ async function tellDeclined(storeId: string, contractId: string, who: string, re
 export type StoreSignProblem = "forbidden" | "not_found" | "not_yours" | "closed" | "not_turn" | "expired" | "name" | "agree";
 
 /**
- * The store's signer signs inside the admin (`customers:write`, and they must be the named signer): their session, two-step where the
- * store asks it, is the proof; the evidence says so. Then the customer's signer is asked.
+ * The store's signer signs inside the admin (`customers:write`, and they must be the named signer): their own signed-in session is the
+ * proof (two-step where the store asks it), and the evidence says only that. Then the customer's signer is asked.
  */
 export async function signAsStore(
   member: Membership,
@@ -503,4 +504,22 @@ export async function signAsStore(
   await audit(member.account.id, member.store.id, "contract.signed_for_store", { contract: contractId }, { area: "customers" });
   if (!completed) await notifyNext(member.store.id, contractId, { ...deps, skipAccount: member.account.id });
   return { ok: true, completed };
+}
+
+/**
+ * The PDF a signer's link opens: the signed one once it is made, else the one that was sent (the file they sign). Read from the private
+ * `documents` bucket; null for a link that is not one, a draft's, or a file that cannot be read.
+ */
+export async function signerDocument(token: string, storage: Pick<DocumentStorage, "download"> | null = documentStorage()): Promise<{ bytes: Uint8Array; signed: boolean; title: string } | null> {
+  if (!TOKEN.test(token) || !storage) return null;
+  const row = await typedRow(
+    z.object({ store_id: col.uuid, title: col.text, pdf_path: col.textOrNull, signed_pdf_path: col.textOrNull }),
+    sql`select c.store_id, c.title, c.pdf_path, c.signed_pdf_path from commerce.contract_signers g
+        join commerce.contracts c on c.store_id = g.store_id and c.id = g.contract_id
+        where g.token = ${token} and c.status <> 'draft'`,
+  );
+  const path = row?.signed_pdf_path ?? row?.pdf_path;
+  if (!row || !path || !path.startsWith(`${row.store_id}/contracts/`)) return null;
+  const bytes = await storage.download(path).catch(() => null);
+  return bytes ? { bytes, signed: path === row.signed_pdf_path, title: row.title } : null;
 }

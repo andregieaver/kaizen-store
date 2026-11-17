@@ -127,6 +127,29 @@ Norwegian, as a deal there is «avtale»). Actions through `storeAction()` (`con
 *Left for step 2's second part:* the store's templates page for Lisa (a template's words and how long it may be signed). The Send button
 comes with the signing page (step 3), so nothing in the admin sends a contract nobody can sign.
 
+*Step 3, signing (17 November 2026), as built:* the owner chose Kaizena Flow's own self-made seal for now (a trusted provider's
+certificate with BankID, step 5). **The database** (`20261117003018_contract_signing`, `20261117003025_contract_signing_rules`,
+`20261117010744_contract_signers_asked`): a signed contract is kept for the retention kind `contracts` (54 months from signing, which
+covers Bokføringsloven § 13(2)'s 3 years and 6 months after the end of the year it was signed in; for an accountant to review): erasure
+and staff never delete it, it outlives its deal (the deal set null), and only `pruneContracts()` deletes it with its files; a deal
+deleted takes its other contracts; email codes (`contract_codes`: a hash, ten minutes, five tries, five an hour) and the seal
+(`contract_seals`: one certificate, its key encrypted with `SETTINGS_ENCRYPTION_KEY`, made on first use, so no new secret). **The
+server** (`src/server/contract-signing.ts`): *Send for signing* freezes the contract and asks the first signer: the store's in the admin
+(emailed only when someone else sent it), then the customer by an email with their own link, `/s/{store}/{market}/account/sign/{token}`
+(a no-extras path as the hosted documents, `isSignLinkPath()`; the link and the code are never kept in the email log). The customer
+proves their email with a code, types their name, agrees and signs, against the sent PDF's SHA-256; the store's signer signs in the
+admin, the evidence saying only that they were signed in. A decline tells the sender and the store's signer. **The signed PDF**
+(`src/server/contract-jobs.ts`, `contract-seal.ts`), made by the job in `/api/cron/document-pdfs` (which carries Chromium): the sent PDF,
+checked against its SHA-256, the signing record's page after it (who signed, how, when and from which address, every event, the
+fingerprints; `ContractAuditView`), sealed with a PAdES signature over the whole file, kept once and emailed to every signer. Poppler's
+`pdfsig` reads a sealed file as valid, the whole document signed, its issuer unknown (the self-made seal). The same job expires
+contracts, reminds a waiting signer (after the contract's reminder days, three by default, three times at most), deletes used codes and
+prunes. **Words** in Norwegian and English (`contract-signing-text.ts`, the audit page in `contract-text.ts`). **Tests:**
+`src/db/contracts.test.ts`, `contract-seal.test.ts` (the signature's digest is the file outside it), `contract-signing.int.test.ts`,
+and `e2e/signed-in/contracts.spec.ts` (the store signs in the admin, the customer on the store's page with a code; the send's PDF is played
+there, as the e2e server keeps no files). *Found while building:* the signers' guard refused keeping when a signer was asked, so
+reminders could not be counted (fixed by `20261117010744`).
+
 ## 8. The owner's answers (16 November 2026)
 
 - **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.

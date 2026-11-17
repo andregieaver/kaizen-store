@@ -442,6 +442,13 @@
       "when": 1794875425677,
       "tag": "20261117003025_contract_signing_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794877664605,
+      "tag": "20261117010744_contract_signers_asked",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,8 @@ const staff = await import("./customer-staff");
 const { eraseSubject } = await import("./privacy-erasure");
 const { newStore } = await import("./inventory-test-support");
 const { storeOf } = await import("./product-data");
+const jobs = await import("./contract-jobs");
+const { PDFDocument } = await import("pdf-lib");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
 type Row = Record<string, unknown>;
@@ -39,7 +41,12 @@ const memoryStorage = () => {
     remove: async (ps: string[]) => (ps.forEach((p) => files.delete(p)), true),
   };
 };
-const render = async (html: string) => new TextEncoder().encode(`%PDF-test\n${html}`);
+/** A real one-page PDF, as Chromium would print (the signed PDF is made of real pages). */
+const render = async (html: string) => {
+  const doc = await PDFDocument.create();
+  doc.addPage([595, 842]).drawText(`page ${html.length}`, { x: 40, y: 800, size: 10 });
+  return doc.save();
+};
 
 function mailbox() {
   const sent: Sent[] = [];
@@ -47,6 +54,8 @@ function mailbox() {
 }
 
 beforeAll(async () => {
+  // The seal's key is kept encrypted with the settings key (a test key here).
+  process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
   store = await newStore("signing");
   await db().execute(sql`update commerce.stores set legal_name = 'Butikken AS', organisation_number = '999 888 777' where id = ${store.storeId}::uuid`);
   const fresh = await storeOf(store.storeId);
@@ -65,10 +74,11 @@ async function sentContract(email: string, box = mailbox()) {
   if (!deal.ok) throw new Error("deal");
   const made = await contracts.createContract(store.member, deal.id);
   if (!made.ok) throw new Error(made.problem);
-  const sent = await signing.sendForSigning(store.member, made.id, { render, storage: memoryStorage(), mail: box.mail });
+  const storage = memoryStorage();
+  const sent = await signing.sendForSigning(store.member, made.id, { render, storage, mail: box.mail });
   if (!sent.ok) throw new Error(JSON.stringify(sent));
   const signers = await db().execute<Row>(sql`select id, role, token from commerce.contract_signers where contract_id = ${made.id}::uuid order by position`);
-  return { contractId: made.id, dealId: deal.id, customerId: customer.id, box, storeSigner: signers[0], customerSigner: signers[1], customerToken: String(signers[1].token) };
+  return { contractId: made.id, dealId: deal.id, customerId: customer.id, box, storage, storeSigner: signers[0], customerSigner: signers[1], customerToken: String(signers[1].token) };
 }
 
 describe("asking the signers", () => {
@@ -156,4 +166,65 @@ describe("declining and keeping", () => {
     const [kept] = await db().execute<Row>(sql`select status, customer_id from commerce.contracts where id = ${c.contractId}::uuid`);
     expect(kept).toEqual({ status: "signed", customer_id: null });
   }, 120_000);
+});
+
+describe("the job", () => {
+  async function signedContract(email: string) {
+    const c = await sentContract(email);
+    await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at, { mail: c.box.mail });
+    await signing.requestCode(c.customerToken, at, { mail: c.box.mail, code: () => "445566" });
+    await signing.signWithCode(c.customerToken, { code: "445566", name: "Kari Nordmann", agree: true }, at);
+    return c;
+  }
+
+  it("makes the signed PDF once: the sent pages and the signing record, sealed, kept, and sent to every signer", async () => {
+    const c = await signedContract("kari.job@example.com");
+    const box = mailbox();
+    expect(await jobs.buildSignedPdf(store.storeId, c.contractId, { render, storage: c.storage, mail: box.mail })).toBe(true);
+    const path = `${store.storeId}/contracts/${c.contractId}-signed.pdf`;
+    const pdf = c.storage.files.get(path);
+    expect(pdf).toBeDefined();
+    expect(Buffer.from(pdf!).toString("latin1")).toMatch(/\/ByteRange\s*\[/);
+    expect((await PDFDocument.load(pdf!)).getPageCount()).toBe(2);
+    const [row] = await db().execute<Row>(sql`select signed_pdf_path, signed_pdf_sha256 from commerce.contracts where id = ${c.contractId}::uuid`);
+    expect(row.signed_pdf_path).toBe(path);
+    expect(box.sent.map((m) => [m.kind, m.to, m.attachments?.[0]?.contentType])).toEqual([
+      ["contract.signed", store.accountEmail.toLowerCase(), "application/pdf"],
+      ["contract.signed", "kari.job@example.com", "application/pdf"],
+    ]);
+    expect(await jobs.buildSignedPdf(store.storeId, c.contractId, { render, storage: c.storage, mail: box.mail })).toBe(false);
+  }, 60_000);
+
+  it("counts a failure and tries again later, never with a sent PDF that is not the one signed", async () => {
+    const c = await signedContract("kari.fail@example.com");
+    c.storage.files.set(`${store.storeId}/contracts/${c.contractId}.pdf`, new Uint8Array([1, 2, 3]));
+    expect(await jobs.buildSignedPdf(store.storeId, c.contractId, { render, storage: c.storage, mail: mailbox().mail })).toBe(false);
+    const [row] = await db().execute<Row>(sql`select signed_pdf_path, signed_pdf_attempts from commerce.contracts where id = ${c.contractId}::uuid`);
+    expect(row).toEqual({ signed_pdf_path: null, signed_pdf_attempts: 1 });
+  });
+
+  it("expires a contract whose time has passed, reminds a waiting signer, and deletes a signed one past its period with its files", async () => {
+    const waiting = await sentContract("kari.wait@example.com");
+    await signing.signAsStore(store.member, waiting.contractId, { name: "Eva Eier", agree: true }, at, { mail: waiting.box.mail });
+    await db().execute(sql`update commerce.contract_signers set notified_at = now() - interval '4 days' where contract_id = ${waiting.contractId}::uuid and role = 'customer'`);
+    const box = mailbox();
+    const first = await jobs.contractJob({ render, storage: waiting.storage, mail: box.mail });
+    expect(first.reminded).toBeGreaterThanOrEqual(1);
+    expect(box.sent.some((m) => m.kind === "contract.reminder" && m.to === "kari.wait@example.com")).toBe(true);
+
+    // Its time passes (the database checks the time against its own clock, as the job does in production).
+    await db().execute(sql`alter table commerce.contracts disable trigger contracts_guard`);
+    await db().execute(sql`update commerce.contracts set expires_at = now() - interval '1 minute' where id = ${waiting.contractId}::uuid`);
+    await db().execute(sql`alter table commerce.contracts enable trigger contracts_guard`);
+    const second = await jobs.contractJob({ render, storage: waiting.storage, mail: box.mail });
+    expect(second.expired).toBeGreaterThanOrEqual(1);
+    expect((await contracts.getContract(store.member, waiting.contractId))?.status).toBe("expired");
+
+    const old = await signedContract("kari.old@example.com");
+    await db().execute(sql`update commerce.contracts set completed_at = now() - interval '55 months' where id = ${old.contractId}::uuid`);
+    expect(await jobs.pruneContracts(new Date(), old.storage)).toBeGreaterThanOrEqual(1);
+    const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.contracts where id = ${old.contractId}::uuid`);
+    expect(left.n).toBe(0);
+    expect(old.storage.files.has(`${store.storeId}/contracts/${old.contractId}.pdf`)).toBe(false);
+  }, 60_000);
 });

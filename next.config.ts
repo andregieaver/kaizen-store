@@ -70,6 +70,8 @@ const nextConfig: NextConfig = {
     "/s/**/account/documents/**/pdf": DOCUMENT_PDF_FILES,
     "/admin/**/invoices/**/pdf": DOCUMENT_PDF_FILES,
     "/api/cron/document-pdfs": DOCUMENT_PDF_FILES,
+    // A contract's page sends it for signing, drawing its PDF there (D695 step 3, `contract-send-actions.ts`); a glob, as the replicate route's.
+    "/admin/**/deals/**/contracts/**": DOCUMENT_PDF_FILES,
     // The standard product taxonomy (D327, `src/server/product-taxonomy.ts`) is read from disk, not imported (the type checker would type
     // its 100,000 entries): the product editor, imports, listings, feeds and the AI manager's tools all read it, so every route carries it.
     "/**": ["./src/data/product-taxonomy/*"],

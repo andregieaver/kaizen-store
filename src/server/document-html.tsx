@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 
 import type { renderToStaticMarkup as RenderToStaticMarkup } from "react-dom/server";
 
-import { CONTRACT_CSS, ContractDocumentView } from "@/components/documents/contract-document-view";
+import { CONTRACT_CSS, ContractAuditView, ContractDocumentView, type ContractAudit } from "@/components/documents/contract-document-view";
 import { OrderDocumentView } from "@/components/documents/order-document-view";
 import { DOCUMENT_CSS } from "@/components/work/invoice-document";
 import type { ContractSnapshot } from "@/lib/contract-fields";
@@ -39,4 +39,10 @@ export function documentHtml(snapshot: OrderInvoiceSnapshot | CreditNoteSnapshot
 export function contractHtml(snapshot: ContractSnapshot): string {
   const body = renderer()(<ContractDocumentView snapshot={snapshot} />);
   return `<!doctype html><html lang="${escapeHtml(snapshot.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(snapshot.title)}</title><style>${CONTRACT_CSS}</style></head><body>${body}</body></html>`;
+}
+
+/** A contract's signing record as one HTML page for the page added to its signed PDF (D695 step 3). */
+export function contractAuditHtml(audit: ContractAudit): string {
+  const body = renderer()(<ContractAuditView audit={audit} />);
+  return `<!doctype html><html lang="${escapeHtml(audit.language)}"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>${escapeHtml(audit.title)}</title><style>${CONTRACT_CSS}</style></head><body>${body}</body></html>`;
 }

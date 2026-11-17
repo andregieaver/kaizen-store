@@ -17,7 +17,8 @@ import { getDeal } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 
-import { cancelContractAction, deleteContractAction, newVersionAction, saveContractAction } from "../../../contract-actions";
+import { cancelContractAction, deleteContractAction, newVersionAction, saveContractAction, signForStoreAction } from "../../../contract-actions";
+import { sendContractAction } from "../../../contract-send-actions";
 
 export const metadata: Metadata = { title: "Contract" };
 
@@ -60,6 +61,10 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
     .filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > now))
     .map((s) => ({ id: s.accountId, name: s.name || s.email, email: s.email }));
   const shown = draft ? (preview?.snapshot ?? null) : contract.snapshot;
+  const storeSigner = contract.signers.find((s) => s.role === "store") ?? null;
+  // Whose turn it is on a sent contract: the first signer who has not signed.
+  const next = contract.status === "sent" ? (contract.signers.find((s) => !s.signedAt && !s.declinedAt) ?? null) : null;
+  const myTurn = canChange && next?.role === "store" && next.accountId === member.account.id;
   const fillText = (problem: FillProblem) =>
     problem.kind === "missing_field" ? fillWords(w.fill.missing_field, { field: `{${problem.key}} (${w.fields[problem.key]})` }) : w.fill[problem.kind];
 
@@ -109,21 +114,51 @@ export default async function ContractPage({ params }: PageProps<"/admin/[store]
                     </ul>
                   </>
                 )}
-                <p className="mt-2 text-muted">{w.sendSoon}</p>
+              </div>
+            )}
+            {preview && canChange && (
+              <div className="mb-4 flex flex-col gap-2">
+                <p className="text-sm text-muted">
+                  {preview.ok ? (storeSigner && storeSigner.accountId !== member.account.id ? fillWords(w.sendOther, { name: storeSigner.name }) : w.sendHint) : w.sendBlocked}
+                </p>
+                <ActionForm action={sendContractAction.bind(null, store.slug, contract.id)}>
+                  <SubmitButton disabled={!preview.ok}>{w.send}</SubmitButton>
+                </ActionForm>
               </div>
             )}
             {shown && (
               <div className="rounded-panel border border-line bg-white p-6 text-black">
                 <style>{PREVIEW_CSS}</style>
-                <ContractDocumentView snapshot={shown} />
+                <ContractDocumentView snapshot={shown} level={2} />
               </div>
             )}
           </Card>
         </div>
       </div>
 
+      {myTurn && next && (
+        <Card title={w.signTitle} compact>
+          <p className="mb-3 text-sm text-muted">{w.signHint}</p>
+          <ActionForm action={signForStoreAction.bind(null, store.slug, contract.id)} className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              {w.signName}
+              <input name="name" defaultValue={next.name} required maxLength={200} autoComplete="name" className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal" />
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="agree" required className="mt-1" />
+              {w.signAgree}
+            </label>
+            <div>
+              <SubmitButton>{w.sign}</SubmitButton>
+            </div>
+          </ActionForm>
+        </Card>
+      )}
+
       {!draft && (
         <Card title={w.signers} compact>
+          {next && !myTurn && <p className="mb-3 text-sm text-ink">{fillWords(w.waitingFor, { name: next.name })}</p>}
+          {contract.status === "signed" && !contract.signedPdf && <p className="mb-3 text-sm text-ink">{w.signedPdfComing}</p>}
           <ul className="flex flex-col gap-2 text-sm">
             {contract.signers.map((s) => (
               <li key={s.id} className="flex flex-wrap justify-between gap-2">

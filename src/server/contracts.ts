@@ -89,6 +89,8 @@ export type Contract = {
   expiresAt: string | null;
   completedAt: string | null;
   replacesId: string | null;
+  /** The signed and sealed PDF is made (D695 step 3). */
+  signedPdf: boolean;
   signers: ContractSigner[];
 };
 
@@ -152,6 +154,7 @@ const contractRow = z.object({
   expires_at: col.timestampOrNull,
   completed_at: col.timestampOrNull,
   replaces_id: col.uuid.nullable(),
+  signed_pdf: col.bool,
 });
 const signerRow = z.object({
   id: col.uuid,
@@ -169,7 +172,7 @@ const signerRow = z.object({
 async function readContracts(storeId: string, where: ReturnType<typeof sql>): Promise<Contract[]> {
   const rows = await typedRows(
     contractRow,
-    sql`select id, deal_id, title, language, status, blocks, snapshot, sent_at, expires_at, completed_at, replaces_id
+    sql`select id, deal_id, title, language, status, blocks, snapshot, sent_at, expires_at, completed_at, replaces_id, signed_pdf_path is not null as signed_pdf
         from commerce.contracts where ${owned(storeId)} and ${where} order by created_at, id`,
   );
   if (rows.length === 0) return [];
@@ -193,6 +196,7 @@ async function readContracts(storeId: string, where: ReturnType<typeof sql>): Pr
       expiresAt: r.expires_at,
       completedAt: r.completed_at,
       replacesId: r.replaces_id,
+      signedPdf: r.signed_pdf,
       signers: signers
         .filter((g) => g.contract_id === r.id)
         .map((g) => ({
@@ -586,13 +590,15 @@ export async function newVersion(member: Membership, contractId: string): Promis
   return { ok: true, id };
 }
 
-/** The sent PDF of one of the store's contracts (`customers:read`), from storage; null when there is none or it cannot be read. */
+/** The PDF of one of the store's contracts (`customers:read`): the signed one once made, else the sent one; null when there is none. */
 export async function contractPdf(member: Membership, contractId: string, storage: DocumentStorage | null = documentStorage()): Promise<Uint8Array | null> {
   if (!memberCan(member, READ) || !storage) return null;
   const row = await typedRow(
-    z.object({ pdf_path: col.textOrNull }),
-    sql`select pdf_path from commerce.contracts where store_id = ${member.store.id}::uuid and id = ${contractId}::uuid`,
+    z.object({ pdf_path: col.textOrNull, signed_pdf_path: col.textOrNull }),
+    sql`select pdf_path, signed_pdf_path from commerce.contracts where store_id = ${member.store.id}::uuid and id = ${contractId}::uuid`,
   );
-  if (!row?.pdf_path || !row.pdf_path.startsWith(`${member.store.id}/contracts/`)) return null;
-  return storage.download(row.pdf_path).catch(() => null);
+  // The signed PDF once it is made (D695 step 3), else the one that was sent.
+  const path = row?.signed_pdf_path ?? row?.pdf_path;
+  if (!path || !path.startsWith(`${member.store.id}/contracts/`)) return null;
+  return storage.download(path).catch(() => null);
 }

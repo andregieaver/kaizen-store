@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -11,6 +12,7 @@ import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
 import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
+import { signAsStore } from "@/server/contract-signing";
 import { cancelContract, createContract, deleteDraft, newVersion, saveDraft, saveSigners, type ContractProblem } from "@/server/contracts";
 import { storeAction } from "@/server/store-action";
 
@@ -94,5 +96,22 @@ export async function newVersionAction(storeSlug: string, dealId: string, contra
     const made = await newVersion(member, contractId);
     if (!made.ok) return failed(problemText(w, made.problem));
     redirect(`/admin/${member.store.slug}/deals/${dealId}/contracts/${made.id}`);
+  });
+}
+
+/** The store's signer signs inside the admin (D695 step 3): their name and agreement, their session as the proof; the customer is asked next. */
+export async function signForStoreAction(storeSlug: string, contractId: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.sign_for_store", answer: failed }, async (member) => {
+    const w = wordsOf(member);
+    const h = await headers();
+    const signed = await signAsStore(
+      member,
+      contractId,
+      { name: String(form.get("name") ?? ""), agree: form.get("agree") === "on" },
+      { ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || null, userAgent: h.get("user-agent") },
+    );
+    if (!signed.ok) return { status: "error", messages: [w.signProblems[signed.problem]], fields: { name: String(form.get("name") ?? "") } };
+    refresh();
+    return { status: "ok", messages: [] };
   });
 }
