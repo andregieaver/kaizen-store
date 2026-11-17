@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { parsePageContent } from "../src/lib/page-content";
+import { ORBIT_PACK, orbitHomePage } from "../src/lib/signature/orbit";
+
 import { storePageRows, testDb, testStore } from "./db";
 
 /**
@@ -82,6 +85,55 @@ for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
     expect(total, `${path} first scripts: ${total} bytes`).toBeLessThan(max);
   });
 }
+
+/**
+ * The document a page sends and what is in it (bloat review step 1.3): `document` is the characters of the HTML, `payload` the characters
+ * of the inline scripts that carry the page's data to the browser (`self.__next_f.push(`), `main` the characters from the first `<main` to
+ * the last `</main>`. Five pages, the last a six-row page made from Orbit's home. Each budget is its figure plus 5 %, rounded up to the next
+ * 500, measured on the build of 17 November 2026 (the home 134,151 and its payload 93,017, the product page 138,003, /products 153,070 and 107,040, Kaizena Flow's front page 39,827, the six-row page 147,059). A budget only falls.
+ */
+async function documentOf(page: Page, address: string): Promise<{ document: number; payload: number; main: number }> {
+  const html = await (await page.request.get(address)).text();
+  const payload = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)]
+    .map((match) => match[1])
+    .filter((text) => text.startsWith("(self.__next_f=self.__next_f||[]).push(") || text.startsWith("self.__next_f.push("))
+    .reduce((sum, text) => sum + text.length, 0);
+  const from = html.indexOf("<main");
+  const to = html.lastIndexOf("</main>");
+  return { document: html.length, payload, main: from >= 0 && to > from ? to + "</main>".length - from : 0 };
+}
+
+const DOCUMENT_BUDGETS: Record<string, { document: number; payload: number; main: number }> = {
+  "/s/demo/no": { document: 141_000, payload: 98_000, main: 11_000 },
+  "/s/demo/no/p/demo-keramikkopp": { document: 145_000, payload: 95_500, main: 4_000 },
+  "/s/demo/no/products": { document: 161_000, payload: 112_500, main: 9_000 },
+  "/": { document: 42_000, payload: 25_500, main: 1_500 },
+  "six-row page": { document: 154_500, payload: 109_500, main: 18_000 },
+};
+
+test.describe("a page's document and its payload stay within their budgets", () => {
+  let sixRows = "";
+  test.beforeAll(async () => {
+    const content = parsePageContent(orbitHomePage(ORBIT_PACK, () => null));
+    expect(content).not.toBeNull();
+    expect(content!.rows).toHaveLength(6);
+    sixRows = await storePageRows("ytelse-seks-rader", content!.rows as never);
+  });
+
+  for (const [key, budget] of Object.entries(DOCUMENT_BUDGETS)) {
+    test(key, async ({ page }) => {
+      const measured = await documentOf(page, key === "six-row page" ? sixRows : key);
+      if (MEASURE) {
+        console.log(`[document] ${key} ${measured.document} ${measured.payload} ${measured.main}`);
+        return;
+      }
+      const text = `${key}: ${JSON.stringify(measured)}`;
+      expect(measured.document, text).toBeLessThan(budget.document);
+      expect(measured.payload, text).toBeLessThan(budget.payload);
+      expect(measured.main, text).toBeLessThan(budget.main);
+    });
+  }
+});
 
 test("a page's scripts carry the texts its client components read, never a language's whole interface text (D212)", async ({ page }) => {
   // Each language's words for a store's summary, which only its whole module holds (the server's and the admin's).
