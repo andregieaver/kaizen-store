@@ -129,6 +129,12 @@ chunks (`route.mjs`) from 223,068 to 216,992.
   lightbox, the checkout's payment form, the admin's words, the cookie catalogue's purposes or the filter's dialog; no language's whole interface text; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
   background from its small copy; an embedded frame named.
 
+- A store page's first scripts are held by name in `src/lib/storefront-bundle.baseline.json` (the client modules the server code of the
+  layout, a built page, the product page, a listing and the cart imports); a new one needs a lazy stand-in in `src/components/lazy` or a
+  line with its reason. The same test (`src/lib/storefront-bundle.scan.test.ts`) follows `import()`, keeps the admin's words and the
+  cookie purposes out, and holds the four browser-language files at today's total, which only falls. The byte budgets (step 1.3) and
+  this list are two holds on the same thing: bytes cannot see a 5 to 20 KB part, names can.
+
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.
 
 ## Fonts found late (kaizenaflow.com, 5 November 2026)

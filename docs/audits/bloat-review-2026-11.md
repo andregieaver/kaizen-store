@@ -151,7 +151,7 @@ commit as the fix.
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Open | |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Open | |
 | 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
-| 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Open | |
+| 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | In progress | 17 Nov, local: lists 31/19/27/39/40; carousel in built page; 24 later pairs; browser text held at today's 34,360 (brief 34,000; owner's 0.43 rule: hold today's) |
 | 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Open | |
 | 1.29 | Only if the free switches are not enough: build in CI and deploy the prebuilt output |  | M | strong | 1.21, 0.38, 1.20 | Open | |
 
