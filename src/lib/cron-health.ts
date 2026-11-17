@@ -64,3 +64,35 @@ export function cronHeartbeat(rows: readonly CronJobRow[], now: Date = new Date(
     failingJobs: health.filter((h) => h.health === "failing").length,
   };
 }
+
+/** The jobs the watcher (`/api/cron/watchdog`, bloat review step 1.22) reads: the five-minute dispatcher's route row; step 3.1 adds the tick's row here. */
+export const WATCHED_JOBS = ["route.cart-reminders"] as const;
+
+/** A watched job whose last finished run is older than this has stopped: the dispatcher runs every five minutes, so fifteen minutes is three missed runs. */
+export const STOPPED_AFTER_SECONDS = 900;
+
+/** The watched jobs that have stopped: each with its age in minutes (null for a job that never finished a run or has no row at all). Empty while all are fresh. */
+export function stoppedJobs(rows: readonly CronJobRow[], now: Date = new Date()): { job: string; minutes: number | null }[] {
+  const stopped: { job: string; minutes: number | null }[] = [];
+  for (const job of WATCHED_JOBS) {
+    const row = rows.find((r) => r.job === job);
+    if (!row?.lastFinishedAt) {
+      stopped.push({ job, minutes: null });
+      continue;
+    }
+    const age = (now.getTime() - new Date(row.lastFinishedAt).getTime()) / 1000;
+    if (age > STOPPED_AFTER_SECONDS) stopped.push({ job, minutes: Math.floor(age / 60) });
+  }
+  return stopped;
+}
+
+/**
+ * The status page's jobs check (step 1.22): failing when any job is failing; late when a dispatcher job, the watcher (`route.watchdog`) or a
+ * daily job (a period of a day or more) is late. A late one-minute route is not: it has its own row on the platform home.
+ */
+export function jobsCheck(rows: readonly CronJobRow[], now: Date = new Date()): { ok: boolean; reason: "failing" | "late" | null } {
+  const look = jobsNeedingLook(rows, now);
+  if (look.some((j) => j.health === "failing")) return { ok: false, reason: "failing" };
+  if (look.some((j) => j.health === "late" && (j.job.startsWith("dispatcher") || j.job === "route.watchdog" || j.everySeconds >= 86_400))) return { ok: false, reason: "late" };
+  return { ok: true, reason: null };
+}

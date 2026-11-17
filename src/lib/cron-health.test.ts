@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allowanceSeconds, cronHealth, cronHeartbeat, jobsNeedingLook, type CronJobRow } from "./cron-health";
+import { allowanceSeconds, cronHealth, cronHeartbeat, jobsCheck, jobsNeedingLook, stoppedJobs, type CronJobRow } from "./cron-health";
 
 const now = new Date("2026-10-24T12:00:00Z");
 const ago = (seconds: number) => new Date(now.getTime() - seconds * 1000).toISOString();
@@ -60,5 +60,25 @@ describe("the outside heartbeat (F3, D672)", () => {
     // The dispatcher's route quiet for twenty minutes: the scheduler is down.
     expect(cronHeartbeat([row({ job: "route.cart-reminders", everySeconds: 300, lastFinishedAt: ago(1200) }), routes[1]], now)).toMatchObject({ ok: false, lateRoutes: 1 });
     expect(cronHeartbeat([], now)).toMatchObject({ ok: false, routes: 0 });
+  });
+});
+
+describe("the watcher and the status page's jobs check (step 1.22)", () => {
+  it("finds the dispatcher's route stopped after fifteen minutes, or when it has no row", () => {
+    const fresh = [row({ job: "route.cart-reminders", everySeconds: 300, lastFinishedAt: ago(5 * 60) })];
+    expect(stoppedJobs(fresh, now)).toEqual([]);
+    const late = [row({ job: "route.cart-reminders", everySeconds: 300, lastFinishedAt: ago(16 * 60 + 10) })];
+    expect(stoppedJobs(late, now)).toEqual([{ job: "route.cart-reminders", minutes: 16 }]);
+    expect(stoppedJobs([], now)).toEqual([{ job: "route.cart-reminders", minutes: null }]);
+    expect(stoppedJobs([row({ job: "route.cart-reminders", lastFinishedAt: null })], now)).toEqual([{ job: "route.cart-reminders", minutes: null }]);
+  });
+
+  it("fails the jobs check on a late watcher or a late daily job, not on a late one-minute route, and on a failing job", () => {
+    expect(jobsCheck([row({ job: "route.watchdog", everySeconds: 900, lastFinishedAt: ago(60) })], now)).toEqual({ ok: true, reason: null });
+    expect(jobsCheck([row({ job: "route.watchdog", everySeconds: 900, lastFinishedAt: ago(50 * 60) })], now)).toEqual({ ok: false, reason: "late" });
+    expect(jobsCheck([row({ job: "daily.heat", everySeconds: 86_400, lastFinishedAt: ago(31 * 3600) })], now)).toEqual({ ok: false, reason: "late" });
+    expect(jobsCheck([row({ job: "dispatcher.carts", everySeconds: 300, lastFinishedAt: ago(3600) })], now)).toEqual({ ok: false, reason: "late" });
+    expect(jobsCheck([row({ job: "route.page-looks", everySeconds: 60, lastFinishedAt: ago(3600) })], now)).toEqual({ ok: true, reason: null });
+    expect(jobsCheck([row({ job: "route.page-looks", failures: 3 })], now)).toEqual({ ok: false, reason: "failing" });
   });
 });

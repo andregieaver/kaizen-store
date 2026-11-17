@@ -354,6 +354,17 @@ export const platformNb: PlatformMessages = {
     emails: "E-poster fra Kaizena Flow",
     noEmails: "Ingen e-poster ennå.",
   },
+  /** The watcher outside the scheduler (bloat review step 1.22): to the platform's admins when the scheduled jobs have stopped. */
+  watchdog: {
+    subject: "Kaizena Flow: planlagte jobber har stoppet",
+    preview: "Planleggeren har ikke kjørt på {minutes} minutter.",
+    heading: "Planlagte jobber har stoppet",
+    body: "Ingenting som er planlagt kjører: påminnelser, e-poster, importer og vedlikehold venter til planleggeren kjører igjen. Sjekk at pg_cron kjører i Supabase-prosjektet.",
+    job: "{job}: sist ferdig for {minutes} minutter siden.",
+    never: "{job}: har aldri fullført en kjøring.",
+    button: "Åpne bruk og grenser",
+    footer: "Sendt av vakten som kjører utenfor planleggeren, høyst én gang hver sjette time så lenge det varer.",
+  },
   briefing: {
     thisMonth: "Denne måneden",
     mrr: "Gjentakende inntekter {amount}, {moved} denne måneden.",
