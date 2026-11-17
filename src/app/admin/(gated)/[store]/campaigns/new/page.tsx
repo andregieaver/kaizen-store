@@ -6,13 +6,14 @@ import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang"
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { isSaleKey } from "@/lib/campaign-offers";
+import { discountTabHref } from "@/lib/discount-tabs";
 import { mainCurrency } from "@/lib/markets";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
 import { CampaignForm } from "../campaign-form";
 
-export const metadata: Metadata = { title: "New campaign" };
+export const metadata: Metadata = { title: "New automatic discount" };
 
 export default async function NewCampaignPage({ params, searchParams }: PageProps<"/admin/[store]/campaigns/new">) {
   const gated = await requirePermission((await params).store, "marketing:read");
@@ -35,7 +36,7 @@ export default async function NewCampaignPage({ params, searchParams }: PageProp
   return (
     <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader back={{ href: `/admin/${store.slug}/campaigns`, label: w.title }} title={w.newCampaign} />
+        <PageHeader back={{ href: discountTabHref(store.slug, "automatic"), label: w.title }} title={w.newCampaign} />
         <CampaignForm store={store} campaign={null} sale={sale} />
       </div>
     </AdminTextScope>

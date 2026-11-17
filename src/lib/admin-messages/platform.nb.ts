@@ -594,7 +594,7 @@ export const platformNb: PlatformMessages = {
     },
   },
   reports: {
-    title: "Meldinger om ulovlig innhold",
+    title: "Meldinger om innhold",
     description: "Meldinger folk har sendt om innhold i butikker. Avgjør hver i tide, med begrunnelse: avsenderen får beskjed, og butikken også når du begrenser noe.",
     waiting: "Venter på avgjørelse",
     decided: "Avgjort",
@@ -924,7 +924,7 @@ export const platformNb: PlatformMessages = {
     ownFee: "eget gebyr",
   },
   activity: {
-    title: "Aktivitetslogg",
+    title: "Endringslogg",
     description:
       "Det plattformadministratorer og plattformen gjorde, som ikke hører til én butikk: hendelser i totrinnsinnloggingen, gjenopprettingskoder som er brukt, tilbakestillinger og godkjenninger. En butikks egne endringer står i loggen til den butikken. Oppføringene beholdes i 24 måneder og kan ikke endres.",
   },
@@ -951,7 +951,7 @@ export const platformNb: PlatformMessages = {
     hours: "{n} timer",
     minutes: "{n} minutter",
   },
-  loadingActivity: "Laster aktivitetsloggen …",
+  loadingActivity: "Laster endringsloggen …",
   actions: {
     unknownRequest: "Ukjent forespørsel.",
     declinedTheRequestIsIn:
@@ -1015,7 +1015,7 @@ export const platformNb: PlatformMessages = {
     planCode:
       "Vises i e-posten og brukes på abonnementet når eieren følger lenken. Lag koder under Rabatter; en kode som er slått av, blir utelatt.",
     cartCode:
-      "Vises i e-posten og legges i handlekurven når kunden følger lenken. Lag koder under Rabattkoder; en kode som er slått av, blir utelatt.",
+      "Vises i e-posten og legges i handlekurven når kunden følger lenken. Lag koder under Rabatter; en kode som er slått av, blir utelatt.",
     email: "E-posten",
     language: "Språk",
     subject: "Emne",

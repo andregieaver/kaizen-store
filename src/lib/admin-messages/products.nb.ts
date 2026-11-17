@@ -38,7 +38,7 @@ export const productsNb: ProductsMessages = {
     fields: { status: "Status", archived: "Arkivert", terms: "Kategorier og stikkord", stock: "Lager", cost: "Kostpris", sku: "Varenummer", availability: "Hvor det selges" },
   },
   settings: {
-    title: "Produkter",
+    title: "Innstillinger for produkter",
     intro: "Hva kundene ser av produktene dine i rutenett på nettstedet. Hvert rutenett kan velge annerledes for seg selv i sidebyggeren.",
     tilesTitle: "Produktfliser",
     stock: "Vis hvor mange som er igjen",
@@ -338,7 +338,7 @@ export const productsNb: ProductsMessages = {
     result: "Resultat",
     imported: "Hva som ble importert",
     importedBefore: "Hva som ble importert før den stoppet",
-    reference: "Referanse for aktivitetsloggen:",
+    reference: "Referanse for endringsloggen:",
     priceHistory: "En pris som ble endret, står i produktets prishistorikk.",
   },
   importPage: {

@@ -314,7 +314,7 @@ export const redirectsNb: RedirectsMessages = {
       already: "Fantes allerede",
       skipped: "Hoppet over",
       failed: "Ikke importert",
-      reference: "Referanse for aktivitetsloggen:",
+      reference: "Referanse for endringsloggen:",
       works: "De nye omdirigeringene virker med en gang.",
     },
     findings: {
@@ -396,7 +396,7 @@ export const redirectsNb: RedirectsMessages = {
     unreadable: "Skjemaet kunne ikke leses. Last inn siden på nytt og prøv igjen.",
     tooMany: "Velg høyst {max} omdirigeringer om gangen.",
     not_found: "Denne omdirigeringen finnes ikke lenger. Den kan ha blitt slettet.",
-    not_logged: "Aktivitetsloggen kunne ikke skrives, så ingenting ble endret. Prøv igjen.",
+    not_logged: "Endringsloggen kunne ikke skrives, så ingenting ble endret. Prøv igjen.",
     nothing: "Velg minst én omdirigering.",
     taken: "En annen omdirigering går allerede fra den adressen. Rediger den i stedet.",
     automatic: "Denne omdirigeringen lages av Kaizena Flow når en adresse endres. Slett den, eller lag en egen omdirigering fra samme adresse for å erstatte den.",

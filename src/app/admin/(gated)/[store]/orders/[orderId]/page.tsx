@@ -677,7 +677,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                     {order.campaignDiscountMinor > 0 && order.campaignLabel && (
                       <span className="text-xs text-muted">
                         {" "}
-                        (<Link href={`/admin/${store.slug}/campaigns`} className="underline">{order.campaignLabel}</Link>, −{money(order.campaignDiscountMinor)})
+                        (<Link href={`/admin/${store.slug}/discounts?tab=automatic`} className="underline">{order.campaignLabel}</Link>, −{money(order.campaignDiscountMinor)})
                       </span>
                     )}
                     {order.memberDiscountMinor > 0 && order.memberLabel && (

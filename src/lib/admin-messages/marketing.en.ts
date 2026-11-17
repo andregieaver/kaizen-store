@@ -62,7 +62,8 @@ export const marketingEn = {
   },
   segments: {
     /** The list drawn for Homer (round 8, D626): ready segments on the page, each with how many it holds now. */
-    lead: "Groups of your customers, kept up to date by themselves.",
+    // Who a message goes to, by rules, never a group with a discount (Customer groups): ecosystem plan E3.7, D718.
+    lead: "Who gets your emails and text messages, chosen by rules and kept up to date by themselves.",
     leadRest: " Start from one most shops use, or make your own.",
     yours: "Your segments",
     ready: "Ready to use",
@@ -71,7 +72,7 @@ export const marketingEn = {
     makeOwn: "Make your own",
     title: "Segments",
     description:
-      "Groups of your customers and subscribers by what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date.",
+      "Who gets a broadcast, a text message or an automation, chosen from your customers and subscribers by rules on what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date.",
     newSegment: "New segment",
     empty: "No segments yet. Make one to see, for example, your best customers or the ones who have not ordered for a while.",
     unreadable: "These rules can no longer be read: open it and save it again.",
@@ -622,21 +623,23 @@ export const marketingEn = {
         days: { one: "Sent {n} day after they last looked.", many: "Sent {n} days after they last looked." },
       },
     },
-    /** An automation's follow-ups (D653): up to two more emails, each its days after the one before. */
+    /**
+     * An automation's further emails (D653): up to two more, each its days after the one before. Called its second and third email, never
+     * follow-ups, which are the AI manager's (ecosystem plan E3.7, D718).
+     */
     followUps: {
-      title: "Follow-ups",
-      none: "Only one email goes. A follow-up goes some days later to those who have not ordered since.",
-      add: "Add a follow-up",
+      title: "More emails",
+      none: "Only one email goes. A second email can go some days later to those who have not ordered since.",
+      add: "Add the next email",
       edit: "Edit",
       second: "Second email",
       third: "Third email",
       after: { one: "{n} day after the email before.", many: "{n} days after the email before." },
       daysLabel: "Days after the email before",
-      stops: "A follow-up goes only to those still on your list who have not ordered since the first email.",
-      newTitle: "New follow-up",
+      stops: "A second or third email goes only to those still on your list who have not ordered since the first email.",
       newWords: "These are the first email's words to start from. Change them and save.",
       picks: "Each email shows up to three products chosen for the reader: you write the words around them.",
-      delete: { question: "Delete this follow-up? Those already sent it keep it.", deleting: "Deleting…", delete: "Delete this follow-up" },
+      delete: { question: "Delete this email? Those already sent it keep it.", deleting: "Deleting…", delete: "Delete this email" },
     },
     backInStock: {
       title: "Back in stock",
@@ -754,10 +757,10 @@ export const marketingEn = {
     daysRange: "The days must be a whole number from {min} to {max}.",
     isOn: "It is on, so it needs words it can send: {problem}",
     saveWords: "Save its words first.",
-    followUpFirst: "Save the first email before adding a follow-up.",
-    followUpMax: "An automation has at most three emails: the first and two follow-ups.",
-    followUpGone: "That follow-up no longer exists.",
-    followUpRace: "Someone else changed the follow-ups just now. Open the automation again.",
+    followUpFirst: "Save the first email before adding a second.",
+    followUpMax: "An automation has at most three emails.",
+    followUpGone: "That email no longer exists.",
+    followUpRace: "Someone else changed the emails just now. Open the automation again.",
     notInLibrary: "A picture is not in your media library. Upload it here.",
     pictureType: "Pictures in emails must be JPEG, PNG or GIF: some mail apps cannot show WebP or AVIF. Upload the picture here.",
     address: "Write a full address starting with https://, or a path of your store such as /products.",

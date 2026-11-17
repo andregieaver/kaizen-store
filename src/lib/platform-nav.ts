@@ -49,8 +49,9 @@ export const HOUSE_STORE_CARD = {
 export const PLAN_ITEMS: SectionItem[] = [
   item("/plans", "Editor", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", "credit-card", true),
   item("/plans/limits", "Limits", "What each plan includes of storage, products, staff, domains, emails, AI and traffic, and the default for stores without a plan.", "gauge"),
-  item("/plans/features", "Features", "Every feature with a tick for each plan that includes it: the comparison stores see.", "toggle"),
-  item("/plans/analytics", "Analytics", "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.", "chart-column"),
+  // Named apart from the store's own pages (ecosystem plan E3.7, D718): a store's Features switch them, its Analytics are its figures.
+  item("/plans/features", "Plan features", "Every feature with a tick for each plan that includes it: the comparison stores see.", "toggle"),
+  item("/plans/analytics", "Plan analytics", "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.", "chart-column"),
   item("/plan-reminders", "Reminders", "Emails to owners who left a plan checkout.", "bell"),
   item("/discounts", "Discounts", "Discount codes for stores' plans.", "ticket"),
   item("/referrals", "Referrals", "Kaizena Flow's referral program: commission, referrers, referred stores.", "share"),
@@ -59,21 +60,23 @@ export const PLAN_ITEMS: SectionItem[] = [
 /** Support (D216): Kaizen's own desk, and the chat assistant that answers its visitors first. */
 export const SUPPORT_ITEMS: SectionItem[] = [
   item("/support", "Inbox", "Kaizena Flow's support desk: conversations with visitors of Kaizena Flow's site and owners asking Kaizena Flow, live.", "inbox", true),
-  item("/support/reports", "Reports", "How Kaizena Flow's own desk did: conversations, the AI alone, waiting times, ratings and topics.", "chart-column"),
+  // The same names as a store's support (ecosystem plan E3.7, D718).
+  item("/support/reports", "Support reports", "How Kaizena Flow's own desk did: conversations, the AI alone, waiting times, ratings and topics.", "chart-column"),
   item("/support/stores", "Stores", "Each store's support in figures: counts and rates only, never a conversation.", "store"),
   item("/support/replies", "Saved replies", "Texts Kaizena Flow's people put in an answer with / in the inbox, filled in with names.", "message-text"),
   item("/chat", "Chat assistant", "Kaizena Flow's public site chat assistant and its knowledge base.", "bot"),
   item("/support/widgets", "Website chat", "Kaizena Flow's chat on its other websites: widgets with their own look, each with a tag to paste on its sites.", "globe"),
-  item("/support/settings", "Settings", "Who answers Kaizena Flow's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", "settings-2"),
+  item("/support/settings", "Support settings", "Who answers Kaizena Flow's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", "settings-2"),
 ];
 
 export const SETTINGS_ITEMS: SectionItem[] = [
   item("/navigation", "Header and footer", "Kaizena Flow's logos, icon, business details and which menus its standard header and footer show.", "panels-top-left"),
   item("/experiments", "A/B tests", "Every store's A/B tests: what is running, what needs a look and what waits for a decision.", "flask"),
-  item("/search-test", "Search", "The search experiment: keyword against hybrid search.", "search"),
+  // Named apart from the store's pages (ecosystem plan E3.7, D718): a store's Search is its search, its VAT its VAT reports.
+  item("/search-test", "Search test", "The search experiment: keyword against hybrid search.", "search"),
   item("/seo", "SEO", "How search engines and AI crawlers see Kaizena Flow's site.", "trending-up"),
   item("/cookies", "Cookies", "Kaizena Flow's cookies, tracking tools and consents.", "cookie"),
-  item("/vat", "VAT", "VAT categories and rates per country with history, the rates nobody has verified yet, and how shipping is taxed.", "percent"),
+  item("/vat", "VAT rates", "VAT categories and rates per country with history, the rates nobody has verified yet, and how shipping is taxed.", "percent"),
   item("/duty-rates", "Duty rates", "The duty rates and thresholds per country that stores' customs estimates are worked out from, each with its source and whether a person verified it.", "container"),
   item("/retention", "Data retention", "How long each kind of personal data is kept, where each period comes from, and what the daily job removed.", "clock"),
   item("/processing", "Record of processing", "What Kaizena Flow does with personal data, purpose by purpose (GDPR Art. 30), drawn from the register.", "shield-check"),
@@ -87,7 +90,8 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/workflows", "Workflows", "When something happens on the platform, or at a set time: check and act. An email to the owners, a Slack message or a signed request.", "workflow"),
   item("/oauth", "AI assistants and apps", "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.", "plug"),
   item("/apps", "App listings", "Apps that ask to be listed in the app directory, to approve or decline.", "puzzle"),
-  item("/reports", "Illegal content notices", "Notices people sent about illegal content on stores, each decided with its reason (DSA).", "flag"),
+  // Notices of illegal content (DSA), named apart from Reports and the AI manager's notices (ecosystem plan E3.7, D718).
+  item("/reports", "Content notices", "Notices people sent about illegal content on stores, each decided with its reason (DSA).", "flag"),
   item("/challenges", "100-day challenge", "Every store the autopilot runs alone for 100 days: what holds it up, what waits on its owner, its AI cost and the three ratios; setting and ending a challenge.", "target"),
   item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI.", "gauge"),
   item("/domains", "Domains", "Domains stores buy through Kaizena Flow: prices per currency, which stores may buy, registrations and purchases that need a look.", "link"),
@@ -95,7 +99,8 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup.", "mail"),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands.", "languages"),
   item("/team", "Team", "Who runs Kaizena Flow: the platform admins, whether each has two-step sign-in, and adding or removing one.", "user-cog"),
-  item("/activity", "Activity log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when.", "file-clock"),
+  // The audit log, as a store's is named (ecosystem plan E3.7, D718).
+  item("/activity", "Change log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when.", "file-clock"),
 ];
 
 /** What the platform's pages of cards say at the top (D144), shown through `navWord()` like the rest of the navigation (D312 A2). */
@@ -129,7 +134,8 @@ export function platformTabs(counts: { requests?: number; support?: number } = {
     { href: `${base}/stores`, label: "Stores", icon: "shopping-bag" },
     { href: `${base}/customers`, label: "Customers", icon: "users" },
     { href: `${base}/plans`, label: "Plans", icon: "credit-card", also: sectionPrefixes(null, PLAN_ITEMS) },
-    { href: `${base}/requests`, label: "Requests", icon: "bell", ...(counts.requests ? { badge: counts.requests } : {}) },
+    // Access requests, named apart from a store's support Requests (ecosystem plan E3.7, D718).
+    { href: `${base}/requests`, label: "Access requests", icon: "bell", ...(counts.requests ? { badge: counts.requests } : {}) },
     { href: `${base}/support`, label: "Support", icon: "chat", also: sectionPrefixes(null, SUPPORT_ITEMS), ...(counts.support ? { badge: counts.support } : {}) },
     { href: `${base}/settings`, label: PLATFORM_HUB_TITLES.settings, icon: "cog", also: sectionPrefixes("/settings", SETTINGS_ITEMS), foot: true },
   ];

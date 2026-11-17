@@ -37,10 +37,15 @@ export const discountsEn = {
     ended: "Ended",
     used_up: "Used up",
   },
+  /** The Discounts page (ecosystem plan E3.7, D718): one page, the codes and the automatic offers its tabs (`src/lib/discount-tabs.ts`). */
+  page: {
+    title: "Discounts",
+    tabs: { label: "Kinds of discount", codes: "Codes", automatic: "Automatic" },
+  },
   codes: {
-    title: "Coupons",
+    title: "Discount codes",
     description: "Codes shoppers type in the cart or at checkout for money off or free shipping.",
-    newCode: "New coupon",
+    newCode: "New discount code",
     empty: "No codes yet. Make one for a campaign, a newsletter or a loyal customer.",
     products: { one: " · {n} product", many: " · {n} products" },
     given: "{amount} given",
@@ -162,10 +167,10 @@ export const discountsEn = {
     },
   },
   campaigns: {
-    title: "Campaigns",
+    title: "Automatic discounts",
     description:
       "Offers that need no code: a percentage or an amount off, buy more and pay for fewer (3 for 2), bigger discounts for buying more, free shipping, or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.",
-    newCampaign: "New campaign",
+    newCampaign: "New automatic discount",
     /** The page drawn for Homer (round 10, D633): a sentence, ready sales and Write your own. */
     leadNone: "No sale is running.",
     leadSome: { one: "{n} sale is running.", many: "{n} sales are running." },

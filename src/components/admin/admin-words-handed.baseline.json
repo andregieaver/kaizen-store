@@ -662,12 +662,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "whole": [
         "discounts"
@@ -679,31 +679,16 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "whole": [
         "discounts"
       ],
-      "unnamed": []
-    },
-    "src/app/admin/(gated)/[store]/campaigns/page.tsx#discounts": {
-      "areas": [
-        "discounts"
-      ],
-      "handed": {
-        "en": 19631,
-        "nb": 20135
-      },
-      "named": {
-        "en": 639,
-        "nb": 652
-      },
-      "whole": [],
       "unnamed": []
     },
     "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx#platform": {
@@ -886,12 +871,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "whole": [
         "discounts"
@@ -903,12 +888,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "whole": [
         "discounts"
@@ -920,8 +905,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
         "en": 639,
@@ -2922,8 +2907,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
         "en": 639,
@@ -2937,8 +2922,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20388,
+        "nb": 20859
       },
       "named": {
         "en": 639,

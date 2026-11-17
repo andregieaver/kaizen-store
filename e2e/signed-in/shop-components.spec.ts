@@ -12,7 +12,7 @@ test.use({ storageState: OWNER.state });
 
 test("Settings, Products keeps what product tiles show", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/settings/products`);
-  await expect(page.getByRole("heading", { level: 1, name: "Products" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Product settings" })).toBeVisible();
   const stock = page.getByRole("checkbox", { name: /^Show how many are left/ });
   const quantity = page.getByRole("checkbox", { name: /^Show a quantity chooser and Add to cart/ });
   await expect(stock).not.toBeChecked();

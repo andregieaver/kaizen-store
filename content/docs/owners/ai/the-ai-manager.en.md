@@ -75,7 +75,7 @@ the store always waits.
 You can also say yes in words, typed or spoken. It counts only when your own message plainly says yes, and only for a change that was
 already waiting. A card nobody answers is dropped after seven days: *No answer in seven days, so it was not done.*
 
-Every change it makes is in the **Activity log** (Settings, Account) under your name, marked *through the AI manager*.
+Every change it makes is in the **Change log** (Settings, Account) under your name, marked *through the AI manager*.
 
 ## Notices
 

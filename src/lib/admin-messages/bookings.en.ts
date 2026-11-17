@@ -845,7 +845,7 @@ export const bookingsEn = {
       sectionText: "Erase your account and the data Kaizena Flow keeps about you. Your stores keep what was done in them, without your name.",
       open: "Delete your account …",
       title: "Delete your account",
-      description: "Your account is erased: your sign-in, name, email and picture, your access to every store, and the AI manager's conversations, memories, notices and saved skills. What you did in a store stays there without your name; the activity log keeps it under an id that names no one. This cannot be undone.",
+      description: "Your account is erased: your sign-in, name, email and picture, your access to every store, and the AI manager's conversations, memories, notices and saved skills. What you did in a store stays there without your name; the change log keeps it under an id that names no one. This cannot be undone.",
       back: "Your account",
       refusals: {
         not_found: "This account could not be found.",

@@ -133,6 +133,6 @@ A page a person's role cannot open is left out of their menu, and its address an
 4. **Two-step sign-in.** When the store requires it, someone without it is taken to set it up before they reach the store.
 5. **A closed store.** While the store is closed or suspended, everyone can only read and handle what already happened.
 
-The [Activity log](/admin/{store}/activity) notes each time someone was refused something their role does not allow.
+The [Change log](/admin/{store}/activity) notes each time someone was refused something their role does not allow.
 
 More: [staff and permissions](/docs/owners/team-and-settings/staff-and-permissions), [security](/docs/owners/team-and-settings/security).

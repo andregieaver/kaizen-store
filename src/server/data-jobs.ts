@@ -84,7 +84,7 @@ const AREA: Record<string, "products" | "orders" | "customers" | "website"> = { 
 /** The kinds that are exports (the rest read an uploaded file). */
 type ExportKind = Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import" | "customer_import" | "order_history_import">;
 
-const NOT_LOGGED = "The activity log could not be written, so no file was made. Try again.";
+const NOT_LOGGED = "The change log could not be written, so no file was made. Try again.";
 
 // ---------------------------------------------------------------------------
 // Asking for an export: a download at once, or a job
@@ -98,7 +98,7 @@ export const EXPORT_PROBLEM_TEXT: Record<ExportProblemCode, string> = {
   options: "The choices for the export could not be read. Check them and try again.",
   too_big: `This export has more than ${EXPORT_MAX_ROWS.toLocaleString("en")} rows. Choose a narrower period or filter.`,
   too_many: `${DATA_EXPORTS_ACTIVE_MAX} exports are already being made for this store. Wait for one to finish.`,
-  not_logged: "The activity log could not be written, so no file was made. Try again.",
+  not_logged: "The change log could not be written, so no file was made. Try again.",
   no_orders: "None of those order numbers belong to this store.",
   failed: "The export could not be made. Try again.",
 };

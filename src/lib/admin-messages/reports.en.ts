@@ -9,13 +9,14 @@ import type { Widen } from "./common.en";
  */
 export const reportsEn = {
   pages: {
-    customers: { title: "Customers", description: "Do customers come back, what is a customer worth, and who are your best? The period picks the customers who ordered in it; repeat rates, lifetime value, groups and cohorts always look at the whole history." },
-    products: { title: "Products", description: "What sells, what earns and what is sent back. The best sellers come first, then every product with its revenue, margin, refunds and share of your sales." },
-    inventory: { title: "Inventory", description: "What is in stock and what it is worth, which products are about to run out, and which are not selling. These figures are as of now, not for a period." },
-    subscriptions: { title: "Subscriptions", description: "How much recurring revenue the store has, whether it is growing, and how much of it is leaving or at risk. The first block is today's; the rest follows the period." },
+    // Each named apart from the page it is about (ecosystem plan E3.7, D718), as the navigation names it.
+    customers: { title: "Customer analytics", description: "Do customers come back, what is a customer worth, and who are your best? The period picks the customers who ordered in it; repeat rates, lifetime value, groups and cohorts always look at the whole history." },
+    products: { title: "Product analytics", description: "What sells, what earns and what is sent back. The best sellers come first, then every product with its revenue, margin, refunds and share of your sales." },
+    inventory: { title: "Inventory analytics", description: "What is in stock and what it is worth, which products are about to run out, and which are not selling. These figures are as of now, not for a period." },
+    subscriptions: { title: "Subscription analytics", description: "How much recurring revenue the store has, whether it is growing, and how much of it is leaving or at risk. The first block is today's; the rest follows the period." },
     sales: { title: "Sales", description: "What the deals may bring and when, how they move from stage to stage, what each person won and lost, and how long a deal takes to win. The forecast is of every open deal now; the rest follows the period." },
     traffic: { title: "Traffic", description: "Where visitors drop out on the way to a purchase, which devices and countries sell, what shoppers search for and when the store sells, with refunds and returns at the bottom." },
-    marketing: { title: "Marketing", description: "What it costs to win a customer, which channels pay back, and how much of your business depends on discounts." },
+    marketing: { title: "Marketing analytics", description: "What it costs to win a customer, which channels pay back, and how much of your business depends on discounts." },
   },
   customers: {
     /** Round 28 (D701): the page on a phone. */
@@ -718,7 +719,7 @@ export const reportsEn = {
     basketLarger: "{pct} larger than a basket at full price.",
     codeKinds: { percent: "Percent off", fixed: "Fixed amount off", free_shipping: "Free shipping" } as Record<string, string>,
     kindLabels: {
-      campaign: "Campaigns",
+      campaign: "Automatic discounts",
       group: "Customer groups",
       referral: "Welcome discounts (referral)",
       credit: "Bonus credits",

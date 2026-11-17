@@ -21,7 +21,7 @@ export const screensNb: ScreensMessages = {
       options: "Valgene for eksporten kunne ikke leses. Sjekk dem og prøv igjen.",
       too_big: "Denne eksporten har mer enn {max} rader. Velg en kortere periode eller et smalere filter.",
       too_many: "{n} eksporter lages allerede for denne butikken. Vent til en av dem er ferdig.",
-      not_logged: "Aktivitetsloggen kunne ikke skrives, så ingen fil ble laget. Prøv igjen.",
+      not_logged: "Endringsloggen kunne ikke skrives, så ingen fil ble laget. Prøv igjen.",
       no_orders: "Ingen av de bestillingsnumrene hører til denne butikken.",
       failed: "Eksporten kunne ikke lages. Prøv igjen.",
     },

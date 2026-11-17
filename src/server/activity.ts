@@ -16,7 +16,7 @@ import { ACTORS, type Actor } from "./actor";
 type Row = Record<string, unknown>;
 
 /**
- * The activity log's reads (wave 1, 1f, docs/wave-1-trust.md 2.9): who did what and when, by person, area and period, paged by a
+ * The change log's reads (wave 1, 1f, docs/wave-1-trust.md 2.9): who did what and when, by person, area and period, paged by a
  * cursor, and the owner's CSV. Every query takes the store id, so another store's entries never appear, and an entry with no store
  * (the platform's) is never shown here.
  *
@@ -182,7 +182,7 @@ export type ExportResult = { ok: true; csv: string; rows: number } | { ok: false
  * itself an entry. Cells go through `toCsv()`, which makes one that starts `=`, `+`, `-` or `@` harmless.
  */
 export async function exportActivity(member: Membership, filters: ActivityFilters): Promise<ExportResult> {
-  if (!can(holderOf(member), "owner")) return { ok: false, problem: "Only an owner can download the activity log." };
+  if (!can(holderOf(member), "owner")) return { ok: false, problem: "Only an owner can download the change log." };
   const from = day(filters.from);
   const to = day(filters.to);
   if (!from || !to) return { ok: false, problem: "Choose the first and last day to download." };

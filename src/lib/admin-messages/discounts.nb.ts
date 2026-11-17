@@ -31,6 +31,10 @@ export const discountsNb: DiscountsMessages = {
     ended: "Avsluttet",
     used_up: "Brukt opp",
   },
+  page: {
+    title: "Rabatter",
+    tabs: { label: "Typer rabatt", codes: "Koder", automatic: "Automatiske" },
+  },
   codes: {
     title: "Rabattkoder",
     description: "Koder kundene skriver inn i handlekurven eller i kassen for rabatt eller gratis frakt.",
@@ -155,10 +159,10 @@ export const discountsNb: DiscountsMessages = {
     },
   },
   campaigns: {
-    title: "Kampanjer",
+    title: "Automatiske rabatter",
     description:
       "Tilbud uten kode: en prosent eller et beløp i rabatt, kjøp flere og betal for færre (3 for 2), større rabatt jo mer som kjøpes, gratis frakt, eller et gratis produkt når handlekurven kommer opp i et beløp. De kan gjelde hele butikken, noen produkter eller en kategori eller et stikkord, og starter og stopper av seg selv.",
-    newCampaign: "Ny kampanje",
+    newCampaign: "Ny automatisk rabatt",
     leadNone: "Ingen salg pågår.",
     leadSome: { one: "{n} salg pågår.", many: "{n} salg pågår." },
     leadRest: " Prisene endres av seg selv, uten kode; start fra et salg de fleste butikker har.",

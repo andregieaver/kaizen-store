@@ -173,7 +173,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   },
 
   // Marketing
-  "store:discounts": { title: "Rabattkoder", keywords: ["rabattkoder", "rabattkode", "kupong", "rabatt", "salg", "kampanje"] },
+  "store:discounts": { title: "Rabatter", keywords: ["rabatter", "rabattkoder", "rabattkode", "kupong", "rabatt", "salg", "kampanje"] },
   "store:discount.new": { title: "Ny rabattkode", keywords: ["ny rabattkode", "opprett rabattkode", "kupong", "rabatt"] },
   "store:discount": { title: "Rabattkode", keywords: ["rabattkode", "kupong", "rabatt", "bruk", "slå av"] },
   "store:wishlists": { title: "Ønskelister", keywords: ["ønskelister", "ønskeliste", "favoritter", "lagret"] },
@@ -247,8 +247,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
 
   // Campaigns, tests and loyalty
   "store:campaigns": {
-    title: "Kampanjer",
-    keywords: ["kampanjer", "kampanje", "tilbud", "salg", "3 for 2", "gratis gave", "rabatt", "black friday"],
+    title: "Automatiske rabatter",
+    keywords: ["automatiske rabatter", "kampanjer", "kampanje", "tilbud", "salg", "3 for 2", "gratis gave", "rabatt", "black friday"],
   },
   "store:recommendations": {
     title: "Anbefalinger",
@@ -263,8 +263,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:experiment.variants": { title: "Testversjoner", keywords: ["testversjoner", "versjoner", "a/b-test"] },
   "store:experiment.variant": { title: "En testversjon", keywords: ["testversjon", "versjon", "a/b-test", "sidebygger"] },
   "store:experiment.variant.preview": { title: "Forhåndsvisning av testversjon", keywords: ["forhåndsvisning", "testversjon", "a/b-test"] },
-  "store:campaign.new": { title: "Ny kampanje", keywords: ["ny kampanje", "opprett kampanje", "tilbud", "kampanje"] },
-  "store:campaign": { title: "Kampanje", keywords: ["kampanje", "tilbud", "rabatt", "slå av"] },
+  "store:campaign.new": { title: "Ny automatisk rabatt", keywords: ["ny kampanje", "opprett kampanje", "tilbud", "kampanje"] },
+  "store:campaign": { title: "Automatisk rabatt", keywords: ["automatisk rabatt", "kampanje", "tilbud", "rabatt", "slå av"] },
   "store:bonus": {
     title: "Bonuspoeng",
     keywords: ["bonus", "bonusprogram", "lojalitet", "poeng", "belønning", "faste kunder", "kundeklubb", "opptjening"],
@@ -274,8 +274,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["skaper", "skapere", "influenser", "influensere", "provisjon", "innholdsskaper", "ambassadør", "partnerprogram", "utbetaling", "rabattkode"],
   },
   "store:affiliates": {
-    title: "Vervekampanje",
-    keywords: ["verving", "verv en venn", "vervelenke", "vennerabatt", "velkomstrabatt", "inviter venner", "tips en venn", "ambassadør"],
+    title: "Tips en venn",
+    keywords: ["vervekampanje", "verving", "verv en venn", "vervelenke", "vennerabatt", "velkomstrabatt", "inviter venner", "tips en venn", "ambassadør"],
   },
 
   // Customers
@@ -351,7 +351,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["produktfeed", "google shopping", "merchant center", "meta-katalog", "facebook-butikk", "instagram shopping", "tiktok-katalog", "pinterest-katalog", "xml-feed", "csv-feed"],
   },
   "store:email-automation": { title: "E-postautomatisering", keywords: ["e-postautomatisering", "automatisering", "test-e-post", "slå på"] },
-  "store:email-follow-up": { title: "Oppfølgings-e-post", keywords: ["oppfølging", "oppfølgings-e-post", "andre e-post", "tredje e-post"] },
+  "store:email-follow-up": { title: "Andre eller tredje e-post", keywords: ["andre e-post", "tredje e-post", "neste e-post", "oppfølging"] },
   "store:text-message.new": { title: "Ny SMS", keywords: ["ny sms", "skriv sms", "sms-utsendelse"] },
   "store:text-message": { title: "SMS-utsendelse", keywords: ["sms-utsendelse", "sms", "send", "pris"] },
   "store:broadcast.new": { title: "Ny utsendelse", keywords: ["ny utsendelse", "nytt nyhetsbrev", "skriv e-post", "utsendelse"] },
@@ -667,7 +667,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["medarbeidere", "team", "brukere", "ansatte", "roller", "inviter", "totrinnsbekreftelse", "tilganger"],
   },
   "store:staff.roles": { title: "Roller", keywords: ["roller", "tilganger", "tilgang", "rettigheter", "skrivebeskyttet"] },
-  "store:activity": { title: "Aktivitetslogg", keywords: ["aktivitetslogg", "revisjonslogg", "historikk", "hvem gjorde", "endringer", "logg"] },
+  "store:activity": { title: "Endringslogg", keywords: ["endringslogg", "aktivitetslogg", "revisjonslogg", "historikk", "hvem gjorde", "endringer", "logg"] },
   "store:legal": {
     title: "Juridiske sider",
     keywords: ["juridiske sider", "salgsbetingelser", "vilkår", "personvernerklæring", "personvern", "opplysninger om virksomheten", "angrerett"],
@@ -892,7 +892,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:docs.guide": { title: "Dokumentasjonsveileder", keywords: ["dokumentasjon", "veileder", "ki", "chat", "assistent", "utviklere"] },
   "platform:apps": { title: "Appoppføringer", keywords: ["apper", "appkatalog", "oppføring", "gjennomgang", "godkjenn app", "avslå app", "utviklere"] },
   "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
-  "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
+  "platform:reports": { title: "Meldinger om innhold", keywords: ["meldinger om ulovlig innhold", "dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
   "platform:challenges": {
     title: "100-dagersutfordringen",
@@ -930,15 +930,15 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["behandlingsprotokoll", "artikkel 30", "behandlingsgrunnlag", "formål", "behandlingsansvarlig", "databehandler", "personopplysninger", "gdpr"],
   },
   "platform:vat": {
-    title: "Merverdiavgift",
-    keywords: ["merverdiavgift", "mva", "satser", "redusert sats", "kategori", "mva på frakt", "oss", "ioss"],
+    title: "Mva-satser",
+    keywords: ["mva-satser", "merverdiavgift", "mva", "satser", "redusert sats", "kategori", "mva på frakt", "oss", "ioss"],
   },
   "platform:duty-rates": { title: "Tollsatser", keywords: ["tollsatser", "toll", "tolltariff", "hs-kode", "grense", "importmva", "bekreft"] },
   "platform:vat.country": { title: "Merverdiavgift per land", keywords: ["merverdiavgift per land", "mva", "satser", "land", "historikk"] },
   "platform:search-test": { title: "Søketest", keywords: ["søketest", "eksperiment", "a/b-test", "søk"] },
   "platform:activity": {
-    title: "Aktivitetslogg",
-    keywords: ["aktivitetslogg", "revisjonslogg", "historikk", "hvem gjorde", "totrinnsbekreftelse", "sikkerhetshendelser"],
+    title: "Endringslogg",
+    keywords: ["endringslogg", "aktivitetslogg", "revisjonslogg", "historikk", "hvem gjorde", "totrinnsbekreftelse", "sikkerhetshendelser"],
   },
   "platform:assistant": { title: "KI-assistent", keywords: ["ki-assistent", "assistent", "ki", "minne"] },
   "platform:assistant.autopilot": { title: "Autopilot", keywords: ["autopilot", "planer", "mål", "beslutninger"] },

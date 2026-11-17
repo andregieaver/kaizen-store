@@ -8,6 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { CampaignInput } from "@/lib/campaigns";
 import { discountProblemsText } from "@/lib/discount-words";
+import { discountTabHref } from "@/lib/discount-tabs";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, requirePermission } from "@/server/permissions";
 import { campaignsTag } from "@/server/campaign-notices";
@@ -41,7 +42,8 @@ export async function deleteCampaignAction(storeSlug: string, id: string): Promi
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: [w.problems.unknownCampaign] };
   const result = await deleteCampaign(member, id);
   if (result.ok) updateTag(campaignsTag(member.store.id));
-  if (result.ok) redirect(`/admin/${member.store.slug}/campaigns`);
+  // Back to the automatic offers, the Automatic tab of Discounts (ecosystem plan E3.7, D718).
+  if (result.ok) redirect(discountTabHref(member.store.slug, "automatic"));
   return { ...result, problems: discountProblemsText(result.problems, w) };
 }
 

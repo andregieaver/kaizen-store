@@ -201,10 +201,10 @@ export async function saveFollowUp(
   const picture = await emailPictureProblem(store.id, content);
   if (picture) return { ok: false, problem: picture };
   const current = await getAutomation(store, kind);
-  if (!current.saved) return { ok: false, problem: "Save the first email before adding a follow-up." };
+  if (!current.saved) return { ok: false, problem: "Save the first email before adding a second." };
   const at = position ?? FOLLOW_UP_POSITIONS[current.followUps.length];
-  if (at === undefined) return { ok: false, problem: "An automation has at most three emails: the first and two follow-ups." };
-  if (position !== null && !current.followUps.some((f) => f.position === position)) return { ok: false, problem: "That follow-up no longer exists." };
+  if (at === undefined) return { ok: false, problem: "An automation has at most three emails." };
+  if (position !== null && !current.followUps.some((f) => f.position === position)) return { ok: false, problem: "That email no longer exists." };
   const problems = sendProblems(content, store.localization.locales[0]);
   if (current.enabled && problems.length > 0) return { ok: false, problem: `It is on, so it needs words it can send: ${problems[0]}` };
   const written = position === null
@@ -217,7 +217,7 @@ export async function saveFollowUp(
         update commerce.automation_steps set delay_days = ${parsed.data.delayDays}, content = ${JSON.stringify(content)}::jsonb, updated_by = ${accountId}::uuid, updated_at = now()
         where store_id = ${store.id}::uuid and kind = ${kind} and position = ${at} returning position
       `);
-  if (written.length === 0) return { ok: false, problem: "Someone else changed the follow-ups just now. Open the automation again." };
+  if (written.length === 0) return { ok: false, problem: "Someone else changed the emails just now. Open the automation again." };
   await audit(accountId, store.id, "marketing_automation.follow_up_saved", { kind, position: at, delayDays: parsed.data.delayDays }, { target: { type: "automation", id: kind } });
   return { ok: true, position: at };
 }
@@ -233,7 +233,7 @@ export async function deleteFollowUp(store: Pick<EmailStore, "id">, accountId: s
     }
     return deleted.length > 0;
   });
-  if (!gone) return { ok: false, problem: "That follow-up no longer exists." };
+  if (!gone) return { ok: false, problem: "That email no longer exists." };
   await audit(accountId, store.id, "marketing_automation.follow_up_deleted", { kind, position }, { target: { type: "automation", id: kind } });
   return { ok: true };
 }

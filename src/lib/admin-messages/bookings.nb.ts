@@ -845,7 +845,7 @@ export const bookingsNb: BookingsMessages = {
       sectionText: "Slett kontoen din og opplysningene Kaizena Flow har om deg. Butikkene dine beholder det som ble gjort i dem, uten navnet ditt.",
       open: "Slett kontoen din …",
       title: "Slett kontoen din",
-      description: "Kontoen din slettes: innloggingen, navnet, e-posten og bildet ditt, tilgangen din til alle butikker, og AI-managerens samtaler, minner, varsler og lagrede ferdigheter. Det du gjorde i en butikk, blir stående der uten navnet ditt; aktivitetsloggen beholder det under en id som ikke viser til noen. Dette kan ikke angres.",
+      description: "Kontoen din slettes: innloggingen, navnet, e-posten og bildet ditt, tilgangen din til alle butikker, og AI-managerens samtaler, minner, varsler og lagrede ferdigheter. Det du gjorde i en butikk, blir stående der uten navnet ditt; endringsloggen beholder det under en id som ikke viser til noen. Dette kan ikke angres.",
       back: "Kontoen din",
       refusals: {
         not_found: "Fant ikke kontoen.",

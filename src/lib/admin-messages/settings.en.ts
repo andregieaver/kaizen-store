@@ -88,7 +88,7 @@ export const settingsEn = {
       referrals: {
         words: "Customers share a link; a friend gets a welcome discount and the customer earns bonus credits. Needs the bonus program.",
         offWords:
-          "Referral links stop giving discounts and new orders earn no rewards, and Referral program leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
+          "Referral links stop giving discounts and new orders earn no rewards, and Refer a friend leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
       },
       reviews: {
         words: "Customers review what they bought and received; you check them before they show, and the product page shows the stars.",

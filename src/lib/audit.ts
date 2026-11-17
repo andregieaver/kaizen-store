@@ -1,5 +1,5 @@
 /**
- * The activity log's rules (wave 1, 1f, `docs/wave-1-trust.md` 2.9, 2.10, 4.7), pure: which area of the admin an
+ * The change log's rules (wave 1, 1f, `docs/wave-1-trust.md` 2.9, 2.10, 4.7), pure: which area of the admin an
  * action belongs to, which fields of a change may be written down, the sentence an entry reads as, and how long entries
  * are kept.
  *
@@ -57,7 +57,7 @@ const EXACT: Record<string, AuditArea> = {
   // Settings: the invoicing switch, note and numbering change legal documents, but they are the owner's settings (D159).
   "invoice.settings_updated": "settings",
   "invoice.series_set": "settings",
-  // Staff: the owner's download of the activity log is about the team's doings.
+  // Staff: the owner's download of the change log is about the team's doings.
   "activity.exported": "staff",
   // Staff: the store's own two-step switch and its terms.
   "store.two_step_required": "staff",
@@ -67,7 +67,7 @@ const EXACT: Record<string, AuditArea> = {
 
 /**
  * Prefixes: the longest one an action starts with decides. An action matching none has no explicit area (`areaOfAction()`
- * then answers `settings`, the "everything else" of the activity log, and the scan test fails for a call that relies on it).
+ * then answers `settings`, the "everything else" of the change log, and the scan test fails for a call that relies on it).
  */
 const PREFIXES: Record<string, AuditArea> = {
   // Orders
@@ -403,7 +403,7 @@ const WORDS: Record<string, (label: string) => string> = {
   "account.two_step_reset": (l) => `A platform admin reset two-step sign-in for ${l}`,
   "account.recovery_codes_generated": (l) => `${l} made new recovery codes`,
   "account.recovery_code_used": (l) => `${l} used a recovery code`,
-  "activity.exported": () => "Downloaded the activity log",
+  "activity.exported": () => "Downloaded the change log",
 };
 
 const humanise = (action: string): string => {

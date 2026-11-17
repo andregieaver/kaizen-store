@@ -398,12 +398,14 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Upload pictures", "Write or generate alt texts", "See where a picture is used", "Delete unused files"],
     keywords: ["images", "pictures", "photos", "videos", "alt text"],
   }),
-  store("discounts", "/discounts", "Coupons", "Main", "Discount codes for shoppers: percent, amount or free shipping, with limits.", {
-    keywords: ["coupon", "discount code", "sale", "promotion"],
+  // Discounts as one page (ecosystem plan E3.7, D718): Codes is its first tab, Automatic (`?tab=automatic`, the old Campaigns) its second.
+  store("discounts", "/discounts", "Discounts", "Main", "Money off for shoppers, on two tabs: Codes, the discount codes (coupons) shoppers type at checkout (percent, amount or free shipping, with limits), and Automatic (?tab=automatic), offers without a code for a time.", {
+    tasks: ["Make a discount code", "See which codes are used", "Start a sale without a code (?tab=automatic)"],
+    keywords: ["coupon", "coupons", "discount code", "sale", "promotion", "discounts"],
     feature: "shop",
   }),
-  store("discount.new", "/discounts/new", "New coupon", "Main", "Creates a discount code.", { feature: "shop" }),
-  store("discount", "/discounts/[discountId]", "Coupon", "Main", "One discount code: its rules, uses, and switching it off.", { feature: "shop" }),
+  store("discount.new", "/discounts/new", "New discount code", "Main", "Creates a discount code.", { feature: "shop" }),
+  store("discount", "/discounts/[discountId]", "Discount code", "Main", "One discount code: its rules, uses, and switching it off.", { feature: "shop" }),
   store("wishlists", "/wishlists", "Wishlists", "Main", "Shoppers' wishlists, the most wished products and how wishes turn into sales.", {
     keywords: ["favourites", "saved"],
     feature: "shop",
@@ -498,9 +500,10 @@ const PAGES: readonly AdminPage[] = [
   store("hosts.dac7", "/hosts/dac7", "DAC7 report", "Bookings", "The yearly DAC7 tax report on hosts' income.", { feature: "bookings", keywords: ["tax", "dac7"] }),
 
   // Store: sales ---------------------------------------------------------------------------
-  store("campaigns", "/campaigns", "Campaigns", "Sales", "Offers without a code, for a time: a percentage off, buy more and pay for fewer (3 for 2), or a free product above a basket amount, for the whole store, chosen products, categories or tags.", {
-    tasks: ["Start a sale", "Set up 3 for 2", "Give a free product over an amount", "Schedule a campaign", "Switch a campaign off"],
-    keywords: ["sale", "offer", "promotion", "3 for 2", "bundle", "free gift", "discount", "black friday", "time-limited"],
+  // The Automatic tab of Discounts (ecosystem plan E3.7, D718): this address leads there; the offers' own pages stay below it.
+  store("campaigns", "/campaigns", "Automatic discounts", "Sales", "The Automatic tab of Discounts: offers without a code, for a time: a percentage off, buy more and pay for fewer (3 for 2), or a free product above a basket amount, for the whole store, chosen products, categories or tags.", {
+    tasks: ["Start a sale", "Set up 3 for 2", "Give a free product over an amount", "Schedule an automatic discount", "Switch an automatic discount off"],
+    keywords: ["sale", "offer", "promotion", "3 for 2", "bundle", "free gift", "discount", "black friday", "time-limited", "campaign", "campaigns"],
     feature: "shop",
   }),
   store("recommendations", "/recommendations", "Recommendations", "Sales", "Product recommendations: upsells, cross-sells and complements picked for each shopper from what they look at, search for, save and put in the cart, never what they already bought, shown in a product grid that recommends (on a product page, an article, the All products page or any page) and used by the chat assistant. Switch them on, let the store's AI re-rank the best candidates, set how much dearer than a product an upsell may be, cap the AI's monthly tokens, choose which products go together, are never shown together or are never recommended, and see clicks, add-to-cart rate and revenue per visitor with and without the AI.", {
@@ -517,14 +520,14 @@ const PAGES: readonly AdminPage[] = [
   store("experiment.variants", "/experiments/variants", "Test versions", "Sales", "Goes back to the list of tests: a version is changed from its test."),
   store("experiment.variant", "/experiments/variants/[pageId]", "A test version", "Sales", "Changes a version of a page made for an A/B test in the page builder."),
   store("experiment.variant.preview", "/experiments/variants/[pageId]/preview", "Test version preview", "Sales", "Previews a version of a page made for an A/B test."),
-  store("campaign.new", "/campaigns/new", "New campaign", "Sales", "Creates a campaign: what it gives, what it applies to, and when it runs.", { feature: "shop" }),
-  store("campaign", "/campaigns/[campaignId]", "Campaign", "Sales", "One campaign: what it gives, what it applies to, when it runs, and switching it off or deleting it.", { feature: "shop" }),
+  store("campaign.new", "/campaigns/new", "New automatic discount", "Sales", "Creates an automatic discount: what it gives, what it applies to, and when it runs.", { feature: "shop" }),
+  store("campaign", "/campaigns/[campaignId]", "Automatic discount", "Sales", "One automatic discount: what it gives, what it applies to, when it runs, and switching it off or deleting it.", { feature: "shop" }),
   store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {
     tasks: ["Turn the bonus program on or off", "Change how much customers earn back", "Set when credits expire", "See the credits the store owes"],
     keywords: ["bonus", "credits", "loyalty", "points", "rewards", "reward customers", "returning customers", "repeat customers", "cashback", "store credit", "earn", "redeem", "reward program"], feature: "bonus" }),
-  store("affiliates", "/affiliates", "Referral program", "Sales", "The referral program: signed-in customers share a link, a friend's first order gets a welcome discount and the customer who shared it earns bonus credits. Set the friend's discount, the reward, how many orders earn it, a monthly limit and how long a link is remembered; needs the bonus program. See the referrers and the orders that came through links, and block a referrer with a reason.", {
+  store("affiliates", "/affiliates", "Refer a friend", "Sales", "The referral program, Refer a friend: signed-in customers share a link, a friend's first order gets a welcome discount and the customer who shared it earns bonus credits. Set the friend's discount, the reward, how many orders earn it, a monthly limit and how long a link is remembered; needs the bonus program. See the referrers and the orders that came through links, and block a referrer with a reason.", {
     tasks: ["Turn the referral program on or off", "Change the friend's welcome discount", "Change how much a referrer earns", "Block a referrer who abuses it", "See who referred whom"],
-    keywords: ["referral", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"], feature: "referrals" }),
+    keywords: ["referral", "referral program", "affiliate program", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"], feature: "referrals" }),
   store("creators", "/creators", "Creators", "Sales", "The creator programme: people with a channel of their own apply from My account, and once approved sell the store's goods with a code and a link of their own. They earn a percentage of what their paid orders pay for goods without VAT, optionally more for some categories, in each order's own currency; refunds and cancellations take it back. Approve, decline or stop creators, set a creator's own rate, record the payouts you make and download them as a CSV.", {
     tasks: ["Turn the creator programme on or off", "Approve or decline a creator's application", "Change the commission", "Give a category its own commission", "Record a payout to a creator", "Download the payouts"],
     keywords: ["creator", "creators", "influencer", "influencers", "affiliate marketing", "commission", "content creator", "ambassador", "partner programme", "payout", "promo code"], feature: "shop" }),
@@ -621,7 +624,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
     keywords: ["subscription box", "standing order", "weekly delivery", "grocery"],
   }),
-  store("segments", "/segments", "Segments", "Sales", "Segments: groups of the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", {
+  store("segments", "/segments", "Segments", "Sales", "Segments: who gets a broadcast, a text message or an automation, chosen from the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", {
     keywords: ["segment", "audience", "customer list", "rfm", "vip", "win-back", "target group", "målgruppe"],
     tasks: ["Make a segment of my best customers", "See how many customers have not ordered for six months"],
   }),
@@ -646,7 +649,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Show my products on Google Shopping", "Get a catalogue feed for Meta"],
   }),
   store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
-  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Follow-up email", "Sales", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete."),
+  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Second or third email", "Sales", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete."),
   store("text-message.new", "/text-messages/new", "New text message", "Sales", "Writes a new text message: its name, who gets it and its words, with what each reader gets and how many texts it takes."),
   store("text-message", "/text-messages/[campaignId]", "Text message", "Sales", "One text message: a draft priced by 46elks against the month's cap and sent; once started, how many wait for their readers' daytime, went, arrived, failed or were not sent, and what they cost."),
   store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
@@ -700,7 +703,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a local delivery area", "Deliver within a radius of your shop"],
     feature: "shop",
   }),
-  store("returns.settings", "/settings/returns", "Returns settings", "Sales", "The store's rules for returns: the return window (never under the legal 14 days), the transit allowance, who pays return shipping, when refunds are made, goods the law excludes, companies, the return address and the instructions customers get (with translations).", {
+  store("returns.settings", "/settings/returns", "Return settings", "Sales", "The store's rules for returns: the return window (never under the legal 14 days), the transit allowance, who pays return shipping, when refunds are made, goods the law excludes, companies, the return address and the instructions customers get (with translations).", {
     needs: "owner",
     keywords: ["return window", "withdrawal", "return policy", "return address", "who pays return shipping", "refund when", "instructions", "angrerett"],
     tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
@@ -711,7 +714,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Show the stock left on product tiles", "Let shoppers add to cart straight from a grid"],
     feature: "shop",
   }),
-  store("orders.settings", "/settings/orders", "Orders settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizena Flow.", {
+  store("orders.settings", "/settings/orders", "Order settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizena Flow.", {
     keywords: ["gift message", "gift", "auto archive", "archive orders", "pay link valid", "draft order link", "payment outside", "cash", "bank transfer", "staff may mark paid"],
     tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizena Flow"],
     feature: "shop",
@@ -1071,9 +1074,9 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Make a role", "Choose what a role can view or change", "Delete a role nobody holds"],
     keywords: ["permissions", "access", "staff roles", "who can", "read only"],
   }),
-  store("activity", "/activity", "Activity log", "Account", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings. Filter by person, area, action and period; owners can download it as CSV.", {
+  store("activity", "/activity", "Change log", "Account", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings. Filter by person, area, action and period; owners can download it as CSV.", {
     tasks: ["See who changed a price", "Filter by person or area", "Download the log as CSV (owners)"],
-    keywords: ["audit", "audit log", "history", "who did", "changes", "log"],
+    keywords: ["audit", "audit log", "activity log", "history", "who did", "changes", "log"],
   }),
   store("legal", "/settings/legal", "Legal pages", "Selling", "Starter drafts of the terms of sale, privacy statement, returns and shipping policies, withdrawal information and imprint, written from the store's own details in Norwegian, Swedish, Danish or English; which published page each role has; and what checkout says about the terms (a link, a tick box or nothing).", {
     needs: "owner",
@@ -1354,7 +1357,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["apps", "app directory", "listing", "review", "approve app", "decline app", "developers"],
     tasks: ["Review an app's listing", "Approve or decline an app for the directory"],
   }),
-  platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
+  platform("reports", "/reports", "Content notices", "Platform", "Notices of illegal content people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],
     tasks: ["Decide a notice of illegal content", "See decided notices"],
   }),
@@ -1410,7 +1413,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["gdpr", "article 30", "art. 30", "record of processing", "ropa", "behandlingsprotokoll", "lawful basis", "purpose", "controller", "processor"],
     tasks: ["See the record of processing", "See the lawful basis of each purpose", "See which purposes need a lawyer's review"],
   }),
-  platform("vat", "/vat", "VAT", "Platform", "VAT for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
+  platform("vat", "/vat", "VAT rates", "Platform", "VAT rates for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
     keywords: ["tax", "rates", "reduced rate", "mva", "moms", "category", "shipping vat", "verify", "oss", "ioss"],
     tasks: ["Set a country's rate for a category", "Mark a rate verified", "Add a VAT category", "Set how shipping is taxed in a country"],
   }),
@@ -1420,8 +1423,8 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("vat.country", "/vat/[country]", "VAT by country", "Platform", "One country's VAT: the rate of every category with its full history, the way shipping is taxed there and a form to set a rate."),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
-  platform("activity", "/activity", "Activity log", "Platform", "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets, approvals. Filter by person and period.", {
-    keywords: ["audit", "audit log", "history", "who did", "two-step", "security events"],
+  platform("activity", "/activity", "Change log", "Platform", "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets, approvals. Filter by person and period.", {
+    keywords: ["audit", "audit log", "activity log", "history", "who did", "two-step", "security events"],
   }),
   platform("assistant", "/assistant", "AI manager", "Platform", "The platform's AI manager: conversations and what it has learned about you.", {
     keywords: ["assistant", "ai", "memory"],

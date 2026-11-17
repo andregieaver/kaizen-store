@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { saveOrderSettingsAction } from "./actions";
 
-export const metadata: Metadata = { title: "Orders settings" };
+export const metadata: Metadata = { title: "Order settings" };
 
 /**
  * How the store handles orders (wave 3, D173): gift messages, automatic archiving, how long a draft order's pay link is valid, and who may record money taken outside Kaizen.

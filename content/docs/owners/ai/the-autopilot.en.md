@@ -100,7 +100,7 @@ product on that product's sales, anything else on the store's sales, over the 14
 over the same days. It is a comparison of before and after, not proof that the change caused it. On the first of each month, the
 people whose plans ran get *What the AI did* in the month by email, when there is something to tell.
 
-Every change the autopilot makes is in the **Activity log** under the plan's person, marked *through the autopilot*.
+Every change the autopilot makes is in the **Change log** under the plan's person, marked *through the autopilot*.
 
 ## More options
 

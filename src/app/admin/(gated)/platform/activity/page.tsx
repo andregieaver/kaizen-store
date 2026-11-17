@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
-export const metadata: Metadata = { title: "Activity log" };
+export const metadata: Metadata = { title: "Change log" };
 
 /**
  * What the platform's admins and the platform did, with no store (wave 1, 1f): two-step events, recovery codes used, resets, approvals.
