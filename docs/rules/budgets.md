@@ -29,6 +29,7 @@ A route that must grow takes it on purpose with --write --accept, so the growth 
 | src/server/ratchet.baseline.json, key queryBudget | src/server/query-budget.int.test.ts (alone, on the fresh database: CI's integration shard 1, first) | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts (with FIRST=1 a rise is accepted, shown in the diff) | statements and rows read of each idle dispatcher job, the minute and daily routes and two cold frames, with 1 and 20 stores, and their growth |
 | src/server/ratchet.baseline.json, key orderWrites | src/server/order-writes.int.test.ts | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/order-writes.int.test.ts (with FIRST=1 a rise or a new table is accepted, shown in the diff) | statements, rows inserted and updated, and the tables written by one guest order of three lines and by one counted visit |
 | scripts/render-modes.baseline.json | node scripts/render-modes.mjs (CI's e2e job, after the build) | node scripts/render-modes.mjs --write after pnpm build | compute, holes, platform-wide tags and revalidate of twelve routes, and the demo store's resume data |
+| src/server/use-cache.baseline.json | src/server/use-cache.scan.test.ts | WRITE_CACHED_READS=1 pnpm exec vitest run src/server/use-cache.scan.test.ts | each cached read's cacheLife and cacheTag arguments (a change fails; a new read is a note) |
 | scripts/server-budget.json | node scripts/server-budget.mjs (CI's e2e job, after Playwright) | node scripts/server-budget.mjs --write after a change that cut statements (it never raises one) | statements of eight store pages, the cart with three lines and the checkout, warm and cold, today's count + 2 |
 
 The server's measure 7, refreshes and store draws, is held by Platform, Usage and limits (`#cache`, `docs/capacity.md`) and `src/server/cache-events.int.test.ts`, which fails when 11 job refreshes of one subject in a day are not flagged, when 10 are, or when a platform tag is.
@@ -109,8 +110,8 @@ of the first 20 'before' and the first 20 'after' files. The rules area's measur
 
 ### The storefront's server side (step 1.11)
 
-src/server/use-cache.scan.test.ts lists every cached read's `cacheLife()` and `cacheTag()` in CACHED_READS (a changed life or tag shows
-as a changed line in review), asks each to have both unless NO_LIFE or NO_TAG names it with a reason, and holds that no file under
+src/server/use-cache.scan.test.ts lists every cached read's `cacheLife()` and `cacheTag()` in src/server/use-cache.baseline.json (a changed life or tag
+fails, and the rewrite's diff shows it in review; a new or removed read is only noted), asks each to have both unless NO_LIFE or NO_TAG names it with a reason, and holds that no file under
 src/app/admin/(gated)/[store] refreshes a tag that names no store but the five in PLATFORM_TAG_FROM_STORE. The three lists only shrink.
 
 ## Searches

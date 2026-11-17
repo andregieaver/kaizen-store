@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
  * Every cached read says how long it lives and under which tags (bloat review step 1.11, SD-13, CA-16).
  *
  * Part 1 lists each function whose body starts with the directive "use cache" with its `cacheLife()` and `cacheTag()` arguments and
- * compares the table to CACHED_READS below, so a changed life or tag shows in review as a changed line. Part 2 asks that every one
+ * compares the table to the baseline file, so a changed life or tag fails and shows in review as a changed line. Part 2 asks that every one
  * calls both, but the functions named in NO_LIFE and NO_TAG (each with its reason; the lists only shrink). Part 3 holds that a
  * store's admin refreshes no tag that names no store, but the files in PLATFORM_TAG_FROM_STORE (the list only shrinks).
  * Part 4 shows the parser notices what it is there for.
@@ -67,99 +67,12 @@ function sources(dir: string): string[] {
 
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
-/** Each cached read's life and tags as written today. A change shows here as a changed line: say why in the commit. */
-const CACHED_READS: Record<string, CachedRead> = {
-  "src/app/s/[store]/[market]/legacy-redirect.ts#legacyLocation": { life: "{ stale: 300, revalidate: 1, expire: 3600 }", tags: ["redirectsTag(store.id), catalogTag(store.id)"] },
-  "src/app/s/[store]/[market]/term-listing.tsx#pictureAlt": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId)"] },
-  "src/server/affiliates.ts#affiliateSite": { life: "\"hours\"", tags: ["affiliateTag(storeId)"] },
-  "src/server/after-sale.ts#afterSaleOpenCached": { life: "{ stale: 300, revalidate: 3600, expire: 86400 }", tags: ["afterSaleTag(storeId)"] },
-  "src/server/blog-comments.ts#approvedComments": { life: "\"hours\"", tags: ["commentsTag(storeId)"] },
-  "src/server/blogs.ts#blogFeed": { life: "\"hours\"", tags: ["pagesTag(store.id)"] },
-  "src/server/blogs.ts#storeAuthors": { life: "\"hours\"", tags: ["pagesTag(storeId)"] },
-  "src/server/blogs.ts#storeBlogs": { life: "\"hours\"", tags: ["pagesTag(storeId)"] },
-  "src/server/brreg.ts#fetchUnit": { life: "\"days\"", tags: [] },
-  "src/server/campaign-notices.ts#campaignNotices": { life: "{ stale: 300, revalidate: seconds, expire: 86400 }", tags: ["campaignsTag(storeId)"] },
-  "src/server/campaign-notices.ts#campaignNoticesAt": { life: null, tags: ["campaignsTag(owner)"] },
-  "src/server/catalog.ts#getProduct": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId), fieldsTag(storeId)"] },
-  "src/server/catalog.ts#listGridProducts": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId)"] },
-  "src/server/catalog.ts#listProducts": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId)"] },
-  "src/server/chat-agent.ts#chatWidgetFor": { life: "\"hours\"", tags: ["chatTag(storeId), aiTag(storeId), aiTag(null)"] },
-  "src/server/chat-agent.ts#getChatAgent": { life: "\"hours\"", tags: ["chatTag(storeId)"] },
-  "src/server/content-grid.ts#customWhere": { life: "\"hours\"", tags: ["storeTag(slug)"] },
-  "src/server/content-grid.ts#gridPages": { life: "\"hours\"", tags: ["pagesTag(owner), termsTag({ storeId: owner, contentType: \"page\" })", "fieldsTag(owner)"] },
-  "src/server/content-grid.ts#gridProducts": { life: "\"hours\"", tags: ["termsTag({ storeId, contentType: \"product\" })", "fieldsTag(storeId)"] },
-  "src/server/content-grid.ts#ownerSells": { life: null, tags: ["catalogTag(owner)"] },
-  "src/server/content-site.ts#findEntryPage": { life: "\"hours\"", tags: ["contentTag(owner), pagesTag(owner)"] },
-  "src/server/content-site.ts#gridEntries": { life: "\"hours\"", tags: ["contentTag(owner)"] },
-  "src/server/content-site.ts#listIndexedEntries": { life: "\"hours\"", tags: ["contentTag(owner)"] },
-  "src/server/custom-fields.ts#activeFieldGroups": { life: "\"hours\"", tags: ["fieldsTag(storeId)"] },
-  "src/server/custom-fields.ts#allActiveFieldGroups": { life: "\"hours\"", tags: ["fieldsTag(storeId)"] },
-  "src/server/custom-fields.ts#shownEntryFields": { life: "\"hours\"", tags: ["fieldsTag(storeId), contentTag(storeId)", "storeTag(store.slug)"] },
-  "src/server/custom-fields.ts#shownFieldsFor": { life: "\"hours\"", tags: ["fieldsTag(storeId), contentTag(storeId)", "storeTag(store.slug)"] },
-  "src/server/custom-fields.ts#shownFieldsForVariants": { life: "\"hours\"", tags: ["fieldsTag(storeId), contentTag(storeId)", "storeTag(store.slug)"] },
-  "src/server/custom-fields.ts#shownPlatformEntryFields": { life: "\"hours\"", tags: ["contentTag(null), pagesTag(null)"] },
-  "src/server/demo-stores.ts#liveDemosOf": { life: "\"minutes\"", tags: ["STARTERS_TAG"] },
-  "src/server/design-presets.ts#designChoices": { life: "\"hours\"", tags: ["DESIGNS_TAG, STARTERS_TAG"] },
-  "src/server/design-presets.ts#publicDesignPreview": { life: "\"hours\"", tags: ["DESIGNS_TAG, STARTERS_TAG"] },
-  "src/server/docs-guide-settings.ts#docsGuideProfile": { life: "\"hours\"", tags: ["DOCS_GUIDE_TAG, AI_TAG"] },
-  "src/server/docs-guide-settings.ts#getDocsGuide": { life: "\"hours\"", tags: ["DOCS_GUIDE_TAG"] },
-  "src/server/experiments.ts#experimentOfPage": { life: "\"hours\"", tags: ["experimentsTag(storeId)"] },
-  "src/server/experiments.ts#pageGoalTests": { life: "\"hours\"", tags: ["experimentsTag(storeId)"] },
-  "src/server/experiments.ts#runningExperimentIds": { life: "\"hours\"", tags: ["experimentsTag(storeId)"] },
-  "src/server/experiments.ts#siteTests": { life: "\"hours\"", tags: ["experimentsTag(storeId)"] },
-  "src/server/experiments.ts#siteVersionContent": { life: "\"hours\"", tags: ["experimentsTag(storeId), `pages:${storeId}`"] },
-  "src/server/experiments.ts#storeHasExperiments": { life: "\"hours\"", tags: ["experimentsTag(storeId)"] },
-  "src/server/field-tiles.ts#shownFieldsForItems": { life: "\"hours\"", tags: ["fieldsTag(storeId)"] },
-  "src/server/fonts.ts#fontCss": { life: "\"seconds\" | \"days\"", tags: ["fontTag(slug)"] },
-  "src/server/fonts.ts#fontPreloadFile": { life: "\"hours\"", tags: ["fontTag(slug)"] },
-  "src/server/form-site.ts#siteForm": { life: "\"hours\"", tags: ["formsTag(owner)"] },
-  "src/server/house-customers.ts#houseStoreIdCached": { life: "\"days\"", tags: ["\"house-store\""] },
-  "src/server/instagram.ts#instagramPosts": { life: "\"hours\"", tags: ["instagramTag(storeId)"] },
-  "src/server/languages.ts#enabledLanguages": { life: "\"hours\"", tags: ["LANGUAGES_TAG"] },
-  "src/server/listing.ts#listingFacets": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId), termsTag({ storeId, contentType: \"product\" }), fieldsTag(storeId)"] },
-  "src/server/listing.ts#relatedProducts": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId)"] },
-  "src/server/page-modals.ts#usesRememberedModals": { life: "\"hours\"", tags: ["pagesTag(storeId)"] },
-  "src/server/pages.ts#findPublishedPage": { life: "\"hours\"", tags: ["pagesTag(owner)"] },
-  "src/server/pages.ts#listPublishedPages": { life: "\"hours\"", tags: ["pagesTag(owner)"] },
-  "src/server/pages.ts#publishedPageById": { life: "\"hours\"", tags: ["pagesTag(owner)"] },
-  "src/server/pages.ts#publishedPageIndex": { life: "\"hours\"", tags: ["pagesTag(owner)"] },
-  "src/server/pages.ts#publishedPageNames": { life: "\"hours\"", tags: ["pagesTag(owner)"] },
-  "src/server/platform-navigation.ts#loadSettings": { life: "\"hours\"", tags: ["PLATFORM_NAVIGATION_TAG"] },
-  "src/server/platform-roles.ts#getPlatformPageRoles": { life: "\"hours\"", tags: ["pagesTag(null)"] },
-  "src/server/product-layouts.ts#productLayoutFor": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId), pagesTag(storeId), termsTag({ storeId, contentType: \"product\" })"] },
-  "src/server/product-passports.ts#cachedPassport": { life: "\"hours\"", tags: ["passportTag(id)", "catalogTag(found.storeId)"] },
-  "src/server/product-settings.ts#productSettingsCached": { life: "\"hours\"", tags: ["productSettingsTag(storeId)"] },
-  "src/server/public-plans.ts#getPublicPlans": { life: "{ revalidate: Math.max(60, Math.ceil(nextChange)) } | \"hours\"", tags: ["PLANS_TAG"] },
-  "src/server/recommend-grid.ts#recommendingGrid": { life: "\"hours\"", tags: ["recommendTag(owner), catalogTag(owner), termsTag({ storeId: owner, contentType: \"product\" }), fieldsTag(owner), pagesTag(owner)"] },
-  "src/server/recommend-settings.ts#getRecommendSettings": { life: "\"hours\"", tags: ["recommendTag(storeId)"] },
-  "src/server/recommend.ts#standInFor": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId), recommendTag(storeId), termsTag({ storeId, contentType: \"product\" }), fieldsTag(storeId), pagesTag(storeId)"] },
-  "src/server/redirect-resolve.ts#lookupCached": { life: "{ stale: 300, revalidate: 1, expire: 3600 }", tags: ["redirectsTag(storeId), catalogTag(storeId)"] },
-  "src/server/referrals.ts#referralPublicSettings": { life: "\"hours\"", tags: ["REFERRALS_TAG"] },
-  "src/server/review-facts.ts#reviewFacts": { life: "\"hours\"", tags: ["reviewsTag(storeId)"] },
-  "src/server/sandbox.ts#sandboxOpen": { life: "\"minutes\"", tags: ["SANDBOX_TAG"] },
-  "src/server/self-signup.ts#selfServeShown": { life: "\"hours\"", tags: ["SIGNUP_TAG"] },
-  "src/server/seo.ts#getPlatformSeo": { life: "\"hours\"", tags: ["PLATFORM_SEO_TAG"] },
-  "src/server/seo.ts#getShippingFacts": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId)"] },
-  "src/server/seo.ts#listIndexedProducts": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId)"] },
-  "src/server/seo.ts#listIndexedTerms": { life: "\"hours\"", tags: ["CATALOG_TAG, catalogTag(storeId), termsTag({ storeId, contentType: \"product\" })"] },
-  "src/server/seo.ts#listPublicStores": { life: "\"hours\"", tags: ["STORES_TAG"] },
-  "src/server/seo.ts#storeClosedToAi": { life: "\"hours\"", tags: ["pagesTag(storeId)"] },
-  "src/server/site-cookies.ts#siteFindings": { life: "\"hours\"", tags: ["cookiesTag(storeId)"] },
-  "src/server/site-cookies.ts#storeFeatures": { life: "\"hours\"", tags: ["cookiesTag(storeId)"] },
-  "src/server/site-layouts.ts#siteLayoutFor": { life: "\"hours\"", tags: ["pagesTag(storeId)"] },
-  "src/server/site-store.ts#siteStoreCached": { life: "\"hours\"", tags: ["SITE_STORE_TAG"] },
-  "src/server/status.ts#statusOverview": { life: "\"minutes\"", tags: ["STATUS_TAG"] },
-  "src/server/store-starters.ts#starterCards": { life: "\"hours\"", tags: ["STARTERS_TAG"] },
-  "src/server/stores.ts#listCountries": { life: "\"days\"", tags: [] },
-  "src/server/stores.ts#loadStore": { life: "\"hours\"", tags: ["storeTag(slug)"] },
-  "src/server/stores.ts#storeSlugOf": { life: "\"days\"", tags: ["storeIdTag(storeId)"] },
-  "src/server/stores.ts#templateStoreSlug": { life: "\"hours\"", tags: ["TEMPLATE_TAG"] },
-  "src/server/taxonomy.ts#siteTerms": { life: "\"hours\"", tags: ["termsTag({ storeId, contentType })"] },
-  "src/server/text-styles.ts#textStylesFor": { life: "\"hours\"", tags: ["textStylesTag(owner)"] },
-  "src/server/theme-store.ts#themePreviewNeighbours": { life: "\"hours\"", tags: ["DESIGNS_TAG, STARTERS_TAG"] },
-  "src/server/theme-store.ts#themeStoreCards": { life: "\"hours\"", tags: ["DESIGNS_TAG, STARTERS_TAG"] },
-  "src/server/theme-store.ts#themeStorePage": { life: "\"hours\"", tags: ["DESIGNS_TAG, STARTERS_TAG"] },
-};
+/**
+ * Each cached read's life and tags as written when the baseline was last written (src/server/use-cache.baseline.json). A changed life or
+ * tag fails; a new or removed cached read is only noted, since the others add them in everyday work: rewrite the file with
+ * `WRITE_CACHED_READS=1 pnpm exec vitest run src/server/use-cache.scan.test.ts`, whose diff shows each change in review.
+ */
+const CACHED_READS: Record<string, CachedRead> = JSON.parse(read("src/server/use-cache.baseline.json"));
 
 /** Cached reads with no cacheLife, each following the life of the cached read it calls. Only shrinks. */
 const NO_LIFE: Record<string, string> = {
@@ -204,11 +117,21 @@ describe("every cached read says its life and its tags", () => {
     expect(names.length).toBeGreaterThan(50);
   });
 
-  it("matches CACHED_READS", () => {
+  it("matches the baseline (a new or removed read is a note)", () => {
+    if (process.env.WRITE_CACHED_READS === "1") {
+      writeFileSync(join(ROOT, "src/server/use-cache.baseline.json"), `${JSON.stringify(actual, null, 2)}\n`);
+      return;
+    }
+    const added = names.filter((n) => !(n in CACHED_READS));
+    const removed = Object.keys(CACHED_READS).filter((n) => !(n in actual));
+    if (added.length || removed.length) {
+      console.log(`cached reads not in the baseline yet: ${added.join(", ") || "none"}; gone: ${removed.join(", ") || "none"}`);
+    }
+    const changed = names.filter((n) => n in CACHED_READS && JSON.stringify(actual[n]) !== JSON.stringify(CACHED_READS[n]));
     expect(
-      actual,
-      "a cached read changed its life or tags: update CACHED_READS in src/server/use-cache.scan.test.ts and say why in the commit",
-    ).toEqual(CACHED_READS);
+      changed.map((n) => `${n}: ${JSON.stringify(CACHED_READS[n])} is now ${JSON.stringify(actual[n])}`),
+      "a cached read changed its life or tags: run WRITE_CACHED_READS=1 pnpm exec vitest run src/server/use-cache.scan.test.ts and say why in the commit",
+    ).toEqual([]);
   });
 
   it.each(names)("%s calls cacheLife and cacheTag or is listed", (name) => {
