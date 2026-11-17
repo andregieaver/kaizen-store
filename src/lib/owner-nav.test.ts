@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { ACCOUNT_EXTRA, ACCOUNT_ITEMS, BOOKS_PATH, SUPPORT_PATH, ownerAreas, ownerTabs } from "./owner-nav";
+import { ACCOUNT_EXTRA, ACCOUNT_ITEMS, BOOKS_PATH, SUPPORT_PATH, ownerAreas, ownerOpens, ownerTabs } from "./owner-nav";
 
 const ROOT = "src/app/admin/(gated)/(owner)";
 
@@ -35,6 +35,24 @@ describe("the store owner's sections (D147)", () => {
     // Someone who holds a domain but owns no store (D317) sees their account's pages and Your domains, not the owners' pages.
     const holder = ownerAreas({ owner: false, work: false, domains: true });
     expect(holder.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Appearance", "Kaizena Flow support", "Your domains", "Your themes", "Connected apps and assistants", "Developer"]);
+  });
+
+  it("offers in the page finder what the tabs and the sidebar show (ecosystem plan E2.2, D713)", () => {
+    const staff = { owner: false, work: false };
+    expect(ownerOpens({ owner: true, work: true }, "")).toBe(true);
+    expect(ownerOpens(staff, "")).toBe(false);
+    expect(ownerOpens(staff, "/stores")).toBe(true);
+    expect(ownerOpens(staff, "/account")).toBe(true);
+    expect(ownerOpens(staff, "/account/billing")).toBe(false);
+    expect(ownerOpens(staff, "/account/work")).toBe(false);
+    expect(ownerOpens({ ...staff, work: true }, "/account/work/invoices")).toBe(true);
+    expect(ownerOpens(staff, SUPPORT_PATH)).toBe(false);
+    expect(ownerOpens({ ...staff, support: true }, SUPPORT_PATH)).toBe(true);
+    expect(ownerOpens({ ...staff, books: true }, BOOKS_PATH)).toBe(true);
+    // A page of an Account item goes with it: buying a domain is for a holder or an owner.
+    expect(ownerOpens(staff, "/account/domains/buy")).toBe(false);
+    expect(ownerOpens({ ...staff, domains: true }, "/account/domains/buy")).toBe(true);
+    expect(ownerOpens(staff, "/account/delete")).toBe(true);
   });
 
   it("links only pages the admin map knows", () => {

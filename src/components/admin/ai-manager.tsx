@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { AI_COMPOSER_ATTRIBUTE } from "@/lib/ai-composer";
+import { ASK_AI_MANAGER_EVENT, askFrom, type AskDetail } from "@/lib/alert-ask";
 import { alreadySaid, answerToAnnounce } from "@/lib/answer-announce";
 import { lifeReportOf } from "@/lib/kaizen-life-handoffs";
 import { TOOL_WORDS } from "@/lib/tool-words";
@@ -210,14 +211,25 @@ export function AiManagerChat({
     if (startVoice > 0) startRef.current();
   }, [startVoice]);
 
+  // On the AI manager's own page the launcher draws no panel, so what is handed over there (the page finder's *Ask the AI manager*,
+  // ecosystem plan E2.2, D713) is heard by the page's chat itself, as the panel's is by the launcher.
+  const [pageAsk, setPageAsk] = useState<{ text: string; n: number; send: boolean } | undefined>(undefined);
+  useEffect(() => {
+    if (variant !== "page") return;
+    const onAsk = (event: Event) => setPageAsk((prev) => askFrom((event as CustomEvent<AskDetail>).detail, prev) ?? prev);
+    window.addEventListener(ASK_AI_MANAGER_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_AI_MANAGER_EVENT, onAsk);
+  }, [variant]);
+  const handed = ask ?? pageAsk;
+
   // An alert handed over from the page (D348): sent as the person's message, once per press; from the briefing's email (D416) it waits in the box.
   const askedRef = useRef(0);
   useEffect(() => {
-    if (!ask || ask.n <= askedRef.current) return;
-    askedRef.current = ask.n;
-    if (ask.send === false) draftRef.current(ask.text);
-    else sendRef.current(ask.text);
-  }, [ask]);
+    if (!handed || handed.n <= askedRef.current) return;
+    askedRef.current = handed.n;
+    if (handed.send === false) draftRef.current(handed.text);
+    else sendRef.current(handed.text);
+  }, [handed]);
 
   // Escape ends voice mode and calls.
   const { stop: stopVoiceMode } = voice;

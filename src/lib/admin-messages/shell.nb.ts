@@ -15,10 +15,15 @@ export const shellNb: ShellMessages = {
   finder: {
     open: "Søk i administrasjonen",
     placeholder: "Søk etter sider og oppgaver, som refusjon eller frakt",
+    placeholderRecords: "Søk etter ordrer, kunder, produkter og sider",
     hint: "Skriv en side eller en oppgave. Alle sider finnes her, også i enkel visning.",
+    hintRecords: "Skriv et ordrenummer, et navn, en e-postadresse, en SKU, en side eller en oppgave.",
     none: "Ingenting passer «{query}». Prøv et annet ord, eller spør KI-assistenten.",
-    results: "Sider",
+    results: "Treff",
     close: "Lukk",
+    groups: { pages: "Sider", order: "Ordrer", customer: "Kunder", conversation: "Samtaler", deal: "Avtaler", product: "Produkter" },
+    ask: "Spør KI-assistenten om «{query}»",
+    askWhat: "Åpner KI-assistenten med disse ordene som meldingen din.",
   },
   loading: {
     page: "Laster siden…",

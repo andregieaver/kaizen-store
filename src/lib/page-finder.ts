@@ -2,20 +2,28 @@
  * The page finder (admin redesign round 1, audit D454 phase 1 N6): the search button in the admin's top bar and ⌘K / Ctrl+K open it, and
  * what a person types is matched against the admin map (`ADMIN_PAGES`: titles, the words people use, what each page does), Advanced pages
  * included, so Basic's shorter navigation never hides a page. Only pages without params are offered: they are where people start. Pure.
+ *
+ * In a store and at the owner's level the pages are followed by the records that match (ecosystem plan E2.2, D713, `finder-records.ts`):
+ * the answer is a list of groups, the pages first, then a group per kind of record.
  */
 
 import type { AdminLang } from "./admin-lang";
 import { findPages, pageHref, pageParams, type SiteFlags } from "./admin-map";
 import { PAGES_NB } from "./admin-messages/pages.nb";
+import type { RecordKind } from "./finder-records";
 
+/** One row of the finder: what it is called, a word on the right (a page's section, a record's store), a line under it, and where it opens. */
 export type FinderItem = { title: string; group: string; what: string; href: string };
+
+/** The rows under one heading: the pages, or one kind of record. */
+export type FinderGroup = { kind: "pages" | RecordKind; items: FinderItem[] };
 
 /** The longest question looked at: anything longer is cut, never refused. */
 export const FINDER_QUERY_MAX = 100;
 
 /** The pages that best match what was typed, as links in the person's language. */
 export function finderResults(
-  area: "store" | "platform",
+  area: "store" | "platform" | "account",
   query: string,
   { flags = {}, storeSlug, lang = "en", limit = 8 }: { flags?: SiteFlags; storeSlug?: string; lang?: AdminLang; limit?: number } = {},
 ): FinderItem[] {
@@ -32,3 +40,11 @@ export function finderResults(
   }
   return items;
 }
+
+/** The finder's answer: the pages (when any matched) and then each kind of record, as given. */
+export function finderAnswer(pages: FinderItem[], records: readonly FinderGroup[] = []): FinderGroup[] {
+  return [...(pages.length > 0 ? [{ kind: "pages" as const, items: pages }] : []), ...records.filter((group) => group.items.length > 0)];
+}
+
+/** The rows of an answer in the order they are drawn, for the arrow keys and the active option. */
+export const finderOptions = (groups: readonly FinderGroup[]): FinderItem[] => groups.flatMap((group) => group.items);

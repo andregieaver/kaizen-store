@@ -1475,8 +1475,8 @@ export function pageOffered(page: AdminPage, flags: SiteFlags): boolean {
   return true;
 }
 
-/** The pages of the areas one works in: a store's with account pages, or the platform's. */
-export function pagesFor(area: "store" | "platform", flags: SiteFlags = {}): AdminPage[] {
+/** The pages of the areas one works in: a store's with account pages, the platform's, or the owner's level alone (its account pages). */
+export function pagesFor(area: AdminArea, flags: SiteFlags = {}): AdminPage[] {
   return ADMIN_PAGES.filter((page) => (page.area === area || page.area === "account") && pageOffered(page, flags));
 }
 
@@ -1489,7 +1489,7 @@ const words = (text: string) =>
     .filter((w) => w.length > 1);
 
 /** The pages that best match what someone asks about, best first. */
-export function findPages(area: "store" | "platform", query: string, flags: SiteFlags = {}, limit = 5): AdminPage[] {
+export function findPages(area: AdminArea, query: string, flags: SiteFlags = {}, limit = 5): AdminPage[] {
   const asked = words(query);
   if (asked.length === 0) return [];
   const scored = pagesFor(area, flags).map((page) => {
