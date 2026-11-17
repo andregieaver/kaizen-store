@@ -1632,3 +1632,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - A countdown timer and animated stats (D561, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`): a countdown only ever counts to a fixed moment the owner chose, the same for every visitor, and draws nothing once it has passed; never add one that starts again per visitor (false urgency). Stats' figures are the owner's own, in the server's HTML as typed; the count is decoration only, never under reduced motion and never read to a screen reader.
 
+## Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; planned, steps F1 to F5)
+
+- Planned, not built: read `docs/forms.md` before changing a page's form components, `src/lib/forms.ts`, `src/server/forms.ts` or the
+  checkout's question rules, which forms will share (`src/lib/questions.ts`).
+- A form is a row of `commerce.forms` (kind `message` or `signup`), picked by id in the page's `form` component, which keeps only its
+  look. Its responses are kept for the form's `keep_months` and are a person's data from the first step (D162): register, export,
+  erasure and the retention job ship with them.
+- A form template never changes a form made from it; a form on a page is archived, never deleted.

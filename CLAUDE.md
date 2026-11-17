@@ -155,6 +155,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Free trials and their end (D420, `src/server/store-trial.ts`)
 - Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
 - Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
+- Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; planned, steps F1 to F5)
 - Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…
 - The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`, `AiManagerLauncher`)
 - The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
