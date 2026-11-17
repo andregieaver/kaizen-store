@@ -75,48 +75,48 @@ commit as the fix.
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | Done | 12 Nov, f781ac6: 32 scripts and 4 lists under the review's folder; cycle 229 files, 41 twin pairs, 84 helpers, 4,803 copied lines; 156 rows and sections. |
-| 0.2 | Store a daily reading of production, so every later step has a 'before' |  | S | review |  | Done | 12 Nov: pushed (D574); Done once two days of readings exist in production. 13 Nov: the first reading, at 07:00 UTC with no error: 487 table rows, 9 schema rows, 67 statement rows. 14 Nov: Done: the second reading, at 07:00 UTC with no error (2 runs, 0 failures, 521 ms): 491 table rows (the four tables migrations added since), 9 schema rows, 67 statement rows. Step 0.23 may start. |
-| 0.3 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | review |  | Done | 12 Nov, 9643872, 95d0866, b357302 and the docs commit (D575): the deploy log reads GET / 200 PRERENDER then HIT, GET /s/demo/no 200 PRERENDER then HIT; the hosts job is green with house-site.spec.ts; Vercel's 8 GB build lists 5 market pages per shop route (demo's 4, kaizenaflow's 1) in 5 min with no out-of-memory line. Commit 3's case 2 asks /<market> on the platform host (see D575). |
-| 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Done | 12 Nov 2026, afff453 (9a79968, 7b3b1c0), D576; schema chunk files 0 (was 6); /api/visit 639 modules and 1,188 KB (was 1,890 and 10,475), /api/health 259 and 418 KB; the five beacons reach 100 to 107 files (was 1,308); db:check clean. Production: page checks passed, a visit counted, no new runtime error. |
-| 0.5 | Load sharp, the font parser and the AI manager's engine when they are used | AS-1, DP-2, SG-7, SF-9, DP-11, SG-15, SG-10 | S | cheap | 0.1, 0.3 | Done | 12 Nov 2026, f5745c3, 993a364, 1350a6f (D578): static imports of sharp or opentype.js 0 (was 13), `MCP_TOOLS` 0; `/api/shop/tiles` cold-loads without sharp. After step 0.6, `/admin/[store]/orders` loads 1,333 server modules (2,349 before; at most 2,050 asked). `owner-tools.ts` is in one of the chunk files the route requires (608 KB, which Turbopack built with the AI manager's tools beside modules the page uses), but no import reaches it (the walker and esbuild agree), and a cold load evaluates 1,258 modules, not that one. Production: home, sitemap and the MCP catalogue answer 200, no sharp error. |
-| 0.6 | Cut the import cycle of 229 server files | SG-1, SF-1, TC-2, SG-18, SG-17 | M | strong | 0.1, 0.3, 0.4 | Done | 12 Nov 2026, e4d0bfb, 298bc45, bb1fa83, ce51e87, 6b52973, ab02a69, 6e0559b, 4a8f058 (commit 7 in four), fd3206f; D580. Largest cycle in src/server 15 files (229 at the review), the store page 616 files (1,419), `/s/[store]/[market]` 1,594 server modules and 7,619 KB (2,419 and 11,944 KB) without the stripe package or theme-store.ts. A load-order fault from commits 1 and 2 gave Mollie's webhook a 500 for about 20 minutes, fixed by bb1fa83; CI now loads every built route on its own (830 of 830). Production after each deploy: home, store page, sitemap and Mollie's webhook 200; no new runtime error. |
-| 0.7 | Give code outside the admin its own small word modules, so the admin's words leave shoppers' routes | FM-1, SF-5, TX-1, GAP-text-s2 | M | review | 0.1, 0.3 | Done | 13 Nov 2026, 2e66c77, 8653db1, 9fc9314 (D581): 18 modules in src/lib/admin-words/, 0 importers of admin-text outside the admin (35 before); catalogue files per entry: proxy 10, the four visit beacons 3 each, /api/recommendations/events 2, storefront layout 14 (135 before); 0 of 282 entries outside the admin carry the admin's words (255 before); 830 of 830 routes load on their own. Production: home, store page, sitemap, admin 200, the visit beacon 204, no new runtime error. A Norwegian staff email and the two-step sentences are held by their int tests (staff-alerts-lang, two-step); the production clicks are the owner's. |
-| 0.8 | Make a language translated by AI cost what it uses: at start, per document and per minute | SG-5, SF-3, SD-7, TX-3, TX-12, TX-6, SC-13, PL-9, DQ-12, DS-2, CA-12, GAP-text-s7 | M | review | 0.1, 0.3, 0.4 | Done | 13 Nov: Done (f265add, b585eb9, ea006da, 434a2f3; D586; CI run 1254 applied `20261113180918_lowly_ultimatum`). 12 files behind the start hook (383 before; no AI SDK, no schema, no admin words); 2 statements at start whatever the number of languages (1 with none); 146 statements in a served day (test (d)), 2 in an unserved one (a minute's poll of the whole table before: 1,440 a day per instance); uiTextsFor() 114 browser keys under 9,000 bytes; 835 of 835 routes cold-load. Production after the deploy: /, /s/demo/no, /s/demo/no/withdraw and /sitemap.xml 200, the Mollie probe 200, no new runtime error, advisors INFO only. Still to read: the statement count two days after the deploy (with step 0.2's second reading). |
-| 0.9 | Take Supabase's client, zod and the builder's English off every signed-in screen | AC-1, BN-1, BN-3, BN-4, DP-4, TX-4, GAP-owner-browser-s4, GAP-text-s6 | S | review |  | Done | 13 Nov: Done (e89c610, b67f06d, 9ed6005, 62aabd1, 14722a8; D587). On a local build: GoTrueClient on 0 routes (432 before), ZodError on 159 (432), 'Set for {size}' on 39, all the builder's own (423), sign-in's sentence on 2, /admin/account and the two-step set-up (456); /admin/[store] 682,999 bytes (1,194,862), the median admin route 641,331 (1,152,953); the signed-in store home's HTML holds no setup sentence; admin-scripts.spec.ts's budgets lowered (home 0.81 MB). The signed-in suite passed but for 7 specs that fail on main locally too; 835 of 835 routes cold-load. Production on 14722a8: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error. Still to do by hand: sign in to production, uploads (a product picture, a custom field file, a CSV) and the service worker (no e2e covers Storage). |
-| 0.10 | Keep the page builder and the rich text editor off screens that do not edit a page | AC-2, BN-14, AC-3, BN-5, DP-5 | M | review | 0.9 | Done | 14 Nov: Done (f3cb2c5, 158a10b, 7006194, 0d31743; D588). Production on 0d31743: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error. Still to do by hand: open a preview, the pages list, a content list, an order, a customer, a deal and a product, save a product, and edit a rich text field on an order. 14 Nov: in progress, local figures only (production not yet seen). A page's preview 3,303,372 to 877,072 bytes, an order page 1,998,644 to 913,239, a product's editor 2,130,796 to 1,102,108; ProseMirror on 26 routes, all the builder's own (73); routes over 1,300,000 bytes 28 (90), the 26 builder routes and the two AI manager pages (the brief expected 27; step 0.11 takes the AI manager's off); 835 of 835 routes cold-load; admin-scripts budgets: new product 1,250,000, pages 790,000, preview 1,020,000, content 750,000. Signed-in suite: 225 passed, 11 failed, 9 of them as on main (7 the 0.9 notes name, plus a11y /admin and /admin/account on a support badge label) and 2 date-dependent (payment-facts, tax-report: 'today' and '12 hours' disagree at 02:00 UTC). |
-| 0.11 | Take two whole tables out of client scripts: the Work invoice's words and the AI manager's tool definitions | AC-7, BN-7, AC-8, BN-15, AI-4 | S | review | 0.9, 0.10 | Done | 14 Nov: Done (66796ed, 940acaa; D589). Production on 940acaa: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error. On a local build: the largest chunk 464,505 bytes (1,704,595), routes over 1,300,000 bytes 26 (90; the 26 builder routes), the Work invoice route 982,520 (4,274,839) with no Norwegian builder sentence in its first load, /admin/[store]/assistant 672,795, the chat's scripts on first opening 49,786 bytes in 2 files (496,206), ZodError on 130 routes; 835 of 835 routes cold-load. Signed-in suite: 226 passed, 11 failed, all 11 as on main; e2e/work.spec.ts passes. Still to do by hand: a Norwegian account's Work invoice draft (totals, the checklist, no hydration warning), issuing an invoice in a test store, and the chat's first suggestion and a tool's working label on a store's Products page and on /admin/platform. |
-| 0.12 | Stop prefetching what a press cannot use on stores and on Kaizena Flow's site | PF-2, PL-3, SC-1, PF-11, PL-4, BN-2, CA-4, CS-8 | S | cheap |  | Done | 14 Nov: Done (e1dc484; D590). Production on e1dc484: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error; a phone load of / makes 0 requests under /admin in 5 s (2 answers, 6 scripts and a stylesheet before), and /s/demo 0 prefetches (12 before). On a local build: prefetches for other views on the phone home read to the footer 0 (24), all prefetches 18 (47; budget 23), the front door 0 (12), /admin requests from / 0. 23 links got prefetch={false}; `src/lib/cross-root-links.scan.test.ts` and `e2e/prefetch.spec.ts` hold them. Still to do by hand: on the demo store, change language and then country from the menu: each lands on the same page in the other view. |
-| 0.13 | Fetch the admin's rail and list rows when a link is pointed at | CA-5, PF-5, PF-6, AC-12, GAP-owner-browser-s3 | M | cheap | 0.12 | Done | 14 Nov: Done (a815797, 31e3a39, c041d22, a802646; D591). Production on c041d22: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error; CI's signed-in job green on a802646. Router prefetches in the 3 s after load on a local signed-in build, before / after: home 28 / 0; product editors on the Products list 8 / 0 (the list's own 8 toolbar-link prefetches remain). Ceilings held in `e2e/signed-in/prefetch.spec.ts`: home 0, orders 8 (18 or 19 with raw row links, which grew with the rows: the reviewer converted the order table's order and customer links, `src/components/admin/orders/order-table.tsx`), products 8, pages 6, settings 16, a product's editor 2, the builder 0, the platform home 0 (2 locally and 4 in CI with its two raw section links, which depend on the stores: converted after CI's signed-in job failed on c041d22); hovering the rail's Products link gives 2. Two files were added by the reviewer's decision after the home stayed at 18: `src/app/admin/(gated)/[store]/page.tsx` and `src/components/admin/overview-parts.tsx`; the home then still made 9 until `src/components/admin/analytics/home-alerts.tsx` and `alerts.tsx` (cards drawn on the home itself) were converted too. Still to do by hand: signed in to production, a store home makes no `_rsc` request but its own in five seconds, hovering Orders makes one or two and pressing opens it; a touch press shows the pending bar at once; Tab and Enter on a rail link opens it with aria-current kept; the same on /admin/platform. Follow-up d5af8b4 (after step 0.14 turned route guessing off): the orders list's view tabs, filter and page links and the products list's tabs are AdminLinks; the ceilings stay. |
-| 0.14 | End the prefetch loop on /s/ addresses, and write both router settings down | PF-1, SC-9, CA-6, CA-7 | S | cheap |  | Done | 14 Nov: Done (8a9752c; D592). Production on 8a9752c: /, /s/demo/no, /sitemap.xml, /admin/sign-in, /themes 200, the Mollie probe 200, no new runtime error; CI's e2e job green with e2e/prefetch.spec.ts. With guessing off, the admin's same-page links with another query (the orders view tabs, filter and page links, the products tabs) were prefetched on sight and broke step 0.13's ceilings in CI; d5af8b4 made them AdminLinks, signed-in green. Local, 14 November: router prefetches in the 3 s after load, then 0 in the next 2 s (counted by `watch()` of e2e/prefetch.spec.ts: requests carrying `next-router-prefetch` or `next-router-segment-prefetch`). Search page before 687, after 25; category/hjem before 866, after 26; cart before 873, after 26; /themes after 10 (before: passed, 0 left to loop). Build log has 0 partialPrefetching lines (2 before); cold-load 835 of 835. |
-| 0.15 | Make no server call after load for a visitor with nothing to fetch | SC-10, PL-7, SD-15, SC-12, PL-8, SD-14, PL-14 | M | review |  | Done | 14 Nov: Done (7d15785, df83014, f10b77c; D593). Production on acc324b: /, /sitemap.xml, /admin/sign-in 200, /s/demo/no 308 to the store's own host (200 there), the Mollie probe 200, no new runtime error. A fresh browser on the demo store's front page, the search results page and a product page: 0 requests to /wishlist/saved or /api/shop/tiles and 0 suggestion POSTs after load (the remaining after-load requests are the visit record POST /api/visit and, on the product page, Stripe.js's own beacons to m.stripe.com and r.stripe.com: outside this step). Local: the same on all 12 storefront pages of measure-routes.mjs (were 1 or 2 each). The search box asks after a key or a focus; a grid whose store and own switches show neither stock nor the chooser draws no island (the switches from `productSettingsCached()`, tag `product-settings:{storeId}`, refreshed by `saveProductSettings()`); the hearts ask only when the marker cookie `kaizen_mine_{storeId}` (necessary, in KNOWN_COOKIES) is there, set on a first save and on sign-in. Still to do by hand: on a production store, press a heart, reload: the heart stays pressed and the header counts 1. |
-| 0.16 | Send shoppers' first scripts only what the page draws | SC-3, PL-10, BN-10, TX-5, TX-8, SC-11, SC-4, PM-11, GAP-shopper-browser-s4 | M | strong | 0.1 | Done | 14 Nov: Done (3282160, a3141d0, 6095105, d6af769, 67aa344, 49236ef; D600). Production on 49236ef: first scripts (script tags of the HTML, nomodule left out) of the demo store's front page 610,830 bytes (680,264 when the step was written; target 615,000) and of a product page 656,235 (777,785; target 670,000, no picker kept); no first script holds 'Sell to businesses', 'Waiting for payment', 'Kommer ihåg om du valde ljusa', 'filter-dialog-title', 'aspect-[16/7]' or 'data-language-hint'; Kaizena Flow's front page shares them (610,830). On production at phone size the filter opens on a press made as the page appears, and again after closing; a carousel's Next pressed as the page appears is kept and moves the row; without JavaScript the row is drawn once. Pages 200, the Mollie probe 200, no new runtime error. CI on 49236ef: e2e (with WebKit) green; integration (1) red only on agent-eval-replay, which went red one commit earlier with the AI wallet's tool (ccc14cf, D599), not this step. Local (plain build): front page 682,151 to 609,885 and product page 778,503 to 655,190 over the six commits (1 cookie texts, features table and admin words out: 633,778 / 730,104; 2 cartView() on the server: 633,778 / 704,769; 3 preview stage and platform language switch lazy: 624,774 / 695,765; 4 the filter's panel on the press: 615,961 / 686,952; 5 the four product pickers lazy, none kept, five runs 38 of 38: 615,961 / 661,266; 6 the carousel split, row the server's and controls lazy with an early press kept: 609,885 / 655,190); the product page's entry chunks 340,305 to 216,992 (target 297,000). Done differently: the carousel needed a commit 6 (as a plain lazy stand-in the page held its row twice without JavaScript); the first-press test is in e2e/products-page.spec.ts (no WebKit here); e2e/performance.spec.ts's budgets count the 225,082 nomodule bytes, so FIRST_SCRIPTS_MAX is 840,000 and the product page 895,000 (the ceilings plus those bytes). Still to do by hand: on a store with Google Analytics, withdraw Statistics and check `_ga` is gone (no production site has an optional tracker). |
-| 0.17 | Cut what a menu and a progress poll cost in the admin | AD-1, AD-9 | S | review |  | Done | 14 Nov: Done (bb6c9aa, b7ae693, 8926e72, 49dca14; D602). Production on 49dca14: /, /s/demo/no (on its own host), /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, the notice feed 401 signed out, no new runtime error. CI on 49dca14: signed-in, e2e and the rest green; integration (1) red only on agent-eval-replay (red since ccc14cf, D599, not this step). Local: a store menu build asks permissionOfPath() 110 times (220 before) and takes 0.2 ms over 20 warm builds (about 125 ms before): one reading of the sections for the tabs and the sidebars (`storeNav()`), and a process-wide memo keyed on the access and the path only, capped at 2,000; the per-role equality case covers the owner, a default admin and every ROLE_TEMPLATES role, and read and write never share an answer. Progress polls (RefreshWhile, PackPicturesWatch) ask nothing in a hidden tab and look once when it is shown; the Dream Factory's asks `dreamStateAction()` (a fingerprint of the newest run) and redraws only when it moved, compared with the run the page was drawn from (the reviewer's fix, 49dca14: the bound action restarted the poll and took the next answer as its baseline, so a change before a tick was never drawn). The notice badge's count is `unreadNotices()` with the store's id (2 statements with the account's, 4 before; `assistant-notices-count.int.test.ts`). Still to do by hand: signed in, the AI manager's button shows its unread count; a Dream Factory run's page follows the run, and asks nothing while its tab is hidden. |
-| 0.18 | Draw the route once per save | AD-13 | M | review |  | Done | 14 Nov: Done (6f43131 rebased, cade5b7, 9dcfc64, f53a4d2 and the notes, last 35724ae; D611). Production on 35724ae: /, /s/demo/no (its own host), /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error; CI on 35724ae all green, signed-in included. Local: `router-refresh.scan.test.ts` holds 48 client router.refresh() calls in 28 admin files (92 in 50 when the step began; the brief said 90): 44 deleted, each read against its action, which refreshes on success (refresh(), refreshTag or revalidatePath); actions that refresh only when something was written (inventory's adjust and policies) count, since nothing else changed. Kept: suppliers-view's revoke key and old-shop-check's forget (the client call runs on failure too), pack-pictures' three (in a finally), two-step-panel's two (the action does not refresh), redirect-form.tsx:117 (not in the brief), and the brief's do-not-touch list; the four editors that push (discounts, campaigns, automation rules, reminders) keep the push. Still to do by hand: in the admin, save a stock change on Inventory with the network panel open: one request answers the save and no second _rsc follows. |
-| 0.19 | Read the products, customers and stores lists a page at a time | AD-7, AC-14, AD-10 | M | review |  | In progress | Local, 14 Nov 2026, not pushed: commits 1 and 4 made. Commit 1: the Products page no longer calls getEditorContext (the notice reads countProductsNeedingMeasure, one statement; the list of products needing content is read only on its own filter), unit-price and products int files pass. Commit 4: the Stores list pages at 100 with a count (listStoreBilling limit/offset, countStoreBilling), billing int file passes. Commits 2 and 3 NOT made: the admin redesign (D597, D603) rewrote the Products list (client-side search, filters and counts over the whole list) and the Customers statement (show, sort, city, counts), so the brief no longer fits; they need a decision. Local figures: lint, typecheck and pnpm test pass on both commits; signed-in build and cold-load pass (837 of 837); signed-in project 232 passed, 15 failed (13 known on main, plus variants-scale.spec.ts:86 and vat-screens.spec.ts:72, which also fail alone: vat-screens on leftover local data; neither touches these files). The Done-when figures for 500 products, 100 of 500 and 5 statements are not reached (commit 2). |
-| 0.20 | Stop asking for what does not change: a store's slug, the theme cards, the hosts list | CP-2, SD-10, CA-9, DQ-9, CA-13, SF-12 | S | review |  | Done | 15 Nov: Done (fa18077d, c7c97f8c; commit 1 c0591d81 taken back by d2dcb5db; D616). Production on f04a2126 (the deploy waited from 4aceeee for the other session's D613 migration and eval): pages, the demo store's search, product and theme store 200, the Mollie probe 200, store links to their own host as before, no new runtime error. The store domains are parsed once per instance; a store's slug by its id comes from `storeSlugOf()` (cached for days, tag `store-id:{id}`, staled by `adoptRequestSandbox()`, the one writer of a slug): the hand-written `select slug from commerce.stores where id` went from 27 lines to 3. Commit 1 (a theme's neighbours from the shared cached card list) was taken back: a theme published after that list was cached had no neighbours on its first visit (e2e/theme-store.spec.ts:118 and :146 failed in CI). Still to read: the statement's daily count (about 7,180 a day before) a week on, in step 0.2's reading, into docs/capacity.md. |
-| 0.21 | Read the AI connection only to call a model, and give search a ceiling | AI-2, DQ-4, GAP-ai-1, SD-16, CA-11, GAP-ai-s5 | M | strong | 0.2 | Done | 15 Nov: Done (59c99846, e438b14d, 8a8dcd56, 452266da, 60fee47e, add82099, 21c2fa83; D617). Production on f04a2126: pages 200, the demo store's search answers (a fresh query and a known one), the Mollie probe 200, no new runtime error. Local: 0 prerendered `.meta` files carry the wide 'ai-providers' tag (319 before): a store's AI save refreshes `ai:{storeId}` only; screens that only draw an AI button ask `aiAbilities()` (60-second memo, no key); the month's AI cost is the measured days plus a live part; a search answered from the cache reads no AI connection, and a miss asks the model only within `searchAiRoom()` (20 a visitor a minute, an hourly budget, a monthly token cap; past it the search runs by keyword, never refused). Reviewer's fixes: 60fee47e (the measured part ends before any day the usage job did not measure for every store, so a missed night never drops a store's spending; the new case fails without it) and 21c2fa83 (two int tests' aiFor() mocks answer aiAbilities() too, after CI). Commit 5 is keyed by module, not entry (the walk reaches a model from 137 public entries, then 249 with import()): `public-model-paths.scan.test.ts` holds 24 rows, each with its ceiling and the guard that enforces it; none has no ceiling. Still to read on production: reads of `ai_providers` per `ai_usage` row (at most 2) and the AI cost statement's mean time (under 5 ms). |
-| 0.22 | Work the cart and a shopper's facts out once per request, with no read for a feature that is off | SD-11, FT-15, GAP-surface-s1 | S | review |  | Done | 15 Nov: Done (f4a3ce81, 89f5459d; D619). Production on 89f5459d: pages 200 (cart and checkout included), the Mollie probe 200, no new runtime error; a basket on the demo store reads the same in the cart and the checkout (249,00 kr goods, 99,00 kr shipping, 348,00 kr). CI on 89f5459d all green. One cart or checkout render works the basket out once (`requestCartSummary()`; the cart page did it twice, the checkout twice); `getCustomer()` is read once a render (keyed by store and the session token's hash), the cart link's count and a product page's stock once; `cartSummary()` with the store's features sends no statement for Bonus or Referrals when they are off (4 of its 5 statements for such a store; the program's off state matches `commerce.bonus_program_on()` and `affiliate_program_on()`, both of which need the feature). Not done: the checkout rules cached under their own tag (the fifth statement): `cacheLife()` throws outside Next in the int tests that reach `cartSummary()`, which the brief forbade editing; it waits for a stub of next/cache in the integration config. Still to read: a week of step 0.2's statements per cart view. |
-| 0.23 | Filter a store's rows the way its index can serve | DQ-8, DS-7, PM-4, CR-6, GAP-database-s4 | M | review | 0.2 | Done | 15 Nov: Done (2bc16c7c, 3c64f17d, 0b0b4490, 329d3a9e, 87422668, 0dcb944c; D622). Migration `20261115123101_cookie_scans_site_indexes.sql` (two indexes) applied by CI run 1305 at 13:18 UTC; regenerated after the other session's `20261115120423` came first (same SQL as the first file, `20261115061740`, never pushed). Advisors after: INFO only, no new warning. Production on 7715b054 (includes 0dcb944c): pages, the cookie page and the theme store 200, the Mollie probe 200, no new runtime error; CI on 0dcb944c all green, signed-in included. Every read of a store's or the platform's rows filters with `owned()` (`store_id = $1` or `store_id is null`): 125 uses of `store_id is not distinct from` in 40 files to 9 commented column-to-column lines in 4 files (each replacement checked by script against the line it replaced); the ratchet counts the old wording per file. The cookie scan's due check reads two new indexes, a failing site retries after an hour and after a day from its third failure, and the site tried longest ago goes first. Still to read a week on (step 0.2): commerce.cookie_scans' sequential scans under 1,000 a day (about 14,000 before) and pages' rows read no longer growing by millions a day; scheduled scans a day at most a seventh of the open sites plus 5. |
-| 0.24 | Read one page, not all of them | CA-3, SD-4, DQ-2, PM-2 | M | review | 0.23, 0.1 | Done | 15 Nov: Done (530962c1, e72252eb, 0eeff7ab rebased, last f073fc1b; D629). Production on f073fc1b: the front page, a page, the blog, checkout, both robots.txt and the sitemap 200, the footer's links drawn, the Mollie probe 200, no runtime error in the hour after. A reader of one published page reads that page (`publishedPageById()`), and a reader of addresses or titles a small index (`publishedPageIndex()`), both cached under the pages tag; `listPublishedPages(` lines 37 to 14, none to pick one page (`pages-list.scan.test.ts`). Short of the brief: 9 of the demo store's 289 prerendered entries (all blog routes, 6,732 bytes of 3.27 MB) still keep the page list, through `blogArticles()` (src/server/blogs.ts), which the brief kept on the list because a blog listing reads each article's categories; clearing it needs an index that carries the article categories (a follow-up). The theme-store preview and the platform's Themes page specs failed in local runs; both fail as often on main (themes-unified 2 of 3 runs on main), so they are not this step's. Still to read a week on: the list statement's calls (79,778 in 78 days before). |
-| 0.25 | Prune the scheduler's own log | CR-5, DS-8 | S | review |  | Done | 15 Nov: Done (807376f1; D642). The owner saw the row counts first (402,474 rows from 25 September, 309,710 older than seven days, 650 MB of an 824 MB database, every run succeeded, no shop data) and gave the go-ahead. Migration `20261115185237_cron_run_log_retention.sql` applied by CI run 1346 at 21:48 UTC: the log was emptied (TRUNCATE), and the pg_cron job `kaizen-cron-log-retention` (03:41 daily) keeps seven days. Production after: 442 rows since 21:49 and 848 kB for the log, the database 824 MB to 176 MB. Advisors: INFO only. Still to read a week on: the cron schema under 80 MB. |
-| 0.26 | Drop the 13 duplicate indexes, and add the test that stops the next one | DS-9, DS-15 | S | review |  | Done | 15 Nov: Done (5971f5dc rebased as part of ca002b83; D643). Migrations `20261115165138_drop_duplicate_hot_indexes.sql` (four `DROP INDEX CONCURRENTLY`, no transaction) and `20261115165154_drop_duplicate_indexes.sql` (nine plain drops) applied by CI run 1330 at 19:07 UTC, each index checked first against production's own definitions (each led by a kept index, none unique or a constraint's). Production after: orders 32 indexes (34), none of the 13 left; the performance advisor has no duplicate-index finding (INFO only). The code reached production earlier, at 18:11 UTC, through a hand-run CI redeploy (run 1327, workflow_dispatch) that deploys without migrating; harmless here, since nothing needs the indexes gone. `src/db/index-duplicates.test.ts` fails on the next index led by another of its table. |
-| 0.27 | Let the knowledge job read no document when nothing was published | DQ-6, DS-5, PM-3 | M | review |  | Done | 16 Nov: Done (02f27b4a, 98374fe1; D649). Commit 1's migrations `20261115224024_outgoing_spitfire.sql` (the table `commerce.knowledge_sources`, RLS on) and `20261115224037_knowledge_sources_fill.sql` applied by CI run 1352 at 23:33 UTC (after a re-run of its flaky signed-in job): 55 rows, all 55 production pages with passages, checked read-only before the push, so no vector was cut again. Commit 2 deployed at 00:05 UTC with no migration. Production after: the dispatcher's `dispatcher.knowledge` job runs every five minutes with no failure; 8 more pages (wordless or published since their passages) were recorded once at 23:40 and nothing has been cut since; no runtime error. Advisors: INFO only (RLS on, no policy, as every private table). Local: an idle run is 1 statement over all sites and 0 documents; a page's document is fetched only when it must be cut; a wordless page is cut once. Left: an unreadable article whose stored address differs from its computed one is fetched again each run (rare). Still to read a week on: the delete of a page's passages runs only when a page was published (pg_stat_statements). |
-| 0.28 | Make picture, alt-text and product upkeep cost one statement when nothing changed | CR-4, DQ-3, DS-10, AI-13, AI-5, GAP-ai-s6 | M | review | 0.27 | Done | 16 Nov: Done (55500e88, d9d7712e, 80c2230e, 6de0a11d; D654). Migrations `20261116001432_media_alt_tries.sql`, `20261116004359_product_text_changed.sql` and `20261116004405_product_text_changed_rules.sql` (the BEFORE UPDATE trigger on product_translations) applied by CI run 1359 at 01:47 UTC, every check green. Production after: the two columns and the trigger present; `dispatcher.media`, `dispatcher.alt-texts`, `dispatcher.embeddings` and `dispatcher.knowledge` ran at 01:50 with no failure; pages 200; no runtime error; advisors INFO only. Local: an idle five-minute run of the four AI upkeep jobs is 3 statements with 1 site and with 20 (the knowledge, picture and alt-text lists; the product scan sends none; no AI settings read, no model called); a picture is given up on after five failed tries (a person's run still tries it; a success clears the count); where a picture is used is checked weekly; every product saver embeds at once (seven callers) and the platform-wide product scan runs hourly. Still to read a day on: media_embeddings under 100 updates a day with no content change, the product hash about 24 calls a day. |
-| 0.29 | Let the listings' check record a try and read only reworded products | CR-15 | S | review | 0.28 | Done | 16 Nov: Done (ebaeb7c0; D655). Migration `20261116015416_content_screened_tries.sql` (two columns) applied by CI run 1363 at 02:40 UTC, every check green. Production after: `dispatcher.content-moderation` runs with no failure; the platform's check is on and has a text model; all 65 listings it may read (active products of live stores) were read by 2 November and none is new, so it had read nothing since, as it should. Step 0.28's marker made those 65 look reworded once: the runs at 02:50 and 02:55 stamped 10 each with 0 AI calls and 0 tries (an unchanged hash costs no model call), so the one-time pass clears in seven runs. Local: an idle run adds 3 statements (the notices, the switch, the candidates) and reads no AI connection; an unusable answer is a try and waits a day; a provider error ends the run. Still to read a day on: content_moderation AI calls at most the products created or reworded plus the notices plus 10. |
-| 0.30 | Let the invoice job ask only stores it can issue for | CR-9, DS-3 | S | review |  | Done | 16 Nov: Done (ed4eebf5, 10c66d24, 24073585; D664). Migration `20261116033159_live_drill_kinds` applied by CI run 1388 at 10:04 UTC, code live at 3819f6bc. `dispatcher.invoices` ran in 0.6 s without an error; advisors INFO only. The production run of the `invoices` drill is the owner's. |
-| 0.31 | Run prunes daily, not every five minutes or every minute | FT-3 | S | cheap |  | Done | 15 Nov: Done (a6b37c71, 24931b22, deployed with run 1346 at 21:52 UTC; D644). Nine prunes left the five-minute dispatcher (84 entries to 75 there, the scan test holds 75): seven run in the daily route (`daily.*`, 86400) and the API idempotency keys and OAuth tokens hourly (`hourly.*`, 3600, the dispatcher's first five minutes of the hour); the delivery and workflow-run deletes moved from the every-minute runners into daily prune functions. Production after: `hourly.api-idempotency` and `hourly.oauth-tokens` recorded at 3600, the nine retired `dispatcher.*` rows gone (0). The seven `daily.*` prunes first run with the daily route at 07:00 UTC on 16 November: check their rows then, and that no job shows late. |
-| 0.32 | Serve pictures as stored, and give every file with a fixed address a long lifetime | AS-4, AS-9, AS-12, AS-5, GAP-code-s3 | S | review |  | Done | 15 Nov: Done (beab4e75, f38e9228, adbf83a2 rebased as 516cc1c8; deployed with run 1346; D645). Next's image service is off, so pictures are served as stored (the search suggestions' uploaded thumbnail shows); production's /_next/image answers 400 (it answered 200 to anyone; 404 locally). 9 of 9 uploads name a lifetime (a year where the address never changes); font files are kept at the CDN (a font's second request on production: x-vercel-cache HIT, max-age=31536000, immutable); public files a day (/flags/no.svg max-age=86400); six flags with coats of arms are small WebP pictures (the folder 176,486 to 14,884 bytes), and a store without header flags fetches none. Step 0.33 adds an 800 px copy of every picture, so shoppers are not sent originals for long. |
-| 0.33 | Keep an 800 px copy of every picture | AS-11 | M | strong | 0.32 | Done | 16 Nov: Done (05c01dbe, 7c109b1d, 388392c5, c67823c3; D665). Migration `20261116035930_media_medium_copy` applied by CI run 1388 at 10:04 UTC, code live at 3819f6bc; the demo store's tiles carry the new `sizes`; older pictures keep their two files. Advisors INFO only. |
-| 0.34 | Give the admin's colour names a value on public pages | CS-7, CS-9, GAP-styles-s1 | S | review |  | Done | 16 Nov: Done (ca2e4455, 4f7639cd, 8a5e02cb; D666). Live at 3819f6bc: the button on /status and /report is rgb(23,23,23) in light and rgb(237,237,237) in dark (rgba(0,0,0,0) before); screenshots sent. |
+| 0.2 | Store a daily reading of production, so every later step has a 'before' |  | S | review |  | Done | 12 Nov (D574) Done; notes below. |
+| 0.3 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | review |  | Done | 12 Nov (D575) Done; notes below. |
+| 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Done | 12 Nov (D576) Done; notes below. |
+| 0.5 | Load sharp, the font parser and the AI manager's engine when they are used | AS-1, DP-2, SG-7, SF-9, DP-11, SG-15, SG-10 | S | cheap | 0.1, 0.3 | Done | 12 Nov (D578) Done; notes below. |
+| 0.6 | Cut the import cycle of 229 server files | SG-1, SF-1, TC-2, SG-18, SG-17 | M | strong | 0.1, 0.3, 0.4 | Done | 12 Nov (D580) Done; notes below. |
+| 0.7 | Give code outside the admin its own small word modules, so the admin's words leave shoppers' routes | FM-1, SF-5, TX-1, GAP-text-s2 | M | review | 0.1, 0.3 | Done | 13 Nov (D581) Done; notes below. |
+| 0.8 | Make a language translated by AI cost what it uses: at start, per document and per minute | SG-5, SF-3, SD-7, TX-3, TX-12, TX-6, SC-13, PL-9, DQ-12, DS-2, CA-12, GAP-text-s7 | M | review | 0.1, 0.3, 0.4 | Done | 13 Nov (D586) Done; notes below. |
+| 0.9 | Take Supabase's client, zod and the builder's English off every signed-in screen | AC-1, BN-1, BN-3, BN-4, DP-4, TX-4, GAP-owner-browser-s4, GAP-text-s6 | S | review |  | Done | 13 Nov (D587) Done; notes below. |
+| 0.10 | Keep the page builder and the rich text editor off screens that do not edit a page | AC-2, BN-14, AC-3, BN-5, DP-5 | M | review | 0.9 | Done | 14 Nov (D588) Done; notes below. |
+| 0.11 | Take two whole tables out of client scripts: the Work invoice's words and the AI manager's tool definitions | AC-7, BN-7, AC-8, BN-15, AI-4 | S | review | 0.9, 0.10 | Done | 14 Nov (D589) Done; notes below. |
+| 0.12 | Stop prefetching what a press cannot use on stores and on Kaizena Flow's site | PF-2, PL-3, SC-1, PF-11, PL-4, BN-2, CA-4, CS-8 | S | cheap |  | Done | 14 Nov (D590) Done; notes below. |
+| 0.13 | Fetch the admin's rail and list rows when a link is pointed at | CA-5, PF-5, PF-6, AC-12, GAP-owner-browser-s3 | M | cheap | 0.12 | Done | 14 Nov (D591) Done; notes below. |
+| 0.14 | End the prefetch loop on /s/ addresses, and write both router settings down | PF-1, SC-9, CA-6, CA-7 | S | cheap |  | Done | 14 Nov (D592) Done; notes below. |
+| 0.15 | Make no server call after load for a visitor with nothing to fetch | SC-10, PL-7, SD-15, SC-12, PL-8, SD-14, PL-14 | M | review |  | Done | 14 Nov (D593) Done; notes below. |
+| 0.16 | Send shoppers' first scripts only what the page draws | SC-3, PL-10, BN-10, TX-5, TX-8, SC-11, SC-4, PM-11, GAP-shopper-browser-s4 | M | strong | 0.1 | Done | 14 Nov (D600, D599) Done; notes below. |
+| 0.17 | Cut what a menu and a progress poll cost in the admin | AD-1, AD-9 | S | review |  | Done | 14 Nov (D602, D599) Done; notes below. |
+| 0.18 | Draw the route once per save | AD-13 | M | review |  | Done | 14 Nov (D611) Done; notes below. |
+| 0.19 | Read the products, customers and stores lists a page at a time | AD-7, AC-14, AD-10 | M | review |  | In progress | (D597, D603) In progress; notes below. |
+| 0.20 | Stop asking for what does not change: a store's slug, the theme cards, the hosts list | CP-2, SD-10, CA-9, DQ-9, CA-13, SF-12 | S | review |  | Done | 15 Nov (D616, D613) Done; notes below. |
+| 0.21 | Read the AI connection only to call a model, and give search a ceiling | AI-2, DQ-4, GAP-ai-1, SD-16, CA-11, GAP-ai-s5 | M | strong | 0.2 | Done | 15 Nov (D617) Done; notes below. |
+| 0.22 | Work the cart and a shopper's facts out once per request, with no read for a feature that is off | SD-11, FT-15, GAP-surface-s1 | S | review |  | Done | 15 Nov (D619) Done; notes below. |
+| 0.23 | Filter a store's rows the way its index can serve | DQ-8, DS-7, PM-4, CR-6, GAP-database-s4 | M | review | 0.2 | Done | 15 Nov (D622) Done; notes below. |
+| 0.24 | Read one page, not all of them | CA-3, SD-4, DQ-2, PM-2 | M | review | 0.23, 0.1 | Done | 15 Nov (D629) Done; notes below. |
+| 0.25 | Prune the scheduler's own log | CR-5, DS-8 | S | review |  | Done | 15 Nov (D642) Done; notes below. |
+| 0.26 | Drop the 13 duplicate indexes, and add the test that stops the next one | DS-9, DS-15 | S | review |  | Done | 15 Nov (D643) Done; notes below. |
+| 0.27 | Let the knowledge job read no document when nothing was published | DQ-6, DS-5, PM-3 | M | review |  | Done | 16 Nov (D649) Done; notes below. |
+| 0.28 | Make picture, alt-text and product upkeep cost one statement when nothing changed | CR-4, DQ-3, DS-10, AI-13, AI-5, GAP-ai-s6 | M | review | 0.27 | Done | 16 Nov (D654) Done; notes below. |
+| 0.29 | Let the listings' check record a try and read only reworded products | CR-15 | S | review | 0.28 | Done | 16 Nov (D655) Done; notes below. |
+| 0.30 | Let the invoice job ask only stores it can issue for | CR-9, DS-3 | S | review |  | Done | 16 Nov (D664) Done; notes below. |
+| 0.31 | Run prunes daily, not every five minutes or every minute | FT-3 | S | cheap |  | Done | 15 Nov (D644) Done; notes below. |
+| 0.32 | Serve pictures as stored, and give every file with a fixed address a long lifetime | AS-4, AS-9, AS-12, AS-5, GAP-code-s3 | S | review |  | Done | 15 Nov (D645) Done; notes below. |
+| 0.33 | Keep an 800 px copy of every picture | AS-11 | M | strong | 0.32 | Done | 16 Nov (D665) Done; notes below. |
+| 0.34 | Give the admin's colour names a value on public pages | CS-7, CS-9, GAP-styles-s1 | S | review |  | Done | 16 Nov (D666) Done; notes below. |
 | 0.35 | Point Tailwind at code only | AS-7, CS-6 | S | cheap | 0.34 | Done | 16 Nov: Done (e0faba3d; D667). Live at 3819f6bc; the built CSS lost 11 class names (2,329 to 2,318: the ten expected and `shrink`, a word in test names only), none appeared. |
 | 0.36 | Delete what nothing uses | DD-3, DD-8, TX-11, DP-8, GAP-code-s1 | M | strong |  | Done | 16 Nov (D689): 3 files, 34 texts, 305 exports and 19 server functions deleted; simple-icons gone (27 marks in code, unchanged). Kept features without a screen: unwired.md, for the owner. |
 | 0.37 | Remove the old admin redirects and the bookings and deliveries twin switch | DD-11 | M | review | 0.36 | Done | 16 Nov (D696; 9cc3db1c, 9576acc7, c773b5d6): eight redirects gone, the twin switch removed; migrations live, 0 twin rows, check holds work alone, advisors INFO. |
-| 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | Done | 16 Nov: Done (6a78de64, 46673cc1, 30256940, 5336001d; D682). CI: browser builds 1 to 0 type checks, schema check in shard 1 only, lint 9 s from its cache. Live at 9b939d91. The tests-only skip waits for a tests-only push. |
+| 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | Done | 16 Nov (D682) Done; notes below. |
 | 0.39 | Let a test load only what it uses | TC-3, TC-13, DD-13, DD-10 | M | review | 0.38 | Done | 16 Nov (D690): three vitest projects, setup 33% to 8%, CI unit tests 505 s to 265 s; tests no longer read the archive. Not made: shared workers (13 files leak state), Drizzle pre-bundle (no gain). |
-| 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Done | 16 Nov: Done (430fd72c, 5d94f8b9, 49d1dea9; D676). 585 docs wrapped, no word changed; 0 prose lines over 500 that can be wrapped; 27 one-code-span lines and 715 table rows left. rg --files: docs 927 to 905, supabase 841 to 51. |
+| 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Done | 16 Nov (D676) Done; notes below. |
 | 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Done | 16 Nov (8d661fde, 9245a436; D683): 0 stale names, 0 long rows, one decisions table; the claim ran no CI. |
 | 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Done | 16 Nov: Done (6b903353), counted on b6b4c1f2. FT-16 and FT-17 tolerated: 0 shared 10-line windows each; 16 and 5 shared modules. |
-| 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
+| 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov (D668) Done; notes below. |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Done | 16 Nov (D697; 1c2133cf, 83bb4d81, 3859ac22): page pictures offered the 800 px copy in one lookup per render; a column's share sizes its picture on a phone. |
 | 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Done | 16 Nov (ecc6f773; D674): four jobs at a time. 17 Nov: 0 connection timeouts in the day, a round of 81 jobs in 0.5 s, no dispatcher job failed. |
 | 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | Done | 16 Nov (D698; 88320369): themes, packs and seed write today's grid shape, held by page-shapes.test.ts; grids unchanged on the demo store live. |
@@ -313,6 +313,299 @@ Change log:
 - 16 Nov 2026: step 0.44 Done (3859ac22, D697): pictures in page content are offered the 800 px copy, and a picture in a column that stays beside others on a phone says its share of the screen.
 - 16 Nov 2026: step 0.46 Done (88320369, D698): the themes, content packs and seed write a grid's columns in today's shape, and a test parses every page they make.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
+
+
+**Notes on the steps**
+
+**Step 0.2.** 12 Nov: pushed (D574); Done once two days of readings exist in production. 13 Nov: the first reading, at 07:00 UTC
+with no error: 487 table rows, 9 schema rows, 67 statement rows. 14 Nov: Done: the second reading, at 07:00 UTC with no error (2
+runs, 0 failures, 521 ms): 491 table rows (the four tables migrations added since), 9 schema rows, 67 statement rows. Step 0.23
+may start.
+
+**Step 0.3.** 12 Nov, 9643872, 95d0866, b357302 and the docs commit (D575): the deploy log reads GET / 200 PRERENDER then HIT, GET
+/s/demo/no 200 PRERENDER then HIT; the hosts job is green with house-site.spec.ts; Vercel's 8 GB build lists 5 market pages per
+shop route (demo's 4, kaizenaflow's 1) in 5 min with no out-of-memory line. Commit 3's case 2 asks /<market> on the platform host
+(see D575).
+
+**Step 0.4.** 12 Nov 2026, afff453 (9a79968, 7b3b1c0), D576; schema chunk files 0 (was 6); /api/visit 639 modules and 1,188 KB
+(was 1,890 and 10,475), /api/health 259 and 418 KB; the five beacons reach 100 to 107 files (was 1,308); db:check clean.
+Production: page checks passed, a visit counted, no new runtime error.
+
+**Step 0.5.** 12 Nov 2026, f5745c3, 993a364, 1350a6f (D578): static imports of sharp or opentype.js 0 (was 13), `MCP_TOOLS` 0;
+`/api/shop/tiles` cold-loads without sharp. After step 0.6, `/admin/[store]/orders` loads 1,333 server modules (2,349 before; at
+most 2,050 asked). `owner-tools.ts` is in one of the chunk files the route requires (608 KB, which Turbopack built with the AI
+manager's tools beside modules the page uses), but no import reaches it (the walker and esbuild agree), and a cold load evaluates
+1,258 modules, not that one. Production: home, sitemap and the MCP catalogue answer 200, no sharp error.
+
+**Step 0.6.** 12 Nov 2026, e4d0bfb, 298bc45, bb1fa83, ce51e87, 6b52973, ab02a69, 6e0559b, 4a8f058 (commit 7 in four), fd3206f;
+D580. Largest cycle in src/server 15 files (229 at the review), the store page 616 files (1,419), `/s/[store]/[market]` 1,594
+server modules and 7,619 KB (2,419 and 11,944 KB) without the stripe package or theme-store.ts. A load-order fault from commits 1
+and 2 gave Mollie's webhook a 500 for about 20 minutes, fixed by bb1fa83; CI now loads every built route on its own (830 of 830).
+Production after each deploy: home, store page, sitemap and Mollie's webhook 200; no new runtime error.
+
+**Step 0.7.** 13 Nov 2026, 2e66c77, 8653db1, 9fc9314 (D581): 18 modules in src/lib/admin-words/, 0 importers of admin-text outside
+the admin (35 before); catalogue files per entry: proxy 10, the four visit beacons 3 each, /api/recommendations/events 2,
+storefront layout 14 (135 before); 0 of 282 entries outside the admin carry the admin's words (255 before); 830 of 830 routes load
+on their own. Production: home, store page, sitemap, admin 200, the visit beacon 204, no new runtime error. A Norwegian staff
+email and the two-step sentences are held by their int tests (staff-alerts-lang, two-step); the production clicks are the owner's.
+
+**Step 0.8.** 13 Nov: Done (f265add, b585eb9, ea006da, 434a2f3; D586; CI run 1254 applied `20261113180918_lowly_ultimatum`). 12
+files behind the start hook (383 before; no AI SDK, no schema, no admin words); 2 statements at start whatever the number of
+languages (1 with none); 146 statements in a served day (test (d)), 2 in an unserved one (a minute's poll of the whole table
+before: 1,440 a day per instance); uiTextsFor() 114 browser keys under 9,000 bytes; 835 of 835 routes cold-load. Production after
+the deploy: /, /s/demo/no, /s/demo/no/withdraw and /sitemap.xml 200, the Mollie probe 200, no new runtime error, advisors INFO
+only. Still to read: the statement count two days after the deploy (with step 0.2's second reading).
+
+**Step 0.9.** 13 Nov: Done (e89c610, b67f06d, 9ed6005, 62aabd1, 14722a8; D587). On a local build: GoTrueClient on 0 routes (432
+before), ZodError on 159 (432), 'Set for {size}' on 39, all the builder's own (423), sign-in's sentence on 2, /admin/account and
+the two-step set-up (456); /admin/[store] 682,999 bytes (1,194,862), the median admin route 641,331 (1,152,953); the signed-in
+store home's HTML holds no setup sentence; admin-scripts.spec.ts's budgets lowered (home 0.81 MB). The signed-in suite passed but
+for 7 specs that fail on main locally too; 835 of 835 routes cold-load. Production on 14722a8: /, /s/demo/no, /sitemap.xml,
+/admin/sign-in 200, the Mollie probe 200, no new runtime error. Still to do by hand: sign in to production, uploads (a product
+picture, a custom field file, a CSV) and the service worker (no e2e covers Storage).
+
+**Step 0.10.** 14 Nov: Done (f3cb2c5, 158a10b, 7006194, 0d31743; D588). Production on 0d31743: /, /s/demo/no, /sitemap.xml,
+/admin/sign-in 200, the Mollie probe 200, no new runtime error. Still to do by hand: open a preview, the pages list, a content
+list, an order, a customer, a deal and a product, save a product, and edit a rich text field on an order. 14 Nov: in progress,
+local figures only (production not yet seen). A page's preview 3,303,372 to 877,072 bytes, an order page 1,998,644 to 913,239, a
+product's editor 2,130,796 to 1,102,108; ProseMirror on 26 routes, all the builder's own (73); routes over 1,300,000 bytes 28
+(90), the 26 builder routes and the two AI manager pages (the brief expected 27; step 0.11 takes the AI manager's off); 835 of 835
+routes cold-load; admin-scripts budgets: new product 1,250,000, pages 790,000, preview 1,020,000, content 750,000. Signed-in
+suite: 225 passed, 11 failed, 9 of them as on main (7 the 0.9 notes name, plus a11y /admin and /admin/account on a support badge
+label) and 2 date-dependent (payment-facts, tax-report: 'today' and '12 hours' disagree at 02:00 UTC).
+
+**Step 0.11.** 14 Nov: Done (66796ed, 940acaa; D589). Production on 940acaa: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the
+Mollie probe 200, no new runtime error. On a local build: the largest chunk 464,505 bytes (1,704,595), routes over 1,300,000 bytes
+26 (90; the 26 builder routes), the Work invoice route 982,520 (4,274,839) with no Norwegian builder sentence in its first load,
+/admin/[store]/assistant 672,795, the chat's scripts on first opening 49,786 bytes in 2 files (496,206), ZodError on 130 routes;
+835 of 835 routes cold-load. Signed-in suite: 226 passed, 11 failed, all 11 as on main; e2e/work.spec.ts passes. Still to do by
+hand: a Norwegian account's Work invoice draft (totals, the checklist, no hydration warning), issuing an invoice in a test store,
+and the chat's first suggestion and a tool's working label on a store's Products page and on /admin/platform.
+
+**Step 0.12.** 14 Nov: Done (e1dc484; D590). Production on e1dc484: /, /s/demo/no, /sitemap.xml, /admin/sign-in 200, the Mollie
+probe 200, no new runtime error; a phone load of / makes 0 requests under /admin in 5 s (2 answers, 6 scripts and a stylesheet
+before), and /s/demo 0 prefetches (12 before). On a local build: prefetches for other views on the phone home read to the footer 0
+(24), all prefetches 18 (47; budget 23), the front door 0 (12), /admin requests from / 0. 23 links got prefetch={false};
+`src/lib/cross-root-links.scan.test.ts` and `e2e/prefetch.spec.ts` hold them. Still to do by hand: on the demo store, change
+language and then country from the menu: each lands on the same page in the other view.
+
+**Step 0.13.** 14 Nov: Done (a815797, 31e3a39, c041d22, a802646; D591). Production on c041d22: /, /s/demo/no, /sitemap.xml,
+/admin/sign-in 200, the Mollie probe 200, no new runtime error; CI's signed-in job green on a802646. Router prefetches in the 3 s
+after load on a local signed-in build, before / after: home 28 / 0; product editors on the Products list 8 / 0 (the list's own 8
+toolbar-link prefetches remain). Ceilings held in `e2e/signed-in/prefetch.spec.ts`: home 0, orders 8 (18 or 19 with raw row links,
+which grew with the rows: the reviewer converted the order table's order and customer links,
+`src/components/admin/orders/order-table.tsx`), products 8, pages 6, settings 16, a product's editor 2, the builder 0, the
+platform home 0 (2 locally and 4 in CI with its two raw section links, which depend on the stores: converted after CI's signed-in
+job failed on c041d22); hovering the rail's Products link gives 2. Two files were added by the reviewer's decision after the home
+stayed at 18: `src/app/admin/(gated)/[store]/page.tsx` and `src/components/admin/overview-parts.tsx`; the home then still made 9
+until `src/components/admin/analytics/home-alerts.tsx` and `alerts.tsx` (cards drawn on the home itself) were converted too. Still
+to do by hand: signed in to production, a store home makes no `_rsc` request but its own in five seconds, hovering Orders makes
+one or two and pressing opens it; a touch press shows the pending bar at once; Tab and Enter on a rail link opens it with
+aria-current kept; the same on /admin/platform. Follow-up d5af8b4 (after step 0.14 turned route guessing off): the orders list's
+view tabs, filter and page links and the products list's tabs are AdminLinks; the ceilings stay.
+
+**Step 0.14.** 14 Nov: Done (8a9752c; D592). Production on 8a9752c: /, /s/demo/no, /sitemap.xml, /admin/sign-in, /themes 200, the
+Mollie probe 200, no new runtime error; CI's e2e job green with e2e/prefetch.spec.ts. With guessing off, the admin's same-page
+links with another query (the orders view tabs, filter and page links, the products tabs) were prefetched on sight and broke step
+0.13's ceilings in CI; d5af8b4 made them AdminLinks, signed-in green. Local, 14 November: router prefetches in the 3 s after load,
+then 0 in the next 2 s (counted by `watch()` of e2e/prefetch.spec.ts: requests carrying `next-router-prefetch` or
+`next-router-segment-prefetch`). Search page before 687, after 25; category/hjem before 866, after 26; cart before 873, after 26;
+/themes after 10 (before: passed, 0 left to loop). Build log has 0 partialPrefetching lines (2 before); cold-load 835 of 835.
+
+**Step 0.15.** 14 Nov: Done (7d15785, df83014, f10b77c; D593). Production on acc324b: /, /sitemap.xml, /admin/sign-in 200,
+/s/demo/no 308 to the store's own host (200 there), the Mollie probe 200, no new runtime error. A fresh browser on the demo
+store's front page, the search results page and a product page: 0 requests to /wishlist/saved or /api/shop/tiles and 0 suggestion
+POSTs after load (the remaining after-load requests are the visit record POST /api/visit and, on the product page, Stripe.js's own
+beacons to m.stripe.com and r.stripe.com: outside this step). Local: the same on all 12 storefront pages of measure-routes.mjs
+(were 1 or 2 each). The search box asks after a key or a focus; a grid whose store and own switches show neither stock nor the
+chooser draws no island (the switches from `productSettingsCached()`, tag `product-settings:{storeId}`, refreshed by
+`saveProductSettings()`); the hearts ask only when the marker cookie `kaizen_mine_{storeId}` (necessary, in KNOWN_COOKIES) is
+there, set on a first save and on sign-in. Still to do by hand: on a production store, press a heart, reload: the heart stays
+pressed and the header counts 1.
+
+**Step 0.16.** 14 Nov: Done (3282160, a3141d0, 6095105, d6af769, 67aa344, 49236ef; D600). Production on 49236ef: first scripts
+(script tags of the HTML, nomodule left out) of the demo store's front page 610,830 bytes (680,264 when the step was written;
+target 615,000) and of a product page 656,235 (777,785; target 670,000, no picker kept); no first script holds 'Sell to
+businesses', 'Waiting for payment', 'Kommer ihåg om du valde ljusa', 'filter-dialog-title', 'aspect-[16/7]' or
+'data-language-hint'; Kaizena Flow's front page shares them (610,830). On production at phone size the filter opens on a press
+made as the page appears, and again after closing; a carousel's Next pressed as the page appears is kept and moves the row;
+without JavaScript the row is drawn once. Pages 200, the Mollie probe 200, no new runtime error. CI on 49236ef: e2e (with WebKit)
+green; integration (1) red only on agent-eval-replay, which went red one commit earlier with the AI wallet's tool (ccc14cf, D599),
+not this step. Local (plain build): front page 682,151 to 609,885 and product page 778,503 to 655,190 over the six commits (1
+cookie texts, features table and admin words out: 633,778 / 730,104; 2 cartView() on the server: 633,778 / 704,769; 3 preview
+stage and platform language switch lazy: 624,774 / 695,765; 4 the filter's panel on the press: 615,961 / 686,952; 5 the four
+product pickers lazy, none kept, five runs 38 of 38: 615,961 / 661,266; 6 the carousel split, row the server's and controls lazy
+with an early press kept: 609,885 / 655,190); the product page's entry chunks 340,305 to 216,992 (target 297,000). Done
+differently: the carousel needed a commit 6 (as a plain lazy stand-in the page held its row twice without JavaScript); the
+first-press test is in e2e/products-page.spec.ts (no WebKit here); e2e/performance.spec.ts's budgets count the 225,082 nomodule
+bytes, so FIRST_SCRIPTS_MAX is 840,000 and the product page 895,000 (the ceilings plus those bytes). Still to do by hand: on a
+store with Google Analytics, withdraw Statistics and check `_ga` is gone (no production site has an optional tracker).
+
+**Step 0.17.** 14 Nov: Done (bb6c9aa, b7ae693, 8926e72, 49dca14; D602). Production on 49dca14: /, /s/demo/no (on its own host),
+/sitemap.xml, /admin/sign-in 200, the Mollie probe 200, the notice feed 401 signed out, no new runtime error. CI on 49dca14:
+signed-in, e2e and the rest green; integration (1) red only on agent-eval-replay (red since ccc14cf, D599, not this step). Local:
+a store menu build asks permissionOfPath() 110 times (220 before) and takes 0.2 ms over 20 warm builds (about 125 ms before): one
+reading of the sections for the tabs and the sidebars (`storeNav()`), and a process-wide memo keyed on the access and the path
+only, capped at 2,000; the per-role equality case covers the owner, a default admin and every ROLE_TEMPLATES role, and read and
+write never share an answer. Progress polls (RefreshWhile, PackPicturesWatch) ask nothing in a hidden tab and look once when it is
+shown; the Dream Factory's asks `dreamStateAction()` (a fingerprint of the newest run) and redraws only when it moved, compared
+with the run the page was drawn from (the reviewer's fix, 49dca14: the bound action restarted the poll and took the next answer as
+its baseline, so a change before a tick was never drawn). The notice badge's count is `unreadNotices()` with the store's id (2
+statements with the account's, 4 before; `assistant-notices-count.int.test.ts`). Still to do by hand: signed in, the AI manager's
+button shows its unread count; a Dream Factory run's page follows the run, and asks nothing while its tab is hidden.
+
+**Step 0.18.** 14 Nov: Done (6f43131 rebased, cade5b7, 9dcfc64, f53a4d2 and the notes, last 35724ae; D611). Production on 35724ae:
+/, /s/demo/no (its own host), /sitemap.xml, /admin/sign-in 200, the Mollie probe 200, no new runtime error; CI on 35724ae all
+green, signed-in included. Local: `router-refresh.scan.test.ts` holds 48 client router.refresh() calls in 28 admin files (92 in 50
+when the step began; the brief said 90): 44 deleted, each read against its action, which refreshes on success (refresh(),
+refreshTag or revalidatePath); actions that refresh only when something was written (inventory's adjust and policies) count, since
+nothing else changed. Kept: suppliers-view's revoke key and old-shop-check's forget (the client call runs on failure too),
+pack-pictures' three (in a finally), two-step-panel's two (the action does not refresh), redirect-form.tsx:117 (not in the brief),
+and the brief's do-not-touch list; the four editors that push (discounts, campaigns, automation rules, reminders) keep the push.
+Still to do by hand: in the admin, save a stock change on Inventory with the network panel open: one request answers the save and
+no second _rsc follows.
+
+**Step 0.19.** Local, 14 Nov 2026, not pushed: commits 1 and 4 made. Commit 1: the Products page no longer calls getEditorContext
+(the notice reads countProductsNeedingMeasure, one statement; the list of products needing content is read only on its own
+filter), unit-price and products int files pass. Commit 4: the Stores list pages at 100 with a count (listStoreBilling
+limit/offset, countStoreBilling), billing int file passes. Commits 2 and 3 NOT made: the admin redesign (D597, D603) rewrote the
+Products list (client-side search, filters and counts over the whole list) and the Customers statement (show, sort, city, counts),
+so the brief no longer fits; they need a decision. Local figures: lint, typecheck and pnpm test pass on both commits; signed-in
+build and cold-load pass (837 of 837); signed-in project 232 passed, 15 failed (13 known on main, plus variants-scale.spec.ts:86
+and vat-screens.spec.ts:72, which also fail alone: vat-screens on leftover local data; neither touches these files). The Done-when
+figures for 500 products, 100 of 500 and 5 statements are not reached (commit 2).
+
+**Step 0.20.** 15 Nov: Done (fa18077d, c7c97f8c; commit 1 c0591d81 taken back by d2dcb5db; D616). Production on f04a2126 (the
+deploy waited from 4aceeee for the other session's D613 migration and eval): pages, the demo store's search, product and theme
+store 200, the Mollie probe 200, store links to their own host as before, no new runtime error. The store domains are parsed once
+per instance; a store's slug by its id comes from `storeSlugOf()` (cached for days, tag `store-id:{id}`, staled by
+`adoptRequestSandbox()`, the one writer of a slug): the hand-written `select slug from commerce.stores where id` went from 27
+lines to 3. Commit 1 (a theme's neighbours from the shared cached card list) was taken back: a theme published after that list was
+cached had no neighbours on its first visit (e2e/theme-store.spec.ts:118 and :146 failed in CI). Still to read: the statement's
+daily count (about 7,180 a day before) a week on, in step 0.2's reading, into docs/capacity.md.
+
+**Step 0.21.** 15 Nov: Done (59c99846, e438b14d, 8a8dcd56, 452266da, 60fee47e, add82099, 21c2fa83; D617). Production on f04a2126:
+pages 200, the demo store's search answers (a fresh query and a known one), the Mollie probe 200, no new runtime error. Local: 0
+prerendered `.meta` files carry the wide 'ai-providers' tag (319 before): a store's AI save refreshes `ai:{storeId}` only; screens
+that only draw an AI button ask `aiAbilities()` (60-second memo, no key); the month's AI cost is the measured days plus a live
+part; a search answered from the cache reads no AI connection, and a miss asks the model only within `searchAiRoom()` (20 a
+visitor a minute, an hourly budget, a monthly token cap; past it the search runs by keyword, never refused). Reviewer's fixes:
+60fee47e (the measured part ends before any day the usage job did not measure for every store, so a missed night never drops a
+store's spending; the new case fails without it) and 21c2fa83 (two int tests' aiFor() mocks answer aiAbilities() too, after CI).
+Commit 5 is keyed by module, not entry (the walk reaches a model from 137 public entries, then 249 with import()):
+`public-model-paths.scan.test.ts` holds 24 rows, each with its ceiling and the guard that enforces it; none has no ceiling. Still
+to read on production: reads of `ai_providers` per `ai_usage` row (at most 2) and the AI cost statement's mean time (under 5 ms).
+
+**Step 0.22.** 15 Nov: Done (f4a3ce81, 89f5459d; D619). Production on 89f5459d: pages 200 (cart and checkout included), the Mollie
+probe 200, no new runtime error; a basket on the demo store reads the same in the cart and the checkout (249,00 kr goods, 99,00 kr
+shipping, 348,00 kr). CI on 89f5459d all green. One cart or checkout render works the basket out once (`requestCartSummary()`; the
+cart page did it twice, the checkout twice); `getCustomer()` is read once a render (keyed by store and the session token's hash),
+the cart link's count and a product page's stock once; `cartSummary()` with the store's features sends no statement for Bonus or
+Referrals when they are off (4 of its 5 statements for such a store; the program's off state matches `commerce.bonus_program_on()`
+and `affiliate_program_on()`, both of which need the feature). Not done: the checkout rules cached under their own tag (the fifth
+statement): `cacheLife()` throws outside Next in the int tests that reach `cartSummary()`, which the brief forbade editing; it
+waits for a stub of next/cache in the integration config. Still to read: a week of step 0.2's statements per cart view.
+
+**Step 0.23.** 15 Nov: Done (2bc16c7c, 3c64f17d, 0b0b4490, 329d3a9e, 87422668, 0dcb944c; D622). Migration
+`20261115123101_cookie_scans_site_indexes.sql` (two indexes) applied by CI run 1305 at 13:18 UTC; regenerated after the other
+session's `20261115120423` came first (same SQL as the first file, `20261115061740`, never pushed). Advisors after: INFO only, no
+new warning. Production on 7715b054 (includes 0dcb944c): pages, the cookie page and the theme store 200, the Mollie probe 200, no
+new runtime error; CI on 0dcb944c all green, signed-in included. Every read of a store's or the platform's rows filters with
+`owned()` (`store_id = $1` or `store_id is null`): 125 uses of `store_id is not distinct from` in 40 files to 9 commented
+column-to-column lines in 4 files (each replacement checked by script against the line it replaced); the ratchet counts the old
+wording per file. The cookie scan's due check reads two new indexes, a failing site retries after an hour and after a day from its
+third failure, and the site tried longest ago goes first. Still to read a week on (step 0.2): commerce.cookie_scans' sequential
+scans under 1,000 a day (about 14,000 before) and pages' rows read no longer growing by millions a day; scheduled scans a day at
+most a seventh of the open sites plus 5.
+
+**Step 0.24.** 15 Nov: Done (530962c1, e72252eb, 0eeff7ab rebased, last f073fc1b; D629). Production on f073fc1b: the front page, a
+page, the blog, checkout, both robots.txt and the sitemap 200, the footer's links drawn, the Mollie probe 200, no runtime error in
+the hour after. A reader of one published page reads that page (`publishedPageById()`), and a reader of addresses or titles a
+small index (`publishedPageIndex()`), both cached under the pages tag; `listPublishedPages(` lines 37 to 14, none to pick one page
+(`pages-list.scan.test.ts`). Short of the brief: 9 of the demo store's 289 prerendered entries (all blog routes, 6,732 bytes of
+3.27 MB) still keep the page list, through `blogArticles()` (src/server/blogs.ts), which the brief kept on the list because a blog
+listing reads each article's categories; clearing it needs an index that carries the article categories (a follow-up). The
+theme-store preview and the platform's Themes page specs failed in local runs; both fail as often on main (themes-unified 2 of 3
+runs on main), so they are not this step's. Still to read a week on: the list statement's calls (79,778 in 78 days before).
+
+**Step 0.25.** 15 Nov: Done (807376f1; D642). The owner saw the row counts first (402,474 rows from 25 September, 309,710 older
+than seven days, 650 MB of an 824 MB database, every run succeeded, no shop data) and gave the go-ahead. Migration
+`20261115185237_cron_run_log_retention.sql` applied by CI run 1346 at 21:48 UTC: the log was emptied (TRUNCATE), and the pg_cron
+job `kaizen-cron-log-retention` (03:41 daily) keeps seven days. Production after: 442 rows since 21:49 and 848 kB for the log, the
+database 824 MB to 176 MB. Advisors: INFO only. Still to read a week on: the cron schema under 80 MB.
+
+**Step 0.26.** 15 Nov: Done (5971f5dc rebased as part of ca002b83; D643). Migrations
+`20261115165138_drop_duplicate_hot_indexes.sql` (four `DROP INDEX CONCURRENTLY`, no transaction) and
+`20261115165154_drop_duplicate_indexes.sql` (nine plain drops) applied by CI run 1330 at 19:07 UTC, each index checked first
+against production's own definitions (each led by a kept index, none unique or a constraint's). Production after: orders 32
+indexes (34), none of the 13 left; the performance advisor has no duplicate-index finding (INFO only). The code reached production
+earlier, at 18:11 UTC, through a hand-run CI redeploy (run 1327, workflow_dispatch) that deploys without migrating; harmless here,
+since nothing needs the indexes gone. `src/db/index-duplicates.test.ts` fails on the next index led by another of its table.
+
+**Step 0.27.** 16 Nov: Done (02f27b4a, 98374fe1; D649). Commit 1's migrations `20261115224024_outgoing_spitfire.sql` (the table
+`commerce.knowledge_sources`, RLS on) and `20261115224037_knowledge_sources_fill.sql` applied by CI run 1352 at 23:33 UTC (after a
+re-run of its flaky signed-in job): 55 rows, all 55 production pages with passages, checked read-only before the push, so no
+vector was cut again. Commit 2 deployed at 00:05 UTC with no migration. Production after: the dispatcher's `dispatcher.knowledge`
+job runs every five minutes with no failure; 8 more pages (wordless or published since their passages) were recorded once at 23:40
+and nothing has been cut since; no runtime error. Advisors: INFO only (RLS on, no policy, as every private table). Local: an idle
+run is 1 statement over all sites and 0 documents; a page's document is fetched only when it must be cut; a wordless page is cut
+once. Left: an unreadable article whose stored address differs from its computed one is fetched again each run (rare). Still to
+read a week on: the delete of a page's passages runs only when a page was published (pg_stat_statements).
+
+**Step 0.28.** 16 Nov: Done (55500e88, d9d7712e, 80c2230e, 6de0a11d; D654). Migrations `20261116001432_media_alt_tries.sql`,
+`20261116004359_product_text_changed.sql` and `20261116004405_product_text_changed_rules.sql` (the BEFORE UPDATE trigger on
+product_translations) applied by CI run 1359 at 01:47 UTC, every check green. Production after: the two columns and the trigger
+present; `dispatcher.media`, `dispatcher.alt-texts`, `dispatcher.embeddings` and `dispatcher.knowledge` ran at 01:50 with no
+failure; pages 200; no runtime error; advisors INFO only. Local: an idle five-minute run of the four AI upkeep jobs is 3
+statements with 1 site and with 20 (the knowledge, picture and alt-text lists; the product scan sends none; no AI settings read,
+no model called); a picture is given up on after five failed tries (a person's run still tries it; a success clears the count);
+where a picture is used is checked weekly; every product saver embeds at once (seven callers) and the platform-wide product scan
+runs hourly. Still to read a day on: media_embeddings under 100 updates a day with no content change, the product hash about 24
+calls a day.
+
+**Step 0.29.** 16 Nov: Done (ebaeb7c0; D655). Migration `20261116015416_content_screened_tries.sql` (two columns) applied by CI
+run 1363 at 02:40 UTC, every check green. Production after: `dispatcher.content-moderation` runs with no failure; the platform's
+check is on and has a text model; all 65 listings it may read (active products of live stores) were read by 2 November and none is
+new, so it had read nothing since, as it should. Step 0.28's marker made those 65 look reworded once: the runs at 02:50 and 02:55
+stamped 10 each with 0 AI calls and 0 tries (an unchanged hash costs no model call), so the one-time pass clears in seven runs.
+Local: an idle run adds 3 statements (the notices, the switch, the candidates) and reads no AI connection; an unusable answer is a
+try and waits a day; a provider error ends the run. Still to read a day on: content_moderation AI calls at most the products
+created or reworded plus the notices plus 10.
+
+**Step 0.30.** 16 Nov: Done (ed4eebf5, 10c66d24, 24073585; D664). Migration `20261116033159_live_drill_kinds` applied by CI run
+1388 at 10:04 UTC, code live at 3819f6bc. `dispatcher.invoices` ran in 0.6 s without an error; advisors INFO only. The production
+run of the `invoices` drill is the owner's.
+
+**Step 0.31.** 15 Nov: Done (a6b37c71, 24931b22, deployed with run 1346 at 21:52 UTC; D644). Nine prunes left the five-minute
+dispatcher (84 entries to 75 there, the scan test holds 75): seven run in the daily route (`daily.*`, 86400) and the API
+idempotency keys and OAuth tokens hourly (`hourly.*`, 3600, the dispatcher's first five minutes of the hour); the delivery and
+workflow-run deletes moved from the every-minute runners into daily prune functions. Production after: `hourly.api-idempotency`
+and `hourly.oauth-tokens` recorded at 3600, the nine retired `dispatcher.*` rows gone (0). The seven `daily.*` prunes first run
+with the daily route at 07:00 UTC on 16 November: check their rows then, and that no job shows late.
+
+**Step 0.32.** 15 Nov: Done (beab4e75, f38e9228, adbf83a2 rebased as 516cc1c8; deployed with run 1346; D645). Next's image service
+is off, so pictures are served as stored (the search suggestions' uploaded thumbnail shows); production's /_next/image answers 400
+(it answered 200 to anyone; 404 locally). 9 of 9 uploads name a lifetime (a year where the address never changes); font files are
+kept at the CDN (a font's second request on production: x-vercel-cache HIT, max-age=31536000, immutable); public files a day
+(/flags/no.svg max-age=86400); six flags with coats of arms are small WebP pictures (the folder 176,486 to 14,884 bytes), and a
+store without header flags fetches none. Step 0.33 adds an 800 px copy of every picture, so shoppers are not sent originals for
+long.
+
+**Step 0.33.** 16 Nov: Done (05c01dbe, 7c109b1d, 388392c5, c67823c3; D665). Migration `20261116035930_media_medium_copy` applied
+by CI run 1388 at 10:04 UTC, code live at 3819f6bc; the demo store's tiles carry the new `sizes`; older pictures keep their two
+files. Advisors INFO only.
+
+**Step 0.34.** 16 Nov: Done (ca2e4455, 4f7639cd, 8a5e02cb; D666). Live at 3819f6bc: the button on /status and /report is
+rgb(23,23,23) in light and rgb(237,237,237) in dark (rgba(0,0,0,0) before); screenshots sent.
+
+**Step 0.38.** 16 Nov: Done (6a78de64, 46673cc1, 30256940, 5336001d; D682). CI: browser builds 1 to 0 type checks, schema check in
+shard 1 only, lint 9 s from its cache. Live at 9b939d91. The tests-only skip waits for a tests-only push.
+
+**Step 0.40.** 16 Nov: Done (430fd72c, 5d94f8b9, 49d1dea9; D676). 585 docs wrapped, no word changed; 0 prose lines over 500 that
+can be wrapped; 27 one-code-span lines and 715 table rows left. rg --files: docs 927 to 905, supabase 841 to 51.
+
+**Step 0.43.** 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences
+added since); the one index line over 200 characters shortened.
 
 ## 1. The headline
 
