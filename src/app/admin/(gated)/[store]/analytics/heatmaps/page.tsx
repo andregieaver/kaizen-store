@@ -13,11 +13,17 @@ import { queryText } from "@/lib/analytics-export";
 import { formatCount } from "@/lib/analytics-core";
 import { addDays, todayIn } from "@/lib/analytics-period";
 import { HEAT_DEVICES, MIN_MAP_VIEWS, type HeatDevice } from "@/lib/page-heat";
+import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
+import { partTotals } from "@/lib/heat-tools";
+import { partLinks, partOfAnchor } from "@/lib/page-signals";
+import { pageTypeKey } from "@/lib/permissions";
 import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
+import { testablePages } from "@/server/experiment-admin";
 import { mapShotPicture, requestMapShot } from "@/server/map-shots";
 import { memberCan } from "@/server/permissions";
 import { heatPages, pageDevices, pageHeat, taggedTests } from "@/server/page-heat-read";
+import { heatKeyPage } from "@/server/page-signals";
 import { variantNameText } from "@/lib/experiment-words";
 
 import { takeNewPictureAction } from "./actions";
@@ -89,6 +95,21 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
     const row = await requestMapShot(store.id, page, device, tag);
     shot = { ...row, picture: await mapShotPicture(store.id, row) };
   }
+  // "Edit this part" and "A/B test this part" (ecosystem plan E2.3, D713): the parts of the clicks table that the page's builder has, for
+  // every visitor's map (a version's parts are its own copy's).
+  const anchors = view === "click" && tag === "" ? partTotals(heat.cells, 15).map((p) => p.anchor) : [];
+  const keyPage = anchors.some((a) => partOfAnchor(a) !== null) ? await heatKeyPage(store, page) : null;
+  let partActions: Record<string, { edit?: string; test?: string }> = {};
+  if (keyPage) {
+    const editKey = pageTypeKey(keyPage.type, "write");
+    const testable = keyPage.type !== "article" && memberCan(ctx, "marketing:write") ? ((await testablePages(store.id)).find((t) => t.id === keyPage.id) ?? null) : null;
+    partActions = partLinks(
+      ctx.base,
+      { id: keyPage.id, editHref: `${ctx.base}/${PAGE_TYPE_COPY[keyPage.type].segment}/${keyPage.id}`, content: keyPage.content, testKind: testable?.kind ?? null },
+      anchors,
+      { edit: editKey !== null && memberCan(ctx, editKey), test: testable !== null },
+    );
+  }
   const mayAsk = memberCan(ctx, "analytics:write");
   const newPicture = mayAsk ? (
     <ActionForm action={takeNewPictureAction.bind(null, store.slug, page, device, tag)} className="flex flex-col gap-2">
@@ -118,6 +139,7 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
         watchHref={ctx.owner ? recordingsOfPage(ctx.base, page) : undefined}
         tag={tag}
         versions={versions}
+        partActions={partActions}
       />
     </>,
   );

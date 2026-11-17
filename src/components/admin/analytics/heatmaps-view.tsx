@@ -154,6 +154,11 @@ export type PageMapViewProps = {
   tag?: string;
   /** The versions with totals for this page, as chips beside "Every visitor"; none without a test. */
   versions?: { tag: string; label: string }[];
+  /**
+   * Per part of the table, by anchor (ecosystem plan E2.3, D713): the builder opened on it, and "A/B test this" for it (`partLinks()`);
+   * a part the page's builder does not have (a landmark, the header's) has none.
+   */
+  partActions?: Record<string, { edit?: string; test?: string }>;
 };
 
 export function PageMapView(props: PageMapViewProps) {
@@ -283,6 +288,32 @@ export function PageMapView(props: PageMapViewProps) {
                 { key: "clicks", label: w.colClicks, align: "right", cell: (r) => formatCount(r.clicks) },
                 { key: "dead", label: w.colDead, align: "right", cell: (r) => formatCount(r.dead) },
                 { key: "rage", label: w.colRage, align: "right", cell: (r) => formatCount(r.rage) },
+                ...(props.partActions && Object.keys(props.partActions).length > 0
+                  ? [
+                      {
+                        key: "change",
+                        label: w.colChange,
+                        cell: (r: (typeof parts)[number]) => {
+                          const links = props.partActions?.[r.anchor];
+                          if (!links) return null;
+                          return (
+                            <span className="flex flex-wrap gap-x-3 gap-y-1">
+                              {links.edit ? (
+                                <Link href={links.edit} className="underline underline-offset-2">
+                                  {w.editPart}
+                                </Link>
+                              ) : null}
+                              {links.test ? (
+                                <Link href={links.test} className="underline underline-offset-2">
+                                  {w.testPart}
+                                </Link>
+                              ) : null}
+                            </span>
+                          );
+                        },
+                      },
+                    ]
+                  : []),
               ]}
               rows={parts}
               rowKey={(r) => r.anchor}

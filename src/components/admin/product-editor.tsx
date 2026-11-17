@@ -10,6 +10,7 @@ import {
   useState,
   useSyncExternalStore,
   useTransition,
+  type ReactNode,
 } from "react";
 
 import {
@@ -141,6 +142,11 @@ type Props = {
     /** The groups for its variants and what is entered for each, by variant id; none where the store has no such group. */
     variants: { groups: FieldGroup[]; data: Record<string, FieldData> } | null;
   };
+  /**
+   * How the product performs (ecosystem plan E2.3, D713): the server's strip under the bar, streamed in its own Suspense boundary so the
+   * editor never waits for it; none for a new product or a person who may not read analytics.
+   */
+  insight?: ReactNode;
 };
 
 /** Which variant a client holds fields for: a saved one by id, a new one by its options (as its row is keyed). */
@@ -341,6 +347,7 @@ export function ProductEditor(props: Props) {
           </p>
         )}
       </div>
+      {props.insight}
       {result.status === "error" && (
         <div
           ref={summaryRef}

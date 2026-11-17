@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { z } from "zod";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageEditor } from "@/components/admin/page-editor";
+import { PageSignalsStrip } from "@/components/admin/page-signals-strip";
+import { blogOfArticle } from "@/lib/blogs";
+import { signalPlan } from "@/lib/page-signals";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
 import { parseDualLayout, templateAsPage, type DualKind, type DualLayout, type DualWith } from "@/lib/dual-page";
 import type { AdminLang } from "@/lib/admin-lang";
@@ -14,7 +18,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { typeOfLayout } from "@/server/content-types";
-import { checkPageTypeAccess, requirePageTypeAccess } from "@/server/permissions";
+import { checkPageTypeAccess, memberCan, requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
@@ -208,6 +212,36 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
           : fillWords(ew.publishedAt, { address: `${context.siteBase}/${page.slug}` })
         : null;
   const fieldRoles = Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role);
+  // How it performs (ecosystem plan E2.3, D713): a page or article that has been public, for those who may read the analytics; streamed
+  // after the editor, never in its way. Not for the staging set's copy, which no visitor sees.
+  const insight =
+    (type === "page" || type === "article") && page.published && !staged && memberCan(gated, "analytics:read") ? (
+      <Suspense fallback={null}>
+        <PageSignalsStrip
+          store={store}
+          target={{
+            ...signalPlan(
+              {
+                type,
+                slug: page.slug,
+                front: store.frontPageId === page.id,
+                products: store.productsPageId === page.id,
+                roles: fieldRoles,
+                blog: type === "article" ? (blogOfArticle(context.blog?.blogs ?? [], page.draft)?.address ?? null) : null,
+              },
+              store.allMarkets.map((m) => m.code),
+            ),
+            pageId: page.id,
+          }}
+          what="page"
+          name={page.draft.title || page.slug}
+          lang={lang}
+          owner={memberCan(gated, "owner")}
+          tests={memberCan(gated, "marketing:read")}
+          className="max-sm:order-2"
+        />
+      </Suspense>
+    ) : null;
   // A second document beside this one (D412): never for the staging set's copy or an A/B test's version, which have screens of their own.
   const dual = staged || type === "variant" || !context.dualPages ? null : await storeDual(store.slug, { kind: type as DualKind, id: page.id }, query, lang);
   if (dual && dual !== "refused" && context.dualPages) {
@@ -267,6 +301,8 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         fieldData={fieldData}
         fieldRoles={fieldRoles}
         context={context}
+        insight={insight}
+        openPart={typeof query.part === "string" ? query.part : null}
       />
     </AdminTextScope>
   );
