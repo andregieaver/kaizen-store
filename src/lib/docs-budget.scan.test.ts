@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { baselineFiles, unnamedBaselines } from "../../scripts/lib/docs-count.mjs";
 import { staleRuleNames } from "../../scripts/lib/rule-names.mjs";
 import baseline from "./docs-budget.baseline.json";
 
@@ -97,5 +98,20 @@ describe("the rules cite code that exists (bloat review step 0.41)", () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
+  });
+});
+
+describe("every budget has a row in the budgets rule (bloat review step 1.1)", () => {
+  it("every baseline file under src is named in the budgets rule", () => {
+    expect(
+      unnamedBaselines(baselineFiles(process.cwd()), readFileSync(path.join(process.cwd(), "docs/rules/budgets.md"), "utf8")),
+      "A baseline file has no row in docs/rules/budgets.md: add a row with its test and the command that lowers it.",
+    ).toEqual([]);
+  });
+
+  it("finds a baseline file the rule does not name", () => {
+    expect(
+      unnamedBaselines(["src/lib/planted.baseline.json", "src/server/ratchet.baseline.json"], "a table that names src/server/ratchet.baseline.json"),
+    ).toEqual(["src/lib/planted.baseline.json"]);
   });
 });
