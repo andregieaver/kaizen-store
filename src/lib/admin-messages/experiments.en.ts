@@ -175,6 +175,8 @@ export const experimentsEn = {
     pickButton: "You pick the button on the page",
     pickForm: "You pick the form on the page",
     noRate: "Your shop has no figure for this yet",
+    /** Round 37 (D725): on a phone the page is one choice, and how long one row. */
+    phone: { page: "Page to test", unknown: "Not known yet", open: "Open", close: "Close" },
     whereTitle: "Where?",
     whereSub: "Visitors a day who would take part, from the last 30 days",
     whereBasis: "Counted from the visits that began on each page, so a page sees at least this many.",

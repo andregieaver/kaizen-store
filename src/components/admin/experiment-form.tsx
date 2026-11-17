@@ -13,6 +13,7 @@ import type { PartInfo } from "@/lib/experiment-parts";
 import { Button, Card, Chip, CARD_CLASS } from "@/components/admin/ui";
 
 import { useAdminLang, useAdminText } from "./admin-text";
+import { PhoneRow } from "./phone-row";
 import { RuntimeEstimate } from "./runtime-estimate";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
@@ -338,7 +339,23 @@ export function ExperimentForm({
         </Card>
       ) : (
         <Card title={s.whereTitle} description={traffic.counting ? s.whereSub : undefined} className="flex flex-col gap-3" compact>
-          <fieldset className="flex flex-col gap-2">
+          {/* Round 37 (D725): on a phone the page is one choice, with its history under it; the cards from the small breakpoint up. */}
+          <label className={`${label} sm:hidden`}>
+            <span className="sr-only">{s.phone.page}</span>
+            <select value={pageId} onChange={(e) => choosePage(e.target.value)} className={input}>
+              {pages.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {nameOf(p)}
+                  {p.kind === "page" ? ` /${p.slug}` : ""}
+                </option>
+              ))}
+            </select>
+            <span className="flex flex-wrap items-center gap-2">
+              {historyChip(pageId)}
+              {traffic.counting && <span className="text-caption tabular-nums text-ink-2">{perDayOf(pageId)}</span>}
+            </span>
+          </label>
+          <fieldset className="flex flex-col gap-2 max-sm:hidden">
             <legend className="sr-only">{f.whatToTest}</legend>
             {pages.map((p) => (
               <label
@@ -363,6 +380,8 @@ export function ExperimentForm({
         </Card>
       )}
 
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={s.howLongTitle} sub={estimate ? countWords(weeksOf(estimate), s.answerAt, { n: weeksOf(estimate) }) : s.phone.unknown} change={s.phone.open} done={s.phone.close}>
       <Card title={s.howLongTitle} className="flex flex-col gap-3" compact>
         {estimate && estimate.days > MAX_RUN_DAYS ? (
           <div className="flex flex-col gap-3" data-estimate-days={estimate.days}>
@@ -393,6 +412,8 @@ export function ExperimentForm({
           <p className="text-sm text-ink-2">{why}</p>
         )}
       </Card>
+      </PhoneRow>
+      </div>
 
       <details className={`group ${CARD_CLASS}`} data-customise>
         <summary className="flex cursor-pointer list-none flex-col gap-0.5 p-5 [&::-webkit-details-marker]:hidden">

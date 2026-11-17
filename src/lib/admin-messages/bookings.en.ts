@@ -560,6 +560,21 @@ export const bookingsEn = {
     },
   },
   search: {
+    /** Round 37 (D725): on a phone the figures share one card, and synonyms, rules and the most searched are rows. */
+    phone: {
+      noSynonyms: "No synonyms yet",
+      synonyms: { one: "{n} synonym", many: "{n} synonyms" },
+      languages: { one: "{n} language", many: "{n} languages" },
+      noRules: "No rules yet",
+      rules: { one: "{n} rule", many: "{n} rules" },
+      of: "{n} of {max}",
+      noTop: "No searches yet",
+      top: { one: "{n} search", many: "{n} searches" },
+      meaningOff: "Off",
+      add: "Add",
+      open: "Open",
+      done: "Done",
+    },
     title: "Search",
     description: "What shoppers searched for in the last {days} days. Searches are kept {kept} days, as they can contain personal details.",
     searches: "Searches",

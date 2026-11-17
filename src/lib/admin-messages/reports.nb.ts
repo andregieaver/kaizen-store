@@ -811,6 +811,12 @@ export const reportsNb: ReportsMessages = {
     alreadyGone: "Den oppføringen var allerede borte.",
   },
   products: {
+    phone: {
+      costs: "Produktkostnader er ikke lagt inn: fortjenesten viser en strek",
+      views: "Besøk telles ikke: visninger viser en strek",
+      both: "Ingen kostnader og ingen besøkstall ennå: fortjeneste og visninger viser en strek",
+      fix: "Fiks",
+    },
     n: {
       orderOrRefund: {
         one: "bestilling eller refusjon",

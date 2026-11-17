@@ -827,6 +827,13 @@ export const reportsEn = {
     alreadyGone: "That entry was already gone.",
   },
   products: {
+    /** Round 37 (D725): on a phone what is missing is one strip, and every product one line. */
+    phone: {
+      costs: "Product costs are not entered: profit shows a dash",
+      views: "Visits are not counted: views show a dash",
+      both: "No costs and no visit counts yet: profit and views show a dash",
+      fix: "Fix",
+    },
     n: {
       orderOrRefund: {
         one: "order or refund",

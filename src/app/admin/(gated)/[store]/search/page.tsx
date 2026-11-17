@@ -12,7 +12,9 @@ import { listRules } from "@/server/search-rules";
 import { listSynonyms } from "@/server/search-synonyms";
 import { siteTerms } from "@/server/taxonomy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { PhoneRow } from "@/components/admin/phone-row";
+import { RULES_MAX } from "@/lib/search-rules";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { languageNames } from "@/lib/legal-admin-words";
@@ -54,6 +56,8 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
   const meaningOn = Boolean(ai?.space);
   const lang = adminLangOf(gated.account.adminLocale);
   const w = adminText(lang, "bookings").search;
+  const p = w.phone;
+  const phoneCell = "max-sm:rounded-none max-sm:border-0 max-sm:p-3";
   const kept = store.localization.keptLocales;
   // A group in a language the store no longer keeps is still listed, to be removed (D324).
   const languages = [...kept, ...synonyms.map((row) => row.locale).filter((locale) => !kept.includes(locale))]
@@ -67,21 +71,22 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
         title={w.title}
         description={fillWords(w.description, { days: stats.days, kept: SEARCH_LOG_DAYS })}
       />
-      <dl className="grid grid-cols-2 gap-4 sm:max-w-md">
-        <div className={`p-4 ${CARD_CLASS}`}>
-          <dt className="text-sm text-muted">{w.searches}</dt>
-          <dd className="text-metric text-ink tabular-nums">{stats.searches}</dd>
+      {/* Round 37 (D725): on a phone the three figures share one card; what search by meaning needs is said from the small breakpoint up. */}
+      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-panel bg-line sm:max-w-md sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:rounded-none sm:bg-transparent">
+        <div className={`p-4 ${CARD_CLASS} ${phoneCell}`}>
+          <dt className="text-sm text-muted max-sm:text-caption">{w.searches}</dt>
+          <dd className="text-metric text-ink tabular-nums max-sm:text-title">{stats.searches}</dd>
         </div>
-        <div className={`p-4 ${CARD_CLASS}`}>
-          <dt className="text-sm text-muted">{w.foundNothing}</dt>
-          <dd className="text-metric text-ink tabular-nums">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
+        <div className={`p-4 ${CARD_CLASS} ${phoneCell}`}>
+          <dt className="text-sm text-muted max-sm:text-caption">{w.foundNothing}</dt>
+          <dd className="text-metric text-ink tabular-nums max-sm:text-title">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
         </div>
-        <div className={`col-span-2 p-4 ${CARD_CLASS}`}>
-          <dt className="text-sm text-muted">{w.meaning}</dt>
-          <dd className="text-metric text-ink tabular-nums">
-            {stats.meaningSearches === 0 ? "–" : percent.format(stats.meaningHelped / stats.meaningSearches)}
+        <div className={`col-span-2 p-4 max-sm:col-span-1 ${CARD_CLASS} ${phoneCell}`}>
+          <dt className="text-sm text-muted max-sm:text-caption">{w.meaning}</dt>
+          <dd className="text-metric text-ink tabular-nums max-sm:text-title">
+            {stats.meaningSearches === 0 ? (meaningOn ? "–" : <><span className="max-sm:hidden">–</span><span className="sm:hidden">{p.meaningOff}</span></>) : percent.format(stats.meaningHelped / stats.meaningSearches)}
           </dd>
-          <dd className="text-sm text-muted">
+          <dd className="text-sm text-muted max-sm:hidden">
             {meaningOn
               ? fillWords(w.meaningOn, { n: stats.meaningHelped, of: stats.meaningSearches })
               : w.meaningOff}{" "}
@@ -96,7 +101,7 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
         <h2 id="zero-heading" className="text-title text-ink">
           {w.zero}
         </h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted max-sm:hidden">
           {w.zeroHint}
           {meaningOn && ` ${fillWords(w.closestHint, { limit: ai?.minSimilarity.toFixed(2) ?? "" })}`}
         </p>
@@ -129,6 +134,15 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
         )}
       </section>
 
+      <div className="flex flex-col gap-6 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow
+        flat
+        opens="synonyms"
+        title={w.synonyms.title}
+        sub={`${synonyms.length === 0 ? p.noSynonyms : countWords(synonyms.length, p.synonyms)} · ${countWords(languages.length, p.languages)}`}
+        change={canWrite ? p.add : p.open}
+        done={p.done}
+      >
       <SynonymsCard
         words={w.synonyms}
         lines={synonyms.map((row) => ({ ...row, remove: deleteSynonymAction.bind(null, store.slug, row.id) }))}
@@ -137,6 +151,16 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
         save={saveSynonymAction.bind(null, store.slug)}
         prefill={one(asked.synonym)}
       />
+      </PhoneRow>
+
+      <PhoneRow
+        flat
+        opens="rules"
+        title={w.rules.title}
+        sub={`${rules.length === 0 ? p.noRules : countWords(rules.length, p.rules)} · ${fillWords(p.of, { n: rules.length, max: RULES_MAX })}`}
+        change={canWrite ? p.add : p.open}
+        done={p.done}
+      >
 
       <RulesCard
         words={w.rules}
@@ -151,6 +175,9 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
         save={saveRuleAction.bind(null, store.slug)}
         prefill={one(asked.send)}
       />
+      </PhoneRow>
+
+      <PhoneRow flat last title={w.top} sub={stats.top.length === 0 ? p.noTop : countWords(stats.top.length, p.top)} change={p.open} done={p.done}>
 
       <section aria-labelledby="top-heading" className="flex flex-col gap-2">
         <h2 id="top-heading" className="text-title text-ink">
@@ -179,6 +206,8 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
           </table>
         )}
       </section>
+      </PhoneRow>
+      </div>
     </div>
   );
 }

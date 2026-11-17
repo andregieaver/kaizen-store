@@ -168,6 +168,7 @@ export const experimentsNb: ExperimentsMessages = {
     pickButton: "Du velger knappen på siden",
     pickForm: "Du velger skjemaet på siden",
     noRate: "Butikken har ikke noe tall for dette ennå",
+    phone: { page: "Side å teste", unknown: "Ikke kjent ennå", open: "Åpne", close: "Lukk" },
     whereTitle: "Hvor?",
     whereSub: "Besøkende om dagen som ville vært med, fra de siste 30 dagene",
     whereBasis: "Telt fra besøkene som startet på hver side, så en side ser minst så mange.",
