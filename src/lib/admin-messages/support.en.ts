@@ -110,6 +110,7 @@ export const supportEn = {
     },
   },
   email: {
+    phone: { read: "Read", close: "Close" },
     title: "Support by email",
     description:
       "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email. Anything about an order goes to a person, unless Emails about orders is on under Advanced: then it answers about the sender's own orders, only to their address.",
@@ -448,6 +449,14 @@ export const supportEn = {
   },
   settings: {
     whoAnswers: "Who answers your customers",
+    phone: {
+      noEmail: "No email answers",
+      after: "team told after {n} min",
+      hoursSet: "Shown to customers",
+      hoursNone: "Not shown",
+      change: "Change",
+      done: "Done",
+    },
     modes: {
       off: {
         title: "Support off — the chat assistant alone",

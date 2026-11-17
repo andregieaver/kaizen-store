@@ -107,6 +107,7 @@ export const supportNb: SupportMessages = {
     },
   },
   email: {
+    phone: { read: "Les", close: "Lukk" },
     title: "Kundeservice på e-post",
     description:
       "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post. Alt om en bestilling går til en person, med mindre E-post om bestillinger er på under Avansert: da svarer den om avsenderens egne bestillinger, bare til avsenderens adresse.",
@@ -468,6 +469,14 @@ export const supportNb: SupportMessages = {
   },
   settings: {
     whoAnswers: "Hvem som svarer kundene dine",
+    phone: {
+      noEmail: "Ingen svar på e-post",
+      after: "teamet varsles etter {n} min",
+      hoursSet: "Vises for kundene",
+      hoursNone: "Vises ikke",
+      change: "Endre",
+      done: "Ferdig",
+    },
     modes: {
       off: {
         title: "Kundeservice av – chat-assistenten alene",

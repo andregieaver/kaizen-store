@@ -739,6 +739,13 @@ export const marketingNb: MarketingMessages = {
     stopWays: { reply: "Svarte STOPP", link: "Trykket på lenken", account: "Min konto", staff: "Ansatt", unreachable: "Kunne ikke nås" },
     spent: "Denne måneden: {spent} av {cap} {currency}",
     settingsTitle: "Konto og regler",
+    phone: {
+      lead: "Tilbud på SMS til dem som ba om det.",
+      rules: "{sender} · {from}:00 til {until}:00 · opptil {cap} {currency}",
+      open: "Åpne",
+      change: "Endre",
+      close: "Lukk",
+    },
     replyNumber: "Ditt 46elks-nummer for svar",
     replyHint: "Med et nummer fra 46elks kommer SMS-ene fra det, og et svar med STOPP stopper dem med en gang. Tomt: SMS-ene kommer fra avsendernavnet, og lenken stopper dem.",
     hours: "SMS-er kommer fram mellom",

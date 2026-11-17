@@ -403,6 +403,17 @@ export const settingsEn = {
   },
   /** Producer responsibility (D342): registrations per scheme and country, and what is not sold for want of one. */
   producer: {
+    phone: {
+      lead: "Your registrations for packaging, batteries and more.",
+      nothingTitle: "Nothing held back",
+      nothingSub: "No registrations yet · every scheme your products need is covered",
+      more: "More",
+      shown: "number shown",
+      notShown: "number not shown",
+      noEnd: "no end date",
+      change: "Change",
+      done: "Done",
+    },
     title: "Producer responsibility",
     description:
       "Your registrations for packaging, electrical equipment, batteries and the other schemes, country by country. A product you tick for a scheme in its editor is sold in a country only while a registration for that scheme there is valid, from its first day through its last, or you have recorded why none is needed.",

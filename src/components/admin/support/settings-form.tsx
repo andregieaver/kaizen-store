@@ -22,6 +22,7 @@ import {
 } from "@/lib/support-rules";
 import type { DeskSettingsView } from "@/server/support-settings";
 import { fillWords } from "@/lib/admin-fill";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 import { useAdminText } from "../admin-text";
 
@@ -107,8 +108,11 @@ export function SupportSettingsForm({
           {fillWords(w.aiOn, { what: aiOn.join(w.aiOnAnd) })}
         </p>
       )}
+      {/* On a phone (round 43, D740) who answers, when nobody is there and the opening hours are rows of one card, each saying what is chosen. */}
+      <PhoneRows className="max-sm:-mt-4">
+      <PhoneRow title={w.whoAnswers} sub={w.modes[mode].title} change={w.phone.change} done={w.phone.done}>
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.whoAnswers}</h2>
+        <h2 className="text-title text-ink max-sm:sr-only">{w.whoAnswers}</h2>
         <div
           role="radiogroup"
           aria-label={w.whoAnswers}
@@ -159,9 +163,16 @@ export function SupportSettingsForm({
           </p>
         )}
       </section>
+      </PhoneRow>
 
+      <PhoneRow
+        title={w.nobody}
+        sub={`${settings.emailFollowup ? w.email.title.replace(/\.$/, "") : w.phone.noEmail} · ${fillWords(w.phone.after, { n: settings.notifyAfterMinutes })}`}
+        change={w.phone.change}
+        done={w.phone.done}
+      >
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.nobody}</h2>
+        <h2 className="text-title text-ink max-sm:sr-only">{w.nobody}</h2>
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -186,14 +197,18 @@ export function SupportSettingsForm({
           {w.notify.after}
         </label>
       </section>
+      </PhoneRow>
 
+      <PhoneRow last title={w.hoursTitle} sub={settings.hours ? w.phone.hoursSet : w.phone.hoursNone} change={w.phone.change} done={w.phone.done}>
       <section className="flex flex-col gap-3">
-        <h2 className="text-title text-ink">{w.hoursTitle}</h2>
+        <h2 className="text-title text-ink max-sm:sr-only">{w.hoursTitle}</h2>
         <p className="text-sm text-muted">
           {fillWords(w.hoursText, { desk: deskName })}
         </p>
         <HoursEditor name="hours" initial={settings.hours} optional />
       </section>
+      </PhoneRow>
+      </PhoneRows>
 
       {/* Homer's settings above, Lisa's in the fold (docs/admin-style.md 2.1): its fields are sent and saved whether it is open or not. */}
       <details
@@ -203,7 +218,7 @@ export function SupportSettingsForm({
       >
         <summary className="cursor-pointer text-title text-ink">
           {w.advanced.title}
-          <span className="block text-sm text-muted">{w.advanced.text}</span>
+          <span className="block text-sm text-muted max-sm:text-caption">{w.advanced.text}</span>
         </summary>
         <div className="mt-6 flex flex-col gap-8">
           <section className="flex flex-col gap-3">

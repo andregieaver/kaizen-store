@@ -396,6 +396,17 @@ export const settingsNb: SettingsMessages = {
     } as Record<string, string>,
   },
   producer: {
+    phone: {
+      lead: "Registreringene dine for emballasje, batterier og mer.",
+      nothingTitle: "Ingenting holdes tilbake",
+      nothingSub: "Ingen registreringer ennå · alle ordningene produktene trenger er dekket",
+      more: "Mer",
+      shown: "nummeret vises",
+      notShown: "nummeret vises ikke",
+      noEnd: "ingen sluttdato",
+      change: "Endre",
+      done: "Ferdig",
+    },
     title: "Produsentansvar",
     description:
       "Registreringene dine for emballasje, elektriske og elektroniske produkter, batterier og de andre ordningene, land for land. Et produkt du krysser av for en ordning i produktredigeringen, selges i et land bare mens en registrering for ordningen der gjelder, fra første til siste dag, eller når du har skrevet hvorfor ingen trengs.",

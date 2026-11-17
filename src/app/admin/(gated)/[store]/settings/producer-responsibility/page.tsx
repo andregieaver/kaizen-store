@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ProducerRegistrationForm, RemoveRegistration } from "@/components/admin/producer-registration-form";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
@@ -65,9 +65,17 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.description} />
+      <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       {!editor && <p className="text-sm">{all.common.readOnly}</p>}
 
+      {/* On a phone (round 43, D740) nothing held back and no registrations yet are one card. */}
+      {blocked.length === 0 && registrations.length === 0 && (
+        <p className={`flex flex-col gap-0.5 px-4 py-3 sm:hidden ${CARD_CLASS}`}>
+          <span className="text-body text-ink">{w.phone.nothingTitle}</span>
+          <span className="text-caption text-ink-2">{w.phone.nothingSub}</span>
+        </p>
+      )}
+      <div className={blocked.length === 0 && registrations.length === 0 ? "max-sm:hidden" : ""}>
       <Card title={w.missingTitle} description={blocked.length > 0 ? w.missingIntro : undefined}>
         {blocked.length === 0 ? (
           <p className="text-sm text-muted" data-testid="producer-nothing-blocked">
@@ -77,6 +85,7 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
           <GapList groups={blocked} label={w.missingTitle} count={w.products} {...gaps} />
         )}
       </Card>
+      </div>
 
       {unrecorded.length > 0 && (
         <Card title={w.unrecordedTitle} description={w.unrecordedIntro}>
@@ -85,6 +94,7 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
       )}
 
       <AdminTextScope texts={adminTexts(lang, ["settings"])}>
+        <div className={registrations.length === 0 ? "max-sm:hidden" : ""}>
         <Card title={w.listTitle}>
           {registrations.length === 0 ? (
             <p className="text-sm text-muted">{w.listEmpty}</p>
@@ -125,10 +135,11 @@ export default async function ProducerResponsibilityPage({ params, searchParams 
             </List>
           )}
         </Card>
+        </div>
 
         {editor && (
           <div id="registration-form">
-            <Card title={editing ? w.formTitleEdit : w.formTitle} description={w.formIntro}>
+            <Card title={editing ? w.formTitleEdit : w.formTitle} description={<span className="max-sm:hidden">{w.formIntro}</span>}>
               <ProducerRegistrationForm
                 key={editing?.id ?? (start ? `${start.scheme}:${start.market}` : "new")}
                 action={saveRegistrationAction.bind(null, store.slug)}

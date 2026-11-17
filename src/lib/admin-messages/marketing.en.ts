@@ -760,6 +760,13 @@ export const marketingEn = {
     stopWays: { reply: "Replied STOP", link: "Pressed the link", account: "My account", staff: "Staff", unreachable: "Could not be reached" },
     spent: "This month: {spent} of {cap} {currency}",
     settingsTitle: "Account and rules",
+    phone: {
+      lead: "Offers by text to the people who asked for them.",
+      rules: "{sender} · {from}:00 to {until}:00 · up to {cap} {currency}",
+      open: "Open",
+      change: "Change",
+      close: "Close",
+    },
     replyNumber: "Your 46elks number for replies",
     replyHint: "With a number from 46elks, texts come from it and a reply of STOP stops them at once. Empty: texts come from the sender name, and the link stops them.",
     hours: "Texts arrive between",

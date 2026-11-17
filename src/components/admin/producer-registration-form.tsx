@@ -40,13 +40,18 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
   const [shownTouched, setShownTouched] = useState(editing !== null);
   const [shown, setShown] = useState(editing ? editing.showNumber : numberShownByDefault(scheme, market));
   const showNumber = shownTouched ? shown : numberShownByDefault(scheme, market);
+  /** On a phone (round 43, D740) whether registered, showing the number and the last day wait behind More; an edit starts with them open. */
+  const [more, setMore] = useState(editing !== null);
+  const later = more ? "" : "max-sm:hidden";
+  const p = w.phone;
 
   return (
     <ActionForm action={action} className="flex flex-col gap-4" successMessage={w.saved}>
       {editing && <input type="hidden" name="id" value={editing.id} />}
-      <fieldset disabled={disabled} className="flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm">
+      {/* A field the browser finds empty opens the phone's More, so its message can point at it. */}
+      <fieldset disabled={disabled} className="flex flex-col gap-4" onInvalidCapture={() => setMore(true)}>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex min-w-0 flex-col gap-1 text-sm">
             <span className="text-body-strong">{w.scheme}</span>
             <select name="scheme" value={scheme} onChange={(e) => setScheme(e.target.value as SchemeId)} className={FIELD}>
               {schemes.map((s) => (
@@ -56,7 +61,7 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex min-w-0 flex-col gap-1 text-sm">
             <span className="text-body-strong">{w.country}</span>
             <select name="market" value={market} onChange={(e) => setMarket(e.target.value)} className={FIELD}>
               {markets.map((m) => (
@@ -68,7 +73,7 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
           </label>
         </div>
 
-        <fieldset className="flex flex-col gap-2 text-sm">
+        <fieldset className={`flex flex-col gap-2 text-sm ${later}`}>
           <legend className="mb-1 text-body-strong">{w.kind}</legend>
           <label className="flex items-center gap-2">
             <input type="radio" name="kind" value="registered" checked={kind === "registered"} onChange={() => setKind("registered")} />
@@ -89,9 +94,9 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-body-strong">{w.authority}</span>
               <input name="authority" required maxLength={REGISTRATION_LIMITS.authority} defaultValue={editing?.authority ?? ""} className={FIELD} />
-              <span className="text-caption text-muted">{w.authorityHint}</span>
+              <span className="text-caption text-muted max-sm:hidden">{w.authorityHint}</span>
             </label>
-            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <label className={`flex items-start gap-2 text-sm sm:col-span-2 ${later}`}>
               <input
                 type="checkbox"
                 name="showNumber"
@@ -121,12 +126,27 @@ export function ProducerRegistrationForm({ action, schemes, markets, today, edit
             <span className="text-body-strong">{w.validFrom}</span>
             <input type="date" name="validFrom" required defaultValue={editing?.validFrom ?? today} className={FIELD} />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className={`flex flex-col gap-1 text-sm ${later}`}>
             <span className="text-body-strong">{w.validTo}</span>
             <input type="date" name="validTo" defaultValue={editing?.validTo ?? ""} className={FIELD} />
             <span className="text-caption text-muted">{w.validToHint}</span>
           </label>
         </div>
+
+        <button
+          type="button"
+          aria-expanded={more}
+          onClick={() => setMore((open) => !open)}
+          className="flex min-h-14 items-center justify-between gap-3 border-t border-line py-2 text-left sm:hidden"
+        >
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-body text-ink">{p.more}</span>
+            <span className="text-caption text-ink-2">
+              {[kind === "registered" ? w.kindRegistered : w.kindExempt, kind === "registered" ? (showNumber ? p.shown : p.notShown) : null, p.noEnd].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{more ? p.done : p.change}</span>
+        </button>
 
         <div className="flex flex-wrap items-center gap-3">
           <SubmitButton>{w.save}</SubmitButton>

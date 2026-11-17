@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 
 import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { SmsConnectForm, SmsSettingsForm, StopNumberButton } from "@/components/admin/sms-views";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -82,13 +83,14 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
   const date = (iso: string) => new Date(iso).toLocaleString(numbers, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
   const money = (v: number) => v.toLocaleString(numbers, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const n = (v: number) => ({ n: v.toLocaleString(numbers) });
+  const listLine = [countWords(counts.subscribed, w.subscribed, n(counts.subscribed)), counts.pending ? countWords(counts.pending, w.waiting, n(counts.pending)) : null, counts.unsubscribed ? countWords(counts.unsubscribed, w.stoppedCount, n(counts.unsubscribed)) : null].filter(Boolean).join(" · ");
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>}
         actions={mayWrite ? <ButtonLink href={`${base}/new`} kind="main">{w.newText}</ButtonLink> : undefined}
       />
       <p className="text-body text-muted" data-sms-spent>
@@ -113,7 +115,10 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
           </List>
         </Card>
       )}
-      <Card title={w.list} description={[countWords(counts.subscribed, w.subscribed, n(counts.subscribed)), counts.pending ? countWords(counts.pending, w.waiting, n(counts.pending)) : null, counts.unsubscribed ? countWords(counts.unsubscribed, w.stoppedCount, n(counts.unsubscribed)) : null].filter(Boolean).join(" · ")}>
+      {/* On a phone (round 43, D740) who gets texts and the account's rules are rows of one card, each saying where it stands. */}
+      <PhoneRows>
+      <PhoneRow flat title={w.list} sub={listLine.split(" · ").join(", ")} change={w.phone.open} done={w.phone.close}>
+      <Card title={w.list} description={listLine}>
         {people.length === 0 ? (
           <p className="text-body text-muted">{w.noNumbers}</p>
         ) : (
@@ -129,6 +134,15 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
           </List>
         )}
       </Card>
+      </PhoneRow>
+      <PhoneRow
+        flat
+        last
+        title={w.settingsTitle}
+        sub={fillWords(w.phone.rules, { sender: settings.sender, from: String(settings.quietFrom).padStart(2, "0"), until: String(settings.quietUntil).padStart(2, "0"), cap: money(settings.monthlyCap), currency: settings.currency ?? "" })}
+        change={w.phone.change}
+        done={w.phone.close}
+      >
       <Card title={w.settingsTitle}>
         {owner ? (
           <SmsSettingsForm
@@ -140,6 +154,8 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
           <p className="text-body text-muted">{w.ownerOnly}</p>
         )}
       </Card>
+      </PhoneRow>
+      </PhoneRows>
     </div>
     </AdminTextScope>
   );
