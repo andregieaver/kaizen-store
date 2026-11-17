@@ -159,7 +159,8 @@ export type BuilderForm = {
 export type BuilderForms = { list: BuilderForm[]; href: string };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
-// Kaizena Flow's starters: the forms a new form starts from, until the owner's own templates (step F4).
+// Kaizena Flow's starters as written first: migration `form_templates_rules` seeded them as Kaizena Flow's form templates (F4), which is
+// what stores are offered and the platform edits from then on. Kept as the seed's source and for tests; nothing offers them from here.
 
 /** Words in the hand-written languages; English is the fallback. */
 type Said = { en: string; nb?: string; sv?: string; da?: string };

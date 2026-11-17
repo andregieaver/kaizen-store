@@ -112,6 +112,21 @@ export const legalEn = {
     noTickTerms: "The tick box is for your terms page, and none is chosen: checkout shows no tick box.",
   },
   a11y: {
+    /** Round 35 (D714): on a phone where the owner stands and the draft first, the rest rows saying what is set. */
+    phone: {
+      draftLead: "Make a draft statement from what is saved and what the site knows. It is never published for you.",
+      colours: "Colours pass",
+      coloursLow: { one: "{n} colour pair too faint", many: "{n} colour pairs too faint" },
+      alt: { one: "{n} picture without alt text", many: "{n} pictures without alt text" },
+      noIssues: "No known issues",
+      issues: { one: "{n} known issue", many: "{n} known issues" },
+      storeEmail: "feedback to the store's email",
+      feedback: "feedback to {email}",
+      change: "Change",
+      open: "Open",
+      done: "Done",
+      note: "An automated check finds only part of the problems. The draft is not checked by a lawyer.",
+    },
     title: "Accessibility",
     description:
       "Shops sold to consumers in the EU have to be usable by disabled people, and to say how they meet the requirements. Record what has been assessed, and make a draft accessibility statement.",

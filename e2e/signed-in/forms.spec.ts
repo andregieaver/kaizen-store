@@ -29,6 +29,7 @@ test.beforeAll(async () => {
     const [store] = await sql`select id from commerce.stores where slug = ${E2E_STORE}`;
     storeId = String(store.id);
     await sql`delete from commerce.pages where store_id = ${storeId} and slug = ${slug}`;
+    await sql`delete from commerce.form_templates where store_id = ${storeId} and name ->> 'text' like 'E2E %'`;
     await sql`delete from commerce.forms where store_id = ${storeId} and name like 'E2E %'`;
   } finally {
     await sql.end();
@@ -39,6 +40,7 @@ test.afterAll(async () => {
   const sql = testDb();
   try {
     await sql`delete from commerce.pages where store_id = ${storeId} and slug = ${slug}`;
+    await sql`delete from commerce.form_templates where store_id = ${storeId} and name ->> 'text' like 'E2E %'`;
     await sql`delete from commerce.forms where store_id = ${storeId} and name like 'E2E %'`;
   } finally {
     await sql.end();
@@ -151,4 +153,31 @@ test("asks a question only when an earlier answer holds (F3)", async ({ page: p,
   await form.getByRole("radio", { name: "Other" }).check();
   await expect(form.getByRole("textbox", { name: /E2E reference/ })).toHaveCount(0);
   await visitor.close();
+});
+
+test("saves a form as a template and starts a new form from it (F4)", async ({ page: p }) => {
+  await p.goto(`${base}/${formId}`);
+  const card = p.locator("[data-save-template]");
+  await card.locator("summary").click();
+  await card.locator("[data-template-name]").fill("E2E Contact template");
+  await shoot(p, "10-save-as-template");
+  await card.locator("[data-template-save]").click();
+  await expect(card.getByRole("status")).toHaveText("Saved. It is under New form.");
+
+  await p.goto(`${base}/new`);
+  const mine = p.getByRole("button", { name: /E2E Contact template/ });
+  await expect(mine).toBeVisible();
+  // Kaizena Flow's starters are still offered beside the owner's own.
+  await expect(p.locator('[data-starter="contact"]')).toBeVisible();
+  await shoot(p, "11-new-form-templates");
+  await mine.click();
+  await expect(p).toHaveURL(new RegExp(`${base}/[0-9a-f-]{36}$`));
+  expect(p.url()).not.toContain(formId);
+  await expect(p.locator("[data-form-name]")).toHaveValue("E2E Contact template");
+  // It asks what the form asked, and sends to the owner's own address, ready to place.
+  await expect(p.locator("[data-question]")).toHaveCount(6);
+  await expect(p.locator("[data-form-recipients]")).not.toHaveValue("");
+  await p.locator("[data-form-name]").fill("E2E From template");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status").first()).toHaveText("Saved.");
 });
