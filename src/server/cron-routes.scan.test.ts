@@ -36,7 +36,7 @@ describe("cron routes", () => {
       expect(text, `${file} claims ${job}'s day, so it runs it as tracked("${job}", 86_400, …)`).toContain(`tracked("${job}", 86_400,`);
     }
     for (const { file, text } of sources) for (const [, job] of text.matchAll(/tracked\("([^"]+)"/g)) expect(job, `${file}: ${job}`).toMatch(JOB_KEY);
-    const dispatcher = readFileSync(join(DIR, "cart-reminders", "route.ts"), "utf8");
+    const dispatcher = readFileSync(join(process.cwd(), "src/server/dispatcher-jobs.ts"), "utf8");
     expect(dispatcher).toMatch(/uiTranslations: \(\) => runNightlyUiTranslations\(\)/);
   });
 
