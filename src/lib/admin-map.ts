@@ -891,6 +891,10 @@ const PAGES: readonly AdminPage[] = [
   store("chat", "/chat", "Chat assistant", "Store", "The storefront chat assistant that helps shoppers first, and its knowledge base.", {
     keywords: ["customer chat", "chatbot", "knowledge", "chat agent"],
   }),
+  store("chat.questions", "/chat/questions", "Questions your assistant couldn't answer", "Store", "What visitors asked that the chat assistant could not answer (it handed the conversation to a person because it could not help, or its knowledge had nothing on it), the most asked first. Write the answer once and it is saved in the knowledge base for the assistant to use next time, or set a question aside as not one for the assistant. Answered and set-aside questions are under ?show=answered and ?show=dismissed; each question links to the conversations it came from.", {
+    keywords: ["unanswered questions", "knowledge gaps", "faq", "what customers ask", "could not answer", "chatbot gaps"],
+    tasks: ["Answer what the chat assistant could not", "See what visitors ask the chat"],
+  }),
   store("support", "/support", "Support inbox", "Store", "Every conversation with the store's customers, live: who is waiting for a person, who is talking to the chat assistant, and what was said. Open one to read it as it happens.", {
     keywords: ["inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
     tasks: ["See who is waiting", "Read a conversation with the chat assistant", "Set yourself online or away"],
@@ -1397,6 +1401,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["cost", "price", "dollars", "model"],
   }),
   platform("chat", "/chat", "Chat assistant", "Support", "Kaizena Flow's public site chat assistant and its knowledge base."),
+  platform("chat.questions", "/chat/questions", "Questions the assistant couldn't answer", "Support", "What visitors of Kaizena Flow's site, owners asking Kaizena Flow and its website chats asked that its chat assistant could not answer, the most asked first: answer each once into Kaizena Flow's knowledge base, or set it aside. The docs guide's questions are on Docs feedback.", {
+    keywords: ["unanswered questions", "knowledge gaps", "faq", "could not answer"],
+  }),
   platform("integrations", "/integrations", "Integrations", "Platform", "Kaizena Flow's own integrations (D465): Zapier, Make and Slack for the platform's events (a store asked for, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content), and how their sends are doing.", {
     keywords: ["zapier", "make", "slack", "webhooks", "notifications"],
   }),
@@ -1578,7 +1585,11 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
  * recorded again on Platform → AI. Empty but for that.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
+  // The questions the chat assistant could not answer (ecosystem plan E4.3, D729): named in the AI's map once the eval is recorded with it.
+  "store:chat.questions",
+  "platform:chat.questions",
+]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {

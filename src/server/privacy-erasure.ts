@@ -35,6 +35,7 @@ import { removePictureFiles, reviewPictureStorage, type ReviewPictureStorage, ty
 import { buyerKeysOf } from "./reviews";
 import { commentsTag, eraseComments } from "./blog-comments";
 import { anonymiseConversations } from "./support";
+import { forgetQuestionsOf } from "./unanswered-questions";
 import { changeSubscription } from "./subscriptions";
 import { mollieProvider } from "./payment-providers/mollie";
 import { forgetCreator } from "./creators";
@@ -154,6 +155,9 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
         (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
            where c.store_id = ${sid}::uuid and c.customer_id = ${cid}::uuid and c.anonymised_at is null)::int as support_messages,
+        (select count(*) from commerce.unanswered_questions q where q.store_id = ${sid}::uuid and q.conversations && (
+           select coalesce(array_agg(c.id), '{}') from commerce.support_conversations c where c.store_id = ${sid}::uuid and c.anonymised_at is null
+             and (c.customer_id = ${cid}::uuid or (c.source in ('email', 'form') and lower(c.contact_email) = any(${addresses})))))::int as unanswered_questions,
         (select count(*) from commerce.field_values where store_id = ${sid}::uuid and entity = 'customer' and entity_id = ${cid}::uuid)::int as field_values,
         (select count(*) from commerce.customer_sessions where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as customer_sessions,
         (select count(*) from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as customer_codes,
@@ -230,6 +234,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       "storage:review-pictures": n(c.review_pictures),
       support_conversations: n(c.support_conversations),
       support_messages: n(c.support_messages),
+      unanswered_questions: n(c.unanswered_questions),
       field_values: n(c.field_values),
       customer_sessions: n(c.customer_sessions),
       customer_codes: n(c.customer_codes),
@@ -927,12 +932,15 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     const conversations = await tx.execute<Row>(sql`
       select id from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null
     `);
+    // The questions they put on the store's gap list (ecosystem plan E4.3) go first, while the conversations still name them.
+    await forgetQuestionsOf(tx, sid, conversations.map((row) => String(row.id)));
     await anonymiseConversations(tx, conversations.map((row) => String(row.id)));
   }
   // Conversations by email from the person's own addresses (D332), and the emails received from them.
   const byEmail = await tx.execute<Row>(sql`
     select id from commerce.support_conversations where store_id = ${sid}::uuid and source in ('email', 'form') and lower(contact_email) = any(${addresses}) and anonymised_at is null
   `);
+  await forgetQuestionsOf(tx, sid, byEmail.map((row) => String(row.id)));
   await anonymiseConversations(tx, byEmail.map((row) => String(row.id)));
   await tx.execute(sql`delete from commerce.support_inbound_emails where store_id = ${sid}::uuid and from_address = any(${addresses})`);
 

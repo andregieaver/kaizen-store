@@ -242,6 +242,7 @@ export const privacyNb: PrivacyMessages = {
       blog_comments: "Bloggkommentarer",
       support_conversations: "Kundeservicesamtaler",
       support_messages: "Kundeservicemeldinger",
+      unanswered_questions: "Spørsmål lagret for chatassistenten",
       field_values: "Egne felt",
       vat_checks: "Kontroller av MVA-nummer (VIES)",
     },
@@ -351,6 +352,7 @@ export const privacyNb: PrivacyMessages = {
       recordings: "Opptak av besøk",
       contracts: "Signerte kontrakter",
       form_responses: "Skjemasvar",
+      unanswered_questions: "Spørsmål chatassistenten ikke kunne svare på",
     },
     bases: {
       read: "Lest i kilden",

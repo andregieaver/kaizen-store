@@ -11089,6 +11089,57 @@ export const knowledgeSources = commerce.table(
 );
 
 /**
+ * Questions a site's chat assistant could not answer (ecosystem plan E4.3, D729; `src/lib/unanswered-questions.ts`,
+ * `src/server/unanswered-questions.ts`): the AI handed the conversation to a person because it could not help, or every tool it used was
+ * the knowledge search and none found a passage. One row per site, language and wording (`key`, the kept words in lower case, letters and
+ * digits only), counted each time a conversation asks it; the words of the newest asker are kept, cut and masked (`question`), with the
+ * newest conversations it came from. The owner answers one (a knowledge document, `document_id`, saved through `saveDocument()`) or says it
+ * is not a question for the assistant (kept dismissed). `store_id` null is Kaizena Flow's own chat. A visitor's words: personal data, kept
+ * at most 90 days after last asked (`unanswered_questions` retention), deleted with an erased person's conversations, never copied.
+ */
+export const unansweredQuestions = commerce.table(
+  "unanswered_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** The conversation's language (`nb`, `en`, …). */
+    lang: text("lang").notNull(),
+    /** What repeats are grouped by (`questionKey()`): fixed once the row is made. */
+    key: text("key").notNull(),
+    /** The newest asker's words as kept (`questionText()`): cut, with secrets, email addresses, long numbers and links taken out. */
+    question: text("question").notNull(),
+    /** How many conversations asked it. */
+    asked: integer("asked").notNull().default(1),
+    /** Of those, how many the AI handed to a person because it could not help (the rest: the knowledge had nothing). */
+    handedOver: integer("handed_over").notNull().default(0),
+    /** The newest conversations it came from, at most five, the newest first (no foreign key: a conversation goes on its own schedule). */
+    conversations: uuid("conversations").array().notNull(),
+    status: text("status").notNull().default("open"),
+    /** The knowledge document the owner's answer is, while it exists. */
+    documentId: uuid("document_id").references(() => knowledgeDocuments.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    firstAt: timestamp("first_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("unanswered_questions_key").on(t.storeId, t.lang, t.key).nullsNotDistinct(),
+    index("unanswered_questions_store_idx").on(t.storeId, t.status, t.asked),
+    index("unanswered_questions_last_idx").on(t.lastAt),
+    index("unanswered_questions_document_idx").on(t.documentId),
+    index("unanswered_questions_decided_by_idx").on(t.decidedBy),
+    check("unanswered_questions_lang", sql`${t.lang} ~ '^[a-z]{2,3}$'`),
+    check("unanswered_questions_key_length", sql`char_length(${t.key}) between 1 and 300`),
+    check("unanswered_questions_question", sql`char_length(${t.question}) between 1 and 300`),
+    check("unanswered_questions_asked", sql`${t.asked} >= 1 and ${t.handedOver} between 0 and ${t.asked}`),
+    check("unanswered_questions_conversations", sql`cardinality(${t.conversations}) between 1 and 5`),
+    check("unanswered_questions_status", sql`${t.status} in ('open', 'answered', 'dismissed')`),
+    check("unanswered_questions_decided", sql`(${t.status} = 'open') = (${t.decidedAt} is null)`),
+    check("unanswered_questions_seen", sql`${t.lastAt} >= ${t.firstAt}`),
+  ],
+);
+
+/**
  * What a store used, per UTC day and metric (D314, `docs/capacity.md` 3): gauges as measured that day, counters summed over it
  * (`USAGE_METRICS` in `src/lib/usage-metrics.ts`). `store_id` null is Kaizena Flow's own site. Written only by
  * `src/server/usage-meter.ts` and the traffic drain (`src/server/usage-traffic.ts`); kept 25 months. Counts and bytes only: no person,

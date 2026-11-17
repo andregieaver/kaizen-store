@@ -582,6 +582,20 @@
       "when": 1794935029459,
       "tag": "20261117170349_acoustic_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1794936822545,
+      "tag": "20261117173342_solid_the_captain",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1794936824911,
+      "tag": "20261117173344_unanswered_questions_rules",
+      "breakpoints": true
     }
   ]
 }

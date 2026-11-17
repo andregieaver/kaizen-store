@@ -57,6 +57,7 @@ import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } fr
 import { retentionRules } from "./retention";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
+import { questionsOfConversations } from "./unanswered-questions";
 
 type Row = Record<string, unknown>;
 
@@ -892,9 +893,13 @@ async function loadSupport(s: PrivacySubject): Promise<SupportRow[]> {
       and author in ('customer', 'ai', 'agent')
     order by conversation_id, seq
   `);
+  // The questions the conversations put on the store's gap list (ecosystem plan E4.3), where the words kept are theirs.
+  const questions = await questionsOfConversations(s.storeId, conversations.map((c) => String(c.id)));
   return conversations.map((c) => {
     const summary = c.summary as { title?: unknown; outcome?: unknown } | null;
+    const asked = questions.get(String(c.id)) ?? [];
     return {
+      ...(asked.length > 0 ? { questions: asked } : {}),
       startedAt: iso(c.created_at),
       endedAt: iso(c.ended_at),
       messages: messages

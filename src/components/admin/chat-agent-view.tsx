@@ -6,7 +6,8 @@ import { pageLanguages } from "@/lib/page-translation";
 import { aiFor, canSpeak } from "@/server/ai";
 import { getChatAgentForEdit } from "@/server/chat-agent";
 import { DOCUMENTS_MAX, knowledgeStatus, listDocuments } from "@/server/knowledge";
-import { PageHeader } from "@/components/admin/ui";
+import { openUnansweredCount } from "@/server/unanswered-questions";
+import { PageHeader, buttonClass } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -35,6 +36,7 @@ export async function ChatAgentView({
   upload,
   addDocument,
   deleteDocument,
+  questions = null,
   lang = "en",
 }: {
   storeId: string | null;
@@ -47,16 +49,20 @@ export async function ChatAgentView({
   upload: Upload | null;
   addDocument: (state: FormState, formData: FormData) => Promise<FormState>;
   deleteDocument: (id: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+  /** The page of the questions the assistant could not answer (ecosystem plan E4.3), for its line at the top; null leaves it out. */
+  questions?: string | null;
   /** The reader's admin language (D312). */
   lang?: AdminLang;
 }) {
   const w = adminText(lang, "platformTools").chat;
+  const q = adminText(lang, "support").questions;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const [agent, connection, documents, status] = await Promise.all([
+  const [agent, connection, documents, status, unanswered] = await Promise.all([
     getChatAgentForEdit(storeId),
     aiFor(storeId),
     listDocuments(storeId),
     knowledgeStatus(storeId),
+    questions ? openUnansweredCount(storeId) : Promise.resolve(0),
   ]);
   const languages = pageLanguages(locales).map((language) => ({
     ...language,
@@ -74,6 +80,19 @@ export async function ChatAgentView({
         title={w.title}
         description={<span className="max-sm:hidden">{agent?.enabled ? (ready ? fillWords(w.onReady, { name: agent.name, site: siteName }) : w.onHidden) : w.off}</span>}
       />
+
+      {/* E4.3 (D729): what the assistant could not answer, one step from being answered into its knowledge. */}
+      {questions && (
+        <section aria-labelledby="questions" className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+          <div className="min-w-0">
+            <h2 id="questions" className="text-title text-ink">{q.title}</h2>
+            <p className="text-sm text-muted">{unanswered > 0 ? countWords(unanswered, q.chatLine) : q.chatLineNone}</p>
+          </div>
+          <Link href={questions} className={buttonClass(unanswered > 0 ? "strong" : "secondary")}>
+            {unanswered > 0 ? q.chatLink : q.chatLinkNone}
+          </Link>
+        </section>
+      )}
 
       {/* Round 32 (D706): a phone says first whether the chat is on and what it needs, then the parts as rows. */}
       <section aria-label={w.title} className={`flex flex-col gap-2.5 rounded-panel p-4 sm:hidden ${on ? "bg-card" : "bg-warning-soft"}`}>
