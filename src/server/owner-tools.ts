@@ -137,6 +137,7 @@ import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } 
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
 import { declineQuoteTool, preflightDeclineQuote, preflightPriceDisplay, priceDisplayTool, setDraftPricesTool, setPriceDisplayTool, setQuoteRequestsTool } from "./quote-tools";
 import { draftContractTool, listContractsTool, preflightRemindSigner, remindContractSignerTool } from "./contract-tools";
+import { crmTodayTool, customerTimelineTool, getDealTool, listDealsTool, listLeadsTool, logActivityTool, makeDealFromLeadTool, moveDealTool } from "./crm-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
 import { checkoutQuestionsTool, preflightCheckoutQuestion, saveCheckoutQuestionTool } from "./checkout-question-tools";
@@ -2438,6 +2439,14 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   set_quote_requests: setQuoteRequestsTool,
   // Contracts for deals (D695 step 4).
   list_contracts: listContractsTool,
+  list_deals: listDealsTool,
+  get_deal: getDealTool,
+  move_deal: moveDealTool,
+  list_leads: listLeadsTool,
+  make_deal_from_lead: makeDealFromLeadTool,
+  crm_today: crmTodayTool,
+  log_activity: logActivityTool,
+  customer_timeline: customerTimelineTool,
   draft_contract: draftContractTool,
   remind_contract_signer: remindContractSignerTool,
   checkout_questions: checkoutQuestionsTool,

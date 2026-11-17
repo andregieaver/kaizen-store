@@ -16,6 +16,15 @@ import { AREA_LABELS, can, type Area, type PermissionHolder, type PermissionKey 
 export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   support_overview: "support:read",
   list_support_conversations: "support:read",
+  // The CRM (ecosystem plan E2.5, D713): reading deals, leads, activities and timelines as the customers area does; changing them as it does.
+  list_deals: "customers:read",
+  get_deal: "customers:read",
+  list_leads: "customers:read",
+  crm_today: "customers:read",
+  customer_timeline: "customers:read",
+  move_deal: "customers:write",
+  make_deal_from_lead: "customers:write",
+  log_activity: "customers:write",
   // Work (PSI AGT-01): Work's screens ask the Settings area's keys (D122).
   work_overview: "settings:read",
   list_work_clients: "settings:read",

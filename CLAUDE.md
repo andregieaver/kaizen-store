@@ -166,6 +166,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)
 - The AI manager's contract tools (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`)
 - The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
+- The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)
 - The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)
 - The AI manager's notices and saved skills (wave 8 unit F, D350)
 - AI in the builder and a store from one description (wave 8 unit G, D351)

@@ -9,12 +9,30 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D713]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.37 — 2026-11-17
+
+Additions to the owner MCP's catalogue for the store's deals, leads and activities (D713). The deal, lead and activity tools are offered
+while Deals is on; `customer_timeline` is every store's.
+
+- `list_deals` (new, optional `status`, `pipeline`, `limit`) and `get_deal` (new, `deal`): deals with their pipeline, stage, days in it,
+  value, customer or company, owner and next activity; one deal with what is linked to it, its history and its activities. Read-only;
+  need `customers:read`.
+- `list_leads` (new, optional `limit`): the leads inbox, people who asked in the last 90 days and are not customers yet, with what they
+  asked for; never what they wrote. Read-only; needs `customers:read`.
+- `crm_today` (new, optional `who`): activities late or due today, the caller's or the team's. Read-only; needs `customers:read`.
+- `customer_timeline` (new, `customer`, optional `kind`): one customer's timeline with each event's kind and date, and the name, amount
+  and status of orders, quotes, deals, returns, bookings and invoices; never a subject, note, message or review. Read-only; needs
+  `customers:read`.
+- `move_deal` (new, `deal` with a `stage` or an `outcome`, optional `reason`), `make_deal_from_lead` (new, `email`) and `log_activity`
+  (new, `kind`, `title`, `due_on`, a `deal` or a `customer`, optional `due_time`, `duration_minutes`, `note`): change only the store's
+  own records. Need `customers:write`.
 
 ## 1.36 — 2026-11-17
 

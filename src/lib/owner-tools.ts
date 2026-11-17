@@ -36,6 +36,7 @@ import { createProductInput, productApprovalSummary, setPricesInput, setProductS
 import { checkoutQuestionSummary, checkoutQuestionsInput, saveCheckoutQuestionInput } from "./checkout-question-tools";
 import { declineQuoteInput, priceDisplayInput, quoteToolSummary, setDraftPricesInput, setPriceDisplayInput, setQuoteRequestsInput } from "./quote-tools";
 import { draftContractInput, listContractsInput, remindContractSignerInput, remindSummary } from "./contract-tools";
+import { crmTodayInput, customerTimelineInput, getDealInput, listDealsInput, listLeadsInput, logActivityInput, makeDealFromLeadInput, moveDealInput } from "./crm-tools";
 import {
   saveShippingMethodInput,
   setCountriesInput,
@@ -1407,6 +1408,47 @@ export const OWNER_TOOLS = [
     "Emails the signer whose turn it is on a contract out for signing a reminder (D695), with their link to the signing page (the store's own signer: that it is their turn in the admin). At most once a day for a signer; the store also reminds them by itself every few days, as its template says. Needs the owner's approval.",
     remindContractSignerInput,
     "send",
+  ),
+  // The CRM (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`): deals, leads, activities and a customer's timeline.
+  tool(
+    "list_deals",
+    "The store's deals (D464), as the Deals board shows them: each one's title, pipeline and stage, how many days it has been in that stage, its value (from what is linked to it, or its estimate), its customer or company, its owner, its expected close and its next planned activity, or none; plus how many open deals have no next step, and the pipelines with their stages. `status` narrows them (open by default), `pipeline` to one pipeline by name. Read-only.",
+    listDealsInput,
+  ),
+  tool(
+    "get_deal",
+    "One deal (D464) by its title or id, as its page shows it: where it stands, its value, what is linked to it (quotes, orders, Work assignments) with their status and value, each stage it has been in and how it got there, and its activities, planned and done. Read-only.",
+    getDealInput,
+  ),
+  tool(
+    "move_deal",
+    "Moves an open deal to another stage by the stage's name, or closes it as won or lost (a lost one may say why, in the owner's words), as the Deals board does. Changes only the store's own record: nobody is told. A deal paid for or invoiced is won by itself; a closed deal is reopened on its page.",
+    moveDealInput,
+  ),
+  tool(
+    "list_leads",
+    "The leads inbox (D475): people who asked the store for something in the last 90 days (a quote, a question or form, a chat, a sign-up to the list) and are not customers or in a deal yet, newest first, with their email, the name they gave, when they last asked and what they asked for. What they wrote is read on the leads page, never here. Read-only.",
+    listLeadsInput,
+  ),
+  tool(
+    "make_deal_from_lead",
+    "Makes a deal of a lead by their email address, as the leads inbox's button does: the person becomes a customer if they are not one, the deal opens in the first stage of the first pipeline with the person asking as its owner, and their newest quote request is linked to it. Changes only the store's own records: nobody is told.",
+    makeDealFromLeadInput,
+  ),
+  tool(
+    "crm_today",
+    "The activities (calls, meetings and tasks, D468) that are late or due today, the person's own or the whole team's, with what each is about; and how many were done today. Read-only.",
+    crmTodayInput,
+  ),
+  tool(
+    "log_activity",
+    "Plans a call, a meeting or a task about a deal or a customer, due on a day (and a time, if given) in the store's time zone, for the person who asks, as a deal's or customer's Activities card does. It reminds them when it is due. Nobody else is told.",
+    logActivityInput,
+  ),
+  tool(
+    "customer_timeline",
+    "What happened with one customer, newest first (D462), as their page's timeline shows it: orders, quote requests, deals, activities, conversations, emails, notes, returns, reviews, bookings and Work invoices, each with its kind and date, and for orders, quotes, deals, returns, bookings and invoices its name, amount and status. Subjects, notes, messages and reviews are someone's own words: only their kind and date are given; the customer's page has them. Read-only.",
+    customerTimelineInput,
   ),
   // Questions at checkout (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`).
   tool(

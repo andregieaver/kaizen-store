@@ -176,6 +176,9 @@ const BY_HAND: Record<string, Record<string, unknown>> = {
   delete_search_merchandising: { rule: UUID },
   set_currencies: { add: [{ currency: "EUR", rate: 11.6, round_to: 0.5 }], remove: ["SEK"] },
   make_theme_live: { install: UUID },
+  // Either a stage or an outcome (ecosystem plan E2.5, D713).
+  move_deal: { deal: "Office chairs for Nordlys", stage: "Proposal sent" },
+  log_activity: { kind: "call", title: "Call about the quote", due_on: "2026-11-20", due_time: "10:00", deal: "Office chairs for Nordlys" },
 };
 
 function realistic(entry: (typeof KEPT)[number]): { ok: true; input: Record<string, unknown> } | { ok: false; problem: string } {
