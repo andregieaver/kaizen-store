@@ -168,6 +168,13 @@ beforeAll(async () => {
     where store_id = ${store.storeId}::uuid and id = ${contract.id}::uuid
   `);
   subjects.contract = contract.id;
+  // A visitor's response to one of the store's forms (D705 F5).
+  const [form] = await db().execute<Row>(sql`insert into commerce.forms (store_id, kind, name) values (${store.storeId}::uuid, 'message', 'Topics form') returning id`);
+  const [response] = await db().execute<Row>(sql`
+    insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery)
+    values (${String(form.id)}::uuid, '[{"label":"Message","value":"Hello"}]', 'kari@example.com', '/kontakt', 'nb', 'logged') returning id
+  `);
+  subjects.form_response = String(response.id);
 }, 180_000);
 
 afterAll(async () => {

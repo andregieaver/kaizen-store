@@ -6,7 +6,6 @@ import { z } from "zod";
 import { FORMS_API } from "@/lib/admin-api-forms";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { normaliseEmail } from "@/lib/email-address";
-import type { FormRecord } from "@/lib/form-records";
 
 import { cursorAt, fail, ok, pageOf, paging, readBody, record, type ApiAnswer } from "./admin-api-kit";
 import type { ApiCaller } from "./api-tokens";
@@ -41,8 +40,8 @@ const summaryOut = (s: FormSummary): AdminAnswer<"forms.list">["data"][number] =
 async function formById(storeId: string, id: string): Promise<ApiForm> {
   const [form, summary] = await Promise.all([getForm(storeId, id), listForms(storeId).then((all) => all.find((s) => s.id === id))]);
   if (!form || !summary) return fail("not_found", "No such form in this store.");
-  const { id: _id, storeId: _store, status: _status, madeFrom, ...draft } = form satisfies FormRecord;
-  return { ...summaryOut(summary), made_from: madeFrom, draft: { ...draft } };
+  const draft: Record<string, unknown> = { kind: form.kind, name: form.name, questions: form.questions, words: form.words, delivery: form.delivery, signup: form.signup, keepMonths: form.keepMonths };
+  return { ...summaryOut(summary), made_from: form.madeFrom, draft };
 }
 
 const responseRow = z.object({
@@ -78,7 +77,7 @@ export async function answerForms(caller: ApiCaller, route: FormsRoute, request:
           order by created_at desc, id desc limit ${page.limit + 1}
         `,
       );
-      return ok(route.name, pageOf(page, rows, ({ cursor_at: _c, ...r }) => r));
+      return ok(route.name, pageOf(page, rows, (r) => ({ id: r.id, answers: r.answers, contact_email: r.contact_email, path: r.path, locale: r.locale, state: r.state, delivery: r.delivery, created_at: r.created_at })));
     }
     case "forms.create": {
       const input = await readBody(route.name, request);

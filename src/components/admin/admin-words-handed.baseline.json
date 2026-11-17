@@ -1136,38 +1136,42 @@
         "builder"
       ]
     },
-    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks": {
+    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
       "areas": [
         "forms",
-        "blocks"
+        "blocks",
+        "formTemplates"
       ],
       "handed": {
-        "en": 64497,
-        "nb": 67557
+        "en": 64484,
+        "nb": 67544
       },
       "named": {
-        "en": 12478,
-        "nb": 13008
+        "en": 12465,
+        "nb": 12995
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/forms/new/page.tsx#forms": {
+    "src/app/admin/(gated)/[store]/forms/new/page.tsx#forms+formTemplates": {
       "areas": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "named": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
@@ -1176,8 +1180,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 0,
@@ -1193,8 +1197,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 624,
@@ -1208,12 +1212,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 31502,
+        "nb": 32471
       },
       "whole": [],
       "unnamed": []
@@ -1223,12 +1227,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 31502,
+        "nb": 32471
       },
       "whole": [],
       "unnamed": []
@@ -1238,12 +1242,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 31502,
+        "nb": 32471
       },
       "whole": [],
       "unnamed": []
@@ -1253,8 +1257,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 1773,
@@ -1268,8 +1272,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 0,
@@ -1285,8 +1289,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 0,
@@ -2169,12 +2173,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 7636,
-        "nb": 7882
+        "en": 7733,
+        "nb": 7983
       },
       "whole": [],
       "unnamed": []
@@ -2184,12 +2188,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "whole": [
         "notifications"
@@ -2201,12 +2205,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "whole": [
         "notifications"
@@ -2218,8 +2222,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 0,
@@ -2410,12 +2414,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "whole": [
         "notifications"
@@ -2427,12 +2431,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "whole": [
         "notifications"
@@ -2579,8 +2583,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 3729,
@@ -2996,38 +3000,42 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks": {
+    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
       "areas": [
         "forms",
-        "blocks"
+        "blocks",
+        "formTemplates"
       ],
       "handed": {
-        "en": 64497,
-        "nb": 67557
+        "en": 64484,
+        "nb": 67544
       },
       "named": {
-        "en": 12478,
-        "nb": 13008
+        "en": 12465,
+        "nb": 12995
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/forms/new/page.tsx#forms": {
+    "src/app/admin/(gated)/platform/forms/new/page.tsx#forms+formTemplates": {
       "areas": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "named": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
@@ -3036,8 +3044,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 0,
@@ -3053,8 +3061,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 624,
@@ -3068,8 +3076,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 1773,
@@ -3083,8 +3091,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 0,
@@ -3100,12 +3108,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 31502,
+        "nb": 32471
       },
       "whole": [],
       "unnamed": []
@@ -3115,12 +3123,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 5084,
-        "nb": 5185
+        "en": 5181,
+        "nb": 5286
       },
       "whole": [],
       "unnamed": []
@@ -3130,12 +3138,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 31502,
+        "nb": 32471
       },
       "whole": [],
       "unnamed": []
@@ -3621,8 +3629,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 69305,
-        "nb": 72239
+        "en": 69583,
+        "nb": 72532
       },
       "named": {
         "en": 3729,

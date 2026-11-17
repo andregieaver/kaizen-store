@@ -9,12 +9,24 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D712, D715]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D715]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.39 — 2026-11-17
+
+Forms in the Admin API and a webhook topic for what visitors send (D705).
+
+- Two scopes: `forms:read` (forms; their responses also need the right to read customers) and `forms:write`. The Read-only kind of token
+  holds `forms:read`.
+- `GET /forms`, `GET /forms/{id}` (with its `draft`), `POST /forms` (from a `template_id` or a whole `draft`), `PATCH /forms/{id}`
+  (the `draft` whole, checked as the editor checks it) and `GET /forms/{id}/responses` (newest first, in pages).
+- `form.response` (new topic): a visitor sent one of the store's forms, or confirmed a newsletter sign-up. Its `form_response` carries the
+  form's id, name and kind, the answers labelled in the owner's language, the contact email, the page and the language. For the owner's
+  endpoints, workflows and apps that read customers; never Zapier, Make or Slack.
 
 ## 1.38 — 2026-11-17
 
