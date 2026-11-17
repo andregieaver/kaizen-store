@@ -36,6 +36,12 @@ newly reaches, the admin's words, the cookie purposes, and the bytes of the four
 Rewrite the baseline with `WRITE_STOREFRONT_BASELINE=1 pnpm exec vitest run src/lib/storefront-bundle.scan.test.ts`; a new page
 entry gets an empty reason, which the test refuses until you write why it cannot be a lazy stand-in.
 
+### The admin's hand-downs (step 1.28)
+
+src/components/admin/admin-words-handed.scan.test.ts holds every site that hands words to the browser (src/components/admin/admin-words-handed.baseline.json):
+bytes handed in English and Norwegian, bytes named by the client parts, areas nothing names. Rewrite it with
+`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`; the writer never raises a site's bytes.
+
 ## Searches
 
 Default searches (ripgrep and the tools built on it) skip docs/shopify-parity.md, docs/wave-10-notes, docs/ab-testing-spike,

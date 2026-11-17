@@ -309,6 +309,13 @@ and the Supabase client arrives by `import()`.
 
 The admin fetches a link's page when it is pointed at, not when it is in view (bloat review step 0.13, `AdminLink`). Router prefetches in the 3 s after load, held by `e2e/signed-in/prefetch.spec.ts` (home 28 before, product editors on the Products list 8 before): home 0, orders 8 (none an order or customer row), products 8 (none a product's editor), pages 6, settings 16, a product's editor 2, the builder 0, the platform home 0 (its two section links are AdminLinks too); hovering a rail link 2.
 
+Every place the admin hands words to the browser (each `adminTexts()` call and `<AdminAreas>`) is in `src/components/admin/admin-words-handed.baseline.json` with the bytes
+handed in English and Norwegian and the bytes its client parts name (229 sites on 17 November 2026, 80 handing over 50 KB). A site may not hand more than its
+baseline (200 bytes of room) or an area no client part under it names (`src/components/admin/admin-words-handed.scan.test.ts`). Rewrite the baseline with
+`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`: it only lowers a site's bytes and shortens its
+`unnamed` list. Named is counted from source, by static import, not what a browser reads at load: `e2e/signed-in/admin-scripts.spec.ts` (step 1.5) is the
+browser's cross-check on five screens.
+
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
 The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the
