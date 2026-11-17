@@ -169,6 +169,10 @@ export const blocksEn = {
       textarea: "Long text",
       select: "Choice from a list",
       checkbox: "Tick box",
+      radio: "One choice",
+      checklist: "Tick list",
+      number: "Number",
+      date: "Date",
     },
     newsletterLayouts: {
       inline: "Side by side",

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { FORM_KEEP_MONTHS_MAX, FORM_NAME_MAX } from "./form-records";
+import { FORM_KEEP_MONTHS_MAX, FORM_NAME_MAX, SHOW_WHEN_MAX } from "./form-records";
+import { DATE_DAYS_MAX, NUMBER_LIMIT } from "./questions";
 import {
   BUTTON_LABEL_MAX,
   FORM_FIELDS_MAX,
@@ -10,6 +11,8 @@ import {
   FORM_RECIPIENTS_MAX,
   FORM_TEXT_MAX,
   LABELLED_KINDS,
+  OPTION_FIELD_KINDS,
+  SHOW_WHEN_OPS,
   SIGNUP_TAGS_MAX,
   type FormFieldKind,
 } from "./page-content";
@@ -31,6 +34,8 @@ const words = (what: string, max = FORM_TEXT_MAX) =>
       .transform((all) => Object.fromEntries(Object.entries(all).filter(([, v]) => v !== ""))),
   });
 
+const bound = z.number().int().min(-NUMBER_LIMIT).max(NUMBER_LIMIT);
+
 const question = z
   .object({
     id: key,
@@ -42,10 +47,51 @@ const question = z
       .array(words("a choice", FORM_LABEL_MAX).refine((w) => w.text !== "", "A choice needs its words."))
       .max(FORM_OPTIONS_MAX, `A question offers at most ${FORM_OPTIONS_MAX} choices.`)
       .optional(),
+    help: words("a question's help", FORM_LABEL_MAX).optional(),
+    width: z.literal("half").optional(),
+    bounds: z.object({ min: bound.optional(), max: bound.optional() }).optional(),
+    showWhen: z
+      .array(z.object({ question: key, op: z.enum(SHOW_WHEN_OPS), values: z.array(z.number().int().min(0).max(FORM_OPTIONS_MAX - 1)).max(FORM_OPTIONS_MAX).optional() }))
+      .max(SHOW_WHEN_MAX, `A question is asked on at most ${SHOW_WHEN_MAX} conditions.`)
+      .optional(),
   })
-  .refine((q) => q.kind !== "select" || (q.options?.length ?? 0) > 0, { message: "A choice from a list needs at least one choice.", path: ["options"] })
+  .refine((q) => !OPTION_FIELD_KINDS.includes(q.kind) || (q.options?.length ?? 0) > 0, { message: "A choice needs at least one option.", path: ["options"] })
   .refine((q) => !LABELLED_KINDS.includes(q.kind) || q.label.text !== "", { message: "A question needs its words.", path: ["label"] })
-  .transform((q) => (q.kind === "select" ? q : { ...q, options: undefined }));
+  .refine((q) => q.bounds?.min === undefined || q.bounds.max === undefined || q.bounds.min <= q.bounds.max, {
+    message: "The lowest answer is above the highest.",
+    path: ["bounds"],
+  })
+  .refine(
+    (q) => q.kind !== "date" || !q.bounds || [q.bounds.min, q.bounds.max].every((d) => d === undefined || (d >= 0 && d <= DATE_DAYS_MAX)),
+    { message: `A date's earliest and latest day are 0 to ${DATE_DAYS_MAX} days from today.`, path: ["bounds"] },
+  )
+  .transform((q) => ({
+    ...q,
+    options: OPTION_FIELD_KINDS.includes(q.kind) ? q.options : undefined,
+    bounds: (q.kind === "number" || q.kind === "date") && q.bounds && (q.bounds.min !== undefined || q.bounds.max !== undefined) ? q.bounds : undefined,
+    showWhen: q.showWhen?.length ? q.showWhen : undefined,
+    help: q.help?.text ? q.help : undefined,
+  }));
+
+/** Why a form's conditions cannot stand (F3): each names a question above it, and asks of it what that kind of question can answer. */
+export function showWhenProblems(questions: readonly z.output<typeof question>[]): string[] {
+  const problems: string[] = [];
+  questions.forEach((q, i) => {
+    for (const c of q.showWhen ?? []) {
+      const target = questions.slice(0, i).find((t) => t.id === c.question);
+      if (!target) {
+        problems.push("A question is asked on the answer to a question that is not above it.");
+        continue;
+      }
+      const options = OPTION_FIELD_KINDS.includes(target.kind) ? (target.options?.length ?? 0) : 0;
+      if ((c.op === "is" || c.op === "is_not" || c.op === "any_of") && (options === 0 || !c.values?.length || c.values.some((v) => v >= options))) {
+        problems.push("A condition names a choice the question above does not offer.");
+      }
+      if (c.op === "ticked" && target.kind !== "checkbox" && target.kind !== "checklist") problems.push("Only a tick box or a tick list can be ticked.");
+    }
+  });
+  return [...new Set(problems)];
+}
 
 const draftObject = z.object({
     kind: z.enum(["message", "signup"]),
@@ -66,6 +112,7 @@ const draftObject = z.object({
         .max(FORM_RECIPIENTS_MAX, `A form sends to at most ${FORM_RECIPIENTS_MAX} addresses.`)
         .refine((list) => new Set(list).size === list.length, "A form sends to the same address twice."),
       subject: z.string().trim().max(FORM_LABEL_MAX, `Keep the subject under ${FORM_LABEL_MAX} characters.`).default(""),
+      inbox: z.enum(["email", "inbox", "both"]).optional(),
     }),
     signup: z
       .object({
@@ -79,6 +126,9 @@ const draftObject = z.object({
   });
 
 export const formDraftSchema = draftObject
+  .superRefine((f, ctx) => {
+    for (const message of showWhenProblems(f.questions)) ctx.addIssue({ code: "custom", message, path: ["questions"] });
+  })
   .refine((f) => (f.kind === "signup") === (f.signup !== null), { message: "Only a sign-up has sign-up settings.", path: ["signup"] })
   .transform((f) => (f.kind === "signup" ? { ...f, questions: [] } : f));
 

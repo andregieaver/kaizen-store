@@ -1,4 +1,5 @@
-import type { EmailFormBlock, FormButton, FormField, FormFieldKind, NewsletterBlock, NewsletterLayout } from "./page-content";
+import type { EmailFormBlock, FormButton, FormField, FormFieldKind, NewsletterBlock, NewsletterLayout, ShowWhen } from "./page-content";
+import type { AnswerBounds } from "./questions";
 import { normaliseEmail } from "./email-address";
 import { plainWords, wordsIn, type Words } from "./words";
 
@@ -30,13 +31,30 @@ export type FormQuestion = {
   required?: boolean;
   placeholder?: Words;
   options?: Words[];
+  /** A line of help under the question (F3). */
+  help?: Words;
+  /** Half the form's width, beside the next half (F3). */
+  width?: "half";
+  /** A number's lowest and highest value, or a date's earliest and latest day from today (F3). */
+  bounds?: AnswerBounds;
+  /** Asked only when every one holds, each naming a question above it (F3). */
+  showWhen?: ShowWhen[];
 };
+
+/** Conditions a question may have (F3). */
+export const SHOW_WHEN_MAX = 5;
 
 /** The form's own words; each left empty reads in the page's language (D93). */
 export type FormWords = { submit?: Words; success?: Words; consent?: Words; placeholder?: Words };
 
 /** Where a message goes: never sent to the browser. */
-export type FormDelivery = { recipients: string[]; subject: string };
+/**
+ * Where a message goes: never sent to the browser. `inbox` (F3, a store's form while its support desk is on, D382): `email` only to the
+ * recipients, `inbox` only to the support inbox, `both`; the desk's own choice (`form_messages`) unless set. The recipients are emailed
+ * whatever the choice while the desk is off, so a form always needs one.
+ */
+export type FormInbox = "email" | "inbox" | "both";
+export type FormDelivery = { recipients: string[]; subject: string; inbox?: FormInbox };
 
 /** A sign-up's settings (D93, D304 J3). */
 export type FormSignup = { confirm: boolean; askName: boolean; incentive?: string; tags?: string[] };
@@ -97,6 +115,11 @@ export function formAsBlock(form: Pick<FormRecord, "id" | "kind" | "questions" |
         ...(q.required ? { required: true } : {}),
         ...(q.placeholder && at(q.placeholder) ? { placeholder: at(q.placeholder) } : {}),
         ...(q.options ? { options: q.options.map((o) => at(o)) } : {}),
+        ...(q.help && at(q.help) ? { help: at(q.help) } : {}),
+        ...(q.width ? { width: q.width } : {}),
+        ...(q.bounds?.min !== undefined ? { min: q.bounds.min } : {}),
+        ...(q.bounds?.max !== undefined ? { max: q.bounds.max } : {}),
+        ...(q.showWhen?.length ? { showWhen: q.showWhen } : {}),
       }),
     ),
     submitLabel: at(form.words.submit),

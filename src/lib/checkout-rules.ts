@@ -2,6 +2,7 @@ import { e164Phone } from "./phone";
 import type { DeliveryOffer, OfferedDelivery } from "./shipping-methods";
 import type { Words } from "./words";
 import { wordsIn } from "./words";
+import { boundsAsInput, dateAnswer, numberAnswer } from "./questions";
 
 /** The words type and its reader moved to `words.ts` (D705), shared with forms; kept here for the checkout's importers. */
 export { wordsIn, type Words };
@@ -313,8 +314,7 @@ export const hasBounds = (kind: CheckoutFieldKind): boolean => kind === "number"
  * A number is whole; a date's days are 0 to `DATE_DAYS_MAX`.
  */
 export type FieldBounds = { min?: number; max?: number };
-export const NUMBER_LIMIT = 1_000_000_000;
-export const DATE_DAYS_MAX = 730;
+export { NUMBER_LIMIT, DATE_DAYS_MAX } from "./questions";
 
 /**
  * One option of a tick list (task 3): its own words per language, and `none` for the option that says none of the others apply (ticking it
@@ -401,29 +401,15 @@ export function shownField(f: CheckoutField, locale: string, today?: string): Sh
   };
 }
 
-/** A day `n` days after `day` (`YYYY-MM-DD`), counted on the calendar. */
-export function daysAfter(day: string, n: number): string {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-}
-
-/** Today's day (`YYYY-MM-DD`) in a time zone. */
-export const todayInZone = (timeZone: string, now: Date = new Date()): string =>
-  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(now);
+export { daysAfter, todayInZone } from "./questions";
 
 /** A field's lowest and highest answer as the input takes them: a number's values, a date's days from `today` (none without a today). */
 function boundsOf(f: Pick<CheckoutField, "kind" | "bounds">, today?: string): [string | null, string | null] {
-  const b = f.bounds ?? {};
-  if (f.kind === "number") return [b.min === undefined ? null : String(b.min), b.max === undefined ? null : String(b.max)];
-  if (f.kind === "date" && today) return [b.min === undefined ? null : daysAfter(today, b.min), b.max === undefined ? null : daysAfter(today, b.max)];
-  return [null, null];
+  return boundsAsInput(f.kind, f.bounds, today);
 }
 
 /** What answers are checked against besides the fields: the store's today (a date's days) and the basket's country (a phone without its code). */
 export type AnswerContext = { today?: string; country?: string | null };
-
-/** A real day of the calendar written `YYYY-MM-DD`. */
-const isDay = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s) && daysAfter(s, 0) === s;
 
 /** An email address's shape: something, an @, a domain with a dot; no spaces; at most 254 characters. */
 const isEmail = (s: string): boolean => s.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
@@ -433,17 +419,8 @@ const isEmail = (s: string): boolean => s.length <= 254 && /^[^\s@]+@[^\s@]+\.[^
  * out of its bounds: a whole number, a day between its earliest and latest, an email address as typed (trimmed), a phone in international form.
  */
 function shapedAnswer(f: CheckoutField, typed: string, ctx: AnswerContext): string | null {
-  const [min, max] = boundsOf(f, ctx.today);
-  if (f.kind === "number") {
-    if (!/^-?\d{1,10}$/.test(typed)) return null;
-    const n = Number(typed);
-    if (Math.abs(n) > NUMBER_LIMIT || (min !== null && n < Number(min)) || (max !== null && n > Number(max))) return null;
-    return String(n);
-  }
-  if (f.kind === "date") {
-    if (!isDay(typed) || (min !== null && typed < min) || (max !== null && typed > max)) return null;
-    return typed;
-  }
+  if (f.kind === "number") return numberAnswer(typed, f.bounds);
+  if (f.kind === "date") return dateAnswer(typed, f.bounds, ctx.today);
   if (f.kind === "email") return isEmail(typed) ? typed : null;
   return e164Phone(typed, ctx.country ?? null);
 }

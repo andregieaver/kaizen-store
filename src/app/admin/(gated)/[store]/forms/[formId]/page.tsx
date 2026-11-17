@@ -6,7 +6,7 @@ import { FormEditor } from "@/components/admin/forms/form-editor";
 import { FormTabs } from "@/components/admin/forms/form-tabs";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { Chip, PageHeader } from "@/components/admin/ui";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import type { PageType } from "@/lib/page-content";
 import { signupCodeChoices } from "@/server/discounts";
@@ -28,6 +28,10 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
   const w = adminText(lang, "forms");
   const [uses, codes] = await Promise.all([formUses(store.id, form.id), form.kind === "signup" ? signupCodeChoices(store.id) : Promise.resolve([])]);
   const base = `/admin/${store.slug}/forms`;
+  // The store's other languages (F3), named in the admin's language, for the words a visitor in them sees.
+  const langs = [...new Set(store.markets.map((m) => m.lang))];
+  const names = new Intl.DisplayNames([ADMIN_LANG_FACTS[lang].locale], { type: "language" });
+  const languages = langs.slice(1).map((code) => ({ code, name: names.of(code) ?? code }));
   return (
     <AdminTextScope texts={adminTexts(lang, ["forms", "blocks"])}>
       <div className="flex flex-col gap-6">
@@ -41,7 +45,9 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
         <FormEditor
           key={form.id}
           form={form}
-          siteLang={store.markets[0]?.lang ?? "en"}
+          siteLang={langs[0] ?? "en"}
+          languages={languages}
+          inboxChoice
           canEdit={memberCan(member, "website:write")}
           codes={codes}
           placedOn={uses.map((u) => ({ ...u, href: `/admin/${store.slug}/${PAGE_TYPE_COPY[u.type as PageType]?.segment ?? "pages"}/${u.pageId}` }))}

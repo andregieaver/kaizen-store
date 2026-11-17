@@ -67,7 +67,8 @@ export type FormInbox =
  */
 export async function formToInbox(
   storeId: string | null,
-  form: { blockId: string; subject: string; path: string; lang: string },
+  /** `inbox` is the form's own choice (D705 F3: `email`, `inbox` or `both`); the desk's `form_messages` without one. */
+  form: { blockId: string; subject: string; path: string; lang: string; inbox?: "email" | "inbox" | "both" },
   answers: readonly Answer[],
   /** The form's first email answer, and its name answer as typed: the conversation's contact, never proof of who wrote. */
   contact: { email: string | null; name: string | null },
@@ -76,7 +77,8 @@ export async function formToInbox(
   try {
     const desk = systemDesk(storeId);
     const settings = await deskSettings(desk);
-    if (!settings || settings.mode === "off" || settings.formMessages === "email") return { kept: false };
+    const route = form.inbox ?? (settings?.formMessages === "email" ? "email" : settings?.formMessages === "inbox_and_email" ? "both" : "inbox");
+    if (!settings || settings.mode === "off" || route === "email") return { kept: false };
     const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid and commerce.store_is_active(id)`);
     const store = row ? await getOpenStore(String(row.slug)) : null;
     if (!store) return { kept: false };
@@ -97,7 +99,7 @@ export async function formToInbox(
     for (const [n, part] of parts.entries()) {
       await addMessage(desk, conversationId, "customer", null, part, n === 0 ? { data: { form: { block: form.blockId, path: form.path, cut } } } : {});
     }
-    return { kept: true, conversationId, emailToo: settings.formMessages === "inbox_and_email" || cut };
+    return { kept: true, conversationId, emailToo: route === "both" || cut };
   } catch (error) {
     log("error", "support.form_inbox_failed", { storeId }, error);
     return { kept: false };

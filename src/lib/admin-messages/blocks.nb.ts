@@ -163,6 +163,10 @@ export const blocksNb: BlocksMessages = {
       textarea: "Lang tekst",
       select: "Valg fra en liste",
       checkbox: "Avkrysningsboks",
+      radio: "Ett valg",
+      checklist: "Avkrysningsliste",
+      number: "Tall",
+      date: "Dato",
     },
     newsletterLayouts: {
       inline: "Side om side",

@@ -8,6 +8,8 @@ import { SiteForm } from "@/components/site-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import {
   FORM_KEEP_CHOICES,
+  SHOW_WHEN_MAX,
+  type FormInbox,
   formAsBlock,
   newQuestionId,
   type FormDraft,
@@ -17,7 +19,19 @@ import {
   type FormWords,
 } from "@/lib/form-records";
 import { publicForm } from "@/lib/forms";
-import { FORM_FIELDS_MAX, FORM_FIELD_KINDS, FORM_OPTIONS_MAX, FORM_RECIPIENTS_MAX, LABELLED_KINDS, SIGNUP_TAGS_MAX, type FormFieldKind } from "@/lib/page-content";
+import {
+  FORM_FIELDS_MAX,
+  FORM_FIELD_KINDS,
+  FORM_OPTIONS_MAX,
+  FORM_RECIPIENTS_MAX,
+  LABELLED_KINDS,
+  OPTION_FIELD_KINDS,
+  SHOW_WHEN_OPS,
+  SIGNUP_TAGS_MAX,
+  type FormFieldKind,
+  type ShowWhen,
+  type ShowWhenOp,
+} from "@/lib/page-content";
 import { plainWords, type Words } from "@/lib/words";
 import type { DeleteFormOutcome, FormUse, SaveFormOutcome } from "@/server/forms-admin";
 
@@ -43,6 +57,8 @@ export function FormEditor({
   siteLang,
   canEdit,
   codes,
+  languages = [],
+  inboxChoice = false,
   placedOn,
   listHref,
   save,
@@ -55,6 +71,10 @@ export function FormEditor({
   canEdit: boolean;
   /** A store's discounts with single-use codes for a sign-up's welcome code; null on Kaizena Flow's own forms. */
   codes: { id: string; code: string }[] | null;
+  /** The site's other languages (F3), whose words the owner may write: code and name. */
+  languages?: { code: string; name: string }[];
+  /** A store's form may choose where its messages go (F3, the support inbox, D382); Kaizena Flow's has no inbox. */
+  inboxChoice?: boolean;
   placedOn: PlacedOn[];
   listHref: string;
   save: (draft: FormDraft) => Promise<SaveFormOutcome>;
@@ -149,11 +169,22 @@ export function FormEditor({
                   <li key={q.id} className="rounded-panel border border-line p-3">
                     <QuestionFields
                       question={q}
+                      earlier={draft.questions.slice(0, i)}
                       first={i === 0}
                       last={i === draft.questions.length - 1}
                       onChange={(patch) => setQuestion(i, patch)}
                       onMove={(by) => moveQuestion(i, by)}
-                      onRemove={() => change({ questions: draft.questions.filter((_, n) => n !== i) })}
+                      onRemove={() =>
+                        // A condition that named it goes with it.
+                        change({
+                          questions: draft.questions
+                            .filter((_, n) => n !== i)
+                            .map((x) => {
+                              const kept = x.showWhen?.filter((c) => c.question !== q.id);
+                              return kept?.length === x.showWhen?.length ? x : { ...x, showWhen: kept?.length ? kept : undefined };
+                            }),
+                        })
+                      }
                     />
                   </li>
                 ))}
@@ -244,6 +275,27 @@ export function FormEditor({
                   </label>
                 </>
               )}
+              {inboxChoice && draft.kind === "message" && (
+                <label className={label}>
+                  <span className={labelText}>{e.inbox}</span>
+                  <select
+                    className={input}
+                    value={draft.delivery.inbox ?? "default"}
+                    onChange={(ev) => {
+                      const inbox = ev.target.value === "default" ? undefined : (ev.target.value as FormInbox);
+                      change({ delivery: { ...draft.delivery, inbox } });
+                    }}
+                    data-form-inbox
+                  >
+                    {(["default", "email", "inbox", "both"] as const).map((k) => (
+                      <option key={k} value={k}>
+                        {e.inboxes[k]}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={hint}>{e.inboxHint}</span>
+                </label>
+              )}
               <label className={label}>
                 <span className={labelText}>{e.keep}</span>
                 <select className={input} value={draft.keepMonths} onChange={(ev) => change({ keepMonths: Number(ev.target.value) })} data-form-keep>
@@ -257,6 +309,7 @@ export function FormEditor({
               </label>
             </div>
           </details>
+          {languages.length > 0 && <TranslationsCard draft={draft} languages={languages} onChange={change} />}
         </fieldset>
 
         {problems.length > 0 && (
@@ -358,9 +411,72 @@ export function FormEditor({
   );
 }
 
-/** One question: its kind, words, whether it must be answered, its hint and a choice's options. */
+/** Every word of the form in the site's other languages (F3): beside its main words, empty showing them. */
+function TranslationsCard({ draft, languages, onChange }: { draft: FormDraft; languages: { code: string; name: string }[]; onChange: (patch: Partial<FormDraft>) => void }) {
+  const e = useAdminText("forms").editor;
+  const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
+  const [lang, setLang] = useState(languages[0].code);
+  type Entry = { key: string; main: string; words: Words | undefined; put: (w: Words) => void };
+  const setQuestion = (i: number, patch: Partial<FormQuestion>) => onChange({ questions: draft.questions.map((q, n) => (n === i ? { ...q, ...patch } : q)) });
+  const entries: Entry[] = [
+    ...draft.questions.flatMap((q, i): Entry[] => [
+      { key: `${q.id}.label`, main: q.label.text || usual[q.kind] || "", words: q.label, put: (w) => setQuestion(i, { label: w }) },
+      ...(q.help ? [{ key: `${q.id}.help`, main: q.help.text, words: q.help, put: (w: Words) => setQuestion(i, { help: w }) }] : []),
+      ...(q.placeholder ? [{ key: `${q.id}.placeholder`, main: q.placeholder.text, words: q.placeholder, put: (w: Words) => setQuestion(i, { placeholder: w }) }] : []),
+      ...(q.options ?? []).map((o, n) => ({
+        key: `${q.id}.option${n}`,
+        main: o.text,
+        words: o,
+        put: (w: Words) => setQuestion(i, { options: q.options!.map((x, m) => (m === n ? w : x)) }),
+      })),
+    ]),
+    ...(["submit", "success", "consent", "placeholder"] as const)
+      .filter((k) => draft.words[k]?.text)
+      .map((k) => ({ key: k, main: draft.words[k]!.text, words: draft.words[k], put: (w: Words) => onChange({ words: { ...draft.words, [k]: w } }) })),
+  ].filter((entry) => entry.main !== "");
+  const write = (entry: Entry, text: string) => {
+    const byLocale = { ...(entry.words?.byLocale ?? {}) };
+    if (text) byLocale[lang] = text;
+    else delete byLocale[lang];
+    entry.put({ text: entry.words?.text ?? "", byLocale });
+  };
+  return (
+    <details className={`${CARD_CLASS} p-5`} data-form-translations>
+      <summary className="cursor-pointer text-body-strong text-ink">{e.languages}</summary>
+      <div className="mt-4 flex flex-col gap-3">
+        {languages.length > 1 && (
+          <select className={input} value={lang} onChange={(ev) => setLang(ev.target.value)} aria-label={e.languages}>
+            {languages.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <span className={hint}>{e.languagesHint}</span>
+        {entries.map((entry) => (
+          <label key={entry.key} className={label}>
+            <span className={labelText}>{entry.main}</span>
+            <input
+              className={input}
+              lang={lang}
+              value={entry.words?.byLocale[lang] ?? ""}
+              placeholder={entry.main}
+              maxLength={500}
+              onChange={(ev) => write(entry, ev.target.value)}
+              data-translation={entry.key}
+            />
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+/** One question: its kind, words, whether it must be answered and a choice's options; its help, width, bounds and conditions under More. */
 function QuestionFields({
   question: q,
+  earlier,
   first,
   last,
   onChange,
@@ -368,6 +484,8 @@ function QuestionFields({
   onRemove,
 }: {
   question: FormQuestion;
+  /** The questions above it, which its conditions may name (F3). */
+  earlier: FormQuestion[];
   first: boolean;
   last: boolean;
   onChange: (patch: Partial<FormQuestion>) => void;
@@ -378,7 +496,16 @@ function QuestionFields({
   const kinds = useAdminText("blocks").lists.formFieldKinds as Record<FormFieldKind, string>;
   const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
   const labelled = LABELLED_KINDS.includes(q.kind);
+  const hasOptions = OPTION_FIELD_KINDS.includes(q.kind);
+  const typed = !hasOptions && q.kind !== "checkbox" && q.kind !== "date";
   const [optionsText, setOptionsText] = useState((q.options ?? []).map((o) => o.text).join("\n"));
+  const bound = (which: "min" | "max", value: string) => {
+    const n = value === "" ? undefined : Math.trunc(Number(value));
+    const next = { ...q.bounds, [which]: n !== undefined && Number.isFinite(n) ? n : undefined };
+    onChange({ bounds: next.min === undefined && next.max === undefined ? undefined : next });
+  };
+  const conditions = q.showWhen ?? [];
+  const setConditions = (next: ShowWhen[]) => onChange({ showWhen: next.length ? next : undefined });
   return (
     <div className="flex flex-col gap-3" data-question={q.id}>
       <div className="flex flex-wrap items-end gap-3">
@@ -389,7 +516,7 @@ function QuestionFields({
             value={q.kind}
             onChange={(ev) => {
               const kind = ev.target.value as FormFieldKind;
-              onChange({ kind, ...(kind === "select" && !q.options?.length ? { options: [plainWords("")] } : {}) });
+              onChange({ kind, ...(OPTION_FIELD_KINDS.includes(kind) && !q.options?.length ? { options: [plainWords("")] } : {}) });
             }}
           >
             {(Object.keys(FORM_FIELD_KINDS) as FormFieldKind[]).map((k) => (
@@ -410,7 +537,7 @@ function QuestionFields({
           />
         </label>
       </div>
-      {q.kind === "select" && (
+      {hasOptions && (
         <label className={label}>
           <span className={labelText}>{e.choices}</span>
           <textarea
@@ -425,12 +552,6 @@ function QuestionFields({
           <span className={hint}>{fillWords(e.choicesHint, { max: FORM_OPTIONS_MAX })}</span>
         </label>
       )}
-      {q.kind !== "checkbox" && q.kind !== "select" && (
-        <label className={label}>
-          <span className={labelText}>{e.placeholder}</span>
-          <input className={input} value={q.placeholder?.text ?? ""} maxLength={200} onChange={(ev) => onChange({ placeholder: ev.target.value ? withText(q.placeholder, ev.target.value) : undefined })} />
-        </label>
-      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tick label={q.kind === "checkbox" ? e.requiredTick : e.required} checked={Boolean(q.required)} onChange={(required) => onChange({ required: required || undefined })} />
         <div className="flex gap-1">
@@ -439,6 +560,125 @@ function QuestionFields({
           <Button kind="icon" aria-label={e.remove} onClick={onRemove} icon={<Trash2 aria-hidden className="size-4" />} />
         </div>
       </div>
+      <details className="rounded-panel bg-sunken px-3 py-2" open={Boolean(q.help || q.width || q.bounds || conditions.length) || undefined} data-question-more>
+        <summary className="cursor-pointer text-sm text-ink-2">{e.more}</summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <WordsField label={e.help} value={q.help} onChange={(text) => onChange({ help: text ? withText(q.help, text) : undefined })} />
+          {typed && (
+            <WordsField label={e.placeholder} value={q.placeholder} onChange={(text) => onChange({ placeholder: text ? withText(q.placeholder, text) : undefined })} />
+          )}
+          <Tick label={e.half} checked={q.width === "half"} onChange={(half) => onChange({ width: half ? "half" : undefined })} />
+          {(q.kind === "number" || q.kind === "date") && (
+            <div className="flex flex-wrap gap-3">
+              {(["min", "max"] as const).map((which) => (
+                <label key={which} className={`${label} w-40`}>
+                  <span className={labelText}>{q.kind === "date" ? (which === "min" ? e.earliest : e.latest) : which === "min" ? e.lowest : e.highest}</span>
+                  <input
+                    className={input}
+                    type="number"
+                    min={q.kind === "date" ? 0 : undefined}
+                    step={1}
+                    value={q.bounds?.[which] ?? ""}
+                    onChange={(ev) => bound(which, ev.target.value)}
+                    data-bound={which}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+          {earlier.length > 0 && (
+            <fieldset className="flex flex-col gap-2" data-conditions>
+              <legend className={`${labelText} text-sm`}>{e.conditions}</legend>
+              <span className={hint}>{e.conditionsHint}</span>
+              {conditions.map((c, i) => (
+                <ConditionRow
+                  key={i}
+                  condition={c}
+                  earlier={earlier}
+                  onChange={(next) => setConditions(conditions.map((x, n) => (n === i ? next : x)))}
+                  onRemove={() => setConditions(conditions.filter((_, n) => n !== i))}
+                />
+              ))}
+              {conditions.length < SHOW_WHEN_MAX && (
+                <Button
+                  kind="quiet"
+                  size="dense"
+                  className="self-start"
+                  icon={<Plus aria-hidden className="size-4" />}
+                  onClick={() => setConditions([...conditions, { question: earlier[earlier.length - 1].id, op: "answered" }])}
+                  data-add-condition
+                >
+                  {e.addCondition}
+                </Button>
+              )}
+            </fieldset>
+          )}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/** One condition: a question above, what is asked of its answer and, for a choice, which options. */
+function ConditionRow({ condition: c, earlier, onChange, onRemove }: { condition: ShowWhen; earlier: FormQuestion[]; onChange: (c: ShowWhen) => void; onRemove: () => void }) {
+  const e = useAdminText("forms").editor;
+  const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
+  const target = earlier.find((q) => q.id === c.question);
+  const ops = SHOW_WHEN_OPS.filter((op) => {
+    if (!target) return op === "answered";
+    if (op === "is" || op === "is_not" || op === "any_of") return OPTION_FIELD_KINDS.includes(target.kind);
+    if (op === "ticked") return target.kind === "checkbox" || target.kind === "checklist";
+    return true;
+  });
+  const choosing = c.op === "is" || c.op === "is_not" || c.op === "any_of";
+  const name = (q: FormQuestion) => q.label.text || usual[q.kind] || q.id;
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-panel bg-card p-2" data-condition>
+      <select
+        className={`${input} mt-0 w-auto max-w-56`}
+        value={c.question}
+        aria-label={e.chooseQuestion}
+        onChange={(ev) => onChange({ question: ev.target.value, op: "answered" })}
+      >
+        {earlier.map((q) => (
+          <option key={q.id} value={q.id}>
+            {name(q)}
+          </option>
+        ))}
+      </select>
+      <select
+        className={`${input} mt-0 w-auto`}
+        value={c.op}
+        aria-label={e.conditions}
+        onChange={(ev) => {
+          const op = ev.target.value as ShowWhenOp;
+          onChange({ question: c.question, op, ...(op === "is" || op === "is_not" || op === "any_of" ? { values: [0] } : {}) });
+        }}
+      >
+        {ops.map((op) => (
+          <option key={op} value={op}>
+            {e.ops[op]}
+          </option>
+        ))}
+      </select>
+      {choosing && target?.options && (
+        <span className="flex flex-wrap gap-x-3 gap-y-1">
+          {target.options.map((o, i) => (
+            <label key={i} className="flex items-center gap-1 text-sm">
+              <input
+                type={c.op === "any_of" ? "checkbox" : "radio"}
+                checked={(c.values ?? []).includes(i)}
+                onChange={(ev) => {
+                  const values = c.op === "any_of" ? (ev.target.checked ? [...(c.values ?? []), i] : (c.values ?? []).filter((v) => v !== i)) : [i];
+                  onChange({ ...c, values: [...new Set(values)].sort((a, b) => a - b) });
+                }}
+              />
+              {o.text || "…"}
+            </label>
+          ))}
+        </span>
+      )}
+      <Button kind="icon" aria-label={e.removeCondition} onClick={onRemove} icon={<Trash2 aria-hidden className="size-4" />} />
     </div>
   );
 }
@@ -476,7 +716,7 @@ function WordsField({
       {multiline ? (
         <textarea className={`${input} min-h-20`} value={value?.text ?? ""} placeholder={placeholder} maxLength={500} onChange={(ev) => onChange(ev.target.value)} />
       ) : (
-        <input className={input} value={value?.text ?? ""} placeholder={placeholder} maxLength={100} onChange={(ev) => onChange(ev.target.value)} />
+        <input className={input} value={value?.text ?? ""} placeholder={placeholder} maxLength={200} onChange={(ev) => onChange(ev.target.value)} />
       )}
       {help && <span className={hint}>{help}</span>}
     </label>

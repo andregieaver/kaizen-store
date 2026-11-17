@@ -24,7 +24,8 @@ import { tagFromForm } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { formToInbox } from "./support-forms";
 import { formIsPublished, getForm, keepResponse } from "./forms-admin";
-import { formAsBlock, formTakesAnswers } from "@/lib/form-records";
+import { formAsBlock, formTakesAnswers, type FormInbox as FormInboxChoice } from "@/lib/form-records";
+import { todayInZone } from "@/lib/questions";
 import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
@@ -47,7 +48,7 @@ const CONFIRM_DAYS = 7;
 
 type FormOwner = { storeId: string | null; store: EmailStore | null; name: string; origin: string; lang: string; timeZone: string };
 /** A form found: a page's own email form or sign-up (D93), or a form record (D705) as one, with its id in `formId` (its responses are kept). */
-type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; owner: FormOwner; formId: string | null };
+type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; owner: FormOwner; formId: string | null; inbox?: FormInboxChoice };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -95,7 +96,7 @@ export async function findForm(storeId: string | null, blockId: string): Promise
     if (!formTakesAnswers(form) || !(await formIsPublished(storeId, form.id))) return null;
     const owner = await formOwner(storeId);
     // The questions in the owner's main words: the answers are labelled in them, as a page's own form labels them (D93).
-    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id };
+    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id, inbox: form.delivery.inbox };
   };
   if (UUID.test(blockId)) {
     const found = await saved(blockId);
@@ -186,7 +187,8 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
   const o = t(owner.lang);
 
   if (block.type === "emailForm") {
-    const checked = checkMessage(block, request.values, request.consent, v, o);
+    // A date's earliest and latest day count from the owner's today (D705 F3).
+    const checked = checkMessage(block, request.values, request.consent, v, o, todayInZone(owner.timeZone));
     if (!checked.ok) return { status: 422, body: { ok: false, errors: checked.errors } };
     // A robot is told it worked, and nothing is sent.
     if (looksAutomated(request)) return { status: 200, body: { ok: true, outcome: "sent" } };
@@ -205,7 +207,7 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
     const typedName = nameField ? request.values[nameField.id] : undefined;
     const inbox = await formToInbox(
       owner.storeId,
-      { blockId: block.id, subject, path: request.path, lang: request.lang },
+      { blockId: block.id, subject, path: request.path, lang: request.lang, inbox: found.inbox },
       answers,
       { email: checked.replyTo, name: typeof typedName === "string" ? typedName : null },
     );

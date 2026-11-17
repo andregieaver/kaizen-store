@@ -60,7 +60,7 @@ test("makes a contact form from a starter, ready to place, and saves a change", 
   await p.locator("[data-form-name]").fill("E2E Contact");
   await p.locator("[data-form-add]").click();
   const added = p.locator("[data-question]").last();
-  await added.getByLabel("Question").fill("Order number");
+  await added.getByLabel("Question", { exact: true }).fill("Order number");
   await expect(p.locator("[data-form-preview]")).toContainText("Order number");
   await p.locator("[data-form-save]").click();
   await expect(p.getByRole("status")).toHaveText("Saved.");
@@ -118,4 +118,37 @@ test("a page shows the form, a visitor sends it, and the owner reads the respons
   await row.getByRole("button").first().click();
   await expect(row).toContainText("1042");
   await shoot(p, "5-form-responses");
+});
+
+test("asks a question only when an earlier answer holds (F3)", async ({ page: p, browser }) => {
+  await p.goto(`${base}/${formId}`);
+  // One choice, and a question asked only when it is Order.
+  await p.locator("[data-form-add]").click();
+  const topic = p.locator("[data-question]").last();
+  await topic.locator("select").first().selectOption("radio");
+  await topic.getByLabel("Question", { exact: true }).fill("E2E topic");
+  await topic.locator("textarea").first().fill("Order\nOther");
+  await p.locator("[data-form-add]").click();
+  const ref = p.locator("[data-question]").last();
+  await ref.getByLabel("Question", { exact: true }).fill("E2E reference");
+  await ref.locator("[data-question-more] summary").click();
+  await ref.locator("[data-add-condition]").click();
+  await ref.locator("[data-condition] select").nth(1).selectOption("is");
+  await expect(ref.locator("[data-condition]").getByLabel("Order")).toBeChecked();
+  await shoot(p, "8-conditions");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+
+  const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const site = await visitor.newPage();
+  await site.goto(`/s/${E2E_STORE}/${slug}`);
+  const form = site.locator("form").filter({ has: site.getByRole("textbox", { name: /order number/i }) });
+  await expect(form.getByRole("radio", { name: "Order" })).toBeVisible();
+  await expect(form.getByRole("textbox", { name: /E2E reference/ })).toHaveCount(0);
+  await form.getByRole("radio", { name: "Order" }).check();
+  await expect(form.getByRole("textbox", { name: /E2E reference/ })).toBeVisible();
+  await shoot(site, "9-site-conditions");
+  await form.getByRole("radio", { name: "Other" }).check();
+  await expect(form.getByRole("textbox", { name: /E2E reference/ })).toHaveCount(0);
+  await visitor.close();
 });

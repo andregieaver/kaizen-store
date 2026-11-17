@@ -12,7 +12,7 @@ import {
   type FormRecord,
 } from "./form-records";
 import { formDraftSchema } from "./form-records-schema";
-import { checkMessage } from "./forms";
+import { checkMessage, shownQuestions } from "./forms";
 import { t } from "./i18n";
 import { pageBlockSchema } from "./page-content";
 import { ruleFor } from "./retention";
@@ -130,5 +130,62 @@ describe("saving a form (D705)", () => {
 
   it("keeps responses at most as long as the retention rule allows", () => {
     expect(ruleFor("form_responses", null, "2026-11-17")).toMatchObject({ periodValue: FORM_KEEP_MONTHS_MAX, periodUnit: "months" });
+  });
+});
+
+describe("F3: more kinds of question, and questions asked on earlier answers (D705)", () => {
+  const fields = [
+    { id: "topic", kind: "radio", label: "Topic", options: ["Order", "Other"], required: true },
+    { id: "order", kind: "number", label: "Order number", min: 1000, max: 9999, required: true, showWhen: [{ question: "topic", op: "is", values: [0] }] },
+    { id: "extras", kind: "checklist", label: "Extras", options: ["Gift wrap", "Card", "Bag"] },
+    { id: "note", kind: "text", label: "Card text", showWhen: [{ question: "extras", op: "any_of", values: [1] }] },
+    { id: "when", kind: "date", label: "Delivery day", min: 1, max: 30 },
+  ] as const;
+  const block = { fields: fields as never, consent: undefined };
+  const check = (values: Record<string, string | boolean>) => checkMessage(block, values, false, t("en"), t("en"), "2026-11-17");
+
+  it("asks a question only while its conditions hold, and neither checks nor sends one that is not asked", () => {
+    expect(shownQuestions(fields as never, { topic: "1" }).map((f) => f.id)).toEqual(["topic", "extras", "when"]);
+    expect(shownQuestions(fields as never, { topic: "0", extras: "0,1" }).map((f) => f.id)).toEqual(["topic", "order", "extras", "note", "when"]);
+    // Not asked: its required number is not missing, and what was typed into it is not sent.
+    const other = check({ topic: "1", order: "abc", note: "Hi" });
+    expect(other).toMatchObject({ ok: true });
+    if (other.ok) expect(other.answers.map((a) => a.label)).toEqual(["Topic"]);
+    expect(check({ topic: "0" })).toMatchObject({ ok: false, errors: { order: expect.any(String) } });
+  });
+
+  it("checks a radio choice, a tick list, a number and a date within their bounds", () => {
+    const ok = check({ topic: "0", order: "1042", extras: "2,0", when: "2026-11-20" });
+    expect(ok).toMatchObject({ ok: true });
+    if (ok.ok) expect(ok.answers).toEqual([
+      { label: "Topic", value: "Order" },
+      { label: "Order number", value: "1042" },
+      { label: "Extras", value: "Gift wrap, Bag" },
+      { label: "Delivery day", value: "2026-11-20" },
+    ]);
+    expect(check({ topic: "0", order: "99" })).toMatchObject({ ok: false, errors: { order: t("en").form.invalidNumber } });
+    expect(check({ topic: "1", when: "2026-11-17" })).toMatchObject({ ok: false, errors: { when: t("en").form.invalidDate } });
+    expect(check({ topic: "1", extras: "0,9" })).toMatchObject({ ok: false, errors: { extras: t("en").form.chooseSome } });
+    expect(check({ topic: "5" })).toMatchObject({ ok: false, errors: { topic: t("en").form.required } });
+  });
+
+  it("refuses a condition on a question below, a choice not offered, and a tick on what cannot be ticked", () => {
+    const q = (over: Record<string, unknown>) => ({ id: "x", kind: "text", label: { text: "X", byLocale: {} }, ...over });
+    const radio = { id: "r", kind: "radio", label: { text: "R", byLocale: {} }, options: [{ text: "A", byLocale: {} }] };
+    const draft = (questions: unknown[]) => formDraftSchema.safeParse({ ...blankDraft("message", "F", []), questions });
+    expect(draft([radio, q({ showWhen: [{ question: "r", op: "is", values: [0] }] })]).success).toBe(true);
+    expect(draft([q({ showWhen: [{ question: "r", op: "is", values: [0] }] }), radio]).success).toBe(false);
+    expect(draft([radio, q({ showWhen: [{ question: "r", op: "is", values: [3] }] })]).success).toBe(false);
+    expect(draft([radio, q({ showWhen: [{ question: "r", op: "ticked" }] })]).success).toBe(false);
+    expect(draft([q({ kind: "date", bounds: { min: 5, max: 2 } })]).success).toBe(false);
+    expect(draft([q({ kind: "date", bounds: { min: -1 } })]).success).toBe(false);
+    expect(draft([q({ kind: "number", bounds: { min: -5, max: 5 } })]).success).toBe(true);
+  });
+
+  it("draws a question's help, width, bounds and conditions for the site", () => {
+    const form = { ...contact, questions: [{ id: "n", kind: "number" as const, label: { text: "Guests", byLocale: {} }, help: { text: "Up to 8", byLocale: { nb: "Opptil 8" } }, width: "half" as const, bounds: { min: 1, max: 8 } }] };
+    const block = formAsBlock(form, "nb");
+    if (block.type !== "emailForm") throw new Error("a message form");
+    expect(block.fields[0]).toEqual({ id: "n", kind: "number", label: "Guests", help: "Opptil 8", width: "half", min: 1, max: 8 });
   });
 });

@@ -2,7 +2,7 @@
 
 Written 17 November 2026. The plan for a forms editor: forms an owner creates, edits and deletes in one place and picks in the
 page builder's form component, with the answers kept, the newsletter sign-up as one kind of form, and form templates the owner can
-make and share. Steps F1 and F2 are built (17 November 2026, sections 9 and 10 say how they differ from this plan); each step below says what it builds and
+make and share. Steps F1, F2 and F3 are built (17 November 2026, sections 9 to 11 say how they differ from this plan); each step below says what it builds and
 what holds it.
 
 The owner's choices, 17 November 2026:
@@ -174,7 +174,7 @@ export is in the audit log (an export with its count only, as D295's).
 |---|---|---|
 | **F1** (built) | `forms` and `form_responses` tables and rules; the `form` component and `/api/forms` by form id; responses kept, with their personal data rules from the start (the `PERSONAL_DATA` register, export, erasure, the retention job); Website → Forms list, editor and responses, store and platform; Kaizena Flow's first templates (Contact, Quote request, Booking enquiry, Callback, Feedback, Event registration, Newsletter). | `src/db/commerce.test.ts`, `forms.test.ts`, `forms-admin.int.test.ts`, `checkout-rules.test.ts` unchanged, an e2e of make, place, send and read. |
 | **F2** (built) | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
-| **F3** | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
+| **F3** (built) | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
 | **F4** | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
 | **F5** | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
 
@@ -228,4 +228,26 @@ export is in the audit log (an export with its count only, as D295's).
   D469) copies the source's forms its content names, as they are. Only the source's own forms are copied (a page naming another store's
   form copies nothing), and responses never are. A template or marketplace part used in another store still leaves its form component
   empty (`template-content.ts`).
+
+## 11. F3 as built (17 November 2026)
+
+- **One set of answer rules.** `src/lib/questions.ts` holds what a checkout question (D357) and a form's question share: a whole number
+  within its bounds (`numberAnswer()`), a day within its earliest and latest day from today (`dateAnswer()`, `daysAfter()`, `todayInZone()`),
+  the bounds as an input takes them, and the kinds answered from options (`OPTION_FIELD_KINDS`). `checkout-rules.ts` imports them and
+  re-exports what it exported before; its tests pass untouched. It is free of zod, so the storefront's form loads it (D211).
+- **More kinds.** A form asks radio buttons (`radio`), a tick list (`checklist`, answered `0,2`), a whole number and a date beside the
+  seven of D93. Every question may have help under it, half the form's width (beside the next half), and a number's lowest and highest or a
+  date's earliest and latest day in days from today (0 to 730). The browser counts a date's days from the visitor's today, the server from
+  the owner's (`todayInZone(owner.timeZone)`).
+- **Asked on earlier answers.** `showWhen` (at most five, all must hold) names a question above: it `is`, `is_not` or is `any_of` some of
+  its options, is `answered`, or (a tick box or list) `ticked`. `shownQuestions()` in `src/lib/forms.ts` is the one rule: the site shows
+  those questions as the visitor answers, and `checkMessage()` checks and sends only those, so a question not asked is neither required nor
+  sent. Saving refuses a condition on a question below, a choice not offered and a tick on what cannot be ticked
+  (`showWhenProblems()`); removing a question drops the conditions that named it.
+- **The editor.** Kind, words, choices and required stay on each question; *More* holds its help, hint, half width, bounds and
+  *Ask only when*. *Words in other languages* (a store's other market languages) lists every word of the form with its main words beside
+  it. Under Settings, a store's message form chooses where its messages go (`delivery.inbox`: as the support settings say, email only,
+  the support inbox only, or both, `formToInbox()`); while the desk is off they are always emailed, so a form still needs an address.
+- **Not in F3.** The checkout's sensitive-answer consent (GDPR article 9): a form that asks for health or similar data needs its own
+  decision on how the consent is kept with the response.
 

@@ -11,7 +11,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 delete process.env.RESEND_API_KEY;
 
 const forms = await import("./forms");
-const { formMessageParts } = await import("./support-forms");
+const { formMessageParts, formToInbox } = await import("./support-forms");
 const support = await import("./support");
 const { systemDesk } = await import("./support-desk");
 const { sendReplyEmails } = await import("./support-email");
@@ -140,6 +140,19 @@ describe("contact form messages in the support inbox (D382)", () => {
     expect(await recipientEmails()).toBe(before);
     const [row] = await db().execute<Row>(sql`select status from commerce.form_submissions where store_id = ${storeId}::uuid order by created_at desc limit 1`);
     expect(row.status).toBe("sent");
+  });
+
+  it("follows a form's own choice over the desk's (D705 F3), and never keeps a message while the desk is off", async () => {
+    const answers = [{ label: "Melding", value: "Hei" }];
+    const contact = { email: `choice-${run}@example.com`, name: null };
+    const form = (inbox: "email" | "inbox" | "both") => ({ blockId: block, subject: "S", path, lang: "nb", inbox });
+    await setDesk("people", "inbox_and_email");
+    expect(await formToInbox(storeId, form("email"), answers, contact)).toEqual({ kept: false });
+    expect(await formToInbox(storeId, form("inbox"), answers, contact)).toMatchObject({ kept: true, emailToo: false });
+    await setDesk("people", "email");
+    expect(await formToInbox(storeId, form("both"), answers, contact)).toMatchObject({ kept: true, emailToo: true });
+    await setDesk("off", "inbox");
+    expect(await formToInbox(storeId, form("inbox"), answers, contact)).toEqual({ kept: false });
   });
 
   it("stays with people with the AI first: it starts in the queue and is never given to the AI, and its summary is never written", async () => {

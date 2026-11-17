@@ -1755,6 +1755,11 @@ export const FORM_FIELD_KINDS = {
   textarea: "Long text",
   select: "Choice from a list",
   checkbox: "Tick box",
+  // A form's own kinds (D705 F3), as the checkout's questions have them (D357).
+  radio: "One choice",
+  checklist: "Tick list",
+  number: "Number",
+  date: "Date",
 } as const;
 export type FormFieldKind = keyof typeof FORM_FIELD_KINDS;
 export const FORM_FIELDS_MAX = 20;
@@ -1764,7 +1769,17 @@ export const FORM_TEXT_MAX = 500;
 export const FORM_RECIPIENTS_MAX = 5;
 
 /** Kinds whose words must be written: the others have their usual name in the page's language. */
-export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox"];
+export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox", "radio", "checklist", "number", "date"];
+import { OPTION_FIELD_KINDS } from "./questions";
+export { OPTION_FIELD_KINDS };
+
+/**
+ * When a form's question is asked (D705 F3): an earlier question of the form `is` (or `is_not`) one of its options, is `any_of` them, is
+ * `answered`, or (a tick box or tick list) `ticked`. Options are named by their place in the list, as answers are.
+ */
+export const SHOW_WHEN_OPS = ["is", "is_not", "any_of", "answered", "ticked"] as const;
+export type ShowWhenOp = (typeof SHOW_WHEN_OPS)[number];
+export type ShowWhen = { question: string; op: ShowWhenOp; values?: number[] };
 
 /**
  * One question: its kind, the words beside it (a name's, email's, phone's
@@ -1778,6 +1793,15 @@ export type FormField = {
   required?: boolean;
   placeholder?: string;
   options?: string[];
+  /** A line of help under the question (a form's, D705 F3). */
+  help?: string;
+  /** Half the form's width, beside the next half (D705 F3). */
+  width?: "half";
+  /** A number's lowest and highest value, or a date's earliest and latest day counted from today (D705 F3). */
+  min?: number;
+  max?: number;
+  /** Asked only when every one holds (D705 F3); always asked without. */
+  showWhen?: ShowWhen[];
 };
 
 /** How a form's button looks: a button's look (D49). */
@@ -3720,7 +3744,7 @@ const emailFormBlock = z.object({
             .max(FORM_OPTIONS_MAX, `A question offers at most ${FORM_OPTIONS_MAX} choices.`)
             .optional(),
         })
-        .refine((field) => field.kind !== "select" || (field.options?.length ?? 0) > 0, {
+        .refine((field) => !OPTION_FIELD_KINDS.includes(field.kind) || (field.options?.length ?? 0) > 0, {
           message: "A choice from a list needs at least one choice.",
           path: ["options"],
         })
