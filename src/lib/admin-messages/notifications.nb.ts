@@ -927,6 +927,16 @@ export const notificationsNb: NotificationsMessages = {
       },
     },
     endpoints: {
+      phone: {
+        chosen: "{n} av {total}",
+        none: "Ingen valgt",
+        change: "Endre",
+        done: "Ferdig",
+        privacy: "Ordrer, kunder og returer har navn, e-postadresser og adresser: send dem bare til et system du har avtale med.",
+        verifySub: "For utvikleren av systemet som tar imot",
+        read: "Les",
+        close: "Lukk",
+      },
       cardTitle: "Dine egne endepunkter",
       cardDescription: "Send hendelser til din egen server eller app, hver av dem signert så den kan sjekke at de kom fra Kaizena Flow.",
       cardButton: "Administrer endepunkter",

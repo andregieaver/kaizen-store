@@ -665,6 +665,17 @@ export const notificationsEn = {
     },
     /** An owner's own endpoints (D354). */
     endpoints: {
+      /** Round 33 (D707): the add form on a phone: what to send as a row, the privacy note short, the signature a row. */
+      phone: {
+        chosen: "{n} of {total}",
+        none: "None chosen",
+        change: "Change",
+        done: "Done",
+        privacy: "Orders, customers and returns carry names, emails and addresses: send them only to a system you have an agreement with.",
+        verifySub: "For the developer of the receiving system",
+        read: "Read",
+        close: "Close",
+      },
       cardTitle: "Your own endpoints",
       cardDescription: "Send events to your own server or app, each one signed so it can check that it came from Kaizena Flow.",
       cardButton: "Manage endpoints",

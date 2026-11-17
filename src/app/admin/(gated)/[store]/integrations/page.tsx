@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { SelectNav } from "@/components/admin/select-nav";
 import { Search } from "lucide-react";
 
 import { IntegrationMark } from "@/components/admin/integration-mark";
@@ -225,12 +227,25 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
             </span>,
           ]}
         />
+        {/* Round 33 (D707): on a phone the kinds are one choice beside the search; the chips from the small breakpoint up. */}
+        <div className="grid w-full grid-cols-[minmax(0,1fr)_8.5rem] gap-2 sm:flex sm:w-auto">
         <form method="get" role="search" className="flex h-11 w-full items-center gap-2 rounded-pill border border-edge bg-card px-3.5 sm:w-72">
           {show && <input type="hidden" name="show" value={show} />}
           <Search aria-hidden className="size-4 shrink-0 text-muted" />
           <input name="q" type="search" defaultValue={q} aria-label={h.find} placeholder={h.find} className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none" />
           <button type="submit" className="sr-only">{h.search}</button>
         </form>
+        <SelectNav
+          hideLabel
+          label={h.show}
+          className="sm:hidden"
+          options={([null, ...GROUPS] as const).map((group) => ({
+            label: `${h.groups[group ?? "all"]} ${every.filter((e) => !group || e.group === group).length}`,
+            href: href(group),
+            current: group === show,
+          }))}
+        />
+        </div>
       </div>
 
       {on.length > 0 && !q && !show && (
@@ -249,7 +264,7 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
           <h2 id="start" className="text-title text-ink">{h.startTitle}</h2>
           <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-3">
             {starts.map((s, i) => (
-              <li key={s.id} className={`flex flex-col gap-2 p-4.5 ${CARD_CLASS}`}>
+              <li key={s.id} className={`flex flex-col gap-2 p-4.5 ${CARD_CLASS} ${i > 0 ? "max-sm:hidden" : ""}`}>
                 <span className="flex items-center gap-2.5">
                   <IntegrationMark id={s.id} />
                   <span className="text-body text-ink">{s.name}</span>
@@ -274,7 +289,7 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
       <section aria-labelledby="every" className={`flex flex-col gap-4 px-6 py-5 ${CARD_CLASS}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="every" className="text-title text-ink">{h.allTitle}</h2>
-          <nav aria-label={h.show} className="flex flex-wrap gap-1.5">
+          <nav aria-label={h.show} className="flex flex-wrap gap-1.5 max-sm:hidden">
             {([null, ...GROUPS] as const).map((group) => {
               const count = every.filter((e) => !group || e.group === group).length;
               const current = group === show;
@@ -336,7 +351,8 @@ export default async function IntegrationsPage({ params, searchParams }: PagePro
 /** A service as a short row: its mark, name and state, what it does in a line, and its one action as a link. */
 function ServiceRow({ entry: e }: { entry: Entry }) {
   return (
-    <li className="flex min-h-16 items-center gap-3 border-b border-line py-2">
+    // Round 33 (D707): on a phone one line, the mark, the name and the action; what it does is on the service's own page.
+    <li className="flex min-h-16 items-center gap-3 border-b border-line py-2 max-sm:min-h-12">
       <span className="[&>span]:size-8 [&>span]:rounded-md [&>span]:text-sm">
         <IntegrationMark id={e.id} />
       </span>
@@ -345,7 +361,7 @@ function ServiceRow({ entry: e }: { entry: Entry }) {
           {e.name}
           {e.badge && <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${e.badge.tone}`}>{e.badge.text}</span>}
         </h3>
-        <span className="line-clamp-2 text-caption text-muted">{e.summary}</span>
+        <span className="line-clamp-2 text-caption text-muted max-sm:hidden">{e.summary}</span>
       </span>
       {e.href ? (
         <Link href={e.href} className="shrink-0 text-body text-brand-text hover:underline">

@@ -181,6 +181,12 @@ export const websiteEn = {
       changeNote: "Change opens a small window: keep the standard, choose one of your pages, or start a new page that looks like the standard.",
       close: "Close",
       products: "Your products",
+      /** Round 33 (D707): the list on a phone: ten pages, then all; the shop's own pages one row. */
+      phone: {
+        showAll: "Show all {n}",
+        ownSub: "{own} your own · {standard} standard",
+        allStandard: "All standard",
+      },
     },
     siteName: "Your store",
     roles: {

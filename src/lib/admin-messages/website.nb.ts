@@ -169,6 +169,11 @@ export const websiteNb: WebsiteMessages = {
       changeNote: "Endre åpner et lite vindu: behold standarden, velg en av sidene dine, eller start en ny side som ser ut som standarden.",
       close: "Lukk",
       products: "Produktene dine",
+      phone: {
+        showAll: "Vis alle {n}",
+        ownSub: "{own} egne · {standard} standard",
+        allStandard: "Alle er standard",
+      },
     },
     siteName: "Butikken din",
     roles: {

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
+import { PhoneRow } from "./phone-row";
 import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
 
 type Answer = { ok: true; secret?: string; message?: string } | { ok: false; message: string };
@@ -65,6 +66,13 @@ function SecretOnce({ secret, onDone }: { secret: string; onDone: () => void }) 
 
 function EndpointFields({ topics, chosen, name = "", hint }: { topics: Topic[]; chosen: ReadonlySet<string>; name?: string; hint?: string }) {
   const w = useAdminText("notifications").integrations.endpoints;
+  // Round 33 (D707): on a phone the events are one row saying how many are chosen and which, opened to the list.
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(topics.filter((topic) => chosen.has(topic.id)).map((topic) => topic.id)));
+  const names = topics.filter((topic) => picked.has(topic.id)).map((topic) => topic.label);
+  const sub =
+    names.length === 0
+      ? w.phone.none
+      : `${fillWords(w.phone.chosen, { n: names.length, total: topics.length })}: ${names.slice(0, 4).join(", ")}${names.length > 4 ? " …" : ""}`;
   return (
     <>
       <label className="flex flex-col gap-1 text-sm font-medium">
@@ -76,7 +84,21 @@ function EndpointFields({ topics, chosen, name = "", hint }: { topics: Topic[]; 
         <input name="url" type="url" inputMode="url" autoComplete="off" spellCheck={false} required={!hint} placeholder={HTTPS} className="min-h-10 rounded-md border border-line bg-card px-3 font-mono text-sm font-normal" />
         <span className="font-normal text-muted">{hint ? fillWords(w.keepUrl, { hint }) : w.urlHint}</span>
       </label>
-      <fieldset className="flex flex-col gap-2">
+      <div className="max-sm:border-t max-sm:border-line">
+      <PhoneRow inset last title={w.topics} sub={sub} change={w.phone.change} done={w.phone.done}>
+      <fieldset
+        className="flex flex-col gap-2"
+        onChange={(event) => {
+          const box = event.target;
+          if (!(box instanceof HTMLInputElement) || box.name !== "topics") return;
+          setPicked((now) => {
+            const next = new Set(now);
+            if (box.checked) next.add(box.value);
+            else next.delete(box.value);
+            return next;
+          });
+        }}
+      >
         <legend className="mb-1 text-sm font-medium">{w.topics}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {topics.map((topic) => (
@@ -90,6 +112,8 @@ function EndpointFields({ topics, chosen, name = "", hint }: { topics: Topic[]; 
           ))}
         </div>
       </fieldset>
+      </PhoneRow>
+      </div>
     </>
   );
 }

@@ -7,6 +7,7 @@ import { DemoHomePages } from "@/components/admin/demo-home-pages";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PageCards } from "@/components/admin/page-cards";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
@@ -259,7 +260,17 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         />
       )}
       {/* The shop's own pages (D112, D113; D615): one row each, its page or Standard, and Change opening a small window with the choice. */}
+      {/* Round 33 (D707): on a phone the shop's own pages are one row saying how many are your own; from the small breakpoint up as before. */}
       {type === "page" && (
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow
+          flat
+          last
+          title={w.cards.own}
+          sub={ownCount === 0 ? w.cards.phone.allStandard : fillWords(w.cards.phone.ownSub, { own: ownCount, standard: ownRoles.length + (featureOn(store, "shop") ? 1 : 0) - ownCount })}
+          change={w.cards.change}
+          done={w.cards.close}
+        >
         <section aria-labelledby="special-pages" className={`flex flex-col gap-3 px-6 py-5 ${CARD_CLASS}`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="special-pages" className="text-title text-ink">{w.cards.own}</h2>
@@ -304,6 +315,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           </ul>
           <p className="text-sm text-muted">{w.cards.changeNote}</p>
         </section>
+        </PhoneRow>
+        </div>
       )}
     </div>
     </AdminTextScope>

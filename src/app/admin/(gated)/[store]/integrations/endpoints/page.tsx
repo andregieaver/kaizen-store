@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } from "@/components/admin/webhook-endpoints";
 import { fillWords } from "@/lib/admin-fill";
@@ -83,7 +84,10 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
         </div>
         {owner ? (
           <Card title={w.add} description={w.addHint}>
-            <p className="mb-4 text-sm text-muted">{w.privacy}</p>
+            <p className="mb-4 text-sm text-muted">
+              <span className="max-sm:hidden">{w.privacy}</span>
+              <span className="sm:hidden">{w.phone.privacy}</span>
+            </p>
             <AddEndpoint topics={topics} defaults={DEFAULT_EVENTS} add={actions.add} />
           </Card>
         ) : (
@@ -94,12 +98,17 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
         ) : (
           views.map((endpoint) => <EndpointCard key={endpoint.id} endpoint={endpoint} topics={topics} owner={owner} actions={actions} />)
         )}
-        <Card title={w.verifyTitle} compact>
-          <div className="flex flex-col gap-2 text-sm text-ink-2">
-            <p>{fillWords(w.verify, { id: ID_HEADER, timestamp: TIMESTAMP_HEADER, signature: SIGNATURE_HEADER })}</p>
-            <p>{w.payload}</p>
-          </div>
-        </Card>
+        {/* Round 33 (D707): how to check the signature is for a developer: on a phone one row at the end. */}
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow flat last title={w.verifyTitle} sub={w.phone.verifySub} change={w.phone.read} done={w.phone.close}>
+            <Card title={w.verifyTitle} compact>
+              <div className="flex flex-col gap-2 text-sm text-ink-2">
+                <p>{fillWords(w.verify, { id: ID_HEADER, timestamp: TIMESTAMP_HEADER, signature: SIGNATURE_HEADER })}</p>
+                <p>{w.payload}</p>
+              </div>
+            </Card>
+          </PhoneRow>
+        </div>
       </div>
     </AdminTextScope>
   );
