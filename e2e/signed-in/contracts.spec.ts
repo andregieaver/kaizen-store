@@ -197,3 +197,28 @@ test("an owner sends a contract and signs for the store, and the customer signs 
   await page.goto(`/admin/${E2E_STORE}/deals/${dealId}`);
   await expect(page.getByText("Won when its contract was signed.")).toBeVisible();
 });
+
+test("an owner adds a contract template from the deals board, changes its words and days, and puts it away", async ({ page }) => {
+  await deals(page, true);
+  await page.goto(`/admin/${E2E_STORE}/deals`);
+  await page.getByRole("link", { name: "Contract templates" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Contract templates" })).toBeVisible();
+  await page.getByLabel("Language", { exact: true }).selectOption("en");
+  await page.getByRole("button", { name: "New template" }).click();
+
+  await expect(page.getByLabel("Name")).toHaveValue(/^Standard agreement/, { timeout: 30_000 });
+  await page.getByLabel("Name").fill(`Service agreement ${run}`);
+  await page.getByLabel("Days to sign").fill("14");
+  await page.getByRole("region", { name: "What it says" }).getByLabel("Clause", { exact: true }).nth(1).fill(`Paid within 20 days ${run}.`);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("status").getByText("Saved.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("article.kc").getByText(`Paid within 20 days ${run}.`)).toBeVisible();
+  await expect(page.getByText("Version 2")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("contract-template.png"), fullPage: true });
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Put the template away" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Contract templates" })).toBeVisible({ timeout: 30_000 });
+  // The list no longer offers it (the page left behind stays in the document, hidden, so only what a person sees is counted).
+  await expect(page.getByRole("link", { name: new RegExp(`Service agreement ${run}`) })).toHaveCount(0);
+});

@@ -19,7 +19,7 @@ import { formatPriceInput } from "@/lib/product-input";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { activitiesOf } from "@/server/activities";
-import { contractsOfDeal } from "@/server/contracts";
+import { contractsOfDeal, listTemplates } from "@/server/contracts";
 import { filedEmailsOf, filingAddressOf } from "@/server/email-filing";
 import { FiledEmailsCard } from "@/components/admin/deals/filed-emails-card";
 import { getDeal, linkCandidates, mayLink, pipelinesOf, type DealLink, type DealMove } from "@/server/deals";
@@ -61,7 +61,7 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   // The mail filed on the deal (S5, D476), and where to send more.
   const [emails, filing] = await Promise.all([filedEmailsOf(store.id, { dealId: deal.id }), canChange ? filingAddressOf(store.id) : Promise.resolve(null)]);
   // The deal's contracts (D695): made from the store's template, filled in from the deal.
-  const contracts = await contractsOfDeal(member, deal.id);
+  const [contracts, templates] = await Promise.all([contractsOfDeal(member, deal.id), canChange ? listTemplates(store.id) : Promise.resolve([])]);
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
   const team = staff.filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > new Date().toISOString())).map((s) => ({ id: s.accountId, name: s.name || s.email }));
@@ -254,7 +254,20 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           </List>
         )}
         {canChange && deal.status === "open" && (
-          <ActionForm action={newContractAction.bind(null, store.slug, deal.id)} className="mt-4">
+          <ActionForm action={newContractAction.bind(null, store.slug, deal.id)} className="mt-4 flex flex-wrap items-end gap-3">
+            {/* With one template (Homer's) there is nothing to choose; Lisa's several are offered here. */}
+            {templates.length > 1 && (
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                {w.templates.choose}
+                <select name="template" defaultValue={templates[0].id} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <SubmitButton variant="secondary">{w.contracts.new}</SubmitButton>
           </ActionForm>
         )}

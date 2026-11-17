@@ -124,8 +124,11 @@ the store's signer from the team and adds the customer's), beside the preview fi
 view on a wide screen; a sent one's signers, its PDF (`…/pdf`, read from storage, no Chromium), a new version and a cancel. The deal's
 history and its won line say a contract moved or won it. Words in English and Norwegian (`deals.*.ts`, `contracts`; «kontrakt» in
 Norwegian, as a deal there is «avtale»). Actions through `storeAction()` (`contract-actions.ts`). `e2e/signed-in/contracts.spec.ts`.
-*Left for step 2's second part:* the store's templates page for Lisa (a template's words and how long it may be signed). The Send button
-comes with the signing page (step 3), so nothing in the admin sends a contract nobody can sign.
+*Step 2's second part (17 November 2026):* the store's templates (`/admin/{store}/deals/contract-templates`, a quiet link beside
+Pipelines on the board, Lisa's depth): a new one from the starter in Norwegian or English, named so it is not taken; its name, language,
+words (`BlocksEditor`, shared with a draft), days to sign and days between reminders, beside a preview with each field shown by its name;
+its version rises when its words change; put away, never deleted, the last one kept. *New contract* offers a choice once there is more than
+one template, and a contract takes its template's reminder days. `contracts.int.test.ts` (templates), `e2e/signed-in/contracts.spec.ts`.
 
 *Step 3, signing (17 November 2026), as built:* the owner chose Kaizena Flow's own self-made seal for now (a trusted provider's
 certificate with BankID, step 5). **The database** (`20261117003018_contract_signing`, `20261117003025_contract_signing_rules`,

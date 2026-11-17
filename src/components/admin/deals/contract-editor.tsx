@@ -43,23 +43,6 @@ export function ContractEditor({
   const [answer, setAnswer] = useState<{ ok: boolean; messages: string[] } | null>(null);
   const [pending, start] = useTransition();
 
-  const change = (index: number, next: ContractBlock) => setBlocks((all) => all.map((b, i) => (i === index ? next : b)));
-  const move = (index: number, by: -1 | 1) =>
-    setBlocks((all) => {
-      const to = index + by;
-      if (to < 0 || to >= all.length) return all;
-      const copy = [...all];
-      [copy[index], copy[to]] = [copy[to], copy[index]];
-      return copy;
-    });
-  const remove = (index: number) => setBlocks((all) => all.filter((_, i) => i !== index));
-  const add = (block: ContractBlock) =>
-    setBlocks((all) => {
-      // New words go before the signatures, where a contract's text ends.
-      const at = all.findIndex((b) => b.type === "signatures");
-      return at < 0 ? [...all, block] : [...all.slice(0, at), block, ...all.slice(at)];
-    });
-
   const storeSigner = signers.find((s) => s.role === "store");
   const setSigner = (index: number, patch: Partial<EditorSigner>) => setSigners((all) => all.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   const chooseStoreSigner = (accountId: string) => {
@@ -83,80 +66,7 @@ export function ContractEditor({
         <input className={inputClass} value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} />
       </label>
 
-      <section className="flex flex-col gap-3" aria-label={w.words}>
-        <div>
-          <h3 className="text-body-strong text-ink">{w.words}</h3>
-          <p className="text-sm text-muted">{w.wordsHint}</p>
-          <details className="mt-1 text-sm">
-            <summary className="cursor-pointer text-ink-2">{w.fieldsList}</summary>
-            <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-              {CONTRACT_FIELDS.map((key) => (
-                <li key={key}>
-                  <code className="rounded bg-sunken px-1">{`{${key}}`}</code> <span className="text-muted">{w.fields[key]}</span>
-                </li>
-              ))}
-            </ul>
-          </details>
-        </div>
-
-        <ol className="flex flex-col gap-3">
-          {blocks.map((block, index) => (
-            <li key={index} className="rounded-panel border border-line bg-card p-3">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-eyebrow text-muted">{w.kinds[block.type]}</span>
-                <span className="flex gap-1">
-                  <Button kind="quiet" size="dense" onClick={() => move(index, -1)} disabled={index === 0} aria-label={w.up}>
-                    ↑
-                  </Button>
-                  <Button kind="quiet" size="dense" onClick={() => move(index, 1)} disabled={index === blocks.length - 1} aria-label={w.down}>
-                    ↓
-                  </Button>
-                  <Button kind="quiet" size="dense" onClick={() => remove(index)}>
-                    {w.remove}
-                  </Button>
-                </span>
-              </div>
-              {block.type === "heading" && (
-                <input className={inputClass} aria-label={w.kinds.heading} value={block.text} maxLength={200} onChange={(e) => change(index, { ...block, text: e.target.value })} />
-              )}
-              {block.type === "paragraph" && (
-                <textarea className={areaClass} aria-label={w.kinds.paragraph} value={block.text} onChange={(e) => change(index, { ...block, text: e.target.value })} />
-              )}
-              {block.type === "clause" && (
-                <div className="flex flex-col gap-2">
-                  <input
-                    className={inputClass}
-                    aria-label={w.clauseTitle}
-                    value={block.title}
-                    maxLength={200}
-                    onChange={(e) => change(index, { ...block, title: e.target.value })}
-                  />
-                  <textarea className={areaClass} aria-label={w.kinds.clause} value={block.text} onChange={(e) => change(index, { ...block, text: e.target.value })} />
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    {block.optional && (
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={block.included} onChange={(e) => change(index, { ...block, included: e.target.checked })} />
-                        {w.included}
-                      </label>
-                    )}
-                    <label className="flex items-center gap-2 text-muted">
-                      <input type="checkbox" checked={block.optional} onChange={(e) => change(index, { ...block, optional: e.target.checked, included: true })} />
-                      {w.optional}
-                    </label>
-                  </div>
-                </div>
-              )}
-              {block.type === "quote_lines" && <p className="text-sm text-muted">{w.quoteLinesNote}</p>}
-              {block.type === "signatures" && <p className="text-sm text-muted">{w.signaturesNote}</p>}
-            </li>
-          ))}
-        </ol>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => add({ type: "paragraph", text: "" })}>{w.addText}</Button>
-          <Button onClick={() => add({ type: "clause", id: nextClauseId(blocks), title: "", text: "", optional: false, included: true })}>{w.addClause}</Button>
-          {!blocks.some((b) => b.type === "signatures") && <Button onClick={() => setBlocks((all) => [...all, { type: "signatures" }])}>{w.kinds.signatures}</Button>}
-        </div>
-      </section>
+      <BlocksEditor blocks={blocks} setBlocks={setBlocks} words={w} />
 
       <section className="flex flex-col gap-3" aria-label={w.signers}>
         <div>
@@ -218,5 +128,110 @@ export function ContractEditor({
         </p>
       </div>
     </div>
+  );
+}
+
+/** A contract's or a template's words as blocks (D695): changed in place, added, moved, removed, an optional clause left out. */
+export function BlocksEditor({
+  blocks,
+  setBlocks,
+  words: w,
+}: {
+  blocks: ContractBlock[];
+  setBlocks: (update: (all: ContractBlock[]) => ContractBlock[]) => void;
+  words: Words;
+}) {
+  const change = (index: number, next: ContractBlock) => setBlocks((all) => all.map((b, i) => (i === index ? next : b)));
+  const move = (index: number, by: -1 | 1) =>
+    setBlocks((all) => {
+      const to = index + by;
+      if (to < 0 || to >= all.length) return all;
+      const copy = [...all];
+      [copy[index], copy[to]] = [copy[to], copy[index]];
+      return copy;
+    });
+  const remove = (index: number) => setBlocks((all) => all.filter((_, i) => i !== index));
+  const add = (block: ContractBlock) =>
+    setBlocks((all) => {
+      // New words go before the signatures, where a contract's text ends.
+      const at = all.findIndex((b) => b.type === "signatures");
+      return at < 0 ? [...all, block] : [...all.slice(0, at), block, ...all.slice(at)];
+    });
+
+  return (
+    <section className="flex flex-col gap-3" aria-label={w.words}>
+      <div>
+        <h3 className="text-body-strong text-ink">{w.words}</h3>
+        <p className="text-sm text-muted">{w.wordsHint}</p>
+        <details className="mt-1 text-sm">
+          <summary className="cursor-pointer text-ink-2">{w.fieldsList}</summary>
+          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+            {CONTRACT_FIELDS.map((key) => (
+              <li key={key}>
+                <code className="rounded bg-sunken px-1">{`{${key}}`}</code> <span className="text-muted">{w.fields[key]}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+
+      <ol className="flex flex-col gap-3">
+        {blocks.map((block, index) => (
+          <li key={index} className="rounded-panel border border-line bg-card p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-eyebrow text-muted">{w.kinds[block.type]}</span>
+              <span className="flex gap-1">
+                <Button kind="quiet" size="dense" onClick={() => move(index, -1)} disabled={index === 0} aria-label={w.up}>
+                  ↑
+                </Button>
+                <Button kind="quiet" size="dense" onClick={() => move(index, 1)} disabled={index === blocks.length - 1} aria-label={w.down}>
+                  ↓
+                </Button>
+                <Button kind="quiet" size="dense" onClick={() => remove(index)}>
+                  {w.remove}
+                </Button>
+              </span>
+            </div>
+            {block.type === "heading" && (
+              <input className={inputClass} aria-label={w.kinds.heading} value={block.text} maxLength={200} onChange={(e) => change(index, { ...block, text: e.target.value })} />
+            )}
+            {block.type === "paragraph" && (
+              <textarea className={areaClass} aria-label={w.kinds.paragraph} value={block.text} onChange={(e) => change(index, { ...block, text: e.target.value })} />
+            )}
+            {block.type === "clause" && (
+              <div className="flex flex-col gap-2">
+                <input
+                  className={inputClass}
+                  aria-label={w.clauseTitle}
+                  value={block.title}
+                  maxLength={200}
+                  onChange={(e) => change(index, { ...block, title: e.target.value })}
+                />
+                <textarea className={areaClass} aria-label={w.kinds.clause} value={block.text} onChange={(e) => change(index, { ...block, text: e.target.value })} />
+                <div className="flex flex-wrap gap-4 text-sm">
+                  {block.optional && (
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={block.included} onChange={(e) => change(index, { ...block, included: e.target.checked })} />
+                      {w.included}
+                    </label>
+                  )}
+                  <label className="flex items-center gap-2 text-muted">
+                    <input type="checkbox" checked={block.optional} onChange={(e) => change(index, { ...block, optional: e.target.checked, included: true })} />
+                    {w.optional}
+                  </label>
+                </div>
+              </div>
+            )}
+            {block.type === "quote_lines" && <p className="text-sm text-muted">{w.quoteLinesNote}</p>}
+            {block.type === "signatures" && <p className="text-sm text-muted">{w.signaturesNote}</p>}
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => add({ type: "paragraph", text: "" })}>{w.addText}</Button>
+        <Button onClick={() => add({ type: "clause", id: nextClauseId(blocks), title: "", text: "", optional: false, included: true })}>{w.addClause}</Button>
+        {!blocks.some((b) => b.type === "signatures") && <Button onClick={() => setBlocks((all) => [...all, { type: "signatures" }])}>{w.kinds.signatures}</Button>}
+      </div>
+    </section>
   );
 }

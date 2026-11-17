@@ -33,13 +33,14 @@ const offFor = (member: Membership): string | null =>
 const problemText = (w: DealsMessages["contracts"], problem: ContractProblem): string => w.problems[problem];
 
 /** A new contract on the deal from the store's template; its page next. */
-export async function newContractAction(storeSlug: string, dealId: string): Promise<FormState> {
+export async function newContractAction(storeSlug: string, dealId: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "customers:write", action: "contract.create", answer: failed }, async (member) => {
     const off = offFor(member);
     if (off) return failed(off);
     const w = wordsOf(member);
     if (!uuid.safeParse(dealId).success) return failed(w.problems.not_found);
-    const made = await createContract(member, dealId);
+    const chosen = String(form.get("template") ?? "");
+    const made = await createContract(member, dealId, uuid.safeParse(chosen).success ? chosen : null);
     if (!made.ok) return failed(problemText(w, made.problem));
     redirect(`/admin/${member.store.slug}/deals/${dealId}/contracts/${made.id}`);
   });

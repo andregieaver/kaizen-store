@@ -62,7 +62,18 @@ export const contractPdfPath = (storeId: string, contractId: string, signed = fa
 export type ContractStatus = "draft" | "sent" | "signed" | "declined" | "expired" | "cancelled";
 export type SignerRole = "store" | "customer" | "other";
 
-export type ContractTemplate = { id: string; name: string; language: string; blocks: ContractBlock[]; version: number; expiresDays: number };
+export type ContractTemplate = {
+  id: string;
+  name: string;
+  language: string;
+  blocks: ContractBlock[];
+  version: number;
+  expiresDays: number;
+  /** Days between reminders to a signer who has not signed, or null for the default (three). */
+  reminderDays: number | null;
+  /** Contracts made from it. */
+  used: number;
+};
 
 export type ContractSigner = {
   id: string;
@@ -102,18 +113,38 @@ export type SendResult = ContractResult | { ok: false; problem: "unfilled"; fill
 // Templates
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-const templateRow = z.object({ id: col.uuid, name: col.text, language: col.text, blocks: z.unknown(), version: col.int, expires_days: col.int });
+const templateRow = z.object({
+  id: col.uuid,
+  name: col.text,
+  language: col.text,
+  blocks: z.unknown(),
+  version: col.int,
+  expires_days: col.int,
+  reminder_days: col.int.nullable(),
+  used: col.int,
+});
 const toTemplate = (r: z.output<typeof templateRow>): ContractTemplate => {
   const parsed = parseBlocks(r.blocks);
-  return { id: r.id, name: r.name, language: r.language, blocks: parsed.ok ? parsed.blocks : [], version: r.version, expiresDays: r.expires_days };
+  return {
+    id: r.id,
+    name: r.name,
+    language: r.language,
+    blocks: parsed.ok ? parsed.blocks : [],
+    version: r.version,
+    expiresDays: r.expires_days,
+    reminderDays: r.reminder_days,
+    used: r.used,
+  };
 };
 
 /** The store's templates in use, oldest first. */
 export async function listTemplates(storeId: string): Promise<ContractTemplate[]> {
   const rows = await typedRows(
     templateRow,
-    sql`select id, name, language, blocks, version, expires_days from commerce.contract_templates
-        where ${owned(storeId)} and archived_at is null order by created_at, id`,
+    sql`select t.id, t.name, t.language, t.blocks, t.version, t.expires_days, t.reminder_days,
+          (select count(*)::int from commerce.contracts c where c.store_id = t.store_id and c.template_id = t.id) as used
+        from commerce.contract_templates t
+        where ${owned(storeId, sql`t.store_id`)} and t.archived_at is null order by t.created_at, t.id`,
   );
   return rows.map(toTemplate);
 }
@@ -136,6 +167,87 @@ export async function ensureTemplate(store: Store, accountId: string | null): Pr
     `);
   });
   return listTemplates(store.id);
+}
+
+/** One of the store's templates in use (`customers:read`), or null. */
+export async function getTemplate(member: Membership, templateId: string): Promise<ContractTemplate | null> {
+  if (!memberCan(member, READ)) return null;
+  return (await listTemplates(member.store.id)).find((t) => t.id === templateId) ?? null;
+}
+
+export type TemplateProblem = "forbidden" | "not_found" | "name" | "taken" | "language" | "blocks" | "days" | "last";
+export type TemplateResult = { ok: true; id: string } | { ok: false; problem: TemplateProblem; blocks?: BlocksProblem[] };
+
+const templateInput = z.object({
+  name: z.string().trim().min(1).max(80),
+  language: z.enum(["nb", "en"]),
+  expiresDays: z.coerce.number().int().min(1).max(365),
+  reminderDays: z.union([z.literal(""), z.null(), z.coerce.number().int().min(1).max(60)]).transform((v) => (v === "" ? null : v)),
+});
+
+const nameTaken = (error: unknown) => error instanceof Error && /contract_templates_name_key/.test(`${error.message} ${String((error as { cause?: unknown }).cause ?? "")}`);
+
+/** A new template (`customers:write`): the starter in the language asked, named so no other template in use has its name. */
+export async function createTemplate(member: Membership, language: "nb" | "en"): Promise<TemplateResult> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const starter = starterTemplate(language === "nb" ? "nb-NO" : "en-GB");
+  const names = new Set((await listTemplates(member.store.id)).map((t) => t.name.toLowerCase()));
+  let name = starter.name;
+  for (let n = 2; names.has(name.toLowerCase()); n += 1) name = `${starter.name} ${n}`;
+  const made = await typedRows(
+    ID,
+    sql`insert into commerce.contract_templates (store_id, name, language, blocks, created_by)
+        values (${member.store.id}::uuid, ${name}, ${starter.language}, ${JSON.stringify(starter.blocks)}::jsonb, ${member.account.id}::uuid) returning id`,
+  );
+  await audit(member.account.id, member.store.id, "contract.template_created", { template: made[0].id }, { area: "customers" });
+  return { ok: true, id: made[0].id };
+}
+
+/**
+ * A template's name, language, words, days to sign and reminder days changed (`customers:write`). Its version rises when its words do;
+ * contracts made from it keep the version they were made from.
+ */
+export async function saveTemplate(
+  member: Membership,
+  templateId: string,
+  raw: { name: unknown; language: unknown; blocks: unknown; expiresDays: unknown; reminderDays: unknown },
+): Promise<TemplateResult> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const input = templateInput.safeParse(raw);
+  if (!input.success) {
+    const at = String(input.error.issues[0]?.path[0] ?? "");
+    return { ok: false, problem: at === "name" ? "name" : at === "language" ? "language" : "days" };
+  }
+  const blocks = parseBlocks(raw.blocks);
+  if (!blocks.ok) return { ok: false, problem: "blocks", blocks: blocks.problems };
+  try {
+    const set = await typedRows(
+      ID,
+      sql`update commerce.contract_templates set name = ${input.data.name}, language = ${input.data.language}, blocks = ${JSON.stringify(blocks.blocks)}::jsonb,
+            expires_days = ${input.data.expiresDays}, reminder_days = ${input.data.reminderDays}, updated_at = now()
+          where store_id = ${member.store.id}::uuid and id = ${templateId}::uuid and archived_at is null returning id`,
+    );
+    if (set.length === 0) return { ok: false, problem: "not_found" };
+  } catch (error) {
+    if (nameTaken(error)) return { ok: false, problem: "taken" };
+    throw error;
+  }
+  await audit(member.account.id, member.store.id, "contract.template_saved", { template: templateId }, { area: "customers" });
+  return { ok: true, id: templateId };
+}
+
+/** A template put away (`customers:write`): kept for the contracts made from it, never offered again; the last one in use stays. */
+export async function archiveTemplate(member: Membership, templateId: string): Promise<TemplateResult> {
+  if (!memberCan(member, WRITE)) return { ok: false, problem: "forbidden" };
+  const all = await listTemplates(member.store.id);
+  if (!all.some((t) => t.id === templateId)) return { ok: false, problem: "not_found" };
+  if (all.length <= 1) return { ok: false, problem: "last" };
+  await db().execute(sql`
+    update commerce.contract_templates set archived_at = now(), updated_at = now()
+    where store_id = ${member.store.id}::uuid and id = ${templateId}::uuid and archived_at is null
+  `);
+  await audit(member.account.id, member.store.id, "contract.template_archived", { template: templateId }, { area: "customers" });
+  return { ok: true, id: templateId };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -277,9 +389,9 @@ export async function createContract(member: Membership, dealId: string, templat
 
   const id = await db().transaction(async (tx) => {
     const made = await typedRows(ID, sql`
-      insert into commerce.contracts (store_id, deal_id, template_id, title, language, blocks, created_by, updated_by)
+      insert into commerce.contracts (store_id, deal_id, template_id, title, language, blocks, reminder_days, created_by, updated_by)
       values (${member.store.id}::uuid, ${dealId}::uuid, ${template.id}::uuid, ${deal.title}, ${template.language},
-        ${JSON.stringify(draftBlocks(template.blocks))}::jsonb, ${member.account.id}::uuid, ${member.account.id}::uuid)
+        ${JSON.stringify(draftBlocks(template.blocks))}::jsonb, ${template.reminderDays}, ${member.account.id}::uuid, ${member.account.id}::uuid)
       returning id
     `, tx);
     const contractId = made[0].id;
@@ -571,8 +683,8 @@ export async function newVersion(member: Membership, contractId: string): Promis
   if (!["sent", "declined", "expired"].includes(contract.status)) return { ok: false, problem: "not_draft" };
   const id = await db().transaction(async (tx) => {
     const made = await typedRows(ID, sql`
-      insert into commerce.contracts (store_id, deal_id, template_id, title, language, blocks, replaces_id, created_by, updated_by)
-      select store_id, deal_id, template_id, title, language, blocks, id, ${member.account.id}::uuid, ${member.account.id}::uuid
+      insert into commerce.contracts (store_id, deal_id, template_id, title, language, blocks, reminder_days, replaces_id, created_by, updated_by)
+      select store_id, deal_id, template_id, title, language, blocks, reminder_days, id, ${member.account.id}::uuid, ${member.account.id}::uuid
       from commerce.contracts where store_id = ${member.store.id}::uuid and id = ${contractId}::uuid
       returning id
     `, tx);

@@ -265,3 +265,43 @@ describe("erasure", () => {
     expect(storage.files.size).toBe(0);
   }, 120_000);
 });
+
+describe("templates (step 2)", () => {
+  it("are added with a name of their own, saved with their words checked, versioned by their words, and the last one stays", async () => {
+    const fresh = await newStore("contracts-templates");
+    const [first] = await contracts.ensureTemplate(fresh.member.store, fresh.accountId);
+    const added = await contracts.createTemplate(fresh.member, "en");
+    if (!added.ok) throw new Error(added.problem);
+    const again = await contracts.createTemplate(fresh.member, "en");
+    if (!again.ok) throw new Error(again.problem);
+    const names = (await contracts.listTemplates(fresh.storeId)).map((t) => t.name);
+    expect(names).toContain("Standard agreement 2");
+
+    const t = (await contracts.getTemplate(fresh.member, added.id))!;
+    const base = { name: t.name, language: "en", blocks: t.blocks, expiresDays: "14", reminderDays: "" };
+    expect(await contracts.saveTemplate(fresh.member, added.id, { ...base, name: first.name })).toEqual({ ok: false, problem: "taken" });
+    expect(await contracts.saveTemplate(fresh.member, added.id, { ...base, expiresDays: "0" })).toEqual({ ok: false, problem: "days" });
+    expect(await contracts.saveTemplate(fresh.member, added.id, { ...base, blocks: [{ type: "paragraph", text: "{deal.secret}" }] })).toMatchObject({ ok: false, problem: "blocks" });
+    expect(await contracts.saveTemplate(fresh.member, added.id, { ...base, reminderDays: "5" })).toEqual({ ok: true, id: added.id });
+    expect((await contracts.getTemplate(fresh.member, added.id))).toMatchObject({ version: 1, expiresDays: 14, reminderDays: 5 });
+    await contracts.saveTemplate(fresh.member, added.id, { ...base, reminderDays: "5", blocks: [...t.blocks, { type: "paragraph", text: "More words." }] });
+    expect((await contracts.getTemplate(fresh.member, added.id))?.version).toBe(2);
+
+    // A contract made from it takes its words and its reminder days.
+    const [pipeline] = await deals.ensurePipeline(fresh.storeId, { name: "Sales", stages: [{ name: "New" }] });
+    const customer = await staff.createCustomer(fresh.member, { email: "tpl@example.com", name: "Tia" });
+    if (!customer.ok) throw new Error("customer");
+    const deal = await deals.createDeal(fresh.member, { title: "Templated", customerId: customer.id, pipelineId: pipeline.id, stageId: pipeline.stages[0].id });
+    if (!deal.ok) throw new Error("deal");
+    const made = await contracts.createContract(fresh.member, deal.id, added.id);
+    if (!made.ok) throw new Error(made.problem);
+    const [row] = await db().execute<Row>(sql`select language, reminder_days, template_version from commerce.contracts where id = ${made.id}::uuid`);
+    expect(row).toEqual({ language: "en", reminder_days: 5, template_version: 2 });
+
+    expect(await contracts.archiveTemplate(fresh.member, again.id)).toEqual({ ok: true, id: again.id });
+    expect(await contracts.archiveTemplate(fresh.member, added.id)).toEqual({ ok: true, id: added.id });
+    expect(await contracts.archiveTemplate(fresh.member, first.id)).toEqual({ ok: false, problem: "last" });
+    const reader = { ...fresh.member, role: "admin" as const, permissions: ["customers:read"] as never };
+    expect(await contracts.createTemplate(reader, "nb")).toEqual({ ok: false, problem: "forbidden" });
+  });
+});

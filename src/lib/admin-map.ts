@@ -595,6 +595,14 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
     feature: "sales",
   }),
+  store("deals.contract_templates", "/deals/contract-templates", "Contract templates", "Sales", "The store's contract templates (D695): the words a new contract starts from, in Norwegian or English.", {
+    tasks: ["Change the contract template", "Add a contract template"],
+    keywords: ["contract template", "agreement template", "terms"],
+    feature: "sales",
+  }),
+  store("deals.contract_template", "/deals/contract-templates/[templateId]", "Contract template", "Sales", "One contract template (D695): its words, language, days to sign and reminders, beside how it will look.", {
+    feature: "sales",
+  }),
   store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "Sales", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", {
     tasks: ["Change a contract's words", "Choose who signs a contract"],
     feature: "sales",
