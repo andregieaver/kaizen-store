@@ -27,6 +27,8 @@ Two markers (the storefront language and the cookie purposes) are allowed to be 
 A route that must grow takes it on purpose with --write --accept, so the growth shows in the baseline's diff; say why in the commit.
 | src/server/admin-statements.baseline.json | src/server/admin-statements.int.test.ts | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts (it writes today's counts, so a rise is accepted deliberately, shown in the diff, with the reason in the commit message) | statements the admin's five screens send (store shell, store Home, orders list, products list, platform Home), counted by src/db/statement-count.ts |
 
+The server's measure 7, refreshes and store draws, is held by Platform, Usage and limits (`#cache`, `docs/capacity.md`) and `src/server/cache-events.int.test.ts`, which fails when 11 job refreshes of one subject in a day are not flagged, when 10 are, or when a platform tag is.
+
 ## The written rules
 
 `node scripts/docs-ratchet.mjs --check` and src/lib/docs-budget.scan.test.ts hold, against src/lib/docs-budget.baseline.json:

@@ -15,6 +15,7 @@ import { platformCan, requirePlatformReader } from "@/server/auth";
 import { recordingsOpenNow } from "@/server/recordings-admin";
 import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
+import { cacheEventsWeek, type CacheEventRow } from "@/server/cache-events";
 import { cronJobRows } from "@/server/cron-runs";
 import { ownSpeedReport } from "@/server/own-speed";
 import { currentFlags } from "@/server/platform-flags";
@@ -40,7 +41,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen, flagged] = await Promise.all([
+  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen, flagged, cacheWeek] = await Promise.all([
     platformUsage(month),
     databaseGlance(),
     drainConnected(),
@@ -51,11 +52,26 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
     adminFromDublin(),
     recordingsOpenNow(),
     currentFlags(),
+    cacheEventsWeek(),
   ]);
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
   const cell = (metric: UsageMetric, value: number | undefined) => (value === undefined ? "" : formatUsage(metric, value, locale));
   const current = new Date().toISOString().slice(0, 7);
+  // One row per day, kind, family and caller, the subjects summed (bloat review step 1.25).
+  const cacheRows = [
+    ...cacheWeek.rows
+      .reduce((all, r) => {
+        const key = `${r.day}|${r.kind}|${r.family}|${r.source}`;
+        const sum = all.get(key);
+        if (sum) {
+          sum.count += r.count;
+          sum.statements += r.statements;
+        } else all.set(key, { ...r, subject: "" });
+        return all;
+      }, new Map<string, CacheEventRow>())
+      .values(),
+  ];
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -126,6 +142,48 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
                 </tbody>
               </table>
             </div>
+          )}
+        </Card>
+      </div>
+      {/* Refreshes of cache tags and draws of store layouts (bloat review step 1.25, `docs/capacity.md`). */}
+      <div id="cache">
+        <Card title={w.cache.title} description={w.cache.description} compact>
+          {cacheRows.length === 0 ? (
+            <p className="text-body text-muted">{w.cache.none}</p>
+          ) : (
+            <>
+              {cacheWeek.flagged.map((r) => (
+                <p key={`${r.day}|${r.family}|${r.subject}`} className="mb-2 text-body text-danger-text">
+                  {fillWords(w.cache.flag, { subject: r.subject, family: r.family, n: r.count, day: r.day })}
+                </p>
+              ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-caption">
+                  <thead className="text-muted">
+                    <tr>
+                      <th scope="col" className="py-2 pr-4">{w.cache.day}</th>
+                      <th scope="col" className="py-2 pr-4">{w.cache.kind}</th>
+                      <th scope="col" className="py-2 pr-4">{w.cache.family}</th>
+                      <th scope="col" className="py-2 pr-4">{w.cache.source}</th>
+                      <th scope="col" className="py-2 pr-4">{w.cache.count}</th>
+                      <th scope="col" className="py-2 pr-4">{w.cache.statements}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {cacheRows.map((r) => (
+                      <tr key={`${r.day}|${r.kind}|${r.family}|${r.source}`}>
+                        <th scope="row" className="py-2 pr-4 tabular-nums text-ink">{r.day}</th>
+                        <td className="py-2 pr-4 text-ink-2">{r.kind === "draw" ? w.cache.draw : w.cache.refresh}</td>
+                        <td className="py-2 pr-4 font-mono text-ink-2">{r.family}</td>
+                        <td className="py-2 pr-4 text-ink-2">{w.cache.sources[r.source as keyof typeof w.cache.sources] ?? r.source}</td>
+                        <td className="py-2 pr-4 text-ink-2 tabular-nums">{r.count}</td>
+                        <td className="py-2 pr-4 text-ink-2 tabular-nums">{r.statements}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
       </div>

@@ -1,6 +1,7 @@
 import { FooterRevealGuard } from "@/components/footer-reveal";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import { after } from "next/server";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
@@ -29,6 +30,9 @@ import { footerHasWithdrawal } from "@/lib/site-layout";
 import { featureOn, showsWithdrawalLink } from "@/lib/store-features";
 import { themeAttributes } from "@/lib/theme";
 import { afterSaleOpenCached } from "@/server/after-sale";
+import { countCacheEvent } from "@/server/cache-events";
+import { log } from "@/server/log";
+import { renderCount, renderFields } from "@/server/render-count";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveAfterSaleShop, resolveShop } from "@/server/shop";
@@ -113,6 +117,12 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
     notFound();
   }
   const { store, market, ab } = shop;
+  // The draw is logged and counted after the response (bloat review step 1.25): ids and numbers only; nothing is awaited here.
+  const counted = renderCount();
+  after(() => {
+    log("info", "store.draw", { store: store.id, market: market.code, ...renderFields(counted) });
+    countCacheEvent("draw", "store", store.id, "render", counted.statements);
+  });
   const m = t(market.lang);
   // A website (D178 step 5: the online shop off) keeps the withdrawal link, and the checkout's legal pages, while an order can still be
   // withdrawn from or returned (asked only of a website, cached for an hour).

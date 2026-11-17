@@ -1134,3 +1134,18 @@ Ask these at the gates named above, one at a time, with the recommendation given
 | 4 | `src/server/checkout-pressure.ts` | the checkout queue's signal |
 | 4 | `src/lib/capacity-events.ts`, `scripts/load/`, `src/server/service-levels.ts`, `docs/runbooks/restore.md` | peaks and reliability |
 | 5 | `docs/cells.md`, `scripts/move-store.mjs` | cells |
+
+## Cache refreshes and draws (bloat review step 1.25)
+
+Every refresh of a cache tag and every draw of a store's layout is written as one log line (`cache.refresh`, `store.draw`) and counted per
+UTC day in `commerce.cache_events_daily` (`src/server/cache-events.ts`). A row is one day, one kind (`refresh` or `draw`), one tag family
+(the text before the first `:`), one subject (what the tag names: a store's id or slug, empty for the platform's own tags) and one caller,
+with how many times and how many statements. Counts only; rows older than 90 days are deleted by the daily usage job.
+
+A refresh has one of three callers, told apart without arguments at the call sites: `action` (`updateTag` succeeded, so a person's press),
+`job` (it ran inside `tracked()`) and `route` (anything else: a route handler or a webhook). A draw has the caller `render`, and carries
+the statements that render sent. Counts are buffered and written after the response, or at the end of a tracked job, never awaited in a
+refresh or a render.
+
+Platform, Usage and limits shows the last 7 days under `#cache` (`/admin/platform/capacity#cache`), the subjects summed. A line in red is
+a UTC day on which a job refreshed one subject's tag more than 10 times (`JOB_REFRESH_FLAG`): a job should refresh only what changed.
