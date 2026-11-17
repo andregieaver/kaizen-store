@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { fillWords } from "@/lib/admin-fill";
 import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { PLATFORM_WORKFLOWS } from "@/lib/platform-workflows";
-import { listValues, OPERATORS, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition, type WorkflowField } from "@/lib/workflows";
+import { listValues, OPERATORS, SEGMENT_FIELD, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition, type WorkflowField } from "@/lib/workflows";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
@@ -36,6 +36,19 @@ export type WorkflowActions = {
 };
 
 const FIELD = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
+
+/** The store's saved segments, for *the customer is in segment X* (ecosystem plan E3.6, D718). */
+type SegmentChoice = { id: string; name: string };
+const SEGMENT_OPS: readonly WorkflowCondition["op"][] = ["is", "is_not"];
+const opsOf = (field: string): readonly WorkflowCondition["op"][] => (field === SEGMENT_FIELD ? SEGMENT_OPS : OPERATORS);
+
+type Words = NotificationsMessages["workflows"];
+
+/** A condition in a line: its field, its comparison and its value; a segment by its name. */
+function conditionLine(c: WorkflowCondition, w: Words, segments: readonly SegmentChoice[]): string {
+  if (c.field === SEGMENT_FIELD) return `${w.fields[c.field] ?? c.field} ${w.segmentOps[c.op] ?? c.op} ${segments.find((s) => s.id === c.value)?.name ?? w.goneSegment}`;
+  return `${w.fields[c.field] ?? c.field} ${w.ops[c.op]} ${c.value}`;
+}
 
 function blankAction(kind: WorkflowAction["kind"], endpoint: string | null): WorkflowAction {
   switch (kind) {
@@ -101,6 +114,7 @@ export function WorkflowEditor({
   onDone,
   scope = "store",
   namePlaceholder,
+  segments = [],
 }: {
   start: (AnyWorkflowInput & { id: string | null }) | null;
   endpoints: { id: string; name: string }[];
@@ -110,6 +124,8 @@ export function WorkflowEditor({
   scope?: WorkflowScope;
   /** The name's example, when the store's (*Tag big orders*) does not fit. */
   namePlaceholder?: string;
+  /** The store's segments; without any, *the customer is in segment X* is not offered. */
+  segments?: SegmentChoice[];
 }) {
   const w = useAdminText("notifications").workflows;
   const kit = kitOf(scope);
@@ -120,8 +136,11 @@ export function WorkflowEditor({
   const [schedule, setSchedule] = useState(start?.schedule ?? { every: "day" as const, at: "08:00", weekday: null });
   const [conditions, setConditions] = useState<WorkflowCondition[]>(start?.conditions ?? []);
   const [actions, setActions] = useState<WorkflowAction[]>(start?.actions ?? [blankAction("email_staff", null)]);
-  const fields = kit.fieldsFor(trigger);
+  const fields = kit.fieldsFor(trigger).filter((f) => f.kind !== "segment" || segments.length > 0);
   const allowed = kit.actionsFor(trigger);
+  // A condition moved to *the customer's segment* starts in the first segment; moved away, it starts empty again.
+  const withField = (c: WorkflowCondition, field: string): WorkflowCondition =>
+    field === SEGMENT_FIELD ? { field, op: "is", value: segments[0]?.id ?? "" } : c.field === SEGMENT_FIELD ? { field, op: "is", value: "" } : { ...c, field, value: "" };
   const setAction = (i: number, next: WorkflowAction) => setActions(actions.map((a, j) => (j === i ? next : a)));
 
   return (
@@ -189,7 +208,7 @@ export function WorkflowEditor({
           {conditions.length === 0 && <p className="text-sm text-muted">{w.noConditions}</p>}
           {conditions.map((c, i) => (
             <div key={i} className="flex flex-wrap items-center gap-2">
-              <select value={c.field} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? { ...x, field: e.target.value, value: "" } : x)))} className={FIELD} aria-label={w.conditions}>
+              <select value={c.field} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? withField(x, e.target.value) : x)))} className={FIELD} aria-label={w.conditions}>
                 {fields.map((f) => (
                   <option key={f.key} value={f.key}>
                     {w.fields[f.key] ?? f.key}
@@ -197,13 +216,23 @@ export function WorkflowEditor({
                 ))}
               </select>
               <select value={c.op} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? { ...x, op: e.target.value as WorkflowCondition["op"] } : x)))} className={FIELD} aria-label={w.conditions}>
-                {OPERATORS.map((op) => (
+                {opsOf(c.field).map((op) => (
                   <option key={op} value={op}>
-                    {w.ops[op]}
+                    {c.field === SEGMENT_FIELD ? w.segmentOps[op] : w.ops[op]}
                   </option>
                 ))}
               </select>
-              <ValueInput c={c} field={fields.find((f) => f.key === c.field)} w={w} onChange={(value) => setConditions(conditions.map((x, j) => (j === i ? { ...x, value } : x)))} />
+              {c.field === SEGMENT_FIELD ? (
+                <select value={c.value} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} aria-label={w.segment} className={FIELD}>
+                  {segments.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <ValueInput c={c} field={fields.find((f) => f.key === c.field)} w={w} onChange={(value) => setConditions(conditions.map((x, j) => (j === i ? { ...x, value } : x)))} />
+              )}
               <Button kind="quiet" size="dense" onClick={() => setConditions(conditions.filter((_, j) => j !== i))}>
                 {w.remove}
               </Button>
@@ -302,7 +331,14 @@ export function WorkflowEditor({
 }
 
 /** The New workflow card: the editor, then a line that it was saved off. */
-export function NewWorkflow(props: { endpoints: { id: string; name: string }[]; triggerLabels: Record<string, string>; save: WorkflowActions["save"]; scope?: WorkflowScope; namePlaceholder?: string }) {
+export function NewWorkflow(props: {
+  endpoints: { id: string; name: string }[];
+  triggerLabels: Record<string, string>;
+  save: WorkflowActions["save"];
+  scope?: WorkflowScope;
+  namePlaceholder?: string;
+  segments?: SegmentChoice[];
+}) {
   const w = useAdminText("notifications").workflows;
   const [key, setKey] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -335,6 +371,7 @@ export function WorkflowCard({
   actions,
   scope = "store",
   valueLabels,
+  segments = [],
 }: {
   flow: WorkflowView;
   endpoints: { id: string; name: string }[];
@@ -344,6 +381,7 @@ export function WorkflowCard({
   scope?: WorkflowScope;
   /** Names for values a condition holds by id (a product's), from the page. */
   valueLabels?: Record<string, string>;
+  segments?: SegmentChoice[];
 }) {
   const w = useAdminText("notifications").workflows;
   const fieldOf = (key: string) => kitOf(scope).fieldsFor(flow.trigger).find((f) => f.key === key);
@@ -365,13 +403,16 @@ export function WorkflowCard({
   if (editing)
     return (
       <Card title={flow.name} level={3} compact>
-        <WorkflowEditor start={flow} endpoints={endpoints} triggerLabels={triggerLabels} save={actions.save} onDone={() => setEditing(false)} scope={scope} />
+        <WorkflowEditor start={flow} endpoints={endpoints} triggerLabels={triggerLabels} save={actions.save} onDone={() => setEditing(false)} scope={scope} segments={segments} />
       </Card>
     );
   return (
     <Card title={flow.name} description={when} aside={state} level={3} compact className="flex flex-col gap-3">
       <p className="text-sm text-ink-2">
-        {flow.conditions.length > 0 && `${w.conditions}: ${flow.conditions.map((c) => `${w.fields[c.field] ?? c.field} ${w.ops[c.op]} ${valueWords(c, fieldOf(c.field), w, valueLabels)}`).join("; ")}. `}
+        {flow.conditions.length > 0 &&
+          `${w.conditions}: ${flow.conditions
+            .map((c) => (c.field === SEGMENT_FIELD ? conditionLine(c, w, segments) : `${w.fields[c.field] ?? c.field} ${w.ops[c.op]} ${valueWords(c, fieldOf(c.field), w, valueLabels)}`))
+            .join("; ")}. `}
         {`${w.actions}: ${flow.actions.map((a) => w.actionKinds[a.kind]).join(", ")}.`}
       </p>
       {!flow.tested && !flow.enabled && <p className="text-sm text-warning-text">{w.untested}</p>}

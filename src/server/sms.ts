@@ -584,7 +584,8 @@ async function audienceOf(member: Membership, segmentId: string | null): Promise
   const segment = await getSegment(member.store.id, segmentId);
   if (!segment?.rules) return null;
   const { matches } = await import("@/lib/segments");
-  const people = await segmentPeople(member.store, new Date(), { rfm: segment.rules.conditions.some((c) => c.kind === "rfm") });
+  // The facts the rules ask for are read with the people (ecosystem plan E3.6, D718), the customer types only when one asks.
+  const people = await segmentPeople(member.store, new Date(), { rules: [segment.rules] });
   const now = new Date();
   const emails = new Set<string>();
   const customers = new Set<string>();
