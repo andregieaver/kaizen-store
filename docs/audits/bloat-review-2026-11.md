@@ -151,8 +151,8 @@ commit as the fix.
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Open | |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Open | |
 | 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
-| 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | In progress | 17 Nov, local: lists 31/19/27/39/40; carousel in built page; 24 later pairs; browser text held at today's 34,360 (brief 34,000; owner's 0.43 rule: hold today's) |
-| 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | In progress | 17 Nov, local: 229 sites (216 on 12 Nov), 80 hand over 50 KB, 63 hand an unnamed area; product editor 210,926 B en handed, 64,269 named; test 3 s |
+| 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
+| 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Done | 17 Nov (9d9ad9b5; D717): 229 hand-down sites counted; 12.7 MB handed, 3.9 MB named; 63 hand an area nothing reads. |
 | 1.29 | Only if the free switches are not enough: build in CI and deploy the prebuilt output |  | M | strong | 1.21, 0.38, 1.20 | Open | |
 
 **Phase 2: Load on demand**
@@ -312,6 +312,8 @@ Change log:
 - 16 Nov 2026: step 0.37 Done (c773b5d6, D696): the old admin redirects are gone, and bookings and subscription boxes are switched in the features alone; stores.modules holds only work.
 - 16 Nov 2026: step 0.44 Done (3859ac22, D697): pictures in page content are offered the 800 px copy, and a picture in a column that stays beside others on a phone says its share of the screen.
 - 16 Nov 2026: step 0.46 Done (88320369, D698): the themes, content packs and seed write a grid's columns in today's shape, and a test parses every page they make.
+- 17 Nov 2026: step 1.27 Done (da36c66c, D716): a store page's first scripts are held by name in a baseline that only shrinks.
+- 17 Nov 2026: step 1.28 Done (9d9ad9b5, D717): every admin hand-down site's words handed are counted against the words its parts name.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
