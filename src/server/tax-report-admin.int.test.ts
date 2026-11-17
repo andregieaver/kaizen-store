@@ -12,6 +12,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 vi.mock("next/navigation", () => ({
+  // The VAT report's period picker (D731) moves with the router on a phone; on the server it is only drawn.
+  useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {}, prefetch: () => {} }),
   redirect: (url: string) => {
     throw new Error(`REDIRECT:${url}`);
   },
