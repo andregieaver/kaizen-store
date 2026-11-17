@@ -2,6 +2,20 @@ import "server-only";
 
 import { revalidateTag, updateTag } from "next/cache";
 
+import { countCacheEvent, currentJob, tagParts } from "./cache-events";
+import { log } from "./log";
+
+/** Logs and counts one refresh by tag family and caller (bloat review step 1.25); a count never stops a refresh. */
+function note(tag: string, source: "action" | "job" | "route"): void {
+  try {
+    const { family, subject } = tagParts(tag);
+    log("info", "cache.refresh", { family, subject, source, job: currentJob() ?? undefined });
+    countCacheEvent("refresh", family, subject, source);
+  } catch {
+    /* a count never stops a refresh */
+  }
+}
+
 /**
  * Refreshes a cache tag after a change. A server action may `updateTag` (the person sees it at once); anywhere else (the daily
  * job, a route handler, the AI manager's route) that throws, and the tag is revalidated instead, so a change made outside an
@@ -10,8 +24,10 @@ import { revalidateTag, updateTag } from "next/cache";
 export function refreshTag(tag: string): void {
   try {
     updateTag(tag);
+    note(tag, "action");
   } catch {
     outsideNext(() => revalidateTag(tag, "max"));
+    note(tag, currentJob() ? "job" : "route");
   }
 }
 
@@ -22,6 +38,7 @@ export function refreshTag(tag: string): void {
  */
 export function staleTag(tag: string): void {
   outsideNext(() => revalidateTag(tag, "max"));
+  note(tag, currentJob() ? "job" : "route");
 }
 
 /**
@@ -45,7 +62,9 @@ function outsideNext(revalidate: () => void): void {
 export function refreshTagNow(tag: string): void {
   try {
     updateTag(tag);
+    note(tag, "action");
   } catch {
     outsideNext(() => revalidateTag(tag, { expire: 0 }));
+    note(tag, currentJob() ? "job" : "route");
   }
 }
