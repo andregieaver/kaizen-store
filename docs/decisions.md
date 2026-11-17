@@ -731,6 +731,7 @@ this file wins.
 | D729 | **Ecosystem plan phase 4: closed loops (the autopilot tests its page changes, alerts from frustration, speed and domains w** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 | D730 | **A guard on each store's sending: marketing email paused at 5 % bounces or 0.3 % complaints (email plan M1.6)** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 | D731 | **Admin redesign round 39: Settings, Export orders and VAT reports on a phone** (claimed 2026-11-17, text follows) | 2026-11-17 | |
+| D732 | **Email events on the event log: email.bounced, email.complained, broadcast.sent, marketing.paused (email plan M1.2)** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 
 ### Selling from Norway to Sweden and Denmark
 
