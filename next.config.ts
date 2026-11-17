@@ -86,8 +86,12 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     // On Vercel, Turbopack without its build cache (its compile held 7.2 GB with it, 5.8 GB without) and one worker for the pages
-    // (each holds about 1.3 GB, and the first starts while the compile's memory is still held).
-    ...(ON_VERCEL ? { turbopackFileSystemCacheForBuild: false, cpus: 1 } : {}),
+    // (each holds about 1.3 GB, and the first starts while the compile's memory is still held). And without source maps (D709): the
+    // compile had grown to 7.5 GB by 17 November 2026 and 6.3 GB without them. Production never reads the server's maps (Node runs
+    // without --enable-source-maps; Next turns them on only for its debug prerender) and the browser's were never made.
+    ...(ON_VERCEL
+      ? { turbopackFileSystemCacheForBuild: false, cpus: 1, turbopackSourceMaps: false, turbopackInputSourceMaps: false }
+      : {}),
     // Market pages each have their own root layout, so the 404 page is global.
     globalNotFound: true,
     // Product pictures are uploaded through a server action. The browser
