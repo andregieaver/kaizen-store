@@ -189,4 +189,5 @@ if (worse.length) {
 if (better.length) {
   console.error(`\nrender-modes: ${better.length} figure(s) got better or are new:\n- ${better.join("\n- ")}\nLock the gain in: node scripts/render-modes.mjs --write`);
 }
-process.exit(worse.length || better.length ? 1 : 0);
+// A gain or a new route is a note, so the other work's improvements never hold back a release (reviewed 17 November 2026).
+process.exit(worse.length ? 1 : 0);
