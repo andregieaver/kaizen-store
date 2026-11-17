@@ -172,6 +172,10 @@ jobs:
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).
       - run: pnpm exec playwright install chromium webkit
       - run: pnpm test:e2e
+      # After the end-to-end run, so a budget failure never hides its results; `!cancelled()` so it still reports when a test failed.
+      - name: Every route's first scripts against the baseline (scripts/bundle-budget.mjs)
+        if: ${{ !cancelled() }}
+        run: node scripts/bundle-budget.mjs
       # What failed, kept for a week: each failed test's page snapshot and its retry's trace (playwright.config.ts), read with
       # `pnpm exec playwright show-trace`. Without them a failure that does not come back locally cannot be read.
       - if: failure()

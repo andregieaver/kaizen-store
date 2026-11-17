@@ -18,6 +18,12 @@ A number rises only where its row says so, with a decision.
 | src/components/admin/admin-bundle.baseline.json | src/components/admin/admin-bundle.scan.test.ts | WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts | admin client modules that reach zod (a new one fails; a rewrite is the deliberate step) |
 | src/lib/admin-messages/imports.baseline.json | src/lib/admin-messages/imports.scan.test.ts | WRITE_ADMIN_IMPORTS_BASELINE=1 pnpm exec vitest run src/lib/admin-messages/imports.scan.test.ts | value imports of code in the admin's catalogue files, `file -> target` |
 | src/lib/message-keys.baseline.json | src/lib/message-keys.scan.test.ts | WRITE_MESSAGE_KEYS_BASELINE=1 pnpm exec vitest run src/lib/message-keys.scan.test.ts | interface keys that no code names and no matched table covers |
+| scripts/bundle-budget.baseline.json and src/lib/bundle-budget.test.ts | node scripts/bundle-budget.mjs (CI's e2e job, after the build) | node scripts/bundle-budget.mjs --write after pnpm build | first-load script bytes of every route, 15,000 bytes of room each, and the routes whose first scripts hold each of eight markers |
+
+The bundle budget needs a build, so it runs in CI, not in the list run before a push.
+A change that lowers a route by more than 15,000 bytes, removes a route or lowers a marker count runs --write and commits the baseline in the same change.
+Two markers (the storefront language and the cookie purposes) are allowed to be in no chunk at all, since step 0.16 made them server-only; their count is 0 and the check fails if either returns to a client chunk's first scripts.
+A route that must grow is the owner's call: say why in the decision; there is no flag that raises a figure.
 
 ## The written rules
 

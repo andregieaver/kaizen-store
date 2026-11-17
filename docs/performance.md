@@ -135,6 +135,12 @@ chunks (`route.mjs`) from 223,068 to 216,992.
   cookie purposes out, and holds the four browser-language files at today's total, which only falls. The byte budgets (step 1.3) and
   this list are two holds on the same thing: bytes cannot see a 5 to 20 KB part, names can.
 
+- `node scripts/bundle-budget.mjs`, after `pnpm build`, holds every route's first scripts
+  (`.next/diagnostics/route-bundle-stats.json`, raw bytes) within 15,000 bytes of `scripts/bundle-budget.baseline.json`, and the
+  number of routes whose first scripts hold each of eight marker sentences (Supabase's client, zod, the rich text editor, the
+  builder's English, sign-in's English, a storefront language, the cookie purposes, the admin's common English on store routes).
+  CI's e2e job runs it. The figures only fall.
+
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.
 
 ## Fonts found late (kaizenaflow.com, 5 November 2026)
