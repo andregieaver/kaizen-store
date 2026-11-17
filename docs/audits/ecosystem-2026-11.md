@@ -53,13 +53,13 @@ behaviour joins pages, never people.
 
 | Id | Step | Size | Status |
 |---|---|---|---|
-| E3.1 | An append-only event log (`commerce.events`), written by `queue_integration_event()` and `queue_store_event()`, read by every engine with a cursor | L | Open |
-| E3.2 | The missing events: deal, lead, activity, subscriber, checkout abandoned, conversation ended or rated, review published, domain problem, and the `work_*` events queued today but dropped | M | Open |
-| E3.3 | Order rules folded into workflows, with a hold action (0 rows to move on 17 Nov 2026) | M | Open |
+| E3.1 | An append-only event log (`commerce.events`), written by `queue_integration_event()` and `queue_store_event()`, read by every engine with a cursor | L | Done, 17 Nov 2026 (234bbdc9). No engine reads it yet; `processStoreEvents()` moves first |
+| E3.2 | The missing events: deal, lead, activity, subscriber, checkout abandoned, conversation ended or rated, review published, domain problem, and the `work_*` events queued today but dropped | M | Done, 17 Nov 2026 (234bbdc9). Left: lead, activity, domain problem |
+| E3.3 | Order rules folded into workflows, with a hold action (0 rows to move on 17 Nov 2026) | M | Done, 17 Nov 2026 (82ae56a4), with Settings → Automatic |
 | E3.4 | Workflows gain customer actions: marketing email, SMS, start an automation, wait | L | Open |
 | E3.5 | One contact policy across email and SMS: a cap per person, spacing, quiet hours, priority | M | Open |
-| E3.6 | Segments on products bought, deals, support, reviews and engagement, usable by every engine | M | Open |
-| E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Open |
+| E3.6 | Segments on products bought, deals, support, reviews and engagement, usable by every engine | M | Done, 17 Nov 2026 (924999e4). Left: email engagement |
+| E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Built (a2d5989b), released with E2.5r: it changes the AI manager's prompt |
 
 ## Phase 4: closed loops
 
