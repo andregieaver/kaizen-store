@@ -6925,6 +6925,16 @@ describe("usage and limits (D314)", () => {
     await expect(db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values ($1, '2026-10-02', 'requests', -1)", [store])).rejects.toThrow();
   });
 
+  it("keeps cache events per day, family, subject and caller, and refuses an unknown kind or caller", async () => {
+    const insert = "insert into commerce.cache_events_daily (day, kind, family, subject, source, count, statements) values ($1, $2, 'store', 'demo', $3, 1, 0)";
+    await db.query(insert, ["2026-11-12", "refresh", "job"]);
+    await expect(db.query(insert, ["2026-11-12", "refresh", "job"])).rejects.toThrow(/cache_events_daily_day_kind_family_subject_source_pk/);
+    await expect(db.query(insert, ["2026-11-12", "x", "job"])).rejects.toThrow(/cache_events_daily_kind/);
+    await expect(db.query(insert, ["2026-11-12", "refresh", "x"])).rejects.toThrow(/cache_events_daily_source/);
+    const row = await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.cache_events_daily'::regclass");
+    expect(row.on).toBe(true);
+  });
+
   it("keeps one limit per plan and key, a platform default once, and an override for exactly one store or owner", async () => {
     await db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'products', 500)");
     await expect(db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'products', 600)")).rejects.toThrow();

@@ -610,6 +610,13 @@
       "when": 1794938512533,
       "tag": "20261117180152_autopilot_tests_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794941403750,
+      "tag": "20261117185003_cache_events_daily",
+      "breakpoints": true
     }
   ]
 }

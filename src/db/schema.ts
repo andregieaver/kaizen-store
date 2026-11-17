@@ -11168,6 +11168,30 @@ export const storeUsageDaily = commerce.table(
 );
 
 /**
+ * Refreshes of cache tags and draws of store layouts per UTC day (bloat review step 1.25): the tag's family, what it names (a store's id or
+ * slug, empty for the platform's own tags), and who called. Counts only; kept 90 days. Written by src/server/cache-events.ts.
+ */
+export const cacheEventsDaily = commerce.table(
+  "cache_events_daily",
+  {
+    day: date("day").notNull(),
+    kind: text("kind").notNull(),
+    family: text("family").notNull(),
+    subject: text("subject").notNull().default(""),
+    source: text("source").notNull(),
+    count: integer("count").notNull().default(0),
+    statements: bigint("statements", { mode: "number" }).notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.kind, t.family, t.subject, t.source] }),
+    check("cache_events_daily_kind", sql`${t.kind} in ('refresh', 'draw')`),
+    check("cache_events_daily_source", sql`${t.source} in ('action', 'job', 'route', 'render')`),
+    check("cache_events_daily_count", sql`${t.count} >= 0`),
+  ],
+);
+
+/**
  * A store's requests and server errors per UTC hour (`docs/100-day-challenge.md` F4, D669), from Vercel's log drain beside the daily totals
  * (`addTrafficHours()`), for the autopilot's watch to blame one change on a rise in server errors. Counts only, nothing of a visitor; kept
  * 35 days (`pruneUsageDaily()`).
