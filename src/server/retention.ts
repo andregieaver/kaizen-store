@@ -22,7 +22,7 @@ import { SCHEME_RETENTION_YEARS } from "@/lib/invoice-retention";
 import { anonymiseDocuments } from "./invoice-retention";
 import { pruneDraftOrders } from "./draft-orders";
 import { log } from "./log";
-import { pruneRuleRuns } from "./order-rules";
+import { forgetMovedRules, pruneRuleRuns } from "./order-rules";
 import { pruneTrackingEvents } from "./shipment-tracking";
 import { pruneStoreEvents } from "./staff-alerts";
 import { pruneAnonymisedOrderTags } from "./order-tags";
@@ -411,8 +411,9 @@ const STEPS: Record<RetentionStep, StepFn> = {
   async store_events(ctx) {
     return { count: await pruneStoreEvents(ctx.now) };
   },
+  // With them, the rows of rules moved to workflows (ecosystem plan E3.3, D718) once no paid order's event can still need them.
   async order_rule_runs(ctx) {
-    return { count: await pruneRuleRuns(ctx.now) };
+    return { count: (await pruneRuleRuns(ctx.now)) + (await forgetMovedRules()) };
   },
   async tracking_events(ctx) {
     return { count: await pruneTrackingEvents(ctx.now) };

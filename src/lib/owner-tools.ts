@@ -65,7 +65,7 @@ import {
 } from "./site-tools";
 import { inputSummary, ownWordsSummary, plainText } from "./approval-summaries";
 import { draftStoreInput } from "./store-drafts";
-import { workflowInputSchema } from "./workflows";
+import { draftWorkflowInputSchema } from "./workflows";
 import { purchaseInput } from "./purchase-input";
 
 
@@ -260,7 +260,7 @@ const ALL_OWNER_TOOLS = [
   tool(
     "draft_workflow",
     "Drafts a workflow from what the owner describes (D356), saved OFF: they test it on the latest event and switch it on at Settings, Workflows. trigger: one of the store's events (order.paid, order.sent, order.cancelled, order.refunded, customer.created, subscription.started, subscription.cancelled, return.requested, withdrawal.received, product.created, product.updated, stock.low, discount.created, support.waiting) or schedule, with schedule { every: day or week, at: HH:MM, weekday 1 to 7 for a week }. conditions (none for a schedule): { field, op (is, is_not, contains, more_than, less_than), value } on the trigger's fields, such as order.total (in the order's currency units), order.currency, order.market, order.lines.sku, order.shipping_address.country, customer.email, product.status, stock.available, return.kind. actions, 1 to 10: tag_order { tag }, note_order { text } and ask_ai_manager { question } after an order event; tag_customer { tag } after an order, customer or subscription event; email_staff { subject, text }; post_slack { text }; send_request { endpointId } (one of the owner's endpoints) after any event. Never an email to a customer, a refund or a price.",
-    workflowInputSchema,
+    draftWorkflowInputSchema,
   ),
   tool(
     "draft_store",

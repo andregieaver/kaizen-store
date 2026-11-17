@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
 import { convertMinor } from "@/lib/currency";
@@ -34,6 +35,8 @@ import { emailFooter, storeById } from "./shopper-emails";
 import { alertRecipients } from "./staff-alerts";
 import { textList, uuidList } from "./sql-arrays";
 import { readPaymentFacts } from "./payment-facts";
+import { col, typedRow, typedRows } from "./typed-rows";
+import { queueMovedRuns } from "./workflow-moves";
 
 type Row = Record<string, unknown>;
 
@@ -50,6 +53,10 @@ type Row = Record<string, unknown>;
  * - **Actions**: a tag through `changeOrderTags()` (the system, not audited: the run is the record), a hold through `holdOrder()` (by the rule), and a
  *   *Notify staff* email (`automation.notify`) to the recipients of `automation`, sent after the run's transaction with a key per run and recipient. The
  *   email holds the rule's name and note and the order's number, total and link (4.8: no shopper's personal field).
+ * - **Moved to workflows** (ecosystem plan E3.3, D718): a rule moved by `moveRulesToWorkflows()` becomes the workflow with the rule's own id, and
+ *   its row stays, switched off, until no paid order's event that could still need it waits (`forgetMovedRules()`). The engine never runs a
+ *   moved rule: it queues the workflow's run for the event instead, once (an order paid before the move, or while it committed), so nothing
+ *   stops between the two. The lists and the editor leave moved rules out.
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -66,7 +73,22 @@ const ruleOf = (row: Row): OrderRule => ({
   version: Number(row.version),
 });
 
-/** The store's rules in their order, with each one's last run. */
+/** A rule moved to a workflow (E3.3): the workflow has its id. */
+const MOVED = sql`exists (select 1 from commerce.workflows w where w.store_id = r.store_id and w.id = r.id)`;
+
+/** A rule's row as the engine and the move read it (E3.3); its lists are checked by `orderRuleInput` on save. */
+const RULE_ROW = z.object({
+  id: col.uuid,
+  name: col.text,
+  match: col.text,
+  conditions: z.unknown(),
+  actions: z.unknown(),
+  enabled: col.bool,
+  position: col.int,
+  version: col.int,
+});
+
+/** The store's rules in their order, with each one's last run; a rule moved to a workflow is not one any more (E3.3). */
 export async function listRules(storeId: string): Promise<(OrderRule & { lastRun: { at: string; matched: boolean } | null })[]> {
   const rows = await db().execute<Row>(sql`
     select r.id, r.name, r.match, r.conditions, r.actions, r.enabled, r.position, r.version,
@@ -75,7 +97,7 @@ export async function listRules(storeId: string): Promise<(OrderRule & { lastRun
     left join lateral (
       select x.created_at, x.matched from commerce.order_rule_runs x where x.store_id = r.store_id and x.rule_id = r.id order by x.created_at desc limit 1
     ) last on true
-    where r.store_id = ${storeId}::uuid
+    where r.store_id = ${storeId}::uuid and not ${MOVED}
     order by r.position, r.created_at, r.id
   `);
   return rows.map((row) => ({
@@ -87,7 +109,8 @@ export async function listRules(storeId: string): Promise<(OrderRule & { lastRun
 export async function getRule(storeId: string, ruleId: string): Promise<OrderRule | null> {
   if (!UUID.test(ruleId)) return null;
   const [row] = await db().execute<Row>(sql`
-    select id, name, match, conditions, actions, enabled, position, version from commerce.order_rules where store_id = ${storeId}::uuid and id = ${ruleId}::uuid
+    select r.id, r.name, r.match, r.conditions, r.actions, r.enabled, r.position, r.version from commerce.order_rules r
+    where r.store_id = ${storeId}::uuid and r.id = ${ruleId}::uuid and not ${MOVED}
   `);
   return row ? ruleOf(row) : null;
 }
@@ -196,8 +219,16 @@ export async function deleteRule(storeId: string, ruleId: string, accountId: str
 // Facts and runs
 // ---------------------------------------------------------------------------
 
-/** What the rules can know about a paid order (4.9), read once; null for an order that is not the store's or is copied. */
-export async function ruleFacts(storeId: string, orderId: string): Promise<(RuleFacts & { number: string; locale: string }) | null> {
+/**
+ * What the rules can know about a paid order (4.9), read once; null for an order that is not the store's or is copied. A workflow on `order.paid`
+ * reads the same (E3.3): its tags as they were when it was paid (`tagsAsOf`, the run's time, so workflows never chain), and Stripe's risk only
+ * when a condition asks (`risk: false` leaves it unread).
+ */
+export async function ruleFacts(
+  storeId: string,
+  orderId: string,
+  options: { tagsAsOf?: string | null; risk?: boolean } = {},
+): Promise<(RuleFacts & { number: string; locale: string; mainCurrency: string }) | null> {
   const [row] = await db().execute<Row>(sql`
     select o.number, o.total_minor, trim(o.currency) as currency, o.market_code, o.locale, o.company_name is not null as business, o.customer_id,
       o.delivery_method, o.is_gift, o.source, o.host_id, o.copied_from is not null as copied,
@@ -216,19 +247,22 @@ export async function ruleFacts(storeId: string, orderId: string): Promise<(Rule
       coalesce((select array_agg(distinct v.product_id::text) from commerce.order_lines l
                 join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
                 where l.store_id = o.store_id and l.order_id = o.id), '{}') as product_ids,
-      coalesce((select array_agg(t.key) from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id), '{}') as tag_keys
+      coalesce((select array_agg(t.key) from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id
+                ${options.tagsAsOf ? sql`and t.created_at <= ${options.tagsAsOf}::timestamptz` : sql``}), '{}') as tag_keys
     from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `);
   if (!row || row.copied) return null;
-  const [store, risk] = await Promise.all([storeById(storeId), riskOf(storeId, orderId)]);
+  const [store, risk] = await Promise.all([storeById(storeId), options.risk === false ? undefined : riskOf(storeId, orderId)]);
   if (!store) return null;
   const currency = String(row.currency);
   const total = Number(row.total_minor);
-  const mainMinor = convertMinor(total, currency, mainCurrency(store), store.localization.rates);
+  const main = mainCurrency(store);
+  const mainMinor = convertMinor(total, currency, main, store.localization.rates);
   const method = String(row.delivery_method ?? "ship");
   return {
     number: String(row.number),
     locale: String(row.locale ?? "en-GB"),
+    mainCurrency: main,
     totalMinor: total,
     currency,
     mainMinor,
@@ -334,7 +368,17 @@ async function notify(storeId: string, runId: string, orderId: string, rule: Ord
  * event (the run's unique key). Throws only when the facts or the rules cannot be read (the event is tried again; runs already made are not repeated).
  */
 export async function runRulesFor(event: EventRef): Promise<{ runs: number; matched: number }> {
-  const rules = (await listRules(event.storeId)).filter((r) => r.enabled);
+  const all = await typedRows(
+    RULE_ROW.extend({ moved: col.bool }),
+    sql`
+      select r.id, r.name, r.match, r.conditions, r.actions, r.enabled, r.position, r.version, ${MOVED} as moved
+      from commerce.order_rules r where r.store_id = ${event.storeId}::uuid order by r.position, r.created_at, r.id
+    `,
+  );
+  // Rules moved to workflows (E3.3): each one's workflow runs on this event instead, once.
+  const moved = all.filter((r) => r.moved).map((r) => r.id);
+  if (moved.length > 0) await queueMovedRuns(db(), event, moved);
+  const rules = all.filter((r) => !r.moved).map(ruleOf).filter((r) => r.enabled);
   if (rules.length === 0) return { runs: 0, matched: 0 };
   const facts = await ruleFacts(event.storeId, event.subjectId);
   if (!facts) return { runs: 0, matched: 0 };
@@ -343,6 +387,15 @@ export async function runRulesFor(event: EventRef): Promise<{ runs: number; matc
   for (const rule of rules) {
     const { matched, conditions } = ruleMatches(rule, facts);
     const run = await db().transaction(async (tx) => {
+      // The rule as it is now, held while it runs: one deleted since is skipped, and one being moved to a workflow waits for the move, then
+      // is the workflow's to run (read again in a statement of its own, which sees the move).
+      const still = await typedRow(z.object({ id: col.uuid }), sql`select id from commerce.order_rules where store_id = ${event.storeId}::uuid and id = ${rule.id}::uuid for share`, tx);
+      if (!still) return null;
+      const now = await typedRow(z.object({ moved: col.bool }), sql`select ${MOVED} as moved from commerce.order_rules r where r.store_id = ${event.storeId}::uuid and r.id = ${rule.id}::uuid`, tx);
+      if (now?.moved) {
+        await queueMovedRuns(tx, event, [rule.id]);
+        return null;
+      }
       const [made] = await tx.execute<Row>(sql`
         insert into commerce.order_rule_runs (store_id, rule_id, rule_name, rule_version, event_id, order_id, matched, outcome)
         values (${event.storeId}::uuid, ${rule.id}::uuid, ${rule.name}, ${rule.version}, ${event.id}::uuid, ${event.subjectId}::uuid, ${matched},
@@ -382,6 +435,54 @@ export async function runRulesFor(event: EventRef): Promise<{ runs: number; matc
     `);
   }
   return { runs, matched: matchedCount };
+}
+
+// ---------------------------------------------------------------------------
+// Moving rules to workflows (E3.3)
+// ---------------------------------------------------------------------------
+
+export type RuleToMove = OrderRule & { createdBy: string | null; updatedBy: string | null };
+
+/** The store's rules not moved yet, in their order, held for the move's transaction (the engine waits for it on a rule it is about to run). */
+export async function rulesToMove(tx: Db, storeId: string): Promise<RuleToMove[]> {
+  const rows = await typedRows(
+    RULE_ROW.extend({ created_by: col.uuid.nullable(), updated_by: col.uuid.nullable() }),
+    sql`
+      select r.id, r.name, r.match, r.conditions, r.actions, r.enabled, r.position, r.version, r.created_by, r.updated_by
+      from commerce.order_rules r where r.store_id = ${storeId}::uuid and not ${MOVED}
+      order by r.position, r.created_at, r.id
+      for update of r
+    `,
+    tx,
+  );
+  return rows.map((row) => ({ ...ruleOf(row), createdBy: row.created_by, updatedBy: row.updated_by }));
+}
+
+/** A rule whose workflow was just made (with its id): switched off, so nothing that reads the table directly runs it, and kept until forgotten. */
+export async function markRuleMoved(tx: Db, storeId: string, ruleId: string): Promise<void> {
+  await tx.execute(sql`update commerce.order_rules set enabled = false, updated_at = now() where store_id = ${storeId}::uuid and id = ${ruleId}::uuid`);
+}
+
+/**
+ * Deletes the rows of rules moved to workflows (the daily retention job), once moved ten minutes ago, past any payment that committed with the
+ * move, and while no paid order's event of the store waits for its rules (it may still need the rule to queue its workflow). Returns how many.
+ */
+export async function forgetMovedRules(): Promise<number> {
+  const rows = await db().execute(sql`
+    delete from commerce.order_rules r
+    where ${MOVED} and r.updated_at < now() - interval '10 minutes'
+      and not exists (
+        select 1 from commerce.store_events e
+        where e.store_id = r.store_id and e.event = 'order.paid' and e.rules_done_at is null and e.failed_at is null
+      )
+    returning r.id
+  `);
+  return rows.length;
+}
+
+/** A moved rule's row goes with its workflow, when the owner deletes it, so the rule never comes back. */
+export async function forgetMovedRule(tx: Db, storeId: string, id: string): Promise<void> {
+  await tx.execute(sql`delete from commerce.order_rules r where r.store_id = ${storeId}::uuid and r.id = ${id}::uuid and ${MOVED}`);
 }
 
 export type RuleRun = {

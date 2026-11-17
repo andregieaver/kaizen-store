@@ -1040,6 +1040,10 @@ const PAGES: readonly AdminPage[] = [
   store("staging", "/staging", "Staging", "Website", "Staging (D358): a set of page drafts, a theme installed but not live and staged menu changes, each compared with what visitors see (what changed in a page, the areas a look differs in), made live together through the builder's Publish, the theme switch and the menu saver; the last set's outcome.", {
     keywords: ["staging", "release", "publish together", "compare", "versions", "preview", "launch"],
   }),
+  store("automatic", "/settings/automatic", "Automatic", "Settings", "Everything in the store that runs by itself, in plain lines with when each last did: what happens, in order, when an order is paid (the confirmation email, workflows, rules not moved yet, the staff's email and devices, endpoints and services), and every workflow, email automation, cart reminder, review request, staff email, endpoint, service and the autopilot's reacting that is on, each linked to where it is changed; the details, and what is off, behind a disclosure.", {
+    keywords: ["automatic", "automation", "what runs", "by itself", "order paid", "overview", "workflows", "alerts"],
+    tasks: ["See what happens when an order is paid", "See everything that runs by itself"],
+  }),
   store("workflows", "/settings/workflows", "Workflows", "Store", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
     keywords: ["workflow", "automation", "flow", "trigger", "schedule", "rules"],
   }),
@@ -1575,6 +1579,8 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
 const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   // Leads (ecosystem plan E2.8, D713): joins the map with the CRM tools, in the push that records the eval with both (`HELD_FOR_EVAL`).
   "store:leads",
+  // Settings → Automatic (ecosystem plan E3.3, D718): joins the map in the release step that opens draft_workflow, with the eval recorded.
+  "store:automatic",
 ]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */

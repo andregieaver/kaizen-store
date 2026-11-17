@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
+import type { NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { PLATFORM_WORKFLOWS } from "@/lib/platform-workflows";
-import { OPERATORS, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition } from "@/lib/workflows";
+import { listValues, OPERATORS, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition, type WorkflowField } from "@/lib/workflows";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
@@ -51,7 +52,44 @@ function blankAction(kind: WorkflowAction["kind"], endpoint: string | null): Wor
       return { kind, endpointId: endpoint ?? "" };
     case "ask_ai_manager":
       return { kind, question: "" };
+    case "hold_order":
+      return { kind, reason: "" };
   }
+}
+
+type FlowWords = NotificationsMessages["workflows"];
+
+/**
+ * A condition's value in words (E3.3, D718): yes or no, a field's choice by its label, a product by its name (`valueLabels`, the page's), and
+ * each of an `is_one_of`'s values so.
+ */
+export function valueWords(c: WorkflowCondition, field: WorkflowField | undefined, w: FlowWords, valueLabels: Record<string, string> = {}): string {
+  const one = (value: string) => {
+    const v = value.trim().toLowerCase();
+    if (field?.kind === "yes_no") return w.yesNo[v as "yes" | "no"] ?? value;
+    return w.choiceLabels[c.field]?.[v] ?? valueLabels[v] ?? value;
+  };
+  return c.op === "is_one_of" ? listValues(c.value).map(one).join(", ") : one(c.value);
+}
+
+/** A condition's value as typed: yes or no and a field's choices are chosen; any other value, and a list, is written. */
+function ValueInput({ c, field, w, onChange }: { c: WorkflowCondition; field: WorkflowField | undefined; w: FlowWords; onChange: (value: string) => void }) {
+  const choices = field?.kind === "yes_no" ? ["yes", "no"] : (field?.choices ?? null);
+  if (choices && (c.op === "is" || c.op === "is_not"))
+    return (
+      <select value={c.value} onChange={(e) => onChange(e.target.value)} aria-label={w.value} className={FIELD}>
+        <option value="" disabled>
+          {w.value}
+        </option>
+        {choices.map((v) => (
+          <option key={v} value={v}>
+            {field?.kind === "yes_no" ? w.yesNo[v as "yes" | "no"] : (w.choiceLabels[c.field]?.[v] ?? v)}
+          </option>
+        ))}
+      </select>
+    );
+  const hint = c.op === "is_one_of" ? `${w.listHint}${choices ? `: ${choices.join(", ")}` : ""}` : w.value;
+  return <input value={c.value} onChange={(e) => onChange(e.target.value)} placeholder={hint} aria-label={w.value} className={FIELD} />;
 }
 
 /** Makes or changes a workflow: when, only if, then. Saved off. */
@@ -151,7 +189,7 @@ export function WorkflowEditor({
           {conditions.length === 0 && <p className="text-sm text-muted">{w.noConditions}</p>}
           {conditions.map((c, i) => (
             <div key={i} className="flex flex-wrap items-center gap-2">
-              <select value={c.field} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? { ...x, field: e.target.value } : x)))} className={FIELD} aria-label={w.conditions}>
+              <select value={c.field} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? { ...x, field: e.target.value, value: "" } : x)))} className={FIELD} aria-label={w.conditions}>
                 {fields.map((f) => (
                   <option key={f.key} value={f.key}>
                     {w.fields[f.key] ?? f.key}
@@ -165,7 +203,7 @@ export function WorkflowEditor({
                   </option>
                 ))}
               </select>
-              <input value={c.value} onChange={(e) => setConditions(conditions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} placeholder={w.value} aria-label={w.value} className={FIELD} />
+              <ValueInput c={c} field={fields.find((f) => f.key === c.field)} w={w} onChange={(value) => setConditions(conditions.map((x, j) => (j === i ? { ...x, value } : x)))} />
               <Button kind="quiet" size="dense" onClick={() => setConditions(conditions.filter((_, j) => j !== i))}>
                 {w.remove}
               </Button>
@@ -225,6 +263,12 @@ export function WorkflowEditor({
               ))}
             {a.kind === "ask_ai_manager" && (
               <textarea value={a.question} onChange={(e) => setAction(i, { ...a, question: e.target.value })} maxLength={400} placeholder={w.question} aria-label={w.question} className={`${FIELD} min-h-20 py-2`} />
+            )}
+            {a.kind === "hold_order" && (
+              <label className="flex flex-col gap-1 text-sm">
+                <input value={a.reason} onChange={(e) => setAction(i, { ...a, reason: e.target.value })} maxLength={200} placeholder={w.reason} aria-label={w.reason} className={FIELD} />
+                <span className="text-muted">{w.reasonHint}</span>
+              </label>
             )}
           </div>
         ))}
@@ -290,6 +334,7 @@ export function WorkflowCard({
   canWrite,
   actions,
   scope = "store",
+  valueLabels,
 }: {
   flow: WorkflowView;
   endpoints: { id: string; name: string }[];
@@ -297,8 +342,11 @@ export function WorkflowCard({
   canWrite: boolean;
   actions: WorkflowActions;
   scope?: WorkflowScope;
+  /** Names for values a condition holds by id (a product's), from the page. */
+  valueLabels?: Record<string, string>;
 }) {
   const w = useAdminText("notifications").workflows;
+  const fieldOf = (key: string) => kitOf(scope).fieldsFor(flow.trigger).find((f) => f.key === key);
   const [pending, run] = useTransition();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -323,7 +371,7 @@ export function WorkflowCard({
   return (
     <Card title={flow.name} description={when} aside={state} level={3} compact className="flex flex-col gap-3">
       <p className="text-sm text-ink-2">
-        {flow.conditions.length > 0 && `${w.conditions}: ${flow.conditions.map((c) => `${w.fields[c.field] ?? c.field} ${w.ops[c.op]} ${c.value}`).join("; ")}. `}
+        {flow.conditions.length > 0 && `${w.conditions}: ${flow.conditions.map((c) => `${w.fields[c.field] ?? c.field} ${w.ops[c.op]} ${valueWords(c, fieldOf(c.field), w, valueLabels)}`).join("; ")}. `}
         {`${w.actions}: ${flow.actions.map((a) => w.actionKinds[a.kind]).join(", ")}.`}
       </p>
       {!flow.tested && !flow.enabled && <p className="text-sm text-warning-text">{w.untested}</p>}

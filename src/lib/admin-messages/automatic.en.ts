@@ -1,0 +1,110 @@
+/**
+ * The words of what runs by itself (ecosystem plan E3.3, D718; D312 A8): Settings → Automatic (`overview`), moving the order rules to
+ * workflows on Settings → Automation (`move`) and the Workflows page's notice of what was moved (`moved`). Server-only (`SERVER_AREAS`): the
+ * pages draw them, so no screen's first scripts carry them. `{name}`-style placeholders are filled by `fillWords()`; a count is a `{ one, many }`
+ * pair read by `countWords()`.
+ */
+export const automaticEn = {
+  overview: {
+    title: "Automatic",
+    description: "Everything in your store that happens by itself, and when it last did. Each line leads to where it is changed.",
+    paidTitle: "When an order is paid",
+    paidDescription: "What happens, in this order, once for each paid order.",
+    atOnce: "At once",
+    withinMinute: "Within a minute",
+    paid: {
+      confirmation: "The customer gets the order confirmation email.",
+      workflow: "The workflow {name} runs.",
+      rule: "The automation rule {name} runs.",
+      staffEmail: { one: "{n} person on the team gets the new order email.", many: "{n} people on the team get the new order email." },
+      staffNobody: "Nobody on the team is emailed about it.",
+      push: { one: "{n} device gets a notification.", many: "{n} devices get a notification." },
+      endpoint: "It is sent to your endpoint {name}.",
+      integration: { zapier: "It is sent to Zapier.", make: "It is sent to Make.", slack: "It is posted in Slack." },
+    },
+    runningTitle: "Running by itself",
+    runningDescription: "What is switched on now.",
+    none: "Nothing runs by itself yet. Workflows, email automations and staff alerts are good places to start.",
+    line: {
+      workflow: "Workflow: {name}",
+      rule: "Automation rule: {name}",
+      emailAutomation: "Email automation: {name}",
+      cartReminders: { one: "Cart reminders: {n} email", many: "Cart reminders: {n} emails" },
+      reviewRequests: { one: "Review requests, {n} day after delivery", many: "Review requests, {n} days after delivery" },
+      staffAlert: { one: "Staff email: {name}, to {n} person", many: "Staff email: {name}, to {n} people" },
+      push: { one: "Notifications on {n} device", many: "Notifications on {n} devices" },
+      endpoint: "Your endpoint {name}",
+      integration: { zapier: "Zapier", make: "Make", slack: "Slack" },
+      autopilot: "The autopilot reacts to what happens",
+    },
+    sub: {
+      when: "When: {trigger}",
+      everyDay: "Every day at {at}",
+      everyWeek: "Every week at {at}",
+      paid: "When an order is paid",
+      failing: "Its deliveries are failing",
+      events: { one: "{n} event", many: "{n} events" },
+    },
+    last: "Last: {when}",
+    notYet: "Not yet",
+    notLately: "Not in the last 30 days",
+    details: "Details, and what is switched off",
+    detailsHint: "Every part, on or off, with what starts it and what it does.",
+    on: "On",
+    off: "Off",
+    groups: {
+      workflows: "Workflows",
+      rules: "Automation rules (not moved to workflows yet)",
+      emails: "Email automations",
+      carts: "Cart reminders",
+      reviews: "Review requests",
+      staff: "Staff emails",
+      devices: "Notifications on devices",
+      endpoints: "Your endpoints",
+      services: "Services",
+      autopilot: "The autopilot",
+    },
+    facts: {
+      trigger: "Starts on {trigger}",
+      conditions: { one: "{n} condition", many: "{n} conditions" },
+      actions: "Does: {actions}",
+      runsDay: { one: "{n} run in the last day", many: "{n} runs in the last day" },
+      steps: { one: "{n} email on", many: "{n} emails on" },
+      days: "{n} days after delivery",
+      recipients: { one: "{n} recipient", many: "{n} recipients" },
+      summary: { off: "The briefing is off", daily: "The briefing is daily", weekly: "The briefing is weekly" },
+      devices: { one: "{n} device", many: "{n} devices" },
+      topics: "Sent: {topics}",
+      paused: "Paused",
+      reacts: "Reacts to events",
+      notReacting: "Does not react to events",
+      none: "None",
+    },
+  },
+  /** Moving the rules to workflows, on Settings → Automation. */
+  move: {
+    title: "Rules are becoming workflows",
+    description: "Workflows now do everything a rule does, and more. Move your rules and each becomes a workflow that does the same when an order is paid; nothing stops in between.",
+    button: "Move my rules to workflows",
+    moving: "Moving …",
+    canMove: { one: "{n} rule can move now.", many: "{n} rules can move now." },
+    staysTitle: "These stay rules for now, and keep running:",
+    why: {
+      any: "It acts when any one of its conditions holds, and a workflow needs all of them. Make it again as one workflow for each condition, then delete it.",
+      empty: "One of its conditions has nothing chosen, so it never acts.",
+      invalid: "It could not be written as a workflow.",
+      limit: "The store has as many workflows as it can have.",
+    },
+    done: { one: "Moved {n} rule to workflows: {names}.", many: "Moved {n} rules to workflows: {names}." },
+    nothing: "Nothing could be moved.",
+    readOnly: "An owner or someone who may change the settings can move them.",
+  },
+  /** The Workflows page's notice after the rules were moved there. */
+  moved: {
+    title: "Your order rules are workflows now",
+    text: "{names}: each does what its rule did when an order is paid, and is on if its rule was. Orders paid before the move that the rules had not handled yet are handled by the workflows.",
+    log: "What the rules did before is in the automation log.",
+  },
+};
+
+export type AutomaticMessages = typeof automaticEn;
