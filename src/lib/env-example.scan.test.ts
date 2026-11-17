@@ -18,6 +18,7 @@ const SET_ELSEWHERE: Record<string, string> = {
   VERCEL_REGION: "Vercel",
   VITEST: "Vitest",
   PLAYWRIGHT_CHROMIUM_PATH: "the end-to-end tests' browser, CLAUDE.md",
+  STATEMENT_LOG: "set only by scripts/server-budget.mjs for the app it starts (src/db/statement-log.ts), never in an env file",
   UPDATE_ADMIN_STRINGS: "a test's switch to rewrite its snapshot",
   WRITE_GLOSSARY: "a test's switch to rewrite its snapshot",
 };

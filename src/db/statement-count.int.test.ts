@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { countStatements, noteStatement, sameStatementTwice, setRenderCounter, waves } from "@/db/statement-count";
@@ -110,5 +110,27 @@ describe("statement counter", () => {
       setRenderCounter(null);
     }
     expect(box.statements).toBe(2);
+  });
+
+  it("writes a log line with the statement's text and never its values when STATEMENT_LOG is 1", async () => {
+    vi.stubEnv("STATEMENT_LOG", "1");
+    vi.resetModules();
+    const lines: string[] = [];
+    const write = vi.spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => {
+      lines.push(String(chunk));
+      return true;
+    });
+    const fresh = await import("@/db/client");
+    try {
+      await fresh.db().execute(sql`select ${"secret-value"}::text as t`);
+    } finally {
+      write.mockRestore();
+      vi.unstubAllEnvs();
+      await fresh.closeDb();
+    }
+    const logged = lines.map((l) => l.trim()).filter((l) => l.startsWith("{") && l.includes("db.statement"));
+    expect(logged.length).toBeGreaterThan(0);
+    expect(logged.some((l) => JSON.parse(l).text.toLowerCase().includes("select"))).toBe(true);
+    expect(logged.join("\n")).not.toContain("secret-value");
   });
 });

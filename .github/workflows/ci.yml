@@ -179,6 +179,11 @@ jobs:
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).
       - run: pnpm exec playwright install chromium webkit
       - run: pnpm test:e2e
+      # The statements each store page sends, counted from the app's own statement log (bloat review step 1.11): after Playwright, so
+      # nothing else sends statements, and `success()` so a red Playwright run is not hidden behind it. A hard gate.
+      - name: Statements per store page
+        if: success()
+        run: node scripts/server-budget.mjs >> "$GITHUB_STEP_SUMMARY"
       # After the end-to-end run, so a budget failure never hides its results; `!cancelled()` so it still reports when a test failed.
       - name: Every route's first scripts against the baseline (scripts/bundle-budget.mjs)
         if: ${{ !cancelled() }}
