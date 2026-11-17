@@ -1569,6 +1569,11 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
 const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([
   "store:text-messages",
   "store:text-message.new",
+  // Forms (D705, F1): came with the forms' migration.
+  "store:forms",
+  "store:forms.new",
+  "platform:forms",
+  "platform:forms.new",
 ]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */

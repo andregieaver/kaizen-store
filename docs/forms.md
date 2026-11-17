@@ -206,6 +206,9 @@ export is in the audit log (an export with its count only, as D295's).
   the page themselves (`refresh()`).
 - **Personal data.** `form_responses` is in the register (found by `contact_email`, exported with its answers under `forms`, deleted on
   erasure), never copied with a store, and pruned daily after its form's months, never later than the `form_responses` rule (36 months).
+- **The AI manager learns of Forms next push.** The four Forms pages without parameters are in `NOT_YET_IN_PROMPT` (`src/lib/admin-map.ts`) for
+  the deploy that carries the forms' migration, which waits for the agents' eval replay; the next push takes them out, and the eval is then
+  recorded again on Platform → AI.
 - **Not yet.** The A/B tests' form goal (D148) counts a `form` component by its form's id, which no test names yet; copies of a store
   (D129) leave a copied page's form components showing nothing (their form is the original's) until F2.
 
