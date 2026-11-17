@@ -92,7 +92,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
       business: "Bedriftskunde",
       host: "Vertens oppføring: {host}",
       gift: "Gave",
-      held: "Holdt tilbake av en regel",
+      held: "Holdt tilbake av en arbeidsflyt",
       answers: "Spørsmål i kassen besvart: {n} (på bestillingen)",
       subject: "Ny bestilling {number}: {total}",
       preview: "{store} har en ny betalt bestilling, {number}, på {total}.",
