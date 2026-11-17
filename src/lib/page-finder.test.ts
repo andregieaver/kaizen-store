@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { opensFinder } from "@/components/admin/page-finder";
 
-import { FINDER_QUERY_MAX, finderResults } from "./page-finder";
+import { ownerOpens } from "./owner-nav";
+import { FINDER_QUERY_MAX, finderAnswer, finderOptions, finderResults } from "./page-finder";
 
 const shop = { features: ["shop" as const] };
 const key = (over: Partial<Parameters<typeof opensFinder>[0]>) => ({ key: "k", metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...over });
@@ -49,5 +50,33 @@ describe("the page finder", () => {
     expect(opensFinder(key({ key: "/" }), true)).toBe(false);
     expect(opensFinder(key({ metaKey: true, shiftKey: true }), false)).toBe(false);
     expect(opensFinder(key({ key: "j", metaKey: true }), false)).toBe(false);
+  });
+});
+
+describe("the page finder at the owner's level, and its answer (ecosystem plan E2.2, D713)", () => {
+  const owner = { owner: true, work: true, canOpen: (page: { path: string }) => ownerOpens({ owner: true, work: true }, page.path) };
+  const staff = { owner: false, work: false, canOpen: (page: { path: string }) => ownerOpens({ owner: false, work: false }, page.path) };
+
+  it("finds the level's own pages, never a store's", () => {
+    const items = finderResults("account", "billing", { flags: owner });
+    expect(items.some((item) => item.href === "/admin/account/billing")).toBe(true);
+    expect(finderResults("account", "orders", { flags: owner, limit: 20 }).every((item) => /^\/admin(\/stores|\/account|$)/.test(item.href))).toBe(true);
+  });
+
+  it("offers staff only what their tabs show: no billing, no control center, no Work", () => {
+    expect(finderResults("account", "billing", { flags: staff }).some((item) => item.href === "/admin/account/billing")).toBe(false);
+    expect(finderResults("account", "control center", { flags: staff }).some((item) => item.href === "/admin")).toBe(false);
+    expect(finderResults("account", "invoices hours time", { flags: staff, limit: 20 }).some((item) => item.href.startsWith("/admin/account/work"))).toBe(false);
+    expect(finderResults("account", "appearance", { flags: staff }).some((item) => item.href === "/admin/account/appearance")).toBe(true);
+  });
+
+  it("puts the pages first and leaves out empty groups; the options run in the order they are drawn", () => {
+    const page = { title: "Orders", group: "Main", what: "", href: "/admin/s/orders" };
+    const order = { title: "#1001", group: "", what: "", href: "/admin/s/orders/o1" };
+    const answer = finderAnswer([page], [{ kind: "order", items: [order] }, { kind: "deal", items: [] }]);
+    expect(answer.map((group) => group.kind)).toEqual(["pages", "order"]);
+    expect(finderOptions(answer)).toEqual([page, order]);
+    expect(finderAnswer([], [{ kind: "order", items: [order] }]).map((group) => group.kind)).toEqual(["order"]);
+    expect(finderAnswer([])).toEqual([]);
   });
 });

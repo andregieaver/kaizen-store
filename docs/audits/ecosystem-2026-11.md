@@ -35,30 +35,31 @@ behaviour joins pages, never people.
 | E1.8 | The domain jobs run inside `tracked()` | S | Done, 17 Nov 2026 | `daily.domain-renewals`, `daily.domain-reminders`, `daily.domain-moves`, `daily.domain-arrivals` in `commerce.cron_jobs`, so a failure shows on the platform home |
 | E1.9 | Docs that no longer matched the code | S | Done, 17 Nov 2026 | `heatmaps-and-recordings.md` (status), `admin-navigation.md` (page counts), `domains.md` 7.2 (`domains_overview` is not built), code review 2.1 (the finder is built for the store and the platform) |
 
-## Phase 2: one front door
+## Phase 2: one front door (D713)
 
-| Id | Step | Size | Status |
-|---|---|---|---|
-| E2.1 | One attention source (`src/server/attention.ts`) behind Home, the briefing, the notices bell, push and Slack; disputes, leads, autopilot decisions, blog comments and overdue activities added | M | Open |
-| E2.2 | ⌘K finds orders, customers, conversations, deals and products, hands a miss to the AI manager, and is at the owner's level too | M | Open |
-| E2.3 | A *how it performs* strip in the page and product editors: conversion, heatmap, recordings, speed, the running test | M | Open |
-| E2.4 | Consent, segments and SMS on the customer page | S | Open |
-| E2.5 | CRM tools for the AI manager: deals, leads, activities and the timeline (prompt drawings and a new eval recording) | M | Open |
-| E2.6 | *Quote for this deal*; drafts prefilled from a customer or a deal | S | Open |
-| E2.7 | Act from the conversation: refund, return, store credit, address, then the request decided | L | Open |
-| E2.8 | Leads in the menu, each with a link to its source and an owner | S | Open |
+| Id | Step | Size | Status | Notes |
+|---|---|---|---|---|
+| E2.1 | One attention source behind Home and the briefing; disputes, leads, AI decisions, blog comments and activities added | M | Done, 17 Nov 2026 | `src/server/attention.ts` counts the new queues for any number of stores; `attentionFor()` items carry a `kind`; the briefing reads `storeAttention()`. Left: push, Slack and the bell read it next; `store_checkup` keeps its own (different) definitions of late orders and low stock |
+| E2.2 | ⌘K finds orders, customers, conversations, deals and products, hands a miss to the AI manager, and is at the owner's level | M | Done, 17 Nov 2026 | `src/server/finder-records.ts`, five a kind, each kind by its permission and feature, erased people never found; the owner's level searches every store by that store's own rights. Left: the platform's own records; partial email and order-word search (no index) |
+| E2.3 | *How it performs* in the page and product editors; *Edit this part* and *A/B test this part* on a heatmap | M | Done, 17 Nov 2026 | `src/lib/page-signals.ts`, `src/server/page-signals.ts`, `PageSignalsStrip`, loaded after the editor; `analytics:read`. Left: views of pages without heatmaps (no index on landing pages), nested pages and a second blog's articles |
+| E2.4 | The email list, texts and segments on the customer page | S | Done, 17 Nov 2026 | `CustomerMarketing`; `segmentsOfPerson()` reads the person once and checks every saved segment in code; `segmentPeople()` now filters by the addresses asked for |
+| E2.5 | CRM tools for the AI manager | M | Done, 17 Nov 2026 | `list_deals`, `get_deal`, `move_deal`, `list_leads`, `make_deal_from_lead`, `crm_today`, `log_activity`, `customer_timeline`; eval case `manager-lead-name`. **Held out** (`HELD_FOR_EVAL`, `HELD_EVAL_CASES`, Leads in `NOT_YET_IN_PROMPT`): a deploy with a migration needs the eval's replay green, and the eval can only be recorded once the tools are live. Released in a push without a migration (E2.5r below), then the eval is run on Platform → AI and its recording committed |
+| E2.6 | *Make a quote* on a deal; a draft starts from a customer | S | Done, 17 Nov 2026 | `createDraft({ customerId })`, `drafts/new?customer=&deal=`; *Make a draft order* in the customer page's More menu |
+| E2.7 | Carry a support request out from the conversation | L | Done, 17 Nov 2026 | `src/server/support-carry-out.ts`: cancel, address and refund through the order page's own functions, a two-minute claim, then the request done; a person's own Done or Decline waits for a running carry-out. Left: *Make a deal* from the conversation (needs a deal for a customer who is not a lead), a return (a customer's own action) |
+| E2.8 | Leads in the menu, each request linked to where it is kept | S | Done, 17 Nov 2026 | `/leads` under Customers; a form's message read from its responses (D705), so form leads are counted at last. Left: an owner for a lead (needs a column) |
+| E2.5r | Release the CRM tools, their eval case and Leads in the AI's map; API contract 1.38; record the eval | S | Open | In a push with no migration, once the deploy before it is live |
 
 ## Phase 3: one nervous system
 
 | Id | Step | Size | Status |
 |---|---|---|---|
-| E3.1 | An append-only event log (`commerce.events`), written by `queue_integration_event()` and `queue_store_event()`, read by every engine with a cursor | L | Open |
-| E3.2 | The missing events: deal, lead, activity, subscriber, checkout abandoned, conversation ended or rated, review published, domain problem, and the `work_*` events queued today but dropped | M | Open |
-| E3.3 | Order rules folded into workflows, with a hold action (0 rows to move on 17 Nov 2026) | M | Open |
-| E3.4 | Workflows gain customer actions: marketing email, SMS, start an automation, wait | L | Open |
-| E3.5 | One contact policy across email and SMS: a cap per person, spacing, quiet hours, priority | M | Open |
-| E3.6 | Segments on products bought, deals, support, reviews and engagement, usable by every engine | M | Open |
-| E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Open |
+| E3.1 | An append-only event log (`commerce.events`), written by `queue_integration_event()` and `queue_store_event()`, read by every engine with a cursor | L | Done, 17 Nov 2026 (234bbdc9). No engine reads it yet; `processStoreEvents()` moves first |
+| E3.2 | The missing events: deal, lead, activity, subscriber, checkout abandoned, conversation ended or rated, review published, domain problem, and the `work_*` events queued today but dropped | M | Done, 17 Nov 2026 (234bbdc9). Left: lead, activity, domain problem |
+| E3.3 | Order rules folded into workflows, with a hold action (0 rows to move on 17 Nov 2026) | M | Done, 17 Nov 2026 (82ae56a4), with Settings → Automatic |
+| E3.4 | Workflows gain customer actions: marketing email, SMS, start an automation, wait | L | Moved to M2.3 of `email-marketing-2026-11.md` (D720) |
+| E3.5 | One contact policy across email and SMS: a cap per person, spacing, quiet hours, priority | M | Moved to M1.5 of `email-marketing-2026-11.md` (D720) |
+| E3.6 | Segments on products bought, deals, support, reviews and engagement, usable by every engine | M | Done, 17 Nov 2026 (924999e4). Left: email engagement |
+| E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Built (a2d5989b), released with E2.5r: it changes the AI manager's prompt |
 
 ## Phase 4: closed loops
 
@@ -67,9 +68,9 @@ behaviour joins pages, never people.
 | E4.1 | The autopilot tests its page changes as A/B tests where traffic allows | L | Open |
 | E4.2 | Frustration, slow-page and domain alerts; the autopilot driven by the event log instead of its own scans | M | Open |
 | E4.3 | Questions the assistant could not answer feed its knowledge | M | Open |
-| E4.4 | A sending domain per store | M | Open |
-| E4.5 | Split tests of broadcasts and email automations | L | Open |
-| E4.6 | Owners nurtured from trial to plan through the house store | M | Open |
+| E4.4 | A sending domain per store | M | Moved to M1.1 of `email-marketing-2026-11.md` (D720) |
+| E4.5 | Split tests of broadcasts and email automations | L | Moved to M2.5 of `email-marketing-2026-11.md` (D720) |
+| E4.6 | Owners nurtured from trial to plan through the house store | M | Moved to M4.5 of `email-marketing-2026-11.md` (D720) |
 
 Every step that changes a prompt or a tool's description needs a new run of the agents' eval on Platform → AI and its recording
 committed; every store step names its platform step in the same decision.

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { OwnerToolInput } from "@/lib/owner-tools";
 import type { PermissionHolder } from "@/lib/permissions";
-import { requestAddress } from "@/lib/support-actions";
+import { requestAddress, type RequestAddress } from "@/lib/support-actions";
 
 import type { Account } from "./auth";
 import { log } from "./log";
@@ -15,6 +15,7 @@ import type { Store } from "./stores";
 import { decideRequest } from "./support-actions";
 import { managerStaffDesk } from "./support-desk";
 import { sendRequestDecisionEmail } from "./support-email";
+import { uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -52,11 +53,17 @@ const REQUEST = z.object({
   held: col.bool,
 });
 type Request = z.output<typeof REQUEST>;
+/** A staff request with what code needs to judge it (read by staff's *Carry it out* too, ecosystem plan E2.7, D713). */
+export type StaffRequestFacts = Request;
 
-/** A request of the store with what code needs to judge it: its order by the number the customer gave, and whether the asker owns it. */
-async function requestOf(store: Store, id: string): Promise<Request> {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return fail("Give the request's id, from the support event or list_support_conversations.");
-  const row = await typedRow(
+/**
+ * Requests of the store with what code needs to judge them: each one's order by the number the customer gave (never a copy, a restricted or an
+ * anonymised order), and whether the asker owns it. Requests of another store, or not to staff, are not among them.
+ */
+export async function requestFacts(storeId: string, ids: readonly string[]): Promise<Request[]> {
+  const wanted = ids.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+  if (wanted.length === 0) return [];
+  return typedRows(
     REQUEST,
     sql`
       select a.id, a.kind, a.status, a.args, a.conversation_id, c.source,
@@ -71,9 +78,16 @@ async function requestOf(store: Store, id: string): Promise<Request> {
       join commerce.support_conversations c on c.id = a.conversation_id and c.store_id = a.store_id
       left join commerce.orders o on o.store_id = a.store_id and o.number = a.args ->> 'orderNumber' and o.copied_from is null
         and o.restricted_at is null and o.anonymised_at is null
-      where a.store_id = ${store.id}::uuid and a.id = ${id}::uuid and a.confirmer = 'staff'
+      where a.store_id = ${storeId}::uuid and a.id = any(${uuidList(wanted)}) and a.confirmer = 'staff'
+      order by a.created_at, a.id
     `,
   );
+}
+
+/** A request of the store with what code needs to judge it: its order by the number the customer gave, and whether the asker owns it. */
+async function requestOf(store: Store, id: string): Promise<Request> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return fail("Give the request's id, from the support event or list_support_conversations.");
+  const [row] = await requestFacts(store.id, [id]);
   if (!row) return fail(`No support request ${id} in this store.`);
   return row;
 }
@@ -94,11 +108,16 @@ function refusal(r: Request, kind: "change_address" | "cancel_order"): string | 
   return null;
 }
 
+/** The new address an address change came with, as the customer gave it, or null when it has no full one. */
+export function requestedAddress(args: unknown): RequestAddress | null {
+  const raw = (args && typeof args === "object" ? (args as Record<string, unknown>).address : undefined) ?? null;
+  const parsed = raw ? requestAddress.safeParse(raw) : null;
+  return parsed?.success ? parsed.data : null;
+}
+
 /** The new address the customer gave, or why there is none to use. */
 function addressOf(r: Request) {
-  const raw = (r.args && typeof r.args === "object" ? (r.args as Record<string, unknown>).address : undefined) ?? null;
-  const parsed = raw ? requestAddress.safeParse(raw) : null;
-  return parsed?.success ? parsed.data : fail("The customer gave no full new address with the request: a person asks them for it.");
+  return requestedAddress(r.args) ?? fail("The customer gave no full new address with the request: a person asks them for it.");
 }
 
 /** Checks an address change before it is kept for a yes. */

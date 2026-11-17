@@ -2,7 +2,7 @@
 
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 
 import { SiteForm } from "@/components/site-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -60,6 +60,7 @@ export function FormEditor({
   languages = [],
   inboxChoice = false,
   placedOn,
+  templates,
   listHref,
   save,
   setStatus,
@@ -76,6 +77,8 @@ export function FormEditor({
   /** A store's form may choose where its messages go (F3, the support inbox, D382); Kaizena Flow's has no inbox. */
   inboxChoice?: boolean;
   placedOn: PlacedOn[];
+  /** Save as template (F4), drawn under where the form shows. */
+  templates?: ReactNode;
   listHref: string;
   save: (draft: FormDraft) => Promise<SaveFormOutcome>;
   setStatus: (status: FormStatus) => Promise<boolean>;
@@ -355,6 +358,7 @@ export function FormEditor({
             </ul>
           )}
         </Card>
+        {canEdit && templates}
         {canEdit && (
           <Card>
             <div className="flex flex-col items-start gap-3">

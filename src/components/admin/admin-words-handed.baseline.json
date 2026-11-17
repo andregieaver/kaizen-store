@@ -1,0 +1,3921 @@
+{
+  "sites": {
+    "src/app/admin/(gated)/(owner)/account/developer/[app]/page.tsx#oauth": {
+      "areas": [
+        "oauth"
+      ],
+      "handed": {
+        "en": 11908,
+        "nb": 12561
+      },
+      "named": {
+        "en": 3544,
+        "nb": 3752
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/account/developer/new/page.tsx#oauth": {
+      "areas": [
+        "oauth"
+      ],
+      "handed": {
+        "en": 11908,
+        "nb": 12561
+      },
+      "named": {
+        "en": 3544,
+        "nb": 3752
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/account/kaizen-support/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 1293,
+        "nb": 1294
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/account/notices/page.tsx#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "named": {
+        "en": 1078,
+        "nb": 1109
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/account/page.tsx#common+signIn": {
+      "areas": [
+        "common",
+        "signIn"
+      ],
+      "handed": {
+        "en": 14964,
+        "nb": 15718
+      },
+      "named": {
+        "en": 352,
+        "nb": 376
+      },
+      "whole": [],
+      "unnamed": [
+        "signIn"
+      ]
+    },
+    "src/app/admin/(gated)/(owner)/account/referrals/page.tsx#loyalty": {
+      "areas": [
+        "loyalty"
+      ],
+      "handed": {
+        "en": 22409,
+        "nb": 23428
+      },
+      "named": {
+        "en": 2372,
+        "nb": 2477
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/account/support/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "whole": [
+        "support"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/account/work/layout.tsx#work+bookings": {
+      "areas": [
+        "work",
+        "bookings"
+      ],
+      "handed": {
+        "en": 101252,
+        "nb": 106366
+      },
+      "named": {
+        "en": 29548,
+        "nb": 30737
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/stores/copies/[copyId]/page.tsx#platform": {
+      "areas": [
+        "platform"
+      ],
+      "handed": {
+        "en": 49117,
+        "nb": 53674
+      },
+      "named": {
+        "en": 1358,
+        "nb": 1384
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/(owner)/stores/copy/[store]/page.tsx#platform": {
+      "areas": [
+        "platform"
+      ],
+      "handed": {
+        "en": 49117,
+        "nb": 53674
+      },
+      "named": {
+        "en": 4189,
+        "nb": 5169
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/affiliates/page.tsx#loyalty": {
+      "areas": [
+        "loyalty"
+      ],
+      "handed": {
+        "en": 22409,
+        "nb": 23428
+      },
+      "named": {
+        "en": 5326,
+        "nb": 5607
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/customers/page.tsx#reports+analytics": {
+      "areas": [
+        "reports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 107689,
+        "nb": 111329
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "reports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/finance/page.tsx#finance+analytics": {
+      "areas": [
+        "finance",
+        "analytics"
+      ],
+      "handed": {
+        "en": 75126,
+        "nb": 79095
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "finance"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/heatmaps/page.tsx#analytics": {
+      "areas": [
+        "analytics"
+      ],
+      "handed": {
+        "en": 42996,
+        "nb": 45074
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/inventory/page.tsx#reports+analytics": {
+      "areas": [
+        "reports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 107689,
+        "nb": 111329
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "reports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/live/page.tsx#analytics": {
+      "areas": [
+        "analytics"
+      ],
+      "handed": {
+        "en": 42996,
+        "nb": 45074
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx#reports+analytics": {
+      "areas": [
+        "reports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 107689,
+        "nb": 111329
+      },
+      "named": {
+        "en": 2527,
+        "nb": 2590
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/page.tsx#analytics": {
+      "areas": [
+        "analytics"
+      ],
+      "handed": {
+        "en": 42996,
+        "nb": 45074
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/payouts/page.tsx#finance+analytics": {
+      "areas": [
+        "finance",
+        "analytics"
+      ],
+      "handed": {
+        "en": 75126,
+        "nb": 79095
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "finance"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/products/page.tsx#reports+analytics": {
+      "areas": [
+        "reports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 107689,
+        "nb": 111329
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "reports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/recordings/page.tsx#analytics": {
+      "areas": [
+        "analytics"
+      ],
+      "handed": {
+        "en": 42996,
+        "nb": 45074
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "analytics"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/reports/view/page.tsx#analytics+customReports": {
+      "areas": [
+        "analytics",
+        "customReports"
+      ],
+      "handed": {
+        "en": 51392,
+        "nb": 53741
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "customReports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/sales/page.tsx#reports+analytics": {
+      "areas": [
+        "reports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 107689,
+        "nb": 111329
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "reports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/settings/page.tsx#analytics": {
+      "areas": [
+        "analytics"
+      ],
+      "handed": {
+        "en": 42996,
+        "nb": 45074
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/speed/page.tsx#analytics": {
+      "areas": [
+        "analytics"
+      ],
+      "handed": {
+        "en": 42996,
+        "nb": 45074
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/analytics/subscriptions/page.tsx#reports+analytics": {
+      "areas": [
+        "reports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 107689,
+        "nb": 111329
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "reports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/tax/page.tsx#taxReports+analytics": {
+      "areas": [
+        "taxReports",
+        "analytics"
+      ],
+      "handed": {
+        "en": 67016,
+        "nb": 70574
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "taxReports"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx#reports+analytics+finance": {
+      "areas": [
+        "reports",
+        "analytics",
+        "finance"
+      ],
+      "handed": {
+        "en": 139819,
+        "nb": 145350
+      },
+      "named": {
+        "en": 295,
+        "nb": 301
+      },
+      "whole": [],
+      "unnamed": [
+        "reports",
+        "finance"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/articles/authors/page.tsx#blog+website": {
+      "areas": [
+        "blog",
+        "website"
+      ],
+      "handed": {
+        "en": 53003,
+        "nb": 55364
+      },
+      "named": {
+        "en": 2873,
+        "nb": 2922
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/assistant/autopilot/page.tsx#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "assistant"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/automations/[kind]/follow-ups/[position]/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/automations/[kind]/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/automations/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/bonus/page.tsx#loyalty": {
+      "areas": [
+        "loyalty"
+      ],
+      "handed": {
+        "en": 22409,
+        "nb": 23428
+      },
+      "named": {
+        "en": 7218,
+        "nb": 7697
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/bookings/page.tsx#bookings+orders": {
+      "areas": [
+        "bookings",
+        "orders"
+      ],
+      "handed": {
+        "en": 60723,
+        "nb": 65290
+      },
+      "named": {
+        "en": 367,
+        "nb": 376
+      },
+      "whole": [],
+      "unnamed": [
+        "orders"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/bookings/staff/[staffId]/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 977,
+        "nb": 999
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/bookings/staff/new/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 977,
+        "nb": 999
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/bookings/stays/page.tsx#bookings": {
+      "areas": [
+        "bookings"
+      ],
+      "handed": {
+        "en": 41306,
+        "nb": 44018
+      },
+      "named": {
+        "en": 168,
+        "nb": 173
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/broadcasts/[broadcastId]/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/broadcasts/new/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/campaigns/[campaignId]/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "whole": [
+        "discounts"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/campaigns/new/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "whole": [
+        "discounts"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/campaigns/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 639,
+        "nb": 652
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx#platform": {
+      "areas": [
+        "platform"
+      ],
+      "handed": {
+        "en": 49117,
+        "nb": 53674
+      },
+      "named": {
+        "en": 1663,
+        "nb": 1743
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/chat/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 1620,
+        "nb": 1607
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/companies/[companyId]/page.tsx#bookings": {
+      "areas": [
+        "bookings"
+      ],
+      "handed": {
+        "en": 41306,
+        "nb": 44018
+      },
+      "named": {
+        "en": 917,
+        "nb": 994
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/companies/page.tsx#bookings": {
+      "areas": [
+        "bookings"
+      ],
+      "handed": {
+        "en": 41306,
+        "nb": 44018
+      },
+      "named": {
+        "en": 917,
+        "nb": 994
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/creators/page.tsx#loyalty": {
+      "areas": [
+        "loyalty"
+      ],
+      "handed": {
+        "en": 22409,
+        "nb": 23428
+      },
+      "named": {
+        "en": 2487,
+        "nb": 2508
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/customers/[customerId]/erase/page.tsx#privacy": {
+      "areas": [
+        "privacy"
+      ],
+      "handed": {
+        "en": 18168,
+        "nb": 22658
+      },
+      "named": {
+        "en": 3106,
+        "nb": 3238
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/customers/[customerId]/merge/page.tsx#customers": {
+      "areas": [
+        "customers"
+      ],
+      "handed": {
+        "en": 29210,
+        "nb": 29829
+      },
+      "named": {
+        "en": 6815,
+        "nb": 6864
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx#customers+privacy+loyalty+builder": {
+      "areas": [
+        "customers",
+        "privacy",
+        "loyalty",
+        "builder"
+      ],
+      "handed": {
+        "en": 148039,
+        "nb": 157751
+      },
+      "named": {
+        "en": 5049,
+        "nb": 8804
+      },
+      "whole": [],
+      "unnamed": [
+        "customers",
+        "builder"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/customers/import/[jobId]/page.tsx#inventory+customers": {
+      "areas": [
+        "inventory",
+        "customers"
+      ],
+      "handed": {
+        "en": 59471,
+        "nb": 61078
+      },
+      "named": {
+        "en": 12927,
+        "nb": 13078
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/customers/import/page.tsx#inventory+customers": {
+      "areas": [
+        "inventory",
+        "customers"
+      ],
+      "handed": {
+        "en": 59471,
+        "nb": 61078
+      },
+      "named": {
+        "en": 12927,
+        "nb": 13078
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/customers/new/page.tsx#customers": {
+      "areas": [
+        "customers"
+      ],
+      "handed": {
+        "en": 29210,
+        "nb": 29829
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "customers"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/discounts/[discountId]/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "whole": [
+        "discounts"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/discounts/new/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "whole": [
+        "discounts"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/discounts/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 639,
+        "nb": 652
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home": {
+      "areas": [
+        "home"
+      ],
+      "handed": {
+        "en": 33164,
+        "nb": 34808
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "home"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home#2": {
+      "areas": [
+        "home"
+      ],
+      "handed": {
+        "en": 33164,
+        "nb": 34808
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "home"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home#3": {
+      "areas": [
+        "home"
+      ],
+      "handed": {
+        "en": 33164,
+        "nb": 34808
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "home"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/dream-factory/page.tsx#home+builder": {
+      "areas": [
+        "home",
+        "builder"
+      ],
+      "handed": {
+        "en": 111416,
+        "nb": 116644
+      },
+      "named": {
+        "en": 78252,
+        "nb": 81836
+      },
+      "whole": [
+        "builder"
+      ],
+      "unnamed": [
+        "home"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/experiments/[id]/page.tsx#experiments": {
+      "areas": [
+        "experiments"
+      ],
+      "handed": {
+        "en": 31302,
+        "nb": 32390
+      },
+      "named": {
+        "en": 31302,
+        "nb": 32390
+      },
+      "whole": [
+        "experiments"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/experiments/[id]/page.tsx#experiments#2": {
+      "areas": [
+        "experiments"
+      ],
+      "handed": {
+        "en": 31302,
+        "nb": 32390
+      },
+      "named": {
+        "en": 31302,
+        "nb": 32390
+      },
+      "whole": [
+        "experiments"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/experiments/new/page.tsx#experiments": {
+      "areas": [
+        "experiments"
+      ],
+      "handed": {
+        "en": 31302,
+        "nb": 32390
+      },
+      "named": {
+        "en": 31302,
+        "nb": 32390
+      },
+      "whole": [
+        "experiments"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/feeds/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 2748,
+        "nb": 2785
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/fields/[groupId]/page.tsx#fields": {
+      "areas": [
+        "fields"
+      ],
+      "handed": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "named": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/fields/new/page.tsx#fields": {
+      "areas": [
+        "fields"
+      ],
+      "handed": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "named": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/fields/page.tsx#fields": {
+      "areas": [
+        "fields"
+      ],
+      "handed": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "named": {
+        "en": 2006,
+        "nb": 2106
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/fields/store/page.tsx#fields+builder": {
+      "areas": [
+        "fields",
+        "builder"
+      ],
+      "handed": {
+        "en": 103213,
+        "nb": 107898
+      },
+      "named": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
+      "areas": [
+        "forms",
+        "blocks",
+        "formTemplates"
+      ],
+      "handed": {
+        "en": 64484,
+        "nb": 67544
+      },
+      "named": {
+        "en": 12465,
+        "nb": 12995
+      },
+      "whole": [
+        "forms",
+        "formTemplates"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/forms/new/page.tsx#forms+formTemplates": {
+      "areas": [
+        "forms",
+        "formTemplates"
+      ],
+      "handed": {
+        "en": 6703,
+        "nb": 6988
+      },
+      "named": {
+        "en": 6703,
+        "nb": 6988
+      },
+      "whole": [
+        "forms",
+        "formTemplates"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/forms/page.tsx#forms": {
+      "areas": [
+        "forms"
+      ],
+      "handed": {
+        "en": 5003,
+        "nb": 5211
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "forms"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/forms/responses/[formId]/page.tsx#forms": {
+      "areas": [
+        "forms"
+      ],
+      "handed": {
+        "en": 5003,
+        "nb": 5211
+      },
+      "named": {
+        "en": 624,
+        "nb": 633
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/integrations/[provider]/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 33496,
+        "nb": 34699
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/integrations/ebay/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 33496,
+        "nb": 34699
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/integrations/endpoints/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 33496,
+        "nb": 34699
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/integrations/google-reviews/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 1773,
+        "nb": 1889
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/integrations/instagram/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "notifications"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/integrations/tripletex/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "notifications"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/inventory/import/[jobId]/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "whole": [
+        "inventory"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/import/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "whole": [
+        "inventory"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/locations/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "whole": [
+        "inventory"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "whole": [
+        "inventory"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/purchase-orders/[id]/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 3620,
+        "nb": 3754
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/purchase-orders/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 3620,
+        "nb": 3754
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/suppliers/[id]/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "whole": [
+        "inventory"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/suppliers/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "whole": [
+        "inventory"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/transfers/[id]/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 3620,
+        "nb": 3754
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/inventory/transfers/page.tsx#inventory": {
+      "areas": [
+        "inventory"
+      ],
+      "handed": {
+        "en": 30261,
+        "nb": 31249
+      },
+      "named": {
+        "en": 3620,
+        "nb": 3754
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/layout.tsx#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "named": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "whole": [
+        "assistant"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/media/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 10437,
+        "nb": 10864
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/menus/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 4537,
+        "nb": 4632
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/orders/[orderId]/edit/page.tsx#drafts": {
+      "areas": [
+        "drafts"
+      ],
+      "handed": {
+        "en": 34906,
+        "nb": 37148
+      },
+      "named": {
+        "en": 34906,
+        "nb": 37148
+      },
+      "whole": [
+        "drafts"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx#order+drafts+privacy+builder": {
+      "areas": [
+        "order",
+        "drafts",
+        "privacy",
+        "builder"
+      ],
+      "handed": {
+        "en": 169057,
+        "nb": 181464
+      },
+      "named": {
+        "en": 54239,
+        "nb": 57545
+      },
+      "whole": [
+        "drafts"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/orders/drafts/[draftId]/page.tsx#drafts": {
+      "areas": [
+        "drafts"
+      ],
+      "handed": {
+        "en": 34906,
+        "nb": 37148
+      },
+      "named": {
+        "en": 34906,
+        "nb": 37148
+      },
+      "whole": [
+        "drafts"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/orders/drafts/new/page.tsx#drafts": {
+      "areas": [
+        "drafts"
+      ],
+      "handed": {
+        "en": 34906,
+        "nb": 37148
+      },
+      "named": {
+        "en": 453,
+        "nb": 464
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/orders/export/page.tsx#orders": {
+      "areas": [
+        "orders"
+      ],
+      "handed": {
+        "en": 19417,
+        "nb": 21272
+      },
+      "named": {
+        "en": 486,
+        "nb": 507
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/orders/history-import/[jobId]/page.tsx#inventory+customers": {
+      "areas": [
+        "inventory",
+        "customers"
+      ],
+      "handed": {
+        "en": 59471,
+        "nb": 61078
+      },
+      "named": {
+        "en": 12927,
+        "nb": 13078
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/orders/history-import/page.tsx#inventory+customers": {
+      "areas": [
+        "inventory",
+        "customers"
+      ],
+      "handed": {
+        "en": 59471,
+        "nb": 61078
+      },
+      "named": {
+        "en": 12927,
+        "nb": 13078
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/page.tsx#home": {
+      "areas": [
+        "home"
+      ],
+      "handed": {
+        "en": 33164,
+        "nb": 34808
+      },
+      "named": {
+        "en": 1219,
+        "nb": 1304
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/pages/ai/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 6533,
+        "nb": 6633
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREAS": {
+      "areas": [
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "design",
+        "website",
+        "blog",
+        "schedules",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 284035,
+        "nb": 297210
+      },
+      "named": {
+        "en": 182900,
+        "nb": 191410
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "backdrops"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREAS#2": {
+      "areas": [
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "design",
+        "website",
+        "blog",
+        "schedules",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 284035,
+        "nb": 297210
+      },
+      "named": {
+        "en": 182900,
+        "nb": 191410
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "backdrops"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx#EDITOR_AREAS#3": {
+      "areas": [
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "design",
+        "website",
+        "blog",
+        "schedules",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 284035,
+        "nb": 297210
+      },
+      "named": {
+        "en": 182900,
+        "nb": 191410
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "backdrops"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/pages/terms-views.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 5567,
+        "nb": 5855
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/pages/views.tsx#website+schedules": {
+      "areas": [
+        "website",
+        "schedules"
+      ],
+      "handed": {
+        "en": 53449,
+        "nb": 55882
+      },
+      "named": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "whole": [
+        "website"
+      ],
+      "unnamed": [
+        "schedules"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/privacy/[requestId]/page.tsx#privacy": {
+      "areas": [
+        "privacy"
+      ],
+      "handed": {
+        "en": 18168,
+        "nb": 22658
+      },
+      "named": {
+        "en": 3738,
+        "nb": 3912
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/privacy/new/page.tsx#privacy": {
+      "areas": [
+        "privacy"
+      ],
+      "handed": {
+        "en": 18168,
+        "nb": 22658
+      },
+      "named": {
+        "en": 3738,
+        "nb": 3912
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/[productId]/listing/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 893,
+        "nb": 916
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/[productId]/page.tsx#product+products+fields+builder+website": {
+      "areas": [
+        "product",
+        "products",
+        "fields",
+        "builder",
+        "website"
+      ],
+      "handed": {
+        "en": 210926,
+        "nb": 219411
+      },
+      "named": {
+        "en": 64269,
+        "nb": 66448
+      },
+      "whole": [
+        "product",
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/products/[productId]/passport/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 1813,
+        "nb": 1837
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/bulk/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "whole": [
+        "products"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/bulk/page.tsx#products#2": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "whole": [
+        "products"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/categories/page.tsx#products+fields+builder": {
+      "areas": [
+        "products",
+        "fields",
+        "builder"
+      ],
+      "handed": {
+        "en": 131028,
+        "nb": 136665
+      },
+      "named": {
+        "en": 30528,
+        "nb": 31917
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/products/import/[jobId]/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 3290,
+        "nb": 3311
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/import/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 3290,
+        "nb": 3311
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/products/new/page.tsx#product+products+fields+builder+website": {
+      "areas": [
+        "product",
+        "products",
+        "fields",
+        "builder",
+        "website"
+      ],
+      "handed": {
+        "en": 210926,
+        "nb": 219411
+      },
+      "named": {
+        "en": 64269,
+        "nb": 66448
+      },
+      "whole": [
+        "product",
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/products/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "whole": [
+        "products"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/redirects/404s/page.tsx#redirects": {
+      "areas": [
+        "redirects"
+      ],
+      "handed": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "named": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "whole": [
+        "redirects"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/redirects/import/[jobId]/page.tsx#redirects": {
+      "areas": [
+        "redirects"
+      ],
+      "handed": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "named": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "whole": [
+        "redirects"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/redirects/import/page.tsx#redirects": {
+      "areas": [
+        "redirects"
+      ],
+      "handed": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "named": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "whole": [
+        "redirects"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/redirects/old-shop/page.tsx#redirects": {
+      "areas": [
+        "redirects"
+      ],
+      "handed": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "named": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "whole": [
+        "redirects"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/redirects/old-shop/page.tsx#redirects#2": {
+      "areas": [
+        "redirects"
+      ],
+      "handed": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "named": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "whole": [
+        "redirects"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/redirects/page.tsx#redirects": {
+      "areas": [
+        "redirects"
+      ],
+      "handed": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "named": {
+        "en": 20197,
+        "nb": 21544
+      },
+      "whole": [
+        "redirects"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/reviews/import/page.tsx#reviews": {
+      "areas": [
+        "reviews"
+      ],
+      "handed": {
+        "en": 6476,
+        "nb": 6653
+      },
+      "named": {
+        "en": 2307,
+        "nb": 2291
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/segments/[segmentId]/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/segments/new/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "whole": [
+        "marketing"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/ai/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 10426,
+        "nb": 10967
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/api/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 7733,
+        "nb": 7983
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/automation/[ruleId]/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "whole": [
+        "notifications"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/automation/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "notifications"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/settings/checkout/page.tsx#shipping": {
+      "areas": [
+        "shipping"
+      ],
+      "handed": {
+        "en": 30867,
+        "nb": 32031
+      },
+      "named": {
+        "en": 8340,
+        "nb": 8743
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/company/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 6066,
+        "nb": 6257
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/company/places/[placeId]/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 977,
+        "nb": 999
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/company/places/new/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 977,
+        "nb": 999
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/countries/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 1871,
+        "nb": 1925
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/customs/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "settings"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/settings/design/page.tsx#design+schedules": {
+      "areas": [
+        "design",
+        "schedules"
+      ],
+      "handed": {
+        "en": 30609,
+        "nb": 32693
+      },
+      "named": {
+        "en": 26161,
+        "nb": 27931
+      },
+      "whole": [
+        "design"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/design/themes/[install]/page.tsx#design+schedules": {
+      "areas": [
+        "design",
+        "schedules"
+      ],
+      "handed": {
+        "en": 30609,
+        "nb": 32693
+      },
+      "named": {
+        "en": 27231,
+        "nb": 29103
+      },
+      "whole": [
+        "design"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/features/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 11525,
+        "nb": 12088
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/moving/page.tsx#moving": {
+      "areas": [
+        "moving"
+      ],
+      "handed": {
+        "en": 29374,
+        "nb": 30372
+      },
+      "named": {
+        "en": 29374,
+        "nb": 30372
+      },
+      "whole": [
+        "moving"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/navigation/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 2753,
+        "nb": 2849
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/notifications/[notification]/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "whole": [
+        "notifications"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/notifications/staff/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "whole": [
+        "notifications"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/orders/page.tsx#payments": {
+      "areas": [
+        "payments"
+      ],
+      "handed": {
+        "en": 16619,
+        "nb": 17380
+      },
+      "named": {
+        "en": 4866,
+        "nb": 5178
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/payments/page.tsx#payments": {
+      "areas": [
+        "payments"
+      ],
+      "handed": {
+        "en": 16619,
+        "nb": 17380
+      },
+      "named": {
+        "en": 1315,
+        "nb": 1428
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/prices/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 3176,
+        "nb": 3176
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/producer-responsibility/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 3541,
+        "nb": 3643
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/products/page.tsx#products": {
+      "areas": [
+        "products"
+      ],
+      "handed": {
+        "en": 27815,
+        "nb": 28767
+      },
+      "named": {
+        "en": 761,
+        "nb": 787
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/shipping/local/page.tsx#shipping": {
+      "areas": [
+        "shipping"
+      ],
+      "handed": {
+        "en": 30867,
+        "nb": 32031
+      },
+      "named": {
+        "en": 2174,
+        "nb": 2232
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/shipping/methods/[methodId]/page.tsx#shipping": {
+      "areas": [
+        "shipping"
+      ],
+      "handed": {
+        "en": 30867,
+        "nb": 32031
+      },
+      "named": {
+        "en": 2503,
+        "nb": 2648
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/shipping/profiles/page.tsx#shipping": {
+      "areas": [
+        "shipping"
+      ],
+      "handed": {
+        "en": 30867,
+        "nb": 32031
+      },
+      "named": {
+        "en": 910,
+        "nb": 964
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/tax/page.tsx#tax": {
+      "areas": [
+        "tax"
+      ],
+      "handed": {
+        "en": 8932,
+        "nb": 9642
+      },
+      "named": {
+        "en": 5902,
+        "nb": 6418
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/settings/workflows/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 6119,
+        "nb": 6485
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/setup/[step]/page.tsx#home": {
+      "areas": [
+        "home"
+      ],
+      "handed": {
+        "en": 33164,
+        "nb": 34808
+      },
+      "named": {
+        "en": 1219,
+        "nb": 1304
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/setup/[step]/page.tsx#payments": {
+      "areas": [
+        "payments"
+      ],
+      "handed": {
+        "en": 16619,
+        "nb": 17380
+      },
+      "named": {
+        "en": 1315,
+        "nb": 1428
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/staging/page.tsx#website+builder+schedules": {
+      "areas": [
+        "website",
+        "builder",
+        "schedules"
+      ],
+      "handed": {
+        "en": 131701,
+        "nb": 137718
+      },
+      "named": {
+        "en": 82549,
+        "nb": 86451
+      },
+      "whole": [
+        "builder"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/support/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "whole": [
+        "support"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/support/replies/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 882,
+        "nb": 895
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/support/reports/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "support"
+      ]
+    },
+    "src/app/admin/(gated)/[store]/support/requests/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 4571,
+        "nb": 4827
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/support/settings/page.tsx#support+settings": {
+      "areas": [
+        "support",
+        "settings"
+      ],
+      "handed": {
+        "en": 88525,
+        "nb": 92620
+      },
+      "named": {
+        "en": 7014,
+        "nb": 7920
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/support/widgets/[id]/page.tsx#support+design": {
+      "areas": [
+        "support",
+        "design"
+      ],
+      "handed": {
+        "en": 57696,
+        "nb": 61457
+      },
+      "named": {
+        "en": 5763,
+        "nb": 5876
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/support/widgets/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 4722,
+        "nb": 4733
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/text-messages/[campaignId]/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 4261,
+        "nb": 4256
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/text-messages/[campaignId]/page.tsx#marketing#2": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 4261,
+        "nb": 4256
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/text-messages/new/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 4261,
+        "nb": 4256
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/text-messages/page.tsx#marketing": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 4261,
+        "nb": 4256
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/text-messages/page.tsx#marketing#2": {
+      "areas": [
+        "marketing"
+      ],
+      "handed": {
+        "en": 37840,
+        "nb": 39332
+      },
+      "named": {
+        "en": 4261,
+        "nb": 4256
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/translate/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 2894,
+        "nb": 2928
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/hosting/[store]/page.tsx#payments": {
+      "areas": [
+        "payments"
+      ],
+      "handed": {
+        "en": 16619,
+        "nb": 17380
+      },
+      "named": {
+        "en": 1315,
+        "nb": 1428
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/layout.tsx#common+shell": {
+      "areas": [
+        "common",
+        "shell"
+      ],
+      "handed": {
+        "en": 14243,
+        "nb": 14694
+      },
+      "named": {
+        "en": 8835,
+        "nb": 9021
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/ai/dream/[runId]/page.tsx#home": {
+      "areas": [
+        "home"
+      ],
+      "handed": {
+        "en": 33164,
+        "nb": 34808
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "home"
+      ]
+    },
+    "src/app/admin/(gated)/platform/ai/page.tsx#settings": {
+      "areas": [
+        "settings"
+      ],
+      "handed": {
+        "en": 55766,
+        "nb": 57796
+      },
+      "named": {
+        "en": 10426,
+        "nb": 10967
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/assistant/autopilot/page.tsx#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "assistant"
+      ]
+    },
+    "src/app/admin/(gated)/platform/chat/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 1620,
+        "nb": 1607
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/discounts/[discountId]/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 639,
+        "nb": 652
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/discounts/page.tsx#discounts": {
+      "areas": [
+        "discounts"
+      ],
+      "handed": {
+        "en": 20248,
+        "nb": 20737
+      },
+      "named": {
+        "en": 639,
+        "nb": 652
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/docs/guide/page.tsx#platform+platformTools+website": {
+      "areas": [
+        "platform",
+        "platformTools",
+        "website"
+      ],
+      "handed": {
+        "en": 123955,
+        "nb": 131476
+      },
+      "named": {
+        "en": 7991,
+        "nb": 8158
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/fonts/page.tsx#design": {
+      "areas": [
+        "design"
+      ],
+      "handed": {
+        "en": 24937,
+        "nb": 26633
+      },
+      "named": {
+        "en": 7219,
+        "nb": 7651
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
+      "areas": [
+        "forms",
+        "blocks",
+        "formTemplates"
+      ],
+      "handed": {
+        "en": 64484,
+        "nb": 67544
+      },
+      "named": {
+        "en": 12465,
+        "nb": 12995
+      },
+      "whole": [
+        "forms",
+        "formTemplates"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/forms/new/page.tsx#forms+formTemplates": {
+      "areas": [
+        "forms",
+        "formTemplates"
+      ],
+      "handed": {
+        "en": 6703,
+        "nb": 6988
+      },
+      "named": {
+        "en": 6703,
+        "nb": 6988
+      },
+      "whole": [
+        "forms",
+        "formTemplates"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/forms/page.tsx#forms": {
+      "areas": [
+        "forms"
+      ],
+      "handed": {
+        "en": 5003,
+        "nb": 5211
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "forms"
+      ]
+    },
+    "src/app/admin/(gated)/platform/forms/responses/[formId]/page.tsx#forms": {
+      "areas": [
+        "forms"
+      ],
+      "handed": {
+        "en": 5003,
+        "nb": 5211
+      },
+      "named": {
+        "en": 624,
+        "nb": 633
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/google-reviews/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 1773,
+        "nb": 1889
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/instagram/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "notifications"
+      ]
+    },
+    "src/app/admin/(gated)/platform/integrations/[provider]/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 33496,
+        "nb": 34699
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/integrations/api/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 5181,
+        "nb": 5286
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/integrations/endpoints/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 33496,
+        "nb": 34699
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/languages/[lang]/page.tsx#platformTools": {
+      "areas": [
+        "platformTools"
+      ],
+      "handed": {
+        "en": 27061,
+        "nb": 27980
+      },
+      "named": {
+        "en": 3441,
+        "nb": 3524
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/layout.tsx#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "named": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "whole": [
+        "assistant"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/media/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 10437,
+        "nb": 10864
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/menus/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 4537,
+        "nb": 4632
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/navigation/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 2753,
+        "nb": 2849
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/pages/ai/page.tsx#website": {
+      "areas": [
+        "website"
+      ],
+      "handed": {
+        "en": 47777,
+        "nb": 49822
+      },
+      "named": {
+        "en": 6533,
+        "nb": 6633
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS": {
+      "areas": [
+        "platformSite",
+        "design",
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "website",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 319356,
+        "nb": 333749
+      },
+      "named": {
+        "en": 179918,
+        "nb": 188222
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "platformSite",
+        "backdrops"
+      ]
+    },
+    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#2": {
+      "areas": [
+        "platformSite",
+        "design",
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "website",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 319356,
+        "nb": 333749
+      },
+      "named": {
+        "en": 179918,
+        "nb": 188222
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "platformSite",
+        "backdrops"
+      ]
+    },
+    "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#3": {
+      "areas": [
+        "platformSite",
+        "design",
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "website",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 319356,
+        "nb": 333749
+      },
+      "named": {
+        "en": 179918,
+        "nb": 188222
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "platformSite",
+        "backdrops"
+      ]
+    },
+    "src/app/admin/(gated)/platform/pages/terms-views.tsx#products+platformSite": {
+      "areas": [
+        "products",
+        "platformSite"
+      ],
+      "handed": {
+        "en": 74034,
+        "nb": 76908
+      },
+      "named": {
+        "en": 5567,
+        "nb": 5855
+      },
+      "whole": [],
+      "unnamed": [
+        "platformSite"
+      ]
+    },
+    "src/app/admin/(gated)/platform/pages/views.tsx#website+platformSite": {
+      "areas": [
+        "website",
+        "platformSite"
+      ],
+      "handed": {
+        "en": 93996,
+        "nb": 97963
+      },
+      "named": {
+        "en": 2773,
+        "nb": 2883
+      },
+      "whole": [],
+      "unnamed": [
+        "platformSite"
+      ]
+    },
+    "src/app/admin/(gated)/platform/plan-reminders/reminder-form.tsx#platform": {
+      "areas": [
+        "platform"
+      ],
+      "handed": {
+        "en": 49117,
+        "nb": 53674
+      },
+      "named": {
+        "en": 1663,
+        "nb": 1743
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/processing/page.tsx#privacy": {
+      "areas": [
+        "privacy"
+      ],
+      "handed": {
+        "en": 18168,
+        "nb": 22658
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "privacy"
+      ]
+    },
+    "src/app/admin/(gated)/platform/retention/page.tsx#privacy": {
+      "areas": [
+        "privacy"
+      ],
+      "handed": {
+        "en": 18168,
+        "nb": 22658
+      },
+      "named": {
+        "en": 9016,
+        "nb": 9484
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/site-design/[install]/page.tsx#design+platformSite": {
+      "areas": [
+        "design",
+        "platformSite"
+      ],
+      "handed": {
+        "en": 71156,
+        "nb": 74774
+      },
+      "named": {
+        "en": 24937,
+        "nb": 26633
+      },
+      "whole": [
+        "design"
+      ],
+      "unnamed": [
+        "platformSite"
+      ]
+    },
+    "src/app/admin/(gated)/platform/site-design/page.tsx#design+platformSite": {
+      "areas": [
+        "design",
+        "platformSite"
+      ],
+      "handed": {
+        "en": 71156,
+        "nb": 74774
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "design",
+        "platformSite"
+      ]
+    },
+    "src/app/admin/(gated)/platform/support/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "whole": [
+        "support"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/support/replies/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 882,
+        "nb": 895
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/support/reports/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "support"
+      ]
+    },
+    "src/app/admin/(gated)/platform/support/settings/page.tsx#support+settings": {
+      "areas": [
+        "support",
+        "settings"
+      ],
+      "handed": {
+        "en": 88525,
+        "nb": 92620
+      },
+      "named": {
+        "en": 7014,
+        "nb": 7920
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/support/stores/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "support"
+      ]
+    },
+    "src/app/admin/(gated)/platform/support/widgets/[id]/page.tsx#support+design": {
+      "areas": [
+        "support",
+        "design"
+      ],
+      "handed": {
+        "en": 57696,
+        "nb": 61457
+      },
+      "named": {
+        "en": 5763,
+        "nb": 5876
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/support/widgets/page.tsx#support": {
+      "areas": [
+        "support"
+      ],
+      "handed": {
+        "en": 32759,
+        "nb": 34824
+      },
+      "named": {
+        "en": 4722,
+        "nb": 4733
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/themes/[presetId]/shell.tsx#PLATFORM_SITE_AREAS": {
+      "areas": [
+        "platformSite",
+        "design",
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "website",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 319356,
+        "nb": 333749
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "platformSite",
+        "design",
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "website",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ]
+    },
+    "src/app/admin/(gated)/platform/themes/page.tsx#platformSite": {
+      "areas": [
+        "platformSite"
+      ],
+      "handed": {
+        "en": 46219,
+        "nb": 48141
+      },
+      "named": {
+        "en": 1328,
+        "nb": 1328
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/workflows/page.tsx#notifications": {
+      "areas": [
+        "notifications"
+      ],
+      "handed": {
+        "en": 73967,
+        "nb": 77228
+      },
+      "named": {
+        "en": 6119,
+        "nb": 6485
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/app/admin/forgot-password/page.tsx#common+signIn": {
+      "areas": [
+        "common",
+        "signIn"
+      ],
+      "handed": {
+        "en": 14964,
+        "nb": 15718
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "common",
+        "signIn"
+      ]
+    },
+    "src/app/admin/sign-in/page.tsx#common+signIn": {
+      "areas": [
+        "common",
+        "signIn"
+      ],
+      "handed": {
+        "en": 14964,
+        "nb": 15718
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "common",
+        "signIn"
+      ]
+    },
+    "src/app/admin/sign-in/two-step/page.tsx#common+signIn": {
+      "areas": [
+        "common",
+        "signIn"
+      ],
+      "handed": {
+        "en": 14964,
+        "nb": 15718
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "common",
+        "signIn"
+      ]
+    },
+    "src/app/admin/sign-in/two-step/recovery/page.tsx#common+signIn": {
+      "areas": [
+        "common",
+        "signIn"
+      ],
+      "handed": {
+        "en": 14964,
+        "nb": 15718
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "common",
+        "signIn"
+      ]
+    },
+    "src/app/admin/sign-in/two-step/set-up/page.tsx#common+signIn": {
+      "areas": [
+        "common",
+        "signIn"
+      ],
+      "handed": {
+        "en": 14964,
+        "nb": 15718
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "common",
+        "signIn"
+      ]
+    },
+    "src/app/admin/try/[sandbox]/editor.tsx#EDITOR_AREAS": {
+      "areas": [
+        "builder",
+        "blocks",
+        "fields",
+        "products",
+        "design",
+        "website",
+        "blog",
+        "schedules",
+        "storeParts",
+        "backdrops",
+        "animation"
+      ],
+      "handed": {
+        "en": 284035,
+        "nb": 297210
+      },
+      "named": {
+        "en": 182900,
+        "nb": 191410
+      },
+      "whole": [
+        "builder",
+        "blocks",
+        "fields",
+        "storeParts",
+        "animation"
+      ],
+      "unnamed": [
+        "backdrops"
+      ]
+    },
+    "src/app/admin/try/layout.tsx#common+shell": {
+      "areas": [
+        "common",
+        "shell"
+      ],
+      "handed": {
+        "en": 14243,
+        "nb": 14694
+      },
+      "named": {
+        "en": 1240,
+        "nb": 1299
+      },
+      "whole": [],
+      "unnamed": [
+        "shell"
+      ]
+    },
+    "src/components/admin/ai-manager-page.tsx#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "named": {
+        "en": 17868,
+        "nb": 30517
+      },
+      "whole": [
+        "assistant"
+      ],
+      "unnamed": []
+    },
+    "src/components/admin/chat-agent-view.tsx#platformTools": {
+      "areas": [
+        "platformTools"
+      ],
+      "handed": {
+        "en": 27061,
+        "nb": 27980
+      },
+      "named": {
+        "en": 4524,
+        "nb": 4576
+      },
+      "whole": [],
+      "unnamed": []
+    },
+    "src/components/admin/content-entry-views.tsx#content+fields+builder+website": {
+      "areas": [
+        "content",
+        "fields",
+        "builder",
+        "website"
+      ],
+      "handed": {
+        "en": 156344,
+        "nb": 163377
+      },
+      "named": {
+        "en": 26666,
+        "nb": 27823
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/components/admin/content-type-views.tsx#content+fields+builder+website": {
+      "areas": [
+        "content",
+        "fields",
+        "builder",
+        "website"
+      ],
+      "handed": {
+        "en": 156344,
+        "nb": 163377
+      },
+      "named": {
+        "en": 27040,
+        "nb": 28254
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/components/admin/content-type-views.tsx#content+fields+builder+website#2": {
+      "areas": [
+        "content",
+        "fields",
+        "builder",
+        "website"
+      ],
+      "handed": {
+        "en": 156344,
+        "nb": 163377
+      },
+      "named": {
+        "en": 27040,
+        "nb": 28254
+      },
+      "whole": [
+        "fields"
+      ],
+      "unnamed": [
+        "builder"
+      ]
+    },
+    "src/components/admin/content-views.tsx#content": {
+      "areas": [
+        "content"
+      ],
+      "handed": {
+        "en": 5354,
+        "nb": 5657
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "content"
+      ]
+    },
+    "src/components/admin/content-views.tsx#content#2": {
+      "areas": [
+        "content"
+      ],
+      "handed": {
+        "en": 5354,
+        "nb": 5657
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "content"
+      ]
+    },
+    "src/components/admin/staff-fields-section.tsx#fields": {
+      "areas": [
+        "fields"
+      ],
+      "handed": {
+        "en": 24961,
+        "nb": 26062
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "fields"
+      ]
+    }
+  }
+}

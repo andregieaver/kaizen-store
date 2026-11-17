@@ -12,6 +12,7 @@ import { ORDER_WORDS } from "@/lib/admin-words/order";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { alertsFor, type Alert } from "@/lib/analytics-alerts";
 import { analyticsWordsIn } from "@/lib/analytics-words";
+import type { StoreAttentionItem } from "@/lib/control-center";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { formatMoney } from "@/lib/money";
@@ -41,7 +42,7 @@ import {
 
 import { alertSnapshotFor, type TargetCard } from "./analytics-insights";
 import { audit } from "./auth";
-import { briefingAlerts, briefingFacts, briefingNote, quietPeriod } from "./briefing";
+import { briefingAlerts, briefingAttention, briefingFacts, briefingNote, quietPeriod } from "./briefing";
 import { sendEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { getOrder } from "./orders";
@@ -431,11 +432,14 @@ async function returnFacts(storeId: string, returnId: string): Promise<ReturnFac
 }
 
 /**
- * What the briefing adds to the summary's figures (D348), already in the recipient's language: the alerts (`briefingAlerts()`), the checkup's findings,
- * the targets as lines, and the note checked by `checkedNote()`. Each item links to the page that acts on it.
+ * What the briefing adds to the summary's figures (D348), already in the recipient's language: the alerts (`briefingAlerts()`), what waits on the store's
+ * people (`briefingAttention()`, ecosystem plan E2.1), the checkup's findings, the targets as lines, and the note checked by `checkedNote()`. Each item
+ * links to the page that acts on it.
  */
 export type BriefingParts = {
   alerts: readonly Alert[];
+  /** Worded and linked by the attention source, as Home says them (an admin path each). */
+  attention?: readonly StoreAttentionItem[];
   checkup: readonly CheckupFinding[];
   targets: readonly { label: string; value: string }[];
   note: string | null;
@@ -483,6 +487,13 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
     { label: w.returnsRequested, value: String(f.returnsRequested) },
   ];
   const actionRow = (label: string, action: BriefingAction) => ({ label, value: action.kind === "open" ? w.open : w.actions[action.kind], url: adminUrl(store.slug, action.href) });
+  // An attention item's link is an admin path (`/admin/{store}/…`), as on Home.
+  const storeBase = `/admin/${store.slug}`;
+  const attentionRow = (item: StoreAttentionItem) => ({
+    label: item.text,
+    value: item.action,
+    url: adminUrl(store.slug, item.href.startsWith(storeBase) ? item.href.slice(storeBase.length) : item.href),
+  });
   const briefing: EmailBlock[] = parts
     ? [
         ...(parts.alerts.length > 0
@@ -491,6 +502,9 @@ export function summaryEmail(store: EmailStore, kind: "daily" | "weekly", f: Sta
               // Each with its one-press action (D416): a page that prepares the work, never the work itself.
               { type: "lines" as const, rows: parts.alerts.map((a) => actionRow(a.text, alertAction(a))) },
             ]
+          : []),
+        ...(parts.attention && parts.attention.length > 0
+          ? [{ type: "paragraph" as const, text: w.attention }, { type: "lines" as const, rows: parts.attention.map(attentionRow) }]
           : []),
         ...(parts.checkup.length > 0
           ? [
@@ -1049,11 +1063,17 @@ export async function sendDueSummaries(
           const parts = new Map<AdminLang, BriefingParts>();
           for (const lang of new Set(targets.map((t) => t.lang))) {
             const alerts = briefingAlerts(facts, lang);
+            const attention = briefingAttention(facts, lang);
             const lines = briefingTargetLines(facts.targets, figures.currency, lang);
             const w = wordsOf(lang).summary;
-            const items = [...alerts.map((a) => a.text), ...facts.checkup.map((c) => countWords(c.count, w.checkupWords[c.key], { n: c.count })), ...lines.map((l) => `${l.label}: ${l.value}`)];
+            const items = [
+              ...alerts.map((a) => a.text),
+              ...attention.map((a) => a.text),
+              ...facts.checkup.map((c) => countWords(c.count, w.checkupWords[c.key], { n: c.count })),
+              ...lines.map((l) => `${l.label}: ${l.value}`),
+            ];
             const note = await (options.note ?? briefingNote)(store, lang, items);
-            parts.set(lang, { alerts, checkup: facts.checkup, targets: lines, note });
+            parts.set(lang, { alerts, attention, checkup: facts.checkup, targets: lines, note });
           }
           const result = await sendToAll(storeId, emailStore.name, "staff.summary", targets, (lang) => summaryEmail(emailStore, row.summary as "daily" | "weekly", figures, lang, parts.get(lang)), (r) => ALERT_KEYS.summary(storeId, due.key, r), null, send);
           ok = result.ok;

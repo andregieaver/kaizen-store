@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { isBot } from "@/lib/experiments";
 import { storeDomain, storeOrigins } from "@/lib/paths";
 import {
+  SPEED_AB_MAX,
   SPEED_DAYS,
   SPEED_KEEP_DAYS,
   SPEED_KINDS,
@@ -25,6 +26,8 @@ import { fromStoresOwnPage, placeOfPath } from "@/lib/visit-record";
 
 import { wantsPrivacy } from "./analytics-visits";
 import { log } from "./log";
+import { verifiedTags } from "./signal-tags";
+import { textList } from "./sql-arrays";
 import { getOpenStore } from "./stores";
 import { col, typedRows } from "./typed-rows";
 
@@ -39,6 +42,7 @@ const speedInput = z.object({
   path: z.string().min(1).max(300),
   screen: z.enum(SPEED_SCREENS),
   figures: z.record(z.string(), z.unknown()),
+  ab: z.array(z.tuple([z.string().max(64), z.string().max(8)])).max(SPEED_AB_MAX).optional(),
 });
 
 export type SpeedOutcome = { recorded: true } | { recorded: false; reason: string };
@@ -80,10 +84,12 @@ export async function recordSpeed({ headers: h, body, now = new Date() }: { head
   if (!kind) return { recorded: false, reason: "not_measured" };
   if (!(await takeSpeedSlot(store.id))) return { recorded: false, reason: "store_full" };
   const f = input.figures as Partial<Record<string, number | null>>;
+  // The A/B versions the load showed, only those the visitor's own cookie holds for a running test (D148 phase 19, as heatmaps, D656).
+  const ab = await verifiedTags(store.id, input.ab ?? [], h.get("cookie"));
   await db().execute(sql`
-    insert into commerce.speed_samples (store_id, day, kind, screen, lcp_ms, inp_ms, cls_milli, ttfb_ms)
+    insert into commerce.speed_samples (store_id, day, kind, screen, lcp_ms, inp_ms, cls_milli, ttfb_ms, ab)
     values (${store.id}::uuid, ${storeDayKey(now, store.timeZone)}::date, ${kind}, ${input.screen},
-      ${f.lcp ?? null}, ${f.inp ?? null}, ${f.cls ?? null}, ${f.ttfb ?? null})
+      ${f.lcp ?? null}, ${f.inp ?? null}, ${f.cls ?? null}, ${f.ttfb ?? null}, ${textList(ab)})
   `);
   return { recorded: true };
 }

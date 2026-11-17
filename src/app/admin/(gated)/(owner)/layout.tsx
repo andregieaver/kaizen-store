@@ -2,17 +2,17 @@ import { Suspense } from "react";
 
 import { AdminFrame } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
+import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { adminText } from "@/lib/admin-text";
 import { ownerAreas, ownerTabs } from "@/lib/owner-nav";
-import { showsClients } from "@/lib/books-clients";
 import { requireAccount } from "@/server/auth";
-import { booksClientStores } from "@/server/books-clients";
-import { holdsDomains } from "@/server/domain-account";
+import { ownerWho } from "@/server/owner-level";
 import { waitingCount } from "@/server/support";
-import { ownerDesks } from "@/server/support-desk";
+
+import { findOwnerAction } from "./finder-actions";
 
 /** The combined support inbox is drawn in the `workspace` layout (D230): its own columns across the width, beside a narrowed rail. */
 const INBOX = String.raw`^/admin/account/support$`;
@@ -29,18 +29,17 @@ const INBOX = String.raw`^/admin/account/support$`;
 export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const account = await requireAccount();
   const stores = await storesOf(account);
-  const owner = stores.some((store) => store.role === "owner");
   // Work (D123): the owner's, across their stores, so owners always have it (to switch it on); staff only where it is on.
   // Support (D216): the combined inbox of the stores whose support the account may read, with the number waiting.
-  const desks = await ownerDesks(account);
   // Books (D512): an accountant's clients, for someone who keeps or reads the books of a store they do not own, or of two or more.
-  const who = { owner, work: owner || stores.some((store) => store.workOn), support: desks.length > 0, domains: owner || (await holdsDomains(account.id)), books: showsClients(await booksClientStores(account)) };
+  const { who, desks } = await ownerWho(account, stores);
   const waiting = desks.length > 0 ? await waitingCount(desks.map((d) => d.desk)) : 0;
   const tabs: NavItem[] = ownerTabs(who, { support: waiting });
   const areas: NavArea[] = ownerAreas(who);
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "shell").levels;
-  const title = owner ? w.controlCenter : w.yourStores;
+  const shell = adminText(lang, "shell");
+  const w = shell.levels;
+  const title = who.owner ? w.controlCenter : w.yourStores;
   return (
     <AdminFrame
       layout={LEVEL_LAYOUTS.control}
@@ -50,6 +49,8 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
           <LevelSwitcher account={account} level="control" label={title} />
         </Suspense>
       }
+      // The page finder (ecosystem plan E2.2, D713): this level's pages and the records of every store the person may read, ⌘K.
+      actions={<PageFinder find={findOwnerAction} words={{ ...shell.finder, placeholder: shell.finder.placeholderRecords, hint: shell.finder.hintRecords }} />}
       account={<AdminAccountMenu account={account} />}
       tabs={tabs}
       groups={[]}

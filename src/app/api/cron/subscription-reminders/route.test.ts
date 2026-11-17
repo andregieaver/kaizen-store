@@ -24,4 +24,9 @@ describe("the daily cron", () => {
     expect(text).toMatch(/retention: \{ counts: retention\.counts/);
     expect(text.indexOf("cronAuthorised")).toBeLessThan(text.indexOf("runRetention()"));
   });
+
+  it("has one scheduler: Vercel's cron calls only the watcher (bloat review step 1.22)", () => {
+    const { crons } = JSON.parse(readFileSync(join(process.cwd(), "vercel.json"), "utf8")) as { crons: { path: string; schedule: string }[] };
+    expect(crons, "pg_cron is the one scheduler (D33, D263); Vercel's cron only watches it").toEqual([{ path: "/api/cron/watchdog", schedule: "*/15 * * * *" }]);
+  });
 });

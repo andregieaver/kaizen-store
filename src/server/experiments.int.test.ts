@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +28,10 @@ vi.mock("next/headers", () => ({
   }),
   headers: async () => new Headers(),
 }));
+
+// Which store is Kaizena Flow's own (D484), for the sign-up goal (D148 phase 19): set by the test that needs it.
+let houseId: string | null = null;
+vi.mock("./house-customers", async (importOriginal) => ({ ...(await importOriginal<typeof import("./house-customers")>()), houseStoreId: async () => houseId }));
 
 const admin = await import("./experiment-admin");
 const results = await import("./experiment-results");
@@ -307,8 +311,8 @@ describe("what a test finds (D148)", () => {
 
     const test = (await admin.getExperiment(storeId, id))!;
     const r = await results.experimentResults(store, test);
-    expect(r.funnel.a).toEqual({ visitors: 1, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 });
-    expect(r.funnel.b).toEqual({ visitors: 2, carts: 2, checkouts: 1, buyers: 1, clicks: 0, forms: 0 });
+    expect(r.funnel.a).toEqual({ visitors: 1, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 });
+    expect(r.funnel.b).toEqual({ visitors: 2, carts: 2, checkouts: 1, buyers: 1, clicks: 0, forms: 0, signups: 0, pages: 0 });
     expect(r.revenue.b.plain).toBe(8000);
     expect(r.currency).toBe(home().currency);
     expect(r.unconverted).toBe(0);
@@ -565,6 +569,107 @@ describe("ending a test (D148)", () => {
     expect(again).toEqual(["duplicate"]);
   }, 60_000);
 
+  /** `n` exposed visitors in each of a and b (`visitor-{test}-{version}-{i}`), bulk, as a store with traffic would have. */
+  async function crowd(id: string, n: number) {
+    await db().execute(sql`
+      insert into commerce.experiment_exposures (store_id, experiment_id, visitor, variant)
+      select ${storeId}::uuid, ${id}::uuid, ${`visitor-${id}-`} || v.variant || '-' || i, v.variant from (values ('a'::text), ('b'::text)) v(variant), generate_series(1, ${n}::int) i
+    `);
+  }
+
+  /** The first `n` visitors of a version get a cart and an order of `status`; with `payment` the order has one payment of that status. */
+  async function orders(id: string, variant: string, n: number, status: string, payment: string | null) {
+    const cartOf = sql`md5(${`${run}-${id}-${variant}-${status}-`} || i)::uuid`;
+    await db().execute(sql`
+      insert into commerce.carts (id, store_id, market_code, currency, locale, expires_at)
+      select ${cartOf}, ${storeId}::uuid, ${home().code}, ${home().currency}, ${home().locale}, now() + interval '1 day' from generate_series(1, ${n}::int) i
+    `);
+    await db().execute(sql`
+      insert into commerce.experiment_carts (store_id, cart_id, visitor)
+      select ${storeId}::uuid, ${cartOf}, ${`visitor-${id}-${variant}-`} || i from generate_series(1, ${n}::int) i
+    `);
+    const placed = await db().execute<Row>(sql`
+      insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, cart_id, subtotal_minor, shipping_minor, tax_minor, total_minor, billing_address, shipping_address)
+      select ${storeId}::uuid, ${`r-${run}-${id.slice(0, 8)}-${variant}-${status}-`} || i, ${home().code}, ${home().currency}, ${home().locale}, 'g@example.com', ${status}::commerce.order_status, ${cartOf}, 10000, 0, 2000, 10000, '{}', '{}'
+      from generate_series(1, ${n}::int) i
+      returning id
+    `);
+    if (payment) {
+      await db().execute(sql`
+        insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+        select ${storeId}::uuid, o.id, 'stripe', 'pi_' || md5(o.id::text), 10000, ${home().currency}, ${payment}::commerce.payment_status
+        from commerce.orders o where o.id = any(${`{${placed.map((r) => String(r.id)).join(",")}}`}::uuid[])
+      `);
+    }
+    return placed.map((r) => String(r.id));
+  }
+
+  it("stops a test whose version fails clearly more payments at checkout, and says which guardrail stopped it (phase 19)", async () => {
+    await endAll();
+    const id = await runningTest();
+    await crowd(id, 300);
+    // 300 visitors of each version started checkout: 6 payments failed in the original, 60 in B, and none of them ordered after.
+    await db().execute(sql`
+      insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref)
+      select ${storeId}::uuid, ${id}::uuid, ${`visitor-${id}-`} || v.variant || '-' || i, v.variant, 'checkout', '' from (values ('a'::text), ('b'::text)) v(variant), generate_series(1, 300) i
+    `);
+    await orders(id, "a", 6, "cancelled", "failed");
+    await orders(id, "b", 60, "cancelled", "failed");
+    const r = await results.experimentResults(store, (await admin.getExperiment(storeId, id))!);
+    const checkout = r.guardrails.find((g) => g.kind === "checkout")!;
+    expect(checkout.versions.map((v) => [v.key, v.n, v.bad])).toEqual([["a", 300, 6], ["b", 300, 60]]);
+    expect(checkout).toMatchObject({ state: "worse", worst: "b" });
+    expect(r).toMatchObject({ harmed: "b", harmedBy: "checkout" });
+    // Orders are still watching: too few visitors for them, so it is the checkout guardrail alone.
+    expect(r.guardrails.find((g) => g.kind === "orders")!.state).toBe("watching");
+    const hour = new Date(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 120_000);
+    await jobs.runExperimentJobs(hour);
+    expect(await admin.getExperiment(storeId, id)).toMatchObject({ status: "stopped", stopReason: "guardrail", stopGuardrail: "checkout" });
+    const [mail] = await db().execute<Row>(sql`select subject, text from commerce.email_messages where store_id = ${storeId}::uuid and idempotency_key like ${`experiment.guardrail:${id}:%`}`);
+    expect(String(mail.subject)).toContain("more failed payments in version B");
+    expect(String(mail.text)).toContain("60 of 300 visitors who started checkout in version B had a payment fail (20 %), against 6 of 300 in the original (2 %)");
+  }, 60_000);
+
+  it("compares the speed of the loads each version's cookie confirmed, only while the store counts visits (phase 19)", async () => {
+    await endAll();
+    const id = await runningTest();
+    const test = (await admin.getExperiment(storeId, id))!;
+    // 500 loads of each version: one in ten of the original's slower than 2.5 s, two in five of B's.
+    await db().execute(sql`
+      insert into commerce.speed_samples (store_id, day, kind, screen, lcp_ms, ab)
+      select ${storeId}::uuid, current_date, 'page', 'phone', case when i <= (case v.variant when 'a' then 50 else 200 end) then 4000 else 1200 end, array[${id} || ':' || v.variant]
+      from (values ('a'::text), ('b'::text)) v(variant), generate_series(1, 500) i
+    `);
+    const counted = await results.experimentResults({ ...store, visitCounting: true }, test);
+    expect(counted.guardrails.find((g) => g.kind === "speed")).toMatchObject({ state: "worse", worst: "b", versions: [{ key: "a", n: 500, bad: 50 }, { key: "b", n: 500, bad: 200 }] });
+    expect(counted).toMatchObject({ harmed: "b", harmedBy: "speed" });
+    const notCounted = await results.experimentResults({ ...store, visitCounting: false }, test);
+    expect(notCounted.guardrails.find((g) => g.kind === "speed")!.state).toBe("off");
+    expect(notCounted.harmed).toBeNull();
+    await db().execute(sql`delete from commerce.speed_samples where store_id = ${storeId}::uuid`);
+  }, 60_000);
+
+  it("says refunds and returns within 30 days of an order, still coming in while the test runs, and never stops on them (phase 19)", async () => {
+    await endAll();
+    const id = await runningTest();
+    await crowd(id, 200);
+    const [a, b] = [await orders(id, "a", 120, "paid", "captured"), await orders(id, "b", 120, "paid", "captured")];
+    // 6 of the original's buyers sent something back, 36 of B's; one more of B's 40 days after, which is not counted.
+    const returned = async (ids: string[], late = false) =>
+      db().execute(sql`
+        insert into commerce.returns (store_id, order_id, number, created_at)
+        select ${storeId}::uuid, o, 'R-' || md5(o::text), now() + ${late ? sql`interval '40 days'` : sql`interval '0 days'`} from unnest(${`{${ids.join(",")}}`}::uuid[]) o
+      `);
+    await returned(a.slice(0, 6));
+    await returned(b.slice(0, 36));
+    await returned(b.slice(36, 37), true);
+    const r = await results.experimentResults(store, (await admin.getExperiment(storeId, id))!);
+    const returns = r.guardrails.find((g) => g.kind === "returns")!;
+    expect(returns.versions.map((v) => [v.key, v.n, v.bad])).toEqual([["a", 120, 6], ["b", 120, 36]]);
+    expect(returns).toMatchObject({ state: "worse", worst: "b", stillComing: true });
+    expect(r.harmed).toBeNull();
+  }, 60_000);
+
   it("emails the store's owners and the person who made the test, but not other staff or anyone disabled", async () => {
     const id = await runningTest();
     const test = (await admin.getExperiment(storeId, id))!;
@@ -579,7 +684,7 @@ describe("ending a test (D148)", () => {
     const harmed = {
       harmed: "b",
       days: 5,
-      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0, forms: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0, forms: 0 } },
+      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0, forms: 0, signups: 0, pages: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0, forms: 0, signups: 0, pages: 0 } },
     } satisfies Parameters<typeof emails.notifyGuardrailStop>[2];
     const outcomes = await emails.notifyGuardrailStop(store, test, harmed);
     expect(outcomes).toHaveLength(2);
@@ -1176,5 +1281,171 @@ describe("a test that counts forms sent (D148, phase 11)", () => {
       await admin.stopExperiment(account, storeId, made.id);
       await admin.discardExperiment(account, storeId, made.id);
     });
+  }, 30_000);
+});
+
+describe("a sign-up to Kaizena Flow as the goal (D148 phase 19)", () => {
+  afterAll(() => {
+    houseId = null;
+  });
+
+  it("is a goal only Kaizena Flow's own store can choose", async () => {
+    houseId = null;
+    const refused = await admin.createExperiment(account, storeId, { name: "Sign-ups", pageId: aboutId, goal: "signup" });
+    expect(refused).toEqual({ ok: false, problems: ["Only Kaizena Flow's own store can test sign-ups to Kaizena Flow."] });
+    const made = await admin.createExperiment(account, storeId, { name: "Orders first", pageId: aboutId, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect(await admin.updateDraft(account, storeId, made.id, { goal: "signup" })).toMatchObject({ ok: false });
+    await admin.discardExperiment(account, storeId, made.id);
+  });
+
+  it("counts a sign-up once for each visitor in the version they saw, and nothing for anyone outside the test", async () => {
+    await endAll();
+    houseId = storeId;
+    const made = await admin.createExperiment(account, storeId, { name: "Sign-ups", pageId: aboutId, goal: "signup" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+    const counted = async (variant: string) =>
+      Number((await db().execute<Row>(sql`select count(*)::int as n from commerce.experiment_events where experiment_id = ${made.id}::uuid and goal = 'signup' and variant = ${variant}`))[0].n);
+
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+    await engine.recordSignup(storeId);
+    await engine.recordSignup(storeId);
+    expect(await counted("b")).toBe(1);
+    // Not seen the version yet, no statistics, or no cookie: nothing.
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor: await visitorFor(made.id, "b") });
+    await engine.recordSignup(storeId);
+    browser({ statistics: false, versions: { [made.id]: "b" }, visitor });
+    await engine.recordSignup(storeId);
+    jar.clear();
+    await engine.recordSignup(storeId);
+    expect(await counted("b")).toBe(1);
+
+    const r = await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!);
+    expect(r.funnel.b).toMatchObject({ visitors: 1, signups: 1 });
+    expect(r.figures.find((f) => f.key === "b")).toMatchObject({ visitors: 1, conversions: 1 });
+    await admin.stopExperiment(account, storeId, made.id);
+    await admin.discardExperiment(account, storeId, made.id);
+  }, 30_000);
+});
+
+describe("phase 20: going on to a page, forms elsewhere, new or returning visitors, preview links", () => {
+  const preview = () => import("./ab-preview");
+  let front = "";
+  beforeAll(async () => {
+    process.env.SETTINGS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+    const destinations = await admin.goalDestinations(storeId);
+    front = destinations.find((d) => d.role === "front")!.id;
+    expect(destinations.some((d) => d.id === aboutId)).toBe(true);
+  });
+
+  it("asks for a page to go on to, not the page under test, and keeps it through a draft's changes", async () => {
+    await endAll();
+    expect(await admin.createExperiment(account, storeId, { name: "No page", pageId: aboutId, goal: "page" })).toMatchObject({ ok: false });
+    expect(await admin.createExperiment(account, storeId, { name: "Same page", pageId: aboutId, goal: "page", goalPage: aboutId })).toEqual({
+      ok: false,
+      problems: ["Choose another page than the one you are testing: a visitor is already on it."],
+    });
+    expect(await admin.createExperiment(account, storeId, { name: "Not a page", pageId: aboutId, goal: "page", goalPage: uuid() })).toMatchObject({ ok: false });
+    const made = await admin.createExperiment(account, storeId, { name: "Go to the front", pageId: aboutId, goal: "page", goalPage: front });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect(await admin.getExperiment(storeId, made.id)).toMatchObject({ goal: "page", goalPage: front });
+    expect(await admin.updateDraft(account, storeId, made.id, { name: "Go to the front page" })).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, made.id))!.goalPage).toBe(front);
+    await admin.discardExperiment(account, storeId, made.id);
+  });
+
+  it("counts a visitor who opened the page after seeing a version, once, in that version, and nobody before", async () => {
+    await endAll();
+    const made = await admin.createExperiment(account, storeId, { name: "Go on", pageId: aboutId, goal: "page", goalPage: front });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+    expect(await engine.pageGoalTests(storeId, front)).toEqual([made.id]);
+    expect(await engine.pageGoalTests(storeId, aboutId)).toEqual([]);
+
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    // Opened before seeing the version: not counted.
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(false);
+    await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+    expect(await engine.recordPageGoal(storeId, made.id, aboutId)).toBe(false);
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(true);
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(false);
+    browser({ statistics: false, versions: { [made.id]: "b" }, visitor });
+    expect(await engine.recordPageGoal(storeId, made.id, front)).toBe(false);
+
+    const r = await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!);
+    expect(r.funnel.b).toMatchObject({ visitors: 1, pages: 1 });
+    expect(r.figures.find((f) => f.key === "b")).toMatchObject({ conversions: 1 });
+    await admin.stopExperiment(account, storeId, made.id);
+    await admin.discardExperiment(account, storeId, made.id);
+  }, 30_000);
+
+  it("counts a form sent elsewhere on the site, but a click only on the page under test", async () => {
+    await endAll();
+    const formId = `news-p20-${run}`;
+    const row = { ...newRow("1", () => `p20-${run}`), id: `r-${formId}` };
+    const block = { ...(newBlock("newsletter", () => formId) as unknown as Record<string, unknown>), recipients: [`list-${run}@example.com`], confirm: false };
+    const json = (content: PageContent) => JSON.stringify({ ...content, rows: [...content.rows, { ...row, columns: [{ ...row.columns[0], blocks: [block] }] }] });
+    const [current] = await db().execute<Row>(sql`select published from commerce.pages where id = ${front}::uuid`);
+    const before = current.published;
+    await db().execute(sql`update commerce.pages set published = ${json(current.published as PageContent)}::jsonb where id = ${front}::uuid`);
+    try {
+      const elsewhere = await admin.siteForms(storeId, aboutId);
+      expect(elsewhere.find((f) => f.id === formId)).toMatchObject({ place: { kind: "page" } });
+      expect((await admin.siteForms(storeId, front)).some((f) => f.id === formId)).toBe(false);
+      const made = await admin.createExperiment(account, storeId, { name: "Front form", pageId: aboutId, goal: "form", goalBlock: formId });
+      expect(made).toMatchObject({ ok: true });
+      if (made.ok) await admin.discardExperiment(account, storeId, made.id);
+      expect(await admin.createExperiment(account, storeId, { name: "Front click", pageId: aboutId, goal: "click", goalBlock: formId })).toMatchObject({ ok: false });
+    } finally {
+      await db().execute(sql`update commerce.pages set published = ${JSON.stringify(before)}::jsonb where id = ${front}::uuid`);
+    }
+  });
+
+  it("keeps who takes part: new or returning visitors", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Newcomers", pageId: aboutId, goal: "orders", audience: { returning: "new" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect((await admin.getExperiment(storeId, made.id))!.audience).toEqual({ returning: "new" });
+    expect(await admin.updateDraft(account, storeId, made.id, { audience: { returning: "returning" } })).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, made.id))!.audience).toEqual({ returning: "returning" });
+    await admin.discardExperiment(account, storeId, made.id);
+  });
+
+  it("makes a preview link of a running test's version that lands on its page, counts nothing, and ends with the test", async () => {
+    await endAll();
+    const { previewLink, openPreview } = await preview();
+    const made = await admin.createExperiment(account, storeId, { name: "Show it", pageId: aboutId, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    expect(await previewLink(store, made.id, "b")).toBeNull(); // a draft
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+    expect(await previewLink(store, made.id, "c")).toBeNull();
+    const url = (await previewLink(store, made.id, "b"))!;
+    expect(url).toMatch(/\/api\/ab\/preview\?t=/);
+    const token = decodeURIComponent(url.split("t=")[1]);
+    expect(await openPreview(token)).toMatchObject({ keep: true, to: expect.stringMatching(/\/om-oss$/), experiment: made.id });
+    expect(await openPreview(`${token}x`)).toBeNull();
+
+    // A browser holding the preview is never counted, even with statistics allowed and the version in its own cookie.
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    jar.set("kaizen_ab_preview", `${made.id}:${token}`);
+    expect(await engine.readAssignments(storeId)).toBeNull();
+    expect(await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" })).toBe(false);
+    jar.delete("kaizen_ab_preview");
+    expect(await engine.readAssignments(storeId)).not.toBeNull();
+
+    await admin.stopExperiment(account, storeId, made.id);
+    engine.forgetRunning(storeId);
+    expect(await openPreview(token)).toMatchObject({ keep: false, to: expect.any(String) });
+    await admin.discardExperiment(account, storeId, made.id);
   }, 30_000);
 });

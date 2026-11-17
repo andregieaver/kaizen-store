@@ -139,6 +139,25 @@ export const customersNb: CustomersMessages = {
     cartReminders: "Påminnelser om handlekurven",
     saidNo: "Takket nei",
     allowed: "Tillatt",
+    marketing: {
+      title: "Markedsføring",
+      email: "E-post",
+      emailStatus: {
+        subscribed: "Får e-postene dine, siden {date}",
+        pending: "Ba om e-postene dine {date}, har ikke bekreftet ennå",
+        unsubscribed: "Meldte seg av {date}",
+      },
+      emailNone: "Ikke på listen din",
+      texts: "SMS",
+      textsStatus: {
+        subscribed: "Får SMS-ene dine på {phone}, siden {date}",
+        pending: "Sa ja til SMS på {phone} {date}, når ordren er betalt",
+        unsubscribed: "Stoppet SMS-ene dine {date}",
+      },
+      textsNone: "Ikke påmeldt",
+      segments: "Segmenter",
+      segmentsNone: "I ingen av segmentene dine nå",
+    },
   },
   timeline: {
     title: "Tidslinje",
@@ -541,6 +560,7 @@ export const customersNb: CustomersMessages = {
       title: "Endre opplysninger",
       guest: "Denne personen har handlet som gjest. Gi dem en konto for å holde opplysningene, merkene og ordrene samlet.",
       makeAccount: "Gi dem en konto",
+      makeDraft: "Lag et ordreutkast",
     },
     notes: {
       title: "Notater",

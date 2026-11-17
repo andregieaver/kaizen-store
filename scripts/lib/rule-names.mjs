@@ -1,6 +1,6 @@
 // The code names the written rules cite that the code does not have (bloat review step 0.41, src/lib/docs-budget.scan.test.ts).
-// Only two kinds of span between backticks are checked: a function name written with () and a component or type name in
-// PascalCase. Plain Node, built-ins only.
+// Spans between backticks are checked: a path, a function name written with (), a component or type name in PascalCase, an SQL
+// name and a constant. Plain Node, built-ins only.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -40,13 +40,35 @@ function vocabulary(root) {
   return set;
 }
 
-function ruleFiles(root) {
-  const files = ["CLAUDE.md", "docs/rules/storefront.md"];
-  const admin = path.join(root, "docs", "rules", "admin");
-  if (existsSync(admin)) {
-    for (const name of readdirSync(admin).sort()) if (name.endsWith(".md")) files.push(`docs/rules/admin/${name}`);
+function mdFilesUnder(root, rel) {
+  const out = [];
+  const dir = path.join(root, rel);
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return out;
+  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    if (entry.isDirectory()) out.push(...mdFilesUnder(root, `${rel}/${entry.name}`));
+    else if (entry.isFile() && entry.name.endsWith(".md")) out.push(`${rel}/${entry.name}`);
   }
+  return out;
+}
+
+function ruleFiles(root) {
+  const files = ["CLAUDE.md", ...mdFilesUnder(root, "docs/rules"), ...mdFilesUnder(root, ".claude/rules")];
   return files.filter((file) => existsSync(path.join(root, file)));
+}
+
+/** Spans the rules may cite although no file holds them yet, each with its reason. */
+export const NAME_EXCEPTIONS = {
+  "public/kaizen/docs/": "The docs portal's pictures folder (src/lib/docs-markdown.ts); it exists once the first picture is added.",
+};
+
+const PATH_SPAN = /^(src|docs|scripts|e2e|supabase|content|public|wordpress-plugin|\.github|\.claude)\/[^\s`]+$/;
+
+/** True when a path-like span names a file or folder that exists under root. */
+function pathExists(root, span) {
+  let rel = span.replace(/#[^/]*$/, "");
+  rel = rel.replace(/:\d+(?:-\d+)?$/, "");
+  rel = rel.replace(/[.,;:)]+$/, "");
+  return existsSync(path.join(root, rel));
 }
 
 /** The cited names the code does not have, as sorted strings 'file: name'. */
@@ -57,12 +79,26 @@ export function staleRuleNames(root) {
     const text = readFileSync(path.join(root, file), "utf8");
     for (const span of text.matchAll(/`([^`\n]+)`/g)) {
       const name = span[1];
+      if (Object.hasOwn(NAME_EXCEPTIONS, name)) continue;
+      if (PATH_SPAN.test(name) && !/[*{}<…]/.test(name)) {
+        if (!pathExists(root, name)) stale.add(`${file}: ${name}`);
+        continue;
+      }
       const fn = /^(?:[\w$]+\.)*([A-Za-z_$][\w$]*)\(\)$/.exec(name);
       if (fn) {
         if (!words.has(fn[1])) stale.add(`${file}: ${name}`);
-      } else if (/^[A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+$/.test(name) && !words.has(name)) {
-        stale.add(`${file}: ${name}`);
+        continue;
       }
+      if (/^[A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+$/.test(name)) {
+        if (!words.has(name)) stale.add(`${file}: ${name}`);
+        continue;
+      }
+      const sql = /^commerce\.([a-z_][a-z0-9_]*)$/.exec(name) ?? /^([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/.exec(name);
+      if (sql) {
+        if (!words.has(sql[sql.length - 1])) stale.add(`${file}: ${name}`);
+        continue;
+      }
+      if (/^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/.test(name) && !words.has(name)) stale.add(`${file}: ${name}`);
     }
   }
   return [...stale].sort();

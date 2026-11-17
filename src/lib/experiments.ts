@@ -4,6 +4,8 @@
  * `ab_experiments`).
  */
 
+import { AB_TESTS_MOST } from "./limits";
+
 export const EXPERIMENT_STATUSES = ["draft", "scheduled", "running", "stopped", "applied", "discarded"] as const;
 export type ExperimentStatus = (typeof EXPERIMENT_STATUSES)[number];
 
@@ -36,21 +38,31 @@ export const STATUS_SIGNAL = {
   discarded: "neutral",
 } as const satisfies Record<ExperimentStatus, "positive" | "warning" | "danger" | "neutral" | "insight">;
 
-export const MAX_RUNNING_PER_STORE = 5;
+/** The engine's most, whatever the plan; a plan's `ab_tests_running` (phase 21) can only lower it. */
+export const MAX_RUNNING_PER_STORE = AB_TESTS_MOST;
 export const MAX_VARIANTS = 4;
 export const MAX_RUN_DAYS = 90;
 /** A test past its planned end keeps counting this long, then stops itself. */
 export const AFTER_PLANNED_END_DAYS = 7;
 /** The shortest a test runs before a verdict is given: whole weeks, so each weekday counts the same. */
 export const MIN_DAYS = 14;
-export const VARIANT_KEYS = ["a", "b", "c", "d"] as const;
-export type VariantKey = (typeof VARIANT_KEYS)[number];
+export { VARIANT_KEYS, type VariantKey } from "./ab-cookie";
 
-export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form"] as const;
+export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form", "signup", "page"] as const;
 export type Goal = (typeof GOALS)[number];
 
+/**
+ * The goals the AI manager's tools offer: every goal but `signup`, which only Kaizena Flow's own store has (D148 phase 19), and `page` (phase
+ * 20), chosen on the new-test form. Kept apart so the tools' schema, and with it the agents' eval recording, changes only with a new eval run.
+ */
+export const TOOL_GOALS = ["orders", "revenue", "cart", "checkout", "click", "form"] as const satisfies readonly Goal[];
+
+/** The goals only Kaizena Flow's own store can test: a sign-up to Kaizena Flow happens on its sign-up page, not in a store. */
+export const HOUSE_GOALS = ["signup"] as const satisfies readonly Goal[];
+export const isHouseGoal = (goal: Goal): boolean => (HOUSE_GOALS as readonly Goal[]).includes(goal);
+
 /** What each goal measures, in the words the admin uses. */
-export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean; block?: "button" | "form" }> = {
+export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean; block?: "button" | "form"; needsPage?: boolean }> = {
   orders: { label: "More orders", asks: "get more of the visitors to buy", per: "placed an order", kind: "rate", needsBlock: false },
   revenue: { label: "More revenue per visitor", asks: "sell more per visitor", per: "revenue per visitor", kind: "money", needsBlock: false },
   cart: { label: "More people adding to the cart", asks: "get more visitors to add something to the cart", per: "added to the cart", kind: "rate", needsBlock: false },
@@ -58,6 +70,10 @@ export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string
   click: { label: "More clicks on a button or link", asks: "get more visitors to click a chosen button or link", per: "clicked it", kind: "rate", needsBlock: true, block: "button" },
   // D93's email form or newsletter sign-up, counted when the site accepts the answer (D148, phase 11).
   form: { label: "More people sending a form", asks: "get more visitors to send a chosen form or sign up to a newsletter", per: "sent the form", kind: "rate", needsBlock: true, block: "form" },
+  // A sign-up to Kaizena Flow sent from its sign-up page by a visitor in the test (D148 phase 19): only Kaizena Flow's own store.
+  signup: { label: "More sign-ups to Kaizena Flow", asks: "get more visitors to sign up to Kaizena Flow", per: "signed up", kind: "rate", needsBlock: false },
+  // A visitor in the test who then opened a chosen page of the store (D148 phase 20): its id in `goal_params.page`.
+  page: { label: "More people going on to a page", asks: "get more visitors to go on to a chosen page", per: "opened the page", kind: "rate", needsBlock: false, needsPage: true },
 };
 
 /** What an owner chooses for a goal that counts something on the page, in words: "the button or link whose clicks you want more of". */
@@ -114,44 +130,18 @@ export const isBot = (userAgent: string | null | undefined): boolean =>
 // The cookies
 // ---------------------------------------------------------------------------
 
-/**
- * `kaizen_ab=1` says "this browser has assignments"; the proxy's matcher can only look for one cookie name, so it is
- * the one it looks for. It holds nothing. The assignments are in `kaizen_ab_{storeId}`, one per store, so a visitor's
- * id is never the same at two stores.
- */
-export const MARKER_COOKIE = "kaizen_ab";
-export const dataCookieName = (storeId: string) => `kaizen_ab_${storeId}`;
-export const COOKIE_DAYS = 90;
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-export const isUuid = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
-
-/** A visitor's answer for a test they are not in (the traffic share, the audience): they see the original and are never counted. */
-export const OUTSIDE = "0";
-const isVersion = (value: unknown): value is string => value === OUTSIDE || (VARIANT_KEYS as readonly string[]).includes(value as string);
-
-export type Assignments = { visitor: string; versions: Record<string, string> };
-
-/** `1.{visitor}.{experiment}={variant},…`: the browser's own random id for this store, and the version it has for each test. */
-export function encodeAssignments({ visitor, versions }: Assignments): string {
-  const pairs = Object.entries(versions)
-    .filter(([id, variant]) => isUuid(id) && isVersion(variant))
-    .slice(0, 12)
-    .map(([id, variant]) => `${id}=${variant}`)
-    .join(",");
-  return `1.${visitor}.${pairs}`;
-}
-
-export function decodeAssignments(value: string | undefined | null): Assignments | null {
-  const match = /^1\.([0-9a-f-]{36})\.([0-9a-z=,-]{0,600})$/.exec(value ?? "");
-  if (!match || !isUuid(match[1])) return null;
-  const versions: Record<string, string> = {};
-  for (const pair of match[2].split(",")) {
-    const [id, variant] = pair.split("=");
-    if (isUuid(id) && isVersion(variant)) versions[id] = variant;
-  }
-  return { visitor: match[1], versions };
-}
+// In `ab-cookie.ts` (with the version keys), which the visitor's scripts import: this module, with every goal's words, is the server's
+// and the admin's.
+export {
+  COOKIE_DAYS,
+  MARKER_COOKIE,
+  OUTSIDE,
+  dataCookieName,
+  decodeAssignments,
+  encodeAssignments,
+  isUuid,
+  type Assignments,
+} from "./ab-cookie";
 
 // ---------------------------------------------------------------------------
 // Checking a test
@@ -165,10 +155,14 @@ export function startProblems(test: {
   name: string;
   goal: Goal | string;
   goalBlock: string | null;
+  /** The page the goal `page` counts (phase 20). */
+  goalPage?: string | null;
   trafficShare: number;
   variants: VariantDraft[];
   pagePublished: boolean;
   runningInStore: number;
+  /** The store's plan's `ab_tests_running` (phase 21): null is the engine's most, 0 a plan without A/B tests. */
+  planAllows?: number | null;
   pageIsSpecial: boolean;
   /** A working page (the cart, the checkout, …) is tested by a part of it, not as a whole. */
   needsPart?: boolean;
@@ -179,6 +173,7 @@ export function startProblems(test: {
   if (test.name.trim() === "") problems.push("Give the test a name.");
   if (!isGoal(test.goal)) problems.push("Choose what the test should improve.");
   else if (GOAL_WORDS[test.goal].needsBlock && !test.goalBlock) problems.push(BLOCK_CHOICE[GOAL_WORDS[test.goal].block ?? "button"].problem);
+  else if (GOAL_WORDS[test.goal].needsPage && !test.goalPage) problems.push("Choose the page you want more visitors to go on to: one of the store's published pages.");
   if (!(test.trafficShare > 0 && test.trafficShare <= 1)) problems.push("The share of visitors in the test is more than 0 and at most 100 %.");
   if (!test.pagePublished) problems.push("Publish the page before testing it: a test shows it to real visitors.");
   if (test.pageIsSpecial) problems.push("The cookies page and the blog, search, 404, category and tag pages cannot be tested yet.");
@@ -195,9 +190,21 @@ export function startProblems(test: {
     if (v.scope === "missing") problems.push(`Version ${v.key.toUpperCase()} no longer has ${part}: a test needs the part in every version.`);
     if (v.scope === "modal") problems.push(`Version ${v.key.toUpperCase()} changes the address name of ${part}, or whether it is a modal: links to it elsewhere would stop working. Keep the address name and keep it a modal.`);
   }
-  if (test.runningInStore >= MAX_RUNNING_PER_STORE) problems.push(`A store can run ${MAX_RUNNING_PER_STORE} tests at a time. Stop one first.`);
+  const allows = test.planAllows ?? null;
+  if (allows === 0) problems.push(PLAN_WITHOUT_TESTS);
+  else if (allows !== null && allows < MAX_RUNNING_PER_STORE && test.runningInStore >= allows) problems.push(planFullProblem(allows));
+  else if (test.runningInStore >= MAX_RUNNING_PER_STORE) problems.push(`A store can run ${MAX_RUNNING_PER_STORE} tests at a time. Stop one first.`);
   return problems;
 }
+
+/** Said when a store's plan has no A/B tests (phase 21); the words are `problems.planNone`. */
+export const PLAN_WITHOUT_TESTS = "Your plan does not include A/B tests. Choose a plan with them to test this.";
+
+/** Said when a store runs as many tests as its plan allows (phase 21); the words are `problems.planFull`. */
+export const planFullProblem = (max: number) => `Your plan runs up to ${max} at a time. Stop a test first, or choose a plan with more.`;
+
+/** How many tests a store may run at once: its plan's limit, never more than the engine's. */
+export const runningAllowed = (planAllows: number | null): number => Math.min(planAllows ?? MAX_RUNNING_PER_STORE, MAX_RUNNING_PER_STORE);
 
 /** An even split between the versions, as shares that add up to one. */
 export function evenSplit(count: number): number[] {

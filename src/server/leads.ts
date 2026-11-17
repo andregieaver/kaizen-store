@@ -1,17 +1,18 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
 import { normaliseEmail } from "@/lib/email-address";
-import { LEAD_WINDOW_DAYS, leadDealTitle, leadsFrom, type Lead, type LeadKind } from "@/lib/leads";
+import { LEAD_KINDS, LEAD_SOURCES, LEAD_WINDOW_DAYS, LEADS_MAX, leadDealTitle, leadsFrom, type Lead, type LeadKind } from "@/lib/leads";
 import { featureOn } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
 import { createCustomer, customerByEmail } from "./customer-staff";
 import { createDeal, linkThing, pipelinesOf } from "./deals";
 import { memberCan } from "./permissions";
+import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
 
 /**
@@ -25,8 +26,10 @@ const WRITE = "customers:write" as const;
 export type LeadResult = { ok: true; dealId: string | null } | { ok: false; problem: "forbidden" | "not_found" | "no_pipeline" | "failed" };
 
 const row = z.object({
-  kind: z.enum(["quote", "question", "chat", "subscriber"]),
+  kind: z.enum(LEAD_KINDS),
   id: col.uuid,
+  source: z.enum(LEAD_SOURCES),
+  source_id: col.uuid,
   at: col.timestamp,
   email: col.text,
   name: col.textOrNull,
@@ -36,42 +39,56 @@ const row = z.object({
   decided_at: col.timestampOrNull,
 });
 
-/** Every request in the window, with whether its person is a customer, in an open deal, and when staff last decided about them. */
+/**
+ * Where leads ask (the inbox's sources), of the stores in `stores` (a list of uuids for `= any()`), each with its store, its person's address
+ * lowercased and where it is kept (ecosystem plan E2.8, D713: the row's link): quote requests (their draft), form messages (their form's
+ * responses, D705; one the support inbox took is its conversation), chats (their conversation) and new subscribers. One query for the
+ * inbox and for Home's count (E2.1), so both count the same people.
+ */
+const leadSources = (stores: SQL) => sql`
+  select d.store_id, 'quote' as kind, d.id, 'draft' as source, d.id as source_id, d.created_at as at,
+         lower(btrim(coalesce(c.email, nullif(d.email, '')))) as email, nullif(c.name, '') as name, d.request_note as excerpt
+    from commerce.draft_orders d
+    left join commerce.customers c on c.store_id = d.store_id and c.id = d.customer_id
+   where d.store_id = any(${stores}) and d.source = 'quote' and d.status in ('open', 'sent')
+     and d.created_at >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
+  union all
+  select r.store_id, 'question', r.id, 'form', r.form_id, r.created_at, lower(btrim(r.contact_email)), null,
+         (select a ->> 'value' from jsonb_array_elements(r.answers) a
+           where jsonb_typeof(a -> 'value') = 'string' and lower(btrim(a ->> 'value')) <> r.contact_email
+           order by char_length(a ->> 'value') desc limit 1)
+    from commerce.form_responses r
+    join commerce.forms fm on fm.id = r.form_id and fm.store_id = r.store_id
+   where r.store_id = any(${stores}) and fm.kind = 'message' and r.contact_email is not null and r.delivery <> 'inbox'
+     and r.created_at >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
+  union all
+  select s.store_id, case when s.source = 'form' then 'question' else 'chat' end, s.id, 'conversation', s.id, s.created_at,
+         lower(btrim(s.contact_email)), nullif(s.contact_name, ''), null
+    from commerce.support_conversations s
+   where s.store_id = any(${stores}) and s.contact_email is not null
+     and s.created_at >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
+  union all
+  select m.store_id, 'subscriber', m.id, 'subscriber', m.id, coalesce(m.confirmed_at, m.created_at), lower(btrim(m.email)), nullif(m.name, ''), null
+    from commerce.marketing_subscribers m
+   where m.store_id = any(${stores}) and m.status = 'subscribed'
+     and coalesce(m.confirmed_at, m.created_at) >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})`;
+
+/** A paid order of the store by the address: a customer, not a lead (`src`'s row). */
+const IS_CUSTOMER = sql`exists (select 1 from commerce.orders o
+  where o.store_id = src.store_id and lower(o.email) = src.email and o.copied_from is null
+    and o.restricted_at is null and o.status in ('paid', 'fulfilled', 'closed'))`;
+/** An open deal about the address already (`src`'s row). */
+const IN_DEAL = sql`exists (select 1 from commerce.deals dl join commerce.customers dc on dc.store_id = dl.store_id and dc.id = dl.customer_id
+  where dl.store_id = src.store_id and dl.status = 'open' and lower(dc.email) = src.email)`;
+
+/** Every request in the window, with where it is kept, whether its person is a customer, in an open deal, and when staff last decided about them. */
 async function leadRows(storeId: string, email: string | null = null) {
   return typedRows(
     row,
     sql`
-      with src as (
-        select 'quote' as kind, d.id, d.created_at as at, lower(btrim(coalesce(c.email, nullif(d.email, '')))) as email,
-               nullif(c.name, '') as name, d.request_note as excerpt
-          from commerce.draft_orders d
-          left join commerce.customers c on c.store_id = d.store_id and c.id = d.customer_id
-         where d.store_id = ${storeId}::uuid and d.source = 'quote' and d.status in ('open', 'sent')
-           and d.created_at >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
-        union all
-        select case when f.kind = 'quote' then 'quote' else 'question' end, f.id, f.created_at, lower(btrim(f.email)),
-               nullif(f.payload ->> 'name', ''), nullif(f.payload ->> 'message', '')
-          from commerce.form_submissions f
-         where f.store_id = ${storeId}::uuid and f.kind in ('message', 'quote') and f.email is not null
-           and f.created_at >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
-        union all
-        select 'chat', s.id, s.created_at, lower(btrim(s.contact_email)), nullif(s.contact_name, ''), null
-          from commerce.support_conversations s
-         where s.store_id = ${storeId}::uuid and s.contact_email is not null
-           and s.created_at >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
-        union all
-        select 'subscriber', m.id, coalesce(m.confirmed_at, m.created_at), lower(btrim(m.email)), nullif(m.name, ''), null
-          from commerce.marketing_subscribers m
-         where m.store_id = ${storeId}::uuid and m.status = 'subscribed'
-           and coalesce(m.confirmed_at, m.created_at) >= now() - make_interval(days => ${LEAD_WINDOW_DAYS})
-      )
-      select src.kind, src.id, src.at, src.email, src.name, src.excerpt,
-             exists (select 1 from commerce.orders o
-                      where o.store_id = ${storeId}::uuid and lower(o.email) = src.email and o.copied_from is null
-                        and o.restricted_at is null and o.status in ('paid', 'fulfilled', 'closed')) as customer,
-             exists (select 1 from commerce.deals dl join commerce.customers dc on dc.store_id = dl.store_id and dc.id = dl.customer_id
-                      where dl.store_id = ${storeId}::uuid and dl.status = 'open' and lower(dc.email) = src.email) as in_deal,
-             (select ld.decided_at from commerce.lead_decisions ld where ld.store_id = ${storeId}::uuid and ld.email = src.email) as decided_at
+      with src as (${leadSources(uuidList([storeId]))})
+      select src.kind, src.id, src.source, src.source_id, src.at, src.email, src.name, src.excerpt, ${IS_CUSTOMER} as customer, ${IN_DEAL} as in_deal,
+             (select ld.decided_at from commerce.lead_decisions ld where ld.store_id = src.store_id and ld.email = src.email) as decided_at
         from src
        where src.email is not null and src.email <> '' and (${email}::text is null or src.email = ${email}::text)
        order by src.at desc
@@ -80,10 +97,45 @@ async function leadRows(storeId: string, email: string | null = null) {
   );
 }
 
+/**
+ * How many people each store's inbox lists (ecosystem plan E2.1, D713: Home's *new leads*), counted in SQL for any number of stores by
+ * `leadsFrom()`'s rule: a person who is not a customer, not in an open deal, with a request since the last decision about them; at most
+ * `LEADS_MAX`, as the inbox lists. Stores with none are left out.
+ */
+export async function leadCounts(storeIds: readonly string[]): Promise<Map<string, number>> {
+  if (storeIds.length === 0) return new Map();
+  const rows = await typedRows(
+    z.object({ store_id: col.uuid, leads: col.int }),
+    sql`
+      with src as (${leadSources(uuidList(storeIds))})
+      select src.store_id, least(count(distinct src.email), ${LEADS_MAX})::int as leads
+        from src
+       where src.email is not null and src.email <> '' and not ${IS_CUSTOMER} and not ${IN_DEAL}
+         and not exists (select 1 from commerce.lead_decisions ld where ld.store_id = src.store_id and ld.email = src.email and ld.decided_at >= src.at)
+       group by src.store_id
+    `,
+  );
+  return new Map(rows.filter((r) => r.leads > 0).map((r) => [r.store_id, r.leads]));
+}
+
 /** The store's leads: one a person, the newest first (`leadsFrom()`). */
 export async function leadsOf(storeId: string): Promise<Lead[]> {
   const rows = await leadRows(storeId);
-  return leadsFrom(rows.map((r) => ({ kind: r.kind, id: r.id, at: r.at, excerpt: r.excerpt, email: r.email, name: r.name, customer: r.customer, inDeal: r.in_deal, decidedAt: r.decided_at })));
+  return leadsFrom(
+    rows.map((r) => ({
+      kind: r.kind,
+      id: r.id,
+      source: r.source,
+      sourceId: r.source_id,
+      at: r.at,
+      excerpt: r.excerpt,
+      email: r.email,
+      name: r.name,
+      customer: r.customer,
+      inDeal: r.in_deal,
+      decidedAt: r.decided_at,
+    })),
+  );
 }
 
 async function decide(member: Membership, email: string, decision: "dismissed" | "deal", dealId: string | null): Promise<void> {
@@ -136,7 +188,7 @@ export async function makeLeadDeal(member: Membership, email: string, kinds: Rec
   });
   if (!deal.ok) return { ok: false, problem: "failed" };
   // The quote they asked for, the newest, is the deal's: its value counts. Linking needs `orders:read`; without it the deal stands alone.
-  const quote = lead.items.find((i) => i.kind === "quote");
+  const quote = lead.items.find((i) => i.source === "draft");
   if (quote) {
     const [draft] = await db().execute<{ id: string }>(sql`select id from commerce.draft_orders where store_id = ${member.store.id}::uuid and id = ${quote.id}::uuid`);
     if (draft) await linkThing(member, deal.id, "draft", quote.id);

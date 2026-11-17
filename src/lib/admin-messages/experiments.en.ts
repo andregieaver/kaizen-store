@@ -55,6 +55,8 @@ export const experimentsEn = {
     checkout: { label: "More people reaching checkout", asks: "get more visitors to start checkout", per: "started checkout" },
     click: { label: "More clicks on a button or link", asks: "get more visitors to click a chosen button or link", per: "clicked it" },
     form: { label: "More people sending a form", asks: "get more visitors to send a chosen form or sign up to a newsletter", per: "sent the form" },
+    signup: { label: "More sign-ups to Kaizena Flow", asks: "get more visitors to sign up to Kaizena Flow", per: "signed up" },
+    page: { label: "More people going on to a page", asks: "get more visitors to go on to a chosen page", per: "opened the page" },
   },
   blockChoice: {
     button: { problem: "Choose the button or link whose clicks you want more of.", gone: "That button is not on the page." },
@@ -102,6 +104,13 @@ export const experimentsEn = {
       "This page cannot be tested now: it is in a running test, it is not published, or it is a page with a place of its own that cannot be tested yet (the cookies page, the blog …). A working page such as the cart is tested by a part of it: choose the part in the page builder.",
     cannotPart:
       "That part of the page cannot be tested: it is not in the published page (publish your changes first), or it is a working part of the shop. Go back to the page and choose another.",
+    noPlan: {
+      title: "A/B tests come with another plan",
+      body: "Show two versions of a page to your visitors and keep the one that sells more. Your plan does not include them.",
+      plans: "Included in {plans}.",
+      choose: "Choose a plan",
+      kept: "Tests that already run go on until you decide them.",
+    },
   },
   form: {
     noPages:
@@ -119,6 +128,11 @@ export const experimentsEn = {
     goalLegend: "What the test should improve",
     winnerHelps: "The winner is the version that helps you {asks}.",
     whichForm: "Which form?",
+    whichPage: "Which page should they go on to?",
+    choosePage: "Choose a page",
+    pageCounts: "A visitor counts once, when they open that page after seeing the version, in the version they saw.",
+    onThisPage: "On this page",
+    elsewhere: "Elsewhere on the site",
     noFormPart: "There is no email form or newsletter sign-up in this part.",
     noFormPage: "This page has no email form or newsletter sign-up yet.",
     addFirst: "Add one in the page builder first, or choose another goal.",
@@ -140,6 +154,8 @@ export const experimentsEn = {
     share: "Share of visitors in the test",
     shareHint: "Visitors who have accepted statistics cookies are split evenly between the versions. The rest see the page as it is and are not counted.",
     devices: "Devices",
+    visitors: "Visitors",
+    visitorKinds: { all: "New and returning", new: "New visitors only", returning: "Returning visitors only" },
     countries: "Countries (none ticked: all)",
     howLong: "How long will it take? (optional)",
     making: "Making the test …",
@@ -176,7 +192,9 @@ export const experimentsEn = {
     answerAt: { one: "About {n} week: the answer", many: "About {n} weeks: the answer" },
     sixWeeks: "6 weeks",
     around: " The answer is likely around {date}.",
-    depends: "How long a test of a button or a form takes depends on how often it is used today, which Kaizena Flow does not count. Give your own figures under Customise.",
+    dependsSignup:
+      "How long a test of sign-ups takes depends on how many of a page's visitors sign up today, which Kaizena Flow does not count per page. Give your own figures under Customise.",
+    depends: "How long a test of a button, a form or a page to go on to takes depends on how often it is used today, which Kaizena Flow does not count. Give your own figures under Customise.",
     notCounting: "Kaizena Flow is not counting visits for this shop, so it cannot say how long a test takes. Give your own figures under Customise, or turn on visit counting in the analytics settings.",
     noConsent: "Too few cookie choices are recorded to say how many visitors would take part. Give your own figures under Customise.",
     noRateYet: "Your shop has had no such visits in the last 30 days, so there is nothing to work from yet. Give your own figures under Customise.",
@@ -192,6 +210,13 @@ export const experimentsEn = {
   },
   /** A draft's page as a record (D660): its next step in the header, a checklist, what each version changes, and its settings under Customise. */
   /** The original and a version side by side (phase 16). */
+  share: {
+    title: "Show it to someone",
+    intro: "A link that shows a version on your live site to whoever opens it, for a day. It is never counted in the test and stops working when the test stops.",
+    copy: "Copy a link to {name}",
+    copied: "Link to {name} copied.",
+    link: "Link to {name}",
+  },
   frames: {
     title: "Side by side",
     intro: "The original and a version as visitors are shown them, without your header and footer. Scroll inside each to see more.",
@@ -252,6 +277,8 @@ export const experimentsEn = {
     minDays: "Shortest run, in days",
     minDaysHint: "No winner is announced before this, so a lucky first days do not decide it. Whole weeks work best.",
     devices: "Devices",
+    visitors: "Visitors",
+    visitorKinds: { all: "New and returning", new: "New visitors only", returning: "Returning visitors only" },
     countries: "Countries (none ticked: all)",
     howLong: "How long will it take?",
     save: "Save settings",
@@ -301,6 +328,33 @@ export const experimentsEn = {
   },
   results: {
     harmed: "Version {key} is clearly selling less than the original.",
+    /** The other guardrails that stop a test (D148 phase 19). */
+    harmedBy: {
+      speed: "Version {key} loads clearly slower than the original.",
+      checkout: "Clearly more payments fail at checkout in version {key} than in the original.",
+    },
+    guardrails: {
+      title: "What keeps it safe",
+      lead: "Watched whatever the goal. Fewer orders, slower pages or more failed payments stop the test by themselves; refunds and returns come in late, so they are only said.",
+      name: { orders: "Orders", speed: "Speed", checkout: "Payments at checkout", returns: "Refunds and returns" },
+      what: {
+        orders: "Visitors who ordered",
+        speed: "Page loads slower than 2.5 s",
+        checkout: "Checkouts with a failed payment",
+        returns: "Buyers who sent something back or got a refund within 30 days",
+      },
+      unit: { orders: "visitors", speed: "page loads", checkout: "checkouts", returns: "buyers" },
+      state: {
+        watching: "Watching until each version has {min} {unit}",
+        fine: "Fine",
+        worse: "Clearly worse in {name}",
+        worseReturns: "More in {name}",
+        off: "Off: measured while the shop counts visits",
+      },
+      coming: "Still coming in: an order counts for 30 days after it was placed.",
+      returnsLine:
+        "More of {name}'s buyers sent something back or got a refund: {version} against {original} with the original. It never stops the test, as returns come in late; weigh it before you choose.",
+    },
     behaviour: {
       title: "How visitors behaved",
       lead: "From heatmaps: what visitors who allow statistics did on the pages of each version.",
@@ -336,6 +390,8 @@ export const experimentsEn = {
     revenue: "Revenue (no VAT)",
     clicks: "Clicks on the button: {list}.",
     forms: "Visitors who sent the form (each counted once): {list}.",
+    signups: "Visitors who signed up to Kaizena Flow (each counted once): {list}.",
+    pages: "Visitors who went on to the page (each counted once): {list}.",
     trend: "How it developed",
     trendLabel: "How each version's rate developed over the days",
     trendRange: "Up to {max} · from {from} to {to}",
@@ -435,6 +491,10 @@ export const experimentsEn = {
       applied: "{name} is now your page.",
       discarded: "The original was kept.",
       guardrail: "Kaizena Flow stopped it because a version was clearly selling less.",
+      guardrailBy: {
+        speed: "Kaizena Flow stopped it because a version loaded clearly slower than the original.",
+        checkout: "Kaizena Flow stopped it because clearly more payments failed at checkout in a version.",
+      },
       plannedStop: "It stopped itself at its planned end.",
     },
     sure: {
@@ -517,7 +577,11 @@ export const experimentsEn = {
     chooseTarget: "Choose one of the store's pages, its header or footer, or one of its product layouts.",
     chooseVersion: "Choose one of the versions, not the original.",
     chooseGoal: "Choose what the test should improve.",
+    houseGoal: "Only Kaizena Flow's own store can test sign-ups to Kaizena Flow.",
+    goalPage: "Choose the page you want more visitors to go on to: one of the store's published pages.",
+    goalPageSame: "Choose another page than the one you are testing: a visitor is already on it.",
     nameLength: "Give the test a name of up to 120 characters.",
+    previewRunning: "A preview link is made while the test runs.",
     onlyDraft: "Only a draft can be deleted: a test that has run is kept with its results.",
     publishFirst: "Publish the page before testing it: a test shows it to real visitors.",
     stopFirst: "Stop the test before choosing a winner.",
@@ -552,6 +616,8 @@ export const experimentsEn = {
     missing: "Version {key} no longer has {part}: a test needs the part in every version.",
     modal: "Version {key} changes the address name of {part}, or whether it is a modal: links to it elsewhere would stop working. Keep the address name and keep it a modal.",
     running: "A store can run {max} tests at a time. Stop one first.",
+    planNone: "Your plan does not include A/B tests. Choose a plan with them to test this.",
+    planFull: "Your plan runs up to {max} at a time. Stop a test first, or choose a plan with more.",
     buttonProblem: "Choose the button or link whose clicks you want more of.",
     buttonGone: "That button is not on the page.",
     formProblem: "Choose the form whose answers you want more of.",

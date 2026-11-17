@@ -28,6 +28,7 @@ export const formsNb: FormsMessages = {
     making: "Lager …",
     back: "Tilbake til skjemaene",
   },
+
   tabs: { form: "Skjema", responses: "Svar", settings: "Innstillinger" },
   editor: {
     name: "Navn",

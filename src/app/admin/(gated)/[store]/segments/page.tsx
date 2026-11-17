@@ -6,10 +6,10 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { countSegment, describeRules, SEGMENT_STARTERS } from "@/lib/segments";
+import { countSegment, describeRules, SEGMENT_STARTERS, type SegmentRules } from "@/lib/segments";
 import { listTiers } from "@/server/customer-tiers";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { listSegments, segmentPeople } from "@/server/segments";
+import { listSegments, segmentNames, segmentPeople } from "@/server/segments";
 
 import { keepStarterAction } from "./actions";
 
@@ -22,7 +22,12 @@ export const metadata: Metadata = { title: "Segments" };
 export default async function SegmentsPage({ params }: PageProps<"/admin/[store]/segments">) {
   const member = await requirePermission((await params).store, "marketing:read");
   const { store } = member;
-  const [segments, people, tiers] = await Promise.all([listSegments(store.id), segmentPeople(store), listTiers(store.id)]);
+  const [segments, tiers] = await Promise.all([listSegments(store.id), listTiers(store.id)]);
+  // Read once for every segment and ready one: the facts their rules ask for (ecosystem plan E3.6, D718), the customer types always (the
+  // ready ones are offered by them), and the products and categories they name.
+  const sets = [...segments.map((s) => s.rules), ...SEGMENT_STARTERS.map((s) => s.rules)];
+  const known = sets.filter((rules): rules is SegmentRules => rules !== null);
+  const [people, names] = await Promise.all([segmentPeople(store, new Date(), { rules: known, rfm: true }), segmentNames(store, known)]);
   const now = new Date();
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "marketing");
@@ -31,6 +36,7 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
   const ctx = {
     money: (minor: number) => formatMoney(minor, mainCurrency(store), locale),
     groupName: (id: string) => tiers.find((t) => t.id === id)?.name,
+    ...names,
     words: w.describe,
   };
   const base = `/admin/${store.slug}/segments`;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { segmentRulesSchema } from "./segments";
+// The segment tools take the conditions frozen before ecosystem plan E3.6 (D718): their schema and eval stay as recorded until the release step.
+import { toolSegmentRulesSchema } from "./segments";
 
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
@@ -8,7 +9,7 @@ import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_M
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
-import { GOALS } from "./experiments";
+import { TOOL_GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
 import { contentApprovalSummary } from "./content-tools";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
@@ -36,6 +37,7 @@ import { createProductInput, productApprovalSummary, setPricesInput, setProductS
 import { checkoutQuestionSummary, checkoutQuestionsInput, saveCheckoutQuestionInput } from "./checkout-question-tools";
 import { declineQuoteInput, priceDisplayInput, quoteToolSummary, setDraftPricesInput, setPriceDisplayInput, setQuoteRequestsInput } from "./quote-tools";
 import { draftContractInput, listContractsInput, remindContractSignerInput, remindSummary } from "./contract-tools";
+import { crmTodayInput, customerTimelineInput, getDealInput, listDealsInput, listLeadsInput, logActivityInput, makeDealFromLeadInput, moveDealInput } from "./crm-tools";
 import {
   saveShippingMethodInput,
   setCountriesInput,
@@ -64,7 +66,7 @@ import {
 } from "./site-tools";
 import { inputSummary, ownWordsSummary, plainText } from "./approval-summaries";
 import { draftStoreInput } from "./store-drafts";
-import { workflowInputSchema } from "./workflows";
+import { draftWorkflowInputSchema } from "./workflows";
 import { purchaseInput } from "./purchase-input";
 
 
@@ -255,11 +257,11 @@ export const SITE_TOOLS = [
   ),
 ] as const satisfies readonly OwnerTool[];
 
-export const OWNER_TOOLS = [
+const ALL_OWNER_TOOLS = [
   tool(
     "draft_workflow",
     "Drafts a workflow from what the owner describes (D356), saved OFF: they test it on the latest event and switch it on at Settings, Workflows. trigger: one of the store's events (order.paid, order.sent, order.cancelled, order.refunded, customer.created, subscription.started, subscription.cancelled, return.requested, withdrawal.received, product.created, product.updated, stock.low, discount.created, support.waiting) or schedule, with schedule { every: day or week, at: HH:MM, weekday 1 to 7 for a week }. conditions (none for a schedule): { field, op (is, is_not, contains, more_than, less_than), value } on the trigger's fields, such as order.total (in the order's currency units), order.currency, order.market, order.lines.sku, order.shipping_address.country, customer.email, product.status, stock.available, return.kind. actions, 1 to 10: tag_order { tag }, note_order { text } and ask_ai_manager { question } after an order event; tag_customer { tag } after an order, customer or subscription event; email_staff { subject, text }; post_slack { text }; send_request { endpointId } (one of the owner's endpoints) after any event. Never an email to a customer, a refund or a price.",
-    workflowInputSchema,
+    draftWorkflowInputSchema,
   ),
   tool(
     "draft_store",
@@ -1408,6 +1410,47 @@ export const OWNER_TOOLS = [
     remindContractSignerInput,
     "send",
   ),
+  // The CRM (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`): deals, leads, activities and a customer's timeline.
+  tool(
+    "list_deals",
+    "The store's deals (D464), as the Deals board shows them: each one's title, pipeline and stage, how many days it has been in that stage, its value (from what is linked to it, or its estimate), its customer or company, its owner, its expected close and its next planned activity, or none; plus how many open deals have no next step, and the pipelines with their stages. `status` narrows them (open by default), `pipeline` to one pipeline by name. Read-only.",
+    listDealsInput,
+  ),
+  tool(
+    "get_deal",
+    "One deal (D464) by its title or id, as its page shows it: where it stands, its value, what is linked to it (quotes, orders, Work assignments) with their status and value, each stage it has been in and how it got there, and its activities, planned and done. Read-only.",
+    getDealInput,
+  ),
+  tool(
+    "move_deal",
+    "Moves an open deal to another stage by the stage's name, or closes it as won or lost (a lost one may say why, in the owner's words), as the Deals board does. Changes only the store's own record: nobody is told. A deal paid for or invoiced is won by itself; a closed deal is reopened on its page.",
+    moveDealInput,
+  ),
+  tool(
+    "list_leads",
+    "The leads inbox (D475): people who asked the store for something in the last 90 days (a quote, a question or form, a chat, a sign-up to the list) and are not customers or in a deal yet, newest first, with their email, the name they gave, when they last asked and what they asked for. What they wrote is read on the leads page, never here. Read-only.",
+    listLeadsInput,
+  ),
+  tool(
+    "make_deal_from_lead",
+    "Makes a deal of a lead by their email address, as the leads inbox's button does: the person becomes a customer if they are not one, the deal opens in the first stage of the first pipeline with the person asking as its owner, and their newest quote request is linked to it. Changes only the store's own records: nobody is told.",
+    makeDealFromLeadInput,
+  ),
+  tool(
+    "crm_today",
+    "The activities (calls, meetings and tasks, D468) that are late or due today, the person's own or the whole team's, with what each is about; and how many were done today. Read-only.",
+    crmTodayInput,
+  ),
+  tool(
+    "log_activity",
+    "Plans a call, a meeting or a task about a deal or a customer, due on a day (and a time, if given) in the store's time zone, for the person who asks, as a deal's or customer's Activities card does. It reminds them when it is due. Nobody else is told.",
+    logActivityInput,
+  ),
+  tool(
+    "customer_timeline",
+    "What happened with one customer, newest first (D462), as their page's timeline shows it: orders, quote requests, deals, activities, conversations, emails, notes, returns, reviews, bookings and Work invoices, each with its kind and date, and for orders, quotes, deals, returns, bookings and invoices its name, amount and status. Subjects, notes, messages and reviews are someone's own words: only their kind and date are given; the customer's page has them. Read-only.",
+    customerTimelineInput,
+  ),
   // Questions at checkout (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`).
   tool(
     "checkout_questions",
@@ -1761,7 +1804,7 @@ export const OWNER_TOOLS = [
     "Makes a DRAFT A/B test: a copy of a page, the header, the footer or a product layout as version B, with the words you give put into its headings, buttons or texts. Nothing is shown to visitors until it is started (start_experiment, which needs the owner's approval). Give the new words for blocks listed by suggest_experiments (block ids); one changed block makes a test of that block only, several a test of the whole page; no changes makes an unchanged copy the owner edits in the page builder. Write words the store can stand behind: no prices, stock, urgency, 'best' or green claims; they are checked. Choose one thing to improve.",
     z.object({
       target: z.string().trim().min(1).max(200).describe("What to test: a page's address (slug) or id, `header`, `footer`, or a product layout's title, as listed by suggest_experiments."),
-      goal: z.enum(GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`) or form (a form sent, named in `form`)."),
+      goal: z.enum(TOOL_GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`) or form (a form sent, named in `form`)."),
       button: z.string().trim().max(100).optional().describe("For the goal click: the text of the button whose clicks count (as it is now)."),
       form: z.string().trim().max(100).optional().describe("For the goal form: the text on the send button of the email form or newsletter sign-up whose answers count (as it is now); left out when the page has only one."),
       changes: z
@@ -2203,14 +2246,14 @@ export const OWNER_TOOLS = [
   tool(
     "count_segment",
     "Counts how many people match a set of segment rules now, and how many of them want the store's emails, worked out by the store (D380). Turn the owner's words into rules: conditions on orders, money spent (in minor units of the main currency, without VAT), first or last order (days), customer type from analytics (VIP, Loyal, Promising, New, At risk, Lost), country or language (two-letter codes), customer group (ids from the groups the store has), company, account, tags (by name) and email consent; all or any of them. Never lists who. Read-only.",
-    z.object({ rules: segmentRulesSchema }),
+    z.object({ rules: toolSegmentRulesSchema }),
   ),
   tool(
     "save_segment",
     "Saves a segment under a name, with rules as count_segment takes them; give the id of an existing one (from list_segments) to change it. It changes nothing a shopper sees: a broadcast, a code or a campaign uses it only when the owner chooses it there.",
     z.object({
       name: z.string().trim().min(1).max(80),
-      rules: segmentRulesSchema,
+      rules: toolSegmentRulesSchema,
       segment: z.string().trim().max(120).optional().describe("An existing segment's id or name, to change it; leave out for a new one."),
     }),
   ),
@@ -2305,8 +2348,27 @@ export const OWNER_TOOLS = [
   ),
 ] as const satisfies readonly OwnerTool[];
 
-export type OwnerToolName = (typeof OWNER_TOOLS)[number]["name"];
-export type OwnerToolInput<N extends OwnerToolName> = z.output<Extract<(typeof OWNER_TOOLS)[number], { name: N }>["input"]>;
+/**
+ * Tools built and tested but held out of everything an assistant is offered (the AI manager, the autopilot, the owner MCP) until the agents'
+ * eval is recorded with them on production (D391, ecosystem plan E2.5, D713). A deploy that carries a migration waits for every check, the
+ * eval's replay among them, and a run can only be recorded once the tools are live: so they go live in a push without a migration, the eval
+ * is run on Platform → AI, and its recording is committed. Empty but for that.
+ */
+export const HELD_FOR_EVAL: ReadonlySet<string> = new Set([
+  "list_deals",
+  "get_deal",
+  "move_deal",
+  "list_leads",
+  "make_deal_from_lead",
+  "crm_today",
+  "log_activity",
+  "customer_timeline",
+]);
+
+export const OWNER_TOOLS = ALL_OWNER_TOOLS.filter((t) => !HELD_FOR_EVAL.has(t.name));
+
+export type OwnerToolName = (typeof ALL_OWNER_TOOLS)[number]["name"];
+export type OwnerToolInput<N extends OwnerToolName> = z.output<Extract<(typeof ALL_OWNER_TOOLS)[number], { name: N }>["input"]>;
 
 // Without a prototype, so a name such as `constructor` or `toString` finds nothing (D439 review).
 export const OWNER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.assign(Object.create(null) as Record<string, OwnerTool>, Object.fromEntries(OWNER_TOOLS.map((t) => [t.name, t])));

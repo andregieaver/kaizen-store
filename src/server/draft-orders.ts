@@ -736,12 +736,17 @@ export type DraftFieldProblem = { field: string; message: string };
 
 export type CreateDraftResult = { ok: true; draft: DraftView } | { ok: false; problem: "too_many_open_drafts" | "market" };
 
-/** Makes an empty draft in a market (the store's own market view unless one is given). Refused at 500 open drafts. */
-export async function createDraft(storeId: string, actor: OrderActor, options: { marketSlug?: string } = {}): Promise<CreateDraftResult> {
+/**
+ * Makes an empty draft in a market (the store's own market view unless one is given). Refused at 500 open drafts. With `customerId` (a
+ * customer of this store; ecosystem plan E2.6, D713) the draft starts with what choosing that customer in the editor fills in: their
+ * email, phone, address and company. A customer that is not the store's is left out, never an error.
+ */
+export async function createDraft(storeId: string, actor: OrderActor, options: { marketSlug?: string; customerId?: string } = {}): Promise<CreateDraftResult> {
   const store = await storeById(storeId);
   if (!store) return { ok: false, problem: "market" };
   const market = options.marketSlug ? await marketOf(store, options.marketSlug) : await homeMarketOf(store);
   if (!market) return { ok: false, problem: "market" };
+  const customer = options.customerId ? await draftCustomerDetails(storeId, options.customerId) : null;
   const id = await db().transaction(async (tx) => {
     // The store's settings row is the lock of the open count and of the counter: two staff making a draft at once take turns.
     await tx.execute(sql`insert into commerce.order_settings (store_id) values (${storeId}::uuid) on conflict (store_id) do nothing`);
@@ -758,6 +763,15 @@ export async function createDraft(storeId: string, actor: OrderActor, options: {
       tx,
     );
     if (!row) throw new Error("The draft was not written.");
+    if (customer && options.customerId) {
+      await tx.execute(sql`
+        update commerce.draft_orders set
+          customer_id = ${options.customerId}::uuid, email = ${customer.email}, phone = ${customer.phone},
+          shipping_address = ${JSON.stringify(addressJson(customer.shippingAddress))}::jsonb,
+          company_name = ${customer.companyName}, organisation_number = ${customer.organisationNumber}
+        where store_id = ${storeId}::uuid and id = ${row.id}::uuid
+      `);
+    }
     return row.id;
   });
   if (!id) return { ok: false, problem: "too_many_open_drafts" };

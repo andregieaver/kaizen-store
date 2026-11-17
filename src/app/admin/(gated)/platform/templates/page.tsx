@@ -5,10 +5,13 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LAYOUT_TYPE_LABELS } from "@/lib/page-layout";
 import { KIND_LABELS, SHARING_LABELS } from "@/lib/templates";
 import { requirePlatformReader } from "@/server/auth";
+import { listSharedFormTemplates } from "@/server/form-templates";
 import { listMarketplaceTemplates } from "@/server/templates";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { PageHeader } from "@/components/admin/ui";
 
-import { setTemplateHiddenAction } from "./actions";
+import { setFormTemplateHiddenAction, setTemplateHiddenAction } from "./actions";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 export const metadata: Metadata = { title: "Templates" };
@@ -21,9 +24,11 @@ export const metadata: Metadata = { title: "Templates" };
 export default async function PlatformTemplatesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformReader();
+  const account = await requirePlatformReader();
   const { w } = await platformSiteWords();
-  const templates = await listMarketplaceTemplates();
+  const [templates, formTemplates] = await Promise.all([listMarketplaceTemplates(), listSharedFormTemplates()]);
+  const forms = adminText(adminLangOf(account.adminLocale), "forms");
+  const f = { kinds: forms.kinds, templates: adminText(adminLangOf(account.adminLocale), "formTemplates") };
   const hidden = templates.filter((t) => t.hidden).length;
 
   return (
@@ -68,6 +73,30 @@ export default async function PlatformTemplatesPage() {
           </li>
         ))}
       </ul>
+      {formTemplates.length > 0 && (
+        <section className="flex flex-col gap-3" data-shared-form-templates>
+          <h2 className="text-title text-ink">{f.templates.formTemplates}</h2>
+          <p className="text-sm text-muted">{f.templates.hideHint}</p>
+          <ul className="flex flex-col gap-3">
+            {formTemplates.map((template) => (
+              <li key={template.id} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-col gap-1 text-sm">
+                  <span className="font-medium">
+                    {template.name}
+                    {template.hidden && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{f.templates.hidden}</span>}
+                  </span>
+                  <span className="text-muted">
+                    {f.kinds[template.kind]} · {template.publisher} ({template.storeSlug}) · {f.templates.sharings[template.sharing]}
+                  </span>
+                </div>
+                <ActionForm action={setFormTemplateHiddenAction.bind(null, template.id, !template.hidden)}>
+                  <SubmitButton variant={template.hidden ? "primary" : "secondary"}>{template.hidden ? f.templates.show : f.templates.hide}</SubmitButton>
+                </ActionForm>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

@@ -47,6 +47,9 @@ export const draftsEn = {
     unchecked: " (not yet checked by a person)",
   },
   pages: {
+    /** A quote started from a customer or a deal (ecosystem plan E2.6, D713). */
+    forWhom: "For {who}.",
+    forDeal: "the deal “{title}”",
     /** The deal the draft or quote is linked to (ecosystem plan E1.3), with its status. */
     fromDeal: "Deal ({status}):",
     orders: "Orders",

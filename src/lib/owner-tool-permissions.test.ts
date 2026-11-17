@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { OWNER_TOOLS } from "./owner-tools";
+import { HELD_FOR_EVAL, OWNER_TOOLS } from "./owner-tools";
 import { TOOL_PERMISSIONS, mayUseTool, toolKey, toolRefusal } from "./owner-tool-permissions";
 import { ROLE_TEMPLATES, isPermissionKey, type PermissionHolder } from "./permissions";
 
@@ -15,7 +15,7 @@ const CHANGING = new Set([
   "save_search_synonym", "save_search_rule", "delete_search_merchandising", "set_market_price_rule", "save_producer_registration", "save_checkout_question", "moderate_blog_comment", "schedule_article", "schedule_site_change",
   "save_entry", "publish_entry", "unpublish_entry", "save_content_type",
   "tag_orders", "archive_orders", "create_draft_order", "send_draft_order", "set_draft_prices", "decline_quote", "set_price_display", "set_quote_requests", "set_feature",
-  "draft_contract", "remind_contract_signer",
+  "draft_contract", "remind_contract_signer", "move_deal", "make_deal_from_lead", "log_activity",
   "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "write_email_automation", "write_cart_reminder", "tell_customer_about_order", "carry_out_address_change", "draft_text_message", "send_text_message", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",
   "add_support_note", "reply_to_support", "end_support_conversation",
   "invite_staff", "change_staff_role", "remove_staff", "change_plan", "end_plan", "change_order", "propose_exchange", "process_exchange", "send_replacement", "log_time", "issue_work_invoice",
@@ -36,7 +36,8 @@ const template = (key: keyof typeof ROLE_TEMPLATES): PermissionHolder => ({ role
 
 describe("the AI manager's store tools and what they need", () => {
   it("has a permission for every tool and for nothing else (the table is exhaustive, in both directions)", () => {
-    const tools = OWNER_TOOLS.map((tool) => tool.name).sort();
+    // Tools held out until the eval is recorded with them (D713) keep their permission, ready for the push that makes them live.
+    const tools = [...OWNER_TOOLS.map((tool) => tool.name), ...HELD_FOR_EVAL].sort();
     expect(Object.keys(TOOL_PERMISSIONS).sort()).toEqual(tools);
     for (const name of tools) expect(isPermissionKey(TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS]), name).toBe(true);
   });

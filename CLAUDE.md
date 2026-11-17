@@ -155,7 +155,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Free trials and their end (D420, `src/server/store-trial.ts`)
 - Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
 - Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
-- Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F3 built, F4 and F5 planned)
+- Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F4 built, F5 planned)
 - Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…
 - The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`, `AiManagerLauncher`)
 - The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
@@ -166,6 +166,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)
 - The AI manager's contract tools (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`)
 - The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
+- The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)
 - The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)
 - The AI manager's notices and saved skills (wave 8 unit F, D350)
 - AI in the builder and a store from one description (wave 8 unit G, D351)
@@ -414,7 +415,11 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 
 ## Conventions
 
-- Every screen a person uses serves two people (Homer and Lisa: System 1 and System 2). The default view is for Homer: simple, intuitive and distraction free, one clear main action, sensible defaults chosen for him, words for what he gets rather than settings, and nothing to understand before pressing the obvious button. Lisa's depth (every setting, per screen size, own CSS, versions, what changes, undo) is one deliberate step away (Customise, Advanced) and never in Homer's way. A new screen passes when Homer can finish without reading anything and Lisa can still reach every setting.
+- Every screen a person uses serves two people (Homer and Lisa: System 1 and System 2). The default view is for Homer: simple,
+  intuitive and distraction free, one clear main action, sensible defaults chosen for him, words for what he gets rather than
+  settings, and nothing to understand before pressing the obvious button. Lisa's depth (every setting, per screen size, own CSS,
+  versions, what changes, undo) is one deliberate step away (Customise, Advanced) and never in Homer's way. A new screen passes
+  when Homer can finish without reading anything and Lisa can still reach every setting.
 - Whatever is built for stores and their owners is built for the platform too (the owner, 6 November 2026): Kaizena Flow's own site
   and store, and the platform admin (`/admin/platform`; the platform's rows are `store_id is null` or `platform_*` tables), get the
   same feature in the same change, or as its next step named in the decision. A feature stays store-only only where it cannot apply to
@@ -430,12 +435,13 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   another shape throws `RowShapeError`, naming the column, never the value; rows another runner fetched, such as analytics'
   `setBased()`, through `checkedRows()`); `coalesce()` a sum that may meet no rows. A writer of `commerce.stores` refreshes the store's
   tag itself (`refreshTag(storeTag(slug))`, `refreshStoreById()`; `store-writers.scan.test.ts`), which does nothing outside Next. Older
-  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first); `ratchet.scan.test.ts` fails when unchecked reads or
-  `as unknown as` rise anywhere, and when they fall until `node scripts/ratchet.mjs` lowers `src/server/ratchet.baseline.json` (code review 1.2).
-  A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the same ratchet counts the
-  writes that do not, per file, and only lets that number fall (code review 1.3).
+  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first); unchecked reads and `as unknown as`
+  only fall (`ratchet.scan.test.ts`, code review 1.2).
+  A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the ratchet lets the count
+  of those that do not, per file, only fall (code review 1.3).
   A read of a store's or the platform's rows filters with `owned(storeId)` (`src/server/owned.ts`), never `store_id is not distinct from`: the
   ratchet counts that wording per file and only lets it fall (D622).
+- Every budget (baseline file, scan test, script) has a row in `docs/rules/budgets.md`; its numbers only fall.
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
   person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ANY_SUPPRESSED, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import baseline from "./ratchet.baseline.json";
 
 /**
@@ -13,6 +13,8 @@ import baseline from "./ratchet.baseline.json";
 const now = ratchetCounts(process.cwd()) as {
   unknownCasts: number;
   anySuppressed: number;
+  filesOver100Kb: number;
+  filesOver2000Lines: number;
   untypedReads: Record<string, number>;
   byIdWrites: Record<string, number>;
   notDistinctStore: Record<string, number>;
@@ -48,6 +50,12 @@ describe("the ratchet (code review 1.2)", () => {
     expect(now.anySuppressed, "eslint-disable of no-explicit-any in src, tests aside").toBeLessThanOrEqual(baseline.anySuppressed);
   });
 
+  it("adds no source file over 100 KB or over 2,000 lines: read by window, the counts only fall", () => {
+    const how = "Split the file, or move code out of it; never raise the number.";
+    expect(now.filesOver100Kb, `source files over 100 KB. ${how}`).toBeLessThanOrEqual(baseline.filesOver100Kb);
+    expect(now.filesOver2000Lines, `source files over 2,000 lines. ${how}`).toBeLessThanOrEqual(baseline.filesOver2000Lines);
+  });
+
   it("keeps the baseline as low as the code: run `node scripts/ratchet.mjs` after a change lowers a number", () => {
     const lower = [
       ...Object.entries(recorded)
@@ -61,6 +69,8 @@ describe("the ratchet (code review 1.2)", () => {
         .map(([file, n]) => `${file}: ${now.notDistinctStore[file] ?? 0} uses of store_id is not distinct from, baseline ${n}`),
       ...(now.unknownCasts < baseline.unknownCasts ? [`as unknown as: ${now.unknownCasts}, baseline ${baseline.unknownCasts}`] : []),
       ...(now.anySuppressed < baseline.anySuppressed ? [`suppressed any: ${now.anySuppressed}, baseline ${baseline.anySuppressed}`] : []),
+      ...(now.filesOver100Kb < baseline.filesOver100Kb ? [`source files over 100 KB: ${now.filesOver100Kb}, baseline ${baseline.filesOver100Kb}`] : []),
+      ...(now.filesOver2000Lines < baseline.filesOver2000Lines ? [`source files over 2,000 lines: ${now.filesOver2000Lines}, baseline ${baseline.filesOver2000Lines}`] : []),
     ];
     expect(lower).toEqual([]);
   });
@@ -73,6 +83,12 @@ describe("the ratchet (code review 1.2)", () => {
     expect(n("where a.store_id is not distinct from ${x}::uuid and store_id\n  IS NOT DISTINCT FROM ${y}", NOT_DISTINCT_STORE)).toBe(2);
     expect(n("where ${owned(storeId)} and p.account_id is not distinct from ${a}::uuid", NOT_DISTINCT_STORE)).toBe(0);
     expect(n("// eslint-disable-next-line @typescript-eslint/no-explicit-any", ANY_SUPPRESSED)).toBe(1);
+    // A file is long past 2,000 lines, not at 2,000; big past 100,000 bytes.
+    const lines = (k: number) => Array.from({ length: k }, () => "x").join("\n");
+    expect(lines(2_001).split("\n").length > LONG_FILE_LINES).toBe(true);
+    expect(lines(2_000).split("\n").length > LONG_FILE_LINES).toBe(false);
+    expect(Buffer.byteLength("x".repeat(BIG_FILE_BYTES + 1)) > BIG_FILE_BYTES).toBe(true);
+    expect(Buffer.byteLength("x".repeat(BIG_FILE_BYTES)) > BIG_FILE_BYTES).toBe(false);
     const tables = new Set(["media", "experiments"]);
     expect(unscopedWrites("sql`delete from commerce.media where id = ${id}::uuid`", tables)).toBe(1);
     expect(unscopedWrites("sql`update commerce.experiments e set status = 'done' where e.id = ${id}::uuid`", tables)).toBe(1);

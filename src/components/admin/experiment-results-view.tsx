@@ -2,6 +2,7 @@ import { niceTicks, linearScale } from "@/components/admin/analytics/chart-math"
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { experimentsEn, type ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import type { CardComparison, ExperimentCard } from "@/lib/experiment-card";
+import { guardrailWarning, type GuardrailCheck } from "@/lib/experiment-guardrails";
 import { GOAL_WORDS } from "@/lib/experiments";
 import { formatMoney } from "@/lib/money";
 import type { ExperimentInfo } from "@/server/experiment-admin";
@@ -43,6 +44,79 @@ export function FrustratedLine({ test, frustrated, words }: { test: ExperimentIn
     <p role="status" className="rounded-panel border border-warning-line bg-warning-soft px-3 py-2 text-sm text-ink" data-frustrated>
       {fillWords(words.results.behaviour.frustrated, { name: nameOf(test, frustrated) })}
     </p>
+  );
+}
+
+/** The line that says more of a version's buyers sent something back (D148 phase 19): a warning, never a stop. */
+export function ReturnsLine({ test, guardrails, words, numberLocale }: { test: ExperimentInfo; guardrails: GuardrailCheck[]; words: Words; numberLocale: string }) {
+  const warning = guardrailWarning(guardrails);
+  if (!warning?.worst) return null;
+  const percent = percentIn(numberLocale);
+  const share = (key: string) => percent(warning.versions.find((v) => v.key === key)?.share ?? 0);
+  const w = words.results.guardrails;
+  return (
+    <p role="status" className="rounded-panel border border-warning-line bg-warning-soft px-3 py-2 text-sm text-ink" data-returns-warning>
+      {fillWords(w.returnsLine, { name: nameOf(test, warning.worst), version: share(warning.worst), original: share("a") })}
+      {warning.stillComing ? ` ${w.coming}` : ""}
+    </p>
+  );
+}
+
+/**
+ * Every guardrail of the test (D148 phase 19, `#ab-guardrails`): what it watches, its state and what it counted per version. Counts are
+ * safety, not the test's answer, so they are shown at any stage; the verdict alone answers the goal.
+ */
+export function GuardrailsSection({ test, guardrails, words, numberLocale }: { test: ExperimentInfo; guardrails: GuardrailCheck[]; words: Words; numberLocale: string }) {
+  const w = words.results.guardrails;
+  const r = words.results;
+  const percent = percentIn(numberLocale);
+  const num = (n: number) => n.toLocaleString(numberLocale);
+  const stateOf = (g: GuardrailCheck) =>
+    g.state === "off"
+      ? w.state.off
+      : g.state === "watching"
+        ? fillWords(w.state.watching, { min: num(g.min), unit: w.unit[g.kind] })
+        : g.state === "fine"
+          ? w.state.fine
+          : fillWords(g.kind === "returns" ? w.state.worseReturns : w.state.worse, { name: nameOf(test, g.worst ?? "") });
+  return (
+    <section aria-labelledby="ab-guardrails-title" id="ab-guardrails" className="flex flex-col gap-2">
+      <h2 id="ab-guardrails-title" className="text-title text-ink">{w.title}</h2>
+      <p className="max-w-[75ch] text-caption text-ink-2">{w.lead}</p>
+      <div className={`overflow-x-auto ${CARD_CLASS}`}>
+        <table className="w-full min-w-[34rem] text-left text-sm" aria-labelledby="ab-guardrails-title">
+          <thead>
+            <tr className="border-b border-line text-muted">
+              <th scope="col" className="px-4 py-2 font-normal">{w.title}</th>
+              {test.variants.map((v) => (
+                <th key={v.key} scope="col" className="px-4 py-2 font-normal">{v.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {guardrails.map((g) => (
+              <tr key={g.kind} className="border-b border-line last:border-0" data-guardrail={g.kind} data-state={g.state}>
+                <th scope="row" className="px-4 py-2 align-top font-normal">
+                  <span className="block font-medium text-ink">{w.name[g.kind]}</span>
+                  <span className="block text-xs text-muted">{w.what[g.kind]}</span>
+                  <span className={`block text-xs ${g.state === "worse" ? "font-medium text-danger-text" : "text-ink-2"}`}>{stateOf(g)}</span>
+                  {g.stillComing && <span className="block text-xs text-muted">{w.coming}</span>}
+                </th>
+                {test.variants.map((v) => {
+                  const c = g.versions.find((x) => x.key === v.key);
+                  return (
+                    <td key={v.key} className="whitespace-nowrap px-4 py-2 align-top tabular-nums">
+                      {g.state === "off" || !c ? "—" : fillWords(r.ofTotal, { n: num(c.bad), total: num(c.n) })}
+                      {g.state !== "off" && c?.share !== null && c ? <span className="block text-xs text-muted">{percent(c.share ?? 0)}</span> : null}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -385,7 +459,7 @@ export function ExperimentResultsView({
         </div>
         {results.harmed && (
           <p role="alert" className="text-body font-medium text-danger-text">
-            {fillWords(r.harmed, { key: results.harmed.toUpperCase() })}
+            {fillWords(results.harmedBy === "speed" || results.harmedBy === "checkout" ? r.harmedBy[results.harmedBy] : r.harmed, { key: results.harmed.toUpperCase() })}
           </p>
         )}
         <div className="grid gap-4 sm:grid-cols-2" data-progress>
@@ -408,6 +482,7 @@ export function ExperimentResultsView({
         {results.unconverted > 0 && <p className="text-caption text-muted">{countWords(results.unconverted, r.unconverted)}</p>}
       </section>
       {behaviour?.frustrated ? <FrustratedLine test={test} frustrated={behaviour.frustrated} words={words} /> : null}
+      <ReturnsLine test={test} guardrails={results.guardrails} words={words} numberLocale={numberLocale} />
 
       {card.impact && (
         <section aria-labelledby="ab-impact" className="flex flex-col gap-1 rounded-card bg-insight-soft p-5" data-impact>
@@ -531,7 +606,7 @@ export function ExperimentResultsView({
               </thead>
               <tbody>
                 {test.variants.map((v) => {
-                  const f = results.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 };
+                  const f = results.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0, pages: 0 };
                   const share = (n: number) => (f.visitors ? ` (${percent(n / f.visitors)})` : "");
                   return (
                     <tr key={v.key} className="border-b border-line last:border-0">
@@ -557,7 +632,19 @@ export function ExperimentResultsView({
               {fillWords(r.forms, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.forms ?? 0)}`).join(", ") })}
             </p>
           )}
+          {test.goal === "signup" && (
+            <p className="text-xs text-muted">
+              {fillWords(r.signups, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.signups ?? 0)}`).join(", ") })}
+            </p>
+          )}
+          {test.goal === "page" && (
+            <p className="text-xs text-muted">
+              {fillWords(r.pages, { list: test.variants.map((v) => `${v.name} ${num(results.funnel[v.key]?.pages ?? 0)}`).join(", ") })}
+            </p>
+          )}
         </section>
+
+        {results.guardrails.length > 0 ? <GuardrailsSection test={test} guardrails={results.guardrails} words={words} numberLocale={numberLocale} /> : null}
 
         {behaviour ? <VersionBehaviourSection test={test} behaviour={behaviour} words={words} numberLocale={numberLocale} /> : null}
 

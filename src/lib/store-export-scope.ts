@@ -155,6 +155,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   store_demo_items: "record",
   store_domains: "secret",
   store_events: "record",
+  events: "record",
   store_home_takes: "record",
   store_integrations: "secret",
   store_members: "people",

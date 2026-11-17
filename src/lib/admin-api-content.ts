@@ -131,7 +131,9 @@ export const apiExperiment = z.object({
   stage: z.enum(["draft", "scheduled", "learning", "answer", "broken", "applied", "discarded"]).describe("As the test's page shows it: a running test is learning until it has an answer, or broken when the visitors are not divided as planned."),
   next: z.enum(["start", "wait", "use", "keep_original", "start_again", "done"]).describe("The one next step the page offers."),
   best: z.string().nullable().describe("For next = use: the version to use."),
-  goal: z.enum(["orders", "revenue", "cart", "checkout", "click", "form"]),
+  goal: z
+    .enum(["orders", "revenue", "cart", "checkout", "click", "form", "signup", "page"])
+    .describe("signup: a sign-up to Kaizena Flow, a goal only Kaizena Flow's own store has. page: going on to a chosen page of the store."),
   target: z.object({ kind: z.enum(["page", "layout", "header", "footer", "role"]), title: z.string(), slug: z.string(), part: z.string().nullable() }),
   versions: z.array(z.object({ key: z.string().describe("a is the original."), name: z.string(), share: z.number() })),
   progress: z.object({

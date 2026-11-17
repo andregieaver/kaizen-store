@@ -8,6 +8,7 @@ import { experimentsEn } from "./admin-messages/experiments.en";
 import { experimentsNb } from "./admin-messages/experiments.nb";
 import { experimentProblemText, partLabelText, variantNameText } from "./experiment-words";
 import { estimateRuntime, verdictOf } from "./experiment-results";
+import { PLAN_WITHOUT_TESTS, planFullProblem } from "./experiments";
 
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
@@ -57,6 +58,8 @@ describe("the A/B test catalogue", () => {
     expect(partLabelText("Row 4", experimentsNb)).toBe("Rad 4");
     expect(variantNameText("Version C", experimentsNb)).toBe("Versjon C");
     expect(variantNameText("My own", experimentsNb)).toBe("My own");
+    expect(experimentProblemText(planFullProblem(2), experimentsNb)).toBe("Abonnementet ditt kjører opptil 2 om gangen. Stopp en test først, eller velg et abonnement med mer.");
+    expect(experimentProblemText(PLAN_WITHOUT_TESTS, experimentsNb)).toBe(experimentsNb.problems.planNone);
     expect(experimentProblemText("Version B changes more than Row 2. Put everything else back as it was, or test the whole page instead.", experimentsNb)).toBe(
       "Versjon B endrer mer enn Rad 2. Sett alt annet tilbake slik det var, eller test hele siden i stedet.",
     );

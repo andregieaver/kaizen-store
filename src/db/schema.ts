@@ -2966,6 +2966,11 @@ export const speedSamples = commerce.table(
     /** Cumulative Layout Shift in thousandths. */
     clsMilli: integer("cls_milli"),
     ttfbMs: integer("ttfb_ms"),
+    /**
+     * The A/B versions this load showed, as `{experiment}:{version}` tags its own A/B cookie confirmed for a running test (D148 phase 19, as the
+     * heatmaps' totals are, D656): the speed guardrail compares them. Empty for every other load.
+     */
+    ab: text("ab").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
   },
   (t) => [
@@ -7520,6 +7525,8 @@ export const abandonedCheckouts = commerce.table(
     clickedAt: timestamp("clicked_at", { withTimezone: true }),
     recoveredAt: timestamp("recovered_at", { withTimezone: true }),
     recoveredOrderId: uuid("recovered_order_id"),
+    /** When the reminders job judged it abandoned and queued `checkout.abandoned` (ecosystem plan E3.2, D718): once a cart. */
+    abandonedAt: timestamp("abandoned_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -11178,7 +11185,7 @@ export const forms = commerce.table(
     signup: jsonb("signup"),
     /** Months its responses are kept (1 to 36). */
     keepMonths: integer("keep_months").notNull().default(12),
-    /** What it was made from: `starter:{key}` (Kaizena Flow's starters, `FORM_STARTERS`), or null. Never a link that changes the form. */
+    /** What it was made from: `starter:{key}` (Kaizena Flow's starters), `template:{id}` (a form template, F4), or null. Never a link that changes the form. */
     madeFrom: text("made_from"),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
@@ -11198,6 +11205,62 @@ export const forms = commerce.table(
     check("forms_signup", sql`(${t.kind} = 'signup') = (${t.signup} is not null) and (${t.signup} is null or jsonb_typeof(${t.signup}) = 'object')`),
     check("forms_keep_months", sql`${t.keepMonths} between 1 and 36`),
     check("forms_made_from", sql`${t.madeFrom} is null or char_length(${t.madeFrom}) between 1 and 80`),
+  ],
+);
+
+/**
+ * A form template (D705 F4, `docs/forms.md`, written only by `src/server/form-templates.ts`): Kaizena Flow's own (no store, always the
+ * marketplace's; the seven starters are seeded by key) or a store's, saved from one of its forms. `content` is a form without what
+ * belongs to one store (`FormTemplateContent`: questions, words, a sign-up's confirm and name, the months kept), its words in `lang` with
+ * the other languages it has. Using one copies it into a new form: editing it later never changes a form made from it. `form_id` is the
+ * owner's form it is updated from, if any. Shared as D125's templates are; a platform admin hides one from every list.
+ */
+export const formTemplates = commerce.table(
+  "form_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `message` or `signup`, as its forms. */
+    kind: text("kind").notNull(),
+    /** `contact`, `sales`, `bookings`, `newsletter`, `feedback`, `events` or `other`: its card's icon and place. */
+    category: text("category").notNull().default("other"),
+    /** `{ text, byLocale }`, `text` in `lang`. */
+    name: jsonb("name").notNull(),
+    description: jsonb("description").notNull().default(sql`'{"text":"","byLocale":{}}'::jsonb`),
+    /** The language of its words' `text`. */
+    lang: text("lang").notNull().default("en"),
+    content: jsonb("content").notNull(),
+    /** `private` (this store), `stores` (its owner's other stores) or `marketplace`; Kaizena Flow's are the marketplace's. */
+    sharing: text("sharing").notNull().default("private"),
+    /** Kaizena Flow's seeded starters (`contact`, `newsletter`, …); null for every other. */
+    starter: text("starter"),
+    /** The owner's form it was saved from and is updated from; null once that form is deleted. */
+    formId: uuid("form_id").references(() => forms.id, { onDelete: "set null" }),
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenBy: uuid("hidden_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("form_templates_store_idx").on(t.storeId, t.updatedAt),
+    index("form_templates_shared_idx").on(t.sharing, t.updatedAt).where(sql`${t.sharing} <> 'private'`),
+    index("form_templates_form_idx").on(t.formId),
+    index("form_templates_hidden_by_idx").on(t.hiddenBy),
+    index("form_templates_created_by_idx").on(t.createdBy),
+    index("form_templates_updated_by_idx").on(t.updatedBy),
+    uniqueIndex("form_templates_starter").on(t.starter).where(sql`${t.starter} is not null`),
+    check("form_templates_kind", sql`${t.kind} in ('message', 'signup')`),
+    check("form_templates_category", sql`${t.category} in ('contact', 'sales', 'bookings', 'newsletter', 'feedback', 'events', 'other')`),
+    check("form_templates_name", sql`jsonb_typeof(${t.name}) = 'object' and char_length(btrim(${t.name} ->> 'text')) between 1 and 80`),
+    check("form_templates_description", sql`jsonb_typeof(${t.description}) = 'object' and char_length(coalesce(${t.description} ->> 'text', '')) <= 200`),
+    check("form_templates_lang", sql`${t.lang} ~ '^[a-z]{2,3}$'`),
+    check("form_templates_content", sql`jsonb_typeof(${t.content}) = 'object'`),
+    check("form_templates_sharing", sql`${t.sharing} in ('private', 'stores', 'marketplace')`),
+    check("form_templates_kaizen_sharing", sql`${t.storeId} is not null or ${t.sharing} = 'marketplace'`),
+    check("form_templates_starter_one", sql`${t.starter} is null or (${t.storeId} is null and ${t.starter} ~ '^[a-z]{1,40}$')`),
   ],
 );
 
@@ -13450,7 +13513,10 @@ export const experiments = commerce.table(
     trafficShare: numeric("traffic_share", { precision: 4, scale: 3 }).notNull().default("1"),
     /** Narrowing of who is enrolled: `markets`, `devices`, `returning`. Empty: everyone who is eligible. */
     audience: jsonb("audience").notNull().default({}),
-    /** What counts as success: `orders`, `revenue`, `cart`, `checkout` or `click` (with the block in `goal_params`). */
+    /**
+     * What counts as success: `orders`, `revenue`, `cart`, `checkout`, `click` or `form` (with the block in `goal_params`), or `signup` (a sign-up to
+     * Kaizena Flow, only on its own store, D148 phase 19), or `page` (a chosen page opened after the version, its id in `goal_params.page`, phase 20).
+     */
     primaryGoal: text("primary_goal").notNull(),
     goalParams: jsonb("goal_params").notNull().default({}),
     /** The least visitors per variant and the least days before a verdict is given. */
@@ -13461,6 +13527,8 @@ export const experiments = commerce.table(
     stoppedAt: timestamp("stopped_at", { withTimezone: true }),
     /** Why a test stopped: `person`, `guardrail` or `planned_end`. */
     stopReason: text("stop_reason"),
+    /** Which guardrail stopped it (D148 phase 19): `orders`, `speed` or `checkout`; null for any other stop, and for guardrail stops before phase 19. */
+    stopGuardrail: text("stop_guardrail"),
     appliedVariant: text("applied_variant"),
     /** When the test first had an answer (D148 phase 14, D662): the verdict turned better, worse or even, and the owners were told once. */
     answeredAt: timestamp("answered_at", { withTimezone: true }),
@@ -13485,12 +13553,16 @@ export const experiments = commerce.table(
       sql`(${t.targetPart} is null and ${t.targetPartKind} is null) or (${t.targetPart} is not null and length(${t.targetPart}) between 1 and 64 and coalesce(${t.targetPartKind} in ('row', 'column', 'block'), false))`,
     ),
     check("experiments_scheduled", sql`${t.status} <> 'scheduled' or ${t.scheduledStart} is not null`),
-    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form')`),
+    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form', 'signup', 'page')`),
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
     check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
     check("experiments_learning", sql`${t.learning} is null or length(${t.learning}) between 1 and 280`),
     check("experiments_stop_reason", sql`${t.stopReason} is null or ${t.stopReason} in ('person', 'guardrail', 'planned_end')`),
+    check(
+      "experiments_stop_guardrail",
+      sql`${t.stopGuardrail} is null or (${t.stopReason} = 'guardrail' and ${t.stopGuardrail} in ('orders', 'speed', 'checkout'))`,
+    ),
     check("experiments_applied", sql`(${t.appliedVariant} is not null) = (${t.status} = 'applied')`),
   ],
 );
@@ -13557,7 +13629,7 @@ export const experimentEvents = commerce.table(
     visitor: text("visitor").notNull(),
     variant: text("variant").notNull(),
     goal: text("goal").notNull(),
-    /** What was clicked (the block's id), empty for a cart or a checkout. */
+    /** What was clicked or sent (the block's id), the page opened for `page`, empty for a cart, a checkout or a sign-up. */
     ref: text("ref").notNull().default(""),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -13565,7 +13637,7 @@ export const experimentEvents = commerce.table(
     unique("experiment_events_once_key").on(t.experimentId, t.visitor, t.goal, t.ref),
     foreignKey({ name: "experiment_events_exposure_fk", columns: [t.experimentId, t.visitor], foreignColumns: [experimentExposures.experimentId, experimentExposures.visitor] }).onDelete("cascade"),
     index("experiment_events_store_idx").on(t.storeId, t.occurredAt),
-    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form')`),
+    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form', 'signup', 'page')`),
     check("experiment_events_ref", sql`length(${t.ref}) <= 80`),
   ],
 );
@@ -16213,6 +16285,56 @@ export const storeEvents = commerce.table(
     check("store_events_event", sql`${t.event} in ('order.paid', 'return.requested')`),
     check("store_events_attempts", sql`${t.attempts} between 0 and 10`),
     check("store_events_last_error", sql`${t.lastError} is null or char_length(${t.lastError}) <= 500`),
+  ],
+);
+
+/**
+ * The event log (ecosystem plan E3.1, D718): every event the database queues (`commerce.queue_integration_event()`,
+ * `queue_store_event()`, `queue_platform_event()`, each through `commerce.log_event()`), whether or not anyone subscribes, in the
+ * transaction that made it; once per transaction, store, event and subject (`events_once_key`, as a workflow's run is). Ids only, never a
+ * person's data. Append-only (a trigger refuses an update, and a delete before `EVENT_KEEP_DAYS` unless its store is gone); pruned daily.
+ * Read in order of `(tx, id)` by `readEventsAfter()` (`src/server/event-log.ts`): `tx` is the writing transaction's id, so a reader that
+ * takes only what is older than every transaction still running never skips an event that commits after a later one.
+ */
+export const eventLog = commerce.table(
+  "events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    /** Null for Kaizena Flow's own events. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    subjectId: uuid("subject_id"),
+    /** The writing transaction's id (`pg_current_xact_id()`), the first key of the log's order. */
+    tx: bigint("tx", { mode: "number" }).notNull().default(sql`(pg_current_xact_id()::text)::bigint`),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("events_order_idx").on(t.tx, t.id),
+    index("events_store_order_idx").on(t.storeId, t.tx, t.id),
+    unique("events_once_key").on(t.tx, t.storeId, t.event, t.subjectId).nullsNotDistinct(),
+    check("events_event", sql`${t.event} ~ '^[a-z][a-z0-9_]*([.][a-z][a-z0-9_]*)+$' and char_length(${t.event}) <= 80`),
+  ],
+);
+
+/**
+ * Where each reader of the event log is (ecosystem plan E3.1, D718): the last event it took, as `(last_tx, last_id)`, and its claim while
+ * a run reads and handles a batch, so two runners of one reader never take the same events. Written only by `src/server/event-log.ts`.
+ */
+export const eventCursors = commerce.table(
+  "event_cursors",
+  {
+    consumer: text("consumer").primaryKey(),
+    lastTx: bigint("last_tx", { mode: "number" }).notNull().default(0),
+    lastId: bigint("last_id", { mode: "number" }).notNull().default(0),
+    claim: uuid("claim"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("event_cursors_consumer", sql`${t.consumer} ~ '^[a-z][a-z0-9_.:-]{0,99}$'`),
+    check("event_cursors_claim", sql`(${t.claim} is null) = (${t.claimedUntil} is null)`),
+    check("event_cursors_position", sql`${t.lastTx} >= 0 and ${t.lastId} >= 0`),
   ],
 );
 

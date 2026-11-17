@@ -10,6 +10,9 @@ import {
   evenSplit,
   GOAL_WORDS,
   isBot,
+  PLAN_WITHOUT_TESTS,
+  planFullProblem,
+  runningAllowed,
   isGoal,
   NEXT_STATUSES,
   overdue,
@@ -182,6 +185,13 @@ describe("starting a test", () => {
     expect(startProblems({ ...ok, variants: [ok.variants[0], { ...ok.variants[1], share: 0.3 }] })[0]).toMatch(/add up to 100/);
     expect(startProblems({ ...ok, variants: [ok.variants[0], { ...ok.variants[1], published: false }] })[0]).toMatch(/Publish version B/);
     expect(startProblems({ ...ok, runningInStore: 5 })[0]).toMatch(/5 tests at a time/);
+    // The store's plan (phase 21): none at 0, its own number below the engine's, never more than the engine's five.
+    expect(startProblems({ ...ok, planAllows: 0 })).toEqual([PLAN_WITHOUT_TESTS]);
+    expect(startProblems({ ...ok, planAllows: 2, runningInStore: 1 })).toEqual([]);
+    expect(startProblems({ ...ok, planAllows: 2, runningInStore: 2 })).toEqual([planFullProblem(2)]);
+    expect(startProblems({ ...ok, planAllows: 9, runningInStore: 5 })[0]).toMatch(/5 tests at a time/);
+    expect(startProblems({ ...ok, planAllows: null, runningInStore: 4 })).toEqual([]);
+    expect([runningAllowed(null), runningAllowed(0), runningAllowed(3), runningAllowed(40)]).toEqual([5, 0, 3, 5]);
     expect(startProblems({ ...ok, trafficShare: 0 })[0]).toMatch(/more than 0/);
   });
 

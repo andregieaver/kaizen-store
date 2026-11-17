@@ -184,6 +184,20 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   agents' eval is recorded again on production and its recording committed (D391).
 
 
+## The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)
+
+- **The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)**: deals, leads, activities
+  and a customer's timeline through the Deals board's, the leads inbox's, the activity cards' and the customer page's own functions.
+  `list_deals`, `get_deal`, `list_leads`, `crm_today` and `customer_timeline` read (`customers:read`); `move_deal` (a stage by name, or won
+  or lost with the owner's reason), `make_deal_from_lead` (`makeLeadDeal()`, the deal named in the person's admin language) and
+  `log_activity` (`createActivity()`, for the person who asks) change only the store's own records (`customers:write`, no gate: nobody is
+  told). All but `customer_timeline` are behind the Deals feature (`sales`). A deal is named by its id, its whole title or a part only one
+  deal's title has. What people typed never reaches the model: a lead's message, an email's or a conversation's subject, a note and a review
+  are given by kind and date only (`OWN_LABEL_KINDS`); a lead's name is, marked as typed by them, and the eval case `manager-lead-name`
+  plants an instruction in one. New tools change `toolsVersion()`: the agents' eval is recorded again on production and its recording
+  committed (D391).
+
+
 ## The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
 
 - **The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)**:

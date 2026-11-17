@@ -122,7 +122,25 @@ export type IntegrationEvent =
   // D695 step 4: a deal's contract was sent for signing, signed by everyone, or declined.
   | "contract.sent"
   | "contract.signed"
-  | "contract.declined";
+  | "contract.declined"
+  // Ecosystem plan E3.2 (D718): the events that were missing. Deals (D464), the email list (D295), support (D216), a review published
+  // (D301), a checkout left (D33), and Work's clients and invoices (D122), which the database queued and this list dropped.
+  | "deal.created"
+  | "deal.stage_changed"
+  | "deal.won"
+  | "deal.lost"
+  | "subscriber.subscribed"
+  | "subscriber.unsubscribed"
+  | "conversation.ended"
+  | "conversation.rated"
+  | "review.published"
+  | "checkout.abandoned"
+  | "work_client.created"
+  | "work_invoice.sent"
+  | "work_invoice.paid"
+  | "work_invoice.credited"
+  // D705 F5: a visitor sent one of the store's forms (a sign-up once confirmed).
+  | "form.response";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -158,7 +176,22 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "contract.sent", label: "Contract sent for signing", hint: "A deal's contract was sent: its first signer is asked to sign. Never a signer's email or the contract's words." },
   { id: "contract.signed", label: "Contract signed", hint: "Every signer signed a deal's contract: the deal is won. The sealed PDF follows within minutes, on the contract's page." },
   { id: "contract.declined", label: "Contract declined", hint: "A signer declined a deal's contract. Never the reason they gave: it is on the contract's page." },
+  { id: "form.response", label: "Form sent", hint: "A visitor sent one of the store's forms, or confirmed a newsletter sign-up: the form and what they answered, as the response is kept." },
   { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
+  { id: "deal.created", label: "Deal created", hint: "A deal was made: by hand, from a lead or by the AI manager. Deals moved in from another CRM send none." },
+  { id: "deal.stage_changed", label: "Deal moved", hint: "A deal moved to another stage of its pipeline: by a person, or because its quote or contract was sent." },
+  { id: "deal.won", label: "Deal won", hint: "A deal was marked won: by a person, a paid order, an issued Work invoice or a signed contract." },
+  { id: "deal.lost", label: "Deal lost", hint: "A deal was marked lost. Never the reason typed for it." },
+  { id: "subscriber.subscribed", label: "Joined the email list", hint: "Someone joined the store's email list: confirmed their address, or subscribed signed in. Addresses moved in from another shop send none." },
+  { id: "subscriber.unsubscribed", label: "Left the email list", hint: "A subscriber left the email list: through an email's link, their account, staff, a complaint or a bounce." },
+  { id: "conversation.ended", label: "Support conversation ended", hint: "A support conversation ended: by the customer, a person, or when it went quiet. Never what was written." },
+  { id: "conversation.rated", label: "Support conversation rated", hint: "A customer rated a support conversation good or bad. Never the comment they wrote." },
+  { id: "review.published", label: "Review published", hint: "A buyer's product review was published on the site: at once, or when the store checked it." },
+  { id: "checkout.abandoned", label: "Checkout abandoned", hint: "A shopper typed their email at checkout and did not pay: sent once a cart, when its first cart reminder is due." },
+  { id: "work_client.created", label: "Work client added", hint: "A client was added in Work. Never their email or phone." },
+  { id: "work_invoice.sent", label: "Work invoice sent", hint: "A Work invoice was issued: numbered and sent." },
+  { id: "work_invoice.paid", label: "Work invoice paid", hint: "A Work invoice is paid in full." },
+  { id: "work_invoice.credited", label: "Work invoice credited", hint: "A credit note was issued against a Work invoice." },
 ];
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);
@@ -209,6 +242,22 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "contract.sent",
   "contract.signed",
   "contract.declined",
+  // Ecosystem plan E3.2 (D718): Zapier, Make and Slack keep the eight they had.
+  "deal.created",
+  "deal.stage_changed",
+  "deal.won",
+  "deal.lost",
+  "subscriber.subscribed",
+  "subscriber.unsubscribed",
+  "conversation.ended",
+  "conversation.rated",
+  "review.published",
+  "checkout.abandoned",
+  "work_client.created",
+  "work_invoice.sent",
+  "work_invoice.paid",
+  "work_invoice.credited",
+  "form.response",
 ]);
 
 /** The events a service (Zapier, Make, Slack) may be sent. */

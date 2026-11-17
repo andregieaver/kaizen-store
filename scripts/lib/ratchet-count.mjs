@@ -3,6 +3,8 @@
 // support aside, the reads that are not checked (`execute<…>(`, never through `typedRows()`), the writes that address a store's row
 // by its id alone (code review step 1.3, FV5: `update`/`delete` of a table with a `store_id` whose `where` names the id and not the
 // store), and in total the casts through `unknown` (`as unknown as`) and the lines that switch off the linter's `any` rule.
+// Two more totals (bloat review step 1.24): the source files over 100 KB and over 2,000 lines. A file this large is read by window,
+// so the counts only fall; splitting a file belongs to the code area, never to the step that holds the count.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -12,6 +14,10 @@ export const UNKNOWN_CAST = /\bas unknown as\b/g;
 /** A store filter an index cannot serve (`store_id is not distinct from`, step 0.23): filter with `owned(storeId)` (`src/server/owned.ts`). */
 export const NOT_DISTINCT_STORE = /store_id\s+is\s+not\s+distinct\s+from/gi;
 export const ANY_SUPPRESSED = /eslint-disable(?:-next-line|-line)?[^\n]*no-explicit-any/g;
+
+/** A source file over this many bytes, or over this many lines, is counted (bloat review step 1.24). */
+export const BIG_FILE_BYTES = 100_000;
+export const LONG_FILE_LINES = 2_000;
 
 /** Tests, and what only tests use, are not held to it. */
 const NOT_COUNTED = /(\.test\.tsx?$|^src\/test\/|fixture\.ts$|test-support\.ts$)/;
@@ -70,7 +76,7 @@ export function unscopedWrites(text, tables) {
   return n;
 }
 
-/** The counts as they stand: untyped reads, writes by id alone and `store_id is not distinct from` uses, by file (only files that have one), and the two totals. */
+/** The counts as they stand: untyped reads, writes by id alone and `store_id is not distinct from` uses, by file (only files that have one), and the totals. */
 export function ratchetCounts(root) {
   const untypedReads = {};
   const byIdWrites = {};
@@ -78,6 +84,8 @@ export function ratchetCounts(root) {
   const tables = storeTables(root);
   let unknownCasts = 0;
   let anySuppressed = 0;
+  let filesOver100Kb = 0;
+  let filesOver2000Lines = 0;
   for (const file of sources(root, "src").sort()) {
     const text = readFileSync(path.join(root, file), "utf8");
     const reads = count(text, UNTYPED_READ);
@@ -86,8 +94,10 @@ export function ratchetCounts(root) {
     if (writes > 0) byIdWrites[file] = writes;
     const notDistinct = count(text, NOT_DISTINCT_STORE);
     if (notDistinct > 0) notDistinctStore[file] = notDistinct;
+    if (Buffer.byteLength(text) > BIG_FILE_BYTES) filesOver100Kb++;
+    if (text.split("\n").length > LONG_FILE_LINES) filesOver2000Lines++;
     unknownCasts += count(text, UNKNOWN_CAST);
     anySuppressed += count(text, ANY_SUPPRESSED);
   }
-  return { unknownCasts, anySuppressed, untypedReads, byIdWrites, notDistinctStore };
+  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore };
 }

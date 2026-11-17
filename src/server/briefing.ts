@@ -4,25 +4,32 @@ import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { alertsFor, type Alert, type AlertSnapshot } from "@/lib/analytics-alerts";
 import { analyticsWordsIn } from "@/lib/analytics-words";
 import { checkedNote } from "@/lib/autopilot-report";
+import type { StoreAttentionItem } from "@/lib/control-center";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 import { aiFor, AiError, completeText, type AiConnection } from "./ai";
 import { alertSnapshotFor, runningTargets, type TargetCard } from "./analytics-insights";
+import { storeAttention, type StoreAttention } from "./attention";
 import { log } from "./log";
 import { checkupFindings, type CheckupFinding } from "./store-checkup";
 import type { Store } from "./stores";
 
 /**
  * The briefing's facts (wave 8 unit D, D348, `docs/wave-8-analytics-ai.md` D, detail 4): what the staff summary of D238 grew into. Everything here is
- * counted in code from the store's own rows: the alerts of `alertsFor()` over one snapshot (worded again in each recipient's language), the store
- * checkup's findings (`checkupFindings()`), and the targets running (`runningTargets()`). The optional note is a model's few sentences from those facts,
- * kept only through `checkedNote()` (no digit, no claim); the model never makes a figure. Nothing here names a customer.
+ * counted in code from the store's own rows: the alerts of `alertsFor()` over one snapshot (worded again in each recipient's language), what waits on
+ * the store's people from the one attention source (`storeAttention()`, ecosystem plan E2.1: disputes, the AI manager's decisions, leads, the day's
+ * activities, blog comments; Home says the same), the store checkup's findings (`checkupFindings()`) for the rest, and the targets running
+ * (`runningTargets()`). The optional note is a model's few sentences from those facts, kept only through `checkedNote()` (no digit, no claim); the model
+ * never makes a figure. Nothing here names a customer.
  */
 
 /** How many alerts the briefing lists; the rest are one press away on the Analytics page. */
 export const BRIEFING_ALERTS = 5;
 
-/** The approvals a person waits on are their own (the checkup counts them for one account); the briefing goes to several, so it leaves them out. */
+/**
+ * The approvals a person waits on are their own (the checkup counts them for one account); the briefing goes to several, so it leaves them out. The
+ * calls the autopilot kept are the store's, and come with the attention source's AI decisions.
+ */
 const NOBODY = "00000000-0000-0000-0000-000000000000";
 
 export type BriefingFacts = {
@@ -30,9 +37,13 @@ export type BriefingFacts = {
   snapshot: AlertSnapshot | null;
   /** The alerts in English, most pressing first: what decides whether the period is quiet. */
   alerts: Alert[];
+  /** What waits on the store's people (`storeAttention()`), worded in each language; none when it could not be read. */
+  attention: StoreAttention;
   checkup: CheckupFinding[];
   targets: TargetCard[];
 };
+
+const NO_ATTENTION: StoreAttention = { en: [], nb: [] };
 
 async function safe<T>(label: string, read: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -45,14 +56,18 @@ async function safe<T>(label: string, read: () => Promise<T>, fallback: T): Prom
 
 /** The briefing's facts for a store, read once for all its recipients. A part that cannot be read is left out, never guessed. */
 export async function briefingFacts(store: Store, now: Date): Promise<BriefingFacts> {
-  const [snapshot, checkup, targets] = await Promise.all([
+  const [snapshot, attention, checkup, targets] = await Promise.all([
     safe("alerts", () => alertSnapshotFor(store, now), null as AlertSnapshot | null),
+    safe("attention", () => storeAttention(store, now), NO_ATTENTION),
     safe("checkup", () => checkupFindings(store, NOBODY), [] as CheckupFinding[]),
     safe("targets", () => runningTargets(store, now, { withMonth: true }), [] as TargetCard[]),
   ]);
   const alerts = snapshot ? await safe("alert rules", async () => alertsFor(snapshot), [] as Alert[]) : [];
-  return { snapshot, alerts, checkup: checkup.filter((f) => f.key !== "approvals"), targets };
+  return { snapshot, alerts, attention, checkup: checkup.filter((f) => f.key !== "approvals"), targets };
 }
+
+/** What waits on the store's people, in a language: urgent first, each with its page. */
+export const briefingAttention = (facts: Pick<BriefingFacts, "attention">, lang: AdminLang): readonly StoreAttentionItem[] => facts.attention[lang] ?? [];
 
 /** The alerts worded in a language, at most `BRIEFING_ALERTS`. */
 export function briefingAlerts(facts: BriefingFacts, lang: AdminLang): Alert[] {

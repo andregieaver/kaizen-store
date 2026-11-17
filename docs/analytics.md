@@ -185,7 +185,8 @@ How fast a store's pages are for the people who open them, measured in their bro
   Global Privacy Control or Do Not Track), never on the pay routes (cart, checkout, order: the beacon is not on those pages,
   `OffPayRoutes`), never from a robot (`isBot()`), only from the store's own pages (`fromStoresOwnPage()`). No IP address, user
   agent or visitor id is kept: a sample is a row of `commerce.speed_samples` (store, store day, kind, screen, the four
-  figures).
+  figures, and `ab`: on a page under an A/B test, the versions the page showed that the visitor's own A/B cookie confirms for a
+  running test, for the speed guardrail, D712).
 - **Limits.** `SPEED_SAMPLES_PER_STORE_DAY` (10,000) samples a store day, counted before the row is written (`chat_usage`
   bucket `speed`); values outside what a browser can report (`speedProblem()`) are dropped. The count bounds a script; it does
   not prevent one. Samples older than 90 days are deleted by the daily job.

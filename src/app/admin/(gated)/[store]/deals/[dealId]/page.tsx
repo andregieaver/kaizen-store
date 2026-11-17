@@ -11,13 +11,14 @@ import { DealStatusControls } from "@/components/admin/deals/deal-status";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requireFeature } from "@/components/admin/feature-off";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
-import { Card, Chip, List, ListRow, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
+import { featureOn } from "@/lib/store-features";
 import { activitiesOf } from "@/server/activities";
 import { contractsOfDeal, listTemplates } from "@/server/contracts";
 import { filedEmailsOf, filingAddressOf } from "@/server/email-filing";
@@ -66,6 +67,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
   const team = staff.filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > new Date().toISOString())).map((s) => ({ id: s.accountId, name: s.name || s.email }));
   const base = `/admin/${store.slug}`;
+  const makesQuote = canChange && deal.status === "open" && featureOn(store, "shop") && memberCan(member, "orders:write") && mayLink(member, "draft");
+  const quoteHref = `${base}/orders/drafts/new?${new URLSearchParams({ deal: deal.id, ...(deal.customer ? { customer: deal.customer.id } : {}) }).toString()}`;
 
   const linkHref = (link: DealLink) =>
     link.kind === "order"
@@ -176,6 +179,14 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
       <FiledEmailsCard emails={emails} words={w.emails} address={filing} when={when} />
 
       <Card title={w.deal.links} compact>
+        {/* A quote for this deal in one step (ecosystem plan E2.6, D713): a new draft for its customer, linked to the deal. */}
+        {makesQuote && (
+          <div className="mb-3">
+            <ButtonLink href={quoteHref} kind="secondary">
+              {w.deal.makeQuote}
+            </ButtonLink>
+          </div>
+        )}
         {deal.links.length === 0 ? (
           <p className="text-sm text-muted">{w.deal.linksNone}</p>
         ) : (

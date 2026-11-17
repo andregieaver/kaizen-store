@@ -31,8 +31,11 @@ const LIMITS: Record<SpeedMetric, number> = { lcp: 120_000, inp: 60_000, cls: 50
 /** One page load's figures as kept: whole milliseconds, layout shift in thousandths; a figure the browser did not report is null. */
 export type SpeedFigures = Record<SpeedMetric, number | null>;
 
-/** What the beacon sends. */
-export type SpeedBody = { store: string; path: string; screen: SpeedScreen; figures: SpeedFigures };
+/** What the beacon sends; `ab` the A/B versions the page showed (D148 phase 19), which the server checks against the visitor's own cookie. */
+export type SpeedBody = { store: string; path: string; screen: SpeedScreen; figures: SpeedFigures; ab?: [string, string][] };
+
+/** The most A/B versions one load's figures are tagged with (five running tests a store). */
+export const SPEED_AB_MAX = 5;
 
 /** A figure as the browser reports it (the layout shift unitless), as kept: a whole number in range, or null. */
 export function keptFigure(metric: SpeedMetric, value: number | null | undefined): number | null {
@@ -42,13 +45,20 @@ export function keptFigure(metric: SpeedMetric, value: number | null | undefined
 }
 
 /** The body for a page load, or null when nothing was measured. The path is the address as the browser has it, without its query. */
-export function speedBody(input: { store: string; path: string; width: number; values: Partial<Record<SpeedMetric, number>> }): string | null {
+export function speedBody(input: {
+  store: string;
+  path: string;
+  width: number;
+  values: Partial<Record<SpeedMetric, number>>;
+  ab?: readonly (readonly [string, string])[];
+}): string | null {
   const path = input.path.split(/[?#]/, 1)[0].slice(0, 300);
   if (!input.store || !path.startsWith("/")) return null;
   const figures = Object.fromEntries(SPEED_METRICS.map((m) => [m, keptFigure(m, input.values[m])])) as SpeedFigures;
   if (SPEED_METRICS.every((m) => figures[m] === null)) return null;
   const screen: SpeedScreen = input.width > 0 && input.width < PHONE_BELOW ? "phone" : "computer";
-  return JSON.stringify({ store: input.store, path, screen, figures } satisfies SpeedBody);
+  const ab = (input.ab ?? []).slice(0, SPEED_AB_MAX).map(([experiment, version]): [string, string] => [experiment, version]);
+  return JSON.stringify({ store: input.store, path, screen, figures, ...(ab.length > 0 && { ab }) } satisfies SpeedBody);
 }
 
 /** Why a sent body's figures cannot be kept, or null: each a whole number within what a browser reports, at least one there. */
@@ -160,7 +170,8 @@ const ADMIN_LISTS = new Set(["orders", "products", "customers", "stores", "reque
 /**
  * The kind of a page of Kaizena Flow's own site or of the admin, by the address's shape only (never kept): for the site, its front page,
  * a theme's page (`product`), the theme store and the blog (`list`) and any other page; for the admin, an overview (`/admin`,
- * `/admin/{store}`, `/admin/platform`: `home`), a list of records (`list`), a product's or page's editor (`product`) and any other page.
+ * `/admin/{store}`, `/admin/platform`: `home`), a list of records (`list`), a product's editor (`product`), the page builder for a page or
+ * an article (`category`, which the admin never used otherwise) and any other page.
  * Sign-in and the API are not measured.
  */
 export function ownSpeedKind(site: OwnSpeedSite, path: string): SpeedKind | null {
@@ -179,6 +190,7 @@ export function ownSpeedKind(site: OwnSpeedSite, path: string): SpeedKind | null
   if (segments[1] === "sign-in" || segments[1] === "forgot-password" || segments[1] === "oauth") return null;
   if (segments.length <= 2) return "home";
   if (segments.length === 3 && ADMIN_LISTS.has(segments[2])) return "list";
-  if (segments.length === 4 && (segments[2] === "products" || segments[2] === "pages" || segments[2] === "articles")) return "product";
+  if (segments.length === 4 && (segments[2] === "pages" || segments[2] === "articles") && segments[3] !== "new") return "category";
+  if (segments.length === 4 && segments[2] === "products") return "product";
   return "page";
 }

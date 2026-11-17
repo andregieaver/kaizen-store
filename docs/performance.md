@@ -129,6 +129,12 @@ chunks (`route.mjs`) from 223,068 to 216,992.
   lightbox, the checkout's payment form, the admin's words, the cookie catalogue's purposes or the filter's dialog; no language's whole interface text; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
   background from its small copy; an embedded frame named.
 
+- A store page's first scripts are held by name in `src/lib/storefront-bundle.baseline.json` (the client modules the server code of the
+  layout, a built page, the product page, a listing and the cart imports); a new one needs a lazy stand-in in `src/components/lazy` or a
+  line with its reason. The same test (`src/lib/storefront-bundle.scan.test.ts`) follows `import()`, keeps the admin's words and the
+  cookie purposes out, and holds the four browser-language files at today's total, which only falls. The byte budgets (step 1.3) and
+  this list are two holds on the same thing: bytes cannot see a 5 to 20 KB part, names can.
+
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.
 
 ## Fonts found late (kaizenaflow.com, 5 November 2026)
@@ -188,6 +194,24 @@ is not (2.5 s), and with the server answering in 0.1 to 0.5 s the rest is the br
 the first-scripts budgets above do not yet cover for signed-in routes. Kaizena Flow's own site for comparison: 80 loads, LCP 2.06 s, INP
 72 ms, CLS 0.001, TTFB 113 ms. The next step is a first-scripts budget for the product editor and the page builder, and this table read
 again once a month of loads is in.
+
+**Held by the morning briefing (step 1.15).** A kind of screen with 100 loads or more whose largest paint or interaction time at p75 over
+28 days is not "good" is a line in the platform's morning briefing (`adminSpeedAlerts()`). The page builder is its own row from this change
+(kind `category` on site `admin`; a product's editor stays `product`), so rows of `product` recorded before it mix editors and the builder
+and are not comparable with October's for 28 days. Read from Platform, Usage and limits; a kind with 100 loads or more that misses 2.5 s
+or 200 ms gets a step in the plan.
+
+28 days to <date>, after phase 0:
+
+| Kind | Screen | Loads | LCP | INP | CLS | TTFB |
+|---|---|---:|---:|---:|---:|---:|
+|  |  |  |  |  |  |  |
+
+28 days to <date>, after phase 2:
+
+| Kind | Screen | Loads | LCP | INP | CLS | TTFB |
+|---|---|---:|---:|---:|---:|---:|
+|  |  |  |  |  |  |  |
 
 **First scripts, signed in (31 October 2026, again 4 November).** `e2e/signed-in/admin-scripts.spec.ts` holds seven screens to budgets,
 counted from the HTML the server sends (what a page has loaded by the time it is looked at grows with what it does after, and moved by
@@ -302,6 +326,13 @@ without them (`src/lib/typing-in.ts`, `src/lib/public-env.ts`, `src/lib/push-sch
 and the Supabase client arrives by `import()`.
 
 The admin fetches a link's page when it is pointed at, not when it is in view (bloat review step 0.13, `AdminLink`). Router prefetches in the 3 s after load, held by `e2e/signed-in/prefetch.spec.ts` (home 28 before, product editors on the Products list 8 before): home 0, orders 8 (none an order or customer row), products 8 (none a product's editor), pages 6, settings 16, a product's editor 2, the builder 0, the platform home 0 (its two section links are AdminLinks too); hovering a rail link 2.
+
+Every place the admin hands words to the browser (each `adminTexts()` call and `<AdminAreas>`) is in `src/components/admin/admin-words-handed.baseline.json` with the bytes
+handed in English and Norwegian and the bytes its client parts name (229 sites on 17 November 2026, 80 handing over 50 KB). A site may not hand more than its
+baseline (200 bytes of room) or an area no client part under it names (`src/components/admin/admin-words-handed.scan.test.ts`). Rewrite the baseline with
+`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`: it only lowers a site's bytes and shortens its
+`unnamed` list. Named is counted from source, by static import, not what a browser reads at load: `e2e/signed-in/admin-scripts.spec.ts` (step 1.5) is the
+browser's cross-check on five screens.
 
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 

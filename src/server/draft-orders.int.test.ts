@@ -1073,3 +1073,34 @@ describe("a customer's draft orders in the privacy file", () => {
     expect(await getDraft(store.storeId, typedOnly.id)).not.toBeNull();
   });
 });
+
+describe("a draft started for a customer (ecosystem plan E2.6, D713)", () => {
+  it("starts with the customer's email, phone, address and company, and leaves out a customer of another store", async () => {
+    const store = await newPlainStore("draft-for");
+    const other = await newPlainStore("draft-for-other");
+    const customer = async (storeId: string, email: string) =>
+      String(
+        (
+          await db().execute<Row>(sql`
+            insert into commerce.customers (store_id, email, name, phone, address, company_name)
+            values (${storeId}::uuid, ${email}, 'Kari Nordmann', '+4799999999',
+              ${JSON.stringify({ line1: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO" })}::jsonb, 'Kari AS')
+            returning id
+          `)
+        )[0].id,
+      );
+    const kari = await customer(store.storeId, `kari-${Date.now()}@example.com`);
+    const stranger = await customer(other.storeId, `stranger-${Date.now()}@example.com`);
+
+    const made = await createDraft(store.storeId, actorOf(store), { marketSlug: "no", customerId: kari });
+    if (!made.ok) throw new Error(made.problem);
+    expect(made.draft).toMatchObject({ customerId: kari, phone: "+4799999999", companyName: "Kari AS" });
+    expect(made.draft.email).toMatch(/^kari-/);
+    expect(made.draft.shippingAddress).toMatchObject({ name: "Kari Nordmann", line1: "Storgata 1", city: "Oslo" });
+
+    const plain = await createDraft(store.storeId, actorOf(store), { marketSlug: "no", customerId: stranger });
+    if (!plain.ok) throw new Error(plain.problem);
+    expect(plain.draft.customerId).toBeNull();
+    expect(plain.draft.email ?? "").toBe("");
+  });
+});

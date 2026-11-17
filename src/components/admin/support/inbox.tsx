@@ -18,6 +18,7 @@ import { ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView } from "./conversation-view";
 import { PartnerPanel } from "./partner-panel";
+import { ConversationRequests } from "./request-actions";
 import {
   conversationHref,
   runAct,
@@ -209,6 +210,9 @@ export function Inbox({
               // The customer comes with the first answer only (E1.1): later polls keep it.
               customer:
                 fresh.customer === undefined ? current.customer : fresh.customer,
+              // The open requests come with the first answer, and again when a request is made or decided (E2.7).
+              requests:
+                fresh.requests === undefined ? current.requests : fresh.requests,
               messages: [
                 ...current.messages,
                 ...fresh.messages.filter((m) => !seen.has(m.seq)),
@@ -604,6 +608,17 @@ export function Inbox({
                         )
                     : undefined
                 }
+              />
+              {/* The conversation's open requests (ecosystem plan E2.7): carried out or decided here, not on the order page. */}
+              <ConversationRequests
+                key={`requests:${conversation.id}`}
+                store={conversation.store}
+                requests={conversation.requests}
+                acts={context.actions.requests ?? null}
+                onDone={() => {
+                  setRefresh((n) => n + 1);
+                  void loadList();
+                }}
               />
               <ConversationActions
                 key={`${conversation.id}:${fill?.n ?? 0}`}

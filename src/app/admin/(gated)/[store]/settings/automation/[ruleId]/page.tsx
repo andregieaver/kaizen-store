@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { RuleEditor } from "@/components/admin/automation/rule-editor";
@@ -10,6 +10,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { getRule } from "@/server/order-rules";
+import { getWorkflow } from "@/server/workflows";
 import { tagSuggestions } from "@/server/order-tags";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -17,6 +18,8 @@ import { saveRuleAction } from "../actions";
 import { ruleContext } from "../rule-context";
 
 export const metadata: Metadata = { title: "Automation rule" };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** One automation rule (wave 3, D238, 2.5 point 2): `settings:read` sees it, `settings:write` changes it. Another store's rule, or none, is a 404. */
 export default async function RulePage({ params }: PageProps<"/admin/[store]/settings/automation/[ruleId]">) {
@@ -29,6 +32,8 @@ export default async function RulePage({ params }: PageProps<"/admin/[store]/set
   const words = adminText(lang, "notifications");
   const w = words.rules;
   const rule = await getRule(store.id, ruleId);
+  // A rule moved to a workflow (ecosystem plan E3.3, D718) is the workflow with its id now: its old address leads there.
+  if (!rule && UUID.test(ruleId) && (await getWorkflow(store.id, ruleId))) redirect(`/admin/${store.slug}/settings/workflows`);
   if (!rule) notFound();
   const canWrite = memberCan(member, "settings:write");
   const [context, tags] = await Promise.all([ruleContext(store, lang), tagSuggestions(store.id)]);

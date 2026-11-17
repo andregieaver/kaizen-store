@@ -61,6 +61,9 @@ export const NAV_NB: Record<string, string> = {
   Deals: "Avtaler",
   "What each customer or company may buy, on a board from the first talk to won or lost.":
     "Hva hver kunde eller bedrift kan kjøpe, på en tavle fra første samtale til vunnet eller tapt.",
+  Leads: "Leads",
+  "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.":
+    "Folk som har bedt om noe og ikke er kunder ennå: hva de ba om, og en avtale med dem som er verdt å følge opp.",
   Wishlists: "Ønskelister",
   "What customers have saved, and what they added to the cart from it.": "Det kundene har lagret, og hva de la i handlekurven derfra.",
   "Privacy requests": "Personvernforespørsler",
@@ -323,6 +326,8 @@ export const NAV_NB: Record<string, string> = {
   AI: "KI",
   "Apps and API": "Apper og API",
   Workflows: "Arbeidsflyter",
+  Automatic: "Automatisk",
+  "Everything that happens by itself in the store, and when it last did: what follows a paid order, workflows, emails, alerts and connections.": "Alt som skjer av seg selv i butikken, og når det sist skjedde: det som følger en betalt bestilling, arbeidsflyter, e-poster, varsler og tilkoblinger.",
   "Checkout rules": "Regler i kassen",
   "What product tiles in your grids show: how many are left, and a quantity chooser with Add to cart.": "Hva produktflisene i rutenettene viser: hvor mange som er igjen, og en antallsvelger med Legg i handlekurven.",
   "Prices and quantity": "Priser og antall",

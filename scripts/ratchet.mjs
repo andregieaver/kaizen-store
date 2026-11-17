@@ -8,6 +8,8 @@
 //
 // And, per file, the uses of `store_id is not distinct from` (step 0.23): a store's rows are filtered with `owned(storeId)`.
 //
+// And the source files over 100 KB and over 2,000 lines (bloat review step 1.24): read by window, so the counts only fall.
+//
 // It refuses to raise a number: a file with more unchecked reads than its baseline, a file that had none, or a total that
 // went up is said and nothing is written. Make the new read typed (`typedRows()`) or the cast unneeded instead.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -31,6 +33,8 @@ if (before && !process.argv.includes("--first")) {
   if (before.notDistinctStore) for (const [file, n] of Object.entries(now.notDistinctStore)) if (n > (before.notDistinctStore[file] ?? 0)) raised.push(`${file}: ${before.notDistinctStore[file] ?? 0} → ${n} uses of store_id is not distinct from`);
   if (now.unknownCasts > before.unknownCasts) raised.push(`as unknown as: ${before.unknownCasts} → ${now.unknownCasts}`);
   if (now.anySuppressed > before.anySuppressed) raised.push(`suppressed any: ${before.anySuppressed} → ${now.anySuppressed}`);
+  if (now.filesOver100Kb > (before.filesOver100Kb ?? now.filesOver100Kb)) raised.push(`source files over 100 KB: ${before.filesOver100Kb} → ${now.filesOver100Kb}; split the file or move code out`);
+  if (now.filesOver2000Lines > (before.filesOver2000Lines ?? now.filesOver2000Lines)) raised.push(`source files over 2,000 lines: ${before.filesOver2000Lines} → ${now.filesOver2000Lines}; split the file or move code out`);
   if (raised.length > 0) {
     console.error(`The ratchet only falls. Not written:\n  ${raised.join("\n  ")}`);
     process.exit(1);
@@ -41,6 +45,6 @@ const sum = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 console.log(
   `Wrote ${path.relative(root, out)}: ${sum(now.untypedReads)} unchecked reads in ${Object.keys(now.untypedReads).length} files, ` +
     `${sum(now.byIdWrites)} writes by id without the store in ${Object.keys(now.byIdWrites).length} files, ${now.unknownCasts} as unknown as, ` +
-    `${now.anySuppressed} suppressed any, ` +
+    `${now.anySuppressed} suppressed any, ${now.filesOver100Kb} files over 100 KB, ${now.filesOver2000Lines} over 2,000 lines, ` +
     `${sum(now.notDistinctStore)} store_id is not distinct from in ${Object.keys(now.notDistinctStore).length} files.`,
 );

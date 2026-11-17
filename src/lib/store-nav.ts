@@ -121,6 +121,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop", icon: "banknote" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business", icon: "building", basic: true }),
           item("/deals", "Deals", "What each customer or company may buy, on a board from the first talk to won or lost.", { feature: "sales", icon: "handshake", basic: true }),
+          // The leads inbox, a tab of Deals before (ecosystem plan E2.8, D713): its own page, so it is found and its address is its own.
+          item("/leads", "Leads", "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.", { feature: "sales", icon: "user-plus", basic: true }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop", icon: "heart" }),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { icon: "shield-check", basic: true }),
         ],
@@ -341,6 +343,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/notifications", "Notifications", "The emails customers get about their orders and returns: which are sent, your own wording in each language, and who on the team is told of new orders.", { feature: "shop", icon: "bell" }),
           item("/settings/checkout", "Checkout rules", "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.", { feature: "shop", icon: "list-filter" }),
           item("/settings/prices", "Prices and quantity", "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.", { feature: "shop", icon: "calculator" }),
+          // Ecosystem plan E3.3 (D718): one home for what runs by itself.
+          item("/settings/automatic", "Automatic", "Everything that happens by itself in the store, and when it last did: what follows a paid order, workflows, emails, alerts and connections.", { icon: "clock", basic: true }),
           item("/settings/workflows", "Workflows", "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.", { icon: "workflow" }),
           item("/settings/automation", "Automation", "Rules that tag, hold or tell staff about paid orders that match conditions you choose, and the log of what they did.", { feature: "shop", icon: "zap" }),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop", icon: "undo" }),

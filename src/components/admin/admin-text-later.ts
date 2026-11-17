@@ -49,6 +49,7 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   design: () => import("@/lib/admin-messages/design.en").then((m) => m.designEn),
   redirects: () => import("@/lib/admin-messages/redirects.en").then((m) => m.redirectsEn),
   forms: () => import("@/lib/admin-messages/forms.en").then((m) => m.formsEn),
+  formTemplates: () => import("@/lib/admin-messages/form-templates.en").then((m) => m.formTemplatesEn),
   experiments: () => import("@/lib/admin-messages/experiments.en").then((m) => m.experimentsEn),
   products: () => import("@/lib/admin-messages/products.en").then((m) => m.productsEn),
   product: () => import("@/lib/admin-messages/product.en").then((m) => m.productEn),

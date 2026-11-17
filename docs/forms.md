@@ -2,7 +2,7 @@
 
 Written 17 November 2026. The plan for a forms editor: forms an owner creates, edits and deletes in one place and picks in the
 page builder's form component, with the answers kept, the newsletter sign-up as one kind of form, and form templates the owner can
-make and share. Steps F1, F2 and F3 are built (17 November 2026, sections 9 to 11 say how they differ from this plan); each step below says what it builds and
+make and share. Steps F1 to F4 are built (17 November 2026, sections 9 to 12 say how they differ from this plan); each step below says what it builds and
 what holds it.
 
 The owner's choices, 17 November 2026:
@@ -175,8 +175,8 @@ export is in the audit log (an export with its count only, as D295's).
 | **F1** (built) | `forms` and `form_responses` tables and rules; the `form` component and `/api/forms` by form id; responses kept, with their personal data rules from the start (the `PERSONAL_DATA` register, export, erasure, the retention job); Website → Forms list, editor and responses, store and platform; Kaizena Flow's first templates (Contact, Quote request, Booking enquiry, Callback, Feedback, Event registration, Newsletter). | `src/db/commerce.test.ts`, `forms.test.ts`, `forms-admin.int.test.ts`, `checkout-rules.test.ts` unchanged, an e2e of make, place, send and read. |
 | **F2** (built) | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
 | **F3** (built) | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
-| **F4** | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
-| **F5** | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
+| **F4** (built) | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
+| **F5** (half built) | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
 
 ## 9. F1 as built (17 November 2026)
 
@@ -250,4 +250,46 @@ export is in the audit log (an export with its count only, as D295's).
   the support inbox only, or both, `formToInbox()`); while the desk is off they are always emailed, so a form still needs an address.
 - **Not in F3.** The checkout's sensitive-answer consent (GDPR article 9): a form that asks for health or similar data needs its own
   decision on how the consent is kept with the response.
+
+## 12. F4 as built (17 November 2026)
+
+- **The table.** `commerce.form_templates` (migrations `*_form_templates` and `*_form_templates_rules`): a store's or Kaizena Flow's
+  (no store, always the marketplace's), its `name` and `description` as words in its `lang` with other languages beside, its `category`
+  (the card's icon), and `content`, a form without what belongs to one store (`FormTemplateContent`: questions, words, a sign-up's confirm
+  and name, the months kept; never recipients, subject, inbox, welcome code or tags). A template keeps its store, kind and `starter`; the
+  form it is updated from (`form_id`) is of its own store and kind (a trigger), and is set null when that form is deleted.
+- **Kaizena Flow's starters are rows.** The rules migration seeds the seven starters (`starter` = their key) in English with Norwegian,
+  Swedish and Danish beside, made from `FORM_STARTERS`, which stays only as that seed's source. A store's *New form* now reads the table
+  (`listFormTemplates()`): its own templates and its owner's other stores' first, Kaizena Flow's with a blank form, the marketplace's one
+  fold away. A form made from one (`makeFormFromTemplate()`, `draftFromTemplate()`) takes the store's main language's words where the
+  template has them and the store's other languages' beside, and sends to the owner's own address; `made_from` is `starter:{key}` or
+  `template:{id}`.
+- **The owner's own.** Beside a form, *Save as template* (Lisa's, folded) names it, files it and says who may use it: only this store,
+  the owner's stores, or every store, the last two only for the store's owners (`isStoreOwner()`, as D125). A template saved from a form
+  is updated from it with one press (*Update the template*); forms already made from it never change. Under *New form*, *Share or delete
+  your templates*. At most 50 a site.
+- **Editing a starter.** The plan's own template editor is not built: a template is edited as a form. Kaizena Flow's admin makes a form
+  from a starter (with all four languages' words, `TEMPLATE_LANGS`), changes it, and presses *Update the starter from this form*
+  (`adoptStarter()`), which ties the starter to that form for later updates. A starter is hidden, never deleted.
+- **Hiding.** A platform admin hides any template (`setFormTemplateHidden()`): Kaizena Flow's under its *New form*, a store's shared one
+  on Platform → Templates beside the page templates. A hidden template is offered to no store but its own; forms made from it stay.
+- **Copies.** A store copy (D129) does not copy its templates (`store-copy-rules.ts`): the owner's other stores, the copy among them, use
+  those shared with `stores`. The whole-store file (PSI DATA-05) holds them. They hold no one's data (`NOT_PERSONAL`).
+- **Not yet.** The AI manager's form tools and the admin map's words for *New form* wait for F5, with a new eval recording.
+
+## 13. F5 as built, its first half (17 November 2026)
+
+- **`form.response`.** A store's response, kept when a message is sent or a sign-up confirmed, is queued for the store's own endpoints,
+  apps that read customers and workflows (`integration_form_response_events()`, migration `*_form_response_event_rules`; the workflows'
+  trigger check gains it, `*_form_response_event`). Its `form_response` (`formResponseData()`) carries the form's id, name and kind, the
+  answers as kept, labelled in the owner's language, the contact email, the page, the language and a link to the responses. Never Zapier,
+  Make or Slack (`ENDPOINT_ONLY`). A workflow's conditions may test the form's name and kind, the language and the page. Kaizena Flow's own
+  forms have no events.
+- **The Admin API** (contract 1.38, `src/lib/admin-api-forms.ts`, `src/server/admin-api-forms.ts`): `forms:read` and `forms:write`;
+  list, get (with the editor's `draft`), make (from a template or a whole draft) and change a form through the editor's own `saveForm()`;
+  responses in pages with the right to read customers. The Read-only kind of token holds `forms:read`.
+- **Words.** Form templates' words are their own area (`formTemplates`), so the forms list and the responses no longer hand them to the
+  browser (bloat 1.28).
+- **Next (F5b).** The AI manager's form tools, an eval case with instructions hidden in a response, and the admin map's words for *New
+  form*; the owner runs the eval on Platform → AI and its recording is committed.
 

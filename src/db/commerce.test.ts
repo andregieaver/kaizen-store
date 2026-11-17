@@ -2,9 +2,11 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { EVENT_KEEP_DAYS } from "@/lib/event-log";
 import { minorUnitDigits } from "@/lib/money";
 import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
+import { templateContentSchema } from "@/lib/form-records-schema";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
 import { createTestDatabase } from "./testing";
@@ -351,6 +353,12 @@ describe("A/B tests of pages (D148)", () => {
     // Forms sent is a goal (phase 11).
     await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, goal_params) values ($1, 'forms', $2, 'form', '{\"block\": \"news-1\"}')", [t.store, t.target]);
     await db.query("delete from commerce.experiments where store_id = $1 and name = 'forms'", [t.store]);
+    // A sign-up to Kaizena Flow is a goal (phase 19; the code offers it only on Kaizena Flow's own store).
+    await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'signups', $2, 'signup')", [t.store, t.target]);
+    await db.query("delete from commerce.experiments where store_id = $1 and name = 'signups'", [t.store]);
+    // Going on to a chosen page is a goal (phase 20).
+    await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, goal_params) values ($1, 'onward', $2, 'page', $3::jsonb)", [t.store, t.target, JSON.stringify({ page: t.target })]);
+    await db.query("delete from commerce.experiments where store_id = $1 and name = 'onward'", [t.store]);
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, traffic_share) values ($1, 'x', $2, 'orders', 1.5)", [t.store, t.target])).rejects.toThrow(/experiments_traffic/);
     // Another store's page cannot be tested.
     const other = await made();
@@ -488,6 +496,12 @@ describe("A/B tests of pages (D148)", () => {
     expect(stopped.stopped_at).not.toBeNull();
     expect(stopped.stop_reason).toBe("person");
     await expect(start(t.experiment)).rejects.toThrow(/cannot go from stopped to running/);
+    // Which guardrail stopped a test is kept only for a guardrail's stop (phase 19).
+    await expect(set(t.experiment, "stop_guardrail = 'speed'")).rejects.toThrow(/experiments_stop_guardrail/);
+    const guarded = await ready();
+    await start(guarded.experiment);
+    await expect(set(guarded.experiment, "status = 'stopped', stop_reason = 'guardrail', stop_guardrail = 'refunds'")).rejects.toThrow(/experiments_stop_guardrail/);
+    await set(guarded.experiment, "status = 'stopped', stop_reason = 'guardrail', stop_guardrail = 'speed'");
     await expect(set(t.experiment, "status = 'applied'")).rejects.toThrow(/experiments_applied|experiments\.applied/);
     await expect(set(t.experiment, "status = 'applied', applied_variant = 'a'")).rejects.toThrow(/choose one of the variants/);
     await set(t.experiment, "status = 'applied', applied_variant = 'b'");
@@ -5128,6 +5142,118 @@ describe("work: invoices imported from Kaizen Life (WP15)", () => {
   });
 });
 
+describe("the event log (ecosystem plan E3.1, D718)", () => {
+  type Logged = { store: string | null; event: string; subject: string | null; tx: string };
+  const logged = async (storeId: string | null, since = 0) =>
+    (
+      await db.query<Logged>(
+        `select store_id as store, event, subject_id as subject, tx::text as tx from commerce.events
+         where ${storeId ? "store_id = $2" : "store_id is null"} and id > $1 order by tx, id`,
+        storeId ? [since, storeId] : [since],
+      )
+    ).rows;
+  const newest = async () => Number((await one<{ id: string | null }>("select max(id)::text as id from commerce.events")).id ?? 0);
+
+  it("logs every event the three queues are given, whoever subscribes, once per transaction, store, event and subject", async () => {
+    const shop = await createStore("event-log", ["DE"]);
+    const before = await newest();
+    const subject = "00000000-0000-4000-8000-0000000000e1";
+    await db.transaction(async (tx) => {
+      await tx.query("select commerce.queue_integration_event($1, 'order.paid', $2)", [shop, subject]);
+      // The order-paid queue of the same payment: the same event, logged once.
+      await tx.query("select commerce.queue_store_event($1, 'order.paid', $2)", [shop, subject]);
+      await tx.query("select commerce.queue_integration_event($1, 'order.paid', $2)", [shop, subject]);
+      // No subject is a subject too: twice in one transaction is once.
+      await tx.query("select commerce.queue_integration_event($1, 'support.waiting', null)", [shop]);
+      await tx.query("select commerce.queue_integration_event($1, 'support.waiting', null)", [shop]);
+      await tx.query("select commerce.queue_platform_event('store.created', $1)", [shop]);
+      await tx.query("select commerce.queue_platform_event('store.created', $1)", [shop]);
+    });
+    const mine = await logged(shop, before);
+    expect(mine.map((e) => [e.event, e.subject])).toEqual([
+      ["order.paid", subject],
+      ["support.waiting", null],
+    ]);
+    // One transaction wrote them: one transaction id.
+    expect(new Set(mine.map((e) => e.tx)).size).toBe(1);
+    expect((await logged(null, before)).map((e) => [e.event, e.subject])).toEqual([["store.created", shop]]);
+    // Nobody subscribed: nothing was delivered, and the log has them all the same.
+    expect((await db.query("select 1 from commerce.integration_deliveries where store_id = $1", [shop])).rows).toEqual([]);
+    // The same event in another transaction is another event, in a later transaction.
+    await db.query("select commerce.queue_integration_event($1, 'order.paid', $2)", [shop, subject]);
+    const again = await logged(shop, before);
+    expect(again.map((e) => e.event)).toEqual(["order.paid", "support.waiting", "order.paid"]);
+    expect(BigInt(again[2].tx) > BigInt(again[0].tx)).toBe(true);
+  });
+
+  it("logs what the triggers queue where the row changes: an order made and paid", async () => {
+    const before = await newest();
+    const order = await createOrder(`EV-${Date.now()}`);
+    const events = (await logged(store, before)).filter((e) => e.subject === order).map((e) => e.event);
+    expect(events).toContain("order.created");
+  });
+
+  it("is append-only: never changed, and deleted only once older than the log keeps it, or with its store", async () => {
+    const shop = await createStore("event-log-keep", ["DE"]);
+    await db.query("select commerce.queue_integration_event($1, 'product.updated', null)", [shop]);
+    await expect(db.query("update commerce.events set event = 'order.paid' where store_id = $1", [shop])).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from commerce.events where store_id = $1", [shop])).rejects.toThrow(/append-only for 90 days/);
+    const young = await one<{ id: string }>(
+      `insert into commerce.events (store_id, event, at) values ($1, 'order.paid', now() - make_interval(days => $2)) returning id`,
+      [shop, EVENT_KEEP_DAYS - 1],
+    );
+    await expect(db.query("delete from commerce.events where id = $1", [young.id])).rejects.toThrow(/append-only/);
+    const old = await one<{ id: string }>(
+      `insert into commerce.events (store_id, event, at) values ($1, 'order.paid', now() - make_interval(days => $2)) returning id`,
+      [shop, EVENT_KEEP_DAYS + 1],
+    );
+    await db.query("delete from commerce.events where id = $1", [old.id]);
+    expect((await db.query("select 1 from commerce.events where id = $1", [old.id])).rows).toEqual([]);
+    // Ids only: an event's name is an event's name, never a sentence.
+    await expect(db.query("insert into commerce.events (store_id, event) values ($1, 'Kari wrote to us')", [shop])).rejects.toThrow(/events_event/);
+
+    // A store that goes takes its events with it: the rest of its rows cleared as a test clears them, then the store itself.
+    const { rows: tables } = await db.query<{ table_name: string }>(
+      `select c.table_name from information_schema.columns c
+       join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
+       where c.table_schema = 'commerce' and c.column_name = 'store_id' and c.table_name <> 'events'`,
+    );
+    await db.exec("set session_replication_role = replica");
+    try {
+      for (const { table_name } of tables) await db.query(`delete from commerce."${table_name}" where store_id = $1`, [shop]);
+    } finally {
+      await db.exec("set session_replication_role = origin");
+    }
+    await db.query("delete from commerce.stores where id = $1", [shop]);
+    expect((await db.query("select 1 from commerce.events where store_id = $1", [shop])).rows).toEqual([]);
+  });
+
+  it("keeps a reader's cursor: a name it checks, a position, and a claim with its time", async () => {
+    await db.query("insert into commerce.event_cursors (consumer) values ('test:reader')");
+    expect(await one("select last_tx::int as tx, last_id::int as id, claim from commerce.event_cursors where consumer = 'test:reader'")).toEqual({ tx: 0, id: 0, claim: null });
+    await expect(db.query("insert into commerce.event_cursors (consumer) values ('Not A Name')")).rejects.toThrow(/event_cursors_consumer/);
+    await expect(db.query("update commerce.event_cursors set claim = gen_random_uuid() where consumer = 'test:reader'")).rejects.toThrow(/event_cursors_claim/);
+    await db.query("update commerce.event_cursors set claim = gen_random_uuid(), claimed_until = now() + interval '1 minute' where consumer = 'test:reader'");
+    await expect(db.query("update commerce.event_cursors set last_id = -1 where consumer = 'test:reader'")).rejects.toThrow(/event_cursors_position/);
+    await db.query("delete from commerce.event_cursors where consumer = 'test:reader'");
+  });
+
+  it("offers the new events as workflows' triggers (E3.2)", async () => {
+    const shop = await createStore("event-log-flows", ["DE"]);
+    const triggers = ["deal.created", "deal.stage_changed", "deal.won", "deal.lost", "subscriber.subscribed", "subscriber.unsubscribed", "conversation.ended", "conversation.rated", "review.published", "checkout.abandoned", "work_client.created", "work_invoice.sent", "work_invoice.paid", "work_invoice.credited"];
+    for (const trigger of triggers) {
+      await db.query(
+        "insert into commerce.workflows (store_id, name, trigger, actions) values ($1, $2, $3, '[{\"kind\":\"email_staff\",\"subject\":\"x\",\"text\":\"y\"}]')",
+        [shop, `On ${trigger}`, trigger],
+      );
+    }
+    expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.workflows where store_id = $1", [shop])).n)).toBe(triggers.length);
+    await expect(
+      db.query("insert into commerce.workflows (store_id, name, trigger, actions) values ($1, 'Nope', 'deal.dreamt', '[]')", [shop]),
+    ).rejects.toThrow(/workflows_trigger/);
+  });
+});
+
 // Every table with a `store_id` has a decision about duplicating a store (D129): copied, or left with the original.
 // A new store-owned table fails this test until it is added to COPY_RULES in src/lib/store-copy-rules.ts (and, if it
 // is copied, to `commerce.duplicate_store()` or `copy_customers()`/`copy_orders()` in a migration; see docs/store-copy.md).
@@ -8325,6 +8451,44 @@ describe("forms as their own records (D705)", () => {
     ).rejects.toThrow(/form_responses_contact/);
     await db.query("delete from commerce.forms where id = $1", [form]);
     expect((await db.query("select 1 from commerce.form_responses where id = $1", [id])).rows).toHaveLength(0);
+  });
+});
+
+describe("form templates (D705 F4)", () => {
+  it("seeds Kaizena Flow's seven starters as the marketplace's, in four languages, readable as a form's content", async () => {
+    const rows = (await db.query<{ starter: string; kind: string; sharing: string; name: { text: string; byLocale: Record<string, string> }; content: { questions: unknown[]; signup: unknown } }>(
+      "select starter, kind, sharing, name, content from commerce.form_templates where store_id is null order by starter",
+    )).rows;
+    expect(rows.map((r) => r.starter)).toEqual(["booking", "callback", "contact", "event", "feedback", "newsletter", "quote"]);
+    for (const row of rows) {
+      expect(row.sharing).toBe("marketplace");
+      expect(Object.keys(row.name.byLocale).sort()).toEqual(["da", "nb", "sv"]);
+      expect(templateContentSchema.safeParse(row.content).success).toBe(true);
+    }
+    expect(rows.find((r) => r.starter === "newsletter")).toMatchObject({ kind: "signup", content: { questions: [], signup: { confirm: true, askName: false } } });
+  });
+
+  it("keeps a template's store, kind and key; ties it only to a form of its own store and kind; a deleted form leaves it", async () => {
+    const { id: form } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name) values ($1, 'message', 'Contact') returning id", [store]);
+    const { id: otherForm } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name) values ($1, 'message', 'Theirs') returning id", [other]);
+    const insert = (storeId: string | null, formId: string | null, sharing = "private", kind = "message") =>
+      db.query(
+        `insert into commerce.form_templates (store_id, kind, name, content, sharing, form_id) values ($1, $4, '{"text":"Mine","byLocale":{}}', '{}', $3, $2) returning id`,
+        [storeId, formId, sharing, kind],
+      );
+    const { id } = (await insert(store, form)).rows[0] as { id: string };
+    await expect(insert(store, otherForm)).rejects.toThrow(/form_templates\.form/);
+    await expect(insert(store, form, "private", "signup")).rejects.toThrow(/form_templates\.form|form_templates_kind/);
+    await expect(insert(null, null, "private")).rejects.toThrow(/form_templates_kaizen_sharing/);
+    await expect(db.query("update commerce.form_templates set store_id = $2 where id = $1", [id, other])).rejects.toThrow(/form_templates\.store/);
+    await expect(db.query("update commerce.form_templates set kind = 'signup' where id = $1", [id])).rejects.toThrow(/form_templates\.kind/);
+    await expect(db.query("update commerce.form_templates set starter = 'mine' where id = $1", [id])).rejects.toThrow(/form_templates/);
+    await expect(db.query("update commerce.form_templates set starter = 'x' where starter = 'contact'")).rejects.toThrow(/form_templates\.starter/);
+    await expect(db.query(`update commerce.form_templates set name = '{"text":" ","byLocale":{}}' where id = $1`, [id])).rejects.toThrow(/form_templates_name/);
+    await db.query("delete from commerce.forms where id = $1", [form]);
+    expect((await one<{ form_id: string | null }>("select form_id from commerce.form_templates where id = $1", [id])).form_id).toBeNull();
+    await db.query("delete from commerce.form_templates where id = $1", [id]);
+    await db.query("delete from commerce.forms where id = $1", [otherForm]);
   });
 });
 

@@ -43,7 +43,7 @@ import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
 import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
-import { getSegment, segmentPeople } from "./segments";
+import { getSegment, segmentNames, segmentPeople } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
@@ -247,13 +247,14 @@ async function audienceOf(store: EmailStore, broadcast: Broadcast): Promise<Audi
   if (!segment) return { problem: "Its segment was deleted. Choose another." };
   if (!segment.rules) return { problem: "Its segment's rules can no longer be read. Open the segment and save it again." };
   const now = new Date();
-  const people = await segmentPeople(store, now);
-  if (people.capped) return { problem: `The segment is read from at most ${SEGMENT_CAP.toLocaleString("en-GB")} people, so it would not reach all of them.` };
-  const tiers = await listTiers(store.id);
   const rules = segment.rules;
+  // The facts its rules ask for are read with the people (ecosystem plan E3.6, D718), and its products and categories named in its words.
+  const people = await segmentPeople(store, now, { rules: [rules], rfm: true });
+  if (people.capped) return { problem: `The segment is read from at most ${SEGMENT_CAP.toLocaleString("en-GB")} people, so it would not reach all of them.` };
+  const [tiers, names] = await Promise.all([listTiers(store.id), segmentNames(store, [rules])]);
   const emails = people.people.filter((p) => p.consent === "subscribed" && matches(rules, p, now)).map((p) => p.email);
   const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
-  return { emails, words: `${segment.name}: ${describeRules(rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name })}` };
+  return { emails, words: `${segment.name}: ${describeRules(rules, { money, groupName: (gid) => tiers.find((x) => x.id === gid)?.name, ...names })}` };
 }
 
 /** How many addresses a send would go to now (the editor's count): the audience's people who are `subscribed`. */

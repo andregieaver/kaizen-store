@@ -215,7 +215,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   `fixedSizes()`), so a new place that draws a product's or a page's picture passes the small copy and its sizes; a picture with one file is
   drawn as before. Speed is measured only by `SpeedBeacon` (inside `OffPayRoutes`, while the store counts visits, never with GPC or Do Not
   Track, no cookie or identifier) and kept only by `recordSpeed()` in `commerce.speed_samples` as the page's kind (`speedKind()`) and the
-  screen; every figure is `speedRows()` (75th percentile, `MIN_SPEED_SAMPLES`, Google's `SPEED_THRESHOLDS`), never stored, and one with too
+  screen, and on a page under an A/B test the versions it showed, only those the visitor's own A/B cookie confirms (`verifiedTags()`, D712;
+  never the A/B visitor id); every figure is `speedRows()` (75th percentile, `MIN_SPEED_SAMPLES`, Google's `SPEED_THRESHOLDS`), never stored, and one with too
   few page loads says how many there are. The page, the CSV `speed.figures` and the AI manager's `speed_report` read `speedReport()`. CI's
   budgets are `SPEED_BUDGETS` in `e2e/performance.spec.ts`: a change past one is a regression to look at, not a number to raise. Kaizena Flow's own
   site and the admin are measured the same way (D390: `SpeedBeacon own`, `src/server/own-speed.ts`, the only writer of `own_speed_samples`,

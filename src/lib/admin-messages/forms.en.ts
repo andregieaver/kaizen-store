@@ -31,6 +31,7 @@ export const formsEn = {
     making: "Making …",
     back: "Back to the forms",
   },
+
   tabs: { form: "Form", responses: "Responses", settings: "Settings" },
   editor: {
     name: "Name",

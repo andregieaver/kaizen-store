@@ -14,11 +14,13 @@ type Row = Record<string, unknown>;
  * Fulfilment holds (wave 3, D238, `docs/wave-3-notifications.md` 2.6 and 4.9): while `orders.held_at` is set nothing of the order is sent or handed over
  * (`markSent()` refuses `held`, and the database refuses the shipment whatever the path, `commerce.shipments_not_held()`). Refunds, cancelling, editing, notes,
  * tags and emails are not affected. The only writer of `held_at`, `held_reason`, `held_by_rule` and `held_by`. Every statement names the store and locks the
- * order row first. A hold is put by a rule (`held_by_rule`, the rule's reason, kept when the order is anonymised) or a person (`held_by`, whose reason is the
- * free text an erasure replaces); an order already held keeps its first hold.
+ * order row first. A hold is put by a rule or a workflow (`held_by_rule`, which holds either's id, no foreign key; the owner's reason, kept when the order is
+ * anonymised) or a person (`held_by`, whose reason is the free text an erasure replaces); an order already held keeps its first hold. A workflow holds as a
+ * rule did since the rules were folded into workflows (ecosystem plan E3.3, D718); a rule moved there kept its id, so its holds name the workflow.
  *
- * Events: `order.held` (`data.reason` the reason, so the erasure of D162 covers it; `data.rule` or `data.by`) and `order.hold_released` (`data.by`). A person's
- * hold and release are audited (`order.held`, `order.hold_released`: the order's id, never the reason); a rule's is in its run (`order_rule_runs`).
+ * Events: `order.held` (`data.reason` the reason, so the erasure of D162 covers it; `data.rule`, `data.workflow` or `data.by`) and `order.hold_released`
+ * (`data.by`). A person's hold and release are audited (`order.held`, `order.hold_released`: the order's id, never the reason); a rule's is in its run
+ * (`order_rule_runs`), a workflow's in its (`workflow_runs`).
  */
 
 export const HOLD_EVENTS = { held: "order.held", released: "order.hold_released" } as const;
@@ -47,7 +49,7 @@ export function cleanHoldReason(value: unknown): string | null {
   return text.length >= 1 && [...text].length <= RULE_LIMITS.reason ? text : null;
 }
 
-export type HoldBy = { rule: { id: string } } | { account: string };
+export type HoldBy = { rule: { id: string } } | { workflow: { id: string } } | { account: string };
 
 /**
  * Puts an order on hold. Refused for a copied order, one not paid (a hold of an order waiting for payment would be lifted by nothing), one sent in full
@@ -56,7 +58,8 @@ export type HoldBy = { rule: { id: string } } | { account: string };
 export async function holdOrder(storeId: string, orderId: string, input: { reason: unknown; by: HoldBy }, options: { runner?: Db } = {}): Promise<HoldResult> {
   const reason = cleanHoldReason(input.reason);
   if (!reason) return refuse("invalid");
-  const byRule = "rule" in input.by ? input.by.rule.id : null;
+  const byWorkflow = "workflow" in input.by ? input.by.workflow.id : null;
+  const byRule = "rule" in input.by ? input.by.rule.id : byWorkflow;
   const byAccount = "account" in input.by ? input.by.account : null;
   const work = async (tx: Db): Promise<HoldResult> => {
     const [order] = await tx.execute<Row>(sql`
@@ -74,7 +77,8 @@ export async function holdOrder(storeId: string, orderId: string, input: { reaso
       where store_id = ${storeId}::uuid and id = ${orderId}::uuid
       returning held_at
     `);
-    await writeOrderEvent(tx, storeId, orderId, HOLD_EVENTS.held, { reason, ...(byRule ? { rule: byRule } : { by: byAccount }) }, byRule ? "system" : "staff");
+    const by = byWorkflow ? { workflow: byWorkflow } : byRule ? { rule: byRule } : { by: byAccount };
+    await writeOrderEvent(tx, storeId, orderId, HOLD_EVENTS.held, { reason, ...by }, byRule ? "system" : "staff");
     return { ok: true, heldAt: new Date(String(row.held_at)).toISOString() };
   };
   const result = options.runner ? await work(options.runner) : await db().transaction(work);
@@ -104,17 +108,19 @@ export async function releaseHold(storeId: string, orderId: string, accountId: s
 export type OrderHold = {
   heldAt: string;
   reason: string;
-  /** The rule's id and its name now (null when the rule was deleted since), or the person. */
+  /** The rule's id and its name now (null when the rule was deleted since), or the workflow (E3.3), or the person. */
   rule: { id: string; name: string | null } | null;
+  workflow: { id: string; name: string } | null;
   byAccount: { id: string; name: string | null } | null;
 };
 
 /** An order's hold for its page's banner, or null. */
 export async function orderHold(storeId: string, orderId: string): Promise<OrderHold | null> {
   const [row] = await db().execute<Row>(sql`
-    select o.held_at, o.held_reason, o.held_by_rule, o.held_by, r.name as rule_name, a.name as account_name
+    select o.held_at, o.held_reason, o.held_by_rule, o.held_by, r.name as rule_name, w.name as workflow_name, a.name as account_name
     from commerce.orders o
     left join commerce.order_rules r on r.store_id = o.store_id and r.id = o.held_by_rule
+    left join commerce.workflows w on w.store_id = o.store_id and w.id = o.held_by_rule
     left join commerce.accounts a on a.id = o.held_by
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.held_at is not null
   `);
@@ -122,7 +128,9 @@ export async function orderHold(storeId: string, orderId: string): Promise<Order
   return {
     heldAt: new Date(String(row.held_at)).toISOString(),
     reason: String(row.held_reason ?? ""),
-    rule: row.held_by_rule ? { id: String(row.held_by_rule), name: row.rule_name ? String(row.rule_name) : null } : null,
+    // A workflow before a rule of the same id: a rule moved to a workflow (E3.3) is the workflow now.
+    rule: row.held_by_rule && !row.workflow_name ? { id: String(row.held_by_rule), name: row.rule_name ? String(row.rule_name) : null } : null,
+    workflow: row.held_by_rule && row.workflow_name ? { id: String(row.held_by_rule), name: String(row.workflow_name) } : null,
     byAccount: row.held_by ? { id: String(row.held_by), name: row.account_name ? String(row.account_name) : null } : null,
   };
 }

@@ -179,6 +179,7 @@ export function DraftPanel({
   const [minDays, setMinDays] = useState(test.minDays);
   const [devices, setDevices] = useState<Device[]>(test.audience.devices ?? [...DEVICES]);
   const [chosen, setChosen] = useState<string[]>(test.audience.markets ?? []);
+  const [returning, setReturning] = useState<"all" | "new" | "returning">(test.audience.returning ?? "all");
   const [saved, setSaved] = useState(false);
   const toggle = <T extends string>(list: T[], value: T, set: (next: T[]) => void) => set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   const estimate = traffic ? goalEstimate({ facts: traffic, targetId: test.page.id, goal: test.goal, trafficShare: share, versions: test.variants.length, minDays, words: w, numberLocale }) : null;
@@ -194,6 +195,7 @@ export function DraftPanel({
           audience: {
             ...(devices.length > 0 && devices.length < DEVICES.length && { devices }),
             ...(chosen.length > 0 && { markets: chosen }),
+            ...(returning !== "all" && { returning }),
           },
         }),
       () => setSaved(true),
@@ -345,6 +347,14 @@ export function DraftPanel({
               <span className="text-xs font-normal text-muted">{d.minDaysHint}</span>
             </label>
           </div>
+          <label className={label}>
+            {d.visitors}
+            <select value={returning} onChange={(e) => setReturning(e.target.value as "all" | "new" | "returning")} className={input} data-returning>
+              <option value="all">{d.visitorKinds.all}</option>
+              <option value="new">{d.visitorKinds.new}</option>
+              <option value="returning">{d.visitorKinds.returning}</option>
+            </select>
+          </label>
           <fieldset className="flex flex-wrap gap-4 text-sm">
             <legend className="mb-1 font-medium">{d.devices}</legend>
             {DEVICES.map((device) => (

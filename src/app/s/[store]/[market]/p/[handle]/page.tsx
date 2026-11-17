@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AbMarker } from "@/components/ab/ab-marker";
+import { AbMarker } from "@/components/lazy/blocks";
 import { BrowseTracker } from "@/components/browse-tracker";
 import { pageRoomClass } from "@/components/page-article";
 import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";

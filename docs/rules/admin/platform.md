@@ -20,6 +20,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Account); pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
   (`src/server/control-center.ts`, pure
   parts in `src/lib/control-center.ts`); the platform's is `platformOverview()`.
+  What needs attention is one source (ecosystem plan E2.1, D713): every item of `attentionFor()` has a kind (`ATTENTION_KINDS`),
+  and the queues E2.1 added (disputes, the AI manager's decisions, leads, the day's activities, blog comments) are counted per store in
+  SQL in `src/server/attention.ts`, which `controlCenter()` calls with the member's gates and the briefing reads through
+  `storeAttention()` (the team's view, in every admin language). A new queue that waits on people is counted there, gated by the key of
+  the page that acts on it, given a kind and words in `home`'s `attention`, and so reaches Home and the briefing at once.
   Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
   would take a store address. A layout's auth check does not stop its page
   streaming: every page checks for itself.
@@ -203,6 +208,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`replicaDb()`, `setBasedReplica()`, off without `READ_DATABASE_URL`) is only for the modules `replica-readers.scan.test.ts` lists:
   never a read after a write, a cache refill, checkout, stock, payments or tax reports. Budgets on costly public endpoints are
   `takeBudget()` (`src/server/request-budget.ts`), never on a page load, the cart, checkout, payment or a webhook.
+  The scheduler is watched from outside by `/api/cron/watchdog` (Vercel's one cron, every 15 minutes: it emails the platform's admins when
+  the dispatcher's ledger row is over 15 minutes old), and the status page's jobs check fails on a late watcher or a late daily job
+  (`jobsCheck()`, `src/lib/cron-health.ts`); pg_cron's SQL jobs are kept as `pgcron.*` (`src/server/pg-cron-jobs.ts`).
 
 ## The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)
 
@@ -275,6 +283,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   model's. The briefing is off until turned on (offered once on the home), daily or weekly at seven in Oslo, and goes only from
   `sendPlatformBriefing()` (the dispatcher's `platformBriefing` job), claimed in `platform_settings.briefing_last_period` first so a period
   goes once, to the owners and the finance role, each in their language.
+  It also says when a kind of admin screen with 100 loads or more is not 'good' on largest paint or interaction time (`adminSpeedAlerts()`).
 
 
 ## Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)

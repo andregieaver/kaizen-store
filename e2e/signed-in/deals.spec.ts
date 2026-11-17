@@ -102,25 +102,42 @@ test("an owner switches Deals on, adds a deal for a customer, moves it, wins it 
 
 test("an owner makes a deal of a lead from the leads inbox, and the deal opens", async ({ page }) => {
   await deals(page, true);
-  const lead = `Lena Lead ${run}`;
+  // A message sent with one of the store's forms (D705), kept as the form's response: the lead, by the address it gave.
+  const lead = `lead-${run}@example.com`;
   const sql = testDb();
+  let formId = "";
   try {
     const [store] = await sql`select id from commerce.stores where slug = ${E2E_STORE}`;
+    const [form] = await sql`insert into commerce.forms (store_id, kind, name) values (${String(store.id)}, 'message', ${`Contact ${run}`}) returning id`;
+    formId = String(form.id);
     await sql`
-      insert into commerce.form_submissions (store_id, block_id, kind, visitor, status, email, payload, path, locale)
-      values (${String(store.id)}, 'e2e', 'message', 'e2e', 'logged', ${`lead-${run}@example.com`}, ${sql.json({ name: lead, message: "Do you make totes in green?" })}, '/contact', 'en')`;
+      insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery)
+      values (${formId}, ${sql.json([{ label: "Email", value: lead }, { label: "Message", value: "Do you make totes in green?" }])}, ${lead}, '/contact', 'en', 'sent')`;
   } finally {
     await sql.end();
   }
 
-  await page.goto(`/admin/${E2E_STORE}/deals`);
-  await page.getByRole("link", { name: /^Leads/ }).click();
-  await expect(page.getByText(lead)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Do you make totes in green?")).toBeVisible();
-  await page.getByRole("button", { name: `Make a deal of ${lead}` }).click();
-  await expect(page.getByRole("heading", { level: 1, name: `${lead}: question` })).toBeVisible({ timeout: 30_000 });
+  try {
+    // Leads is a page of its own under Customers (ecosystem plan E2.8, D713); the tab's old address finds it.
+    await page.goto(`/admin/${E2E_STORE}/deals?view=leads`);
+    await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/leads$`), { timeout: 30_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Leads" })).toBeVisible();
+    await expect(page.getByText(lead)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Do you make totes in green?")).toBeVisible();
+    // What they asked opens where it is kept: the form's responses.
+    await expect(page.getByRole("link", { name: `Open the question from ${lead}` })).toHaveAttribute("href", `/admin/${E2E_STORE}/forms/responses/${formId}`);
+    await page.getByRole("button", { name: `Make a deal of ${lead}` }).click();
+    await expect(page.getByRole("heading", { level: 1, name: `${lead}: question` })).toBeVisible({ timeout: 30_000 });
 
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Delete the deal" }).click();
-  await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/deals$`), { timeout: 30_000 });
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Delete the deal" }).click();
+    await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/deals$`), { timeout: 30_000 });
+  } finally {
+    const cleanup = testDb();
+    try {
+      await cleanup`delete from commerce.forms where id = ${formId}`;
+    } finally {
+      await cleanup.end();
+    }
+  }
 });

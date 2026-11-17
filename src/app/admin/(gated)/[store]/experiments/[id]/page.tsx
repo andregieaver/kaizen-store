@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { DraftActions, DraftPanel, LearningCard, TestActions } from "@/components/admin/experiment-controls";
 import { ExperimentFrames } from "@/components/admin/experiment-frames";
+import { ExperimentShare } from "@/components/admin/experiment-share";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
@@ -24,6 +25,7 @@ import { getExperiment, startProblemsOf, versionDifferences, type ExperimentInfo
 import { experimentTraffic } from "@/server/experiment-traffic";
 import { experimentResults } from "@/server/experiment-results";
 import { Chip, PageHeader } from "@/components/admin/ui";
+import { previewLinkAction } from "../actions";
 
 export const metadata: Metadata = { title: "A/B test" };
 
@@ -116,7 +118,9 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
     : test.status === "discarded"
       ? w.card.actions.discarded
       : test.stopReason === "guardrail"
-        ? w.card.actions.guardrail
+        ? test.stopGuardrail === "speed" || test.stopGuardrail === "checkout"
+          ? w.card.actions.guardrailBy[test.stopGuardrail]
+          : w.card.actions.guardrail
         : test.status === "stopped" && test.stopReason === "planned_end"
           ? w.card.actions.plannedStop
           : null;
@@ -209,6 +213,10 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           />
         )}
         {frames && <ExperimentFrames versions={frames} />}
+        {/* Preview links to share while it runs (phase 20): never counted, over when it stops. */}
+        {test.status === "running" && (
+          <ExperimentShare versions={shown.variants.filter((v) => v.key !== "a").map((v) => ({ key: v.key, name: v.name }))} make={previewLinkAction.bind(null, store.slug, test.id)} />
+        )}
       </div>
     </AdminTextScope>
   );

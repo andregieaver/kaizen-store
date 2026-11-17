@@ -651,6 +651,16 @@ const likeOf = (q: string) => `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
 export const visitorLabel = (id: string) => `Visitor ${id.replace(/-/g, "").slice(0, 4).toUpperCase()}`;
 
 /**
+ * The inbox's search as a condition on a conversation `c`, its signed-in customer `cu` and its requester `ra`: who it is with (a name or an
+ * email), the summary's title, or an email's subject. The inbox's list and the page finder (ecosystem plan E2.2, D713) ask the same.
+ */
+export function inboxSearch(q: string): SQL {
+  const like = likeOf(q);
+  return sql`(cu.name ilike ${like} or cu.email ilike ${like} or c.contact_name ilike ${like} or c.contact_email ilike ${like}
+    or ra.name ilike ${like} or ra.email ilike ${like} or c.summary->>'title' ilike ${like} or c.email_subject ilike ${like})`;
+}
+
+/**
  * The inbox's list for one or several desks (the owner's level), newest first (the queue oldest first), at most 100 rows. Never an
  * anonymised conversation. A row is unread for the account when it has messages after the last the account read.
  */
@@ -659,10 +669,7 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
   const storeOnly = filters.storeId ? sql`and c.store_id = ${filters.storeId}::uuid` : sql``;
   const toneOnly = filters.tone ? sql`and ${toneBandCondition(filters.tone)}` : sql``;
   const topicOnly = filters.topic ? sql`and c.summary->'topics' ? ${filters.topic}` : sql``;
-  const search = q
-    ? sql`and (cu.name ilike ${likeOf(q)} or cu.email ilike ${likeOf(q)} or c.contact_name ilike ${likeOf(q)} or c.contact_email ilike ${likeOf(q)}
-        or ra.name ilike ${likeOf(q)} or ra.email ilike ${likeOf(q)} or c.summary->>'title' ilike ${likeOf(q)})`
-    : sql``;
+  const search = q ? sql`and ${inboxSearch(q)}` : sql``;
   const order = filters.tab === "waiting" ? sql`c.queued_at asc nulls last, c.created_at asc` : sql`c.last_message_at desc`;
   const rows = await db().execute<Row>(sql`
     select c.id, c.status, c.handler, c.source, c.last_message_at, c.queued_at, c.tone, c.tone_alert_at, c.ended_at, c.message_seq, c.customer_id,

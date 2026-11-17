@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { draftMarketOptions, draftMarketSlug } from "@/lib/draft-markets";
@@ -15,6 +16,7 @@ import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, mayFindDraftCustomers } from "@/server/permissions";
 import { staffActor } from "@/server/order-actor";
 import { declineQuote } from "@/server/quote-requests";
+import { linkThing, mayLink } from "@/server/deals";
 import {
   createDraft,
   deleteDraft,
@@ -260,8 +262,17 @@ export async function createDraftAction(storeSlug: string, _previous: FormState,
     currency: String(form.get("currency") ?? ""),
   });
   if (!slug) return { status: "error", messages: [w.chooseView] };
-  const made = await createDraft(member.store.id, staffActor(member.account.id), { marketSlug: slug });
+  // A quote made for a deal or a customer (ecosystem plan E2.6, D713): the draft starts with the customer, and is linked to the deal when
+  // the person may link deals; a customer or deal that is not the store's is left out by the readers themselves.
+  const uuid = (name: string) => {
+    const value = String(form.get(name) ?? "");
+    return z.uuid().safeParse(value).success ? value : undefined;
+  };
+  const customerId = uuid("customer");
+  const dealId = uuid("deal");
+  const made = await createDraft(member.store.id, staffActor(member.account.id), { marketSlug: slug, customerId });
   if (!made.ok) return { status: "error", messages: [made.problem === "too_many_open_drafts" ? w.tooMany : w.chooseMarket] };
+  if (dealId && mayLink(member, "draft")) await linkThing(member, dealId, "draft", made.draft.id);
   refresh();
   redirect(`/admin/${member.store.slug}/orders/drafts/${made.draft.id}`);
 }

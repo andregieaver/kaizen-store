@@ -29,6 +29,7 @@ export const capacityEn = {
     requests_month: "Visits a month",
     egress_bytes_month: "Bandwidth a month",
     recordings_month: "Recordings of visits a month",
+    ab_tests_running: "A/B tests at a time (0: none; at most 5)",
     stores_owned: "Stores per owner",
   },
   units: { gb: "GB", count: "", money: "EUR" },
@@ -59,6 +60,7 @@ export const capacityEn = {
     requests_month: "",
     egress_bytes_month: "",
     recordings_month: "This store has recorded the {limit} visits its plan includes this month. Recording starts again next month, or choose a plan with more.",
+    ab_tests_running: "Your plan runs up to {limit} A/B tests at a time. Stop one first, or choose a plan with more.",
     stores_owned: "Your plan allows {limit} stores. Choose a plan with more to add another.",
   },
   owner: {
@@ -134,7 +136,7 @@ export const capacityEn = {
     loads: "{n} page loads",
     kinds: {
       platform: { home: "Front page", product: "A theme's page", category: "Other pages", list: "The theme store and the blog", page: "Other pages" },
-      admin: { home: "Overviews", product: "Editors (products, pages)", category: "Other pages", list: "Lists (orders, products, customers …)", page: "Other pages" },
+      admin: { home: "Overviews", product: "Product editor", category: "Page builder (pages, articles)", list: "Lists (orders, products, customers …)", page: "Other pages" },
     },
   },
   jobs: {

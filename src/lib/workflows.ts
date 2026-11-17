@@ -9,6 +9,8 @@ import { EVENTS, type IntegrationEvent } from "./integrations";
  * `RUNS_PER_HOUR` runs an hour each. Nothing here reads the database.
  */
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const WORKFLOWS_MAX = 50;
 export const CONDITIONS_MAX = 10;
 export const ACTIONS_MAX = 10;
@@ -21,8 +23,42 @@ export const isWorkflowTrigger = (value: string): value is WorkflowTrigger => (W
 /** What an event is about, by its trigger: the key its data is under (`order`, `product`, …). */
 export function subjectOf(
   trigger: WorkflowTrigger,
-): "order" | "customer" | "subscription" | "return" | "withdrawal" | "product" | "stock" | "discount" | "support" | "inventory" | "fulfilment" | "refund" | "draft" | "erasure" | "gift_card" | "review" | "experiment" | "contract" | "schedule" {
+):
+  | "order"
+  | "customer"
+  | "subscription"
+  | "return"
+  | "withdrawal"
+  | "product"
+  | "stock"
+  | "discount"
+  | "support"
+  | "inventory"
+  | "fulfilment"
+  | "refund"
+  | "draft"
+  | "erasure"
+  | "gift_card"
+  | "review"
+  | "experiment"
+  | "contract"
+  | "deal"
+  | "subscriber"
+  | "conversation"
+  | "checkout"
+  | "work_client"
+  | "work_invoice"
+  | "form_response"
+  | "schedule" {
   if (trigger === "schedule") return "schedule";
+  // Ecosystem plan E3.2 (D718).
+  if (trigger.startsWith("deal.")) return "deal";
+  if (trigger.startsWith("subscriber.")) return "subscriber";
+  if (trigger.startsWith("conversation.")) return "conversation";
+  if (trigger === "review.published") return "review";
+  if (trigger === "checkout.abandoned") return "checkout";
+  if (trigger === "work_client.created") return "work_client";
+  if (trigger.startsWith("work_invoice.")) return "work_invoice";
   if (trigger === "inventory.updated") return "inventory";
   if (trigger.startsWith("fulfilment.")) return "fulfilment";
   if (trigger === "refund.created") return "refund";
@@ -34,6 +70,7 @@ export function subjectOf(
   if (trigger === "review.created") return "review";
   if (trigger === "experiment.answered") return "experiment";
   if (trigger.startsWith("contract.")) return "contract";
+  if (trigger === "form.response") return "form_response";
   if (trigger.startsWith("order.")) return "order";
   if (trigger.startsWith("subscription.")) return "subscription";
   if (trigger.startsWith("product.")) return "product";
@@ -45,8 +82,18 @@ export function subjectOf(
   return "support";
 }
 
-export type FieldKind = "text" | "number" | "yes_no";
-export type WorkflowField = { key: string; kind: FieldKind };
+/** `segment`: the customer is (`is`) or is not (`is_not`) in one of the store's saved segments, its id the value; read now, not from the payload. */
+export type FieldKind = "text" | "number" | "yes_no" | "segment";
+/** A field a condition may test; `choices` are the only values a text field takes (the editor offers them, `workflowProblems()` holds to them). */
+export type WorkflowField = { key: string; kind: FieldKind; choices?: readonly string[] };
+
+/**
+ * The condition *the customer is in segment X* (ecosystem plan E3.6, D718), for a trigger whose subject has a customer (an order, a customer,
+ * a subscription: those whose data carries the address, as a customer's tag reads it). The runner reads the address's segments once, only
+ * those its conditions name (`segmentsOfAddress()`), and gives them to `workflowMatches()`.
+ */
+export const SEGMENT_FIELD = "customer.segment";
+const IN_SEGMENT: WorkflowField = { key: SEGMENT_FIELD, kind: "segment" };
 
 /** The fields a condition may test, by what the event is about: paths into the event's data as its payload carries it (amounts in the currency's units). */
 export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField[]> = {
@@ -60,15 +107,18 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "order.lines.quantity", kind: "number" },
     { key: "order.shipping_address.country", kind: "text" },
     { key: "order.vat_kind", kind: "text" },
+    IN_SEGMENT,
   ],
   customer: [
     { key: "customer.email", kind: "text" },
     { key: "customer.email_confirmed", kind: "yes_no" },
+    IN_SEGMENT,
   ],
   subscription: [
     { key: "subscription.status", kind: "text" },
     { key: "subscription.currency", kind: "text" },
     { key: "subscription.total_per_renewal", kind: "number" },
+    IN_SEGMENT,
   ],
   return: [
     { key: "return.kind", kind: "text" },
@@ -123,6 +173,47 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "contract.language", kind: "text" },
     { key: "contract.template", kind: "text" },
   ],
+  // Ecosystem plan E3.2 (D718).
+  deal: [
+    { key: "deal.value", kind: "number" },
+    { key: "deal.stage.name", kind: "text" },
+    { key: "deal.pipeline.name", kind: "text" },
+    { key: "deal.closed_via", kind: "text" },
+  ],
+  subscriber: [
+    { key: "subscriber.source", kind: "text" },
+    { key: "subscriber.unsubscribe_source", kind: "text" },
+    { key: "subscriber.market", kind: "text" },
+    { key: "subscriber.locale", kind: "text" },
+  ],
+  conversation: [
+    { key: "conversation.rating", kind: "text" },
+    { key: "conversation.source", kind: "text" },
+    { key: "conversation.ended_by", kind: "text" },
+    { key: "conversation.handler", kind: "text" },
+  ],
+  checkout: [
+    { key: "checkout.subtotal", kind: "number" },
+    { key: "checkout.currency", kind: "text" },
+    { key: "checkout.market", kind: "text" },
+    { key: "checkout.lines.sku", kind: "text" },
+  ],
+  work_client: [
+    { key: "work_client.country", kind: "text" },
+    { key: "work_client.business", kind: "yes_no" },
+    { key: "work_client.currency", kind: "text" },
+  ],
+  work_invoice: [
+    { key: "work_invoice.total", kind: "number" },
+    { key: "work_invoice.currency", kind: "text" },
+    { key: "work_invoice.status", kind: "text" },
+  ],
+  form_response: [
+    { key: "form_response.form_name", kind: "text" },
+    { key: "form_response.form_kind", kind: "text" },
+    { key: "form_response.locale", kind: "text" },
+    { key: "form_response.path", kind: "text" },
+  ],
   draft: [
     { key: "draft.source", kind: "text" },
     { key: "draft.currency", kind: "text" },
@@ -136,14 +227,45 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
   schedule: [],
 };
 
-export const fieldsFor = (trigger: WorkflowTrigger) => WORKFLOW_FIELDS[subjectOf(trigger)];
+/**
+ * What an order rule knew about a paid order (`ruleFacts()` in `src/server/order-rules.ts`, D238 4.9), as fields of `order.paid` (ecosystem plan
+ * E3.3, D718), so a workflow does what a rule did. They are not in the webhook's payload: the runner reads them for an `order.paid` run whose
+ * conditions name one (`paidOrderFacts()` in `src/server/workflows.ts`) and puts them beside it under `order`. As a rule's, the tags are the
+ * order's when it was paid (a tag another workflow adds for the same payment never counts: workflows never chain), the total is in the store's
+ * main currency at its rates now (none without a rate, so a comparison never holds), and a guest has no first order (orders are never matched
+ * to a person by email, D162). `order.products` holds the store's product ids, `order.tags` the tags' keys (as typed, without case).
+ */
+export const PAID_ORDER_FIELDS: readonly WorkflowField[] = [
+  { key: "order.total_main", kind: "number" },
+  { key: "order.first_order", kind: "yes_no" },
+  { key: "order.buyer", kind: "text", choices: ["business", "consumer"] },
+  { key: "order.products", kind: "text" },
+  { key: "order.delivery", kind: "text", choices: ["shipping", "pickup", "local", "none"] },
+  { key: "order.backordered", kind: "yes_no" },
+  { key: "order.gift", kind: "yes_no" },
+  { key: "order.source", kind: "text", choices: ["checkout", "draft", "subscription", "delivery"] },
+  { key: "order.tags", kind: "text" },
+  { key: "order.seller", kind: "text", choices: ["store", "host"] },
+  { key: "order.risk", kind: "text", choices: ["normal", "elevated", "highest", "none"] },
+];
+const PAID_ORDER_KEYS: ReadonlySet<string> = new Set(PAID_ORDER_FIELDS.map((f) => f.key));
+/** Whether conditions name a fact only a paid order's run reads (and so whether the runner reads them). */
+export const needsPaidFacts = (conditions: readonly Pick<WorkflowCondition, "field">[]) => conditions.some((c) => PAID_ORDER_KEYS.has(c.field));
 
-export const OPERATORS = ["is", "is_not", "contains", "more_than", "less_than"] as const;
+/** The fields of a trigger: its subject's, and for `order.paid` also what an order rule knew (E3.3). */
+export const fieldsFor = (trigger: WorkflowTrigger): WorkflowField[] =>
+  trigger === "order.paid" ? [...WORKFLOW_FIELDS.order, ...PAID_ORDER_FIELDS] : WORKFLOW_FIELDS[subjectOf(trigger)];
+
+/**
+ * `at_least` and `is_one_of` (values with commas between) came with the order rules' fold (E3.3, D718): a rule's *the total is at least* and
+ * *the country is Sweden or Denmark*.
+ */
+export const OPERATORS = ["is", "is_not", "contains", "more_than", "less_than", "at_least", "is_one_of"] as const;
 export type Operator = (typeof OPERATORS)[number];
 
 export type WorkflowCondition = { field: string; op: Operator; value: string };
 
-export const ACTION_KINDS = ["tag_order", "note_order", "tag_customer", "email_staff", "post_slack", "send_request", "ask_ai_manager"] as const;
+export const ACTION_KINDS = ["tag_order", "note_order", "tag_customer", "email_staff", "post_slack", "send_request", "ask_ai_manager", "hold_order"] as const;
 export type WorkflowActionKind = (typeof ACTION_KINDS)[number];
 
 export type WorkflowAction =
@@ -153,12 +275,18 @@ export type WorkflowAction =
   | { kind: "email_staff"; subject: string; text: string }
   | { kind: "post_slack"; text: string }
   | { kind: "send_request"; endpointId: string }
-  | { kind: "ask_ai_manager"; question: string };
+  | { kind: "ask_ai_manager"; question: string }
+  /** Holds the order's fulfilment as an order rule's hold did (`holdOrder()`, E3.3): only a paid order can be held. */
+  | { kind: "hold_order"; reason: string };
 
-/** The actions a trigger may take: a tag needs an order or a customer, a request needs an event an endpoint can be sent, asking needs an order. */
+/**
+ * The actions a trigger may take: a tag needs an order or a customer, a request needs an event an endpoint can be sent, asking needs an order,
+ * a hold a paid one.
+ */
 export function actionsFor(trigger: WorkflowTrigger): WorkflowActionKind[] {
   const subject = subjectOf(trigger);
   return ACTION_KINDS.filter((kind) => {
+    if (kind === "hold_order") return trigger === "order.paid";
     if (kind === "tag_order" || kind === "note_order" || kind === "ask_ai_manager") return subject === "order";
     if (kind === "tag_customer") return subject === "order" || subject === "customer" || subject === "subscription";
     if (kind === "send_request") return subject !== "schedule";
@@ -200,7 +328,8 @@ export const STORE_WORKFLOWS: WorkflowKit = {
 const tag = z.string().trim().min(1).max(40);
 const text = (max: number) => z.string().trim().min(1).max(max);
 
-export const workflowActionSchema = z.discriminatedUnion("kind", [
+/** The actions as the AI manager's `draft_workflow` knows them (`draftWorkflowInputSchema`). */
+const DRAFT_ACTIONS = [
   z.object({ kind: z.literal("tag_order"), tag }),
   z.object({ kind: z.literal("note_order"), text: text(1000) }),
   z.object({ kind: z.literal("tag_customer"), tag }),
@@ -208,10 +337,20 @@ export const workflowActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("post_slack"), text: text(2000) }),
   z.object({ kind: z.literal("send_request"), endpointId: z.uuid() }),
   z.object({ kind: z.literal("ask_ai_manager"), question: text(400) }),
-]);
+] as const;
+
+export const workflowActionSchema = z.discriminatedUnion("kind", [...DRAFT_ACTIONS, z.object({ kind: z.literal("hold_order"), reason: text(200) })]);
+
+/** A condition's value: up to 2000 characters, room for a rule's list of products (E3.3). */
+const VALUE_MAX = 2000;
+
+type SchemaParts = { actions: z.ZodType<WorkflowAction>; operators: readonly [Operator, ...Operator[]]; valueMax: number };
 
 /** A workflow's shape, its trigger one of a kit's. */
-export const workflowSchemaFor = (kit: Pick<WorkflowKit, "isTrigger">) => z.object({
+export const workflowSchemaFor = (
+  kit: Pick<WorkflowKit, "isTrigger">,
+  parts: SchemaParts = { actions: workflowActionSchema, operators: OPERATORS, valueMax: VALUE_MAX },
+) => z.object({
   name: z.string().trim().min(1).max(80),
   trigger: z.string().refine(kit.isTrigger, "Choose what starts the workflow."),
   schedule: z
@@ -222,11 +361,23 @@ export const workflowSchemaFor = (kit: Pick<WorkflowKit, "isTrigger">) => z.obje
     })
     .nullable()
     .default(null),
-  conditions: z.array(z.object({ field: z.string(), op: z.enum(OPERATORS), value: z.string().trim().max(200) })).max(CONDITIONS_MAX).default([]),
-  actions: z.array(workflowActionSchema).min(1, "Add at least one action.").max(ACTIONS_MAX),
+  conditions: z.array(z.object({ field: z.string(), op: z.enum(parts.operators), value: z.string().trim().max(parts.valueMax) })).max(CONDITIONS_MAX).default([]),
+  actions: z.array(parts.actions).min(1, "Add at least one action.").max(ACTIONS_MAX),
 });
 
 export const workflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS);
+
+/**
+ * The AI manager's `draft_workflow` input, frozen as it was before the order rules' fold (ecosystem plan E3.3, D718): the five operators, a
+ * value of 200 characters and no `hold_order`, so the tool's schema, and with it the recorded agents' eval, stays as it is. The release step
+ * opens it (the tool's schema and description name the new operators, the paid order's fields and the hold, with a new run of the eval
+ * recorded). Until then a workflow the AI drafts is checked again by `workflowInputSchema` on save, like any other.
+ */
+export const draftWorkflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS, {
+  actions: z.discriminatedUnion("kind", [...DRAFT_ACTIONS]),
+  operators: ["is", "is_not", "contains", "more_than", "less_than"],
+  valueMax: 200,
+});
 
 /** What is wrong with a workflow beyond its shape: a field the trigger does not have, an action it cannot take, a schedule where none belongs. */
 export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STORE_WORKFLOWS): string[] {
@@ -239,10 +390,15 @@ export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STO
   } else if (input.schedule) problems.push("Only a schedule has a time.");
   for (const c of input.conditions) {
     const field = fields.get(c.field);
+    const values = c.op === "is_one_of" ? listValues(c.value) : [c.value.trim().toLowerCase()];
     if (!field) problems.push(`${c.field} is not a field of this trigger.`);
-    else if ((c.op === "more_than" || c.op === "less_than") && field.kind !== "number") problems.push(`${c.field} is not a number.`);
-    else if (field.kind === "number" && c.op !== "is" && c.op !== "is_not" && Number.isNaN(Number(c.value))) problems.push(`${c.field} compares with a number.`);
-    else if (field.kind === "yes_no" && !["yes", "no"].includes(c.value)) problems.push(`${c.field} is yes or no.`);
+    else if (field.kind === "segment") {
+      if (!(c.op === "is" || c.op === "is_not") || !UUID.test(c.value)) problems.push("Choose one of your segments.");
+    } else if ((c.op === "more_than" || c.op === "less_than" || c.op === "at_least") && field.kind !== "number") problems.push(`${c.field} is not a number.`);
+    else if (field.kind === "number" && c.op !== "is" && c.op !== "is_not" && c.op !== "is_one_of" && Number.isNaN(Number(c.value))) problems.push(`${c.field} compares with a number.`);
+    else if (c.op === "is_one_of" && values.length === 0) problems.push(`${c.field} needs at least one value, with commas between.`);
+    else if (field.kind === "yes_no" && !values.every((v) => v === "yes" || v === "no")) problems.push(`${c.field} is yes or no.`);
+    else if (field.choices && c.op !== "contains" && !values.every((v) => field.choices!.includes(v))) problems.push(`${c.field} is one of ${field.choices.join(", ")}.`);
   }
   const allowed = new Set(kit.actionsFor(input.trigger));
   for (const a of input.actions) if (!allowed.has(a.kind)) problems.push(`${a.kind} cannot follow this trigger.`);
@@ -261,16 +417,44 @@ export function valuesAt(data: unknown, path: string): unknown[] {
   return current.flatMap((value) => (Array.isArray(value) ? value : [value])).filter((value) => value !== undefined && value !== null);
 }
 
+/** The values of an `is_one_of`: split on commas, trimmed, without case, empty ones left out. */
+export const listValues = (value: string): string[] =>
+  value
+    .split(",")
+    .map((v) => v.trim().toLowerCase())
+    .filter((v) => v !== "");
+
+/**
+ * What a condition reads beside the event's data: the segments the event's customer is in now (`SEGMENT_FIELD`), by id; null when the event
+ * has no customer or nobody read them, and then *in a segment* and *not in it* both fail, as a fact not known holds for no condition.
+ */
+export type WorkflowFacts = { segments?: ReadonlySet<string> | null };
+
+/** The segments a workflow's conditions name (the runner reads only those for the event's customer). */
+export const segmentsNamed = (conditions: readonly WorkflowCondition[]): string[] => [...new Set(conditions.filter((c) => c.field === SEGMENT_FIELD).map((c) => c.value))];
+
 /** Whether a condition holds: any value at the field passes (`is_not`: none equals). Text compares without case. */
-export function conditionHolds(condition: WorkflowCondition, data: unknown): boolean {
+export function conditionHolds(condition: WorkflowCondition, data: unknown, facts: WorkflowFacts = {}): boolean {
+  if (condition.field === SEGMENT_FIELD) {
+    if (!facts.segments) return false;
+    const inIt = facts.segments.has(condition.value);
+    return condition.op === "is" ? inIt : condition.op === "is_not" ? !inIt : false;
+  }
   const values = valuesAt(data, condition.field);
   const wanted = condition.value.trim().toLowerCase();
   const asText = (value: unknown) => (typeof value === "boolean" ? (value ? "yes" : "no") : String(value).toLowerCase());
+  const equals = (v: unknown, want: string) => asText(v) === want || (typeof v === "number" && v === Number(want));
   switch (condition.op) {
     case "is":
-      return values.some((v) => asText(v) === wanted || (typeof v === "number" && v === Number(wanted)));
+      return values.some((v) => equals(v, wanted));
     case "is_not":
-      return !values.some((v) => asText(v) === wanted || (typeof v === "number" && v === Number(wanted)));
+      return !values.some((v) => equals(v, wanted));
+    case "is_one_of": {
+      const list = listValues(condition.value);
+      return values.some((v) => list.some((want) => equals(v, want)));
+    }
+    case "at_least":
+      return values.some((v) => typeof v === "number" && v >= Number(wanted));
     case "contains":
       return values.some((v) => asText(v).includes(wanted));
     case "more_than":
@@ -281,7 +465,7 @@ export function conditionHolds(condition: WorkflowCondition, data: unknown): boo
 }
 
 /** Whether every condition holds (none: always). */
-export const workflowMatches = (conditions: WorkflowCondition[], data: unknown) => conditions.every((c) => conditionHolds(c, data));
+export const workflowMatches = (conditions: WorkflowCondition[], data: unknown, facts: WorkflowFacts = {}) => conditions.every((c) => conditionHolds(c, data, facts));
 
 /**
  * When a schedule is due on a day in the store's time zone: the key that makes it once (`schedule:2026-10-28`), or null when it is not due

@@ -484,6 +484,69 @@
       "when": 1794908468498,
       "tag": "20261117094108_contract_events_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794910550391,
+      "tag": "20261117101550_brown_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794913970423,
+      "tag": "20261117111250_form_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794913981365,
+      "tag": "20261117111301_form_templates_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794917645644,
+      "tag": "20261117121405_sticky_gateway",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794919509091,
+      "tag": "20261117124509_form_response_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794919516371,
+      "tag": "20261117124516_form_response_event_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794922367113,
+      "tag": "20261117133247_polite_morg",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794923330652,
+      "tag": "20261117134850_aspiring_centennial",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794923333156,
+      "tag": "20261117134853_event_log_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -139,3 +139,22 @@ export const formRowShape = {
   delivery: draftObject.shape.delivery,
   signup: draftObject.shape.signup,
 };
+
+/** What a form template holds (D705 F4, `FormTemplateContent`): a form's questions and words without what belongs to one store. */
+export const templateContentSchema = z.object({
+  questions: formRowShape.questions,
+  words: formRowShape.words,
+  signup: z.object({ confirm: z.boolean(), askName: z.boolean() }).nullable(),
+  keepMonths: z.number().int().min(1).max(FORM_KEEP_MONTHS_MAX),
+});
+
+/** A template's name or description as kept: words in its language with others beside. */
+export const templateWordsSchema = words("a template's words", 200);
+
+/** What the owner names a template when saving or changing it (F4). */
+export const templateMetaSchema = z.object({
+  name: z.string().trim().min(1, "Give the template a name.").max(FORM_NAME_MAX, `Keep the name under ${FORM_NAME_MAX} characters.`),
+  description: z.string().trim().max(200, "Keep the description under 200 characters.").default(""),
+  category: z.enum(["contact", "sales", "bookings", "newsletter", "feedback", "events", "other"]).default("other"),
+  sharing: z.enum(["private", "stores", "marketplace"]).default("private"),
+});

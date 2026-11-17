@@ -1,3 +1,4 @@
 # Left out of default searches (bloat review step 0.40): name the file or folder to search it.
 psi-2026-*.md
 evidence/
+bloat-review-2026-11/session-load/

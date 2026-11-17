@@ -65,7 +65,15 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Each topic's `data` is typed in `WEBHOOK_TOPICS` (D438, `src/lib/webhook-topics.ts`): a builder returns its `WebhookSubject<…>` and
   `subjectData()` checks what it built against the topic's schema, logging a drift (`webhooks.payload_shape`, paths only) and never holding a
   delivery back; within `PAYLOAD_VERSION` 1 a payload only gains fields. A new topic or subject also gets its schema there, its subject made
-  in `webhook-topics.int.test.ts`, and the contract's next version (*API contracts*, under the Admin API).
+  in `webhook-topics.int.test.ts`, and the contract's next version (*API contracts*, under the Admin API). Every event the three queues are
+  given (`queue_integration_event()`, `queue_store_event()`, `queue_platform_event()`) is also kept in the event log `commerce.events`
+  (ecosystem plan E3.1, D718: `commerce.log_event()`, in the same transaction, whoever subscribes, once per transaction, store, event and
+  subject; ids only; append-only, pruned after `EVENT_KEEP_DAYS` by `daily.events`). A new engine reads it with a cursor of its own
+  (`readEventsAfter()`/`advanceCursor()` or `consumeEvents()`, `src/server/event-log.ts`): in `(tx, id)` order and only below the oldest
+  transaction still running, so an event that commits late is never skipped; a claim keeps two runners of one reader apart. The events of
+  E3.2 (deals, the email list, support conversations ended or rated, a review published, `checkout.abandoned` from the cart reminders job
+  once a cart, Work's clients and invoices) are endpoint topics and workflow triggers; imports send none (`commerce.deal_importing`, the
+  `shopify`/`woocommerce` sources, `imported_from`).
 
 ## The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
 
@@ -140,7 +148,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations
   (`ADMIN_API`) and the storefront's routes (`STOREFRONT_ROUTES`) as OpenAPI 3.1 (`adminOpenApi()`, `storefrontOpenApi()`, `jsonSchemaOf()`
   over `z.toJSONSchema()`), the webhook topics (`WEBHOOK_TOPICS`, `webhookCatalogue()`, also the Admin API document's `webhooks`), the owner
-  MCP's tools (`MCP_TOOLS`, `mcpCatalogue()`) and the shopping agents' (`UCP_TOOLS`, `ucpCatalogue()`). They are served public, cached an
+  MCP's tools (`mcpTools()`, `mcpCatalogue()`) and the shopping agents' (`UCP_TOOLS`, `ucpCatalogue()`). They are served public, cached an
   hour and with no store's data at `/api/admin/v1/openapi.json`, `/api/storefront/v1/openapi.json`, `/api/webhooks/v1/topics.json`,
   `/api/mcp/catalogue.json` and `/api/ucp/catalogue.json`; never write a reference page or a list of routes, topics or tools by hand. A tool's
   title and MCP annotations are worked out beside it (`toolTitle()`, `toolAnnotations()`), never by changing its description or input (that
@@ -224,6 +232,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `platform-workflows.ts` (a platform owner's, the settings area) and queued by `queue_platform_event()`; their triggers, fields and actions are
   `PLATFORM_WORKFLOWS` (`src/lib/platform-workflows.ts`), the kit the shared editor (`scope="platform"`) and `workflowProblems()` take, and
   they read the event as `platformPayload()` builds it. A new platform event is a trigger there with its fields.
+  Order rules are folded into workflows (ecosystem plan E3.3, D718): `order.paid` has the rules' facts as fields (`PAID_ORDER_FIELDS`, read by
+  `ruleFacts()` in `workflowData()` only for a run whose conditions name one, the tags as of the run's time so workflows never chain) and the
+  action `hold_order` (`holdOrder()`, `held_by_rule` holding the workflow's id); a store's rules are moved by `moveRulesToWorkflows()`
+  (`src/lib/rules-to-workflows.ts` writes each as its workflow, with the rule's id; one needing *any* of several conditions stays a rule), and
+  the order-rules engine queues a moved rule's workflow (`queueMovedRuns()`) for an event it had not handled, so nothing stops. The AI manager's
+  `draft_workflow` keeps its schema as it was (`draftWorkflowInputSchema`) until its release step records the eval with the new fields and the
+  hold. Settings → Automatic (`src/lib/automatic.ts`, `src/server/automatic.ts`) lists what runs by itself and, in order, what follows a paid
+  order: a new engine that acts by itself adds its lines there.
 
 ## Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 

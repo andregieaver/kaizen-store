@@ -235,6 +235,19 @@ const DETAILS: Record<KnownCookieName, Omit<KnownCookie, "name" | "pattern" | "c
       da: "Husker, hvilken version af en side butikken afprøver på dig (en A/B-test), med et tilfældigt tal, der kun hører til denne butik, så du ser den samme version hver gang, og butikken kan lære, hvad der virker bedst; knyttes aldrig til, hvem du er.",
     },
   },
+  "kaizen_ab_preview": {
+    // Only in the browser of someone who opened a preview link of an A/B test's version the store shared with them (D148 phase 20).
+    provider: "Kaizena Flow",
+    days: 1,
+    on: "store",
+    experiments: true,
+    purpose: {
+      en: "Shows you the version of a page the store's preview link named, for a day; while it is there nothing about your visit is counted in the store's tests.",
+      nb: "Viser deg versjonen av en side som butikkens forhåndsvisningslenke pekte på, i en dag; så lenge den er der, telles ingenting om besøket ditt i butikkens tester.",
+      sv: "Visar dig den version av en sida som butikens förhandsgranskningslänk pekade på, i en dag; så länge den finns räknas inget om ditt besök i butikens tester.",
+      da: "Viser dig den version af en side, som butikkens forhåndsvisningslink pegede på, i en dag; så længe den er der, tælles intet om dit besøg i butikkens tests.",
+    },
+  },
   "kaizen_replay_…": {
     // In the tab's session storage, only in a store that records visits and once a visitor allowed recordings (D656).
     provider: "Kaizena Flow",

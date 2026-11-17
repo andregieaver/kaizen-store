@@ -49,6 +49,8 @@ import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.
 import { redirectsNb } from "./admin-messages/redirects.nb";
 import { formsEn, type FormsMessages } from "./admin-messages/forms.en";
 import { formsNb } from "./admin-messages/forms.nb";
+import { formTemplatesEn, type FormTemplatesMessages } from "./admin-messages/form-templates.en";
+import { formTemplatesNb } from "./admin-messages/form-templates.nb";
 import type { ExperimentsMessages } from "./admin-messages/experiments.en";
 import { EXPERIMENTS_WORDS } from "./admin-words/experiments";
 import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
@@ -83,6 +85,8 @@ import { heatmapsNb } from "./admin-messages/heatmaps.nb";
 import { recordingsEn, type RecordingsMessages } from "./admin-messages/recordings.en";
 import { recordingsNb } from "./admin-messages/recordings.nb";
 import { animationNb } from "./admin-messages/animation.nb";
+import { automaticEn, type AutomaticMessages } from "./admin-messages/automatic.en";
+import { automaticNb } from "./admin-messages/automatic.nb";
 import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
 import { notificationsNb } from "./admin-messages/notifications.nb";
 import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
@@ -185,6 +189,7 @@ export type AdminAreaMessages = {
   heatmaps: HeatmapsMessages;
   recordings: RecordingsMessages;
   notifications: NotificationsMessages;
+  automatic: AutomaticMessages;
   legal: LegalMessages;
   staff: StaffMessages;
   billing: BillingMessages;
@@ -195,6 +200,7 @@ export type AdminAreaMessages = {
   design: DesignMessages;
   redirects: RedirectsMessages;
   forms: FormsMessages;
+  formTemplates: FormTemplatesMessages;
   moving: MovingMessages;
   experiments: ExperimentsMessages;
   products: ProductsMessages;
@@ -226,7 +232,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "automatic"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
@@ -278,6 +284,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   heatmaps: { en: heatmapsEn, nb: heatmapsNb },
   recordings: { en: recordingsEn, nb: recordingsNb },
   notifications: { en: notificationsEn, nb: notificationsNb },
+  automatic: { en: automaticEn, nb: automaticNb },
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },
   billing: { en: billingEn, nb: billingNb },
@@ -288,6 +295,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   design: { en: designEn, nb: designNb },
   redirects: { en: redirectsEn, nb: redirectsNb },
   forms: { en: formsEn, nb: formsNb },
+  formTemplates: { en: formTemplatesEn, nb: formTemplatesNb },
   moving: { en: movingEn, nb: movingNb },
   experiments: EXPERIMENTS_WORDS,
   products: { en: productsEn, nb: productsNb },

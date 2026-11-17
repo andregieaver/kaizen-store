@@ -2,6 +2,8 @@ import { NextResponse, userAgent, type NextFetchEvent, type NextRequest } from "
 
 import { ROLE_SEGMENT } from "@/lib/ab-site";
 import { parseStoreRequest, storeOfHost, variantPath } from "@/lib/ab-routing";
+import { PREVIEW_COOKIE, withPreview } from "@/lib/ab-preview";
+import { readPreviewCookie } from "@/lib/ab-preview-sign";
 import { dataCookieName } from "@/lib/experiments";
 import { mayBeHeld } from "@/lib/holding";
 import { HOUSE_SLUG, houseHostStore, houseServedPath, hostnameOf } from "@/lib/house-routing";
@@ -31,8 +33,9 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  *    The front door of a store in one country (`/` on its host, `/s/{store}`) may send a visitor to the language they chose before or the
  *    store's rule picks for them (D479, `languageAtDoor()`): a 307 for them alone, never for a crawler, never for any other address.
  * 3. A/B tests (D148, docs/ab-testing.md): sends a visitor who was given another version of a tested page to that version's page. It runs only for
- *    requests that carry the `kaizen_ab` cookie, which only a browser that accepted statistics cookies has; the tests are read only then. What it does
- *    is the pure decision in `variantPath()`, on the address as served (after job 1's rewrite).
+ *    requests that carry the `kaizen_ab` cookie, which only a browser that accepted statistics cookies has, or one that opened a preview link (phase
+ *    20, `src/lib/ab-preview.ts`: its signed cookie names one version of a running test, served to it alone, `noindex` and never cached); the tests
+ *    are read only then. What it does is the pure decision in `variantPath()`, on the address as served (after job 1's rewrite).
  *
  * 5. Private stores (D339, `docs/wave-7-storefront.md` E): a page request of a private store from a visitor without the unlock pass (the cookie
  *    `kaizen_unlock_{storeId}`, checked by its signature, `unlocks()`) is served the store's landing page instead (`privateGate()`, read from the
@@ -157,8 +160,22 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     if (!storeId) return plain();
     const tests = await runningExperiments(storeId);
     if (tests.length === 0) return plain();
-    const to = variantPath(request_, tests.map((t) => ({ id: t.id, kind: t.kind, slug: t.kind === "page" ? t.slug : null, segment: t.role ? ROLE_SEGMENT[t.role] : null })), request.cookies.get(dataCookieName(storeId))?.value);
-    return to ? rewrite(to) : plain();
+    // A preview link of this store's running test (D148 phase 20): its version for that test, never indexed or kept by a cache.
+    const preview = readPreviewCookie(unlockSecret(), request.cookies.get(PREVIEW_COOKIE)?.value);
+    const previewing =
+      preview && preview.storeId === storeId && tests.some((t) => t.id === preview.experiment && t.variants.some((v) => v.key === preview.version)) ? preview : null;
+    const data = request.cookies.get(dataCookieName(storeId))?.value;
+    const to = variantPath(
+      request_,
+      tests.map((t) => ({ id: t.id, kind: t.kind, slug: t.kind === "page" ? t.slug : null, segment: t.role ? ROLE_SEGMENT[t.role] : null })),
+      previewing ? withPreview(data, previewing) : data,
+    );
+    const response = to ? rewrite(to) : plain();
+    if (previewing) {
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+      response.headers.set("Cache-Control", "private, no-store");
+    }
+    return response;
   } catch (error) {
     console.error("[ab] proxy", error);
     return plain();

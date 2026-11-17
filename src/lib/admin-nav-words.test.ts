@@ -29,7 +29,8 @@ function navTexts(): string[] {
 
 /** Words that read the same in Norwegian: names and established terms. */
 // Dream Factory is a name, kept in Norwegian as on its own page.
-const SAME = new Set(["Design", "Team", "SEO", "Stripe", "WordPress", "Dream Factory", "Instagram"]);
+// "Leads" is the word Norwegian sellers use, as Deals' own Norwegian does (D475).
+const SAME = new Set(["Design", "Team", "SEO", "Stripe", "WordPress", "Dream Factory", "Instagram", "Leads"]);
 
 describe("the admin's navigation in Norwegian (D312 A2)", () => {
   it("has Norwegian for every text of the navigation", () => {

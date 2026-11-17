@@ -33,6 +33,15 @@ describe("guardrailEmail", () => {
     expect(email.text).toContain("/om-oss");
   });
 
+  it("says which guardrail stopped it, with what that guardrail counted (D148 phase 19)", () => {
+    const speed = renderEmail(guardrailEmail({ ...facts, guardrail: { kind: "speed", version: { n: 2000, bad: 400 }, original: { n: 2000, bad: 200 } } }));
+    expect(speed.subject).toBe('Your A/B test "Longer story" was stopped: slower pages in version B');
+    expect(speed.text).toContain("400 of 2,000 page loads of version B took more than 2.5 seconds to show their main content (20 %), against 200 of 2,000 of the original (10 %).");
+    const checkout = renderEmail(guardrailEmail({ ...facts, guardrail: { kind: "checkout", version: { n: 300, bad: 60 }, original: { n: 300, bad: 6 } } }, staffEmailsNb, "nb"));
+    expect(checkout.subject).toBe("A/B-testen «Longer story» ble stoppet: flere mislykkede betalinger i versjon B");
+    expect(checkout.text).toContain("60 av 300 besøkende som startet i kassen i versjon B, fikk en mislykket betaling (20 %), mot 6 av 300 i originalen (2 %).");
+  });
+
   it("says what changed for visitors and what the owner may do, and that nothing is applied by itself", () => {
     expect(email.text).toContain("everyone sees the page as it was before the test");
     expect(email.text).toContain("Kaizena Flow does not apply anything by itself");

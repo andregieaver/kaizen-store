@@ -21,6 +21,10 @@ const hint = "text-xs font-normal text-muted";
 
 export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; role?: string | null; partOnly?: boolean; buttons: { id: string; label: string }[]; forms?: { id: string; label: string }[] };
 /** The last test that was run on a target, for the chip beside it. */
+/** A page a visitor can go on to, for the goal "going on to a page" (D148 phase 20, `goalDestinations()`). */
+export type Destination = { id: string; title: string };
+/** A form outside the page under test, for the goal "sending a form" (phase 20): in the header, the footer or another page. */
+export type SiteForm = { id: string; label: string };
 export type TargetHistory = { status: "running" | "scheduled" | "stopped" | "applied" | "discarded"; winner: string | null };
 type Outcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
@@ -32,7 +36,12 @@ const SHARES = [
 
 /** The goals shown first, and the ones behind "More goals". */
 const FIRST_GOALS: readonly Goal[] = ["orders", "cart", "click"];
-const MORE_GOALS: readonly Goal[] = ["revenue", "checkout", "form"];
+const MORE_GOALS: readonly Goal[] = ["revenue", "checkout", "form", "page"];
+/**
+ * Kaizena Flow's own store (D148 phase 19) sells plans on its sign-up page, not goods in a cart: what it wants more of is sign-ups, then
+ * clicks and forms; there is nothing behind "More goals".
+ */
+const HOUSE_FIRST_GOALS: readonly Goal[] = ["signup", "click", "form"];
 const DAY = 86_400_000;
 
 const emptyTraffic: TrafficFacts = { counting: false, days: 0, consentShare: null, baselines: { orders: null, cart: null, checkout: null }, targets: {} };
@@ -51,6 +60,9 @@ export function ExperimentForm({
   part = null,
   traffic = emptyTraffic,
   history = {},
+  house = false,
+  destinations = [],
+  siteForms = [],
 }: {
   /** A part of the page chosen in the builder (D148): the test is of it, on the one page offered. */
   part?: PartInfo | null;
@@ -60,6 +72,12 @@ export function ExperimentForm({
   base: string;
   traffic?: TrafficFacts;
   history?: Record<string, TargetHistory>;
+  /** The store is Kaizena Flow's own (D484): it tests sign-ups to Kaizena Flow. */
+  house?: boolean;
+  /** The pages a visitor can go on to (phase 20). */
+  destinations?: Destination[];
+  /** Forms elsewhere on the site, each labelled with where it is (phase 20). */
+  siteForms?: SiteForm[];
 }) {
   const w = useAdminText("experiments");
   const f = w.form;
@@ -74,11 +92,15 @@ export function ExperimentForm({
     [given, traffic],
   );
   const [pageId, setPageId] = useState(pages[0]?.id ?? "");
-  const [goal, setGoal] = useState<Goal>(() => (pages[0] ? recommendedGoal(traffic, pages[0].id) : "orders"));
+  const [goal, setGoal] = useState<Goal>(() => (house ? "signup" : pages[0] ? recommendedGoal(traffic, pages[0].id) : "orders"));
+  const firstGoals = house ? HOUSE_FIRST_GOALS : FIRST_GOALS;
+  const moreGoalList: readonly Goal[] = house ? ["page"] : MORE_GOALS;
   const [goalChosen, setGoalChosen] = useState(false);
   const [moreGoals, setMoreGoals] = useState(false);
   const page = pages.find((p) => p.id === pageId);
   const [button, setButton] = useState("");
+  const [goalPage, setGoalPage] = useState("");
+  const [returning, setReturning] = useState<"all" | "new" | "returning">("all");
   const [name, setName] = useState("");
   const [hypothesis, setHypothesis] = useState("");
   const [share, setShare] = useState(1);
@@ -89,7 +111,7 @@ export function ExperimentForm({
   // A part's buttons and forms are the ones inside it; a page's, all of its own.
   const buttons = part ? part.buttons : (page?.buttons ?? []);
   const forms = part ? (part.forms ?? []) : (page?.forms ?? []);
-  const recommended = page ? recommendedGoal(traffic, page.id, share) : null;
+  const recommended = house ? "signup" : page ? recommendedGoal(traffic, page.id, share) : null;
   const estimateOf = (g: Goal) =>
     page ? goalEstimate({ facts: traffic, targetId: page.id, goal: g, trafficShare: share, versions: 2, relativeChange: change, words: w, numberLocale }) : null;
   const estimate = useMemo(() => estimateOf(goal), [goal, pageId, share, change, traffic]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,7 +125,7 @@ export function ExperimentForm({
     setPageId(id);
     setButton("");
     // The recommendation follows the page until the owner picks a goal themselves.
-    if (!goalChosen) setGoal(recommendedGoal(traffic, id, share));
+    if (!goalChosen && !house) setGoal(recommendedGoal(traffic, id, share));
   };
   const chooseGoal = (g: Goal) => {
     setGoal(g);
@@ -123,10 +145,12 @@ export function ExperimentForm({
         pageId,
         goal,
         goalBlock: GOAL_WORDS[goal].needsBlock ? button || null : null,
+        goalPage: GOAL_WORDS[goal].needsPage ? goalPage || null : null,
         trafficShare: share,
         audience: {
           ...(devices.length > 0 && devices.length < DEVICES.length && { devices }),
           ...(chosenMarkets.length > 0 && { markets: chosenMarkets }),
+          ...(returning !== "all" && { returning }),
         },
       });
       if (result.ok) router.push(`${base}/${result.id}`);
@@ -188,13 +212,15 @@ export function ExperimentForm({
 
   // Why there is no estimate, when there is none.
   const why = !estimate
-    ? goal === "click" || goal === "form" || goal === "revenue"
-      ? s.depends
-      : !traffic.counting
-        ? s.notCounting
-        : traffic.consentShare === null
-          ? s.noConsent
-          : s.noRateYet
+    ? goal === "signup"
+      ? s.dependsSignup
+      : goal === "click" || goal === "form" || goal === "page" || goal === "revenue"
+        ? s.depends
+        : !traffic.counting
+          ? s.notCounting
+          : traffic.consentShare === null
+            ? s.noConsent
+            : s.noRateYet
     : null;
   const span = estimate ? Math.max(42, estimate.days) : 42;
   // Too subtle a change for this traffic: the smallest one it could find within six weeks, offered in one press.
@@ -219,32 +245,62 @@ export function ExperimentForm({
       <Card title={s.goalTitle} className="flex flex-col gap-4" compact>
         <fieldset className="flex flex-col gap-3">
           <legend className="sr-only">{f.goalLegend}</legend>
-          <div className="grid gap-3 md:grid-cols-3">{FIRST_GOALS.map(goalCard)}</div>
-          {(moreGoals || MORE_GOALS.includes(goal)) && <div className="grid gap-3 md:grid-cols-3">{MORE_GOALS.map(goalCard)}</div>}
+          <div className="grid gap-3 md:grid-cols-3">{firstGoals.map(goalCard)}</div>
+          {(moreGoals || moreGoalList.includes(goal)) && moreGoalList.length > 0 && <div className="grid gap-3 md:grid-cols-3">{moreGoalList.map(goalCard)}</div>}
         </fieldset>
-        {!MORE_GOALS.includes(goal) && (
+        {moreGoalList.length > 0 && !moreGoalList.includes(goal) && (
           <Button kind="link" className="max-w-full self-start text-left whitespace-normal!" onClick={() => setMoreGoals(!moreGoals)}>
-            {moreGoals ? s.fewerGoals : `${s.moreGoals}: ${MORE_GOALS.map((g) => w.goals[g].label.toLowerCase()).join(", ")}`}
+            {moreGoals ? s.fewerGoals : `${s.moreGoals}: ${moreGoalList.map((g) => w.goals[g].label.toLowerCase()).join(", ")}`}
           </Button>
         )}
         {goal === "form" && (
           <label className={label}>
             {f.whichForm}
-            {forms.length === 0 ? (
+            {forms.length === 0 && siteForms.length === 0 ? (
               <span className={hint}>
                 {part ? f.noFormPart : f.noFormPage} {f.addFirst}
               </span>
             ) : (
               <select value={button} onChange={(e) => setButton(e.target.value)} className={input} required>
                 <option value="">{f.chooseForm}</option>
-                {forms.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.label}
-                  </option>
-                ))}
+                {/* The page's (or the part's) own forms first, then the ones elsewhere on the site (phase 20), each saying where it is. */}
+                {forms.length > 0 && (
+                  <optgroup label={f.onThisPage}>
+                    {forms.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {siteForms.length > 0 && (
+                  <optgroup label={f.elsewhere}>
+                    {siteForms.filter((b) => !forms.some((own) => own.id === b.id)).map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             )}
             <span className={hint}>{f.formCounts}</span>
+          </label>
+        )}
+        {goal === "page" && (
+          <label className={label}>
+            {f.whichPage}
+            <select value={goalPage} onChange={(e) => setGoalPage(e.target.value)} className={input} required data-goal-page>
+              <option value="">{f.choosePage}</option>
+              {destinations
+                .filter((d) => d.id !== pageId)
+                .map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.title}
+                  </option>
+                ))}
+            </select>
+            <span className={hint}>{f.pageCounts}</span>
           </label>
         )}
         {goal === "click" && (
@@ -383,6 +439,14 @@ export function ExperimentForm({
               </select>
             </label>
           </div>
+          <label className={label}>
+            {f.visitors}
+            <select value={returning} onChange={(e) => setReturning(e.target.value as "all" | "new" | "returning")} className={input} data-returning>
+              <option value="all">{f.visitorKinds.all}</option>
+              <option value="new">{f.visitorKinds.new}</option>
+              <option value="returning">{f.visitorKinds.returning}</option>
+            </select>
+          </label>
           <fieldset className="flex flex-wrap gap-4 text-sm">
             <legend className="mb-1 font-medium">{f.devices}</legend>
             {DEVICES.map((d) => (

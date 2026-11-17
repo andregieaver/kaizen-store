@@ -145,7 +145,7 @@ A store's admin lists each section's everyday pages in **Basic**, every account'
 top bar beside the AI manager (icons only below 1280 px), at the foot of the phone's menu and on Your account; the choice is kept on the
 account, so it follows the person, and the sidebar and the pages of cards follow it at once.
 
-- A page is in Basic when its `StoreItem` says `basic: true`, or when its section's tab leads to it. About two in five are (44 of the 114 pages
+- A page is in Basic when its `StoreItem` says `basic: true`, or when its section's tab leads to it. About two in five are (45 of the 115 pages
   on 17 November 2026); with only the online shop on, a store's Basic lists about 28 (Settings 11 of 33 when D454 was built).
 - Basic hides links, never pages. A link from Home, the setup checklist, a notice or the AI manager opens any page, and its sidebar then
   lists it where it lives, marked as the page being viewed.

@@ -5,6 +5,7 @@ import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.
 import { RFM_SEGMENTS, type RfmSegment } from "./analytics-customers";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "./marketing-consent";
 import { tagKey } from "./order-tags";
+import type { SmsSubscriberStatus } from "./sms";
 
 /**
  * Segments (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4): saved rules over a store's people, counted when read. Pure: the rules, their
@@ -22,6 +23,11 @@ const DAY_MS = 86_400_000;
 
 export type Consent = SubscriberStatus | "none";
 export const CONSENTS: readonly Consent[] = [...SUBSCRIBER_STATUSES, "none"];
+
+/** A person's consent to the store's texts (D565): their best number's status (subscribed, then waiting, then the latest), or none. */
+export type SmsConsent = SmsSubscriberStatus | "none";
+// Written out rather than read from `./sms`, which would bring the phone tables into the rule builder's bundle; the type holds them together.
+export const SMS_CONSENTS = ["subscribed", "pending", "unsubscribed", "none"] as const satisfies readonly SmsConsent[];
 
 /** What a segment is about: one email address of the store, with the facts its conditions read. */
 export type Person = {
@@ -44,38 +50,92 @@ export type Person = {
   rfm: RfmSegment | null;
   /** Tag keys. */
   tags: string[];
+  /*
+   * The facts below (ecosystem plan E3.6, D718) are read only when a rule asks for them (`segmentNeeds()`) and are absent otherwise: a
+   * condition on a fact that was not read holds for nobody, as one on money in a currency with no rate does.
+   */
+  /** Product id → when a paid order with it was last placed (ISO), for the products the rules name; a product not in it was not bought. */
+  boughtProducts?: Record<string, string>;
+  /** Category id → the same, for the product categories the rules name: a product in the category or in one below it counts. */
+  boughtCategories?: Record<string, string>;
+  /** Their own deals (D464), while Deals is on: how many are open and how many were won. */
+  deals?: { open: number; won: number };
+  /** Their support conversations (D216): when the latest had its last message, and whether they rated one bad. */
+  support?: { lastAt: string | null; ratedBad: boolean };
+  /** The reviews they wrote as buyers (D301), while Product reviews is on: how many, and the fewest stars among them. */
+  reviews?: { count: number; lowestStars: number | null };
+  /** Their subscriptions (D25) and subscription boxes (D102) running now, each while its feature is on. */
+  subscriptions?: number;
+  sms?: SmsConsent;
 };
 
 const count = z.number().int().min(0).max(1_000_000);
+/** What an empty list says (`marketingProblem()` says it in the account's language): the editor counts as conditions change, so it is seen. */
+const CHOOSE_SOME = "Choose at least one.";
 const days = z.number().int().min(1).max(3650);
-const codes = (max: number) => z.array(z.string().regex(/^[a-z]{2}$/i).transform((c) => c.toLowerCase())).min(1).max(max);
+const codes = (max: number) => z.array(z.string().regex(/^[a-z]{2}$/i).transform((c) => c.toLowerCase())).min(1, CHOOSE_SOME).max(max);
 
-export const conditionSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("consent"), statuses: z.array(z.enum(CONSENTS as [Consent, ...Consent[]])).min(1).max(4) }),
+/** The twelve conditions segments had before ecosystem plan E3.6 (D718); the AI manager's segment tools take only these (`toolSegmentRulesSchema`). */
+const FIRST_CONDITIONS = [
+  z.object({ kind: z.literal("consent"), statuses: z.array(z.enum(CONSENTS as [Consent, ...Consent[]])).min(1, CHOOSE_SOME).max(4) }),
   z.object({ kind: z.literal("orders"), op: z.enum(["atLeast", "atMost", "exactly"]), value: count }),
   z.object({ kind: z.literal("spent"), op: z.enum(["atLeast", "atMost"]), minor: z.number().int().min(0).max(1_000_000_000_00) }),
   z.object({ kind: z.literal("lastOrder"), op: z.enum(["within", "before", "never"]), days: days.optional() }),
   z.object({ kind: z.literal("firstOrder"), op: z.enum(["within", "before"]), days }),
-  z.object({ kind: z.literal("rfm"), groups: z.array(z.enum(RFM_SEGMENTS)).min(1).max(RFM_SEGMENTS.length) }),
+  z.object({ kind: z.literal("rfm"), groups: z.array(z.enum(RFM_SEGMENTS)).min(1, CHOOSE_SOME).max(RFM_SEGMENTS.length) }),
   z.object({ kind: z.literal("country"), codes: codes(60) }),
   z.object({ kind: z.literal("language"), codes: codes(40) }),
-  z.object({ kind: z.literal("group"), ids: z.array(z.uuid()).min(1).max(50) }),
+  z.object({ kind: z.literal("group"), ids: z.array(z.uuid()).min(1, CHOOSE_SOME).max(50) }),
   z.object({ kind: z.literal("company"), has: z.boolean() }),
   z.object({ kind: z.literal("account"), has: z.boolean() }),
-  z.object({ kind: z.literal("tag"), tags: z.array(z.string().max(80)).min(1).max(20) }),
-]);
+  z.object({ kind: z.literal("tag"), tags: z.array(z.string().max(80)).min(1, CHOOSE_SOME).max(20) }),
+] as const;
+
+/** The most products, and categories, one condition names. */
+export const PRODUCTS_PER_CONDITION = 50;
+export const CATEGORIES_PER_CONDITION = 20;
+
+/**
+ * The conditions ecosystem plan E3.6 (D718) added: what a person bought (products, or a category's products; ever or in the last days; or
+ * not), their deals, support conversations, reviews, subscriptions and consent to texts. Email engagement is not one: the store keeps no opens,
+ * and a broadcast's clicks are counted per link without the person (D297 5.5).
+ */
+const MORE_CONDITIONS = [
+  z.object({ kind: z.literal("bought"), has: z.boolean(), products: z.array(z.uuid()).min(1, CHOOSE_SOME).max(PRODUCTS_PER_CONDITION), days: days.optional() }),
+  z.object({ kind: z.literal("boughtCategory"), has: z.boolean(), categories: z.array(z.uuid()).min(1, CHOOSE_SOME).max(CATEGORIES_PER_CONDITION), days: days.optional() }),
+  z.object({ kind: z.literal("deal"), status: z.enum(["open", "won"]) }),
+  z.object({ kind: z.literal("support"), op: z.enum(["within", "ratedBad"]), days: days.optional() }),
+  z.object({ kind: z.literal("review"), maxStars: z.number().int().min(1).max(5).optional() }),
+  z.object({ kind: z.literal("subscription"), has: z.boolean() }),
+  z.object({ kind: z.literal("sms"), statuses: z.array(z.enum(SMS_CONSENTS)).min(1, CHOOSE_SOME).max(SMS_CONSENTS.length) }),
+] as const;
+
+export const conditionSchema = z.discriminatedUnion("kind", [...FIRST_CONDITIONS, ...MORE_CONDITIONS]);
 export type Condition = z.infer<typeof conditionSchema>;
 export type ConditionKind = Condition["kind"];
 
+/** What a rule set must say beyond its shape: days where a condition counts them, tags that are tags. */
+function checkRules<T extends { conditions: readonly Condition[] }>(rules: T, ctx: z.RefinementCtx<T>) {
+  rules.conditions.forEach((c, i) => {
+    const noDays = (c.kind === "lastOrder" && c.op !== "never") || (c.kind === "support" && c.op === "within");
+    if (noDays && c.days === undefined) ctx.addIssue({ code: "custom", path: ["conditions", i, "days"], message: "Give a number of days." });
+    if (c.kind === "tag" && c.tags.some((t) => tagKey(t) === null)) ctx.addIssue({ code: "custom", path: ["conditions", i, "tags"], message: "A tag is not valid." });
+  });
+}
+
 export const segmentRulesSchema = z
   .object({ match: z.enum(["all", "any"]), conditions: z.array(conditionSchema).max(CONDITIONS_MAX) })
-  .superRefine((rules, ctx) => {
-    rules.conditions.forEach((c, i) => {
-      if (c.kind === "lastOrder" && c.op !== "never" && c.days === undefined) ctx.addIssue({ code: "custom", path: ["conditions", i, "days"], message: "Give a number of days." });
-      if (c.kind === "tag" && c.tags.some((t) => tagKey(t) === null)) ctx.addIssue({ code: "custom", path: ["conditions", i, "tags"], message: "A tag is not valid." });
-    });
-  });
+  .superRefine(checkRules);
 export type SegmentRules = z.infer<typeof segmentRulesSchema>;
+
+/**
+ * The rules as the AI manager's `count_segment` and `save_segment` take them: a frozen copy of the conditions before ecosystem plan E3.6
+ * (D718), so the tools' input schema, and the agents' eval recorded on it (D391), stay as they were. The release step opens the new
+ * conditions to the tools (they take `segmentRulesSchema` again) with a new eval run. Every rule set it takes is a `SegmentRules`.
+ */
+export const toolSegmentRulesSchema = z
+  .object({ match: z.enum(["all", "any"]), conditions: z.array(z.discriminatedUnion("kind", [...FIRST_CONDITIONS])).max(CONDITIONS_MAX) })
+  .superRefine(checkRules);
 
 export const segmentInput = z.object({
   name: z.string().trim().min(1, "Give the segment a name.").max(80),
@@ -84,6 +144,14 @@ export const segmentInput = z.object({
 export type SegmentInput = z.infer<typeof segmentInput>;
 
 const ageDays = (iso: string | null, today: Date): number | null => (iso ? Math.floor((today.getTime() - new Date(iso).getTime()) / DAY_MS) : null);
+
+/** Whether a fact's day is in the last `days` days at `today` (no `days`: whenever it was). */
+const inLast = (iso: string | null | undefined, days: number | undefined, today: Date): boolean => {
+  if (!iso) return false;
+  if (days === undefined) return true;
+  const age = ageDays(iso, today);
+  return age !== null && age < days;
+};
 
 /** Whether one condition holds for a person, at `today`. A fact that is not known (money in a currency with no rate) holds for no condition. */
 export function holds(c: Condition, p: Person, today: Date): boolean {
@@ -122,6 +190,28 @@ export function holds(c: Condition, p: Person, today: Date): boolean {
       const wanted = c.tags.map(tagKey).filter((k): k is string => k !== null);
       return wanted.some((k) => p.tags.includes(k));
     }
+    case "bought":
+    case "boughtCategory": {
+      const last = c.kind === "bought" ? p.boughtProducts : p.boughtCategories;
+      if (!last) return false;
+      const ids = c.kind === "bought" ? c.products : c.categories;
+      const hit = ids.some((id) => inLast(last[id], c.days, today));
+      return c.has ? hit : !hit;
+    }
+    case "deal":
+      if (!p.deals) return false;
+      return c.status === "open" ? p.deals.open > 0 : p.deals.won > 0;
+    case "support":
+      if (!p.support) return false;
+      return c.op === "ratedBad" ? p.support.ratedBad : inLast(p.support.lastAt, c.days ?? 0, today);
+    case "review":
+      if (!p.reviews || p.reviews.count === 0) return false;
+      return c.maxStars === undefined || (p.reviews.lowestStars !== null && p.reviews.lowestStars <= c.maxStars);
+    case "subscription":
+      if (p.subscriptions === undefined) return false;
+      return (p.subscriptions > 0) === c.has;
+    case "sms":
+      return p.sms !== undefined && c.statuses.includes(p.sms);
   }
 }
 
@@ -129,6 +219,43 @@ export function holds(c: Condition, p: Person, today: Date): boolean {
 export function matches(rules: SegmentRules, p: Person, today: Date): boolean {
   if (rules.conditions.length === 0) return true;
   return rules.match === "all" ? rules.conditions.every((c) => holds(c, p, today)) : rules.conditions.some((c) => holds(c, p, today));
+}
+
+/**
+ * What the people reader must read for some rule sets (ecosystem plan E3.6, D718): the customer types, the products and categories the rules
+ * name, and each family of facts a condition asks for. Nothing more is read, so a segment of the first twelve conditions costs what it did.
+ */
+export type SegmentNeeds = {
+  rfm: boolean;
+  /** The product ids and category ids conditions name, each once. */
+  products: string[];
+  categories: string[];
+  deals: boolean;
+  support: boolean;
+  reviews: boolean;
+  subscriptions: boolean;
+  sms: boolean;
+};
+
+export function segmentNeeds(sets: readonly SegmentRules[]): SegmentNeeds {
+  const conditions = sets.flatMap((rules) => rules.conditions);
+  const kinds = new Set(conditions.map((c) => c.kind));
+  const products = new Set<string>();
+  const categories = new Set<string>();
+  for (const c of conditions) {
+    if (c.kind === "bought") for (const id of c.products) products.add(id);
+    if (c.kind === "boughtCategory") for (const id of c.categories) categories.add(id);
+  }
+  return {
+    rfm: kinds.has("rfm"),
+    products: [...products],
+    categories: [...categories],
+    deals: kinds.has("deal"),
+    support: kinds.has("support"),
+    reviews: kinds.has("review"),
+    subscriptions: kinds.has("subscription"),
+    sms: kinds.has("sms"),
+  };
 }
 
 export type SegmentCount = { people: number; subscribed: number; moneyUnknown: number };
@@ -158,8 +285,23 @@ export type DescribeContext = {
   money: (minor: number) => string;
   groupName?: (id: string) => string | undefined;
   countryName?: (code: string) => string;
+  /** A product's and a product category's name (ecosystem plan E3.6, D718); without them a condition says how many it names. */
+  productName?: (id: string) => string | undefined;
+  categoryName?: (id: string) => string | undefined;
   words?: DescribeWords;
 };
+
+/** The products or categories a condition names, in words: by name where the reader knows them, else how many. */
+function namedList(ids: readonly string[], name: ((id: string) => string | undefined) | undefined, gone: string, chosen: { one: string; many: string }, w: DescribeWords): string {
+  if (!name) return countWords(ids.length, chosen);
+  return or(
+    ids.map((id) => {
+      const found = name(id);
+      return found ? fillWords(w.named, { name: found }) : gone;
+    }),
+    w,
+  );
+}
 
 /** A condition in staff's words: *Ordered at least 2 times*. */
 export function describeCondition(c: Condition, ctx: DescribeContext): string {
@@ -191,6 +333,26 @@ export function describeCondition(c: Condition, ctx: DescribeContext): string {
       return c.has ? w.account : w.noAccount;
     case "tag":
       return fillWords(w.tag, { list: or(c.tags.map((tag) => fillWords(w.quoted, { tag })), w) });
+    case "bought": {
+      const list = namedList(c.products, ctx.productName, w.goneProduct, w.chosenProducts, w);
+      const template = c.has ? (c.days === undefined ? w.boughtAny : w.boughtWithin) : c.days === undefined ? w.boughtNot : w.boughtNotWithin;
+      return fillWords(template, { list, days: days(c.days ?? 0) });
+    }
+    case "boughtCategory": {
+      const list = namedList(c.categories, ctx.categoryName, w.goneCategory, w.chosenCategories, w);
+      const template = c.has ? (c.days === undefined ? w.fromAny : w.fromWithin) : c.days === undefined ? w.fromNot : w.fromNotWithin;
+      return fillWords(template, { list, days: days(c.days ?? 0) });
+    }
+    case "deal":
+      return c.status === "open" ? w.dealOpen : w.dealWon;
+    case "support":
+      return c.op === "ratedBad" ? w.supportBad : fillWords(w.supportWithin, { days: days(c.days ?? 0) });
+    case "review":
+      return c.maxStars === undefined ? w.reviewAny : fillWords(w.reviewAtMost, { stars: countWords(c.maxStars, w.stars) });
+    case "subscription":
+      return c.has ? w.subscription : w.noSubscription;
+    case "sms":
+      return fillWords(w.sms, { list: or(c.statuses.map((s) => w.smsWords[s]), w) });
   }
 }
 
@@ -243,6 +405,20 @@ export function newCondition(kind: ConditionKind): Condition {
       return { kind, has: true };
     case "tag":
       return { kind, tags: [""] };
+    case "bought":
+      return { kind, has: true, products: [] };
+    case "boughtCategory":
+      return { kind, has: true, categories: [] };
+    case "deal":
+      return { kind, status: "open" };
+    case "support":
+      return { kind, op: "within", days: 30 };
+    case "review":
+      return { kind };
+    case "subscription":
+      return { kind, has: true };
+    case "sms":
+      return { kind, statuses: ["subscribed"] };
   }
 }
 
@@ -259,4 +435,43 @@ export const CONDITION_KIND_WORDS: Record<ConditionKind, string> = {
   company: "Company account",
   account: "Account",
   tag: "Tag",
+  bought: "Bought a product",
+  boughtCategory: "Bought from a category",
+  deal: "Deals",
+  support: "Support",
+  review: "Reviews",
+  subscription: "Subscription",
+  sms: "Text consent",
 };
+
+/**
+ * The rule builder's list of conditions in groups (ecosystem plan E3.6, D718), in the order Homer looks for them: what they bought, how they
+ * order, who they are, how they may be reached, and how they deal with the store.
+ */
+export const CONDITION_GROUPS: readonly { id: "bought" | "orders" | "who" | "reach" | "talks"; kinds: readonly ConditionKind[] }[] = [
+  { id: "bought", kinds: ["bought", "boughtCategory", "subscription"] },
+  { id: "orders", kinds: ["orders", "spent", "lastOrder", "firstOrder", "rfm"] },
+  { id: "who", kinds: ["country", "language", "group", "company", "account", "tag"] },
+  { id: "reach", kinds: ["consent", "sms"] },
+  { id: "talks", kinds: ["deal", "support", "review"] },
+];
+
+/** What a store has switched on or set up, for which conditions the rule builder offers (a condition behind a feature only while it is on). */
+export type ConditionOffer = { rfmReady: boolean; deals: boolean; reviews: boolean; subscriptions: boolean; sms: boolean };
+
+export function conditionOffered(kind: ConditionKind, offer: ConditionOffer): boolean {
+  switch (kind) {
+    case "rfm":
+      return offer.rfmReady;
+    case "deal":
+      return offer.deals;
+    case "review":
+      return offer.reviews;
+    case "subscription":
+      return offer.subscriptions;
+    case "sms":
+      return offer.sms;
+    default:
+      return true;
+  }
+}

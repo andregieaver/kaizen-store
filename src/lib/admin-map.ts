@@ -590,6 +590,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a deal for a customer or company", "Move a deal to the next stage", "Mark a deal won or lost"],
     feature: "sales",
   }),
+  store("leads", "/leads", "Leads", "Sales", "The leads inbox: people who asked for something in the last 90 days (a quote, a question or a form's message, a chat, a subscription) and are not customers yet, one row a person, each request opening where it is kept. Make a deal of a lead, or dismiss it until they ask again.", {
+    keywords: ["leads", "prospects", "enquiries", "inquiries", "follow up", "potential customers"],
+    tasks: ["Make a deal of a lead", "Dismiss a lead", "Open what a lead asked for"],
+    feature: "sales",
+  }),
   store("deal.new", "/deals/new", "New deal", "Sales", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { feature: "sales" }),
   store("deal", "/deals/[dealId]", "Deal", "Sales", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", {
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
@@ -1035,6 +1040,10 @@ const PAGES: readonly AdminPage[] = [
   store("staging", "/staging", "Staging", "Website", "Staging (D358): a set of page drafts, a theme installed but not live and staged menu changes, each compared with what visitors see (what changed in a page, the areas a look differs in), made live together through the builder's Publish, the theme switch and the menu saver; the last set's outcome.", {
     keywords: ["staging", "release", "publish together", "compare", "versions", "preview", "launch"],
   }),
+  store("automatic", "/settings/automatic", "Automatic", "Settings", "Everything in the store that runs by itself, in plain lines with when each last did: what happens, in order, when an order is paid (the confirmation email, workflows, rules not moved yet, the staff's email and devices, endpoints and services), and every workflow, email automation, cart reminder, review request, staff email, endpoint, service and the autopilot's reacting that is on, each linked to where it is changed; the details, and what is off, behind a disclosure.", {
+    keywords: ["automatic", "automation", "what runs", "by itself", "order paid", "overview", "workflows", "alerts"],
+    tasks: ["See what happens when an order is paid", "See everything that runs by itself"],
+  }),
   store("workflows", "/settings/workflows", "Workflows", "Store", "Workflows (D356): a trigger (an event of the store or a schedule), conditions on its fields and actions (tag the order or customer, email staff, post to Slack, send to an own endpoint, ask the AI manager), saved off, tested on the latest event, then switched on; each one's recent runs.", {
     keywords: ["workflow", "automation", "flow", "trigger", "schedule", "rules"],
   }),
@@ -1475,8 +1484,8 @@ export function pageOffered(page: AdminPage, flags: SiteFlags): boolean {
   return true;
 }
 
-/** The pages of the areas one works in: a store's with account pages, or the platform's. */
-export function pagesFor(area: "store" | "platform", flags: SiteFlags = {}): AdminPage[] {
+/** The pages of the areas one works in: a store's with account pages, the platform's, or the owner's level alone (its account pages). */
+export function pagesFor(area: AdminArea, flags: SiteFlags = {}): AdminPage[] {
   return ADMIN_PAGES.filter((page) => (page.area === area || page.area === "account") && pageOffered(page, flags));
 }
 
@@ -1489,7 +1498,7 @@ const words = (text: string) =>
     .filter((w) => w.length > 1);
 
 /** The pages that best match what someone asks about, best first. */
-export function findPages(area: "store" | "platform", query: string, flags: SiteFlags = {}, limit = 5): AdminPage[] {
+export function findPages(area: AdminArea, query: string, flags: SiteFlags = {}, limit = 5): AdminPage[] {
   const asked = words(query);
   if (asked.length === 0) return [];
   const scored = pagesFor(area, flags).map((page) => {
@@ -1564,9 +1573,15 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * Pages kept out of the AI manager's prompt for one deploy (`docs/ci-migrations.md`, D391): they arrived on main in the same push as a
  * migration, which deploys only once the agents' eval replay passes, and the replay can only be recorded again on production running the
  * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
- * recorded again on Platform → AI. Empty but for that.
+ * recorded again on Platform → AI. Empty but for that, and for a page that came without a new recording of the eval: Leads (ecosystem plan
+ * E2.8, D713) joins the prompt with the CRM tools of E2.5, which record the eval again.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
+  // Leads (ecosystem plan E2.8, D713): joins the map with the CRM tools, in the push that records the eval with both (`HELD_FOR_EVAL`).
+  "store:leads",
+  // Settings → Automatic (ecosystem plan E3.3, D718): joins the map in the release step that opens draft_workflow, with the eval recorded.
+  "store:automatic",
+]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {

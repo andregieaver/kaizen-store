@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { CONSENT_CHANGED_EVENT, consentCookieName, decodeConsent } from "@/lib/cookie-consent";
-import { dataCookieName, decodeAssignments, MARKER_COOKIE } from "@/lib/experiments";
+import { dataCookieName, decodeAssignments, MARKER_COOKIE } from "@/lib/ab-cookie";
 
 const read = (name: string): string | undefined => {
   const hit = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));

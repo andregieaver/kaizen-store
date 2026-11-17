@@ -111,6 +111,27 @@ describe("the briefing (D348)", () => {
     expect(nb.text).toContain("Forbered innkjøp");
   });
 
+  it("lists what waits on the store's people from the attention source, before the checkup, each with its page (ecosystem plan E2.1)", () => {
+    const attention = [
+      { kind: "disputes" as const, text: "A customer's bank disputed a payment, and it needs your answer within 3 days.", href: "/admin/shop/orders/o1/dispute/d1", action: "Answer", urgent: true },
+      { kind: "activities_today" as const, text: "2 of the team's calls, meetings and tasks are due today.", href: "/admin/shop?today=team", action: "See today", urgent: false },
+    ];
+    const email = summaryEmail(store, "daily", figures, "en", {
+      alerts: [],
+      attention,
+      checkup: [{ key: "drafts", count: 3, what: "", page: "/products" }],
+      targets: [],
+      note: null,
+    });
+    expect(email.text).toContain("Waiting for you:");
+    expect(email.text).toMatch(/needs your answer within 3 days\.: Answer \(http[^)]*\/admin\/shop\/orders\/o1\/dispute\/d1\)/);
+    expect(email.text).toMatch(/due today\.: See today \(http[^)]*\/admin\/shop\?today=team\)/);
+    expect(email.text.indexOf("Waiting for you:")).toBeLessThan(email.text.indexOf("From the store checkup:"));
+    // Nothing waits: no heading.
+    expect(summaryEmail(store, "daily", figures, "en", { alerts: [], attention: [], checkup: [], targets: [], note: null }).text).not.toContain("Waiting for you:");
+    expect(summaryEmail(store, "daily", figures, "nb", { alerts: [], attention, checkup: [], targets: [], note: null }).text).toContain("Venter på deg:");
+  });
+
   it("stays the summary it was when given no briefing", () => {
     const email = summaryEmail(store, "daily", { ...figures, before: null }, "en");
     expect(email.subject).toBe("Shop: daily summary for 2026-10-25");

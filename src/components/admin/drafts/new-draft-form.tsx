@@ -11,7 +11,18 @@ import { useAdminText } from "@/components/admin/admin-text";
  * Where a draft starts (wave 3, D173, `docs/wave-3-orders.md` 2.4): the market, because it decides the prices, the currency and the VAT country. A country the store sells to, shown in a language
  * and a currency the store offers; the address shown (`no-en-eur`) is what the server resolves again. The form works without a script for the country's own language and currency.
  */
-export function NewDraftForm({ options, action, defaultCountry }: { options: DraftMarketOptions; action: (state: FormState, form: FormData) => Promise<FormState>; defaultCountry: string }) {
+export function NewDraftForm({
+  options,
+  action,
+  defaultCountry,
+  carry = {},
+}: {
+  options: DraftMarketOptions;
+  action: (state: FormState, form: FormData) => Promise<FormState>;
+  defaultCountry: string;
+  /** The customer and the deal a quote is made for (ecosystem plan E2.6, D713), carried to the action. */
+  carry?: { customer?: string; deal?: string };
+}) {
   const w = useAdminText("drafts").newForm;
   const first = options.countries.find((c) => c.code === defaultCountry) ?? options.countries[0];
   const [country, setCountry] = useState(first?.code ?? "");
@@ -26,6 +37,8 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
   }
   return (
     <ActionForm action={action} className="flex max-w-xl flex-col gap-4">
+      {carry.customer && <input type="hidden" name="customer" value={carry.customer} />}
+      {carry.deal && <input type="hidden" name="deal" value={carry.deal} />}
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
           {w.country}

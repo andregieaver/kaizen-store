@@ -15,6 +15,7 @@ import { can, type PermissionKey } from "@/lib/permissions";
 
 import { limitsReachedCount } from "./usage";
 import { usageRows } from "./ai-usage";
+import { queueCounts, queueFiguresOf } from "./attention";
 import type { Account } from "./auth";
 import { col, typedRows } from "./typed-rows";
 import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
@@ -97,9 +98,14 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const customerIds = idsWith(storeRows, "customers:read");
   // Support (D216, step 14): conversations waiting for a person, for the stores where the member may read the desk. Counts only.
   const supportIds = idsWith(storeRows, "support:read");
+  // The queues of ecosystem plan E2.1 (`src/server/attention.ts`): disputes need `orders:read` (their page's key), the AI manager's
+  // decisions are the owner's (the Autopilot page's), leads and the day's activities need `customers:read` while Deals is on (the
+  // leads view's and the *Today* card's), and blog comments `website:read` (the Comments page's).
+  const dealIds = new Set(storeRows.filter((r) => featureOn(((r.features ?? []) as unknown[]).map(String), "sales")).map((r) => String(r.id)));
+  const salesCustomerIds = customerIds.filter((id) => dealIds.has(id));
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows, requestRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows, requestRows, queues] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -270,6 +276,10 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
             group by a.store_id
           `,
         ),
+    queueCounts(
+      { disputes: orderIds, decisions: ownerIds, leads: salesCustomerIds, activities: salesCustomerIds, comments: idsWith(storeRows, "website:read") },
+      account.id,
+    ),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -373,6 +383,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(booksBy.has(id) ? { books: booksBy.get(id) } : {}),
       ...(turnoverBy.has(id) ? { turnover: turnoverBy.get(id) } : {}),
       ...((limitsBy.get(id) ?? 0) > 0 ? { limitsReached: limitsBy.get(id) } : {}),
+      ...queueFiguresOf(id, queues),
     };
   });
 

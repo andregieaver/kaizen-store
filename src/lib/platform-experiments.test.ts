@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { attentionOrder, flagsOf, overviewOf, type TestLine } from "./platform-experiments";
+import { adviceFor, attentionOrder, flagsOf, overviewOf, type TestLine } from "./platform-experiments";
 
 const now = new Date("2026-10-20T12:00:00Z");
 const day = (n: number) => new Date(now.getTime() - n * 86_400_000);
@@ -15,6 +15,10 @@ describe("flagsOf", () => {
   it("names the version that lowers orders", () => {
     expect(flagsOf(running({ harmed: "b" }), now)[0]).toMatchObject({ kind: "harmed" });
     expect(flagsOf(running({ harmed: "b" }), now)[0].words).toContain("Version B");
+    // Which guardrail it is (D148 phase 19); without a kind it is orders, as every stop before then.
+    expect(flagsOf(running({ harmed: "b" }), now)[0].words).toContain("clearly lowers orders");
+    expect(flagsOf(running({ harmed: "b", harmedBy: "speed" }), now)[0].words).toContain("loads clearly slower than the original");
+    expect(flagsOf(running({ harmed: "b", harmedBy: "checkout" }), now)[0].words).toContain("fails clearly more payments at checkout");
   });
 
   it("flags a broken split", () => expect(flagsOf(running({ verdict: "broken" }), now).map((f) => f.kind)).toEqual(["broken"]));
@@ -69,5 +73,13 @@ describe("attentionOrder and overviewOf", () => {
   it("counts by status, what needs a look and the stores with something running", () => {
     const tests = [{ ...make("running", 1, 3), storeId: "a" }, { ...make("running", 0, 3), storeId: "a" }, { ...make("running", 0, 3), storeId: "b" }, make("scheduled", 0, 0), make("stopped", 0, 3)];
     expect(overviewOf(tests)).toEqual({ running: 3, scheduled: 1, stopped: 1, needAttention: 1, stores: 2 });
+  });
+});
+
+describe("the advice on a guardrail's stop (D148 phase 19)", () => {
+  it("names the guardrail that stopped it", () => {
+    expect(adviceFor({ status: "stopped", verdict: null, guardrail: true })[0]).toContain("clearly selling less");
+    expect(adviceFor({ status: "stopped", verdict: null, guardrail: true, guardrailKind: "speed" })[0]).toContain("loaded clearly slower");
+    expect(adviceFor({ status: "stopped", verdict: null, guardrail: true, guardrailKind: "checkout" })[0]).toContain("payments failed at checkout");
   });
 });

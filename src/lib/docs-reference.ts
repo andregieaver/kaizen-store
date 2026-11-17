@@ -35,6 +35,7 @@ export const TAG_AREAS: Record<string, DocArea> = {
   Reports: "analytics",
   Settings: "settings",
   "Webhook endpoints": "webhooks",
+  Forms: "website",
 };
 
 /** What a webhook topic is about, as the docs' areas. */
@@ -56,8 +57,16 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   refund: "payments",
   erasure: "customers",
   contract: "customers",
+  form_response: "customers",
   experiment: "marketing",
   installation: "apps",
+  // Ecosystem plan E3.2 (D718).
+  deal: "customers",
+  subscriber: "marketing",
+  conversation: "customers",
+  checkout: "orders",
+  work_client: "payments",
+  work_invoice: "payments",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];

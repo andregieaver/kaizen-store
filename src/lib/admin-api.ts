@@ -36,6 +36,9 @@ export const API_SCOPES = [
   // D440: the store's settings and its saved reports, read.
   "settings:read",
   "reports:read",
+  // D705 F5: the store's forms read, made and changed; their responses read with the right to read customers.
+  "forms:read",
+  "forms:write",
   // The powers (D440).
   "products:publish",
   "orders:send",
@@ -143,6 +146,6 @@ export const retryAfter = (now: Date = new Date()): number => 60 - now.getUTCSec
 export const TOKEN_KINDS = {
   warehouse: ["products:read", "inventory:read", "inventory:write", "orders:read", "orders:write"],
   accounting: ["products:read", "orders:read", "customers:read", "settings:read", "reports:read"],
-  read: ["products:read", "inventory:read", "orders:read", "customers:read", "discounts:read", "checkout:read", "content:read", "settings:read", "reports:read"],
+  read: ["products:read", "inventory:read", "orders:read", "customers:read", "discounts:read", "checkout:read", "content:read", "settings:read", "reports:read", "forms:read"],
 } as const satisfies Record<string, readonly ApiScope[]>;
 export type TokenKind = keyof typeof TOKEN_KINDS | "custom";

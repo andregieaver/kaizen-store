@@ -7,6 +7,7 @@ import { revalidateTag, updateTag } from "next/cache";
 import { db } from "@/db/client";
 import { isPartOnlyPlace, targetKindOf, TESTED_PLACES, type TargetKind } from "@/lib/ab-site";
 import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
+import { isStoppingGuardrail, type StoppingGuardrail } from "@/lib/experiment-guardrails";
 import { isLegalRole } from "@/lib/legal-roles";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
@@ -16,11 +17,14 @@ import {
   evenSplit,
   GOAL_WORDS,
   isGoal,
+  isHouseGoal,
   MAX_RUNNING_PER_STORE,
   MAX_VARIANTS,
   MIN_DAYS,
   NEXT_STATUSES,
   parseAudience,
+  PLAN_WITHOUT_TESTS,
+  runningAllowed,
   startProblems,
   type Audience,
   type ExperimentStatus,
@@ -29,6 +33,9 @@ import {
 } from "@/lib/experiments";
 
 import { audit, type Account } from "./auth";
+import { houseStoreId } from "./house-customers";
+import { limitFor } from "./limits";
+import { owned } from "./owned";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
 import { ownerLanguages, pagesTag, savePage } from "./pages";
@@ -81,6 +88,8 @@ export type ExperimentInfo = {
   status: ExperimentStatus;
   goal: Goal;
   goalBlock: string | null;
+  /** For the goal `page` (D148 phase 20): the page a visitor should go on to, by its id. */
+  goalPage: string | null;
   trafficShare: number;
   audience: Audience;
   minDays: number;
@@ -89,6 +98,8 @@ export type ExperimentInfo = {
   startedAt: string | null;
   stoppedAt: string | null;
   stopReason: string | null;
+  /** Which guardrail stopped it (D148 phase 19); null for any other stop, and for guardrail stops made before phase 19 (which were all orders). */
+  stopGuardrail: StoppingGuardrail | null;
   appliedVariant: string | null;
   /** When the test first had an answer and its owners were told (D662). */
   answeredAt: string | null;
@@ -131,6 +142,7 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   status: row.status as ExperimentStatus,
   goal: row.primary_goal as Goal,
   goalBlock: typeof (row.goal_params as { block?: unknown })?.block === "string" ? String((row.goal_params as { block: string }).block) : null,
+  goalPage: typeof (row.goal_params as { page?: unknown })?.page === "string" ? String((row.goal_params as { page: string }).page) : null,
   trafficShare: Number(row.traffic_share),
   audience: parseAudience(row.audience),
   minDays: Number(row.min_days),
@@ -139,6 +151,7 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   startedAt: iso(row.started_at),
   stoppedAt: iso(row.stopped_at),
   stopReason: row.stop_reason ? String(row.stop_reason) : null,
+  stopGuardrail: isStoppingGuardrail(row.stop_guardrail) ? row.stop_guardrail : null,
   appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
   answeredAt: row.answered_at ? new Date(String(row.answered_at)).toISOString() : null,
   learning: row.learning ? String(row.learning) : null,
@@ -356,6 +369,29 @@ export function formsOf(content: PageContent | null): { id: string; label: strin
   return content.rows.flatMap((row) => formsWithin("row", row));
 }
 
+/** Where a form outside the page under test is (D148 phase 20): the store's header or footer, or another page by its title. */
+export type FormPlace = { kind: "header" | "footer" | "page"; title: string };
+
+/**
+ * The forms elsewhere on the site a test can count (D148 phase 20): in the header and the footer the store uses, and on its other published pages.
+ * A form sent is counted by its id wherever it is (`recordFormSent()`), so a visitor who saw the version and then sent the footer's newsletter
+ * sign-up on any page counts.
+ */
+export async function siteForms(storeId: string, exceptPageId: string): Promise<{ id: string; label: string; place: FormPlace }[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, kind: z.enum(["header", "footer", "page"]), title: col.text, published: z.unknown() }),
+    sql`
+      select p.id, case when p.id = s.header_id then 'header' when p.id = s.footer_id then 'footer' else 'page' end as kind,
+        coalesce(nullif(p.published ->> 'title', ''), p.slug) as title, p.published
+      from commerce.pages p join commerce.stores s on s.id = p.store_id
+      where ${owned(storeId, sql`p.store_id`)} and p.published_at is not null and p.id <> ${exceptPageId}::uuid
+        and (p.id = s.header_id or p.id = s.footer_id or (p.type = 'page' and coalesce(commerce.page_place(p.store_id, p.id) not in ('cart', 'checkout', 'order'), true)))
+      order by case when p.id = s.header_id then 0 when p.id = s.footer_id then 1 else 2 end, p.slug
+    `,
+  );
+  return rows.flatMap((r) => formsOf(parsePageContent(r.published)).map((f) => ({ id: f.id, label: f.label, place: { kind: r.kind, title: r.title } })));
+}
+
 /** What a goal that counts something on the page can count, in the page or in the part under test: its buttons, or its forms. */
 export function goalCandidates(goal: Goal, content: PageContent | null, part: { kind: PartKind; id: string } | null): { id: string; label: string; submit?: string }[] {
   if (!content) return [];
@@ -376,6 +412,8 @@ export type NewExperiment = {
   pageId: string;
   goal: string;
   goalBlock?: string | null;
+  /** For the goal `page`: the page to go on to (`goalDestinations()`). */
+  goalPage?: string | null;
   trafficShare?: number;
   audience?: Audience;
   minDays?: number;
@@ -390,11 +428,77 @@ async function makeVersionPage(account: Account, storeId: string, original: Page
   return savePage(account, storeId, null, { ...original, slug, title }, { publish: true, type: "variant", variantOf: of });
 }
 
+/** Said when a store other than Kaizena Flow's own asks for a sign-up goal (D148 phase 19); the words are `problems.houseGoal`. */
+const HOUSE_GOAL_PROBLEM = "Only Kaizena Flow's own store can test sign-ups to Kaizena Flow.";
+
+/** What a test keeps of its goal's choice: the button or form for a click or a form, the page for `page`, nothing for the rest. */
+function goalParamsOf(goal: Goal, block: string | null, page: string | null): Record<string, string> {
+  if (GOAL_WORDS[goal].needsBlock && block) return { block };
+  if (GOAL_WORDS[goal].needsPage && page) return { page };
+  return {};
+}
+
+/**
+ * The pages a visitor can be counted for going on to (D148 phase 20): the store's published pages, its front page and its All products page,
+ * by title. The working pages (cart, checkout …) are left out: reaching them has goals of its own.
+ */
+export async function goalDestinations(storeId: string): Promise<{ id: string; slug: string; title: string; role: string | null }[]> {
+  return typedRows(
+    z.object({ id: col.uuid, slug: col.text, title: col.text, role: col.textOrNull }),
+    sql`
+      select p.id, p.slug, coalesce(nullif(p.published ->> 'title', ''), p.slug) as title, commerce.page_place(p.store_id, p.id) as role
+      from commerce.pages p
+      where ${owned(storeId, sql`p.store_id`)} and p.type = 'page' and p.published_at is not null
+        and coalesce(commerce.page_place(p.store_id, p.id) in ('front', 'products'), true)
+      order by case commerce.page_place(p.store_id, p.id) when 'front' then 0 when 'products' then 1 else 2 end, p.slug
+    `,
+  );
+}
+
+/** Why a page cannot be the goal `page`'s, or null: it must be one of `goalDestinations()`, and not the page under test. */
+async function destinationProblem(storeId: string, page: string | null, target: string): Promise<string | null> {
+  if (!page) return GOAL_PAGE_PROBLEM;
+  if (page === target) return "Choose another page than the one you are testing: a visitor is already on it.";
+  return (await goalDestinations(storeId)).some((p) => p.id === page) ? null : GOAL_PAGE_PROBLEM;
+}
+
+/** Said when the goal `page` has no page, or one that is not a published page of the store; the words are `problems.goalPage`. */
+const GOAL_PAGE_PROBLEM = "Choose the page you want more visitors to go on to: one of the store's published pages.";
+
+/**
+ * A store's room for A/B tests (D148 phase 21): its plan's `ab_tests_running` (null when the plan does not limit it, 0 when the plan has
+ * none), what that lets it run at once (never more than the engine's five) and how many run now. Running tests are never stopped by it.
+ */
+export async function testRoom(storeId: string): Promise<{ planAllows: number | null; allows: number; running: number }> {
+  const [planAllows, row] = await Promise.all([
+    limitFor(storeId, "ab_tests_running"),
+    typedRow(z.object({ n: col.int }), sql`select count(*)::int as n from commerce.experiments where store_id = ${storeId}::uuid and status = 'running'`),
+  ]);
+  return { planAllows, allows: runningAllowed(planAllows), running: row?.n ?? 0 };
+}
+
+/** The active plans that include A/B tests, cheapest first (phase 21): the platform's default decides for a plan without its own number. */
+export async function plansWithTests(): Promise<string[]> {
+  const rows = await typedRows(
+    z.object({ name: col.text, own: col.bool, value: col.int.nullable(), fallback: col.int.nullable(), defaulted: col.bool }),
+    sql`
+      select p.name, l.id is not null as own, l.value::int as value, d.value::int as fallback, d.id is not null as defaulted
+      from commerce.plans p
+      left join commerce.plan_limits l on l.plan_id = p.id and l.key = 'ab_tests_running'
+      left join commerce.plan_limits d on d.plan_id is null and d.key = 'ab_tests_running'
+      where p.active order by p.position, p.name`,
+  );
+  return rows.filter((r) => (r.own ? r.value : r.defaulted ? r.fallback : null) !== 0).map((r) => r.name);
+}
+
 /** Makes a test as a draft: the original and a first version, a copy of the page to change. */
 export async function createExperiment(account: Account, storeId: string, input: NewExperiment): Promise<Outcome<{ id: string }>> {
+  // A plan without A/B tests makes none (phase 21); a store whose plan allows fewer than run now may still draft one to start later.
+  if ((await limitFor(storeId, "ab_tests_running")) === 0) return { ok: false, problems: [PLAN_WITHOUT_TESTS] };
   const name = input.name.trim();
   if (name === "" || name.length > 120) return { ok: false, problems: ["Give the test a name of up to 120 characters."] };
   if (!isGoal(input.goal)) return { ok: false, problems: ["Choose what the test should improve."] };
+  if (isHouseGoal(input.goal) && (await houseStoreId()) !== storeId) return { ok: false, problems: [HOUSE_GOAL_PROBLEM] };
   if (GOAL_WORDS[input.goal].needsBlock && !input.goalBlock) return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[input.goal].block ?? "button"].problem] };
   const traffic = input.trafficShare ?? 1;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
@@ -419,7 +523,12 @@ export async function createExperiment(account: Account, storeId: string, input:
   if (part) {
     if (!testablePart(original, part, kind)) return { ok: false, problems: ["That part of the page cannot be tested: choose a row, a column or a component with something to see, in the published page. Publish your changes first if you just added it."] };
   }
-  if (GOAL_WORDS[input.goal].needsBlock && !goalCandidates(input.goal, original, part).some((b) => b.id === input.goalBlock)) {
+  if (GOAL_WORDS[input.goal].needsPage) {
+    const problem = await destinationProblem(storeId, input.goalPage ?? null, input.pageId);
+    if (problem) return { ok: false, problems: [problem] };
+  }
+  const elsewhere = GOAL_WORDS[input.goal].block === "form" ? await siteForms(storeId, input.pageId) : [];
+  if (GOAL_WORDS[input.goal].needsBlock && ![...goalCandidates(input.goal, original, part), ...elsewhere].some((b) => b.id === input.goalBlock)) {
     const word = GOAL_WORDS[input.goal].block === "form" ? "form" : "button";
     return { ok: false, problems: [part ? `That ${word} is not in the part you are testing.` : BLOCK_CHOICE[GOAL_WORDS[input.goal].block ?? "button"].gone] };
   }
@@ -427,7 +536,7 @@ export async function createExperiment(account: Account, storeId: string, input:
   const [made] = await db().execute<Row>(sql`
     insert into commerce.experiments (store_id, name, hypothesis, target_page_id, target_part, target_part_kind, primary_goal, goal_params, traffic_share, audience, min_days, min_visitors, created_by, updated_by)
     values (${storeId}::uuid, ${name}, ${(input.hypothesis ?? "").slice(0, 500)}, ${input.pageId}::uuid, ${part?.id ?? null}, ${part?.kind ?? null}, ${input.goal},
-      ${JSON.stringify(GOAL_WORDS[input.goal].needsBlock ? { block: input.goalBlock } : {})}::jsonb, ${traffic}, ${JSON.stringify(parseAudience(input.audience ?? {}))}::jsonb,
+      ${JSON.stringify(goalParamsOf(input.goal, input.goalBlock ?? null, input.goalPage ?? null))}::jsonb, ${traffic}, ${JSON.stringify(parseAudience(input.audience ?? {}))}::jsonb,
       ${Math.min(90, Math.max(1, Math.round(input.minDays ?? MIN_DAYS)))}, ${Math.max(0, Math.round(input.minVisitors ?? 0))}, ${account.id}::uuid, ${account.id}::uuid)
     returning id
   `);
@@ -496,7 +605,7 @@ export async function removeVariant(account: Account, storeId: string, id: strin
   return { ok: true };
 }
 
-export type DraftChanges = { name?: string; hypothesis?: string; goal?: string; goalBlock?: string | null; trafficShare?: number; audience?: Audience; minDays?: number; minVisitors?: number; shares?: Record<string, number> };
+export type DraftChanges = { name?: string; hypothesis?: string; goal?: string; goalBlock?: string | null; goalPage?: string | null; trafficShare?: number; audience?: Audience; minDays?: number; minVisitors?: number; shares?: Record<string, number> };
 
 /** Changes what a draft measures and how its visitors are divided; a test that has started can only be renamed (below). */
 export async function updateDraft(account: Account, storeId: string, id: string, changes: DraftChanges): Promise<Outcome> {
@@ -505,14 +614,21 @@ export async function updateDraft(account: Account, storeId: string, id: string,
   if (test.status !== "draft") return { ok: false, problems: ["A test that has started cannot be changed, so its results mean what was started. Make a new test instead."] };
   const goal = changes.goal ?? test.goal;
   if (!isGoal(goal)) return { ok: false, problems: ["Choose what the test should improve."] };
+  if (isHouseGoal(goal) && (await houseStoreId()) !== storeId) return { ok: false, problems: [HOUSE_GOAL_PROBLEM] };
   const block = GOAL_WORDS[goal].needsBlock ? (changes.goalBlock !== undefined ? changes.goalBlock : test.goalBlock) : null;
   if (GOAL_WORDS[goal].needsBlock && !block) return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[goal].block ?? "button"].problem] };
   // A block chosen for another goal (a button for a form) or taken out of the page since is not one this goal can count.
   if (GOAL_WORDS[goal].needsBlock && (goal !== test.goal || changes.goalBlock !== undefined)) {
     const content = await publishedContentOf(storeId, test.page.id);
-    if (!goalCandidates(goal, content, test.part ? { kind: test.part.kind, id: test.part.id } : null).some((b) => b.id === block)) {
+    const elsewhere = GOAL_WORDS[goal].block === "form" ? await siteForms(storeId, test.page.id) : [];
+    if (![...goalCandidates(goal, content, test.part ? { kind: test.part.kind, id: test.part.id } : null), ...elsewhere].some((b) => b.id === block)) {
       return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[goal].block ?? "button"].gone] };
     }
+  }
+  const goalPage = GOAL_WORDS[goal].needsPage ? (changes.goalPage !== undefined ? changes.goalPage : test.goalPage) : null;
+  if (GOAL_WORDS[goal].needsPage && (goal !== test.goal || changes.goalPage !== undefined)) {
+    const problem = await destinationProblem(storeId, goalPage, test.page.id);
+    if (problem) return { ok: false, problems: [problem] };
   }
   const traffic = changes.trafficShare ?? test.trafficShare;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
@@ -521,7 +637,7 @@ export async function updateDraft(account: Account, storeId: string, id: string,
   await db().transaction(async (tx) => {
     await tx.execute(sql`
       update commerce.experiments set name = ${name}, hypothesis = ${(changes.hypothesis ?? test.hypothesis).slice(0, 500)}, primary_goal = ${goal},
-        goal_params = ${JSON.stringify(block ? { block } : {})}::jsonb, traffic_share = ${traffic},
+        goal_params = ${JSON.stringify(goalParamsOf(goal, block, goalPage))}::jsonb, traffic_share = ${traffic},
         audience = ${JSON.stringify(parseAudience(changes.audience ?? test.audience))}::jsonb,
         min_days = ${Math.min(90, Math.max(1, Math.round(changes.minDays ?? test.minDays)))}, min_visitors = ${Math.max(0, Math.round(changes.minVisitors ?? test.minVisitors))},
         updated_by = ${account.id}::uuid, updated_at = now()
@@ -563,10 +679,12 @@ async function checkStart(storeId: string, test: ExperimentInfo): Promise<string
     name: test.name,
     goal: test.goal,
     goalBlock: test.goalBlock,
+    goalPage: test.goalPage,
     trafficShare: test.trafficShare,
     variants: test.variants.map((v) => ({ key: v.key, name: v.name, share: v.share, published: v.published, scope: v.scope })),
     pagePublished: test.page.published,
     runningInStore: Number(special?.running ?? 0),
+    planAllows: await limitFor(storeId, "ab_tests_running"),
     pageIsSpecial: Boolean(special?.special),
     needsPart: test.page.kind === "role" && isPartOnlyPlace(test.page.role) && !test.part,
     partLabel: test.part?.label ?? null,
@@ -652,17 +770,25 @@ export async function unscheduleExperiment(account: Account | null, storeId: str
 }
 
 /** Stops a running test: no new visitors are enrolled, and what was counted stays. */
-export async function stopExperiment(account: Account | null, storeId: string, id: string, reason: "person" | "guardrail" | "planned_end" = "person"): Promise<Outcome> {
+/** `guardrail` names which guardrail stopped it (D148 phase 19), only with the reason `guardrail`. */
+export async function stopExperiment(
+  account: Account | null,
+  storeId: string,
+  id: string,
+  reason: "person" | "guardrail" | "planned_end" = "person",
+  guardrail: StoppingGuardrail | null = null,
+): Promise<Outcome> {
   const test = await getExperiment(storeId, id);
   if (!test) return { ok: false, problems: ["This test no longer exists."] };
   if (test.status !== "running") return { ok: false, problems: ["This test is not running."] };
   await db().execute(sql`
-    update commerce.experiments set status = 'stopped', stop_reason = ${reason}, updated_by = ${account?.id ?? null}::uuid, updated_at = now()
+    update commerce.experiments set status = 'stopped', stop_reason = ${reason}, stop_guardrail = ${reason === "guardrail" ? guardrail : null},
+      updated_by = ${account?.id ?? null}::uuid, updated_at = now()
     where id = ${id}::uuid and store_id = ${storeId}::uuid and status = 'running'
   `);
   forgetRunning(storeId);
   refreshTag(experimentsTag(storeId));
-  await audit(account?.id ?? null, storeId, "experiment.stopped", { experiment: id, reason });
+  await audit(account?.id ?? null, storeId, "experiment.stopped", { experiment: id, reason, ...(reason === "guardrail" && guardrail && { guardrail }) });
   return { ok: true };
 }
 

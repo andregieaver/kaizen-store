@@ -44,8 +44,25 @@ export const SUPPORT_PATH = "/account/support";
 /** An accountant's clients (B6, D512): the books of every store whose books the person keeps or reads, with what each needs. */
 export const BOOKS_PATH = "/account/books";
 
-const accountItems = (who: OwnerWho) => ACCOUNT_ITEMS.filter((i) => (i.holder ? who.owner || who.domains : who.owner || !i.owner));
+const shownTo = (who: OwnerWho, item: OwnerItem) => (item.holder ? who.owner || Boolean(who.domains) : who.owner || !item.owner);
+const accountItems = (who: OwnerWho) => ACCOUNT_ITEMS.filter((i) => shownTo(who, i));
 const accountPaths = (who: OwnerWho) => [...accountItems(who).map((i) => i.path), ...ACCOUNT_EXTRA];
+
+const within = (path: string, root: string) => path === root || path.startsWith(`${root}/`);
+
+/**
+ * Whether the page finder offers this person a page of the owner's level (ecosystem plan E2.2, D713), by its path after `/admin`: what
+ * the tabs and Account's sidebar show them. The control center is the owners' Home; Support, Books and Work go with their tabs; a page
+ * of Account follows its item there (its own pages, such as a domain's purchase, with it); the rest (Stores, your account) is everyone's.
+ */
+export function ownerOpens(who: OwnerWho, path: string): boolean {
+  if (path === "") return who.owner;
+  if (within(path, SUPPORT_PATH)) return Boolean(who.support);
+  if (within(path, BOOKS_PATH)) return Boolean(who.books);
+  if (within(`${OWNER_BASE}${path}`, WORK_ROOT)) return who.work;
+  const item = ACCOUNT_ITEMS.filter((i) => !i.exact && within(path, i.path)).sort((a, b) => b.path.length - a.path.length)[0];
+  return item ? shownTo(who, item) : true;
+}
 
 /** The tabs: Home (owners), Stores, Support (where the person may read a store's inbox, with the number waiting), Books (an accountant's clients, D512), Work (owners, or where a store has it on) and Account. */
 export function ownerTabs(who: OwnerWho, counts: { support?: number } = {}): (Link & { icon: NavIconName; also?: string[]; badge?: number; foot?: boolean })[] {

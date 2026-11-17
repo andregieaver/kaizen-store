@@ -445,6 +445,7 @@ export const orderEn = {
   },
   hold: {
     byRule: "by the rule",
+    byWorkflow: "by the workflow",
     ruleDeleted: "that was deleted since",
     byPerson: "by {name}",
     staffMember: "a member of staff",

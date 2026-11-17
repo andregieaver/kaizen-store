@@ -37,6 +37,12 @@ describe("what the beacon sends", () => {
     expect(speedBody({ store: "", path: "/", width: 1440, values: { ttfb: 1 } })).toBeNull();
   });
 
+  it("says which A/B versions the page showed, at most five, and nothing when it showed none (D148 phase 19)", () => {
+    const shown = Array.from({ length: 7 }, (_, i): [string, string] => [`exp-${i}`, "b"]);
+    expect(JSON.parse(speedBody({ store: "shop", path: "/", width: 1440, values: { lcp: 900 }, ab: shown })!).ab).toHaveLength(5);
+    expect(JSON.parse(speedBody({ store: "shop", path: "/", width: 1440, values: { lcp: 900 }, ab: [] })!)).not.toHaveProperty("ab");
+  });
+
   it("refuses figures that are not whole numbers within what a browser reports", () => {
     expect(speedProblem({ lcp: 1200, inp: null })).toBeNull();
     expect(speedProblem({ lcp: 1200.5 })).not.toBeNull();
@@ -144,6 +150,10 @@ describe("ownSpeedKind", () => {
     expect(ownSpeedKind("admin", "/admin/acme")).toBe("home");
     expect(ownSpeedKind("admin", "/admin/acme/orders")).toBe("list");
     expect(ownSpeedKind("admin", "/admin/acme/products/123")).toBe("product");
+    expect(ownSpeedKind("admin", "/admin/acme/pages/123")).toBe("category");
+    expect(ownSpeedKind("admin", "/admin/platform/pages/123")).toBe("category");
+    expect(ownSpeedKind("admin", "/admin/acme/articles/9")).toBe("category");
+    expect(ownSpeedKind("admin", "/admin/acme/pages/new")).toBe("page");
     expect(ownSpeedKind("admin", "/admin/acme/settings/tax")).toBe("page");
     expect(ownSpeedKind("admin", "/admin/sign-in")).toBeNull();
     expect(ownSpeedKind("admin", "/pricing")).toBeNull();
