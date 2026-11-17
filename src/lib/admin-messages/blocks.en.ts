@@ -174,6 +174,7 @@ export const blocksEn = {
       number: "Number",
       date: "Date",
       hidden: "From the address",
+      file: "File",
     },
     newsletterLayouts: {
       inline: "Side by side",

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -8,6 +10,7 @@ import { FORMS_MAX, formAsBlock, formTakesAnswers, type BuilderForms, type FormD
 import { publicForm } from "@/lib/forms";
 import { formDraftSchema } from "@/lib/form-records-schema";
 import { writeCsv } from "@/lib/csv";
+import type { FormFile } from "@/lib/form-files";
 import { normaliseEmail } from "@/lib/email-address";
 
 import { audit } from "./auth";
@@ -237,6 +240,8 @@ export type FormResponseRow = {
   state: "new" | "read" | "archived";
   delivery: "sent" | "logged" | "failed" | "inbox";
   createdAt: string;
+  /** Files sent with it (D738 F6b): downloaded by question through the admin, never by their stored path. */
+  files: { question: string; name: string; bytes: number }[];
 };
 
 const responseRow = z.object({
@@ -248,6 +253,7 @@ const responseRow = z.object({
   state: z.enum(["new", "read", "archived"]),
   delivery: z.enum(["sent", "logged", "failed", "inbox"]),
   created_at: col.timestamp,
+  files: z.array(z.object({ question: z.string(), name: z.string(), bytes: z.number() })).default([]).catch([]),
 });
 const asResponse = (r: z.output<typeof responseRow>): FormResponseRow => ({
   id: r.id,
@@ -258,6 +264,7 @@ const asResponse = (r: z.output<typeof responseRow>): FormResponseRow => ({
   state: r.state,
   delivery: r.delivery,
   createdAt: r.created_at,
+  files: r.files.map((f) => ({ question: f.question, name: f.name, bytes: f.bytes })),
 });
 
 export const RESPONSES_PAGE = 50;
@@ -271,7 +278,7 @@ export async function listResponses(owner: Owner, formId: string, { archived = f
   const rows = await typedRows(
     responseRow,
     sql`
-      select id, answers, contact_email, path, locale, state, delivery, created_at from commerce.form_responses
+      select id, answers, contact_email, path, locale, state, delivery, created_at, files from commerce.form_responses
       where ${owned(owner)} and form_id = ${formId}::uuid and ${archived ? sql`state = 'archived'` : sql`state <> 'archived'`}
       order by created_at desc, id limit ${RESPONSES_PAGE + 1} offset ${offset}
     `,
@@ -338,12 +345,15 @@ export async function keepResponse(input: {
   path: string;
   locale: string;
   delivery: FormResponseRow["delivery"];
+  /** The response's id when its files were stored under it first (D738 F6b), and those files. */
+  id?: string;
+  files?: FormFile[];
 }): Promise<void> {
   try {
     await db().execute(sql`
-      insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery)
-      values (${input.formId}::uuid, ${JSON.stringify(input.answers.slice(0, 40))}::jsonb, ${input.contactEmail ? normaliseEmail(input.contactEmail).slice(0, 254) : null},
-        ${input.path.slice(0, 500)}, ${input.locale}, ${input.delivery})
+      insert into commerce.form_responses (id, form_id, answers, contact_email, path, locale, delivery, files)
+      values (${input.id ?? randomUUID()}::uuid, ${input.formId}::uuid, ${JSON.stringify(input.answers.slice(0, 40))}::jsonb, ${input.contactEmail ? normaliseEmail(input.contactEmail).slice(0, 254) : null},
+        ${input.path.slice(0, 500)}, ${input.locale}, ${input.delivery}, ${JSON.stringify(input.files ?? [])}::jsonb)
     `);
   } catch (error) {
     log("error", "forms.response_keep_failed", { formId: input.formId }, error);

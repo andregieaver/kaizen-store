@@ -8,6 +8,26 @@ import type { Messages } from "./en";
 
 export const da: Messages = {
   ...daBrowser,
+  // The form's words only the server's emails read (D738: kept out of visitors' scripts).
+  form: {
+    ...daBrowser.form,
+    confirmSubject: (site: string) => `Bekræft tilmeldingen til nyhedsbrevet fra ${site}`,
+    confirmHeading: "Bekræft din e-mailadresse",
+    confirmText: (site: string) =>
+      `Nogen, forhåbentlig dig, tilmeldte denne adresse til nyhedsbrevet fra ${site}. Klik på knappen for at bekræfte. Var det ikke dig, kan du se bort fra e-mailen: så sker der ingenting.`,
+    confirmButton: "Bekræft tilmeldingen",
+    confirmValid: "Linket virker i 7 dage.",
+    messageSubject: (site: string) => `Ny besked fra ${site}`,
+    messageHeading: "Ny besked fra formularen på webstedet",
+    filesInAdmin: "Filerne, der blev sendt med, ligger ved svaret under Websted → Formularer, hvor du kan downloade dem.",
+    replyHint: "Svar på denne e-mail for at svare afsenderen.",
+    subscriberSubject: (site: string) => `Ny tilmelding til nyhedsbrevet fra ${site}`,
+    subscriberHeading: "Ny tilmelding til nyhedsbrevet",
+    subscriberText: "Føj adressen til din liste til nyhedsbreve. Samtykket, og hvornår det blev givet, står nedenfor.",
+    page: "Side",
+    consentedAt: "Samtykket",
+    confirmedAt: "Bekræftet",
+  },
   returns: daReturns,
   // Exchanges and return labels (D239): hand-written, needs legal review (`da-exchange.ts`).
   exchange: daExchange,

@@ -189,6 +189,36 @@ test("keeps a campaign from the address the form was sent on (F6a)", async ({ pa
   await shoot(p, "13-hidden-response");
 });
 
+test("asks for a file, drawing a picture again in the browser and refusing a program (F6b)", async ({ page: p, browser }) => {
+  await p.goto(`${base}/${formId}`);
+  await p.locator("[data-form-add]").click();
+  const file = p.locator("[data-question]").last();
+  await file.locator("select").first().selectOption("file");
+  await file.getByLabel("Question", { exact: true }).fill("E2E photo");
+  await shoot(p, "14-file-question");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+
+  const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const site = await visitor.newPage();
+  await site.goto(`/s/${E2E_STORE}/${slug}`);
+  const form = site.locator("form").filter({ has: site.getByRole("textbox", { name: /order number/i }) });
+  await expect(form.locator("[data-file-input]")).toHaveCount(1);
+  // A program is refused at once, in the visitor's language (the store's is Norwegian).
+  await form.locator("[data-file-input]").setInputFiles({ name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") });
+  await expect(form.getByText(/kan ikke tas imot/)).toBeVisible();
+  // A picture (a PNG, drawn again as a WebP) is taken.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGM4YaOBFTEMLQkAdntLARs7+acAAAAASUVORK5CYII=", "base64");
+  await form.locator("[data-file-input]").setInputFiles({ name: "IMG_0042.png", mimeType: "image/png", buffer: png });
+  await expect(form.locator("[data-file-chosen]")).toContainText(/IMG_0042\.(webp|jpg)/);
+  await shoot(site, "15-site-file");
+  // Storing and downloading need the private bucket, which this build has not: src/server/forms-admin.int.test.ts sends a file to an
+  // in-memory one, and downloads it as staff.
+  await form.locator("[data-file-chosen] button").click();
+  await expect(form.locator("[data-file-chosen]")).toHaveCount(0);
+  await visitor.close();
+});
+
 test("saves a form as a template and starts a new form from it (F4)", async ({ page: p }) => {
   await p.goto(`${base}/${formId}`);
   const card = p.locator("[data-save-template]");
@@ -208,8 +238,8 @@ test("saves a form as a template and starts a new form from it (F4)", async ({ p
   await expect(p).toHaveURL(new RegExp(`${base}/[0-9a-f-]{36}$`));
   expect(p.url()).not.toContain(formId);
   await expect(p.locator("[data-form-name]")).toHaveValue("E2E Contact template");
-  // It asks what the form asked (F6a added a hidden field), and sends to the owner's own address, ready to place.
-  await expect(p.locator("[data-question]")).toHaveCount(7);
+  // It asks what the form asked (F6a and F6b added a hidden field and a file), and sends to the owner's own address, ready to place.
+  await expect(p.locator("[data-question]")).toHaveCount(8);
   await expect(p.locator("[data-form-recipients]")).not.toHaveValue("");
   await p.locator("[data-form-name]").fill("E2E From template");
   await p.locator("[data-form-save]").click();

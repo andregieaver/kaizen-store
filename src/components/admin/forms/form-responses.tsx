@@ -7,6 +7,7 @@ import type { FormResponseRow } from "@/server/forms-admin";
 
 import { useAdminLang, useAdminText } from "../admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { fileSize } from "@/lib/form-files";
 import { Button, ButtonLink, Card, Chip } from "../ui";
 
 /**
@@ -97,6 +98,24 @@ export function FormResponses({
                       <dt className="text-caption text-muted">{w.page}</dt>
                       <dd className="break-all text-body text-ink-2">{r.path}</dd>
                     </dl>
+                    {r.files.length > 0 && (
+                      <ul className="flex flex-wrap gap-2" aria-label={w.files} data-response-files>
+                        {r.files.map((f) => (
+                          <li key={f.question}>
+                            {/* A download only: the file is a visitor's, never shown on an admin page (D738 F6b). */}
+                            <a
+                              href={`${base}/files/${r.id}/${f.question}`}
+                              download
+                              className="inline-flex min-h-11 items-center gap-2 rounded-panel border border-line px-3 text-body text-ink hover:bg-sunken"
+                            >
+                              <Download aria-hidden className="size-4" />
+                              <span className="max-w-64 truncate">{f.name}</span>
+                              <span className="text-caption text-muted">{fileSize(f.bytes)}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     {r.delivery === "inbox" && <p className="text-caption text-muted">{w.inbox}</p>}
                     <div className="flex flex-wrap gap-2">
                       {r.contactEmail && (

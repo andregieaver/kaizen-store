@@ -117,6 +117,7 @@ export const formsEn = {
     noAccess: "You can see this form but not change it.",
   },
   responses: {
+    files: "Files sent with it",
     none: "No responses yet. They show here as visitors send the form.",
     noneArchived: "No archived responses.",
     showArchived: "Archived",

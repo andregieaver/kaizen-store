@@ -114,6 +114,7 @@ export const formsNb: FormsMessages = {
     noAccess: "Du kan se dette skjemaet, men ikke endre det.",
   },
   responses: {
+    files: "Filer sendt med",
     none: "Ingen svar ennå. De vises her når besøkende sender skjemaet.",
     noneArchived: "Ingen arkiverte svar.",
     showArchived: "Arkiverte",

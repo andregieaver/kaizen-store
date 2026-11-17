@@ -328,3 +328,34 @@ manager's tools and its words for *New form* with one eval run by the owner.
 - **Kaizena Flow's own forms** have it in the same change (the same editor and submit path).
 - **The AI manager's tools** do not offer the kind yet: their descriptions are part of the recorded eval, so the kind is added with F6c's
   tools and wording, in one eval run.
+
+### 15.2 F6b as built: files sent with a form (17 November 2026)
+
+- **A kind of question, `file`** (a form's only, like `hidden`): one picture or one PDF, at most three such questions a form
+  (`FORM_FILE_QUESTIONS_MAX`). It has words, help, half width, conditions and *Must be answered*, but no hint inside it.
+- **No malware scanner is at hand, so what is taken is narrow** (`src/lib/form-files.ts`, `src/server/form-files.ts`):
+  - A picture is drawn again in the visitor's browser (`prepareFile()` in `site-form.tsx`) as a WebP, or a JPEG where the browser
+    cannot write WebP, of at most 2,000 pixels a side and 2.5 MB. What is sent is then only the picture: its camera data and anything
+    hidden in the original stay behind. The server reads it again from its own bytes (`readPicture()`, shared with review pictures).
+  - A PDF is sent as it is, up to 3 MB. The server checks it starts `%PDF-1.`/`%PDF-2.`, ends with `%%EOF`, and that neither its bytes
+    nor its compressed streams (opened with zlib, up to 20 MB in all) name `/JS`, `/JavaScript`, `/Launch`, `/EmbeddedFile`,
+    `/RichMedia`, `/SubmitForm`, `/ImportData`, `/XFA` or `/GoToE`, in any `#xx` spelling (`pdfProblem()`).
+  - Anything else is refused, in the visitor's language, at once in the browser and again on the server. The files of one sending are
+    at most 4 MB together, under the 4.5 MB a function takes.
+- **The sending**: a form with a file goes to `/api/forms` as multipart (`request` and `file:{question}`). A file question's answer
+  is only the name of the file the server took, with its size (`Receipt.pdf (820 kB)`), never what the browser said under its id. The
+  files are stored before the response's row, under its id, so a row never lists a file that is not there.
+- **Where they are kept**: the private bucket `form-files` (migration `form_files_rules`, no policy), `{store or platform}/{response}/{question}.{ext}`,
+  listed in `form_responses.files` (at most three, never changed, like the answers). Nothing is served from a public address.
+- **Who reads them**: the responses screen lists each file; pressing it downloads it through
+  `/admin/{store}/forms/responses/{form}/files/{response}/{question}` for members who may read customers (Kaizena Flow's own:
+  `/admin/platform/forms/…`, the platform's team who may read the website). Always `attachment`, `nosniff`, `default-src 'none'; sandbox`,
+  never cached (`fileDownload()`). The owner's email says the files are with the response in the admin; they are never attached to it,
+  nor put in the `form.response` event, the Admin API or the AI manager's `form_responses`, which carry the answer (the name and size).
+- **Personal data**: the files are part of the response (register `form_responses`): exported by name with its answers, erased with it,
+  and gone after the form's months. Whatever removes a row (deleting responses, the retention job, an erasure, a form or store going), the
+  daily `pruneFormFiles()` removes its files within a day, leaving folders younger than an hour (a sending may still be writing).
+- **Words.** The visitor's words for a file are in visitors' scripts (`messages/*-browser.ts`); to make room, the form's words only the
+  server's emails read (the confirmation and the owner's emails) moved to the server's messages (`messages/{lang}.ts`, `form` spread over
+  the browser's), so visitors' scripts carry 2,552 bytes less than before (`browserTextBytes` 31,808).
+- **Kaizena Flow's own forms** take files in the same change.

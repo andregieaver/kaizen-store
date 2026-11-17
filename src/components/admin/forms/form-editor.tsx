@@ -502,7 +502,7 @@ function QuestionFields({
   const labelled = LABELLED_KINDS.includes(q.kind);
   const hidden = q.kind === "hidden";
   const hasOptions = OPTION_FIELD_KINDS.includes(q.kind);
-  const typed = !hasOptions && q.kind !== "checkbox" && q.kind !== "date";
+  const typed = !hasOptions && q.kind !== "checkbox" && q.kind !== "date" && q.kind !== "file";
   const [optionsText, setOptionsText] = useState((q.options ?? []).map((o) => o.text).join("\n"));
   const bound = (which: "min" | "max", value: string) => {
     const n = value === "" ? undefined : Math.trunc(Number(value));

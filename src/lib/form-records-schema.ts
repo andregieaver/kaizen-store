@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { FORM_FILE_QUESTIONS_MAX } from "./form-files";
 import { FORM_KEEP_MONTHS_MAX, FORM_NAME_MAX, SHOW_WHEN_MAX } from "./form-records";
 import { DATE_DAYS_MAX, NUMBER_LIMIT } from "./questions";
 import {
@@ -71,11 +72,13 @@ const question = z
   .transform((q) =>
     // A hidden field is never asked (D738 F6a): only its name in the responses and the part of the address it reads.
     q.kind === "hidden"
-      ? { id: q.id, kind: q.kind, label: q.label, param: q.param, showWhen: undefined }
+      ? { ...q, required: undefined, placeholder: undefined, options: undefined, help: undefined, width: undefined, bounds: undefined, showWhen: undefined }
       : {
           ...q,
           param: undefined,
           options: OPTION_FIELD_KINDS.includes(q.kind) ? q.options : undefined,
+          // A file has no hint inside it (F6b).
+          placeholder: q.kind === "file" ? undefined : q.placeholder,
           bounds: (q.kind === "number" || q.kind === "date") && q.bounds && (q.bounds.min !== undefined || q.bounds.max !== undefined) ? q.bounds : undefined,
           showWhen: q.showWhen?.length ? q.showWhen : undefined,
           help: q.help?.text ? q.help : undefined,
@@ -141,6 +144,9 @@ const draftObject = z.object({
 export const formDraftSchema = draftObject
   .superRefine((f, ctx) => {
     for (const message of showWhenProblems(f.questions)) ctx.addIssue({ code: "custom", message, path: ["questions"] });
+    if (f.questions.filter((q) => q.kind === "file").length > FORM_FILE_QUESTIONS_MAX) {
+      ctx.addIssue({ code: "custom", message: `A form asks for at most ${FORM_FILE_QUESTIONS_MAX} files.`, path: ["questions"] });
+    }
   })
   .refine((f) => (f.kind === "signup") === (f.signup !== null), { message: "Only a sign-up has sign-up settings.", path: ["signup"] })
   .transform((f) => (f.kind === "signup" ? { ...f, questions: [] } : f));

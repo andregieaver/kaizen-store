@@ -1762,6 +1762,8 @@ export const FORM_FIELD_KINDS = {
   date: "Date",
   // A form's own (D738 F6): not asked, its answer read from the address the form is sent on, such as a campaign code.
   hidden: "From the address",
+  // A form's own (D738 F6b): one picture or PDF, kept privately for the owner.
+  file: "File",
 } as const;
 export type FormFieldKind = keyof typeof FORM_FIELD_KINDS;
 export const FORM_FIELDS_MAX = 20;
@@ -1771,9 +1773,9 @@ export const FORM_TEXT_MAX = 500;
 export const FORM_RECIPIENTS_MAX = 5;
 
 /** Kinds whose words must be written: the others have their usual name in the page's language. */
-export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox", "radio", "checklist", "number", "date", "hidden"];
-/** A page's own email form asks these (D93): a hidden field from the address is a form's only (D738). */
-export const PAGE_FORM_KINDS = (Object.keys(FORM_FIELD_KINDS) as FormFieldKind[]).filter((k) => k !== "hidden");
+export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox", "radio", "checklist", "number", "date", "hidden", "file"];
+/** A page's own email form asks these (D93): a hidden field from the address and a file are a form's only (D738). */
+export const PAGE_FORM_KINDS = (Object.keys(FORM_FIELD_KINDS) as FormFieldKind[]).filter((k) => k !== "hidden" && k !== "file");
 /** An address parameter a hidden field reads (D738), such as `utm_campaign` or `code`. */
 export const ADDRESS_PARAM = /^[A-Za-z0-9_.-]{1,64}$/;
 import { OPTION_FIELD_KINDS } from "./questions";

@@ -8,6 +8,26 @@ import type { Messages } from "./en";
 
 export const nb: Messages = {
   ...nbBrowser,
+  // The form's words only the server's emails read (D738: kept out of visitors' scripts).
+  form: {
+    ...nbBrowser.form,
+    confirmSubject: (site: string) => `Bekreft påmeldingen til nyhetsbrevet fra ${site}`,
+    confirmHeading: "Bekreft e-postadressen din",
+    confirmText: (site: string) =>
+      `Noen, forhåpentligvis du, meldte denne adressen på nyhetsbrevet fra ${site}. Trykk på knappen for å bekrefte. Var det ikke deg, kan du se bort fra e-posten: da skjer det ingenting.`,
+    confirmButton: "Bekreft påmeldingen",
+    confirmValid: "Lenken virker i 7 dager.",
+    messageSubject: (site: string) => `Ny melding fra ${site}`,
+    messageHeading: "Ny melding fra skjemaet på nettstedet",
+    filesInAdmin: "Filene som ble sendt med, ligger ved svaret under Nettsted → Skjemaer, der du kan laste dem ned.",
+    replyHint: "Svar på denne e-posten for å svare avsenderen.",
+    subscriberSubject: (site: string) => `Ny påmelding til nyhetsbrevet fra ${site}`,
+    subscriberHeading: "Ny påmelding til nyhetsbrevet",
+    subscriberText: "Legg adressen til i listen din for nyhetsbrev. Samtykket og når det ble gitt står under.",
+    page: "Side",
+    consentedAt: "Samtykket",
+    confirmedAt: "Bekreftet",
+  },
   returns: nbReturns,
   // Exchanges and return labels (D239): hand-written, needs legal review (`nb-exchange.ts`).
   exchange: nbExchange,

@@ -8456,6 +8456,11 @@ describe("forms as their own records (D705)", () => {
     await db.query("update commerce.form_responses set state = 'read' where id = $1", [id]);
     await expect(db.query(`update commerce.form_responses set answers = '[{"label":"x","value":"y"}]' where id = $1`, [id])).rejects.toThrow(/form_responses\.fixed/);
     await expect(db.query("update commerce.form_responses set contact_email = 'b@example.com' where id = $1", [id])).rejects.toThrow(/form_responses\.fixed/);
+    // Its files (D738 F6b) are what was sent too, and a response carries at most three.
+    await expect(db.query(`update commerce.form_responses set files = '[{"question":"q"}]' where id = $1`, [id])).rejects.toThrow(/form_responses\.fixed/);
+    await expect(
+      db.query(`insert into commerce.form_responses (form_id, answers, path, locale, delivery, files) values ($1, '[]', '/', 'nb', 'sent', '[{},{},{},{}]')`, [form]),
+    ).rejects.toThrow(/form_responses_files/);
     await expect(
       db.query("insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery) values ($1, '[]', 'A@example.com', '/', 'nb', 'sent')", [form]),
     ).rejects.toThrow(/form_responses_contact/);

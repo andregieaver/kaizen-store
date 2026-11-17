@@ -1,7 +1,7 @@
-import type { Messages } from "./i18n";
+import type { BrowserMessages } from "./browser-text";
 
-/** The texts the form functions read: only `form`, which the browser has too (`browserText()`, D212). */
-type FormTexts = Pick<Messages, "form">;
+/** The texts the form functions read: only `form` as the browser has it (`browserText()`, D212); the server's `t()` has more. */
+type FormTexts = Pick<BrowserMessages, "form">;
 import type { EmailFormBlock, FormField, FormFieldKind, NewsletterBlock, ShowWhen } from "./page-content";
 import { OPTION_FIELD_KINDS, dateAnswer, numberAnswer } from "./questions";
 import type { FormRequest } from "./forms-schema";
@@ -166,6 +166,16 @@ export function checkMessage(
     if (field.kind === "hidden") {
       const value = fromAddress(address, field.param);
       if (value) answers.push({ label, value });
+      continue;
+    }
+    if (field.kind === "file") {
+      // A file's answer is its name (D738 F6b): the browser sends the name it chose, the server the name of the file it took and checked.
+      const name = typeof raw === "string" ? line(raw).slice(0, LINE_MAX) : "";
+      if (name === "") {
+        if (field.required) errors[field.id] = visitor.form.fileNeeded;
+        continue;
+      }
+      answers.push({ label, value: name });
       continue;
     }
     if (field.kind === "checkbox") {

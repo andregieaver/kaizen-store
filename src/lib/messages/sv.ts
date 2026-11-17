@@ -8,6 +8,26 @@ import type { Messages } from "./en";
 
 export const sv: Messages = {
   ...svBrowser,
+  // The form's words only the server's emails read (D738: kept out of visitors' scripts).
+  form: {
+    ...svBrowser.form,
+    confirmSubject: (site: string) => `Bekräfta prenumerationen på nyhetsbrevet från ${site}`,
+    confirmHeading: "Bekräfta din e-postadress",
+    confirmText: (site: string) =>
+      `Någon, förhoppningsvis du, anmälde den här adressen till nyhetsbrevet från ${site}. Klicka på knappen för att bekräfta. Var det inte du kan du bortse från meddelandet: då händer ingenting.`,
+    confirmButton: "Bekräfta prenumerationen",
+    confirmValid: "Länken fungerar i 7 dagar.",
+    messageSubject: (site: string) => `Nytt meddelande från ${site}`,
+    messageHeading: "Nytt meddelande från formuläret på webbplatsen",
+    filesInAdmin: "Filerna som skickades med finns vid svaret under Webbplats → Formulär, där du kan ladda ner dem.",
+    replyHint: "Svara på det här e-postmeddelandet för att svara avsändaren.",
+    subscriberSubject: (site: string) => `Ny prenumerant på nyhetsbrevet från ${site}`,
+    subscriberHeading: "Ny prenumerant på nyhetsbrevet",
+    subscriberText: "Lägg till adressen i din lista för nyhetsbrev. Samtycket och när det gavs står nedan.",
+    page: "Sida",
+    consentedAt: "Samtyckte",
+    confirmedAt: "Bekräftad",
+  },
   returns: svReturns,
   // Exchanges and return labels (D239): hand-written, needs legal review (`sv-exchange.ts`).
   exchange: svExchange,

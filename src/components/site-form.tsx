@@ -18,6 +18,7 @@ import {
 import { browserText as t } from "@/lib/browser-text";
 import type { BrowserMessages as Messages } from "@/lib/browser-text";
 import type { FormField } from "@/lib/page-content";
+import { FORM_PDF_BYTES, FORM_PICTURE_BYTES, FORM_PICTURE_SIZE } from "@/lib/form-files";
 import { daysAfter, todayInZone } from "@/lib/questions";
 
 import { Dropdown } from "./dropdown";
@@ -35,6 +36,8 @@ const without = (errors: FormErrors, key: string) => {
   delete next[key];
   return next;
 };
+/** Milliseconds since a moment (the form shown): robots send at once. */
+const msSince = (at: number) => Date.now() - at;
 type State = { kind: "idle" | "sending" } | { kind: "done"; text: string } | { kind: "failed"; text: string };
 
 /**
@@ -69,6 +72,8 @@ export function SiteForm({
   const [consent, setConsent] = useState(false);
   const [state, setState] = useState<State>({ kind: "idle" });
   const [notice, setNotice] = useState<string | null>(null);
+  // The files chosen for file questions (D738 F6b), by question: pictures already drawn again as WebP or JPEG.
+  const files = useRef<Record<string, File>>({});
   const shown = useRef(0);
   const website = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -111,21 +116,27 @@ export function SiteForm({
     setState({ kind: "sending" });
     setNotice(null);
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...extra?.(),
-          store,
-          block: form.id,
-          values,
-          consent,
-          website: website.current?.value ?? "",
-          lang: lang ?? pageLang,
-          path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
-          elapsed: Date.now() - shown.current,
-        }),
+      const payload = JSON.stringify({
+        ...extra?.(),
+        store,
+        block: form.id,
+        values,
+        consent,
+        website: website.current?.value ?? "",
+        lang: lang ?? pageLang,
+        path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
+        elapsed: msSince(shown.current),
       });
+      // With files, the request and each file go together as multipart (the browser sets its boundary).
+      const asked = form.type === "emailForm" ? askedQuestions(form.fields, values).filter((f) => f.kind === "file" && files.current[f.id]) : [];
+      let body: BodyInit = payload;
+      if (asked.length > 0) {
+        const data = new FormData();
+        data.set("request", payload);
+        for (const f of asked) data.set(`file:${f.id}`, files.current[f.id]);
+        body = data;
+      }
+      const response = await fetch(endpoint, { method: "POST", ...(asked.length > 0 ? {} : { headers: { "Content-Type": "application/json" } }), body });
       const answer = (await response.json().catch(() => ({ ok: false }))) as FormResponse;
       if (answer.ok) {
         const text =
@@ -182,7 +193,23 @@ export function SiteForm({
           <div className="grid gap-4 sm:grid-cols-2">
             {askedQuestions(form.fields, values).map((field) => (
               <div key={field.id} className={field.width === "half" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
-                <Field field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} />
+                {field.kind === "file" ? (
+                  <FileField
+                    field={field}
+                    m={m}
+                    chosen={typeof values[field.id] === "string" ? (values[field.id] as string) : ""}
+                    error={errors[field.id]}
+                    disabled={preview}
+                    onFile={(file) => {
+                      if (file) files.current[field.id] = file;
+                      else delete files.current[field.id];
+                      set(field.id, file?.name ?? "");
+                    }}
+                    onProblem={(problem) => setErrors((current) => ({ ...current, [field.id]: problem }))}
+                  />
+                ) : (
+                  <Field field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} />
+                )}
               </div>
             ))}
           </div>
@@ -359,6 +386,118 @@ function Field({
       {errorLine}
     </div>
   );
+}
+
+/**
+ * A file question (D738 F6b): one picture or PDF. A picture is drawn again here as a WebP (a JPEG where the browser cannot write WebP) of
+ * at most `FORM_PICTURE_SIZE` pixels a side, so what is sent is only the picture; a PDF is sent as it is, up to its size. The server checks
+ * both again from their bytes.
+ */
+function FileField({
+  field,
+  m,
+  chosen,
+  error,
+  disabled,
+  onFile,
+  onProblem,
+}: {
+  field: FormField;
+  m: Messages;
+  chosen: string;
+  error?: string;
+  disabled: boolean;
+  onFile: (file: File | null) => void;
+  onProblem: (problem: string) => void;
+}) {
+  const id = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const [preparing, setPreparing] = useState(false);
+  const label = fieldLabel(field, m);
+  const described = [`${id}-hint`, error ? `${id}-error` : null].filter(Boolean).join(" ");
+  async function choose(file: File | undefined) {
+    if (!file) return;
+    setPreparing(true);
+    try {
+      const ready = await prepareFile(file);
+      if (typeof ready === "string") {
+        onFile(null);
+        onProblem(ready === "too_big" ? m.form.fileTooBig : m.form.fileNotAllowed);
+      } else onFile(ready);
+    } finally {
+      setPreparing(false);
+      if (input.current) input.current.value = "";
+    }
+  }
+  return (
+    <div className="flex flex-col gap-1 text-sm font-medium" data-field={field.id} tabIndex={-1}>
+      <span id={`${id}-label`}>
+        {label}
+        {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
+      </span>
+      {field.help && <span className="text-sm font-normal text-muted">{field.help}</span>}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className={`inline-flex min-h-11 cursor-pointer items-center rounded-md border border-border bg-background px-3 text-base font-normal ${disabled ? "pointer-events-none opacity-60" : ""}`}>
+          {preparing ? m.form.filePreparing : m.form.fileChoose}
+          <input
+            ref={input}
+            id={id}
+            type="file"
+            accept="image/*,application/pdf"
+            className="sr-only"
+            disabled={disabled || preparing}
+            aria-labelledby={`${id}-label`}
+            aria-describedby={described}
+            aria-invalid={error ? true : undefined}
+            aria-required={field.required || undefined}
+            onChange={(event) => void choose(event.target.files?.[0])}
+            data-file-input={field.id}
+          />
+        </label>
+        {chosen && (
+          <span className="flex items-center gap-2 font-normal" data-file-chosen>
+            <span className="max-w-60 truncate">{chosen}</span>
+            <button type="button" className="text-muted underline" onClick={() => onFile(null)}>
+              {m.form.fileRemove}
+            </button>
+          </span>
+        )}
+      </div>
+      <span id={`${id}-hint`} className="text-sm font-normal text-muted">
+        {m.form.fileHint}
+      </span>
+      {error && (
+        <span id={`${id}-error`} className="text-sm font-normal text-red-700 dark:text-red-400">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** A chosen file made ready to send: a picture drawn again, a PDF as it is within its size, anything else refused. */
+async function prepareFile(file: File): Promise<File | "too_big" | "not_allowed"> {
+  const base = file.name.replace(/\.[A-Za-z0-9]{1,5}$/, "") || "file";
+  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return file.size > FORM_PDF_BYTES ? "too_big" : new File([file], `${base}.pdf`, { type: "application/pdf" });
+  if (!file.type.startsWith("image/")) return "not_allowed";
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    return "not_allowed";
+  }
+  const scale = Math.min(1, FORM_PICTURE_SIZE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = (type: string) => new Promise<Blob | null>((done) => canvas.toBlob(done, type, 0.85));
+  let out = await blob("image/webp");
+  if (!out || out.type !== "image/webp") out = await blob("image/jpeg");
+  if (!out) return "not_allowed";
+  if (out.size > FORM_PICTURE_BYTES) return "too_big";
+  return new File([out], `${base}.${out.type === "image/webp" ? "webp" : "jpg"}`, { type: out.type });
 }
 
 /** A number's or a date's `min` and `max` for its input: a date's days counted from the visitor's today. */

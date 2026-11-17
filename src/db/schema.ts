@@ -11437,9 +11437,12 @@ export const formResponses = commerce.table(
     state: text("state").notNull().default("new"),
     /** How it reached the owner: `sent`, `logged`, `failed` (the email), `inbox` (the support desk only). */
     delivery: text("delivery").notNull(),
+    /** Files sent with it (D738 F6b): `[{ question, name, type, bytes, path }]`, kept in the private `form-files` bucket. */
+    files: jsonb("files").notNull().default(sql`'[]'::jsonb`),
     createdAt: createdAt(),
   },
   (t) => [
+    check("form_responses_files", sql`jsonb_typeof(${t.files}) = 'array' and jsonb_array_length(${t.files}) <= 3`),
     index("form_responses_form_idx").on(t.formId, t.createdAt),
     index("form_responses_contact_idx").on(t.storeId, t.contactEmail),
     index("form_responses_created_idx").on(t.createdAt),

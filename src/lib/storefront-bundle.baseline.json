@@ -191,5 +191,5 @@
     "app/(platform)/sign-up/sign-up-wizard": "the sign-up wizard is an admin form on a public address"
   },
   "cookiePurposes": [],
-  "browserTextBytes": 34360
+  "browserTextBytes": 31808
 }

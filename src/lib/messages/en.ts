@@ -13,6 +13,26 @@ import { enQuotes } from "./en-quotes";
 
 export const en = {
   ...enBrowser,
+  // The form's words only the server's emails read (D738: kept out of visitors' scripts).
+  form: {
+    ...enBrowser.form,
+    confirmSubject: (site: string) => `Confirm your sign-up to the newsletter from ${site}`,
+    confirmHeading: "Confirm your email address",
+    confirmText: (site: string) =>
+      `Someone, hopefully you, signed this address up to the newsletter from ${site}. Press the button to confirm. If it was not you, ignore this email: nothing more will happen.`,
+    confirmButton: "Confirm my sign-up",
+    confirmValid: "The link works for 7 days.",
+    messageSubject: (site: string) => `New message from ${site}`,
+    messageHeading: "A new message from the form on your site",
+    filesInAdmin: "The files sent with it are kept with the response under Website → Forms, where you can download them.",
+    replyHint: "Reply to this email to answer the sender.",
+    subscriberSubject: (site: string) => `New newsletter sign-up from ${site}`,
+    subscriberHeading: "A new newsletter sign-up",
+    subscriberText: "Add the address to your newsletter list. The consent and when it was given are below.",
+    page: "Page",
+    consentedAt: "Consented",
+    confirmedAt: "Confirmed",
+  },
   returns: enReturns,
   // Exchanges and return labels (D239): hand-written, needs legal review (`en-exchange.ts`).
   exchange: enExchange,

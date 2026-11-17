@@ -168,6 +168,7 @@ export const blocksNb: BlocksMessages = {
       number: "Tall",
       date: "Dato",
       hidden: "Fra adressen",
+      file: "Fil",
     },
     newsletterLayouts: {
       inline: "Side om side",
