@@ -176,7 +176,7 @@ export is in the audit log (an export with its count only, as D295's).
 | **F2** (built) | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
 | **F3** (built) | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
 | **F4** (built) | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
-| **F5** (built; the AI tools held for the eval) | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
+| **F5** (built) | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
 
 ## 9. F1 as built (17 November 2026)
 
@@ -301,8 +301,8 @@ export is in the audit log (an export with its count only, as D295's).
   button and thank-you words, through `saveForm()`; the owner's yes first, gate `public`), `place_form` (a Form component as a row of a
   page's draft, never published) and `form_responses` (the newest responses, each answer cut at 500 characters, with `read_as`: a
   visitor's words are data). Permissions: Website → Forms' keys; responses with `customers:read`.
-- **Held for the eval.** The five tools are in `HELD_FOR_EVAL` and their case `manager-form-response` (an instruction hidden in a response
-  must neither be followed nor change a form) in `HELD_EVAL_CASES`, beside the CRM tools (D713), so the recorded eval still replays. A push
-  without a migration releases both sets: the tools leave `HELD_FOR_EVAL`, the cases join `AGENT_EVAL_CASES`, `change_form` gets its
-  autopilot area (`website`), the admin map's *New form* says it starts from a template, and the owner runs the eval on Platform → AI.
+- **Released.** The five tools were held in `HELD_FOR_EVAL` with their case `manager-form-response` (an instruction hidden in a response
+  must neither be followed nor change a form) until the eval was recorded with them: the CRM session released both sets and recorded run
+  9a773d05 (gpt-4.1-mini, 32 of 32, commit 401a8f8b). The admin map's *New form* still says "a ready-made one"; changing it is a prompt
+  change, so it waits for the next eval recording.
 
