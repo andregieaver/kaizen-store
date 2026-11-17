@@ -105,6 +105,12 @@ What a session really loads is measured from its own transcript: `node scripts/s
 bytes and counts under docs/audits/bloat-review-2026-11/session-load/ (src/lib/session-load.test.ts); `--summary` prints the medians
 of the first 20 'before' and the first 20 'after' files. The rules area's measure 8 holds always loaded plus rules and docs read at 25,000 bytes.
 
+### The storefront's server side (step 1.11)
+
+src/server/use-cache.scan.test.ts lists every cached read's `cacheLife()` and `cacheTag()` in CACHED_READS (a changed life or tag shows
+as a changed line in review), asks each to have both unless NO_LIFE or NO_TAG names it with a reason, and holds that no file under
+src/app/admin/(gated)/[store] refreshes a tag that names no store but the five in PLATFORM_TAG_FROM_STORE. The three lists only shrink.
+
 ## Searches
 
 Default searches (ripgrep and the tools built on it) skip docs/shopify-parity.md, docs/wave-10-notes, docs/ab-testing-spike,
