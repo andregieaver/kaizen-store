@@ -43,6 +43,7 @@ export const RETENTION_KINDS = [
   "recordings",
   "contracts",
   "form_responses",
+  "unanswered_questions",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -222,6 +223,8 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   }),
   // Forms' responses (D705): each form keeps its own for 1 to 36 months (forms.keep_months, 12 unless chosen); this rule is the longest any may.
   seed({ kind: "form_responses", country: null, periodValue: 36, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: form_responses", note: "What visitors sent with a form, counted from when it was sent: deleted after the form's own months (1 to 36, 12 unless the owner chose), never later than this rule. FORM_KEEP_MONTHS_MAX, a test holds them equal.", checkedOn: "2026-11-17" }),
+  // Questions the chat assistant could not answer (ecosystem plan E4.3, D729): a visitor's words, kept for the owner to answer.
+  seed({ kind: "unanswered_questions", country: null, periodValue: 90, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: unanswered_questions", note: "A question the chat assistant could not answer, counted from the last time a conversation asked it: deleted this long after, whether answered, dismissed or still open; the words kept are always the newest asker's. QUESTION_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-17" }),
   seed({ kind: "recordings", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "pruneRecordings() (RECORDING_KEEP_DAYS)", note: "Recordings of visits and their files, counted from the recording's start; the visitor's browser can erase its own at once. RECORDING_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-16" }),
 ];
 

@@ -210,6 +210,7 @@ export const privacyEn = {
       blog_comments: "Blog comments",
       support_conversations: "Support conversations",
       support_messages: "Support messages",
+      unanswered_questions: "Questions kept for the chat assistant",
       field_values: "Custom fields",
       vat_checks: "VAT number checks",
     } as Record<string, string>,
@@ -318,6 +319,7 @@ export const privacyEn = {
       recordings: "Recordings of visits",
       contracts: "Signed contracts",
       form_responses: "Form responses",
+      unanswered_questions: "Questions the chat assistant could not answer",
     },
     bases: {
       read: "Read at the source",

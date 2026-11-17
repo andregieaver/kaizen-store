@@ -140,6 +140,7 @@ export const RETENTION_STEPS = [
   "carrier_labels",
   "sandboxes",
   "form_responses",
+  "unanswered_questions",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -453,6 +454,12 @@ const STEPS: Record<RetentionStep, StepFn> = {
     const months = rule.periodUnit === "months" ? rule.periodValue : Math.max(1, Math.ceil(rule.periodValue / 30));
     const { pruneFormResponses } = await import("./forms-admin");
     return { count: await pruneFormResponses(ctx.now, months, ctx.batch) };
+  },
+
+  // Questions the chat assistant could not answer (ecosystem plan E4.3, D729): a visitor's words, deleted the rule's days after last asked.
+  async unanswered_questions(ctx) {
+    const { pruneUnanswered } = await import("./unanswered-questions");
+    return { count: await pruneUnanswered(cutoffInstant(await period(ctx, "unanswered_questions"), ctx.now)) };
   },
 
   // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D458, D459): the PDF holds a name and address and is

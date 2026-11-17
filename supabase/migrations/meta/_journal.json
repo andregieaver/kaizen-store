@@ -547,6 +547,20 @@
       "when": 1794923333156,
       "tag": "20261117134853_event_log_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794933641774,
+      "tag": "20261117164041_lovely_ego",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1794933654238,
+      "tag": "20261117164054_unanswered_questions_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -317,6 +317,8 @@ export type SupportRow = {
   summary: { title: string; outcome: string } | null;
   rating: string | null;
   ratingComment: string | null;
+  /** Questions of the conversation the store keeps on its assistant's gap list (ecosystem plan E4.3), in the words kept. */
+  questions?: { question: string; firstAt: Ts; lastAt: Ts }[];
 };
 /** A product review the person wrote (D301): the product, their stars and words, its state and the store's answer. */
 /** A comment the person wrote on an article (D341): where, the name they gave, their words and what became of it. */
@@ -875,6 +877,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       summary: c.summary ? { title: c.summary.title, outcome: c.summary.outcome } : null,
       rating: text(c.rating),
       ratingComment: text(c.ratingComment),
+      ...(c.questions?.length ? { questionsKept: c.questions.map((q) => ({ question: q.question, firstAskedAt: iso(q.firstAt), lastAskedAt: iso(q.lastAt) })) } : {}),
     })),
     marketing: [
       ...(input.marketing ?? []).map((m) => ({

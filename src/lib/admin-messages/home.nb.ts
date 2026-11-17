@@ -283,6 +283,10 @@ export const homeNb: HomeMessages = {
       one: "{store}: {n} kommentar på artiklene dine venter på kontroll.",
       many: "{store}: {n} kommentarer på artiklene dine venter på kontroll.",
     },
+    unansweredQuestions: {
+      one: "{store}: chatassistenten kunne ikke svare på {n} spørsmål. Skriv svaret én gang, så kan den svare neste gang.",
+      many: "{store}: chatassistenten kunne ikke svare på {n} spørsmål. Skriv svarene én gang, så kan den svare neste gang.",
+    },
     booksDiffer: { one: "{store}: {n} bilag i regnskapet avviker fra Tripletex.", many: "{store}: {n} bilag i regnskapet avviker fra Tripletex." },
     booksWaiting: { one: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført.", many: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført." },
     billsOverdue: { one: "{store}: {n} regning har passert forfallsdatoen.", many: "{store}: {n} regninger har passert forfallsdatoen." },

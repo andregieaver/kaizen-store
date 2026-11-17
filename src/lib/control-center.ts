@@ -124,6 +124,8 @@ export type StoreFigures = {
   blogComments?: number;
   /** Calls, meetings and tasks not done that are overdue or due today (D468; E2.1), only while Deals is on, for a member who may read customers. */
   activities?: ActivityFigures;
+  /** Questions the chat assistant could not answer, still open (ecosystem plan E4.3, D729), for a member who may read support. A count only. */
+  unansweredQuestions?: number;
 };
 
 /**
@@ -184,6 +186,7 @@ export const ATTENTION_KINDS = [
   "activities_overdue",
   "activities_today",
   "blog_comments",
+  "unanswered_questions",
   "books",
   "bills",
   "turnover",
@@ -407,7 +410,7 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
 }
 
 /** What `queueItems()` reads of a store: its name and the queues' figures (each left out where the member may not see it). */
-export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities">;
+export type QueueFigures = Pick<StoreFigures, "slug" | "name" | "role" | "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions">;
 
 /**
  * The queues ecosystem plan E2.1 (D713) brought to Home, each with the page that acts on it: payment disputes waiting for the store's answer
@@ -446,6 +449,10 @@ export function queueItems(s: QueueFigures, now: number, w: AttentionWords): Kin
   }
   if (s.blogComments && s.blogComments > 0) {
     items.push({ kind: "blog_comments", text: count(s.blogComments, w.blogComments), href: `${base}/articles/comments?status=pending`, action: a.check });
+  }
+  // E4.3 (D729): what the chat assistant could not answer, for the owner to answer once in its knowledge.
+  if (s.unansweredQuestions && s.unansweredQuestions > 0) {
+    items.push({ kind: "unanswered_questions", text: count(s.unansweredQuestions, w.unansweredQuestions), href: `${base}/chat/questions`, action: a.answer });
   }
   return items;
 }

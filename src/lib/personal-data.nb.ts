@@ -215,6 +215,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "Meldingene i en kundeservicesamtale slettes med utskriften, etter kundeservicens periode (når kundeservice er av: én dag etter at samtalen er slutt) eller når personens opplysninger slettes; de ansattes notater og partnerens hjelp eksporteres aldri.",
   support_actions:
     "Det KI-en foreslo eller ba ansatte avgjøre for en kunde, slettes med samtalens utskrift; utfallet står i samtalens meldinger, som eksporten tar med.",
+  unanswered_questions:
+    "Et spørsmål chatassistenten ikke kunne svare på (økosystemplanen E4.3), lagret så butikken kan svare på det: ordene til den siste som spurte, forkortet og med e-postadresser, lange tall, lenker og hemmeligheter fjernet, og samtalene det kom fra. Eksporteres med samtalen ordene er hentet fra, slettes med personens samtaler når personens opplysninger slettes, og slettes 90 dager etter at det sist ble spurt om; sendes aldri til en KI-modell eller på e-post.",
   docs_guide_conversations:
     "En samtale med dokumentasjonens KI-veileder, lagret under en hash av et tilfeldig token som bare leserens fane har, så den kan ikke knyttes til en person eller finnes for noen; oppbevares som samtalene i plattformens chat: tokenet og siden tømmes og meldingene slettes etter perioden til Kaizena Flows kundeservice (én dag mens kundeservice er av), og datoene og tallene slettes etter 24 måneder.",
   docs_guide_messages:

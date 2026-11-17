@@ -1,6 +1,6 @@
 {
-  "id": "37ffba24-3cbd-405e-9caa-6d204bda8ed3",
-  "prevId": "e0fe3dad-889e-4674-a067-274f606d144b",
+  "id": "10be4a30-20e2-47d5-b15e-b339f0c46343",
+  "prevId": "19bf3406-24d0-48aa-8b57-0221e080f681",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -68834,7 +68834,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts', 'form_responses')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts', 'form_responses', 'unanswered_questions')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",
@@ -91203,6 +91203,268 @@
         "ui_translations_origin": {
           "name": "ui_translations_origin",
           "value": "\"commerce\".\"ui_translations\".\"origin\" in ('ai', 'staff')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.unanswered_questions": {
+      "name": "unanswered_questions",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lang": {
+          "name": "lang",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question": {
+          "name": "question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "asked": {
+          "name": "asked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "handed_over": {
+          "name": "handed_over",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "conversations": {
+          "name": "conversations",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_at": {
+          "name": "first_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_at": {
+          "name": "last_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "unanswered_questions_store_idx": {
+          "name": "unanswered_questions_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "asked",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "unanswered_questions_last_idx": {
+          "name": "unanswered_questions_last_idx",
+          "columns": [
+            {
+              "expression": "last_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "unanswered_questions_document_idx": {
+          "name": "unanswered_questions_document_idx",
+          "columns": [
+            {
+              "expression": "document_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "unanswered_questions_decided_by_idx": {
+          "name": "unanswered_questions_decided_by_idx",
+          "columns": [
+            {
+              "expression": "decided_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "unanswered_questions_store_id_stores_id_fk": {
+          "name": "unanswered_questions_store_id_stores_id_fk",
+          "tableFrom": "unanswered_questions",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "unanswered_questions_document_id_knowledge_documents_id_fk": {
+          "name": "unanswered_questions_document_id_knowledge_documents_id_fk",
+          "tableFrom": "unanswered_questions",
+          "columnsFrom": [
+            "document_id"
+          ],
+          "tableTo": "knowledge_documents",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "unanswered_questions_decided_by_accounts_id_fk": {
+          "name": "unanswered_questions_decided_by_accounts_id_fk",
+          "tableFrom": "unanswered_questions",
+          "columnsFrom": [
+            "decided_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unanswered_questions_key": {
+          "name": "unanswered_questions_key",
+          "columns": [
+            "store_id",
+            "lang",
+            "key"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "unanswered_questions_lang": {
+          "name": "unanswered_questions_lang",
+          "value": "\"commerce\".\"unanswered_questions\".\"lang\" ~ '^[a-z]{2,3}$'"
+        },
+        "unanswered_questions_key_length": {
+          "name": "unanswered_questions_key_length",
+          "value": "char_length(\"commerce\".\"unanswered_questions\".\"key\") between 1 and 300"
+        },
+        "unanswered_questions_question": {
+          "name": "unanswered_questions_question",
+          "value": "char_length(\"commerce\".\"unanswered_questions\".\"question\") between 1 and 300"
+        },
+        "unanswered_questions_asked": {
+          "name": "unanswered_questions_asked",
+          "value": "\"commerce\".\"unanswered_questions\".\"asked\" >= 1 and \"commerce\".\"unanswered_questions\".\"handed_over\" between 0 and \"commerce\".\"unanswered_questions\".\"asked\""
+        },
+        "unanswered_questions_conversations": {
+          "name": "unanswered_questions_conversations",
+          "value": "cardinality(\"commerce\".\"unanswered_questions\".\"conversations\") between 1 and 5"
+        },
+        "unanswered_questions_status": {
+          "name": "unanswered_questions_status",
+          "value": "\"commerce\".\"unanswered_questions\".\"status\" in ('open', 'answered', 'dismissed')"
+        },
+        "unanswered_questions_decided": {
+          "name": "unanswered_questions_decided",
+          "value": "(\"commerce\".\"unanswered_questions\".\"status\" = 'open') = (\"commerce\".\"unanswered_questions\".\"decided_at\" is null)"
+        },
+        "unanswered_questions_seen": {
+          "name": "unanswered_questions_seen",
+          "value": "\"commerce\".\"unanswered_questions\".\"last_at\" >= \"commerce\".\"unanswered_questions\".\"first_at\""
         }
       },
       "isRLSEnabled": false

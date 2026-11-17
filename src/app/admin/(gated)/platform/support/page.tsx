@@ -20,9 +20,12 @@ export const metadata: Metadata = { title: "Support inbox" };
 
 /**
  * Kaizen's own support inbox (D216, 2.8, step 3): conversations with visitors of Kaizen's site (and, later, owners asking Kaizen), for
- * platform admins. Never a store's conversations: those are their desks' alone.
+ * platform admins. Never a store's conversations: those are their desks' alone. `?c=` opens one of its conversations, as a store's inbox
+ * does (the questions the assistant could not answer link there, ecosystem plan E4.3).
  */
-export default async function PlatformSupportPage() {
+export default async function PlatformSupportPage({ searchParams }: PageProps<"/admin/platform/support">) {
+  const c = (await searchParams).c;
+  const initialOpen = typeof c === "string" && /^[0-9a-f-]{36}$/i.test(c) ? c : null;
   const desk = await kaizenDesk();
   const [{ feed: initial, tab: initialTab }, mine] = await Promise.all([
     openingInbox([desk]),
@@ -48,7 +51,7 @@ export default async function PlatformSupportPage() {
     <AdminTextScope
       texts={adminTexts(adminLangOf(desk.account.adminLocale), ["support"])}
     >
-      <Inbox context={context} initial={initial} initialTab={initialTab} />
+      <Inbox context={context} initial={initial} initialTab={initialTab} initialOpen={initialOpen} />
     </AdminTextScope>
   );
 }

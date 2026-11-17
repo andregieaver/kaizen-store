@@ -120,6 +120,7 @@ export const TABLE_LABELS: Record<string, string> = {
   blog_comments: "Blog comments",
   support_conversations: "Support conversations",
   support_messages: "Support messages",
+  unanswered_questions: "Questions kept for the chat assistant",
   field_values: "Custom fields",
   vat_checks: "VAT number checks",
 };

@@ -62,6 +62,12 @@ export type ChatReply = {
   card?: SupportCard;
   /** The proposal or staff request a support tool kept (step 10): the id of the `support_actions` row the answer carries. */
   action?: string;
+  /**
+   * Every tool the answer used was the knowledge search (`search_content`) and none of its searches found a passage (ecosystem plan E4.3):
+   * the answer stood on nothing the site has, so the question goes to the gap list (`gapOf()`). Set by code from the tools' results,
+   * never from the model's words.
+   */
+  foundNothing?: true;
 };
 
 // Tools ---------------------------------------------------------------------

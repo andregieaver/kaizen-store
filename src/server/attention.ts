@@ -10,6 +10,7 @@ import { DISPUTE_STATUSES, disputeNeedsResponse } from "@/lib/payment-facts";
 import { featureOn } from "@/lib/store-features";
 
 import { leadCounts } from "./leads";
+import { OPEN_QUESTION } from "./unanswered-questions";
 import { textList, uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
@@ -21,8 +22,9 @@ import { col, typedRows } from "./typed-rows";
  * acts. Counts and ids only, never a customer.
  *
  * Here are the queues E2.1 added: payment disputes waiting for the store's answer, the AI manager's decisions, new leads, the day's calls,
- * meetings and tasks, and blog comments held for a check. The older queues are still counted in `controlCenter()`; the briefing reads
- * those through the store checkup (`checkupFindings()`), whose output the AI manager's `store_checkup` also gives.
+ * meetings and tasks, and blog comments held for a check; and the questions the chat assistant could not answer (E4.3). The older queues
+ * are still counted in `controlCenter()`; the briefing reads those through the store checkup (`checkupFindings()`), whose output the AI
+ * manager's `store_checkup` also gives.
  */
 
 /** A dispute the bank waits on the store to answer (`disputeNeedsResponse()`). */
@@ -78,18 +80,29 @@ export async function decisionCounts(storeIds: readonly string[], accountId: str
   return new Map(rows.map((r) => [r.store_id, r.n]));
 }
 
-/** Visitors' comments on the stores' articles held for a check (`pending`, the Comments page's first tab). */
-export async function commentCounts(storeIds: readonly string[]): Promise<Map<string, number>> {
-  if (storeIds.length === 0) return new Map();
+/**
+ * What visitors left that waits for the store's people, in one statement (Home's statements are counted, `admin-statements.int.test.ts`):
+ * comments on the stores' articles held for a check (`pending`, the Comments page's first tab), and the questions the chat assistant could
+ * not answer that are still open (ecosystem plan E4.3, counted as their page lists them, `OPEN_QUESTION`). Each for its own stores.
+ */
+export async function heldCounts(commentStores: readonly string[], questionStores: readonly string[]): Promise<{ comments: Map<string, number>; questions: Map<string, number> }> {
+  if (commentStores.length === 0 && questionStores.length === 0) return { comments: new Map(), questions: new Map() };
   const rows = await typedRows(
-    z.object({ store_id: col.uuid, n: col.int }),
+    z.object({ store_id: col.uuid, comments: col.int, questions: col.int }),
     sql`
-      select c.store_id, count(*)::int as n from commerce.blog_comments c
-      where c.store_id = any(${uuidList(storeIds)}) and c.status = 'pending'
-      group by c.store_id
+      select x.store_id, count(*) filter (where x.kind = 'comment')::int as comments, count(*) filter (where x.kind = 'question')::int as questions
+      from (
+        select c.store_id, 'comment' as kind from commerce.blog_comments c
+        where c.store_id = any(${uuidList(commentStores)}) and c.status = 'pending'
+        union all
+        select q.store_id, 'question' as kind from commerce.unanswered_questions q
+        where q.store_id = any(${uuidList(questionStores)}) and ${OPEN_QUESTION}
+      ) x
+      group by x.store_id
     `,
   );
-  return new Map(rows.map((r) => [r.store_id, r.n]));
+  const of = (key: "comments" | "questions") => new Map(rows.filter((r) => r[key] > 0).map((r) => [r.store_id, r[key]]));
+  return { comments: of("comments"), questions: of("questions") };
 }
 
 /**
@@ -118,7 +131,15 @@ export async function activityCounts(storeIds: readonly string[], assigneeId: st
 }
 
 /** The stores each queue is counted for: those where the reader may see it (`controlCenter()` gates them by the member's keys). */
-export type QueueGates = { disputes: readonly string[]; decisions: readonly string[]; leads: readonly string[]; activities: readonly string[]; comments: readonly string[] };
+export type QueueGates = {
+  disputes: readonly string[];
+  decisions: readonly string[];
+  leads: readonly string[];
+  activities: readonly string[];
+  comments: readonly string[];
+  /** Where the questions the chat assistant could not answer are counted (ecosystem plan E4.3): those who may read support. */
+  questions?: readonly string[];
+};
 
 export type QueueCounts = {
   disputes: Map<string, DisputeFigures>;
@@ -126,6 +147,7 @@ export type QueueCounts = {
   leads: Map<string, number>;
   activities: Map<string, ActivityFigures>;
   comments: Map<string, number>;
+  questions: Map<string, number>;
 };
 
 /**
@@ -133,29 +155,31 @@ export type QueueCounts = {
  * calls kept for their yes; null for the team's (everyone's activities, the autopilot's calls).
  */
 export async function queueCounts(gates: QueueGates, accountId: string | null, now: Date = new Date()): Promise<QueueCounts> {
-  const [disputes, decisions, leads, activities, comments] = await Promise.all([
+  const [disputes, decisions, leads, activities, { comments, questions }] = await Promise.all([
     disputeCounts(gates.disputes, now),
     decisionCounts(gates.decisions, accountId),
     leadCounts(gates.leads),
     activityCounts(gates.activities, accountId, now),
-    commentCounts(gates.comments),
+    heldCounts(gates.comments, gates.questions ?? []),
   ]);
-  return { disputes, decisions, leads, activities, comments };
+  return { disputes, decisions, leads, activities, comments, questions };
 }
 
 /** A store's figures of the queues, only those that wait: what `queueItems()` reads, spread into its `StoreFigures`. */
-export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities"> {
+export function queueFiguresOf(storeId: string, counts: QueueCounts): Pick<QueueFigures, "disputes" | "leads" | "aiDecisions" | "blogComments" | "activities" | "unansweredQuestions"> {
   const disputes = counts.disputes.get(storeId);
   const leads = counts.leads.get(storeId) ?? 0;
   const decisions = counts.decisions.get(storeId) ?? 0;
   const comments = counts.comments.get(storeId) ?? 0;
   const activities = counts.activities.get(storeId);
+  const questions = counts.questions.get(storeId) ?? 0;
   return {
     ...(disputes && disputes.waiting > 0 ? { disputes } : {}),
     ...(decisions > 0 ? { aiDecisions: decisions } : {}),
     ...(leads > 0 ? { leads } : {}),
     ...(activities ? { activities } : {}),
     ...(comments > 0 ? { blogComments: comments } : {}),
+    ...(questions > 0 ? { unansweredQuestions: questions } : {}),
   };
 }
 
@@ -170,7 +194,7 @@ export type StoreAttention = Record<AdminLang, StoreAttentionItem[]>;
 export async function storeAttention(store: Store, now: Date = new Date()): Promise<StoreAttention> {
   const ids = [store.id];
   const sales = featureOn(store, "sales") ? ids : [];
-  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids }, null, now);
+  const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids }, null, now);
   const figures: QueueFigures = { slug: store.slug, name: store.name, role: "owner", ...queueFiguresOf(store.id, counts) };
   return Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, storeAttentionItems(figures, now.getTime(), HOME_WORDS[lang].attention)])) as StoreAttention;
 }
