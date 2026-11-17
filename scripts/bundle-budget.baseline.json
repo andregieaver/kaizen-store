@@ -244,7 +244,7 @@
   "/admin/[store]/settings/localization": 625055,
   "/admin/[store]/settings/moving": 658120,
   "/admin/[store]/settings/navigation": 640385,
-  "/admin/[store]/settings/notifications": 627750,
+  "/admin/[store]/settings/notifications": 643370,
   "/admin/[store]/settings/notifications/[notification]": 654049,
   "/admin/[store]/settings/notifications/staff": 638340,
   "/admin/[store]/settings/orders": 641333,

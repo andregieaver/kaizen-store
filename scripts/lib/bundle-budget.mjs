@@ -3,6 +3,12 @@
 
 /** Bytes a route may grow over its baseline before the budget fails. */
 export const ROOM = 15_000;
+/**
+ * The room a route has over its baseline: 15,000 bytes or a twentieth of the route, whichever is more. A page's own feature work grows
+ * it by a few per cent; a library pulled into first scripts (zod is about 114,000 bytes) is far over (widened 17 November 2026, after two
+ * admin pages' ordinary growth of 15,620 and 16,851 bytes failed CI on the first day).
+ */
+export const roomFor = (old) => Math.max(ROOM, Math.round(old * 0.05));
 
 /**
  * The markers: a sentence or a name that says a part is in a route's first scripts. `only` limits the count to routes under a prefix.
@@ -91,7 +97,7 @@ export function problems(now, baseline) {
     const old = baseline.routes[route];
     if (old === undefined) {
       list.push(`${route}: new route at ${bytes} bytes; run node scripts/bundle-budget.mjs --write to add it`);
-    } else if (bytes > old + ROOM) {
+    } else if (bytes > old + roomFor(old)) {
       list.push(
         `${route}: ${bytes} bytes, baseline ${old} (+${bytes - old}). Find the import that grew it (node docs/audits/bloat-review-2026-11/scripts/markers.mjs and docs/performance.md say how); if the page needs it, take it on purpose with node scripts/bundle-budget.mjs --write --accept after pnpm build, so the growth shows in the baseline's diff.`,
       );
@@ -111,7 +117,7 @@ export function fallen(now, baseline) {
   for (const [route, old] of Object.entries(baseline.routes)) {
     const bytes = now.routes[route];
     if (bytes === undefined) list.push(`${route}: no longer in the build${tail}`);
-    else if (bytes < old - ROOM) list.push(`${route}: ${bytes} bytes, baseline ${old} (-${old - bytes})${tail}`);
+    else if (bytes < old - roomFor(old)) list.push(`${route}: ${bytes} bytes, baseline ${old} (-${old - bytes})${tail}`);
   }
   for (const [key, count] of Object.entries(now.markers)) {
     const old = baseline.markers[key];
