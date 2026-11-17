@@ -116,7 +116,9 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
     : test.status === "discarded"
       ? w.card.actions.discarded
       : test.stopReason === "guardrail"
-        ? w.card.actions.guardrail
+        ? test.stopGuardrail === "speed" || test.stopGuardrail === "checkout"
+          ? w.card.actions.guardrailBy[test.stopGuardrail]
+          : w.card.actions.guardrail
         : test.status === "stopped" && test.stopReason === "planned_end"
           ? w.card.actions.plannedStop
           : null;

@@ -18,8 +18,9 @@ type Row = Record<string, unknown>;
  * The A/B tests' upkeep (D148), from the five-minute cron and never throwing: a scheduled test whose time has come starts
  * (checked again as at any start: one that no longer can goes back to a draft with the reason, for its owner to read);
  * a test past its planned end and a week
- * of grace, or ninety days, is stopped; once an hour every running test's guardrail is looked at, and a version that
- * clearly lowers orders stops the test and the store's owners are emailed, and a test that has an answer for the first time tells them so (D662); old carts' visitors are forgotten.
+ * of grace, or ninety days, is stopped; once an hour every running test's guardrails are looked at, and a version that
+ * clearly lowers orders, fails more payments at checkout or loads clearly slower (D148 phase 19) stops the test, with which guardrail it was,
+ * and the store's owners are emailed, and a test that has an answer for the first time tells them so (D662); old carts' visitors are forgotten.
  */
 export async function runExperimentJobs(now = new Date()): Promise<{ started: number; stopped: number; checked: number; answered: number; pruned: number }> {
   let started = 0;
@@ -62,7 +63,7 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
         if (!store || !test) continue;
         checked += 1;
         const results = await experimentResults(store, test, now);
-        if (results.harmed && (await stopExperiment(null, storeId, id, "guardrail")).ok) {
+        if (results.harmed && (await stopExperiment(null, storeId, id, "guardrail", results.harmedBy)).ok) {
           stopped += 1;
           // The owners are told after the stop has happened: a failure to send never undoes it.
           await notifyGuardrailStop(store, test, results);

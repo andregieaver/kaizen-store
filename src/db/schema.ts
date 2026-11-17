@@ -2966,6 +2966,11 @@ export const speedSamples = commerce.table(
     /** Cumulative Layout Shift in thousandths. */
     clsMilli: integer("cls_milli"),
     ttfbMs: integer("ttfb_ms"),
+    /**
+     * The A/B versions this load showed, as `{experiment}:{version}` tags its own A/B cookie confirmed for a running test (D148 phase 19, as the
+     * heatmaps' totals are, D656): the speed guardrail compares them. Empty for every other load.
+     */
+    ab: text("ab").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
   },
   (t) => [
@@ -13450,7 +13455,10 @@ export const experiments = commerce.table(
     trafficShare: numeric("traffic_share", { precision: 4, scale: 3 }).notNull().default("1"),
     /** Narrowing of who is enrolled: `markets`, `devices`, `returning`. Empty: everyone who is eligible. */
     audience: jsonb("audience").notNull().default({}),
-    /** What counts as success: `orders`, `revenue`, `cart`, `checkout` or `click` (with the block in `goal_params`). */
+    /**
+     * What counts as success: `orders`, `revenue`, `cart`, `checkout`, `click` or `form` (with the block in `goal_params`), or `signup` (a sign-up to
+     * Kaizena Flow, only on its own store, D148 phase 19).
+     */
     primaryGoal: text("primary_goal").notNull(),
     goalParams: jsonb("goal_params").notNull().default({}),
     /** The least visitors per variant and the least days before a verdict is given. */
@@ -13461,6 +13469,8 @@ export const experiments = commerce.table(
     stoppedAt: timestamp("stopped_at", { withTimezone: true }),
     /** Why a test stopped: `person`, `guardrail` or `planned_end`. */
     stopReason: text("stop_reason"),
+    /** Which guardrail stopped it (D148 phase 19): `orders`, `speed` or `checkout`; null for any other stop, and for guardrail stops before phase 19. */
+    stopGuardrail: text("stop_guardrail"),
     appliedVariant: text("applied_variant"),
     /** When the test first had an answer (D148 phase 14, D662): the verdict turned better, worse or even, and the owners were told once. */
     answeredAt: timestamp("answered_at", { withTimezone: true }),
@@ -13485,12 +13495,16 @@ export const experiments = commerce.table(
       sql`(${t.targetPart} is null and ${t.targetPartKind} is null) or (${t.targetPart} is not null and length(${t.targetPart}) between 1 and 64 and coalesce(${t.targetPartKind} in ('row', 'column', 'block'), false))`,
     ),
     check("experiments_scheduled", sql`${t.status} <> 'scheduled' or ${t.scheduledStart} is not null`),
-    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form')`),
+    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form', 'signup')`),
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
     check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
     check("experiments_learning", sql`${t.learning} is null or length(${t.learning}) between 1 and 280`),
     check("experiments_stop_reason", sql`${t.stopReason} is null or ${t.stopReason} in ('person', 'guardrail', 'planned_end')`),
+    check(
+      "experiments_stop_guardrail",
+      sql`${t.stopGuardrail} is null or (${t.stopReason} = 'guardrail' and ${t.stopGuardrail} in ('orders', 'speed', 'checkout'))`,
+    ),
     check("experiments_applied", sql`(${t.appliedVariant} is not null) = (${t.status} = 'applied')`),
   ],
 );
@@ -13565,7 +13579,7 @@ export const experimentEvents = commerce.table(
     unique("experiment_events_once_key").on(t.experimentId, t.visitor, t.goal, t.ref),
     foreignKey({ name: "experiment_events_exposure_fk", columns: [t.experimentId, t.visitor], foreignColumns: [experimentExposures.experimentId, experimentExposures.visitor] }).onDelete("cascade"),
     index("experiment_events_store_idx").on(t.storeId, t.occurredAt),
-    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form')`),
+    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form', 'signup')`),
     check("experiment_events_ref", sql`length(${t.ref}) <= 80`),
   ],
 );

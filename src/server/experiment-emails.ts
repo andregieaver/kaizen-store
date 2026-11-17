@@ -32,7 +32,7 @@ import { col, typedRows } from "./typed-rows";
 export async function notifyGuardrailStop(
   store: Pick<Store, "id" | "slug" | "name">,
   test: ExperimentInfo,
-  results: Pick<ExperimentResults, "harmed" | "funnel" | "days">,
+  results: Pick<ExperimentResults, "harmed" | "funnel" | "days"> & Partial<Pick<ExperimentResults, "harmedBy" | "guardrails">>,
 ): Promise<SendOutcome[]> {
   try {
     const harmed = results.harmed ? results.funnel[results.harmed] : null;
@@ -63,6 +63,7 @@ export async function notifyGuardrailStop(
       original: { visitors: original.visitors, buyers: original.buyers },
       days: results.days,
       url: `${siteUrl()}/admin/${store.slug}/experiments/${test.id}`,
+      ...guardrailFigures(results),
     };
     // One email per language, each in the recipient's own admin language (D312 A10).
     const emails = new Map<string, ReturnType<typeof renderEmail>>();
@@ -95,6 +96,17 @@ export async function notifyGuardrailStop(
     log("error", "experiments.guardrail_email_failed", { experimentId: test.id }, error);
     return [];
   }
+}
+
+/** For a stop by the speed or the checkout guardrail (D148 phase 19), what that guardrail counted for the version and the original. */
+function guardrailFigures(results: Partial<Pick<ExperimentResults, "harmed" | "harmedBy" | "guardrails">>) {
+  const kind = results.harmedBy;
+  if (kind !== "speed" && kind !== "checkout") return {};
+  const check = results.guardrails?.find((g) => g.kind === kind);
+  const version = check?.versions.find((v) => v.key === results.harmed);
+  const original = check?.versions.find((v) => v.key === "a");
+  if (!version || !original) return {};
+  return { guardrail: { kind, version: { n: version.n, bad: version.bad }, original: { n: original.n, bad: original.bad } } };
 }
 
 const PERSON_ROW = z.object({ id: col.uuid, email: col.text, admin_locale: col.textOrNull });

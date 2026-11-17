@@ -484,6 +484,13 @@
       "when": 1794908468498,
       "tag": "20261117094108_contract_events_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794910550391,
+      "tag": "20261117101550_brown_harpoon",
+      "breakpoints": true
     }
   ]
 }

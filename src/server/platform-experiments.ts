@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { targetKindOf } from "@/lib/ab-site";
 import { experimentCard, type ExperimentCard } from "@/lib/experiment-card";
+import type { StoppingGuardrail } from "@/lib/experiment-guardrails";
 import { type Goal, type ExperimentStatus } from "@/lib/experiments";
 import { frustratedVersion } from "@/lib/heat-read";
 import { FLAG_VERSION_VIEWS } from "@/lib/page-heat";
@@ -114,7 +115,7 @@ export async function platformExperiments(everything = false, now = new Date()):
     if (status === "running") running.push({ test, row });
   }
 
-  const results = new Map<string, { verdict: string; headline: string; harmed: string | null; frustrated: string | null; split: PlatformTest["split"]; card: PlatformTest["card"] }>();
+  const results = new Map<string, { verdict: string; headline: string; harmed: string | null; harmedBy: StoppingGuardrail | null; frustrated: string | null; split: PlatformTest["split"]; card: PlatformTest["card"] }>();
   for (let i = 0; i < running.length; i += BATCH) {
     await Promise.all(
       running.slice(i, i + BATCH).map(async ({ test, row }) => {
@@ -123,7 +124,7 @@ export async function platformExperiments(everything = false, now = new Date()):
           if (!store || !info) return;
           const [r, behaviour] = await Promise.all([experimentResults(store, info, now), versionBehaviour(test.storeId, test.id)]);
           const card = experimentCard({ status: info.status, goal: info.goal, minDays: info.minDays, minVisitors: info.minVisitors, results: r, now });
-          results.set(test.id, { verdict: r.verdict.kind, headline: r.verdict.headline, harmed: r.harmed, frustrated: frustratedVersion(behaviour, FLAG_VERSION_VIEWS), split: r.figures.map((f) => ({ key: f.key, visitors: f.visitors })), card });
+          results.set(test.id, { verdict: r.verdict.kind, headline: r.verdict.headline, harmed: r.harmed, harmedBy: r.harmedBy, frustrated: frustratedVersion(behaviour, FLAG_VERSION_VIEWS), split: r.figures.map((f) => ({ key: f.key, visitors: f.visitors })), card });
         } catch (error) {
           log("error", "experiments.platform_results_read_failed", { experimentId: test.id }, error);
         }
@@ -147,6 +148,7 @@ export async function platformExperiments(everything = false, now = new Date()):
         exposed: test.exposed,
         verdict: found?.verdict ?? null,
         harmed: found?.harmed ?? null,
+        harmedBy: found?.harmedBy ?? null,
         frustrated: found?.frustrated ?? null,
       },
       now,

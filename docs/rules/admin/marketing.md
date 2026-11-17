@@ -495,7 +495,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   a test. The guardrail's stop emails the store's owners and the test's maker through `notifyGuardrailStop()`
   (`src/server/experiment-emails.ts`, words in `src/lib/experiment-emails.ts`): after the stop, once each
   (`experiment.guardrail:{test}:{account}`), never for a person's or the planned end's stop, never throwing, and the email says
-  what the counted figures say and never why. The search test and the recommendations held-out ranking (phase 7) count with the
+  what the counted figures say and never why. The guardrails (phase 19, D712, `src/lib/experiment-guardrails.ts` pure,
+  `guardrailCounts()` in `src/server/experiment-results.ts`) are decided only by `checkGuardrail()` and `guardrailStop()`: orders,
+  speed (`speed_samples.ab`, tagged only through `verifiedTags()`, only while the store counts visits) and failed payments at checkout
+  stop a test, with the kind kept in `experiments.stop_guardrail`; refunds and returns are said, never a stop. A new guardrail is a rule
+  in `GUARDRAIL_RULES`, a count there, its words on the page, in the email and in `explain_results`, and a test of its own kind of
+  trouble. The goal `signup` is Kaizena Flow's own store's alone (`HOUSE_GOALS`, refused elsewhere by `createExperiment()` and
+  `updateDraft()`), counted by `recordSignup()` from the sign-up form; the AI manager's tools offer `TOOL_GOALS`, never `GOALS`, so a
+  goal no store's owner can choose does not change their schema. The search test and the recommendations held-out ranking (phase 7) count with the
   engine's arithmetic, never a formula of their own: `callRates()`, `splitP()` and `sayCall()` in `src/lib/experiment-units.ts`
   (the interval rule for search, the pooled two-proportion rule for recommendations, units `search` and `tab`, each with its
   floor), and `experiment-parity.test.ts` holds them to the old formulas in `experiment-legacy.ts` (tests only; never import it in

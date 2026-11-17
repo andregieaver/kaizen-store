@@ -9,12 +9,19 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D712]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.37 — 2026-11-17
+
+One addition to A/B tests (D712).
+
+- `GET /experiments`, `GET /experiments/{id}` and the `experiment.answered` webhook: `goal` can also be `signup`, a sign-up to Kaizena
+  Flow. Only Kaizena Flow's own store can choose it, so no other store's tests carry it.
 
 ## 1.36 — 2026-11-17
 

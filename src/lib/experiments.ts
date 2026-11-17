@@ -46,8 +46,18 @@ export const MIN_DAYS = 14;
 export const VARIANT_KEYS = ["a", "b", "c", "d"] as const;
 export type VariantKey = (typeof VARIANT_KEYS)[number];
 
-export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form"] as const;
+export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form", "signup"] as const;
 export type Goal = (typeof GOALS)[number];
+
+/**
+ * The goals the AI manager's tools offer: every goal but `signup`, which only Kaizena Flow's own store has (D148 phase 19). Kept apart so the
+ * tools' schema, and with it the agents' eval recording, does not change with a goal no store's owner can choose.
+ */
+export const TOOL_GOALS = ["orders", "revenue", "cart", "checkout", "click", "form"] as const satisfies readonly Goal[];
+
+/** The goals only Kaizena Flow's own store can test: a sign-up to Kaizena Flow happens on its sign-up page, not in a store. */
+export const HOUSE_GOALS = ["signup"] as const satisfies readonly Goal[];
+export const isHouseGoal = (goal: Goal): boolean => (HOUSE_GOALS as readonly Goal[]).includes(goal);
 
 /** What each goal measures, in the words the admin uses. */
 export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean; block?: "button" | "form" }> = {
@@ -58,6 +68,8 @@ export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string
   click: { label: "More clicks on a button or link", asks: "get more visitors to click a chosen button or link", per: "clicked it", kind: "rate", needsBlock: true, block: "button" },
   // D93's email form or newsletter sign-up, counted when the site accepts the answer (D148, phase 11).
   form: { label: "More people sending a form", asks: "get more visitors to send a chosen form or sign up to a newsletter", per: "sent the form", kind: "rate", needsBlock: true, block: "form" },
+  // A sign-up to Kaizena Flow sent from its sign-up page by a visitor in the test (D148 phase 19): only Kaizena Flow's own store.
+  signup: { label: "More sign-ups to Kaizena Flow", asks: "get more visitors to sign up to Kaizena Flow", per: "signed up", kind: "rate", needsBlock: false },
 };
 
 /** What an owner chooses for a goal that counts something on the page, in words: "the button or link whose clicks you want more of". */

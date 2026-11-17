@@ -68,6 +68,23 @@ export const staffEmailsEn = {
       "Open the results to read them. You can discard the test, or, if you still want to use one of the other versions, apply it. Kaizena Flow does not apply anything by itself.",
     button: "See the results",
     partOn: "{part} on {page}",
+    /** The guardrails added in D148 phase 19: the same email, with what was clearly worse. */
+    speed: {
+      subject: 'Your A/B test "{test}" was stopped: slower pages in version {letter}',
+      preview: "Version {letter} clearly loaded slower than the original, so Kaizena Flow stopped the test. Everyone sees the original again.",
+      stopped:
+        'The test "{test}" of {target} in {store} had run for {days} when version {letter} ({version}) clearly loaded slower than the original. Slow pages lose visitors, so Kaizena Flow stopped the test to protect your sales.',
+      figures:
+        "{vBad} of {vN} page loads of version {letter} took more than 2.5 seconds to show their main content ({vRate}), against {oBad} of {oN} of the original ({oRate}).",
+    },
+    checkout: {
+      subject: 'Your A/B test "{test}" was stopped: more failed payments in version {letter}',
+      preview: "More payments failed at checkout in version {letter} than in the original, so Kaizena Flow stopped the test. Everyone sees the original again.",
+      stopped:
+        'The test "{test}" of {target} in {store} had run for {days} when clearly more of the visitors who saw version {letter} ({version}) had a payment fail at checkout than of those who saw the original. Kaizena Flow stopped the test to protect your sales.',
+      figures:
+        "{vBad} of {vN} visitors who started checkout in version {letter} had a payment fail ({vRate}), against {oBad} of {oN} in the original ({oRate}).",
+    },
   },
   alerts: {
     more: "…and {n} more.",
