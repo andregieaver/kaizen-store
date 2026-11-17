@@ -381,6 +381,17 @@ export const marketingNb: MarketingMessages = {
     useThis: "Bruk dette",
   },
   ads: {
+    phone: {
+      lead: "Salg sendt til annonseplattformene dine, for kunder som har tillatt markedsføringskapsler.",
+      sending: "Sende salg",
+      spending: "Forbruk",
+      budgetsSub: "Meta-annonsekontoen din · AI-assistenten kan flytte budsjetter",
+      sentWeek: "{n} sendt de siste 7 dagene",
+      connect: "Koble til",
+      change: "Endre",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "Annonser og konverteringer",
     description:
       "Send kasser og kjøp til annonseplattformene dine fra vår server, bare for kunder som har tillatt informasjonskapsler for markedsføring. Den teller salg en annonseblokkering ville skjult.",

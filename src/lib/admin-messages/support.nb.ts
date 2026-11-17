@@ -645,6 +645,14 @@ export const supportNb: SupportMessages = {
     noneYet: "Ingen ennå",
     needed: "{n} av de {min} som trengs",
   },
+  reportsPhone: {
+    emptyTitle: "Ingen samtaler i perioden {period}",
+    emptyText: "Tallene vises fra den første: hvem som svarte, hvor lenge kundene ventet, hvordan det gikk og hva de spurte om. For hele teamet, aldri per person.",
+    openInbox: "Åpne innboksen",
+    open: "Åpne",
+    close: "Lukk",
+    volumeSub: "{n} startet · {open} fortsatt åpne",
+  },
   reports: {
     takenOver: "En person tok over",
     countOf: "{count} av {of} {what}",

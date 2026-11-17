@@ -390,6 +390,18 @@ export const marketingEn = {
     useThis: "Use this",
   },
   ads: {
+    /** Round 31 (D704): the page on a phone. */
+    phone: {
+      lead: "Sales sent to your ad platforms, for shoppers who allowed marketing cookies.",
+      sending: "Sending sales",
+      spending: "Spending",
+      budgetsSub: "Your Meta ad account · the AI manager can move budgets",
+      sentWeek: "{n} sent in the last 7 days",
+      connect: "Connect",
+      change: "Change",
+      open: "Open",
+      close: "Close",
+    },
     title: "Ads and conversions",
     description:
       "Send checkouts and purchases to your ad platforms from our server, only for shoppers who allowed marketing cookies. It counts sales an ad blocker would hide.",

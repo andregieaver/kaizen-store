@@ -610,6 +610,15 @@ export const supportEn = {
     noneYet: "None yet",
     needed: "{n} of the {min} needed",
   },
+  /** Round 31 (D704): the reports on a phone, and a period with no conversation. */
+  reportsPhone: {
+    emptyTitle: "No conversations in the {period}",
+    emptyText: "The figures appear from the first one: who answered, how long customers waited, how it went and what they asked about. For the desk, never per person.",
+    openInbox: "Open the inbox",
+    open: "Open",
+    close: "Close",
+    volumeSub: "{n} started · {open} still open",
+  },
   reports: {
     takenOver: "A person took it over",
     countOf: "{count} of {of} {what}",

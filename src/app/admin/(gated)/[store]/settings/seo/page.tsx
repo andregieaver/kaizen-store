@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+
+import { PhoneRow } from "@/components/admin/phone-row";
+import { submitClass } from "@/lib/submit-class";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
@@ -43,10 +46,18 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   // A store template (D175) is never open to search engines.
   const open = Boolean(store.setupCompletedAt || store.isTemplate) && !store.starter;
   const findable = open && !seo.hidden;
+  // Round 31 (D704): on a phone, found or not first, the one thing to fix as a strip, each part of the form a row saying what is set.
+  const p = w.phone;
+  const row = { change: p.change, done: p.done, flat: true } as const;
+  const mainLocale = store.markets[0]?.locale ?? locales[0] ?? "";
+  const searchTitle = seo.title[mainLocale] || store.name;
+  const searchDescription = seo.description[mainLocale] || "";
+  const ai = [seo.aiAssistants ? p.aiRead : p.aiNoRead, seo.aiTraining ? p.aiTrain : p.aiNoTrain].join(" · ");
+  const advanced = [seo.hidden ? p.hiddenShort : p.listed, seo.robots.trim() ? p.rules : p.noRules, seo.verification.google || seo.verification.bing ? p.verified : p.notVerified].join(" · ");
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={<>{w.title}</>} description={<>{fillWords(w.description, { store: store.name })}</>} />
+      <PageHeader title={<>{w.title}</>} description={<span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span>} />
 
       <section aria-labelledby="status-heading" className={card}>
         <h2 id="status-heading" className="text-title text-ink">
@@ -72,7 +83,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             </a>
           </li>
         </ul>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted max-sm:hidden">
           {gaps.pictures === 0
             ? w.noPictures
             : gaps.titleOnly === 0
@@ -85,12 +96,22 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           )}
         </p>
       </section>
+      {gaps.titleOnly > 0 && (
+        <div className="flex items-center gap-3 rounded-panel bg-warning-soft px-4 py-3 sm:hidden">
+          <p className="min-w-0 flex-1 text-sm">{fillWords(p.pictures, { n: gaps.titleOnly, total: gaps.pictures })}</p>
+          <Link href={`/admin/${store.slug}/products`} className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-canvas">
+            {p.describe}
+          </Link>
+        </div>
+      )}
 
       <ActionForm
         action={saveStoreSeoAction.bind(null, store.slug)}
         successMessage={w.savedMessage}
         className="flex flex-col gap-6"
       >
+        <div className="flex flex-col gap-6 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow title={p.search} sub={searchDescription ? `${searchTitle} · ${searchDescription}` : searchTitle} {...row}>
         <section aria-labelledby="home-heading" className={card}>
           <div>
             <h2 id="home-heading" className="text-title text-ink">
@@ -114,6 +135,8 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           ))}
         </section>
 
+        </PhoneRow>
+        <PhoneRow title={w.share} sub={seo.image ? p.shareOwn : p.shareDrawn} {...row}>
         <section aria-labelledby="share-heading" className={card}>
           <div>
             <h2 id="share-heading" className="text-title text-ink">
@@ -131,6 +154,8 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           />
         </section>
 
+        </PhoneRow>
+        <PhoneRow title={p.elsewhere} sub={seo.sameAs.length > 0 ? fillWords(p.profiles, { n: seo.sameAs.length }) : p.noProfiles} {...row}>
         <section aria-labelledby="profiles-heading" className={card}>
           <h2 id="profiles-heading" className="text-title text-ink">
             {w.elsewhere}
@@ -151,6 +176,8 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           </label>
         </section>
 
+        </PhoneRow>
+        <PhoneRow title={p.ai} sub={ai} {...row}>
         <section aria-labelledby="ai-heading" className={card}>
           <div>
             <h2 id="ai-heading" className="text-title text-ink">
@@ -195,6 +222,8 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           </label>
         </section>
 
+        </PhoneRow>
+        <PhoneRow title={w.advanced} sub={advanced} last {...row}>
         <section aria-labelledby="advanced-heading" className={card}>
           <h2 id="advanced-heading" className="text-title text-ink">
             {w.advanced}
@@ -243,9 +272,11 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           </div>
           <p className={hint}>{fillWords(w.consoleHint, { base, sitemap })}</p>
         </section>
+        </PhoneRow>
+        </div>
 
         <div>
-          <SubmitButton>{w.save}</SubmitButton>
+          <SubmitButton className={`${submitClass()} max-sm:w-full`}>{w.save}</SubmitButton>
         </div>
       </ActionForm>
     </div>

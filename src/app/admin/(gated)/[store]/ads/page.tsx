@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
@@ -31,20 +33,47 @@ export default async function AdsPage({ params }: PageProps<"/admin/[store]/ads"
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "marketing").ads;
   const common = adminText(lang, "marketing").common;
+  const p = w.phone;
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
   const [connections, counts] = await Promise.all([listAdConnections(store.id), adConversionCounts(store.id)]);
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.description} />
-      <Suspense fallback={<Card title={w.budgets.title}>{null}</Card>}>
-        <AdBudgetsCard storeId={store.id} storeSlug={store.slug} owner={owner} lang={lang} />
-      </Suspense>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="max-sm:hidden">{w.description}</span>
+            <span className="sm:hidden">{p.lead}</span>
+          </>
+        }
+      />
+      {/* Round 31 (D704): on a phone each platform is a row (Not connected with Connect, or what was sent), sending first, spending after. */}
+      <div className="flex flex-col gap-2 max-sm:order-2">
+        <h2 className="px-0.5 text-sm text-muted sm:hidden">{p.spending}</h2>
+        <PhoneRows>
+          <PhoneRow title={w.budgets.title} sub={p.budgetsSub} change={p.open} done={p.close} flat>
+            <Suspense fallback={<Card title={w.budgets.title}>{null}</Card>}>
+              <AdBudgetsCard storeId={store.id} storeSlug={store.slug} owner={owner} lang={lang} />
+            </Suspense>
+          </PhoneRow>
+        </PhoneRows>
+      </div>
+      <h2 className="-mb-4 px-0.5 text-sm text-muted max-sm:order-1 sm:hidden">{p.sending}</h2>
+      <div className="grid gap-4 max-sm:order-1 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel lg:grid-cols-2">
         {AD_PLATFORMS.map((platform) => {
           const c = connections.find((x) => x.platform === platform);
           const mine = counts.filter((x) => x.platform === platform);
+          const sent = mine.filter((x) => x.status === "sent" || x.status === "pending").reduce((sum, x) => sum + x.n, 0);
           return (
+            <PhoneRow
+              key={platform}
+              title={w.platforms[platform]}
+              sub={c ? (c.on ? fillWords(p.sentWeek, { n: n(sent) }) : common.off) : w.notConnected}
+              change={c ? p.change : p.connect}
+              done={p.close}
+              flat
+            >
             <Card
               key={platform}
               title={w.platforms[platform]}
@@ -116,10 +145,11 @@ export default async function AdsPage({ params }: PageProps<"/admin/[store]/ads"
                 )}
               </div>
             </Card>
+            </PhoneRow>
           );
         })}
       </div>
-      <p className="max-w-3xl text-sm text-muted">{w.note}</p>
+      <p className="max-w-3xl text-sm text-muted max-sm:order-3">{w.note}</p>
     </div>
   );
 }
