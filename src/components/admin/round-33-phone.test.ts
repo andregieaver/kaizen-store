@@ -16,8 +16,8 @@ import { AddEndpoint } from "./webhook-endpoints";
 /** Round 33 (D707): the Pages list and the add-endpoint form on a phone. */
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'");
-const scoped = (child: Parameters<typeof createElement>[0], props: object, areas: Parameters<typeof adminTexts>[1]) =>
-  createElement(AdminTextScope, { texts: adminTexts("en", areas) }, createElement(child as never, props as never));
+const scoped = (child: unknown, props: object, areas: Parameters<typeof adminTexts>[1]) =>
+  createElement(AdminTextScope, { texts: adminTexts("en", areas), children: createElement(child as never, props as never) });
 
 const page = (n: number, over: Partial<PageSummary> = {}): PageSummary => ({
   id: `p${n}`,
