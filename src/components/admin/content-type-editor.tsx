@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import {
@@ -238,6 +239,10 @@ export function ContentTypeEditor({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <form
+        onInvalidCapture={(event) => {
+          // A field the browser flags inside a closed phone row opens it (the row follows its anchor).
+          if ((event.target as HTMLElement).closest("#type-web") && window.location.hash !== "#type-web") window.location.hash = "type-web";
+        }}
         onSubmit={(event) => {
           event.preventDefault();
           submit();
@@ -264,7 +269,7 @@ export function ContentTypeEditor({
         </p>
 
         <section aria-labelledby="type-heading" className={card}>
-          <h2 id="type-heading" className="text-title text-ink">
+          <h2 id="type-heading" className="text-title text-ink max-sm:sr-only">
             {w.theType}
           </h2>
           <div className={label}>
@@ -289,6 +294,18 @@ export function ContentTypeEditor({
               {w.nameHint}
             </span>
           </div>
+          {/* Round 44 (D742): on a phone the web name, made from the name, and the pages are one row; an empty web name opens it. */}
+          <div className="max-sm:border-t max-sm:border-line">
+          <PhoneRow
+            id="type-web"
+            inset
+            last
+            title={w.webName}
+            sub={`/${draft.slug || "…"}/ · ${draft.hasPages ? w.pages.toLowerCase() : w.phone.noPages}`}
+            change={w.phone.change}
+            done={w.phone.done}
+          >
+          <div className="flex flex-col gap-6">
           <div className={label}>
             <label htmlFor="type-slug">{w.webName}</label>
             <input
@@ -330,9 +347,12 @@ export function ContentTypeEditor({
               </span>
             </span>
           </div>
+          </div>
+          </PhoneRow>
+          </div>
         </section>
 
-        <section aria-labelledby="fields-heading" className={card}>
+        <section aria-labelledby="fields-heading" className={`${card} max-sm:order-2`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="fields-heading" className="text-title text-ink">
               {w.fields} <span className="text-muted">({fields.length})</span>
@@ -363,6 +383,21 @@ export function ContentTypeEditor({
           <p className={hint}>{w.orderHint}</p>
         </section>
 
+        <div className="max-sm:order-1 max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow
+          flat
+          last
+          title={w.roles}
+          sub={[
+            [w.titleField, draft.titleField],
+            [w.summaryField, draft.summaryField],
+            [w.pictureField, draft.pictureField],
+          ]
+            .map(([role, id]) => `${role}: ${fields.find((f) => f.id === id)?.label ?? w.none}`)
+            .join(" · ")}
+          change={w.phone.change}
+          done={w.phone.done}
+        >
         <section aria-labelledby="roles-heading" className={card}>
           <h2 id="roles-heading" className="text-title text-ink">
             {w.roles}
@@ -391,8 +426,10 @@ export function ContentTypeEditor({
             )}
           </div>
         </section>
+        </PhoneRow>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 max-sm:order-3">
           <button
             type="submit"
             disabled={saving}
@@ -404,13 +441,15 @@ export function ContentTypeEditor({
             {saved && !dirty ? w.saved : dirty ? w.unsaved : ""}
           </span>
         </div>
-        {actions}
+        {actions ? <div className="max-sm:order-4">{actions}</div> : null}
       </form>
 
       <aside
         aria-labelledby="preview-heading"
         className="min-w-0 xl:sticky xl:top-4 xl:self-start"
       >
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow flat last title={w.preview} sub={w.phone.form} change={w.phone.open} done={w.phone.done}>
         <div className={card}>
           <div>
             <h2 id="preview-heading" className="text-title text-ink">
@@ -430,6 +469,8 @@ export function ContentTypeEditor({
               currencies ? { ...EMPTY_LOOKUPS, currencies } : EMPTY_LOOKUPS
             }
           />
+        </div>
+        </PhoneRow>
         </div>
       </aside>
 

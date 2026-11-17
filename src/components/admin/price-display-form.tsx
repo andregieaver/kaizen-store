@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { useAdminText } from "@/components/admin/admin-text";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card } from "@/components/admin/ui/card";
 import { fillWords } from "@/lib/admin-fill";
 import { formatMoney, minorUnitDigits, PRICE_DECIMALS, type PriceDecimals } from "@/lib/money";
@@ -50,6 +51,7 @@ export function PriceDisplayForm({
   const [mainWords, setMainWords] = useState<PriceWords>((main && display.words[main.locale]) || NO_WORDS);
   const [own, setOwn] = useState<Record<string, boolean>>(() => Object.fromEntries(others.map((l) => [l.locale, l.locale in display.words])));
   const [open, setOpen] = useState(false);
+  const [picker, setPicker] = useState<QuantityPicker>(display.quantityPicker);
   const fold = useRef<HTMLDetailsElement>(null);
 
   const unit = 10 ** minorUnitDigits(places.currency);
@@ -74,6 +76,9 @@ export function PriceDisplayForm({
   return (
     <ActionForm action={action} successMessage={w.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
+        {/* Round 44 (D742): on a phone the three choices are rows saying what is chosen; each opens its card. From 640 px nothing changes. */}
+        <PhoneRows>
+        <PhoneRow flat title={w.decimalsTitle} sub={`${w.decimals[decimals].label} · ${example(decimals).whole}`} change={w.phone.change} done={w.phone.done}>
         <Card title={w.decimalsTitle}>
           <fieldset className="flex flex-col gap-3">
             <legend className="sr-only">{w.decimalsTitle}</legend>
@@ -96,7 +101,15 @@ export function PriceDisplayForm({
           </fieldset>
           <p className={`${hint} mt-3`}>{w.decimalsNote}</p>
         </Card>
+        </PhoneRow>
 
+        <PhoneRow
+          flat
+          title={w.wordsTitle}
+          sub={mainWords.prefix.trim() || mainWords.suffix.trim() ? withWords(money(499 * unit, decimals), { prefix: mainWords.prefix.trim(), suffix: mainWords.suffix.trim() }) : w.phone.none}
+          change={w.phone.change}
+          done={w.phone.done}
+        >
         <Card title={w.wordsTitle} description={w.wordsHint}>
           {main && (
             <div className="flex flex-col gap-3">
@@ -109,13 +122,15 @@ export function PriceDisplayForm({
           )}
           <p className={`${hint} mt-3`}>{fillWords(w.wordsMax, { max: PRICE_WORD_MAX })}</p>
         </Card>
+        </PhoneRow>
 
+        <PhoneRow flat last title={w.quantityTitle} sub={w.quantity[picker].label} change={w.phone.change} done={w.phone.done}>
         <Card title={w.quantityTitle}>
           <fieldset className="flex flex-col gap-3">
             <legend className="sr-only">{w.quantityTitle}</legend>
             {QUANTITY_PICKERS.map((value: QuantityPicker) => (
               <label key={value} className="flex items-start gap-2 text-sm">
-                <input type="radio" name="quantityPicker" value={value} defaultChecked={display.quantityPicker === value} className="mt-0.5 size-4" />
+                <input type="radio" name="quantityPicker" value={value} defaultChecked={display.quantityPicker === value} onChange={() => setPicker(value)} className="mt-0.5 size-4" />
                 <span>
                   <span className="text-body-strong">{w.quantity[value].label}</span>
                   <span className="block text-muted">{w.quantity[value].hint}</span>
@@ -125,6 +140,8 @@ export function PriceDisplayForm({
           </fieldset>
           <p className={`${hint} mt-3`}>{w.quantityNote}</p>
         </Card>
+        </PhoneRow>
+        </PhoneRows>
 
         {/* Lisa's depth, one step away; its fields are sent and saved whether it is open or not. */}
         <details

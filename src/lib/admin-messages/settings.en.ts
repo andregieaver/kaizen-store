@@ -979,6 +979,7 @@ export const settingsEn = {
     languagesHint: "A language without words of its own uses those in {main}.",
     ownWords: "Own words in {language} (empty for none)",
     noOtherLanguages: "Your store has one language.",
+    phone: { lead: "How shoppers see prices and choose how many.", change: "Change", done: "Done", none: "None" },
     saved: "Saved. Your shop shows prices this way now.",
     problems: {
       long: "{place} in {language}: at most {max} characters.",

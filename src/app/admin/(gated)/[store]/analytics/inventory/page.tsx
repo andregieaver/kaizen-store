@@ -40,7 +40,7 @@ export default async function AnalyticsInventoryPage({ params, searchParams }: P
           path="/analytics/inventory"
           title={w.pages.inventory.title}
           picker={false}
-          description={w.pages.inventory.description}
+          description={<><span className="sm:hidden">{w.inventory.phone.lead}</span><span className="max-sm:hidden">{w.pages.inventory.description}</span></>}
         />
         <InventoryView base={ctx.base} locale={locale} report={report} status={status} sort={sort} showAll={showAll} words={w.inventory} />
       </div>

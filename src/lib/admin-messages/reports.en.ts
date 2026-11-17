@@ -937,7 +937,7 @@ export const reportsEn = {
   },
   inventory: {
     /** Round 34 (D708): a variant's line on a phone. */
-    phone: { onHand: "{n} on hand" },
+    phone: { onHand: "{n} on hand", lead: "What is in stock, what runs out, what sits.", costs: "{units} have no cost, so stock value is missing", fix: "Fix", sold: "{n} sold in 30 days" },
     n: {
       unit: {
         one: "unit",

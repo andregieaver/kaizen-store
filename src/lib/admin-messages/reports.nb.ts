@@ -919,7 +919,7 @@ export const reportsNb: ReportsMessages = {
     changeAgainst: " Endringen er mot {from} til {to}.",
   },
   inventory: {
-    phone: { onHand: "{n} på lager" },
+    phone: { onHand: "{n} på lager", lead: "Hva som er på lager, hva som går tomt, hva som blir liggende.", costs: "{units} har ingen kostnad, så lagerverdien mangler", fix: "Fiks", sold: "{n} solgt på 30 dager" },
     n: {
       unit: {
         one: "enhet",

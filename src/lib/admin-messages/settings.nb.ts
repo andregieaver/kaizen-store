@@ -966,6 +966,7 @@ export const settingsNb: SettingsMessages = {
     languagesHint: "Et språk uten egne ord bruker dem på {main}.",
     ownWords: "Egne ord på {language} (tomt for ingen)",
     noOtherLanguages: "Butikken din har ett språk.",
+    phone: { lead: "Hvordan kundene ser prisene og velger antall.", change: "Endre", done: "Ferdig", none: "Ingen" },
     saved: "Lagret. Butikken viser prisene slik nå.",
     problems: {
       long: "{place} på {language}: høyst {max} tegn.",

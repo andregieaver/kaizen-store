@@ -101,6 +101,7 @@ export const contentNb: ContentMessages = {
     updated: "{label} er oppdatert.",
     confirmRemove: "Fjerne {label}? Det som er fylt inn i feltet i hver oppføring, tas bort når du lagrer.",
     untitled: "Type uten navn",
+    phone: { change: "Endre", done: "Ferdig", noPages: "ingen side for hver oppføring", form: "Skjemaet en oppføring får", open: "Åpne" },
   },
   layout: {
     title: "Oppføringsside",
