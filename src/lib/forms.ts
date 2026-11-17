@@ -84,6 +84,27 @@ export function chosenPlaces(field: Pick<FormField, "kind" | "options">, raw: st
   return field.kind === "checklist" ? unique : unique.slice(0, 1);
 }
 
+/**
+ * A hidden field's answer (D738 F6a): the value of `param` in the address's query (`/kampanje?utm_campaign=vinter`), one line of at most
+ * 300 characters, or null. A query that cannot be read reads as none.
+ */
+export function fromAddress(address: string, param: string | undefined): string | null {
+  if (!param) return null;
+  const query = address.split("#")[0].split("?").slice(1).join("?");
+  if (!query) return null;
+  let value: string | null;
+  try {
+    value = new URLSearchParams(query).get(param);
+  } catch {
+    return null;
+  }
+  const text = value === null ? "" : line(value).slice(0, LINE_MAX);
+  return text === "" ? null : text;
+}
+
+/** Questions the visitor sees: every one asked but a hidden field (D738), whose answer comes from the address. */
+export const askedQuestions = (fields: readonly FormField[], values: FormRequest["values"]) => shownQuestions(fields, values).filter((f) => f.kind !== "hidden");
+
 /** Whether one question's answer holds a condition (`showWhen`, D705 F3). */
 function holds(target: FormField, raw: string | boolean | undefined, c: ShowWhen): boolean {
   const chosen = OPTION_FIELD_KINDS.includes(target.kind) ? chosenPlaces(target, raw) : [];
@@ -123,7 +144,9 @@ export function shownQuestions(fields: readonly FormField[], values: FormRequest
  * written, choices by their place in the list. A question not asked
  * (its conditions do not hold, D705 F3) is neither checked nor sent. A
  * date's earliest and latest day count from `today` (the owner's on the
- * server, the visitor's in the browser).
+ * server, the visitor's in the browser). A hidden field (D738 F6a) is
+ * answered from `address`, the page's path with its query, as it was sent:
+ * never an error, and left out when the address does not have it.
  */
 export function checkMessage(
   block: Pick<EmailFormBlock, "fields" | "consent">,
@@ -132,6 +155,7 @@ export function checkMessage(
   visitor: FormTexts,
   owner: FormTexts,
   today?: string,
+  address = "",
 ): CheckedMessage {
   const errors: FormErrors = {};
   const answers: Answer[] = [];
@@ -139,6 +163,11 @@ export function checkMessage(
   for (const field of shownQuestions(block.fields, values)) {
     const raw = values[field.id];
     const label = fieldLabel(field, owner);
+    if (field.kind === "hidden") {
+      const value = fromAddress(address, field.param);
+      if (value) answers.push({ label, value });
+      continue;
+    }
     if (field.kind === "checkbox") {
       const ticked = raw === true;
       if (field.required && !ticked) errors[field.id] = visitor.form.consentNeeded;

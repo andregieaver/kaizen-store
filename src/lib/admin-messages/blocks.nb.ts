@@ -167,6 +167,7 @@ export const blocksNb: BlocksMessages = {
       checklist: "Avkrysningsliste",
       number: "Tall",
       date: "Dato",
+      hidden: "Fra adressen",
     },
     newsletterLayouts: {
       inline: "Side om side",

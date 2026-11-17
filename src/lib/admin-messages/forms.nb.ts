@@ -31,6 +31,10 @@ export const formsNb: FormsMessages = {
 
   tabs: { form: "Skjema", responses: "Svar", settings: "Innstillinger" },
   editor: {
+    param: "Del av adressen",
+    paramHint: "Besøkende ser aldri dette feltet. Det tar vare på verdien av denne delen av sidens adresse sammen med svaret: med utm_campaign tar en adresse som slutter på ?utm_campaign=vinter vare på «vinter».",
+    hiddenName: "Navn i svarene",
+    hiddenNamePlaceholder: "Kampanje",
     name: "Navn",
     nameHint: "Bare du ser det.",
     sendTo: "Send svar på e-post til",

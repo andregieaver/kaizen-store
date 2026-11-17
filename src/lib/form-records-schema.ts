@@ -3,6 +3,7 @@ import { z } from "zod";
 import { FORM_KEEP_MONTHS_MAX, FORM_NAME_MAX, SHOW_WHEN_MAX } from "./form-records";
 import { DATE_DAYS_MAX, NUMBER_LIMIT } from "./questions";
 import {
+  ADDRESS_PARAM,
   BUTTON_LABEL_MAX,
   FORM_FIELDS_MAX,
   FORM_FIELD_KINDS,
@@ -54,9 +55,11 @@ const question = z
       .array(z.object({ question: key, op: z.enum(SHOW_WHEN_OPS), values: z.array(z.number().int().min(0).max(FORM_OPTIONS_MAX - 1)).max(FORM_OPTIONS_MAX).optional() }))
       .max(SHOW_WHEN_MAX, `A question is asked on at most ${SHOW_WHEN_MAX} conditions.`)
       .optional(),
+    param: z.string().trim().regex(ADDRESS_PARAM, "A hidden field reads a part of the address: letters, digits, dots, dashes and underscores, such as utm_campaign.").optional(),
   })
   .refine((q) => !OPTION_FIELD_KINDS.includes(q.kind) || (q.options?.length ?? 0) > 0, { message: "A choice needs at least one option.", path: ["options"] })
   .refine((q) => !LABELLED_KINDS.includes(q.kind) || q.label.text !== "", { message: "A question needs its words.", path: ["label"] })
+  .refine((q) => q.kind !== "hidden" || Boolean(q.param), { message: "A hidden field needs the part of the address it reads, such as utm_campaign.", path: ["param"] })
   .refine((q) => q.bounds?.min === undefined || q.bounds.max === undefined || q.bounds.min <= q.bounds.max, {
     message: "The lowest answer is above the highest.",
     path: ["bounds"],
@@ -65,13 +68,19 @@ const question = z
     (q) => q.kind !== "date" || !q.bounds || [q.bounds.min, q.bounds.max].every((d) => d === undefined || (d >= 0 && d <= DATE_DAYS_MAX)),
     { message: `A date's earliest and latest day are 0 to ${DATE_DAYS_MAX} days from today.`, path: ["bounds"] },
   )
-  .transform((q) => ({
-    ...q,
-    options: OPTION_FIELD_KINDS.includes(q.kind) ? q.options : undefined,
-    bounds: (q.kind === "number" || q.kind === "date") && q.bounds && (q.bounds.min !== undefined || q.bounds.max !== undefined) ? q.bounds : undefined,
-    showWhen: q.showWhen?.length ? q.showWhen : undefined,
-    help: q.help?.text ? q.help : undefined,
-  }));
+  .transform((q) =>
+    // A hidden field is never asked (D738 F6a): only its name in the responses and the part of the address it reads.
+    q.kind === "hidden"
+      ? { id: q.id, kind: q.kind, label: q.label, param: q.param }
+      : {
+          ...q,
+          param: undefined,
+          options: OPTION_FIELD_KINDS.includes(q.kind) ? q.options : undefined,
+          bounds: (q.kind === "number" || q.kind === "date") && q.bounds && (q.bounds.min !== undefined || q.bounds.max !== undefined) ? q.bounds : undefined,
+          showWhen: q.showWhen?.length ? q.showWhen : undefined,
+          help: q.help?.text ? q.help : undefined,
+        },
+  );
 
 /** Why a form's conditions cannot stand (F3): each names a question above it, and asks of it what that kind of question can answer. */
 export function showWhenProblems(questions: readonly z.output<typeof question>[]): string[] {
@@ -81,6 +90,10 @@ export function showWhenProblems(questions: readonly z.output<typeof question>[]
       const target = questions.slice(0, i).find((t) => t.id === c.question);
       if (!target) {
         problems.push("A question is asked on the answer to a question that is not above it.");
+        continue;
+      }
+      if (target.kind === "hidden") {
+        problems.push("A question cannot be asked on a hidden field.");
         continue;
       }
       const options = OPTION_FIELD_KINDS.includes(target.kind) ? (target.options?.length ?? 0) : 0;

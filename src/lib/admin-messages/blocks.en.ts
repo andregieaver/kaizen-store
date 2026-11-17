@@ -173,6 +173,7 @@ export const blocksEn = {
       checklist: "Tick list",
       number: "Number",
       date: "Date",
+      hidden: "From the address",
     },
     newsletterLayouts: {
       inline: "Side by side",

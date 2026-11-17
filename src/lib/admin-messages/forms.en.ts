@@ -34,6 +34,10 @@ export const formsEn = {
 
   tabs: { form: "Form", responses: "Responses", settings: "Settings" },
   editor: {
+    param: "Part of the address",
+    paramHint: "Visitors never see this field. It keeps the value of this part of the page's address with the response: with utm_campaign, an address ending ?utm_campaign=winter keeps \"winter\".",
+    hiddenName: "Name in the responses",
+    hiddenNamePlaceholder: "Campaign",
     name: "Name",
     nameHint: "Only you see it.",
     sendTo: "Email responses to",

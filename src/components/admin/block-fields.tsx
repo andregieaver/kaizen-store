@@ -2722,7 +2722,7 @@ function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) 
           <>
             <Choices
               legend={w.kind}
-              options={optionsOf(FORM_FIELD_KINDS, all.lists.formFieldKinds)}
+              options={optionsOf(FORM_FIELD_KINDS, all.lists.formFieldKinds).filter((o) => o.value !== "hidden")}
               value={field.kind}
               onChange={(kind) => change({ kind, ...(kind === "select" && !field.options?.length && { options: [""] }) })}
             />

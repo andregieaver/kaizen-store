@@ -306,3 +306,25 @@ export is in the audit log (an export with its count only, as D295's).
   9a773d05 (gpt-4.1-mini, 32 of 32, commit 401a8f8b). The admin map's *New form* still says "a ready-made one"; changing it is a prompt
   change, so it waits for the next eval recording.
 
+
+## 15. F6 (D738): hidden fields, file uploads and payments in a form
+
+Asked for on 17 November 2026: the three things section 3 left for later, in three parts that each ship on their own, then the AI
+manager's tools and its words for *New form* with one eval run by the owner.
+
+### 15.1 F6a as built: hidden fields from the address (17 November 2026)
+
+- **A kind of question, `hidden`** (`FORM_FIELD_KINDS`, a form's only: `PAGE_FORM_KINDS` keeps it out of a page's own email form). It is
+  never asked: its words are its name in the responses (*Campaign*), and `param` names the part of the address it reads (`utm_campaign`
+  unless the owner writes another, `ADDRESS_PARAM`). The schema keeps nothing else of it (no hint, help, width, condition or need to be
+  answered), and no question may be asked on one.
+- **Its answer** is `fromAddress()` (`src/lib/forms.ts`): the parameter's value in the path the form was sent from, as `/api/forms`
+  already receives it with its query, one line of at most 300 characters. `checkMessage()` takes the address, so the browser and the
+  server agree; whatever the browser sends under the field's id is ignored, and an address without the parameter leaves the answer out
+  rather than failing. The site never draws it (`askedQuestions()`).
+- **Where it shows.** As any answer: the responses screen, the CSV (a column of its own), the owner's email, the support inbox, the
+  `form.response` event, the Admin API and `form_responses`, with no change to any of them. Only the page the form is sent on counts:
+  carrying a campaign from page to page would need the first visit, which is kept only with statistics consent (D303), so it is not done.
+- **Kaizena Flow's own forms** have it in the same change (the same editor and submit path).
+- **The AI manager's tools** do not offer the kind yet: their descriptions are part of the recorded eval, so the kind is added with F6c's
+  tools and wording, in one eval run.

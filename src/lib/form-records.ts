@@ -39,6 +39,8 @@ export type FormQuestion = {
   bounds?: AnswerBounds;
   /** Asked only when every one holds, each naming a question above it (F3). */
   showWhen?: ShowWhen[];
+  /** A hidden field's address parameter (D738 F6a), such as `utm_campaign`: its answer is read from the address, never asked. */
+  param?: string;
 };
 
 /** Conditions a question may have (F3). */
@@ -120,6 +122,7 @@ export function formAsBlock(form: Pick<FormRecord, "id" | "kind" | "questions" |
         ...(q.bounds?.min !== undefined ? { min: q.bounds.min } : {}),
         ...(q.bounds?.max !== undefined ? { max: q.bounds.max } : {}),
         ...(q.showWhen?.length ? { showWhen: q.showWhen } : {}),
+        ...(q.param ? { param: q.param } : {}),
       }),
     ),
     submitLabel: at(form.words.submit),

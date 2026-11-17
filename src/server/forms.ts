@@ -187,8 +187,8 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
   const o = t(owner.lang);
 
   if (block.type === "emailForm") {
-    // A date's earliest and latest day count from the owner's today (D705 F3).
-    const checked = checkMessage(block, request.values, request.consent, v, o, todayInZone(owner.timeZone));
+    // A date's earliest and latest day count from the owner's today (D705 F3); a hidden field reads the address it was sent on (D738).
+    const checked = checkMessage(block, request.values, request.consent, v, o, todayInZone(owner.timeZone), request.path);
     if (!checked.ok) return { status: 422, body: { ok: false, errors: checked.errors } };
     // A robot is told it worked, and nothing is sent.
     if (looksAutomated(request)) return { status: 200, body: { ok: true, outcome: "sent" } };

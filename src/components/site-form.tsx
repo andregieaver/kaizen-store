@@ -8,7 +8,7 @@ import {
   checkMessage,
   checkSignup,
   fieldLabel,
-  shownQuestions,
+  askedQuestions,
   chosenPlaces,
   type FormErrors,
   type FormResponse,
@@ -101,7 +101,7 @@ export function SiteForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (preview || state.kind === "sending") return;
-    const checked = form.type === "newsletter" ? checkSignup(form, values, consent, m) : checkMessage(form, values, consent, m, m, visitorToday());
+    const checked = form.type === "newsletter" ? checkSignup(form, values, consent, m) : checkMessage(form, values, consent, m, m, visitorToday(), window.location.search);
     if (!checked.ok) {
       setErrors(checked.errors);
       const first = Object.keys(checked.errors)[0];
@@ -180,7 +180,7 @@ export function SiteForm({
         ) : (
           // The questions asked given the answers so far (D705 F3); half-width ones side by side on a wider screen.
           <div className="grid gap-4 sm:grid-cols-2">
-            {shownQuestions(form.fields, values).map((field) => (
+            {askedQuestions(form.fields, values).map((field) => (
               <div key={field.id} className={field.width === "half" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
                 <Field field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} />
               </div>

@@ -131,6 +131,29 @@ describe("forms as their own records (D705)", () => {
     expect((await db().execute(sql`select 1 from commerce.form_responses where form_id = ${made.id}::uuid`)).length).toBe(0);
   });
 
+  it("keeps a hidden field's value from the address the form was sent on (D738 F6a), in the response and its file", async () => {
+    const draft = contactDraft();
+    const made = await admin.saveForm(actor(), null, {
+      ...draft,
+      questions: [...draft.questions, { id: "camp", kind: "hidden", label: { text: "Campaign", byLocale: {} }, param: "utm_campaign" }],
+    });
+    if (!made.ok) throw new Error("made");
+    await placeOnPage(made.id, `kampanje-${run}`);
+    const values = { q1: "Ada", q2: `ada-${run}@example.com`, q3: "Hello", camp: "typed by a robot" };
+    const at = (address: string) => submitForm({ store: storeId, block: made.id, values, consent: false, website: "", lang: "en", path: address, elapsed: 5000 }, `visitor-${Math.random()}`);
+    expect((await at(`/kampanje-${run}?utm_campaign=winter-sale&utm_source=news`)).status).toBe(200);
+    expect((await at(`/kampanje-${run}`)).status).toBe(200);
+    const { responses } = await admin.listResponses(storeId, made.id);
+    const [plain, campaign] = responses;
+    expect(campaign.answers).toContainEqual({ label: "Campaign", value: "winter-sale" });
+    // Never what the browser sent for it, and left out when the address has none.
+    expect(JSON.stringify(responses)).not.toContain("typed by a robot");
+    expect(plain.answers.some((a) => a.label === "Campaign")).toBe(false);
+    const file = await admin.exportResponses(actor(), made.id, "Europe/Oslo");
+    expect(file?.csv.split("\r\n")[0]).toContain("Campaign");
+    expect(file?.csv).toContain("winter-sale");
+  });
+
   it("keeps a sign-up that needs no confirmation as a response", async () => {
     const draft = draftFromStarter(FORM_STARTERS.find((s) => s.key === "newsletter")!, "en", ["en"], [`owner-${run}@example.com`]);
     const made = await admin.saveForm(actor(), null, { ...draft, signup: { confirm: false, askName: false } });

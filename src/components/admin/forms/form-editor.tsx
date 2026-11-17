@@ -172,7 +172,7 @@ export function FormEditor({
                   <li key={q.id} className="rounded-panel border border-line p-3">
                     <QuestionFields
                       question={q}
-                      earlier={draft.questions.slice(0, i)}
+                      earlier={draft.questions.slice(0, i).filter((x) => x.kind !== "hidden")}
                       first={i === 0}
                       last={i === draft.questions.length - 1}
                       onChange={(patch) => setQuestion(i, patch)}
@@ -500,6 +500,7 @@ function QuestionFields({
   const kinds = useAdminText("blocks").lists.formFieldKinds as Record<FormFieldKind, string>;
   const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
   const labelled = LABELLED_KINDS.includes(q.kind);
+  const hidden = q.kind === "hidden";
   const hasOptions = OPTION_FIELD_KINDS.includes(q.kind);
   const typed = !hasOptions && q.kind !== "checkbox" && q.kind !== "date";
   const [optionsText, setOptionsText] = useState((q.options ?? []).map((o) => o.text).join("\n"));
@@ -520,7 +521,12 @@ function QuestionFields({
             value={q.kind}
             onChange={(ev) => {
               const kind = ev.target.value as FormFieldKind;
-              onChange({ kind, ...(OPTION_FIELD_KINDS.includes(kind) && !q.options?.length ? { options: [plainWords("")] } : {}) });
+              onChange({
+                kind,
+                ...(OPTION_FIELD_KINDS.includes(kind) && !q.options?.length ? { options: [plainWords("")] } : {}),
+                // A hidden field (D738 F6a) reads the campaign of the address unless the owner names another part.
+                ...(kind === "hidden" && !q.param ? { param: "utm_campaign" } : {}),
+              });
             }}
           >
             {(Object.keys(FORM_FIELD_KINDS) as FormFieldKind[]).map((k) => (
@@ -531,11 +537,11 @@ function QuestionFields({
           </select>
         </label>
         <label className={`${label} min-w-48 flex-1`}>
-          <span className={labelText}>{e.question}</span>
+          <span className={labelText}>{hidden ? e.hiddenName : e.question}</span>
           <input
             className={input}
             value={q.label.text}
-            placeholder={labelled ? "" : (usual[q.kind] ?? "")}
+            placeholder={hidden ? e.hiddenNamePlaceholder : labelled ? "" : (usual[q.kind] ?? "")}
             maxLength={200}
             onChange={(ev) => onChange({ label: withText(q.label, ev.target.value) })}
           />
@@ -556,14 +562,31 @@ function QuestionFields({
           <span className={hint}>{fillWords(e.choicesHint, { max: FORM_OPTIONS_MAX })}</span>
         </label>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tick label={q.kind === "checkbox" ? e.requiredTick : e.required} checked={Boolean(q.required)} onChange={(required) => onChange({ required: required || undefined })} />
+      {hidden && (
+        <label className={label}>
+          <span className={labelText}>{e.param}</span>
+          <input
+            className={`${input} font-mono`}
+            value={q.param ?? ""}
+            maxLength={64}
+            spellCheck={false}
+            onChange={(ev) => onChange({ param: ev.target.value.trim() || undefined })}
+            data-param
+          />
+          <span className={hint}>{e.paramHint}</span>
+        </label>
+      )}
+      <div className={`flex flex-wrap items-center gap-3 ${hidden ? "justify-end" : "justify-between"}`}>
+        {!hidden && (
+          <Tick label={q.kind === "checkbox" ? e.requiredTick : e.required} checked={Boolean(q.required)} onChange={(required) => onChange({ required: required || undefined })} />
+        )}
         <div className="flex gap-1">
           <Button kind="icon" aria-label={e.up} disabled={first} onClick={() => onMove(-1)} icon={<ArrowUp aria-hidden className="size-4" />} />
           <Button kind="icon" aria-label={e.down} disabled={last} onClick={() => onMove(1)} icon={<ArrowDown aria-hidden className="size-4" />} />
           <Button kind="icon" aria-label={e.remove} onClick={onRemove} icon={<Trash2 aria-hidden className="size-4" />} />
         </div>
       </div>
+      {!hidden && (
       <details className="rounded-panel bg-sunken px-3 py-2" open={Boolean(q.help || q.width || q.bounds || conditions.length) || undefined} data-question-more>
         <summary className="cursor-pointer text-sm text-ink-2">{e.more}</summary>
         <div className="mt-3 flex flex-col gap-3">
@@ -619,6 +642,7 @@ function QuestionFields({
           )}
         </div>
       </details>
+      )}
     </div>
   );
 }
