@@ -59,7 +59,7 @@ describe("the register's own rules", () => {
 
   it("restricts exactly what bookkeeping law keeps, and nothing a person could ask to have deleted", () => {
     const restricted = PERSONAL_DATA.filter((e) => e.erasure === "restrict").map((e) => e.table);
-    expect(restricted.sort()).toEqual(["credit_notes", "invoices", "orders", "returns", "storage:documents", "vat_checks", "withdrawal_requests"]);
+    expect(restricted.sort()).toEqual(["contract_events", "contract_signers", "contracts", "credit_notes", "invoices", "orders", "returns", "storage:documents", "vat_checks", "withdrawal_requests"]);
     expect(PERSONAL_DATA.find((e) => e.table === "email_opt_outs")?.erasure).toBe("keep");
     expect(PERSONAL_DATA.find((e) => e.table === "customers")?.erasure).toBe("delete");
   });

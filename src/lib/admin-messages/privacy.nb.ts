@@ -349,6 +349,7 @@ export const privacyNb: PrivacyMessages = {
       carrier_labels: "Fraktetiketter tatt vare på fra et fraktselskap",
       sandboxes: "Sandkassene i sidebyggeren",
       recordings: "Opptak av besøk",
+      contracts: "Signerte kontrakter",
     },
     bases: {
       read: "Lest i kilden",

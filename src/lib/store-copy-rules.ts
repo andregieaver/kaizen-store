@@ -213,6 +213,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   contracts: never("The original's contracts with its people and companies (D695)."),
   contract_signers: never("Who signed the original's contracts (D695)."),
   contract_events: never("The original's contracts' audit trail (D695)."),
+  contract_codes: never("Codes the original's signers proved their email with (D695)."),
   plan_moves: never("Kaizena Flow's record of the original's plan (D470): a copy has its own plan, if any."),
   house_site_copies: never("Which copy each of Kaizena Flow's own rows became (D469): only its own store has them."),
   house_customer_links: never("Kaizena Flow's own customers' accounts and requests (D467): only its own store has them."),

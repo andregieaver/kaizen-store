@@ -1,0 +1,159 @@
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+import { closeDb, db } from "@/db/client";
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
+vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
+
+const contracts = await import("./contracts");
+const signing = await import("./contract-signing");
+const deals = await import("./deals");
+const staff = await import("./customer-staff");
+const { eraseSubject } = await import("./privacy-erasure");
+const { newStore } = await import("./inventory-test-support");
+const { storeOf } = await import("./product-data");
+
+type TestStore = Awaited<ReturnType<typeof newStore>>;
+type Row = Record<string, unknown>;
+type Sent = Parameters<NonNullable<import("./contract-signing").SigningDeps["mail"]>>[0];
+
+/**
+ * Signing a contract (D695 step 3) through the server, against a real database: sending asks the first signer (the store's, in the admin,
+ * not emailed when they sent it themselves); the customer is asked once the store has signed, by an email with their own link, never kept
+ * in the log; a code proves their email (wrong, expired, too many tries, too many codes); signing with it signs the contract and wins the
+ * deal; a decline tells the store; a signed contract outlives erasure.
+ */
+
+let store: TestStore;
+const at = { ip: "203.0.113.7", userAgent: "Vitest" };
+const memoryStorage = () => {
+  const files = new Map<string, Uint8Array>();
+  return {
+    files,
+    upload: async (p: string, b: Uint8Array) => (files.has(p) ? false : (files.set(p, b), true)),
+    download: async (p: string) => files.get(p) ?? null,
+    remove: async (ps: string[]) => (ps.forEach((p) => files.delete(p)), true),
+  };
+};
+const render = async (html: string) => new TextEncoder().encode(`%PDF-test\n${html}`);
+
+function mailbox() {
+  const sent: Sent[] = [];
+  return { sent, mail: async (m: Sent) => (sent.push(m), "sent" as const) };
+}
+
+beforeAll(async () => {
+  store = await newStore("signing");
+  await db().execute(sql`update commerce.stores set legal_name = 'Butikken AS', organisation_number = '999 888 777' where id = ${store.storeId}::uuid`);
+  const fresh = await storeOf(store.storeId);
+  if (fresh) store.member.store = fresh;
+});
+
+afterAll(async () => {
+  await closeDb();
+});
+
+async function sentContract(email: string, box = mailbox()) {
+  const [pipeline] = await deals.ensurePipeline(store.storeId, { name: "Sales", stages: [{ name: "New" }, { name: "Contract sent" }] });
+  const customer = await staff.createCustomer(store.member, { email, name: "Kari Nordmann" });
+  if (!customer.ok) throw new Error("customer");
+  const deal = await deals.createDeal(store.member, { title: "Nettbutikk", customerId: customer.id, pipelineId: pipeline.id, stageId: pipeline.stages[0].id });
+  if (!deal.ok) throw new Error("deal");
+  const made = await contracts.createContract(store.member, deal.id);
+  if (!made.ok) throw new Error(made.problem);
+  const sent = await signing.sendForSigning(store.member, made.id, { render, storage: memoryStorage(), mail: box.mail });
+  if (!sent.ok) throw new Error(JSON.stringify(sent));
+  const signers = await db().execute<Row>(sql`select id, role, token from commerce.contract_signers where contract_id = ${made.id}::uuid order by position`);
+  return { contractId: made.id, dealId: deal.id, customerId: customer.id, box, storeSigner: signers[0], customerSigner: signers[1], customerToken: String(signers[1].token) };
+}
+
+describe("asking the signers", () => {
+  it("does not email the store's signer who sent it, and asks the customer only once the store has signed", async () => {
+    const c = await sentContract("kari.ask@example.com");
+    expect(c.box.sent).toHaveLength(0);
+    const view = await signing.signerByToken(c.customerToken);
+    expect(view).toMatchObject({ role: "customer", turn: false, open: false, emailMasked: "k***@example.com" });
+    expect(await signing.requestCode(c.customerToken, at, { mail: c.box.mail })).toEqual({ ok: false, problem: "not_turn" });
+
+    expect(await signing.signAsStore(store.member, c.contractId, { name: "  ", agree: true }, at)).toEqual({ ok: false, problem: "name" });
+    expect(await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: false }, at)).toEqual({ ok: false, problem: "agree" });
+    expect(await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at, { mail: c.box.mail })).toEqual({ ok: true, completed: false });
+    expect(c.box.sent.map((m) => [m.kind, m.to])).toEqual([["contract.to_sign", "kari.ask@example.com"]]);
+    const link = c.box.sent[0].email.html;
+    expect(link).toContain(`/sign/${c.customerToken}`);
+    // The link is the signer's whole access: the log's copy never holds it.
+    expect(c.box.sent[0].secrets).toContain(c.customerToken);
+    expect(await signing.signerByToken(c.customerToken)).toMatchObject({ turn: true, open: true });
+    expect(await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at)).toEqual({ ok: false, problem: "closed" });
+  });
+});
+
+describe("signing with a code", () => {
+  it("checks the code, signs against the sent PDF, signs the contract and wins the deal", async () => {
+    const c = await sentContract("kari.sign@example.com");
+    await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at, { mail: c.box.mail });
+    await signing.markViewed(c.customerToken, at);
+    expect(await signing.signWithCode(c.customerToken, { code: "111111", name: "Kari Nordmann", agree: true }, at)).toEqual({ ok: false, problem: "code_expired" });
+    expect(await signing.requestCode(c.customerToken, at, { mail: c.box.mail, code: () => "246810" })).toEqual({ ok: true });
+    const codeMail = c.box.sent.find((m) => m.kind === "contract.code");
+    expect(codeMail?.email.html).toContain("246810");
+    expect(codeMail?.secrets).toEqual(["246810"]);
+    expect(await signing.signWithCode(c.customerToken, { code: "246810", name: "K", agree: true }, at)).toEqual({ ok: false, problem: "name" });
+    expect(await signing.signWithCode(c.customerToken, { code: "000000", name: "Kari Nordmann", agree: true }, at)).toEqual({ ok: false, problem: "code" });
+    expect(await signing.signWithCode(c.customerToken, { code: "246 810", name: "Kari  Nordmann", agree: true }, at)).toEqual({ ok: true, completed: true });
+
+    const [row] = await db().execute<Row>(sql`
+      select c.status, c.pdf_sha256, g.document_sha256, g.signed_name, g.evidence->>'method' as method, d.status as deal_status, d.closed_via
+      from commerce.contracts c join commerce.contract_signers g on g.contract_id = c.id and g.role = 'customer' join commerce.deals d on d.id = c.deal_id
+      where c.id = ${c.contractId}::uuid`);
+    expect(row).toMatchObject({ status: "signed", signed_name: "Kari Nordmann", method: "email_code", deal_status: "won", closed_via: "contract" });
+    expect(row.document_sha256).toBe(row.pdf_sha256);
+    const kinds = (await db().execute<Row>(sql`select kind from commerce.contract_events where contract_id = ${c.contractId}::uuid order by id`)).map((r) => r.kind);
+    expect(kinds).toEqual(["sent", "signed", "viewed", "code_sent", "code_checked", "signed", "completed"]);
+    expect(await signing.signWithCode(c.customerToken, { code: "246810", name: "Kari Nordmann", agree: true }, at)).toEqual({ ok: false, problem: "closed" });
+  });
+
+  it("refuses a code after five wrong tries or ten minutes, and a sixth code within the hour", async () => {
+    const c = await sentContract("kari.codes@example.com");
+    await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at, { mail: c.box.mail });
+    await signing.requestCode(c.customerToken, at, { mail: c.box.mail, code: () => "135790" });
+    for (let i = 0; i < 4; i += 1) await signing.signWithCode(c.customerToken, { code: "000000", name: "Kari Nordmann", agree: true }, at);
+    expect(await signing.signWithCode(c.customerToken, { code: "000000", name: "Kari Nordmann", agree: true }, at)).toEqual({ ok: false, problem: "too_many_tries" });
+    expect(await signing.signWithCode(c.customerToken, { code: "135790", name: "Kari Nordmann", agree: true }, at)).toEqual({ ok: false, problem: "too_many_tries" });
+    await signing.requestCode(c.customerToken, at, { mail: c.box.mail, code: () => "975310" });
+    const later = new Date(Date.now() + 11 * 60_000);
+    expect(await signing.signWithCode(c.customerToken, { code: "975310", name: "Kari Nordmann", agree: true }, at, { now: later })).toEqual({ ok: false, problem: "code_expired" });
+    for (let i = 0; i < 3; i += 1) await signing.requestCode(c.customerToken, at, { mail: c.box.mail });
+    expect(await signing.requestCode(c.customerToken, at, { mail: c.box.mail })).toEqual({ ok: false, problem: "too_many" });
+  });
+});
+
+describe("declining and keeping", () => {
+  it("declines with a reason and tells the store, and the deal stays open", async () => {
+    const c = await sentContract("kari.decline@example.com");
+    await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at, { mail: c.box.mail });
+    expect(await signing.declineAsSigner(c.customerToken, "x".repeat(501), at)).toEqual({ ok: false, problem: "reason" });
+    expect(await signing.declineAsSigner(c.customerToken, "Too expensive", at, { mail: c.box.mail })).toEqual({ ok: true });
+    expect((await contracts.getContract(store.member, c.contractId))?.status).toBe("declined");
+    expect(c.box.sent.filter((m) => m.kind === "contract.declined").map((m) => m.to)).toEqual([store.accountEmail.toLowerCase()]);
+    const [deal] = await db().execute<Row>(sql`select status from commerce.deals where id = ${c.dealId}::uuid`);
+    expect(deal.status).toBe("open");
+  });
+
+  it("keeps a signed contract when the person it is with is erased, cut loose from the account", async () => {
+    const c = await sentContract("kari.keep@example.com");
+    await signing.signAsStore(store.member, c.contractId, { name: "Eva Eier", agree: true }, at, { mail: c.box.mail });
+    await signing.requestCode(c.customerToken, at, { mail: c.box.mail, code: () => "112233" });
+    await signing.signWithCode(c.customerToken, { code: "112233", name: "Kari Nordmann", agree: true }, at);
+    expect(await eraseSubject(store.storeId, { customerId: c.customerId }, { channel: "staff", accountId: store.accountId }, { contractFiles: memoryStorage() })).toMatchObject({
+      ok: true,
+      outcome: "erased",
+    });
+    const [kept] = await db().execute<Row>(sql`select status, customer_id from commerce.contracts where id = ${c.contractId}::uuid`);
+    expect(kept).toEqual({ status: "signed", customer_id: null });
+  }, 120_000);
+});

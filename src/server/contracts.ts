@@ -78,7 +78,8 @@ export type ContractSigner = {
 
 export type Contract = {
   id: string;
-  dealId: string;
+  /** Null only for a signed contract whose deal was deleted (it is kept for its retention period). */
+  dealId: string | null;
   title: string;
   language: string;
   status: ContractStatus;
@@ -141,7 +142,7 @@ export async function ensureTemplate(store: Store, accountId: string | null): Pr
 
 const contractRow = z.object({
   id: col.uuid,
-  deal_id: col.uuid,
+  deal_id: col.uuid.nullable(),
   title: col.text,
   language: col.text,
   status: z.enum(["draft", "sent", "signed", "declined", "expired", "cancelled"]),
@@ -511,6 +512,7 @@ export async function sendContract(member: Membership, contractId: string, deps:
   const contract = await getContract(member, contractId);
   if (!contract) return { ok: false, problem: "not_found" };
   if (contract.status !== "draft") return { ok: false, problem: "not_draft" };
+  if (!contract.dealId) return { ok: false, problem: "not_found" };
   const deal = await dealOf(member.store.id, contract.dealId);
   if (!deal) return { ok: false, problem: "not_found" };
   if (deal.status !== "open") return { ok: false, problem: "deal_closed" };

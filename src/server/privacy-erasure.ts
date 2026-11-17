@@ -818,12 +818,12 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   }
 
   // Standing lists, wishlists, sign-in records, company invitations and sign-ups by the address: deleted.
-  // Contracts sent to the person or naming one of their addresses as a signer (D695), with their signers and events: none is signed before
-  // signing is built (D695 step 3), which keeps a signed one under bookkeeping law instead. Before the deals: deleting a deal takes its
-  // contracts by cascade, and their files' paths are read here.
+  // Contracts sent to the person or naming one of their addresses as a signer (D695), with their signers and events, unless signed: a signed
+  // contract is kept under bookkeeping law (the `contracts` retention kind) and loses the account when it goes. Before the deals: deleting a
+  // deal takes its unsigned contracts, and their files' paths are read here.
   await tx.execute(sql`select set_config('commerce.contract_erasure', 'on', true)`);
   const contractFiles = await typedRows(z.object({ pdf_path: col.textOrNull, signed_pdf_path: col.textOrNull }), sql`
-    delete from commerce.contracts c where c.store_id = ${sid}::uuid
+    delete from commerce.contracts c where c.store_id = ${sid}::uuid and c.status <> 'signed'
       and (c.customer_id = ${cid}::uuid
         or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${addresses})))
     returning c.pdf_path, c.signed_pdf_path

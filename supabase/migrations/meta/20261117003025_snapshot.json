@@ -1,6 +1,6 @@
 {
-  "id": "4abfa7c7-3fe0-4164-9749-3caa22d9aaf1",
-  "prevId": "6899dd0a-c694-4c12-b420-7fe86b223b51",
+  "id": "dfb4076f-a871-43ad-bd1b-9ee04b5771d0",
+  "prevId": "b25b63bf-d528-442f-b979-364352834d22",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -18231,6 +18231,145 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.contract_codes": {
+      "name": "contract_codes",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signer_id": {
+          "name": "signer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_hash": {
+          "name": "code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contract_codes_signer_idx": {
+          "name": "contract_codes_signer_idx",
+          "columns": [
+            {
+              "expression": "signer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "contract_codes_store_idx": {
+          "name": "contract_codes_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "contract_codes_store_id_stores_id_fk": {
+          "name": "contract_codes_store_id_stores_id_fk",
+          "tableFrom": "contract_codes",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "contract_codes_signer_id_contract_signers_id_fk": {
+          "name": "contract_codes_signer_id_contract_signers_id_fk",
+          "tableFrom": "contract_codes",
+          "columnsFrom": [
+            "signer_id"
+          ],
+          "tableTo": "contract_signers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contract_codes_hash": {
+          "name": "contract_codes_hash",
+          "value": "\"commerce\".\"contract_codes\".\"code_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "contract_codes_attempts": {
+          "name": "contract_codes_attempts",
+          "value": "\"commerce\".\"contract_codes\".\"attempts\" between 0 and 5"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.contract_events": {
       "name": "contract_events",
       "schema": "commerce",
@@ -18446,6 +18585,66 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.contract_seals": {
+      "name": "contract_seals",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "smallint",
+          "primaryKey": true,
+          "notNull": true,
+          "default": 1
+        },
+        "certificate_pem": {
+          "name": "certificate_pem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_encrypted": {
+          "name": "key_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valid_until": {
+          "name": "valid_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contract_seals_one": {
+          "name": "contract_seals_one",
+          "value": "\"commerce\".\"contract_seals\".\"id\" = 1"
+        },
+        "contract_seals_fingerprint": {
+          "name": "contract_seals_fingerprint",
+          "value": "\"commerce\".\"contract_seals\".\"fingerprint\" ~ '^[0-9a-f]{64}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.contract_signers": {
       "name": "contract_signers",
       "schema": "commerce",
@@ -18559,6 +18758,19 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "notified_at": {
+          "name": "notified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reminders": {
+          "name": "reminders",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -18966,7 +19178,7 @@
           "name": "deal_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "template_id": {
           "name": "template_id",
@@ -19045,6 +19257,19 @@
         "signed_pdf_sha256": {
           "name": "signed_pdf_sha256",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signed_pdf_attempts": {
+          "name": "signed_pdf_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "signed_pdf_tried_at": {
+          "name": "signed_pdf_tried_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -19477,6 +19702,10 @@
         "contracts_sha": {
           "name": "contracts_sha",
           "value": "(\"commerce\".\"contracts\".\"pdf_sha256\" is null or \"commerce\".\"contracts\".\"pdf_sha256\" ~ '^[0-9a-f]{64}$') and (\"commerce\".\"contracts\".\"signed_pdf_sha256\" is null or \"commerce\".\"contracts\".\"signed_pdf_sha256\" ~ '^[0-9a-f]{64}$')"
+        },
+        "contracts_deal": {
+          "name": "contracts_deal",
+          "value": "\"commerce\".\"contracts\".\"deal_id\" is not null or \"commerce\".\"contracts\".\"status\" = 'signed'"
         },
         "contracts_not_itself": {
           "name": "contracts_not_itself",
@@ -67602,7 +67831,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",

@@ -340,6 +340,57 @@ describe("the events and erasure", () => {
     expect(await one("select count(*)::int as n from commerce.contracts where deal_id = $1", [d.id])).toEqual({ n: 0 });
   });
 
+  it("keeps a signed contract from erasure and from its deal's deletion, and lets only the retention job delete it (D695 step 3)", async () => {
+    const d = await deal();
+    const id = await contract(d.id);
+    const s = await signers(id);
+    await send(id);
+    await sign(s.store);
+    await sign(s.customer);
+    expect(await statusOf(id)).toBe("signed");
+    await db.query("begin");
+    await db.query("select set_config('commerce.contract_erasure', 'on', true)");
+    await expect(db.query("delete from commerce.contracts where id = $1", [id])).rejects.toThrow(/contracts.kept_signed/);
+    await db.query("rollback");
+    // The deal goes (a won deal deleted by staff, or the person's own deal by erasure): the signed contract stays, its deal set null.
+    const draftToo = await contract(d.id);
+    await db.query("delete from commerce.deals where id = $1", [d.id]);
+    expect(await one("select deal_id, status from commerce.contracts where id = $1", [id])).toEqual({ deal_id: null, status: "signed" });
+    expect(await one("select count(*)::int as n from commerce.contracts where id = $1", [draftToo])).toEqual({ n: 0 });
+    expect(await eventsOf(id)).toEqual(["sent", "signed", "signed", "completed"]);
+    await rejects("update commerce.contracts set deal_id = $2 where id = $1", [id, (await deal()).id], /contracts.moved/);
+    await db.query("begin");
+    await db.query("select set_config('commerce.contract_retention', 'on', true)");
+    await db.query("delete from commerce.contracts where id = $1", [id]);
+    await db.query("commit");
+    expect(await one("select count(*)::int as n from commerce.contract_signers where contract_id = $1", [id])).toEqual({ n: 0 });
+  });
+
+  it("keeps a contract on a deal unless it is signed", async () => {
+    await rejects(
+      "insert into commerce.contracts (store_id, title, language) values ($1, 'No deal', 'nb')",
+      [shop],
+      /contracts_deal/,
+    );
+  });
+
+  it("keeps an email code as a hash with at most five tries, gone with its signer", async () => {
+    const id = await contract((await deal()).id);
+    const s = await signers(id);
+    await rejects(
+      "insert into commerce.contract_codes (store_id, signer_id, code_hash, expires_at) values ($1, $2, '123456', now() + interval '10 minutes')",
+      [shop, s.customer],
+      /contract_codes_hash/,
+    );
+    const { id: code } = await one<{ id: string }>(
+      "insert into commerce.contract_codes (store_id, signer_id, code_hash, expires_at) values ($1, $2, $3, now() + interval '10 minutes') returning id",
+      [shop, s.customer, SHA],
+    );
+    await rejects("update commerce.contract_codes set attempts = 6 where id = $1", [code], /contract_codes_attempts/);
+    await db.query("delete from commerce.contracts where id = $1", [id]);
+    expect(await one("select count(*)::int as n from commerce.contract_codes where id = $1", [code])).toEqual({ n: 0 });
+  });
+
   it("forgets the person when their customer row goes, and keeps the contract", async () => {
     const d = await deal();
     const id = await contract(d.id);
@@ -349,7 +400,7 @@ describe("the events and erasure", () => {
   });
 
   it("is in the registers: personal data, the store copy and the whole-store file", () => {
-    for (const table of ["contract_templates", "contracts", "contract_signers", "contract_events"]) expect(COPY_RULES[table], table).toBeDefined();
+    for (const table of ["contract_templates", "contracts", "contract_signers", "contract_events", "contract_codes"]) expect(COPY_RULES[table], table).toBeDefined();
     expect(NOT_PERSONAL.contract_templates).toBeDefined();
     for (const table of ["contracts", "contract_signers", "contract_events"]) expect(PERSONAL_DATA.some((e) => e.table === table), table).toBe(true);
     expect(STORE_EXPORT_LEFT_OUT.contract_templates).toBeUndefined();

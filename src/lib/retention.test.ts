@@ -63,7 +63,9 @@ describe("the seed of the retention schedule", () => {
   it("never claims a statute for a period nobody read: the basis says what was read", () => {
     const basis = (c: string | null) => ruleFor("bookkeeping", c, "2026-10-04")?.basis;
     expect(["NO", "SE", "DK", "DE", "FI"].map(basis)).toEqual(["read", "read", "snippet", "secondary", "fallback"]);
-    for (const row of RETENTION_SEED.filter((r) => !["bookkeeping", "host_bookkeeping"].includes(r.kind))) expect(row.basis, row.kind).toBe("policy");
+    for (const row of RETENTION_SEED.filter((r) => !["bookkeeping", "host_bookkeeping", "contracts"].includes(r.kind))) expect(row.basis, row.kind).toBe("policy");
+    // Signed contracts (D695) rest on Bokføringsloven § 13(2), whose page was read for D162: a statute, so not a policy.
+    expect(ruleFor("contracts", null, "2026-11-17")?.basis).toBe("read");
   });
 
   it("holds a bookkeeping period to whole years from the end of the year, and a year-end period only to months in twelves", () => {

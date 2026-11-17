@@ -41,6 +41,7 @@ export const RETENTION_KINDS = [
   "carrier_labels",
   "sandboxes",
   "recordings",
+  "contracts",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -204,6 +205,20 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   seed({ kind: "carrier_labels", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: carrier_labels", note: "Shipping and return labels a carrier gives only once (DHL Express, PostNord, DHL Paket): the PDF, with a name and address, is deleted this long after it was booked, long after it is printed and handed in; the shipment or return and its tracking number stay with the order.", checkedOn: "2026-11-05" }),
   seed({ kind: "sandboxes", country: null, periodValue: 7, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: sandboxes", note: "The page builder's sandbox (D457): a sandbox nobody has visited for this long is ended and everything in it deleted (its pages, words, pictures, styles and the record of what was done in it); only the bare record that it existed, its times and its AI's cost stay. One ended sooner (Start over, its 30 days) goes at once. SANDBOX_DAYS, a test holds them equal.", checkedOn: "2026-11-05" }),
   // Recordings of visits (D656): one browser tab's visit, under a random id, deleted with its files after 30 days.
+  // Signed contracts (D695): kept as bookkeeping material of their kind, then deleted with their files by pruneContracts().
+  seed({
+    kind: "contracts",
+    country: null,
+    periodValue: 54,
+    periodUnit: "months",
+    countsFrom: "event",
+    source: "Bokføringsloven § 13(2): contracts, correspondence and the like are kept 3 years and 6 months after the end of the financial year (read for D162, quoted in docs/own-books-and-sales.md 5)",
+    sourceUrl: "https://lovdata.no/lov/2004-11-19-73/§13",
+    basis: "read",
+    enforcedBy: "pruneContracts() (src/server/contract-signing.ts)",
+    note: "A signed contract, its signers, its events and its two PDFs, counted from the day it was signed: 54 months covers the law's 42 after the end of the year it was signed in (signed on 1 January, that is 53); for an accountant to review.",
+    checkedOn: "2026-11-17",
+  }),
   seed({ kind: "recordings", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "pruneRecordings() (RECORDING_KEEP_DAYS)", note: "Recordings of visits and their files, counted from the recording's start; the visitor's browser can erase its own at once. RECORDING_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-16" }),
 ];
 

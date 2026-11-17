@@ -19195,7 +19195,8 @@ export const contracts = commerce.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId().references(() => stores.id),
-    dealId: uuid("deal_id").notNull(),
+    /** The deal; set null only when a signed contract outlives its deal (kept under bookkeeping law, D695 step 3). */
+    dealId: uuid("deal_id"),
     templateId: uuid("template_id"),
     templateVersion: integer("template_version"),
     /** Who the contract is with, from the deal when it is made; erasure and deletion set them null. */
@@ -19213,6 +19214,9 @@ export const contracts = commerce.table(
     pdfSha256: text("pdf_sha256"),
     signedPdfPath: text("signed_pdf_path"),
     signedPdfSha256: text("signed_pdf_sha256"),
+    /** Tries at making the signed PDF (the five-minute job), and the last one's time. */
+    signedPdfAttempts: integer("signed_pdf_attempts").notNull().default(0),
+    signedPdfTriedAt: timestamp("signed_pdf_tried_at", { withTimezone: true }),
     signingLevel: text("signing_level").notNull().default("email"),
     reminderDays: integer("reminder_days"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
@@ -19256,6 +19260,7 @@ export const contracts = commerce.table(
     check("contracts_pdf", sql`(${t.pdfPath} is null) = (${t.pdfSha256} is null) and (${t.pdfPath} is null or ${t.sentAt} is not null)`),
     check("contracts_signed_pdf", sql`(${t.signedPdfPath} is null) = (${t.signedPdfSha256} is null) and (${t.signedPdfPath} is null or ${t.status} = 'signed')`),
     check("contracts_sha", sql`(${t.pdfSha256} is null or ${t.pdfSha256} ~ '^[0-9a-f]{64}$') and (${t.signedPdfSha256} is null or ${t.signedPdfSha256} ~ '^[0-9a-f]{64}$')`),
+    check("contracts_deal", sql`${t.dealId} is not null or ${t.status} = 'signed'`),
     check("contracts_not_itself", sql`${t.replacesId} is null or ${t.replacesId} <> ${t.id}`),
   ],
 );
@@ -19289,6 +19294,9 @@ export const contractSigners = commerce.table(
     userAgent: text("user_agent"),
     declinedAt: timestamp("declined_at", { withTimezone: true }),
     declineReason: text("decline_reason"),
+    /** When the signer was last asked: the first email, then each reminder. */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    reminders: integer("reminders").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [
@@ -19312,6 +19320,50 @@ export const contractSigners = commerce.table(
     check("contract_signers_reason", sql`${t.declineReason} is null or (${t.declinedAt} is not null and char_length(${t.declineReason}) between 1 and 500)`),
     check("contract_signers_agent", sql`(${t.ip} is null or char_length(${t.ip}) <= 64) and (${t.userAgent} is null or char_length(${t.userAgent}) <= 500)`),
   ],
+);
+
+/**
+ * The six-digit codes a signer proves their email with before signing (D695 step 3): kept as a hash, ten minutes, five tries, used once.
+ * Deleted with the signer; the job deletes used and lapsed ones after a day.
+ */
+export const contractCodes = commerce.table(
+  "contract_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    signerId: uuid("signer_id")
+      .notNull()
+      .references(() => contractSigners.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("contract_codes_signer_idx").on(t.signerId, t.createdAt),
+    index("contract_codes_store_idx").on(t.storeId),
+    check("contract_codes_hash", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
+    check("contract_codes_attempts", sql`${t.attempts} between 0 and 5`),
+  ],
+);
+
+/**
+ * Kaizena Flow's own seal for signed contracts (D695 step 3): a self-made certificate and its private key, the key encrypted with
+ * `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`). One row, made on first use; a PDF reader shows a sealed file unchanged since, and
+ * its signer as not on its trusted list. A trusted provider's certificate replaces it with BankID (step 5).
+ */
+export const contractSeals = commerce.table(
+  "contract_seals",
+  {
+    id: smallint("id").primaryKey().default(1),
+    certificatePem: text("certificate_pem").notNull(),
+    keyEncrypted: text("key_encrypted").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [check("contract_seals_one", sql`${t.id} = 1`), check("contract_seals_fingerprint", sql`${t.fingerprint} ~ '^[0-9a-f]{64}$'`)],
 );
 
 /** What happened to a contract, for its audit page: written once, never changed (deleted only with the contract). */

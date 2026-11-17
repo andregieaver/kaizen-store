@@ -316,6 +316,7 @@ export const privacyEn = {
       carrier_labels: "Shipping labels kept from a carrier",
       sandboxes: "The page builder's sandboxes",
       recordings: "Recordings of visits",
+      contracts: "Signed contracts",
     },
     bases: {
       read: "Read at the source",
