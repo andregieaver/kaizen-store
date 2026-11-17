@@ -913,6 +913,7 @@ export const reportsNb: ReportsMessages = {
     changeAgainst: " Endringen er mot {from} til {to}.",
   },
   inventory: {
+    phone: { onHand: "{n} på lager" },
     n: {
       unit: {
         one: "enhet",

@@ -756,17 +756,18 @@ export function InventoryView({
         )}
       </AnalyticsSection>
 
+      {/* Round 34 (D708): on a phone the figures share one card, two by two; what is missing is said once, in the note above. */}
       <section
         aria-label={w.mainFigures}
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent xl:grid-cols-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2"
       >
-        <KpiCard {...valueCard} />
-        <KpiCard {...deadCard} />
-        <KpiCard {...outCard} />
-        <KpiCard {...lowCard} />
-        {backorderCard ? <KpiCard {...backorderCard} /> : null}
-        <KpiCard {...turnoverCard} />
-        <KpiCard {...sellCard} />
+        <KpiCard {...valueCard} phoneCompact />
+        <KpiCard {...deadCard} phoneCompact />
+        <KpiCard {...outCard} phoneCompact />
+        <KpiCard {...lowCard} phoneCompact />
+        {backorderCard ? <KpiCard {...backorderCard} phoneCompact /> : null}
+        <KpiCard {...turnoverCard} phoneCompact />
+        <KpiCard {...sellCard} phoneCompact />
       </section>
 
       <AnalyticsSection
@@ -775,12 +776,31 @@ export function InventoryView({
         description={fillWords(w.tableDescription, { currency: report.currency })}
         action={toggle}
       >
-        <nav aria-label={w.filterLabel} className="flex flex-wrap gap-1">
+        <nav aria-label={w.filterLabel} className="flex flex-wrap gap-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap">
           {filterLink(null, w.all, totals.variants)}
           {STATUS_FILTERS.map((s) =>
             filterLink(s, w.filter[s].label, countFor(s)),
           )}
         </nav>
+        {/* Round 34 (D708): on a phone each variant is one line, its name, its state and what is on hand; the table from the small breakpoint up. */}
+        {shown.length > 0 ? (
+          <ul className={`divide-y divide-line px-4 sm:hidden ${CARD_CLASS}`}>
+            {shown.map((r) => {
+              const tone = r.onBackorder ? "warning" : PILL[r.status].tone;
+              return (
+                <li key={r.variantId} className="flex min-h-12 items-center justify-between gap-3 py-2">
+                  <Link href={productHref(r.productId)} className="min-w-0 truncate text-body text-ink">
+                    {r.name}
+                  </Link>
+                  <span className={`shrink-0 text-caption ${tone === "bad" ? "text-danger-text" : tone === "warning" ? "text-warning-text" : tone === "good" ? "text-positive-text" : "text-ink-2"}`}>
+                    {r.onBackorder ? w.backorderLabel : pill(r.status).label} · {fillWords(w.phone.onHand, { n: formatCount(r.onHand) })}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+        <div className={shown.length > 0 ? "max-sm:hidden" : undefined}>
         <DataTable<InventoryReportRow>
           caption={status ? fillWords(w.captionFiltered, { status: w.filter[status].label.toLowerCase() }) : w.caption}
           columns={columns}
@@ -791,10 +811,11 @@ export function InventoryView({
           empty={status ? w.filter[status].empty : w.tableEmpty}
           exportId="inventory.variants"
         />
+        </div>
         {report.rowsTruncated ? (
           <p className="text-xs text-muted">{fillWords(w.rowsTruncated, { shown: formatCount(report.rows.length), all: formatCount(report.variants) })}</p>
         ) : null}
-        <dl className="grid gap-x-6 gap-y-1 text-xs text-muted sm:grid-cols-2">
+        <dl className="grid gap-x-6 gap-y-1 text-xs text-muted max-sm:hidden sm:grid-cols-2">
           <div>
             <dt className="inline font-medium">{w.perDayTerm}</dt>
             <dd className="inline">

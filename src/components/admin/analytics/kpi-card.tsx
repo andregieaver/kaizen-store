@@ -76,9 +76,10 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
             <span aria-hidden="true">–</span>
             <span className="sr-only">{analyticsWords().kpi.notAvailable}</span>
           </p>
-          {missing ? <p className="text-xs text-muted">{missing.text}</p> : null}
+          {/* Round 34 (D708): in a shared card on a phone the dash alone; what is missing is said once, above the figures. */}
+          {missing ? <p className={`text-xs text-muted ${phoneCompact ? "max-sm:hidden" : ""}`}>{missing.text}</p> : null}
           {missing?.action ? (
-            <Link href={missing.action.href} className="inline-block text-xs font-medium text-(--brand-text) underline-offset-2 hover:underline">
+            <Link href={missing.action.href} className={`inline-block text-xs font-medium text-(--brand-text) underline-offset-2 hover:underline ${phoneCompact ? "max-sm:hidden" : ""}`}>
               {missing.action.label}
             </Link>
           ) : null}
@@ -116,7 +117,7 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
               <Delta delta={deltaLastYear} versus={analyticsWords().compare.vsLastYear} good={good} />
             </p>
           ) : null}
-          {hint ? <p className="text-xs text-muted">{hint}</p> : null}
+          {hint ? <p className={`text-xs text-muted ${phoneCompact ? "max-sm:hidden" : ""}`}>{hint}</p> : null}
         </div>
       ) : null}
     </>

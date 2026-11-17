@@ -159,6 +159,7 @@ export const customReportsNb: CustomReportsMessages = {
     notAllowed: "Ikke med tallene som er valgt",
   },
   result: {
+    phone: { table: "Tallene i en tabell", rows: { one: "{n} rad", many: "{n} rader" }, show: "Vis", hide: "Skjul", change: "Endre", done: "Ferdig" },
     total: "Sum",
     previous: "Før",
     change: "Endring",

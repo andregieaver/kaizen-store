@@ -11,6 +11,7 @@ export const settingsNb: SettingsMessages = {
     noChange: "Du kan ikke endre butikkens innstillinger.",
   },
   features: {
+    phone: { about: "Hva {label} gjør", change: "Endre", done: "Ferdig", noReminder: "ingen påminnelse" },
     title: "Funksjoner",
     description: "Slå på det butikken bruker; resten holder seg unna. Ingenting slettes når du slår noe av.",
     count: "{on} av {total} på",
