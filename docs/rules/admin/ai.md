@@ -372,16 +372,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   same reference as a scan would keep, only for a store that reacts), and a scan in `detectEvents()` only for what time passing makes or
   what the log does not carry yet, said in a comment there; never both for one kind.
 
-- **Testing its page changes first (ecosystem plan E4.1, D729, `docs/ai-autopilot.md` 17)**: `publish_page` of a store's live page run as the
-  autopilot itself (never on a person's yes, never the AI manager in a person's conversation) starts an A/B test instead where
-  `testInsteadOfPublishing()` (`src/server/autopilot-tests.ts`) finds the page testable as a whole, room for a test and an answer within
-  `AUTOPILOT_TEST_MAX_DAYS` (21) at the page's own traffic (`chooseTest()`, `experimentTraffic()`), with `planning.testsPageChanges` on (the
-  default); otherwise the page is published as before and the watch guards it. Version B is the change, the page's draft goes back to what is live,
-  and `commerce.autopilot_tests` (written only by that module and `src/server/autopilot-test-decider.ts`) records the test; the database holds one
-  undecided autopilot test per page. Its test is decided only by `decideAutopilotTests()` from the verdict (`testAction()`): better goes live through
-  `apply_winner` within `autopilotDecision()` (kept for a yes otherwise, never while paused), worse, harmed, broken or out of time keeps the page as it
-  was, a person's stop or decision is theirs. The autopilot's model never stops or decides its own test (`asTheStoresDecision()` alone lets those
-  calls run as the autopilot), its events leave these tests out, and a publish of a page under its test is refused.
+- **Testing its page changes first (ecosystem plan E4.1, D729, `docs/ai-autopilot.md` 17)**: the autopilot's own `publish_page` of a busy store
+  page starts an A/B test of the change instead (`src/server/autopilot-tests.ts`); only `decideAutopilotTests()` decides that test, never its model.
 
 - **Pausing and budgets platform-wide (PSI AST-07)**: Platform → AI's *AI acting on its own* (`setAiAutonomyPaused()`, `src/server/ai-pause.ts`, a platform
   admin's, audited `platform.ai_autonomy_paused`) pauses every AI that acts without a person at once: `runAutopilot()`, `runEvents()`,
