@@ -73,7 +73,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 
 | Id | Step | Size | Status | Notes |
 |---|---|---|---|---|
-| M0.1 | The owner's four decisions: (a) one engine called Automations; (b) clicks kept per person with consent, still no open pixel; (c) personal fields such as a first name, each with a fallback; (d) prospecting for the platform first, for stores after a legal reading | S | Open | Recommended: yes to all four. (b) and (c) undo choices D297 made on purpose |
+| M0.1 | The owner's four decisions: (a) one engine called Automations; (b) clicks kept per person with consent, still no open pixel; (c) personal fields such as a first name, each with a fallback; (d) prospecting for the platform first, for stores after a legal reading | S | Done, 17 Nov 2026 | The owner said yes to all four. (b) and (c) replace choices D297 made on purpose |
 | M0.2 | The parity row `customers.email-marketing-broadcasts-and-lifecycle-automations` no longer says multi-email flows and browse abandonment are missing | S | Done, 17 Nov 2026 | Built by D653 and D691; the rating stays Full |
 | M0.3 | Ecosystem steps E3.4, E3.5, E4.4, E4.5 and E4.6 are planned here | S | Done, 17 Nov 2026 | Their rows in `ecosystem-2026-11.md` name the step here that takes each |
 
