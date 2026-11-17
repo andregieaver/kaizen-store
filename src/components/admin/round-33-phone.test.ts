@@ -17,7 +17,7 @@ import { AddEndpoint } from "./webhook-endpoints";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'");
 const scoped = (child: unknown, props: object, areas: Parameters<typeof adminTexts>[1]) =>
-  createElement(AdminTextScope, { texts: adminTexts("en", areas), children: createElement(child as never, props as never) });
+  createElement(AdminTextScope as never, { texts: adminTexts("en", areas) } as never, createElement(child as never, props as never));
 
 const page = (n: number, over: Partial<PageSummary> = {}): PageSummary => ({
   id: `p${n}`,
