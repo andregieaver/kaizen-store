@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { baselineFiles, docsCounts, docsFallen, docsProblems, NEVER_SENTENCES, TRACKERS, unnamedBaselines } from "../../scripts/lib/docs-count.mjs";
+import { baselineFiles, docsCounts, docsFallen, docsProblems, NEVER_SENTENCES, staleNames, TRACKERS, unnamedBaselines } from "../../scripts/lib/docs-count.mjs";
 import { staleRuleNames } from "../../scripts/lib/rule-names.mjs";
 import baseline from "./docs-budget.baseline.json";
 
@@ -203,6 +203,33 @@ describe("the written rules are held to a budget (bloat review step 1.1)", () =>
       expect(docsCounts(tmp).uncovered).toHaveLength(1);
       writeFileSync(path.join(tmp, "docs", "audits", ".ignore"), "psi-*.md\n");
       expect(docsCounts(tmp).uncovered).toHaveLength(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("the rules cite only code that exists (bloat review step 1.1)", () => {
+  it("the rules cite only code that exists", () => {
+    expect(docsCounts(process.cwd()).staleNames).toEqual([]);
+  });
+
+  it("a rule that cites a path, a component and a function that do not exist fails", () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "names-"));
+    try {
+      writeFileSync(path.join(tmp, "CLAUDE.md"), "x");
+      mkdirSync(path.join(tmp, "docs", "rules", "admin"), { recursive: true });
+      writeFileSync(
+        path.join(tmp, "docs", "rules", "storefront.md"),
+        "Drawn by `NoSuchPartView` in `src/components/no-such-part.tsx`, see `noSuchHelper()`.",
+      );
+      mkdirSync(path.join(tmp, "src"));
+      writeFileSync(path.join(tmp, "src", "x.ts"), "export const a = 1;");
+      expect(staleNames(tmp)).toEqual([
+        "docs/rules/storefront.md: NoSuchPartView",
+        "docs/rules/storefront.md: noSuchHelper()",
+        "docs/rules/storefront.md: src/components/no-such-part.tsx",
+      ]);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

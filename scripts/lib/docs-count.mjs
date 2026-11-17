@@ -3,6 +3,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { NAME_EXCEPTIONS, staleRuleNames } from "./rule-names.mjs";
+
+export const staleNames = staleRuleNames;
+export { NAME_EXCEPTIONS };
+
 /** Repo-relative paths, sorted, of every *.baseline.json under src. */
 export function baselineFiles(root) {
   const found = [];
@@ -240,6 +245,7 @@ function trackerRowsOver(root) {
  *   trackersUnnamed: string[],
  *   planLines: number,
  *   uncovered: string[],
+ *   staleNames: string[],
  * }} DocsCounts
  */
 
@@ -347,6 +353,7 @@ export function docsCounts(root) {
     trackersUnnamed,
     planLines,
     uncovered: uncovered.sort(),
+    staleNames: staleRuleNames(root),
   };
 }
 
@@ -392,6 +399,7 @@ export function docsProblems(counts, baseline) {
   for (const file of counts.trackersUnnamed) problems.push(`CLAUDE.md does not name ${file}. Name every working plan in its shared line.`);
   if (counts.planLines !== 1) problems.push(`CLAUDE.md names the bloat review on ${counts.planLines} lines, not 1. Only the shared trackers line names it.`);
   for (const file of counts.uncovered) problems.push(`${file} is a dated report or evidence folder no ignore file covers: add it to the ignore file of its folder.`);
+  for (const name of counts.staleNames) problems.push(`The rule cites a name the code no longer has (${name}): correct the rule.`);
   return problems;
 }
 

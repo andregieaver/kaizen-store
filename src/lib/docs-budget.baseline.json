@@ -1,16 +1,16 @@
 {
   "claudeOutsideIndex": 13164,
   "claude": {
-    "bytes": 46209,
+    "bytes": 46202,
     "lines": 470
   },
-  "loaded": 46888,
+  "loaded": 46881,
   "imports": [
     "AGENTS.md"
   ],
   "longLines": {
     "rules": 0,
-    "decisions": 688,
+    "decisions": 691,
     "living": 27,
     "tableRows": {
       "docs/100-day-challenge.md": 10,
@@ -127,7 +127,7 @@
     "docs/rules/admin/commerce.md#Custom fields (D118, `docs/custom-fields.md`, `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`)": 6017,
     "docs/rules/admin/commerce.md#Work (D122, D123, `docs/work.md`, module `work` switched on per store in the owner's Work settings, at the store OWNER's level": 4422,
     "docs/rules/admin/commerce.md#Bookings (D65, `docs/bookings.md`)": 5680,
-    "docs/rules/admin/integrations.md#The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)": 11489,
+    "docs/rules/admin/integrations.md#The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)": 11490,
     "docs/rules/admin/integrations.md#Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)": 4595,
     "docs/rules/admin/integrations.md#Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)": 6678,
     "docs/rules/admin/integrations.md#Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)": 5606,
