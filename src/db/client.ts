@@ -91,8 +91,10 @@ function create(url: string = serverEnv().DATABASE_URL) {
     if (counted.has(client)) return;
     counted.add(client);
     const target: { query: (...args: unknown[]) => unknown } = client;
-    const original = target.query;
     target.query = function (this: unknown, ...args: unknown[]) {
+      // The class's own query, looked up on each call (not kept at connect), so a test's spy on pg.Client.prototype.query still sees
+      // every statement (chat, knowledge, embeddings and invoice tests count them that way).
+      const original = (Object.getPrototypeOf(this) as { query: (...a: unknown[]) => unknown }).query;
       const first = args[0] as { text?: unknown; values?: unknown; submit?: unknown } | string | undefined;
       const text = typeof first === "string" ? first : typeof first?.text === "string" ? first.text : "";
       const values: unknown[] =
