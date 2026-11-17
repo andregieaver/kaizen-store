@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { BRAND_TOOLS, RESEARCH_TOOLS, SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
+import { BRAND_TOOLS, FORM_TOOLS, HELD_FOR_EVAL, RESEARCH_TOOLS, SITE_TOOLS, tool, type OwnerTool } from "./owner-tools";
 import { savePlatformMenuInput, setPlatformPlaceInput } from "./site-tools";
 import { FOLLOW_UP_REPEATS, TASK_MAX } from "./follow-ups";
 import { goalTargetInput, TARGETS_MAX } from "./autopilot-goals";
@@ -166,6 +166,8 @@ export const PLATFORM_TOOLS = [
     z.object({ type: z.enum(["page", "article"]).default("page") }),
   ),
   ...SITE_TOOLS,
+  // Kaizena Flow's own forms (D705 F5), held with the store's until the eval is recorded with them.
+  ...FORM_TOOLS.filter((t) => !HELD_FOR_EVAL.has(t.name)),
   ...RESEARCH_TOOLS,
   ...BRAND_TOOLS,
   tool(
