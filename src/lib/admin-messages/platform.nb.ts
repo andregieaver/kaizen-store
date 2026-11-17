@@ -1051,6 +1051,14 @@ export const platformNb: PlatformMessages = {
     testCart: "Testen sender den lagrede versjonen, med en eksempelhandlekurv.",
     subjectLabel: "Emne:",
     previewTitle: "Forhåndsvisning av e-posten",
+    phone: {
+      open: "Åpne",
+      change: "Endre",
+      edit: "Rediger",
+      done: "Ferdig",
+      previewSub: "Slik den sendes: {language}",
+      previewOne: "Slik kundene ser den",
+    },
   },
   planReminderStep: {
     back: "Abonnementspåminnelser",

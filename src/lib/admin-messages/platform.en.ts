@@ -1050,6 +1050,14 @@ export const platformEn = {
     testCart: "The test sends the saved version, with a sample cart.",
     subjectLabel: "Subject:",
     previewTitle: "Email preview",
+    phone: {
+      open: "Open",
+      change: "Change",
+      edit: "Edit",
+      done: "Done",
+      previewSub: "As it is sent: {language}",
+      previewOne: "As shoppers see it",
+    },
   },
   planReminderStep: { back: "Plan reminders", title: "Reminder after {delay}" },
   deleteReminder: {

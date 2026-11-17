@@ -37,6 +37,16 @@ export const marketingNb: MarketingMessages = {
     tellLink: "Skriv en e-post",
     tools: "Alle verktøy",
     toolsSub: "etter navn",
+    phone: {
+      after: "En e-post en uke etter kjøpet",
+      cart: "Når en handlekurv blir liggende i kassen",
+      offer: "3 for 2 på {product}, to uker",
+      offerNone: "3 for 2 på et produkt du velger",
+      listSee: "Se",
+      tellWrite: "Skriv",
+      tellSub: "AI skriver et første utkast",
+      more: "+{n}",
+    },
   },
   common: {
     on: "På",

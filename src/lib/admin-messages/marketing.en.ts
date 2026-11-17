@@ -43,6 +43,16 @@ export const marketingEn = {
     tellLink: "Write an email",
     tools: "Every tool",
     toolsSub: "by name",
+    phone: {
+      after: "An email a week after they buy",
+      cart: "When a cart is left at checkout",
+      offer: "3 for 2 on {product}, two weeks",
+      offerNone: "3 for 2 on a product you choose",
+      listSee: "See",
+      tellWrite: "Write",
+      tellSub: "The AI writes a first draft",
+      more: "+{n}",
+    },
   },
   common: {
     on: "On",

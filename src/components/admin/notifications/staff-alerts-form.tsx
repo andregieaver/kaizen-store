@@ -3,6 +3,7 @@
 import { useId, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { STAFF_ALERT_EVENTS, type StaffAlertEvent, type SummaryKind } from "@/lib/staff-alerts";
@@ -44,6 +45,14 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
   const [message, setMessage] = useState<Said | null>(null);
   const [busy, start] = useTransition();
 
+  /** A row's line on a phone: how many of the alerts, and the first two by name. */
+  const gets = (list: StaffAlertEvent[]) => {
+    if (list.length === 0) return w.phone.nothing;
+    const named = list.slice(0, 2).map((e) => w.alerts[e]).join(", ");
+    const rest = list.length > 2 ? ` +${list.length - 2}` : "";
+    return `${fillWords(w.phone.gets, { n: String(list.length), total: String(STAFF_ALERT_EVENTS.length) })} · ${named}${rest}`;
+  };
+
   const submit = () =>
     start(async () => {
       const answer = await save({
@@ -66,16 +75,44 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
     <div className="flex flex-col gap-6">
       {!view.configured && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
-          {w.defaults}
+          <span className="sm:hidden">{w.phone.defaults}</span>
+          <span className="max-sm:hidden">{w.defaults}</span>
         </p>
       )}
 
-      <section aria-labelledby={`${uid}-who`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
-        <h2 id={`${uid}-who`} className="text-title text-ink">
+      <section aria-labelledby={`${uid}-who`} className={`flex flex-col gap-3 p-5 max-sm:gap-0 max-sm:px-4 max-sm:py-0 ${CARD_CLASS}`}>
+        <h2 id={`${uid}-who`} className="text-title text-ink max-sm:pt-3 max-sm:text-caption max-sm:text-ink-2">
           {w.who}
         </h2>
-        <p className="text-sm text-muted">{w.whoHint}</p>
-        <div className="overflow-x-auto">
+        <p className="text-sm text-muted max-sm:hidden">{w.whoHint}</p>
+        {/* Round 38 (D728): on a phone each person is a row saying what they get, their boxes under it; the table is from 640 px. */}
+        <div className="sm:hidden">
+          {view.members.map((m) => {
+            const mine = (members[m.accountId] ?? []).filter((e) => m.may[e]);
+            return (
+              <PhoneRow key={m.accountId} inset title={m.name ?? m.email} sub={gets(mine)} change={w.phone.change} done={w.phone.done}>
+                <PhoneBoxes
+                  events={STAFF_ALERT_EVENTS.map((e) => ({ e, label: w.alerts[e], note: m.may[e] ? null : fillWords(w.needs, { area: w.areas[e] }) }))}
+                  checked={mine}
+                  onChange={(e, on) => setMembers((all) => ({ ...all, [m.accountId]: toggle(all[m.accountId] ?? [], e, on) }))}
+                />
+              </PhoneRow>
+            );
+          })}
+          <PhoneRow inset last title={w.contact} sub={view.contact ? gets(contact) : w.contactNone} change={w.phone.change} done={w.phone.done}>
+            {view.contact ? (
+              <PhoneBoxes events={STAFF_ALERT_EVENTS.map((e) => ({ e, label: w.alerts[e], note: null }))} checked={contact} onChange={(e, on) => setContact((list) => toggle(list, e, on))} />
+            ) : (
+              <p className="text-sm text-ink-2">{w.contactNone}</p>
+            )}
+          </PhoneRow>
+          <details className="border-t border-line py-3 text-sm text-ink-2">
+            <summary className="cursor-pointer text-ink underline underline-offset-2">{w.phone.more}</summary>
+            <p className="mt-2">{w.description}</p>
+            <p className="mt-2">{w.whoHint}</p>
+          </details>
+        </div>
+        <div className="overflow-x-auto max-sm:hidden">
           <table className="w-full min-w-[44rem] text-left text-sm">
             <caption className="sr-only">{w.caption}</caption>
             <thead>
@@ -140,6 +177,8 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         </div>
       </section>
 
+      <PhoneRows>
+      <PhoneRow flat title={w.summary} sub={summary === "off" ? w.offChoice : summary === "daily" ? w.daily : w.weekly} change={w.phone.change} done={w.phone.done}>
       <section aria-labelledby={`${uid}-summary`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <h2 id={`${uid}-summary`} className="text-title text-ink">
           {w.summary}
@@ -181,6 +220,9 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         </div>
       </section>
 
+      </PhoneRow>
+
+      <PhoneRow flat title={w.alertFloor} sub={w.floors[floor]} change={w.phone.change} done={w.phone.done}>
       <section aria-labelledby={`${uid}-floor`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <h2 id={`${uid}-floor`} className="text-title text-ink">
           {w.alertFloor}
@@ -198,12 +240,15 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         </label>
       </section>
 
-      <div className="flex flex-wrap items-center gap-3">
+      </PhoneRow>
+
+      <div className="flex flex-wrap items-center gap-3 max-sm:hidden">
         <button type="button" onClick={submit} disabled={busy} className={mainPill}>
           {busy ? all.common.working : all.common.save}
         </button>
       </div>
 
+      <PhoneRow flat last title={w.test} sub={w.phone.testSub} change={w.phone.open} done={w.phone.done}>
       <section aria-labelledby={`${uid}-test`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <h2 id={`${uid}-test`} className="text-title text-ink">
           {w.test}
@@ -217,10 +262,42 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
           ))}
         </div>
       </section>
+      </PhoneRow>
+      </PhoneRows>
+
+      {/* On a phone Save follows the rows, as drawn; from 640 px it stays above the tests. */}
+      <div className="sm:hidden">
+        <button type="button" onClick={submit} disabled={busy} className={mainPill}>
+          {busy ? all.common.working : all.common.save}
+        </button>
+      </div>
 
       <p role="status" aria-live="polite" className={`text-sm empty:hidden ${message && !message.ok ? "text-danger-text" : ""}`}>
         {message?.message}
       </p>
     </div>
+  );
+}
+
+/** One person's boxes on a phone (round 38, D728): one line per alert, labelled by its name inside their row; where their role may not read it, why. */
+function PhoneBoxes({ events, checked, onChange }: { events: { e: StaffAlertEvent; label: string; note: string | null }[]; checked: StaffAlertEvent[]; onChange: (e: StaffAlertEvent, on: boolean) => void }) {
+  return (
+    <ul className="flex flex-col">
+      {events.map(({ e, label, note }) => (
+        <li key={e} className="flex min-h-11 items-center justify-between gap-3 border-b border-line last:border-b-0">
+          {note ? (
+            <>
+              <span className="text-sm text-ink-2">{label}</span>
+              <span className="text-xs text-muted">{note}</span>
+            </>
+          ) : (
+            <label className="flex min-h-11 flex-1 items-center justify-between gap-3 text-sm">
+              {label}
+              <input type="checkbox" className="size-5" checked={checked.includes(e)} onChange={(ev) => onChange(e, ev.target.checked)} />
+            </label>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

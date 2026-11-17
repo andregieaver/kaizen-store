@@ -235,6 +235,17 @@ export const notificationsNb: NotificationsMessages = {
     hour: "Klokkeslett",
     test: "Send en test",
     testHint: "Hver test går til din egen adresse med oppdiktede tall, høyst ti i timen.",
+    phone: {
+      lead: "Hvem i teamet som får hvilken e-post.",
+      more: "Mer om disse e-postene",
+      defaults: "Standardvalgene til du lagrer: eierne får de viktige.",
+      gets: "{n} av {total}",
+      nothing: "Ingenting",
+      change: "Endre",
+      done: "Ferdig",
+      open: "Åpne",
+      testSub: "Til din egen adresse",
+    },
     testOne: "Test: {alert}",
     alerts: {
       new_order: "Ny bestilling",
