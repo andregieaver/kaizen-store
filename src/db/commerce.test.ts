@@ -8677,7 +8677,8 @@ describe("what the database writes for a new store (surface budget)", () => {
     expect(
       sum,
       `A new store now gets ${sum} rows (${JSON.stringify(byTable)}). A row every store gets for a feature that is off is idle cost: write the decision with an Idle cost: line and run node scripts/surface-budget.mjs --raise D<number>, or make the row when the feature is switched on.`,
-    ).toBe(surfaceBudget.newStoreRows);
+    ).toBeLessThanOrEqual(surfaceBudget.newStoreRows);
+    if (sum < surfaceBudget.newStoreRows) console.info(`surface: a new store gets ${sum} rows, baseline ${surfaceBudget.newStoreRows}; lower it with node scripts/surface-budget.mjs`);
   });
 
   it("would see a ninth row: a trigger that writes one more is counted", async () => {

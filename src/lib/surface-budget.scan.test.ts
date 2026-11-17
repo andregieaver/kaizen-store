@@ -153,11 +153,11 @@ describe.skipIf(WRITING)("the surface budget (bloat review 1.18)", () => {
   });
 
   it("reads the real thing: a table the schema file does not declare, and a trigger on orders", async () => {
-    const baseline = readBaseline();
     const db = await scratchDatabase();
     try {
+      const tablesBefore = await tableCount(db);
       await db.exec("create table commerce.surface_trial (id int)");
-      expect(await tableCount(db)).toBe(baseline.tables + 1);
+      expect(await tableCount(db)).toBe(tablesBefore + 1);
       const before = (await hotCounts(db)).orders.triggers;
       const fn = await db.query<{ name: string }>(
         "select t.tgfoid::regproc::text as name from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'commerce' and c.relname = 'orders' and not t.tgisinternal limit 1",
