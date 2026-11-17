@@ -2060,7 +2060,8 @@ yet built (step 11).
     `audit(member.account.id, store.id, "analytics.recording_viewed", { recording: id, device, durationS }, { target: { type: "recording", id } })`.
     If the audit fails, answer 503 and send nothing (the precedent is `exportAnalyticsTable()`);
   - set `viewed_at` if it is null;
-  - then `recordingEvents()`, as gzip JSON (`Content-Encoding: gzip`, `Cache-Control: private, no-store`).
+  - then `recordingEvents()`, as gzip bytes (`Content-Type: application/gzip`, `Cache-Control: private, no-store`) that the player unpacks
+    with `DecompressionStream`: Next 16.4.6 drops a route's own `Content-Encoding`, so `Content-Encoding: gzip` (as first built) no longer reaches the browser.
 - **`next.config.ts`:** the enforced CSP header of section 8.6 for the player path.
 - **`src/server/recordings-read.ts`** (section 8.5).
 - **`src/components/admin/analytics/recordings-view.tsx`** (server) and **`recording-player.tsx`** (client):

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { gunzipSync, gzipSync } from "node:zlib";
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -77,7 +78,7 @@ const audits = async (id: string) => {
 };
 
 async function feed(page: Page, id: string, events: unknown[]) {
-  await page.route(`**/analytics/recordings/${id}/events`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(events) }));
+  await page.route(`**/analytics/recordings/${id}/events`, (route) => route.fulfill({ status: 200, contentType: "application/gzip", body: gzipSync(JSON.stringify(events)) }));
 }
 
 test.describe("as the owner", () => {
@@ -136,7 +137,8 @@ test.describe("as the owner", () => {
     const answer = await page.request.get(`/admin/${E2E_STORE}/analytics/recordings/${COMPUTER}/events`);
     expect(answer.status()).toBe(200);
     expect(answer.headers()["cache-control"]).toContain("no-store");
-    expect(Array.isArray(await answer.json())).toBe(true);
+    expect(answer.headers()["content-type"]).toBe("application/gzip");
+    expect(Array.isArray(JSON.parse(gunzipSync(await answer.body()).toString("utf8")))).toBe(true);
     expect(await audits(COMPUTER)).toHaveLength(1);
   });
 });
