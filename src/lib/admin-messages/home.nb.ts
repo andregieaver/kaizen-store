@@ -184,6 +184,8 @@ export const homeNb: HomeMessages = {
     progressSub: "Det alle butikker trenger",
     everythingElse: "Alt annet",
     everythingElseSub: { one: "{n} innstilling til som de fleste aldri endrer", many: "{n} innstillinger til som de fleste aldri endrer" },
+    show: "Vis",
+    hide: "Skjul",
     groups: { paid: "Få betalt", deliver: "Selg og lever", business: "Bedriften og teamet", look: "Utseende og juss", tools: "Verktøy" },
     labels: { billing: "Planen din", tax: "Mva." },
     state: {

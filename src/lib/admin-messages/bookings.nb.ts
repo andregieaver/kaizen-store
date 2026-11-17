@@ -1023,6 +1023,15 @@ export const bookingsNb: BookingsMessages = {
     exportOrders: "Eksporter bestillinger",
     customers: "Én rad per kunde: alle med en konto og alle gjester med en betalt bestilling, én gang per e-postadresse.",
     exportCustomers: "Eksporter kunder",
+    phone: {
+      paid: "Betalte bestillinger",
+      all: "Alle bestillinger",
+      accounting: "Regnskap: ingen kontaktopplysninger",
+      full: "Full: med e-post og adresser",
+      someByNumber: "Eller noen bestillinger etter nummer",
+      change: "Endre",
+      done: "Ferdig",
+    },
   },
   findings: {
     outcome: {

@@ -1,6 +1,9 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The tabs are one choice on a phone (round 39, D731), a select that moves with the router.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push() {} }) }));
 
 import { taxReportsNb } from "@/lib/admin-messages/tax-reports.nb";
 
@@ -234,6 +237,8 @@ describe("the shared parts", () => {
     expect(out).toContain('aria-current="page"');
     expect(out.match(/<a /g)).toHaveLength(3);
     expect(out).toContain("OSS return data");
+    // The phone's choice of the same three, the current one chosen.
+    expect(out.match(/<option /g)).toHaveLength(3);
   });
 
   it("an export is a POST form with its fields hidden, and can be held back", () => {

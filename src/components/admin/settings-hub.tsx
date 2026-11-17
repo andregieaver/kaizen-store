@@ -12,7 +12,7 @@ export type SettingState = { tone: "positive" | "warning" | "neutral"; text: str
 export type SettingCard = { href: string; label: string; icon?: NavIconName; state?: SettingState; hint?: string; words?: string };
 export type SettingGroup = { heading: string; items: SettingCard[] };
 
-export type SettingsHubWords = { find: string; findPlaceholder: string; progressSub: string; everythingElse: string; everythingElseSub: string };
+export type SettingsHubWords = { find: string; findPlaceholder: string; progressSub: string; everythingElse: string; everythingElseSub: string; show: string; hide: string };
 
 /**
  * The settings hub (round 2, D597): settings grouped by what an owner is doing, each card saying where it stands (set up, needs you, or just
@@ -38,6 +38,8 @@ export function SettingsHub({
   words: SettingsHubWords;
 }) {
   const [query, setQuery] = useState("");
+  /** On a phone (round 39, D731) the other settings wait behind one row, the search finding them all the same. */
+  const [restOpen, setRestOpen] = useState(false);
   const q = query.trim().toLocaleLowerCase();
   const hit = (card: SettingCard) => !q || `${card.label} ${card.words ?? ""} ${card.hint ?? ""}`.toLocaleLowerCase().includes(q);
   const shownGroups = useMemo(() => groups.map((g) => ({ ...g, items: g.items.filter(hit) })).filter((g) => g.items.length > 0), [groups, q]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -63,18 +65,19 @@ export function SettingsHub({
       />
 
       {progress && !q && (
-        <section aria-label={progress.label} className={`${CARD_CLASS} flex flex-wrap items-center gap-x-8 gap-y-4 p-5 sm:px-6`}>
-          <div className="flex min-w-48 flex-col gap-1">
-            <span className="text-metric text-ink">{progress.label}</span>
-            <span className="text-caption text-muted">{w.progressSub}</span>
+        // On a phone (round 39, D731) the essentials are one line: how far, the bar under it, the next fix beside them.
+        <section aria-label={progress.label} className={`${CARD_CLASS} flex flex-wrap items-center gap-x-8 gap-y-4 p-5 sm:px-6 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3`}>
+          <div className="flex min-w-48 flex-col gap-1 max-sm:min-w-0">
+            <span className="text-metric text-ink max-sm:text-body">{progress.label}</span>
+            <span className="text-caption text-muted max-sm:hidden">{w.progressSub}</span>
           </div>
-          <div role="img" aria-label={progress.label} className="grid min-w-48 flex-[1_1_20rem] gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(1, progress.total)}, minmax(0, 1fr))` }}>
+          <div role="img" aria-label={progress.label} className="grid min-w-48 flex-[1_1_20rem] gap-1 max-sm:col-start-1 max-sm:min-w-0" style={{ gridTemplateColumns: `repeat(${Math.max(1, progress.total)}, minmax(0, 1fr))` }}>
             {Array.from({ length: progress.total }, (_, i) => (
-              <span key={i} className={`h-2.5 rounded-[3px] ${i < progress.done ? "bg-brand" : "bg-warning-solid"}`} />
+              <span key={i} className={`h-2.5 rounded-[3px] max-sm:h-1.5 ${i < progress.done ? "bg-brand" : "bg-warning-solid"}`} />
             ))}
           </div>
           {progress.next && (
-            <AdminLink href={progress.next.href} className="inline-flex h-11 items-center gap-2 rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+            <AdminLink href={progress.next.href} className="inline-flex h-11 items-center gap-2 rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 max-sm:h-10 max-sm:max-w-44 max-sm:px-3.5 max-sm:text-caption max-sm:leading-tight">
               {progress.next.label} →
             </AdminLink>
           )}
@@ -115,12 +118,22 @@ export function SettingsHub({
       ))}
 
       {shownRest.length > 0 && (
-        <section aria-label={w.everythingElse} className={`${CARD_CLASS} flex flex-col gap-3.5 p-5 sm:px-6`}>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <section aria-label={w.everythingElse} className={`${CARD_CLASS} flex flex-col gap-3.5 p-5 sm:px-6 max-sm:gap-0 max-sm:px-4 max-sm:py-0`}>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 max-sm:hidden">
             <h2 className="text-body-strong text-ink">{w.everythingElse}</h2>
             <span className="text-caption text-muted">{w.everythingElseSub}</span>
           </div>
-          <ul className="flex flex-wrap gap-1.5">
+          {/* The phone's row; while searching, the names found show without it. */}
+          {!q && (
+            <button type="button" aria-expanded={restOpen} onClick={() => setRestOpen((open) => !open)} className="flex min-h-14 items-center justify-between gap-3 py-2 text-left sm:hidden">
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-body text-ink">{w.everythingElse}</span>
+                <span className="text-caption text-ink-2">{w.everythingElseSub}</span>
+              </span>
+              <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{restOpen ? w.hide : w.show}</span>
+            </button>
+          )}
+          <ul className={`flex flex-wrap gap-1.5 ${restOpen || q ? "max-sm:py-3" : "max-sm:hidden"}`}>
             {shownRest.map((card) => (
               <li key={card.href}>
                 <AdminLink href={card.href} className="inline-flex min-h-9 items-center gap-1.5 rounded-pill bg-sunken px-3 text-caption text-ink hover:bg-line">

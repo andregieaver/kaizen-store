@@ -373,6 +373,14 @@ export const ordersEn = {
     and: "and",
     invoices: "Invoices",
     reports: "VAT, OSS and IOSS reports",
+    phone: {
+      lead: "A spreadsheet of orders for your books.",
+      personal: "Personal data: deleted from here after {days} days, never emailed.",
+      more: "More",
+      amountsSub: "Not a statement for a tax return",
+      read: "Read",
+      close: "Close",
+    },
   },
   /** The pasted list of order numbers on the order export (D165, 2.3.1). */
   numbersField: {

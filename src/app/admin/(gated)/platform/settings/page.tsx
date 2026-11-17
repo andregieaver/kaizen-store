@@ -35,7 +35,7 @@ export default async function PlatformSettingsPage() {
       progress={null}
       groups={[{ heading: "", items: cards }]}
       rest={[]}
-      words={{ find: t.find, findPlaceholder: t.findPlaceholder, progressSub: t.progressSub, everythingElse: t.everythingElse, everythingElseSub: countWords(0, t.everythingElseSub) }}
+      words={{ find: t.find, findPlaceholder: t.findPlaceholder, progressSub: t.progressSub, everythingElse: t.everythingElse, show: t.show, hide: t.hide, everythingElseSub: countWords(0, t.everythingElseSub) }}
     />
   );
 }
