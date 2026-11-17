@@ -139,7 +139,7 @@ commit as the fix.
 | 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Open | |
 | 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | Open | |
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
-| 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | In progress | 17 Nov, local: the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not 'good' at p75. |
+| 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Done | 17 Nov (23a841e2; D722): the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not good at p75. |
 | 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
 | 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | Open | |
 | 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 | Open | |
@@ -315,6 +315,7 @@ Change log:
 - 17 Nov 2026: step 1.27 Done (da36c66c, D716): a store page's first scripts are held by name in a baseline that only shrinks.
 - 17 Nov 2026: step 1.28 Done (9d9ad9b5, D717): every admin hand-down site's words handed are counted against the words its parts name.
 - 17 Nov 2026: step 1.1 Done (64b35c61, D719): every budget has a row in docs/rules/budgets.md, and the written rules have a budget of their own, checked on every push including Markdown alone.
+- 17 Nov 2026: step 1.15 Done (23a841e2, D722): the morning briefing says when a kind of admin screen with 100 loads or more is not fast at the 75th percentile.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
