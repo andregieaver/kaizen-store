@@ -70,23 +70,25 @@ export type Person = {
 };
 
 const count = z.number().int().min(0).max(1_000_000);
+/** What an empty list says (`marketingProblem()` says it in the account's language): the editor counts as conditions change, so it is seen. */
+const CHOOSE_SOME = "Choose at least one.";
 const days = z.number().int().min(1).max(3650);
-const codes = (max: number) => z.array(z.string().regex(/^[a-z]{2}$/i).transform((c) => c.toLowerCase())).min(1).max(max);
+const codes = (max: number) => z.array(z.string().regex(/^[a-z]{2}$/i).transform((c) => c.toLowerCase())).min(1, CHOOSE_SOME).max(max);
 
 /** The twelve conditions segments had before ecosystem plan E3.6 (D718); the AI manager's segment tools take only these (`toolSegmentRulesSchema`). */
 const FIRST_CONDITIONS = [
-  z.object({ kind: z.literal("consent"), statuses: z.array(z.enum(CONSENTS as [Consent, ...Consent[]])).min(1).max(4) }),
+  z.object({ kind: z.literal("consent"), statuses: z.array(z.enum(CONSENTS as [Consent, ...Consent[]])).min(1, CHOOSE_SOME).max(4) }),
   z.object({ kind: z.literal("orders"), op: z.enum(["atLeast", "atMost", "exactly"]), value: count }),
   z.object({ kind: z.literal("spent"), op: z.enum(["atLeast", "atMost"]), minor: z.number().int().min(0).max(1_000_000_000_00) }),
   z.object({ kind: z.literal("lastOrder"), op: z.enum(["within", "before", "never"]), days: days.optional() }),
   z.object({ kind: z.literal("firstOrder"), op: z.enum(["within", "before"]), days }),
-  z.object({ kind: z.literal("rfm"), groups: z.array(z.enum(RFM_SEGMENTS)).min(1).max(RFM_SEGMENTS.length) }),
+  z.object({ kind: z.literal("rfm"), groups: z.array(z.enum(RFM_SEGMENTS)).min(1, CHOOSE_SOME).max(RFM_SEGMENTS.length) }),
   z.object({ kind: z.literal("country"), codes: codes(60) }),
   z.object({ kind: z.literal("language"), codes: codes(40) }),
-  z.object({ kind: z.literal("group"), ids: z.array(z.uuid()).min(1).max(50) }),
+  z.object({ kind: z.literal("group"), ids: z.array(z.uuid()).min(1, CHOOSE_SOME).max(50) }),
   z.object({ kind: z.literal("company"), has: z.boolean() }),
   z.object({ kind: z.literal("account"), has: z.boolean() }),
-  z.object({ kind: z.literal("tag"), tags: z.array(z.string().max(80)).min(1).max(20) }),
+  z.object({ kind: z.literal("tag"), tags: z.array(z.string().max(80)).min(1, CHOOSE_SOME).max(20) }),
 ] as const;
 
 /** The most products, and categories, one condition names. */
@@ -99,13 +101,13 @@ export const CATEGORIES_PER_CONDITION = 20;
  * and a broadcast's clicks are counted per link without the person (D297 5.5).
  */
 const MORE_CONDITIONS = [
-  z.object({ kind: z.literal("bought"), has: z.boolean(), products: z.array(z.uuid()).min(1).max(PRODUCTS_PER_CONDITION), days: days.optional() }),
-  z.object({ kind: z.literal("boughtCategory"), has: z.boolean(), categories: z.array(z.uuid()).min(1).max(CATEGORIES_PER_CONDITION), days: days.optional() }),
+  z.object({ kind: z.literal("bought"), has: z.boolean(), products: z.array(z.uuid()).min(1, CHOOSE_SOME).max(PRODUCTS_PER_CONDITION), days: days.optional() }),
+  z.object({ kind: z.literal("boughtCategory"), has: z.boolean(), categories: z.array(z.uuid()).min(1, CHOOSE_SOME).max(CATEGORIES_PER_CONDITION), days: days.optional() }),
   z.object({ kind: z.literal("deal"), status: z.enum(["open", "won"]) }),
   z.object({ kind: z.literal("support"), op: z.enum(["within", "ratedBad"]), days: days.optional() }),
   z.object({ kind: z.literal("review"), maxStars: z.number().int().min(1).max(5).optional() }),
   z.object({ kind: z.literal("subscription"), has: z.boolean() }),
-  z.object({ kind: z.literal("sms"), statuses: z.array(z.enum(SMS_CONSENTS)).min(1).max(SMS_CONSENTS.length) }),
+  z.object({ kind: z.literal("sms"), statuses: z.array(z.enum(SMS_CONSENTS)).min(1, CHOOSE_SOME).max(SMS_CONSENTS.length) }),
 ] as const;
 
 export const conditionSchema = z.discriminatedUnion("kind", [...FIRST_CONDITIONS, ...MORE_CONDITIONS]);

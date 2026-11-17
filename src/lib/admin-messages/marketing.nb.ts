@@ -764,6 +764,7 @@ export const marketingNb: MarketingMessages = {
     ownerOnly: "Bare butikkens eier kobler til kontoen og endrer reglene.",
   },
   problems: {
+    chooseSome: "Velg minst én.",
     noAccess: "Du har ikke tilgang til dette.",
     unknownSegment: "Ukjent segment.",
     unknownBroadcast: "Ukjent nyhetsbrev.",

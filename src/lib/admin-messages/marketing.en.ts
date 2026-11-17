@@ -781,6 +781,7 @@ export const marketingEn = {
     ownerOnly: "Only the store's owner connects the account and changes its rules.",
   },
   problems: {
+    chooseSome: "Choose at least one.",
     noAccess: "You do not have access to this.",
     unknownSegment: "Unknown segment.",
     unknownBroadcast: "Unknown broadcast.",
