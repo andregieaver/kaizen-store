@@ -25,6 +25,16 @@ export const taxReportsNb: TaxReportsMessages = {
     needWrite: "Eksport krever analyserollen med skrivetilgang.",
     noFile: "Ingen fil ble laget",
     changedSinceExport: "Perioden er endret siden du eksporterte den",
+    phone: {
+      lead: "Laget av fakturaene og kreditnotaene dine.",
+      notReturn: "Ikke en melding til myndighetene: dine egne tall, for deg og regnskapsføreren.",
+      more: "Mer",
+      open: "Åpne",
+      close: "Lukk",
+      noVat: "Ingen mva.",
+      rows: { one: "{n} rad", many: "{n} rader" },
+      countries: { one: "{n} land", many: "{n} land" },
+    },
   },
   skeleton: {
     loading: "Henter mva.-rapporten …",

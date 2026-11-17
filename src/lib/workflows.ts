@@ -49,6 +49,9 @@ export function subjectOf(
   | "work_client"
   | "work_invoice"
   | "form_response"
+  | "email"
+  | "broadcast"
+  | "sending_pause"
   | "schedule" {
   if (trigger === "schedule") return "schedule";
   // Ecosystem plan E3.2 (D718).
@@ -71,6 +74,10 @@ export function subjectOf(
   if (trigger === "experiment.answered") return "experiment";
   if (trigger.startsWith("contract.")) return "contract";
   if (trigger === "form.response") return "form_response";
+  // Email plan M1.2 (D732).
+  if (trigger.startsWith("email.")) return "email";
+  if (trigger === "broadcast.sent") return "broadcast";
+  if (trigger === "marketing.paused") return "sending_pause";
   if (trigger.startsWith("order.")) return "order";
   if (trigger.startsWith("subscription.")) return "subscription";
   if (trigger.startsWith("product.")) return "product";
@@ -214,6 +221,15 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "form_response.locale", kind: "text" },
     { key: "form_response.path", kind: "text" },
   ],
+  email: [
+    { key: "email.kind", kind: "text" },
+    { key: "email.reason", kind: "text" },
+  ],
+  broadcast: [
+    { key: "broadcast.recipients", kind: "number" },
+    { key: "broadcast.failed", kind: "number" },
+  ],
+  sending_pause: [{ key: "sending_pause.reason", kind: "text", choices: ["bounces", "complaints"] }],
   draft: [
     { key: "draft.source", kind: "text" },
     { key: "draft.currency", kind: "text" },

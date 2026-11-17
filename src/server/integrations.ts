@@ -428,7 +428,110 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const form_response = await formResponseData(store.id, store.slug, subjectId);
     return form_response && { form_response };
   }
+  // Email plan M1.2 (D732).
+  if (event.startsWith("email.")) {
+    const email = await emailData(store.id, store.slug, subjectId);
+    return email && { email };
+  }
+  if (event === "broadcast.sent") {
+    const broadcast = await broadcastData(store.id, store.slug, subjectId);
+    return broadcast && { broadcast };
+  }
+  if (event === "marketing.paused") {
+    const sending_pause = await sendingPauseData(store.id, store.slug, subjectId);
+    return sending_pause && { sending_pause };
+  }
   return null;
+}
+
+/** One of the store's emails that bounced or was marked as spam (email plan M1.2, D732, `email.*`): which, to whom and why. Never its words. */
+async function emailData(storeId: string, storeSlug: string, emailId: string): Promise<WebhookSubject<"email"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      kind: col.text,
+      to_address: col.text,
+      status: col.text,
+      error: col.textOrNull,
+      order_id: col.uuid.nullable(),
+      sent_at: col.timestampOrNull,
+    }),
+    sql`
+      select id, kind, to_address, status::text as status, error, order_id, sent_at
+      from commerce.email_messages where store_id = ${storeId}::uuid and id = ${emailId}::uuid
+    `,
+  );
+  if (!row || (row.status !== "bounced" && row.status !== "complained") || row.to_address === "[removed]") return null;
+  return {
+    id: row.id,
+    kind: row.kind,
+    to: row.to_address.toLowerCase(),
+    status: row.status,
+    reason: row.status === "bounced" ? row.error : null,
+    order_id: row.order_id,
+    sent_at: row.sent_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/emails/${row.id}`,
+  };
+}
+
+/** A broadcast that finished sending (D732, `broadcast.sent`): its counts from its recipients, or the figures kept once they are pruned. */
+async function broadcastData(storeId: string, storeSlug: string, broadcastId: string): Promise<WebhookSubject<"broadcast"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      title: col.text,
+      audience_words: col.textOrNull,
+      recipient_count: col.int.nullable(),
+      sent: col.int,
+      skipped: col.int,
+      failed: col.int,
+      started_at: col.timestampOrNull,
+      finished_at: col.timestampOrNull,
+    }),
+    sql`
+      select b.id, b.title, b.audience_words, b.recipient_count, b.started_at, b.finished_at,
+        count(r.*) filter (where r.status = 'sent')::int as sent,
+        count(r.*) filter (where r.status = 'skipped')::int as skipped,
+        count(r.*) filter (where r.status = 'failed')::int as failed
+      from commerce.broadcasts b
+      left join commerce.broadcast_recipients r on r.broadcast_id = b.id and r.store_id = b.store_id
+      where b.store_id = ${storeId}::uuid and b.id = ${broadcastId}::uuid
+      group by b.id
+    `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    audience: row.audience_words,
+    recipients: row.recipient_count ?? 0,
+    sent: row.sent,
+    skipped: row.skipped,
+    failed: row.failed,
+    started_at: row.started_at,
+    finished_at: row.finished_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/broadcasts/${row.id}`,
+  };
+}
+
+/** The sending guard holding the store's marketing email (D730, D732, `marketing.paused`): the line passed and what was counted. */
+async function sendingPauseData(storeId: string, storeSlug: string, pauseId: string): Promise<WebhookSubject<"sending_pause"> | null> {
+  const row = await typedRow(
+    z.object({ id: col.uuid, reason: z.enum(["bounces", "complaints"]), counts: z.unknown(), paused_at: col.timestamp }),
+    sql`select id, reason, counts, paused_at from commerce.sending_pauses where store_id = ${storeId}::uuid and id = ${pauseId}::uuid`,
+  );
+  if (!row) return null;
+  const c = (row.counts && typeof row.counts === "object" ? row.counts : {}) as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === "number" && Number.isInteger(v) ? v : 0);
+  return {
+    id: row.id,
+    reason: row.reason,
+    sent: n(c.sent),
+    bounced: n(c.bounced),
+    complained: n(c.complained),
+    paused_at: row.paused_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/marketing`,
+  };
 }
 
 /**

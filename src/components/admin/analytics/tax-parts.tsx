@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
 import { TAX_VIEWS, type ExportFormKind, type TaxViewId } from "@/lib/tax-admin";
 
+import { SelectNav } from "@/components/admin/select-nav";
+
 import { Note } from "./section";
 
 /**
@@ -17,18 +19,37 @@ import { Note } from "./section";
 export const NOT_A_RETURN = taxReportsEn.parts.notReturn;
 
 export function TaxStatement({ children, words = taxReportsEn }: { children?: ReactNode; words?: TaxReportsMessages }) {
+  // On a phone (round 39, D731) the statement is one line, its full words under More.
   return (
-    <Note tone="warning" title={words.parts.notReturnTitle}>
-      <p>{words.parts.notReturn}</p>
-      {children}
-    </Note>
+    <>
+      <div className="max-sm:hidden">
+        <Note tone="warning" title={words.parts.notReturnTitle}>
+          <p>{words.parts.notReturn}</p>
+          {children}
+        </Note>
+      </div>
+      <details role="note" className="rounded-panel bg-warning-soft px-4 py-3 text-sm text-warning-text sm:hidden">
+        <summary className="cursor-pointer list-none">
+          {words.parts.phone.notReturn} <span className="underline underline-offset-2">{words.parts.phone.more}</span>
+        </summary>
+        <p className="mt-2">{words.parts.notReturn}</p>
+        {children}
+      </details>
+    </>
   );
 }
 
 /** The three views as tabs: links, so each is an address of its own. */
 export function TaxViewTabs({ current, hrefs, words = taxReportsEn }: { current: TaxViewId; hrefs: Record<TaxViewId, string>; words?: TaxReportsMessages }) {
+  // On a phone (round 39, D731) the three views are one choice.
   return (
-    <nav aria-label={words.parts.tabsLabel} className="flex flex-wrap gap-1">
+    <>
+    <SelectNav
+      label={words.parts.tabsLabel}
+      className="sm:hidden"
+      options={TAX_VIEWS.map((id) => ({ label: words.parts.views[id], href: hrefs[id], current: id === current }))}
+    />
+    <nav aria-label={words.parts.tabsLabel} className="flex flex-wrap gap-1 max-sm:hidden">
       {TAX_VIEWS.map((id) => (
         <Link
           key={id}
@@ -40,6 +61,7 @@ export function TaxViewTabs({ current, hrefs, words = taxReportsEn }: { current:
         </Link>
       ))}
     </nav>
+    </>
   );
 }
 

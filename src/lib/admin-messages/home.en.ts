@@ -195,6 +195,8 @@ export const homeEn = {
     progressSub: "The essentials every store needs",
     everythingElse: "Everything else",
     everythingElseSub: { one: "{n} more setting most stores never change", many: "{n} more settings most stores never change" },
+    show: "Show",
+    hide: "Hide",
     groups: { paid: "Get paid", deliver: "Sell and deliver", business: "Your business and team", look: "Look and legal", tools: "Tools" },
     labels: { billing: "Your plan", tax: "VAT" },
     state: {

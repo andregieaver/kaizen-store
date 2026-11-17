@@ -82,10 +82,17 @@ export async function applyEmailEvent(event: EmailEvent): Promise<boolean> {
     case "email.bounced": {
       const bounce = event.data?.bounce;
       const error = [bounce?.type, bounce?.message].filter(Boolean).join(": ").slice(0, 500) || "Bounced";
+      // A store's email that comes back is an event (email plan M1.2, D732): once, as it first turns bounced; Kaizena Flow's own send none.
       rows = await db().execute<Row>(sql`
-        update commerce.email_messages set status = 'bounced', error = ${error}
-        where provider_reference = ${reference} and status <> 'complained'
-        returning id, store_id, to_address, kind
+        with u as (
+          update commerce.email_messages m set status = 'bounced', error = ${error}
+          from (select id, status as before from commerce.email_messages where provider_reference = ${reference} and status <> 'complained') b
+          where m.id = b.id
+          returning m.id, m.store_id, m.to_address, m.kind, b.before
+        )
+        select u.id, u.store_id, u.to_address, u.kind,
+          case when u.store_id is not null and u.before <> 'bounced' then commerce.queue_integration_event(u.store_id, 'email.bounced', u.id) end
+        from u
       `);
       // Only a hard bounce: a full mailbox or a busy server is tried again another day.
       if (bounce?.type === "Permanent") await leaveList(rows as Row[], "bounce");
@@ -94,9 +101,15 @@ export async function applyEmailEvent(event: EmailEvent): Promise<boolean> {
     }
     case "email.complained":
       rows = await db().execute<Row>(sql`
-        update commerce.email_messages set status = 'complained'
-        where provider_reference = ${reference}
-        returning id, store_id, to_address, kind
+        with u as (
+          update commerce.email_messages m set status = 'complained'
+          from (select id, status as before from commerce.email_messages where provider_reference = ${reference}) b
+          where m.id = b.id
+          returning m.id, m.store_id, m.to_address, m.kind, b.before
+        )
+        select u.id, u.store_id, u.to_address, u.kind,
+          case when u.store_id is not null and u.before <> 'complained' then commerce.queue_integration_event(u.store_id, 'email.complained', u.id) end
+        from u
       `);
       await leaveList(rows as Row[], "complaint");
       await guardAfter(rows as Row[]);

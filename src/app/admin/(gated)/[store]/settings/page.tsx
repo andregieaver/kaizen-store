@@ -108,7 +108,7 @@ export default async function StoreSettingsPage({ params }: PageProps<"/admin/[s
       }}
       groups={groups}
       rest={rest}
-      words={{ find: t.find, findPlaceholder: t.findPlaceholder, progressSub: t.progressSub, everythingElse: t.everythingElse, everythingElseSub: countWords(rest.length, t.everythingElseSub) }}
+      words={{ find: t.find, findPlaceholder: t.findPlaceholder, progressSub: t.progressSub, everythingElse: t.everythingElse, show: t.show, hide: t.hide, everythingElseSub: countWords(rest.length, t.everythingElseSub) }}
     />
   );
 }

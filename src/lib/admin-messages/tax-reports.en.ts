@@ -26,6 +26,16 @@ export const taxReportsEn = {
     needWrite: "Exports need the analytics role with write access.",
     noFile: "No file was made",
     changedSinceExport: "This period has changed since you exported it",
+    phone: {
+      lead: "Made from your invoices and credit notes.",
+      notReturn: "Not a tax return: your own figures, for you and your accountant.",
+      more: "More",
+      open: "Open",
+      close: "Close",
+      noVat: "No VAT",
+      rows: { one: "{n} row", many: "{n} rows" },
+      countries: { one: "{n} country", many: "{n} countries" },
+    },
   },
   skeleton: {
     loading: "Loading the VAT report…",

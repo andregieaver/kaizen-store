@@ -456,6 +456,14 @@ export const ordersNb: OrdersMessages = {
     and: "og",
     invoices: "Fakturaer",
     reports: "rapportene for mva., OSS og IOSS",
+    phone: {
+      lead: "Et regneark med bestillinger til regnskapet.",
+      personal: "Personopplysninger: slettes herfra etter {days} dager, sendes aldri på e-post.",
+      more: "Mer",
+      amountsSub: "Ikke et grunnlag for en skattemelding",
+      read: "Les",
+      close: "Lukk",
+    },
   },
   numbersField: {
     label: "Bestillingsnumre",

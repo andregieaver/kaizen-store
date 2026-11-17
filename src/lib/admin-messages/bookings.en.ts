@@ -1025,6 +1025,15 @@ export const bookingsEn = {
     exportOrders: "Export orders",
     customers: "One row per customer: everyone with an account and every guest with a paid order, once per email address.",
     exportCustomers: "Export customers",
+    phone: {
+      paid: "Paid orders",
+      all: "All orders",
+      accounting: "Accounting: no contact details",
+      full: "Full: with email and addresses",
+      someByNumber: "Or some orders by their numbers",
+      change: "Change",
+      done: "Done",
+    },
   },
   findings: {
     outcome: {

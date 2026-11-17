@@ -692,6 +692,10 @@ export const notificationsNb: NotificationsMessages = {
       "work_invoice.sent": { label: "Work-faktura sendt", hint: "En Work-faktura ble utstedt: nummerert og sendt." },
       "work_invoice.paid": { label: "Work-faktura betalt", hint: "En Work-faktura er betalt i sin helhet." },
       "work_invoice.credited": { label: "Work-faktura kreditert", hint: "En kreditnota ble utstedt mot en Work-faktura." },
+      "email.bounced": { label: "E-post kom i retur", hint: "En av butikkens e-poster til en kunde kom i retur: adressen kan være feil eller full. Hvilken e-post, til hvem, og grunnen e-posttjeneren ga." },
+      "email.complained": { label: "E-post merket som søppelpost", hint: "En kunde merket en av butikkens e-poster som søppelpost. De er meldt av e-postlisten." },
+      "broadcast.sent": { label: "Nyhetsbrev sendt", hint: "Et nyhetsbrev er ferdig sendt: hvor mange det skulle til, og hvor mange som ble sendt, hoppet over eller feilet." },
+      "marketing.paused": { label: "Markedsførings-e-post satt på pause", hint: "For mange av de siste markedsførings-e-postene kom i retur eller ble merket som søppelpost, så nyhetsbrev og automatiseringer holdes tilbake til en eier starter dem igjen." },
       "support.waiting": {
         label: "Noen venter i kundeservice",
         hint: "En kunde har ventet på en person i kundeservicechatten så lenge innstillingene for kundeservice sier: hvor mange som venter nå, og en lenke til innboksen. Aldri hvem de er eller hva de skrev.",

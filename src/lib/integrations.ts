@@ -140,7 +140,12 @@ export type IntegrationEvent =
   | "work_invoice.paid"
   | "work_invoice.credited"
   // D705 F5: a visitor sent one of the store's forms (a sign-up once confirmed).
-  | "form.response";
+  | "form.response"
+  // Email plan M1.2 (D732): an email bounced or was marked as spam, a broadcast finished, the sending guard held marketing email.
+  | "email.bounced"
+  | "email.complained"
+  | "broadcast.sent"
+  | "marketing.paused";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -192,6 +197,10 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "work_invoice.sent", label: "Work invoice sent", hint: "A Work invoice was issued: numbered and sent." },
   { id: "work_invoice.paid", label: "Work invoice paid", hint: "A Work invoice is paid in full." },
   { id: "work_invoice.credited", label: "Work invoice credited", hint: "A credit note was issued against a Work invoice." },
+  { id: "email.bounced", label: "Email bounced", hint: "One of the store's emails to a customer came back: the address may be wrong or full. Which email, to whom, and the reason the mail server gave." },
+  { id: "email.complained", label: "Email marked as spam", hint: "A customer marked one of the store's emails as spam. They have left the email list." },
+  { id: "broadcast.sent", label: "Broadcast sent", hint: "A broadcast finished sending: how many it went to, and how many were sent, skipped or failed." },
+  { id: "marketing.paused", label: "Marketing email paused", hint: "Too many recent marketing emails bounced or were marked as spam, so newsletters and automations are held until an owner resumes them." },
 ];
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);
@@ -258,6 +267,11 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "work_invoice.paid",
   "work_invoice.credited",
   "form.response",
+  // Email plan M1.2 (D732): Zapier, Make and Slack keep the events they had.
+  "email.bounced",
+  "email.complained",
+  "broadcast.sent",
+  "marketing.paused",
 ]);
 
 /** The events a service (Zapier, Make, Slack) may be sent. */

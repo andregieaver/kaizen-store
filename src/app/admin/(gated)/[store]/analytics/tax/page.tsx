@@ -166,7 +166,12 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
         ctx={ctx}
         path="/analytics/tax"
         title={w.page.title}
-        description={w.page.description}
+        description={
+          <>
+            <span className="sm:hidden">{w.parts.phone.lead}</span>
+            <span className="max-sm:hidden">{w.page.description}</span>
+          </>
+        }
         picker={query.view === "vat"}
         showCompare={false}
         explicitPeriod

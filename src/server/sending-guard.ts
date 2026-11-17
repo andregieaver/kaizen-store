@@ -101,6 +101,8 @@ export async function guardStore(storeId: string | null, now = new Date()): Prom
       returning id
     `);
     if (!written) return "held";
+    // An event for workflows, endpoints and the log (email plan M1.2, D732); Kaizena Flow's own pause (no store) has none.
+    if (storeId) await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'marketing.paused', ${String(written.id)}::uuid)`);
     await audit(null, storeId, "marketing.sending_paused", { reason, ...health.counts });
     await tellOwners(storeId, reason, health.counts, new Date(health.since));
     return "paused";
