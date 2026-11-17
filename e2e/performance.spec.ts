@@ -7,22 +7,33 @@ import { storePageRows, testDb, testStore } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). Counted here, every `script[src]` of the page, Next's `nomodule` polyfills (112,541 bytes, in the page twice) included: 834,571 on 14 November 2026 after bloat review step 0.16 (the carousel's controls load where a carousel is drawn), which is 609,885 without them. Measured plus 3 % would be 860,000, above the step's ceiling of 615,000 without the polyfills, so the ceiling: 615,000 + 225,082, rounded down. */
-const FIRST_SCRIPTS_MAX = 840_000;
-
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
 
-/** The scripts the page's HTML asks for, each fetched as the browser would, with its text. */
-async function firstScripts(page: Page): Promise<{ url: string; text: string }[]> {
-  const urls = await page.locator("script[src]").evaluateAll((els) => els.map((el) => (el as HTMLScriptElement).src));
+/** `E2E_MEASURE=1` prints every figure the budgets below are set from (`[first-scripts]`, `[document]`, `[stylesheet]`, `[wire]`) and holds none. */
+const MEASURE = process.env.E2E_MEASURE === "1";
+
+/**
+ * The scripts the page's HTML asks for, as the server sends it, each fetched with its text, each file once: every `<script src>` tag
+ * but a `nomodule` one (Next's polyfills, 225,082 bytes twice over, which no browser that runs the page loads), never what the page has
+ * loaded by the time it is looked at, which grows with what it does after (bloat review step 1.3, as `e2e/signed-in/admin-scripts.spec.ts`).
+ */
+async function firstScripts(page: Page, address: string): Promise<{ url: string; text: string }[]> {
+  const html = await (await page.request.get(address)).text();
+  const urls = [
+    ...new Set(
+      [...html.matchAll(/<script\b[^>]*>/g)]
+        .map((match) => match[0])
+        .filter((tag) => !/\snomodule\b/i.test(tag))
+        .map((tag) => /\ssrc="([^"]+)"/.exec(tag)?.[1])
+        .filter((src): src is string => Boolean(src))
+        .map((src) => new URL(src.replaceAll("&amp;", "&"), base).href),
+    ),
+  ];
   return Promise.all(urls.map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
 }
 
-test("the front page's first scripts stay within their budget, without zod or the lightbox", async ({ page }) => {
-  await page.goto("/s/demo/no");
-  const scripts = await firstScripts(page);
-  const total = scripts.reduce((sum, script) => sum + script.text.length, 0);
-  expect(total, `first scripts: ${total} bytes`).toBeLessThan(FIRST_SCRIPTS_MAX);
+test("the front page's first scripts carry no zod, no lightbox and no checkout form", async ({ page }) => {
+  const scripts = await firstScripts(page, "/s/demo/no");
   // zod's own messages: a schema in the visitor's scripts (`storefront-bundle.scan.test.ts` holds the imports; this, the build).
   expect(scripts.filter((script) => /invalid_type|ZodError/.test(script.text)).map((s) => s.url)).toEqual([]);
   // A part the page does not draw is not in its first scripts: the gallery's lightbox, the checkout's payment form.
@@ -36,33 +47,38 @@ test("the front page's first scripts stay within their budget, without zod or th
 });
 
 /**
- * Every other route a visitor or a person signing in meets first, each under its own first-scripts budget (PSI PERF-11), raw as above.
- * Measured on the build of 30 October 2026, after the signed-out pages stopped loading the admin's whole English text through
- * `ActionForm`, `PasswordField` and the sign-in panels (2.0 to 2.1 MB each before): the product page 993 KB, Kaizena Flow's front page
- * 827 KB, sign-up 840 KB, status 837 KB, sign-in 714 KB, forgot password 713 KB. About 5 % of room; a change that passes one is a
- * regression to look at, not a number to raise.
+ * Every route a visitor or a person signing in meets first has its own first-scripts budget (PSI PERF-11; bloat review step 1.3), raw
+ * (before compression): the text of the files the server's HTML names, no `nomodule` file, each file once. The eight store routes
+ * (`/s/...`) are set to their figure plus 3 %, the six others to plus 4 %, each rounded up to the next 1,000. Measured on the build of
+ * 17 November 2026: the front page 614,339, the product page 662,244, the other store routes 729,906 each, Kaizena Flow's front page
+ * 608,377, sign-up 626,891, status 617,496, sign-in 487,166, forgot password 486,102, the docs page 498,519. A budget only falls: a change that lowers a figure by more than its room lowers the budget in the same change, and one
+ * that needs a budget raised says why in docs/decisions.md.
  */
 const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
-  // 879,873 on 14 November 2026 after bloat review step 0.16 (655,190 without the two `nomodule` polyfills counted here, 225,082;
-  // 778,503 without them before the step). Measured plus 3 % would be 907,000, above the step's ceiling of 670,000 without the
-  // polyfills, so the ceiling: 670,000 + 225,082, rounded down. No product picker is kept in first scripts (the range and appointment pickers, the
-  // gift card and the quote request load with the page that draws them, `lazy/shop.tsx`).
-  "/s/demo/no/p/demo-keramikkopp": 895_000,
-  "/": 870_000,
-  "/sign-up": 880_000,
-  "/status": 880_000,
-  "/admin/sign-in": 750_000,
-  "/admin/forgot-password": 750_000,
-  // A docs page (D442, D336): its frame's few parts, the search's dialog and the AI guide's button; the guide's panel loads only when
-  // opened (D444, `e2e/docs.spec.ts`). 606 KB on 4 November 2026.
-  "/docs/owners/getting-started/create-your-store": 640_000,
+  "/s/demo/no": 633_000,
+  "/s/demo/no/p/demo-keramikkopp": 683_000,
+  "/s/demo/no/om-oss": 633_000,
+  "/s/demo/no/category/belysning": 752_000,
+  "/s/demo/no/search?q=lampe": 752_000,
+  "/s/demo/no/cart": 752_000,
+  "/s/demo/no/checkout": 752_000,
+  "/s/demo/no/account": 752_000,
+  "/": 633_000,
+  "/sign-up": 652_000,
+  "/status": 643_000,
+  "/admin/sign-in": 507_000,
+  "/admin/forgot-password": 506_000,
+  "/docs/owners/getting-started/create-your-store": 519_000,
 };
 
 for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
   test(`${path}'s first scripts stay within their budget`, async ({ page }) => {
-    await page.goto(path);
-    const scripts = await firstScripts(page);
+    const scripts = await firstScripts(page, path);
     const total = scripts.reduce((sum, script) => sum + script.text.length, 0);
+    if (MEASURE) {
+      console.log(`[first-scripts] ${path} ${total}`);
+      return;
+    }
     expect(total, `${path} first scripts: ${total} bytes`).toBeLessThan(max);
   });
 }
