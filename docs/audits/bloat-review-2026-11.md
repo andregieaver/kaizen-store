@@ -126,7 +126,7 @@ commit as the fix.
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | Done | 17 Nov (64b35c61; D719): every budget in docs/rules/budgets.md; the written rules held by docs-ratchet; Markdown pushes run the Docs budget workflow. |
-| 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | In progress | 17 Nov local: 589 routes held (15,000 B room); zod 134, editor 26, builderEnglish 26, signInEnglish 2, supabase 0; 2 markers allowed absent (0.16). Planted zod fails; CI check pending. |
+| 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | Done | 17 Nov (9c029e2e; D733): 589 routes and eight markers held in CI; only growth fails; CI's first run matched the local baseline. |
 | 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Open | |
 | 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | Done | 17 Nov (15485362; D726): admin client modules walked; zod reach 145, catalogue imports 36 and 68 unread keys held; shop never imports admin words. |
 | 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | cheap | 0.9, 0.13, 0.1, 1.1 | Open | |
@@ -318,6 +318,7 @@ Change log:
 - 17 Nov 2026: step 1.15 Done (23a841e2, D722): the morning briefing says when a kind of admin screen with 100 loads or more is not fast at the 75th percentile.
 - 17 Nov 2026: step 1.24 Done (a0c1757f, D723): a script measures what a session loads from its own transcript, and source files over 100 KB or 2,000 lines may only fall in number.
 - 17 Nov 2026: step 1.4 Done (15485362, D726): the admin's client modules are under an import walk, catalogues hold text only, and unread admin texts are held.
+- 17 Nov 2026: step 1.2 Done (9c029e2e, D733): every route's first scripts and eight markers are held against a baseline after CI's build.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
