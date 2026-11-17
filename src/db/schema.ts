@@ -11183,7 +11183,7 @@ export const forms = commerce.table(
     signup: jsonb("signup"),
     /** Months its responses are kept (1 to 36). */
     keepMonths: integer("keep_months").notNull().default(12),
-    /** What it was made from: `starter:{key}` (Kaizena Flow's starters, `FORM_STARTERS`), or null. Never a link that changes the form. */
+    /** What it was made from: `starter:{key}` (Kaizena Flow's starters), `template:{id}` (a form template, F4), or null. Never a link that changes the form. */
     madeFrom: text("made_from"),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
@@ -11203,6 +11203,62 @@ export const forms = commerce.table(
     check("forms_signup", sql`(${t.kind} = 'signup') = (${t.signup} is not null) and (${t.signup} is null or jsonb_typeof(${t.signup}) = 'object')`),
     check("forms_keep_months", sql`${t.keepMonths} between 1 and 36`),
     check("forms_made_from", sql`${t.madeFrom} is null or char_length(${t.madeFrom}) between 1 and 80`),
+  ],
+);
+
+/**
+ * A form template (D705 F4, `docs/forms.md`, written only by `src/server/form-templates.ts`): Kaizena Flow's own (no store, always the
+ * marketplace's; the seven starters are seeded by key) or a store's, saved from one of its forms. `content` is a form without what
+ * belongs to one store (`FormTemplateContent`: questions, words, a sign-up's confirm and name, the months kept), its words in `lang` with
+ * the other languages it has. Using one copies it into a new form: editing it later never changes a form made from it. `form_id` is the
+ * owner's form it is updated from, if any. Shared as D125's templates are; a platform admin hides one from every list.
+ */
+export const formTemplates = commerce.table(
+  "form_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `message` or `signup`, as its forms. */
+    kind: text("kind").notNull(),
+    /** `contact`, `sales`, `bookings`, `newsletter`, `feedback`, `events` or `other`: its card's icon and place. */
+    category: text("category").notNull().default("other"),
+    /** `{ text, byLocale }`, `text` in `lang`. */
+    name: jsonb("name").notNull(),
+    description: jsonb("description").notNull().default(sql`'{"text":"","byLocale":{}}'::jsonb`),
+    /** The language of its words' `text`. */
+    lang: text("lang").notNull().default("en"),
+    content: jsonb("content").notNull(),
+    /** `private` (this store), `stores` (its owner's other stores) or `marketplace`; Kaizena Flow's are the marketplace's. */
+    sharing: text("sharing").notNull().default("private"),
+    /** Kaizena Flow's seeded starters (`contact`, `newsletter`, …); null for every other. */
+    starter: text("starter"),
+    /** The owner's form it was saved from and is updated from; null once that form is deleted. */
+    formId: uuid("form_id").references(() => forms.id, { onDelete: "set null" }),
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenBy: uuid("hidden_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("form_templates_store_idx").on(t.storeId, t.updatedAt),
+    index("form_templates_shared_idx").on(t.sharing, t.updatedAt).where(sql`${t.sharing} <> 'private'`),
+    index("form_templates_form_idx").on(t.formId),
+    index("form_templates_hidden_by_idx").on(t.hiddenBy),
+    index("form_templates_created_by_idx").on(t.createdBy),
+    index("form_templates_updated_by_idx").on(t.updatedBy),
+    uniqueIndex("form_templates_starter").on(t.starter).where(sql`${t.starter} is not null`),
+    check("form_templates_kind", sql`${t.kind} in ('message', 'signup')`),
+    check("form_templates_category", sql`${t.category} in ('contact', 'sales', 'bookings', 'newsletter', 'feedback', 'events', 'other')`),
+    check("form_templates_name", sql`jsonb_typeof(${t.name}) = 'object' and char_length(btrim(${t.name} ->> 'text')) between 1 and 80`),
+    check("form_templates_description", sql`jsonb_typeof(${t.description}) = 'object' and char_length(coalesce(${t.description} ->> 'text', '')) <= 200`),
+    check("form_templates_lang", sql`${t.lang} ~ '^[a-z]{2,3}$'`),
+    check("form_templates_content", sql`jsonb_typeof(${t.content}) = 'object'`),
+    check("form_templates_sharing", sql`${t.sharing} in ('private', 'stores', 'marketplace')`),
+    check("form_templates_kaizen_sharing", sql`${t.storeId} is not null or ${t.sharing} = 'marketplace'`),
+    check("form_templates_starter_one", sql`${t.starter} is null or (${t.storeId} is null and ${t.starter} ~ '^[a-z]{1,40}$')`),
   ],
 );
 

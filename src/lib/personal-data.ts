@@ -479,6 +479,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   retention_rules: "The platform's retention schedule: periods, sources and dates, never a person.",
   resource_blocks: "A closure of a room or item and the staff's note about it, not about a customer.",
   saved_parts: "A saved page part's name and content.",
+  form_templates: "A form template's words and questions (D705 F4): what a form asks, never what anyone answered.",
   design_presets: "A theme's title, description and snapshot of a store's look (D176), its draft details and its workspace store's id (D177): theme settings, header, footer and layout rows, CSS; never a person's data.",
   design_preset_versions: "A theme's published versions (D241): the snapshot of a look and the platform admin who published it; never a person's data.",
   store_demo_items: "Which products, pages and terms a new store came with from its template (docs/theme-showcase-phase-1.md step 4b): ids and a time, never a person's data.",

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { minorUnitDigits } from "@/lib/money";
 import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
+import { templateContentSchema } from "@/lib/form-records-schema";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
 import { createTestDatabase } from "./testing";
@@ -8334,6 +8335,44 @@ describe("forms as their own records (D705)", () => {
     ).rejects.toThrow(/form_responses_contact/);
     await db.query("delete from commerce.forms where id = $1", [form]);
     expect((await db.query("select 1 from commerce.form_responses where id = $1", [id])).rows).toHaveLength(0);
+  });
+});
+
+describe("form templates (D705 F4)", () => {
+  it("seeds Kaizena Flow's seven starters as the marketplace's, in four languages, readable as a form's content", async () => {
+    const rows = (await db.query<{ starter: string; kind: string; sharing: string; name: { text: string; byLocale: Record<string, string> }; content: { questions: unknown[]; signup: unknown } }>(
+      "select starter, kind, sharing, name, content from commerce.form_templates where store_id is null order by starter",
+    )).rows;
+    expect(rows.map((r) => r.starter)).toEqual(["booking", "callback", "contact", "event", "feedback", "newsletter", "quote"]);
+    for (const row of rows) {
+      expect(row.sharing).toBe("marketplace");
+      expect(Object.keys(row.name.byLocale).sort()).toEqual(["da", "nb", "sv"]);
+      expect(templateContentSchema.safeParse(row.content).success).toBe(true);
+    }
+    expect(rows.find((r) => r.starter === "newsletter")).toMatchObject({ kind: "signup", content: { questions: [], signup: { confirm: true, askName: false } } });
+  });
+
+  it("keeps a template's store, kind and key; ties it only to a form of its own store and kind; a deleted form leaves it", async () => {
+    const { id: form } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name) values ($1, 'message', 'Contact') returning id", [store]);
+    const { id: otherForm } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name) values ($1, 'message', 'Theirs') returning id", [other]);
+    const insert = (storeId: string | null, formId: string | null, sharing = "private", kind = "message") =>
+      db.query(
+        `insert into commerce.form_templates (store_id, kind, name, content, sharing, form_id) values ($1, $4, '{"text":"Mine","byLocale":{}}', '{}', $3, $2) returning id`,
+        [storeId, formId, sharing, kind],
+      );
+    const { id } = (await insert(store, form)).rows[0] as { id: string };
+    await expect(insert(store, otherForm)).rejects.toThrow(/form_templates\.form/);
+    await expect(insert(store, form, "private", "signup")).rejects.toThrow(/form_templates\.form|form_templates_kind/);
+    await expect(insert(null, null, "private")).rejects.toThrow(/form_templates_kaizen_sharing/);
+    await expect(db.query("update commerce.form_templates set store_id = $2 where id = $1", [id, other])).rejects.toThrow(/form_templates\.store/);
+    await expect(db.query("update commerce.form_templates set kind = 'signup' where id = $1", [id])).rejects.toThrow(/form_templates\.kind/);
+    await expect(db.query("update commerce.form_templates set starter = 'mine' where id = $1", [id])).rejects.toThrow(/form_templates/);
+    await expect(db.query("update commerce.form_templates set starter = 'x' where starter = 'contact'")).rejects.toThrow(/form_templates\.starter/);
+    await expect(db.query(`update commerce.form_templates set name = '{"text":" ","byLocale":{}}' where id = $1`, [id])).rejects.toThrow(/form_templates_name/);
+    await db.query("delete from commerce.forms where id = $1", [form]);
+    expect((await one<{ form_id: string | null }>("select form_id from commerce.form_templates where id = $1", [id])).form_id).toBeNull();
+    await db.query("delete from commerce.form_templates where id = $1", [id]);
+    await db.query("delete from commerce.forms where id = $1", [otherForm]);
   });
 });
 

@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { requirePlatform } from "@/server/auth";
 import { setTemplateHidden } from "@/server/templates";
+import { setFormTemplateHidden } from "@/server/form-templates";
 
 /**
  * Hides a marketplace template from every list, or shows it again (D125). Copies stores already made stay as they
@@ -17,6 +18,15 @@ export async function setTemplateHiddenAction(id: string, hidden: boolean): Prom
   const admin = await requirePlatform("website");
   if (!z.uuid().safeParse(id).success) return { status: "error", messages: [(await platformActionWords()).unknownTemplate] };
   const result = await setTemplateHidden(admin, id, hidden === true);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [hidden ? (await platformActionWords()).hidden : (await platformActionWords()).shownAgain] };
+}
+
+/** Hides a store's shared form template (D705 F4) from every other store's list, or shows it again; forms made from it stay. */
+export async function setFormTemplateHiddenAction(id: string, hidden: boolean): Promise<FormState> {
+  const admin = await requirePlatform("website");
+  const result = await setFormTemplateHidden(admin, id, hidden === true);
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: [hidden ? (await platformActionWords()).hidden : (await platformActionWords()).shownAgain] };
