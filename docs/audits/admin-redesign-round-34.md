@@ -27,7 +27,7 @@ Below 640 px wide, each page changes as described here; from 640 px it is as bef
 
 ## A report (`ReportView` and its page)
 
-- **Build the report is one row** whose line is the sentence that says what the report shows. *Change* opens the form, and a new
+- **Build the report is one row** under the sentence that says what the report shows. *Change* opens the form, and a new
   report with nothing to show opens with the form.
 - **The chart comes first**, with each figure's total under it.
 - **The table is one row** (*The figures in a table · 14 rows*) with *Show*. A report shown as a table keeps its table.
