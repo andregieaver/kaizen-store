@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { homeEn } from "./admin-messages/home.en";
 import { homeNb } from "./admin-messages/home.nb";
-import { attentionFor, changeText, totalSales, type StoreFigures } from "./control-center";
+import { ATTENTION_KINDS, attentionFor, changeText, storeAttentionItems, totalSales, type StoreFigures } from "./control-center";
 import { demoWords, NO_DEMO, removalWords } from "./demo-content";
 import { workOverview } from "./work-overview";
 import { workBase } from "@/lib/work-paths";
@@ -152,7 +152,7 @@ describe("the control center (D107)", () => {
     const tax = ["The VAT number has not been checked valid."];
     const items = attentionFor([store({ slug: "a", name: "A", tax })]);
     expect(items).toEqual([
-      { text: "A: the tax settings need a look. The VAT number has not been checked valid.", href: "/admin/a/settings/tax", action: "Open tax settings" },
+      { kind: "tax", text: "A: the tax settings need a look. The VAT number has not been checked valid.", href: "/admin/a/settings/tax", action: "Open tax settings" },
     ]);
     expect(attentionFor([store({ role: "admin", tax })])).toEqual([]);
     expect(attentionFor([store({ tax: [] })])).toEqual([]);
@@ -161,7 +161,7 @@ describe("the control center (D107)", () => {
   it("asks an owner, and only an owner, about paid orders waiting for an invoice, urgent only past a reverse-charge deadline (D159)", () => {
     const waiting = attentionFor([store({ slug: "a", name: "A", invoices: { waiting: 3, overdue: 0 } })]);
     expect(waiting).toEqual([
-      { text: "A: 3 paid orders are waiting for an invoice.", href: "/admin/a/invoices?tab=waiting", action: "Open invoices", urgent: false },
+      { kind: "invoices", text: "A: 3 paid orders are waiting for an invoice.", href: "/admin/a/invoices?tab=waiting", action: "Open invoices", urgent: false },
     ]);
     const overdue = attentionFor([store({ slug: "a", name: "A", invoices: { waiting: 1, overdue: 1 } })]);
     expect(overdue[0]).toMatchObject({ text: "A: 1 paid order is waiting for an invoice, 1 of them past the deadline for a reverse-charge invoice.", urgent: true });
@@ -173,7 +173,7 @@ describe("the control center (D107)", () => {
     const taxReturns = [{ text: "Your OSS data for Q3 2026 has not been exported; it is due 31 October.", path: "/analytics/tax?view=oss&quarter=2026-Q3" }];
     const items = attentionFor([store({ slug: "a", name: "A", taxReturns })]);
     expect(items).toEqual([
-      { text: "A: Your OSS data for Q3 2026 has not been exported; it is due 31 October.", href: "/admin/a/analytics/tax?view=oss&quarter=2026-Q3", action: "Open VAT report" },
+      { kind: "tax_returns", text: "A: Your OSS data for Q3 2026 has not been exported; it is due 31 October.", href: "/admin/a/analytics/tax?view=oss&quarter=2026-Q3", action: "Open VAT report" },
     ]);
     expect(items[0].urgent).toBeUndefined();
     expect(items[0].text).not.toMatch(/late|overdue/i);
@@ -412,5 +412,131 @@ describe("limits used up (D314)", () => {
     expect(attentionFor([store({ limitsReached: 1 })])[0].text).toBe("Kaffe has used up a limit of its plan.");
     expect(attentionFor([store({ limitsReached: 2, role: "admin" })])).toEqual([]);
     expect(attentionFor([store({ limitsReached: 0 })])).toEqual([]);
+  });
+});
+
+describe("the queues of ecosystem plan E2.1 (D713)", () => {
+  const now = Date.parse("2026-11-17T12:00:00Z");
+  const texts = (figures: Partial<StoreFigures>) =>
+    attentionFor([store(figures)], now).map((i) => `${i.text} -> ${i.href} [${i.action}]${i.urgent ? " urgent" : ""}`);
+  const one = { orderId: "11111111-1111-4111-8111-111111111111", disputeId: "22222222-2222-4222-8222-222222222222" };
+
+  it("asks for the answer to a payment dispute, urgent, with the days left, opening the dispute itself when there is one", () => {
+    expect(texts({ disputes: { waiting: 1, dueBy: "2026-11-20T10:00:00Z", only: one } })).toEqual([
+      `Kaffe: a customer's bank disputed a payment, and it needs your answer within 3 days. -> /admin/kaffe/orders/${one.orderId}/dispute/${one.disputeId} [Answer] urgent`,
+    ]);
+    expect(texts({ disputes: { waiting: 2, dueBy: "2026-11-18T11:00:00Z", only: null } })).toEqual([
+      "Kaffe: customers' banks disputed 2 payments, and they need your answer, the first within 1 day. -> /admin/kaffe/orders?pay=disputed [See orders] urgent",
+    ]);
+    // A deadline not known, or already past, is not said; staff who read orders see it too (the figure is only there for them).
+    expect(texts({ disputes: { waiting: 1, dueBy: null, only: one } })[0]).toContain("it needs your answer. ->");
+    expect(texts({ disputes: { waiting: 1, dueBy: "2026-11-16T12:00:00Z", only: one } })[0]).toContain("it needs your answer. ->");
+    expect(texts({ role: "admin", disputes: { waiting: 1, dueBy: null, only: one } })).toHaveLength(1);
+    expect(texts({ disputes: { waiting: 0, dueBy: null, only: null } })).toEqual([]);
+  });
+
+  it("tells the owner, and only the owner, what the AI manager waits on them to decide", () => {
+    expect(texts({ aiDecisions: 2 })).toEqual(["Kaffe: the AI manager is waiting for your decisions on 2 things. -> /admin/kaffe/assistant/autopilot [Decide]"]);
+    expect(texts({ aiDecisions: 1 })).toEqual(["Kaffe: the AI manager is waiting for your decision on 1 thing. -> /admin/kaffe/assistant/autopilot [Decide]"]);
+    expect(texts({ role: "admin", aiDecisions: 2 })).toEqual([]);
+    expect(texts({ aiDecisions: 0 })).toEqual([]);
+  });
+
+  it("counts new leads waiting for a decision, not urgent, with the leads view one press away", () => {
+    expect(texts({ leads: 3 })).toEqual(["Kaffe: 3 new leads are waiting for you to make a deal or dismiss them. -> /admin/kaffe/deals?view=leads [Open leads]"]);
+    expect(texts({ leads: 1 })).toEqual(["Kaffe: 1 new lead is waiting for you to make a deal or dismiss it. -> /admin/kaffe/deals?view=leads [Open leads]"]);
+    expect(texts({ leads: 0 })).toEqual([]);
+  });
+
+  it("says the member's own calls, meetings and tasks overdue and due today apart, and the team's where the figures are everyone's", () => {
+    expect(texts({ activities: { overdue: 2, today: 1 } })).toEqual([
+      "Kaffe: 2 of your calls, meetings and tasks are overdue. -> /admin/kaffe?today=mine [See today]",
+      "Kaffe: 1 of your calls, meetings and tasks is due today. -> /admin/kaffe?today=mine [See today]",
+    ]);
+    expect(texts({ activities: { overdue: 0, today: 4, team: true } })).toEqual([
+      "Kaffe: 4 of the team's calls, meetings and tasks are due today. -> /admin/kaffe?today=team [See today]",
+    ]);
+    expect(texts({ activities: { overdue: 1, today: 0, team: true } })).toEqual([
+      "Kaffe: 1 of the team's calls, meetings and tasks is overdue. -> /admin/kaffe?today=team [See today]",
+    ]);
+    expect(texts({ activities: { overdue: 0, today: 0 } })).toEqual([]);
+  });
+
+  it("counts blog comments held for a check, with the Comments page's waiting tab", () => {
+    expect(texts({ blogComments: 5 })).toEqual(["Kaffe: 5 comments on your articles are waiting to be checked. -> /admin/kaffe/articles/comments?status=pending [Check]"]);
+    expect(texts({ blogComments: 1 })).toEqual(["Kaffe: 1 comment on your articles is waiting to be checked. -> /admin/kaffe/articles/comments?status=pending [Check]"]);
+    expect(texts({ blogComments: 0 })).toEqual([]);
+  });
+
+  it("says nothing of a queue whose figure is missing: the member may not see it, or nothing waits", () => {
+    expect(attentionFor([store()], now)).toEqual([]);
+  });
+
+  it("puts a dispute among the urgent first, and the others after", () => {
+    const items = attentionFor([store({ lowStock: 1, leads: 1, disputes: { waiting: 1, dueBy: null, only: one } })], now);
+    expect(items.map((i) => i.kind)).toEqual(["disputes", "leads", "low_stock"]);
+  });
+
+  it("writes them in Norwegian", () => {
+    const items = attentionFor(
+      [
+        store({
+          disputes: { waiting: 2, dueBy: "2026-11-20T10:00:00Z", only: null },
+          aiDecisions: 1,
+          leads: 2,
+          activities: { overdue: 1, today: 2 },
+          blogComments: 1,
+        }),
+      ],
+      now,
+      homeNb.attention,
+    );
+    expect(items.map((i) => `${i.text} [${i.action}]`)).toEqual([
+      "Kaffe: kunders banker har krevd 2 betalinger tilbakeført, og de trenger svaret ditt, den første innen 3 dager. [Se bestillinger]",
+      "Kaffe: KI-assistenten venter på avgjørelsen din om 1 ting. [Avgjør]",
+      "Kaffe: 2 nye leads venter på at du lager avtaler av dem eller avviser dem. [Åpne leads]",
+      "Kaffe: 1 av samtalene, møtene og oppgavene dine er forsinket. [Se dagen]",
+      "Kaffe: 2 av samtalene, møtene og oppgavene dine skal gjøres i dag. [Se dagen]",
+      "Kaffe: 1 kommentar på artiklene dine venter på kontroll. [Kontroller]",
+    ]);
+  });
+});
+
+describe("one attention source (ecosystem plan E2.1, D713)", () => {
+  const now = Date.parse("2026-11-17T12:00:00Z");
+
+  it("names every item's kind, from one list without repeats", () => {
+    expect(new Set(ATTENTION_KINDS).size).toBe(ATTENTION_KINDS.length);
+    const items = attentionFor(
+      [
+        store({
+          suspended: true,
+          toSend: 1,
+          outOfStock: 1,
+          supportWaiting: 1,
+          privacy: { overdue: 1, dueSoon: 1 },
+          books: { differ: 1, waiting: 1, billsOverdue: 1, billsDue: 1 },
+          disputes: { waiting: 1, dueBy: null, only: null },
+          leads: 1,
+          work: [{ text: "Kaffe: 1 invoice is overdue.", href: "/admin/account/work/s/kaffe/invoices", action: "Open invoices" }],
+        }),
+      ],
+      now,
+    );
+    expect(items.every((i) => (ATTENTION_KINDS as readonly string[]).includes(i.kind))).toBe(true);
+    expect(items.find((i) => i.href.includes("/work/"))?.kind).toBe("work");
+    expect(items.find((i) => i.href.endsWith("/orders?show=to-send"))?.kind).toBe("to_send");
+  });
+
+  it("gives a store's queue items said inside the store, typed, urgent a yes or a no, urgent first", () => {
+    const items = storeAttentionItems({ slug: "kaffe", name: "Kaffe", role: "owner", blogComments: 2, disputes: { waiting: 1, dueBy: null, only: null } }, now);
+    expect(items).toEqual([
+      { kind: "disputes", text: "A customer's bank disputed a payment, and it needs your answer.", href: "/admin/kaffe/orders?pay=disputed", action: "See orders", urgent: true },
+      { kind: "blog_comments", text: "2 comments on your articles are waiting to be checked.", href: "/admin/kaffe/articles/comments?status=pending", action: "Check", urgent: false },
+    ]);
+    expect(storeAttentionItems({ slug: "kaffe", name: "Kaffe", role: "owner" }, now)).toEqual([]);
+    expect(storeAttentionItems({ slug: "kaffe", name: "Kaffe", role: "owner", leads: 1 }, now, homeNb.attention)[0].text).toBe(
+      "1 nytt lead venter på at du lager en avtale av det eller avviser det.",
+    );
   });
 });

@@ -20,6 +20,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Account); pages use the whole width, so no `max-w-*xl` on a page's root. The owner's overview is `controlCenter()`
   (`src/server/control-center.ts`, pure
   parts in `src/lib/control-center.ts`); the platform's is `platformOverview()`.
+  What needs attention is one source (ecosystem plan E2.1, D713): every item of `attentionFor()` has a kind (`ATTENTION_KINDS`),
+  and the queues E2.1 added (disputes, the AI manager's decisions, leads, the day's activities, blog comments) are counted per store in
+  SQL in `src/server/attention.ts`, which `controlCenter()` calls with the member's gates and the briefing reads through
+  `storeAttention()` (the team's view, in every admin language). A new queue that waits on people is counted there, gated by the key of
+  the page that acts on it, given a kind and words in `home`'s `attention`, and so reaches Home and the briefing at once.
   Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
   would take a store address. A layout's auth check does not stop its page
   streaming: every page checks for itself.

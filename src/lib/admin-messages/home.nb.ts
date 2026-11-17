@@ -261,6 +261,28 @@ export const homeNb: HomeMessages = {
       one: "{store}: {n} omtale venter på kontroll.",
       many: "{store}: {n} omtaler venter på kontroll.",
     },
+    disputes: {
+      one: "{store}: en kundes bank har krevd en betaling tilbakeført, og den trenger svaret ditt{due}.",
+      many: "{store}: kunders banker har krevd {n} betalinger tilbakeført, og de trenger svaret ditt{due}.",
+    },
+    disputeDue: { one: " innen {n} dag", many: " innen {n} dager" },
+    disputesFirstDue: { one: ", den første innen {n} dag", many: ", den første innen {n} dager" },
+    aiDecisions: {
+      one: "{store}: KI-assistenten venter på avgjørelsen din om {n} ting.",
+      many: "{store}: KI-assistenten venter på avgjørelsene dine om {n} ting.",
+    },
+    leads: {
+      one: "{store}: {n} nytt lead venter på at du lager en avtale av det eller avviser det.",
+      many: "{store}: {n} nye leads venter på at du lager avtaler av dem eller avviser dem.",
+    },
+    activitiesOverdue: { one: "{store}: {n} av samtalene, møtene og oppgavene dine er forsinket.", many: "{store}: {n} av samtalene, møtene og oppgavene dine er forsinket." },
+    activitiesToday: { one: "{store}: {n} av samtalene, møtene og oppgavene dine skal gjøres i dag.", many: "{store}: {n} av samtalene, møtene og oppgavene dine skal gjøres i dag." },
+    teamActivitiesOverdue: { one: "{store}: {n} av teamets samtaler, møter og oppgaver er forsinket.", many: "{store}: {n} av teamets samtaler, møter og oppgaver er forsinket." },
+    teamActivitiesToday: { one: "{store}: {n} av teamets samtaler, møter og oppgaver skal gjøres i dag.", many: "{store}: {n} av teamets samtaler, møter og oppgaver skal gjøres i dag." },
+    blogComments: {
+      one: "{store}: {n} kommentar på artiklene dine venter på kontroll.",
+      many: "{store}: {n} kommentarer på artiklene dine venter på kontroll.",
+    },
     booksDiffer: { one: "{store}: {n} bilag i regnskapet avviker fra Tripletex.", many: "{store}: {n} bilag i regnskapet avviker fra Tripletex." },
     booksWaiting: { one: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført.", many: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført." },
     billsOverdue: { one: "{store}: {n} regning har passert forfallsdatoen.", many: "{store}: {n} regninger har passert forfallsdatoen." },
@@ -344,6 +366,9 @@ export const homeNb: HomeMessages = {
       openVatReport: "Åpne mva-rapporten",
       openProducts: "Åpne produkter",
       openInventory: "Åpne lager",
+      decide: "Avgjør",
+      openLeads: "Åpne leads",
+      seeToday: "Se dagen",
     },
   },
   card: {

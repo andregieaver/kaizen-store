@@ -129,8 +129,11 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   const name = firstName(account.name);
   const greeting = name ? fillWords(t.greeting[partOfDay(now, store.timeZone)], { name }) : store.name;
   const dateText = now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", timeZone: store.timeZone });
+  // The *Today* card lists the day's calls, meetings and tasks itself (S3, D468), as the pack card does the orders to send.
+  const todayShown = Boolean(store.setupCompletedAt) && featureOn(store, "sales") && memberCan(current, "customers:read");
   const needs = attention
-    .filter((item) => !(toSend > 0 && item.href.endsWith("/orders?show=to-send")))
+    .filter((item) => !(toSend > 0 && item.kind === "to_send"))
+    .filter((item) => !(todayShown && (item.kind === "activities_overdue" || item.kind === "activities_today")))
     .map((item) => ({ ...item, text: withoutStoreName(item.text, store.name) }));
   const nextStep = steps.find((s) => !s.done);
   const stepHref = (step: (typeof steps)[number]) => `${base}/${"href" in step ? step.href : `setup/${step.step}`}`;
@@ -504,7 +507,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
             <HomeSlot at={2}>{firstWeek ? afterCards : weekCard}</HomeSlot>
             {/* Today's calls, meetings and tasks (S3, D468), the viewer's or the team's: read after the page is shown. */}
             <HomeSlot at={7}>
-            {store.setupCompletedAt && featureOn(store, "sales") && memberCan(current, "customers:read") && (
+            {todayShown && (
               <Suspense fallback={null}>
                 <TodayCard
                   member={current}

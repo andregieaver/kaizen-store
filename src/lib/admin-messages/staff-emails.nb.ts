@@ -142,6 +142,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
       subjectBriefingWeek: "{store}: din ukentlige statusrapport for {from} til {to}",
       before: "{now} (før: {before})",
       found: "Det analysene fant:",
+      attention: "Venter på deg:",
       checkup: "Fra butikksjekken:",
       targets: "Målene dine:",
       targetLine: "{actual} av {target}",
