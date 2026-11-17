@@ -1,0 +1,79 @@
+{
+  "dispatcherJobs": 83,
+  "minuteRoutes": 9,
+  "pages": 591,
+  "routeHandlers": 287,
+  "storeLinks": 115,
+  "storeLinksBySection": {
+    "orders": 7,
+    "products": 6,
+    "customers": 8,
+    "marketing": 14,
+    "analytics": 17,
+    "website": 15,
+    "bookings": 5,
+    "support": 7,
+    "settings": 36
+  },
+  "basicLinks": 45,
+  "platformLinks": 55,
+  "storeTools": 294,
+  "shopOnlyTools": 264,
+  "managerTools": 26,
+  "featureIds": 14,
+  "tables": 519,
+  "platformTables": 20,
+  "hot": {
+    "orders": {
+      "indexes": 33,
+      "triggers": 27
+    },
+    "order_lines": {
+      "indexes": 8,
+      "triggers": 5
+    },
+    "visits": {
+      "indexes": 2,
+      "triggers": 0
+    },
+    "products": {
+      "indexes": 13,
+      "triggers": 14
+    },
+    "product_variants": {
+      "indexes": 6,
+      "triggers": 7
+    },
+    "customers": {
+      "indexes": 8,
+      "triggers": 6
+    },
+    "carts": {
+      "indexes": 11,
+      "triggers": 1
+    },
+    "cart_lines": {
+      "indexes": 5,
+      "triggers": 0
+    }
+  },
+  "newStoreRows": 8,
+  "twins": [
+    {
+      "name": "The platform's four event engines beside the stores' (workflows, own endpoints, integration deliveries and their runs; the 19 platform_* tables)",
+      "reason": "the platform's rows are apart from the stores' by the owner's rule of 6 November 2026; they run on shared code after step 3.10",
+      "decision": "D465"
+    },
+    {
+      "name": "Order invoices and Work invoices (FT-16)",
+      "reason": "two engines for two kinds of legal document, joined at the number series, the e-invoice sender and the books; 16 shared modules, 0 shared 10-line windows (verdict of step 0.42)",
+      "decision": "FT-16 of bloat review step 0.42"
+    },
+    {
+      "name": "Orders on payment terms and Work's unpaid invoices (FT-17)",
+      "reason": "two different debts, joined at the books, the bank statement and the mailer; 5 shared modules, 0 shared 10-line windows (verdict of step 0.42)",
+      "decision": "FT-17 of bloat review step 0.42"
+    }
+  ],
+  "raises": []
+}
