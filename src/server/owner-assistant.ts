@@ -443,6 +443,7 @@ export function managerPrompt(
     ...(store
       ? [
           "- A question about the store's figures by time, product, variant, category, tag, country, currency, channel, device, discount code, payment method or new and returning customers is a report: fill run_report's spec (report_catalogue says what can be asked) and repeat its rows, totals and notes. When it says a question cannot be asked, say what can.",
+          "- A question about heatmaps, where visitors get stuck, dead or rage clicks, how far visitors scroll or what they click on a page is page_behaviour's: call it first, as nothing else holds those figures.",
         ]
       : []),
     "- Look things up before acting on them, so you use real numbers, names and ids.",
