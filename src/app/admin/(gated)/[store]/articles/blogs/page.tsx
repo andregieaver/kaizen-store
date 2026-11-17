@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -37,13 +38,19 @@ export default async function BlogsPage({ params, searchParams }: PageProps<"/ad
   const base = `/admin/${store.slug}/articles`;
   const editing = blogs.find((b) => b.id === query.blog) ?? null;
   const published = pages.filter((p) => p.state !== "draft");
+  const nameField = (locale: string) => (
+    <label key={locale} className="flex flex-col gap-1 text-sm font-medium">
+      {store.localization.keptLocales.length > 1 ? fillWords(w.blogs.nameIn, { language: languageName(locale) }) : w.blogs.name}
+      <input name={`title.${locale}`} defaultValue={editing?.titles[locale] ?? ""} maxLength={BLOG_TITLE_MAX} className={input} />
+    </label>
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: base, label: w.blogs.back }}
         title={w.blogs.title}
-        description={w.blogs.description}
+        description={<><span className="sm:hidden">{w.blogs.phone.lead}</span><span className="max-sm:hidden">{w.blogs.description}</span></>}
         actions={
           <>
             <ButtonLink href={`${base}/authors`}>{w.links.authors}</ButtonLink>
@@ -55,10 +62,23 @@ export default async function BlogsPage({ params, searchParams }: PageProps<"/ad
         <List label={w.blogs.yours}>
           {blogs.map((blog) => (
             <ListRow key={blog.id}>
-              <RowLead title={nameOf(blog)} sub={blogPath(blog)} />
-              <RowFact>{countWords(counts.get(blog.id) ?? 0, w.blogs.articles)}</RowFact>
-              {blog.main && <Chip>{w.blogs.first}</Chip>}
-              <Chip signal={blog.comments === "off" ? "neutral" : "insight"}>{w.comments[blog.comments].label}</Chip>
+              {/* Round 45 (D743): on a phone the count and the comments setting are the line under the name; the chips from 640 px. */}
+              <RowLead
+                title={nameOf(blog)}
+                sub={
+                  <>
+                    {blogPath(blog)}
+                    <span className="block sm:hidden">
+                      {countWords(counts.get(blog.id) ?? 0, w.blogs.articles)}, {w.blogs.commentsLabel.toLowerCase()}: {w.comments[blog.comments].label.toLowerCase()}
+                    </span>
+                  </>
+                }
+              />
+              <RowFact className="max-sm:hidden">{countWords(counts.get(blog.id) ?? 0, w.blogs.articles)}</RowFact>
+              <span className="contents max-sm:hidden">
+                {blog.main && <Chip>{w.blogs.first}</Chip>}
+                <Chip signal={blog.comments === "off" ? "neutral" : "insight"}>{w.comments[blog.comments].label}</Chip>
+              </span>
               <RowActions>
                 <a href={site(feedPath(blog))} className="text-sm underline">
                   {w.blogs.feed}
@@ -74,16 +94,37 @@ export default async function BlogsPage({ params, searchParams }: PageProps<"/ad
         </List>
       </Card>
       {editor && (
-        <div id="blog-form">
+        // Round 45 (D743): on a phone adding a blog is one row that opens the form; Edit (`#blog-form`) opens it too.
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow
+          id="blog-form"
+          flat
+          last
+          defaultOpen={editing !== null}
+          title={editing ? fillWords(w.blogs.editing, { name: nameOf(editing) }) : w.blogs.add}
+          sub={w.blogs.phone.form}
+          change={w.blogs.phone.open}
+          done={w.blogs.phone.close}
+        >
           <Card title={editing ? fillWords(w.blogs.editing, { name: nameOf(editing) }) : w.blogs.add}>
             <ActionForm key={editing?.id ?? "new"} action={saveBlogAction.bind(null, store.slug)} className="flex max-w-2xl flex-col gap-4">
               {editing && <input type="hidden" name="id" value={editing.id} />}
-              {store.localization.keptLocales.map((locale) => (
-                <label key={locale} className="flex flex-col gap-1 text-sm font-medium">
-                  {store.localization.keptLocales.length > 1 ? fillWords(w.blogs.nameIn, { language: languageName(locale) }) : w.blogs.name}
-                  <input name={`title.${locale}`} defaultValue={editing?.titles[locale] ?? ""} maxLength={BLOG_TITLE_MAX} className={input} />
-                </label>
-              ))}
+              {store.localization.keptLocales.slice(0, 1).map(nameField)}
+              {/* On a phone the other languages' names are a row; every field is sent whether it is open or not. */}
+              {store.localization.keptLocales.length > 1 && (
+                <div className="max-sm:border-y max-sm:border-line">
+                  <PhoneRow
+                    inset
+                    last
+                    title={w.blogs.phone.otherNames}
+                    sub={store.localization.keptLocales.slice(1).map((locale) => languageName(locale)).join(", ")}
+                    change={w.blogs.phone.open}
+                    done={w.blogs.phone.close}
+                  >
+                    <div className="flex flex-col gap-4">{store.localization.keptLocales.slice(1).map(nameField)}</div>
+                  </PhoneRow>
+                </div>
+              )}
               <p className="text-caption text-muted">{w.blogs.nameHint}</p>
               {editing?.main ? (
                 <p className="text-sm">{w.blogs.firstAddress}</p>
@@ -138,6 +179,7 @@ export default async function BlogsPage({ params, searchParams }: PageProps<"/ad
               </ActionForm>
             )}
           </Card>
+        </PhoneRow>
         </div>
       )}
     </div>

@@ -85,7 +85,10 @@ export function BulkResult({ summary, undo, onReload }: { summary: BatchSummary;
   );
 }
 
-export type RecentBatch = { summary: BatchSummary; when: string };
+/** `short` is the moment without its year, for a phone (round 45, D743); `when` stands in where it is not given. */
+export type RecentBatch = { summary: BatchSummary; when: string; short?: string };
+
+const PHONE_SHOWN = 5;
 
 /** The store's recent bulk changes, newest first: what each did, to how many products, and *Undo* for the ones still inside the seven days. */
 export function RecentBatches({ batches, undo }: { batches: RecentBatch[]; undo: (batchId: string) => Promise<UndoResult> }) {
@@ -93,9 +96,57 @@ export function RecentBatches({ batches, undo }: { batches: RecentBatch[]; undo:
   const w = all.recent;
   const [done, setDone] = useState<Record<string, UndoResult>>({});
   const [pending, start] = useTransition();
+  const [showAll, setShowAll] = useState(false);
   if (batches.length === 0) return <p className="text-sm text-muted">{w.none}</p>;
+  const undoButton = (summary: BatchSummary) => (
+    <button
+      type="button"
+      disabled={pending}
+      className={secondary}
+      onClick={() =>
+        start(async () => {
+          const result = await undo(summary.id);
+          setDone((d) => ({ ...d, [summary.id]: result }));
+        })
+      }
+    >
+      {w.undo}
+    </button>
+  );
+  const outcomeLine = (id: string) => {
+    const outcome = done[id];
+    if (outcome?.ok === false) return <span role="alert" className="block text-xs text-danger-text">{outcome.problem}</span>;
+    if (outcome?.ok === true) return <span role="status" className="block text-xs text-muted">{fillWords(w.putBack, { restored: outcome.restored, left: outcome.conflicts + outcome.gone })}</span>;
+    return null;
+  };
+  const phone = showAll ? batches : batches.slice(0, PHONE_SHOWN);
   return (
-    <div className="overflow-x-auto rounded-panel bg-sunken">
+    <>
+    {/* Round 45 (D743): on a phone each change is a line (what, how many changed, when), five first; the table from 640 px. */}
+    <div className="sm:hidden">
+      <ul role="list" aria-label={w.caption} className="divide-y divide-line rounded-panel bg-card px-4">
+        {phone.map(({ summary, when, short }) => (
+          <li key={summary.id} className="flex min-h-14 items-center justify-between gap-3 py-2">
+            <span className="min-w-0">
+              <span className="block text-body text-ink">{fillWords(w.phoneLine, { action: actionWords(summary.action, all.bulkLib), n: summary.counts.changed })}</span>
+              <span className="block text-caption text-ink-2">
+                {short ?? when}
+                {summary.undoneAt ? ` · ${w.undone.toLowerCase()}` : ""}
+                {summary.counts.failed > 0 ? ` · ${fillWords(w.phoneFailed, { n: summary.counts.failed })}` : ""}
+              </span>
+              {outcomeLine(summary.id)}
+            </span>
+            {summary.undoable && !done[summary.id]?.ok ? <span className="shrink-0">{undoButton(summary)}</span> : null}
+          </li>
+        ))}
+      </ul>
+      {!showAll && batches.length > PHONE_SHOWN ? (
+        <button type="button" onClick={() => setShowAll(true)} className="mt-2 text-sm text-ink underline underline-offset-2">
+          {fillWords(w.phoneMore, { n: batches.length - PHONE_SHOWN })}
+        </button>
+      ) : null}
+    </div>
+    <div className="overflow-x-auto rounded-panel bg-sunken max-sm:hidden">
       <table className="w-full text-sm">
         <caption className="sr-only">{w.caption}</caption>
         <thead>
@@ -125,31 +176,15 @@ export function RecentBatches({ batches, undo }: { batches: RecentBatch[]; undo:
                 <td className="px-3 py-2 align-top">
                   {fillWords(w.counts, { changed: c.changed, unchanged: c.unchanged, failed: c.failed })}
                   {summary.undoneAt ? <span className="block text-xs text-muted">{w.undone}</span> : null}
-                  {outcome?.ok === false ? <span role="alert" className="block text-xs text-danger-text">{outcome.problem}</span> : null}
-                  {outcome?.ok === true ? <span role="status" className="block text-xs text-muted">{fillWords(w.putBack, { restored: outcome.restored, left: outcome.conflicts + outcome.gone })}</span> : null}
+                  {outcomeLine(summary.id)}
                 </td>
-                <td className="px-3 py-2 align-top text-right">
-                  {summary.undoable && !outcome?.ok && (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      className={secondary}
-                      onClick={() =>
-                        start(async () => {
-                          const result = await undo(summary.id);
-                          setDone((d) => ({ ...d, [summary.id]: result }));
-                        })
-                      }
-                    >
-                      {w.undo}
-                    </button>
-                  )}
-                </td>
+                <td className="px-3 py-2 align-top text-right">{summary.undoable && !outcome?.ok && undoButton(summary)}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
     </div>
+    </>
   );
 }

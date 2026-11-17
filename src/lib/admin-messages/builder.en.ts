@@ -258,6 +258,8 @@ export const builderEn = {
     ownWords: "Your own words",
     noExcerpt: "From the search description",
     excerptSet: "Your own",
+    revealOff: "Off: the footer is where it always is",
+    revealOn: "On: revealed as the page scrolls away",
   },
   frame: {
     leftLabel: "building blocks",

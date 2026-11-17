@@ -13,6 +13,7 @@ import {
   formatBytes,
   importStage,
   isWorking,
+  momentShort,
   momentText,
   rowsPhrase,
   severityFilterOf,
@@ -45,6 +46,9 @@ describe("sizes and times", () => {
   it("shows a moment in the store's time zone", () => {
     expect(momentText("2026-10-05T22:30:00Z", "Europe/Oslo")).toContain("6 Oct 2026");
     expect(momentText("2026-10-05T22:30:00Z", "Not/AZone")).toContain("5 Oct 2026");
+    expect(momentShort("2026-10-05T22:30:00Z", "Europe/Oslo")).toBe("6 Oct, 00:30");
+    expect(momentShort("2026-10-05T22:30:00Z", "Not/AZone")).toBe("5 Oct, 22:30");
+    expect(momentShort(null, "Europe/Oslo")).toBe("");
     expect(momentText(null, "UTC")).toBe("");
     expect(momentText("nonsense", "UTC")).toBe("");
   });

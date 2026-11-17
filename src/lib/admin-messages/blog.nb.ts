@@ -47,6 +47,7 @@ export const blogNb: BlogMessages = {
     remove: "Slett bloggen",
     removed: "Bloggen er slettet.",
     cancel: "Avbryt",
+    phone: { lead: "Hver med sin egen adresse, egne artikler og kommentarer.", open: "Åpne", close: "Lukk", form: "Et navn, en adresse og kommentarene", otherNames: "Navn på andre språk" },
     problems: {
       handle_missing: "Gi bloggen en adresse.",
       handle_format: "En adresse er små bokstaver og tall, med én bindestrek mellom ordene.",

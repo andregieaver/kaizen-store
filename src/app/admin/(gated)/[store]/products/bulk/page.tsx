@@ -45,7 +45,7 @@ export default async function BulkGridPage({ params, searchParams }: Props) {
   const w = adminText(adminLangOf(gated.account.adminLocale), "products").gridPage;
   return (
     <div className="flex flex-col gap-6">
-      <DataPageHead backHref={`/admin/${store.slug}/products`} backLabel={w.back} title={w.title} intro={w.intro} />
+      <DataPageHead backHref={`/admin/${store.slug}/products`} backLabel={w.back} title={w.title} intro={<><span className="sm:hidden">{w.phoneLead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -74,6 +74,14 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   if (ids.length === 0) {
     return (
       <AdminTextScope texts={adminTexts(lang, ["products"])}>
+        {/* Round 45 (D743): on a phone where to start is a strip with one press to the products. */}
+        <p className="flex items-center justify-between gap-3 rounded-panel bg-card px-4 py-2.5 text-sm text-ink-2 sm:hidden">
+          <span>{w.phoneChoose}</span>
+          <Link href={base} className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-card">
+            {w.back}
+          </Link>
+        </p>
+        <div className="max-sm:hidden">
         <Notice title={w.chooseFirst}>
           <p>
             {w.choosePrefix}
@@ -83,6 +91,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             {w.chooseSuffix}
           </p>
         </Notice>
+        </div>
         {recent}
       </AdminTextScope>
     );

@@ -241,6 +241,8 @@ export const builderNb: BuilderMessages = {
     ownWords: "Dine egne ord",
     noExcerpt: "Fra søkebeskrivelsen",
     excerptSet: "Ditt eget",
+    revealOff: "Av: bunnteksten står der den alltid står",
+    revealOn: "På: kommer fram når siden rulles bort",
   },
   frame: {
     leftLabel: "byggeklossene",
