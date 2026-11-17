@@ -16,6 +16,16 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.36 — 2026-11-17
+
+Three webhook topics for contracts on deals (D695), for an owner's own endpoints, apps that read customers, and workflows' triggers.
+
+- `contract.sent`: a contract was sent for signing. `contract.signed`: every signer signed it (the deal is won).
+  `contract.declined`: a signer declined it.
+- Each carries `contract`: its `id`, `title`, `status`, `language`, `deal_id`, `template`, `signers` in order (`role`, `name`,
+  `signed_at`, `declined_at`), `sent_at`, `expires_at`, `completed_at` and `admin_url`. Never a signer's email, the reason a signer gave
+  for declining or the contract's words.
+
 ## 1.35 — 2026-11-17
 
 Additions to the owner MCP's catalogue for contracts on deals (D695). They are offered while Deals is on.

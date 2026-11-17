@@ -321,6 +321,44 @@ describe("signing", () => {
   });
 });
 
+describe("the store's events (D695 step 4)", () => {
+  it("queues contract.sent, signed and declined for the endpoints and workflows that chose them, and nothing for a draft", async () => {
+    const endpoint = await one<{ id: string }>(
+      "insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics) values ($1, 'Mine', 'sealed', 'example.com/…', 'sealed', array['contract.sent', 'contract.signed', 'contract.declined']) returning id",
+      [shop],
+    );
+    const queued = async (contractId: string) =>
+      (await db.query<{ event: string }>("select event from commerce.integration_deliveries where endpoint_id = $1 and subject_id = $2 order by created_at, event", [endpoint.id, contractId])).rows.map((r) => r.event);
+
+    const d = await deal();
+    const id = await contract(d.id);
+    expect(await queued(id)).toEqual([]);
+    const s = await signers(id);
+    await send(id);
+    await sign(s.store);
+    expect(await queued(id)).toEqual(["contract.sent"]);
+    await sign(s.customer);
+    expect(await queued(id)).toEqual(["contract.sent", "contract.signed"]);
+
+    const other = await contract((await deal()).id);
+    const t = await signers(other);
+    await send(other);
+    await db.query("update commerce.contract_signers set declined_at = now(), decline_reason = 'No' where id = $1", [t.customer]);
+    expect(await queued(other)).toEqual(["contract.sent", "contract.declined"]);
+    await db.query("delete from commerce.webhook_endpoints where id = $1", [endpoint.id]);
+  });
+
+  it("is a trigger a workflow may have", async () => {
+    for (const trigger of ["contract.sent", "contract.signed", "contract.declined"]) {
+      const made = await one<{ id: string }>(
+        "insert into commerce.workflows (store_id, name, trigger, actions) values ($1, $2, $3, '[{\"kind\":\"email_staff\",\"subject\":\"x\",\"text\":\"y\"}]') returning id",
+        [shop, `On ${trigger}`, trigger],
+      );
+      await db.query("delete from commerce.workflows where id = $1", [made.id]);
+    }
+  });
+});
+
 describe("the events and erasure", () => {
   it("never changes an event, and lets a sent contract go only with its deal or by erasure", async () => {
     const d = await deal();

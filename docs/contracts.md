@@ -168,6 +168,14 @@ only the contract's page route carries it; the manager gives that page and the o
 held out of the manager's prompt for a deploy (Forms, D705; text messages, D632) went back in, so one eval run covers both.
 `src/server/contract-tools.int.test.ts`. The API contract is 1.35.
 
+*Step 4, the events (17 November 2026):* `contract.sent`, `contract.signed` and `contract.declined` (`src/lib/integrations.ts`, for an
+owner's own endpoints, apps that read customers, and workflows' triggers; not Zapier, Make or Slack, as D354's events), queued by a
+trigger on a contract's status (`20261117083232_contract_events_rules`, after `20261117083225_contract_events` widens the workflows'
+trigger list). The payload (`contract` in `src/lib/webhook-topics.ts`, `contractData()`) is the title, status, language, deal, template,
+the signers in order with their role, name and dates, and the dates; never an email, a decline's reason or the words. Erasure blanks the
+deliveries about the person's contracts, a signed one's too: the contract is kept under bookkeeping law, the copies sent out are not.
+Kaizena Flow's own deals are in its store (D466), so the platform gets the events as a store. API contract 1.36.
+
 ## 8. The owner's answers (16 November 2026)
 
 - **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.

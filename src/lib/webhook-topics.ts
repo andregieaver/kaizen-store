@@ -184,6 +184,21 @@ export const WEBHOOK_SUBJECTS = {
     created_at: when,
     admin_url: adminUrl,
   }),
+  contract: z.object({
+    id,
+    title: z.string(),
+    status: z.enum(["sent", "signed", "declined", "expired", "cancelled"]),
+    language: z.string(),
+    deal_id: id.nullable().describe("The deal it is for; null only for a signed contract whose deal was deleted."),
+    template: z.string().nullable().describe("The name of the template it was made from."),
+    signers: z
+      .array(z.object({ role: z.enum(["store", "customer", "other"]), name: z.string(), signed_at: when.nullable(), declined_at: when.nullable() }))
+      .describe("In the order they sign. Never their email or the reason a signer gave for declining."),
+    sent_at: when.nullable(),
+    expires_at: when.nullable(),
+    completed_at: when.nullable().describe("When it was signed by the last signer, or declined."),
+    admin_url: adminUrl,
+  }),
   erasure: z.object({
     customer_id: id.describe("The account that was erased. Nothing else about the person is sent, now or later."),
   }),
@@ -298,6 +313,9 @@ const SUBJECT_OF: Record<IntegrationEvent | AppEvent, WebhookSubjectName> = {
   "gift_card.issued": "gift_card",
   "review.created": "review",
   "experiment.answered": "experiment",
+  "contract.sent": "contract",
+  "contract.signed": "contract",
+  "contract.declined": "contract",
   "app.uninstalled": "installation",
   "store.erase_requested": "installation",
 };
@@ -316,6 +334,7 @@ export const SUBJECT_READ_AREA: Partial<Record<WebhookSubjectName, string>> = {
   draft: "orders",
   customer: "customers",
   erasure: "customers",
+  contract: "customers",
   product: "products",
   stock: "products",
   inventory: "products",

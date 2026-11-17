@@ -255,14 +255,23 @@ describe("erasure", () => {
     const made = await contracts.createContract(store.member, d.dealId);
     if (!made.ok) throw new Error(made.problem);
     const storage = memoryStorage();
+    // An endpoint that was sent contract.sent (D695 step 4): its payload names the signers, so it goes with the person.
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${store.storeId}::uuid, 'Contracts', 'x', 'example.com', 'x', array['contract.sent']) returning id
+    `);
     await contracts.sendContract(store.member, made.id, { render, storage });
     expect(storage.files.size).toBe(1);
+    await db().execute(sql`update commerce.integration_deliveries set payload = '{"contract":{}}'::jsonb, status = 'delivered' where endpoint_id = ${String(endpoint.id)}::uuid`);
     expect(
       await eraseSubject(store.storeId, { customerId: d.customerId }, { channel: "staff", accountId: store.accountId }, { contractFiles: storage }),
     ).toMatchObject({ ok: true, outcome: "erased" });
     const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.contracts where id = ${made.id}::uuid`);
     expect(left.n).toBe(0);
     expect(storage.files.size).toBe(0);
+    const delivered = await db().execute<Row>(sql`select event, payload, erased_at from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid`);
+    expect(delivered).toEqual([expect.objectContaining({ event: "contract.sent", payload: null, erased_at: expect.anything() })]);
+    await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
   }, 120_000);
 });
 

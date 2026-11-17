@@ -711,7 +711,7 @@ async function blankAssistantTraces(tx: Tx, s: PrivacySubject): Promise<number> 
 
 /**
  * The deliveries to the owner's endpoints and services about the person (D440 review): of their account, their orders and subscriptions,
- * their draft orders and their reviews, the payloads that name them. Each loses its payload and is marked erased; one still waiting is not
+ * their draft orders, their reviews and their contracts, the payloads that name them. Each loses its payload and is marked erased; one still waiting is not
  * sent (`failed`, not retried), and none is sent again (`resendDelivery()`). `customer.erased` itself is queued after, carrying ids only.
  */
 async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
@@ -724,6 +724,9 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
       union all select unnest(${uuidList(s.subscriptionIds)})
       union all select id from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
       union all select id from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, s.addresses))})
+      -- Their contracts (D695 step 4): a payload names its signers. A signed contract itself is kept; the copies sent out are not.
+      union all select c.id from commerce.contracts c where c.store_id = ${sid}::uuid and (c.customer_id = ${cid}::uuid
+        or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${textList(s.addresses)})))
     )
     update commerce.integration_deliveries d set
       payload = null,

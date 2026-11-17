@@ -137,5 +137,17 @@ describe("the AI manager's contract tools", () => {
     const listed = (await tools.listContractsTool(ctx, { deal: dealId, status: "sent" })) as { contracts: { signers: { state: string }[]; sign_by?: string }[] };
     expect(listed.contracts[0].signers.map((g) => g.state)).toEqual([expect.stringContaining("signed"), expect.stringContaining("their turn: asked")]);
     expect(listed.contracts[0].sign_by).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    // The webhook's payload (contract.sent): the contract and its signers in order, never an email (D695 step 4).
+    const { subjectData } = await import("./integrations");
+    const { WEBHOOK_SUBJECTS } = await import("@/lib/webhook-topics");
+    const payload = (await subjectData({ id: store.storeId, slug: store.member.store.slug, name: store.member.store.name }, "contract.sent", made.id)) as { contract: unknown };
+    expect(WEBHOOK_SUBJECTS.contract.parse(payload.contract)).toMatchObject({
+      id: made.id,
+      status: "sent",
+      deal_id: dealId,
+      signers: [{ role: "store", name: expect.any(String), signed_at: expect.any(String), declined_at: null }, { role: "customer", name: "Kari Nordmann", signed_at: null, declined_at: null }],
+    });
+    expect(JSON.stringify(payload)).not.toContain("@example.com");
   });
 });

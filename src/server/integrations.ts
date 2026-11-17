@@ -390,6 +390,10 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const draft = await draftData(store.id, store.slug, subjectId);
     return draft && { draft };
   }
+  if (event.startsWith("contract.")) {
+    const contract = await contractData(store.id, store.slug, subjectId);
+    return contract && { contract };
+  }
   return null;
 }
 
@@ -679,6 +683,51 @@ async function draftData(storeId: string, storeSlug: string, draftId: string): P
     expires_at: row.expires_at,
     created_at: row.created_at,
     admin_url: `${siteUrl()}/admin/${storeSlug}/orders/drafts/${row.id}`,
+  };
+}
+
+/**
+ * A deal's contract (D695 step 4, `contract.sent`, `contract.signed`, `contract.declined`): its title, state, template and signers in order
+ * with when each signed or declined. Never a signer's email, the reason a signer gave or the contract's words: those stay on its page.
+ */
+async function contractData(storeId: string, storeSlug: string, contractId: string): Promise<WebhookSubject<"contract"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      title: col.text,
+      status: z.enum(["draft", "sent", "signed", "declined", "expired", "cancelled"]),
+      language: col.text,
+      deal_id: col.uuid.nullable(),
+      template: col.textOrNull,
+      sent_at: col.timestampOrNull,
+      expires_at: col.timestampOrNull,
+      completed_at: col.timestampOrNull,
+      signers: z.array(
+        z.object({ role: z.enum(["store", "customer", "other"]), name: col.text, signed_at: col.timestampOrNull, declined_at: col.timestampOrNull }),
+      ),
+    }),
+    sql`
+    select k.id, k.title, k.status, k.language, k.deal_id, t.name as template, k.sent_at, k.expires_at, k.completed_at,
+      coalesce((select json_agg(json_build_object('role', g.role, 'name', g.name, 'signed_at', g.signed_at, 'declined_at', g.declined_at) order by g.position)
+        from commerce.contract_signers g where g.store_id = k.store_id and g.contract_id = k.id), '[]'::json) as signers
+    from commerce.contracts k left join commerce.contract_templates t on t.store_id = k.store_id and t.id = k.template_id
+    where k.store_id = ${storeId}::uuid and k.id = ${contractId}::uuid
+  `,
+  );
+  // A draft is never an event's subject: a contract is sent before anything is said of it.
+  if (!row || row.status === "draft") return null;
+  return {
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    language: row.language,
+    deal_id: row.deal_id,
+    template: row.template,
+    signers: row.signers,
+    sent_at: row.sent_at,
+    expires_at: row.expires_at,
+    completed_at: row.completed_at,
+    admin_url: row.deal_id ? `${siteUrl()}/admin/${storeSlug}/deals/${row.deal_id}/contracts/${row.id}` : `${siteUrl()}/admin/${storeSlug}/deals`,
   };
 }
 
