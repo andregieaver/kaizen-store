@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
-import { AbMarker } from "@/components/ab/ab-marker";
+import { AbMarker } from "@/components/lazy/blocks";
 import { StoreExperiments } from "@/components/ab/store-experiments";
 import { KeepFocusEverywhere } from "@/components/keep-focus-everywhere";
 import { textStylesCssFor } from "@/server/text-styles";

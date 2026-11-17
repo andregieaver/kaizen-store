@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AbMarker } from "@/components/ab/ab-marker";
+import { AbMarker } from "@/components/lazy/blocks";
 import { PageGoal } from "@/components/ab/page-goal";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";

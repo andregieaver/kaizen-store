@@ -43,3 +43,9 @@ export const CarouselControls = lazyView(
 );
 /** The marker of an A/B test's page goal (D148 phase 20): only on a page a running test names, once the browser is idle; it draws nothing. */
 export const AbPageGoal = whenIdle(lazyView(dynamic(() => import("../ab/ab-page-goal").then((m) => m.AbPageGoal))));
+/**
+ * An A/B test's page marker and the store's assignment script (D148): loaded only on a page under a running test, or a store with one, so no
+ * other page carries them (or the A/B vocabulary they read) in its first scripts.
+ */
+export const AbMarker = lazyView(dynamic(() => import("../ab/ab-marker").then((m) => m.AbMarker)));
+export const AbAssign = lazyView(dynamic(() => import("../ab/ab-assign").then((m) => m.AbAssign)));

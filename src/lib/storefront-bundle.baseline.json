@@ -1,8 +1,6 @@
 {
   "pages": {
     "layout": {
-      "components/ab/ab-assign": "in first scripts on 2026-11 (bloat review step 1.27)",
-      "components/ab/ab-marker": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/back-to-admin": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/buyer": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/campaign-ends": "in first scripts on 2026-11 (bloat review step 1.27)",
@@ -34,7 +32,6 @@
       "components/wishlist-heart": "in first scripts on 2026-11 (bloat review step 1.27)"
     },
     "built": {
-      "components/ab/ab-marker": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/buyer": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/campaign-ends": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/carousel": "in first scripts on 2026-11 (bloat review step 1.27)",
@@ -55,7 +52,6 @@
       "components/wishlist-heart": "in first scripts on 2026-11 (bloat review step 1.27)"
     },
     "product": {
-      "components/ab/ab-marker": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/browse-tracker": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/buyer": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/campaign-ends": "in first scripts on 2026-11 (bloat review step 1.27)",
@@ -85,7 +81,6 @@
     },
     "listing": {
       "app/s/[store]/[market]/cart/cart-gift": "in first scripts on 2026-11 (bloat review step 1.27)",
-      "components/ab/ab-marker": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/account-sign-in": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/add-to-cart": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/booking-changes": "in first scripts on 2026-11 (bloat review step 1.27)",
@@ -126,7 +121,6 @@
     },
     "cart": {
       "app/s/[store]/[market]/cart/cart-gift": "in first scripts on 2026-11 (bloat review step 1.27)",
-      "components/ab/ab-marker": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/account-sign-in": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/add-to-cart": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/booking-changes": "in first scripts on 2026-11 (bloat review step 1.27)",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AbMarker } from "@/components/ab/ab-marker";
+import { AbMarker } from "@/components/lazy/blocks";
 import { PageGoal } from "@/components/ab/page-goal";
 import { PageEditLink } from "@/components/page-edit-link";
 import { ProductGrid, ProductListingFor } from "@/components/product-listing";

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { AbMarker } from "@/components/ab/ab-marker";
+import { AbMarker } from "@/components/lazy/blocks";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
 import { StorePartSection } from "@/components/store-part-section";

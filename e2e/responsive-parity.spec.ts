@@ -316,18 +316,19 @@ async function styles(page: Page): Promise<Styles> {
   return page.evaluate((props) => {
     const out: Record<string, Record<string, string>> = {};
     const round = (n: number) => String(Math.round(n * 2) / 2);
+    // A streamed page's <title> lands in the body wherever its chunk arrives, so its place varies from load to load; it is never drawn.
+    const skipped = (el: Element) => ["script", "style", "link", "meta", "title", "noscript", "template", "next-route-announcer"].includes(el.tagName.toLowerCase());
     const walk = (el: Element, path: string) => {
-      const tag = el.tagName.toLowerCase();
-      // A streamed page's <title> lands in the body wherever its chunk arrives, so its place varies from load to load; it is never drawn.
-      if (["script", "style", "link", "meta", "title", "noscript", "template", "next-route-announcer"].includes(tag)) return;
       const css = getComputedStyle(el);
       const box = el.getBoundingClientRect();
       const entry: Record<string, string> = { x: round(box.left), y: round(box.top + window.scrollY), w: round(box.width), h: round(box.height) };
       for (const prop of props) entry[prop] = css.getPropertyValue(prop);
       out[path] = entry;
       if (css.display === "none") return;
+      // A place counts only the elements that are drawn: the number of streamed <script> chunks before a part depends on how much the page
+      // sends, so counting them moved every later part when two pages' content differed in size (the old shape against the upgraded one).
       let index = 0;
-      for (const child of Array.from(el.children)) walk(child, `${path}>${child.tagName.toLowerCase()}:${index++}`);
+      for (const child of Array.from(el.children)) if (!skipped(child)) walk(child, `${path}>${child.tagName.toLowerCase()}:${index++}`);
     };
     walk(document.body, "body");
     return out;
