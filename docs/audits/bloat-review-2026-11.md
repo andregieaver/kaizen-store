@@ -125,7 +125,7 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | In progress | 17 Nov, local, 4 of 4 commits. Baseline = today: living long lines 27, table rows 676, big rules 25, big decisions 49, decisions long lines 691; MCP_TOOLS corrected. |
+| 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | In progress | 17 Nov, local, 4 of 4. Today: living long lines 27, table rows 677, big rules 25, big decisions 49, decisions long lines 691; MCP_TOOLS fixed. |
 | 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | Open | |
 | 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Open | |
 | 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | Open | |
