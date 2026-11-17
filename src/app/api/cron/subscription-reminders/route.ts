@@ -50,6 +50,7 @@ import { runDomainMoves } from "@/server/domain-move";
 import { checkArrivals } from "@/server/domain-move-in";
 import { pruneNotices } from "@/server/assistant-notices";
 import { pruneDeliveries } from "@/server/integrations";
+import { pruneEvents } from "@/server/event-log";
 import { prunePlatformDeliveries } from "@/server/platform-integrations";
 import { pruneWorkflowRuns } from "@/server/workflows";
 import { prunePlatformWorkflowRuns } from "@/server/platform-workflows";
@@ -107,6 +108,8 @@ async function run(request: Request) {
     mapShots: await tracked("daily.map-shots", 86400, () => pruneMapShots()),
     // Recordings of visits after 30 days, with their files, every store's (D656); a minute at most, the rest the next day.
     recordings: await tracked("daily.recordings", 86400, () => pruneRecordings(new Date(), Date.now() + 60_000)),
+    // The event log after 90 days, oldest first (ecosystem plan E3.1, D718).
+    events: await tracked("daily.events", 86400, () => pruneEvents()),
   };
   // Production's own statistics, one reading a day, kept 90 days (bloat review step 0.2). Its own job, so a failed reading shows on the platform home and the rest of the route goes on.
   const productionReading = await tracked("daily.production-reading", 86400, async () => ({ ...(await recordProductionReading()), pruned: await pruneProductionReadings() }));

@@ -1,6 +1,6 @@
 {
-  "id": "d1369ce5-4452-4caf-b4cd-523ac3deae29",
-  "prevId": "98dd887a-d486-4785-abb7-34177ae26a26",
+  "id": "5eb9fd2d-ccbb-4d6d-84e6-bc2ff0c3577d",
+  "prevId": "6ae9914b-2703-463f-906c-b77968762044",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -124,6 +124,12 @@
         "recovered_order_id": {
           "name": "recovered_order_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "abandoned_at": {
+          "name": "abandoned_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -32582,6 +32588,220 @@
         "email_templates_slots": {
           "name": "email_templates_slots",
           "value": "(\"commerce\".\"email_templates\".\"subject\" is not null or \"commerce\".\"email_templates\".\"heading\" is not null or \"commerce\".\"email_templates\".\"body\" is not null)\n        and (\"commerce\".\"email_templates\".\"subject\" is null or char_length(\"commerce\".\"email_templates\".\"subject\") between 1 and 150)\n        and (\"commerce\".\"email_templates\".\"heading\" is null or char_length(\"commerce\".\"email_templates\".\"heading\") between 1 and 120)\n        and (\"commerce\".\"email_templates\".\"body\" is null or char_length(\"commerce\".\"email_templates\".\"body\") between 1 and 2000)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.event_cursors": {
+      "name": "event_cursors",
+      "schema": "commerce",
+      "columns": {
+        "consumer": {
+          "name": "consumer",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "last_tx": {
+          "name": "last_tx",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_id": {
+          "name": "last_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "claim": {
+          "name": "claim",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claimed_until": {
+          "name": "claimed_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "event_cursors_consumer": {
+          "name": "event_cursors_consumer",
+          "value": "\"commerce\".\"event_cursors\".\"consumer\" ~ '^[a-z][a-z0-9_.:-]{0,99}$'"
+        },
+        "event_cursors_claim": {
+          "name": "event_cursors_claim",
+          "value": "(\"commerce\".\"event_cursors\".\"claim\" is null) = (\"commerce\".\"event_cursors\".\"claimed_until\" is null)"
+        },
+        "event_cursors_position": {
+          "name": "event_cursors_position",
+          "value": "\"commerce\".\"event_cursors\".\"last_tx\" >= 0 and \"commerce\".\"event_cursors\".\"last_id\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.events": {
+      "name": "events",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "name": "events_id_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "commerce",
+            "type": "always"
+          }
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event": {
+          "name": "event",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tx": {
+          "name": "tx",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "(pg_current_xact_id()::text)::bigint"
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "events_order_idx": {
+          "name": "events_order_idx",
+          "columns": [
+            {
+              "expression": "tx",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "events_store_order_idx": {
+          "name": "events_store_order_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tx",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "events_store_id_stores_id_fk": {
+          "name": "events_store_id_stores_id_fk",
+          "tableFrom": "events",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "events_once_key": {
+          "name": "events_once_key",
+          "columns": [
+            "tx",
+            "store_id",
+            "event",
+            "subject_id"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "events_event": {
+          "name": "events_event",
+          "value": "\"commerce\".\"events\".\"event\" ~ '^[a-z][a-z0-9_]*([.][a-z][a-z0-9_]*)+$' and char_length(\"commerce\".\"events\".\"event\") <= 80"
         }
       },
       "isRLSEnabled": false
@@ -97469,7 +97689,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'support.waiting', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",

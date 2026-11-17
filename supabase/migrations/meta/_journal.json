@@ -505,6 +505,20 @@
       "when": 1794913981365,
       "tag": "20261117111301_form_templates_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794917559123,
+      "tag": "20261117121239_event_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794917575037,
+      "tag": "20261117121254_event_log_rules",
+      "breakpoints": true
     }
   ]
 }

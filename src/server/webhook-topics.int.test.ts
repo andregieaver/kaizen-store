@@ -168,6 +168,40 @@ beforeAll(async () => {
     where store_id = ${store.storeId}::uuid and id = ${contract.id}::uuid
   `);
   subjects.contract = contract.id;
+
+  // Ecosystem plan E3.2 (D718): the deal itself (deal.*), an address on the list, a conversation that ended, a checkout left, and Work's
+  // client and invoice (a draft: its payload is the same shape once sent).
+  subjects.deal = deal.id;
+  const { joinList } = await import("./marketing-subscribers");
+  subjects.subscriber = (
+    await joinList({ storeId: store.storeId, email: `list-${run}@example.com`, locale: "nb-NO", marketCode: "NO", source: "form", consentText: "Ja takk", proof: "confirmed" })
+  ).subscriberId;
+  const support = await import("./support");
+  const desk = (await import("./support-desk")).systemDesk(store.storeId);
+  const { conversation } = await support.openConversation(desk, { mode: (await support.ensureDesk(desk)).mode, locale: "nb-NO", market: "NO", pagePath: null, customerId: subjects.customer! });
+  await support.transition(desk, conversation.id, "end", { kind: "customer" });
+  await support.setRating(desk, conversation.id, "good", "Kjapt svar");
+  subjects.conversation = conversation.id;
+  const [basket] = await db().execute<Row>(sql`
+    insert into commerce.carts (store_id, market_code, currency, locale, expires_at) values (${store.storeId}::uuid, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id
+  `);
+  const [left] = await db().execute<Row>(sql`
+    insert into commerce.abandoned_checkouts (store_id, cart_id, order_id, email, market_code, locale, currency, lines, subtotal_minor, token, captured_at, abandoned_at)
+    values (${store.storeId}::uuid, ${String(basket.id)}::uuid, ${order.orderId}::uuid, 'left@example.com', 'NO', 'nb-NO', 'NOK',
+      ${JSON.stringify([{ variantId: variant, sellingPlanId: null, title: "Mug", quantity: 2, unitPriceMinor: 19900 }])}::jsonb, 39800,
+      ${randomBytes(24).toString("base64url")}, now() - interval '2 hours', now())
+    returning id
+  `);
+  subjects.checkout = String(left.id);
+  const [workClient] = await db().execute<Row>(sql`
+    insert into commerce.work_clients (store_id, name, legal_name, organisation_number, country, currency, billing_email)
+    values (${store.storeId}::uuid, 'Fjord AS', 'Fjord AS', '912345678', 'NO', 'NOK', 'faktura@fjord.example') returning id
+  `);
+  subjects.work_client = String(workClient.id);
+  const [invoice] = await db().execute<Row>(sql`
+    insert into commerce.work_invoices (store_id, client_id, currency) values (${store.storeId}::uuid, ${String(workClient.id)}::uuid, 'NOK') returning id
+  `);
+  subjects.work_invoice = String(invoice.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -205,6 +239,24 @@ describe("every webhook topic's payload (D438)", () => {
       expect(checked.data.version).toBe(PAYLOAD_VERSION);
     }
     expect(logged.filter((l) => l.event === "webhooks.payload_shape")).toEqual([]);
+  });
+
+  it("sends the new subjects' facts and never a person's words or a secret (E3.2, D718)", async () => {
+    const text = async (event: string, subject: string) => JSON.stringify(await integrations.subjectData(storeRef(), event, subject));
+    const conversation = await text("conversation.rated", subjects.conversation!);
+    expect(JSON.parse(conversation).conversation).toMatchObject({ status: "ended", rating: "good", ended_by: "customer", customer_id: subjects.customer });
+    expect(conversation).not.toContain("Kjapt svar");
+    const [left] = await db().execute<Row>(sql`select token from commerce.abandoned_checkouts where id = ${subjects.checkout!}::uuid`);
+    const checkout = await text("checkout.abandoned", subjects.checkout!);
+    expect(JSON.parse(checkout).checkout).toMatchObject({ subtotal: 398, lines: [{ sku: SKU, quantity: 2, unit_price: 199 }], recovered: false });
+    expect(checkout).not.toContain(String(left.token));
+    const client = await text("work_client.created", subjects.work_client!);
+    expect(client).not.toContain("faktura@fjord.example");
+    const subscriber = JSON.parse(await text("subscriber.subscribed", subjects.subscriber!)).subscriber;
+    expect(subscriber).toMatchObject({ status: "subscribed", source: "form" });
+    expect(subscriber).not.toHaveProperty("token");
+    const deal = JSON.parse(await text("deal.created", subjects.deal!)).deal;
+    expect(deal).toMatchObject({ status: "open", stage: { name: "New", position: 0 }, customer_id: subjects.customer });
   });
 
   it("holds what was made: the parcel, the return's line, the stock crossing", async () => {

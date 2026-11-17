@@ -13,6 +13,7 @@ import {
   type IntegrationEvent,
   type Provider,
 } from "@/lib/integrations";
+import { mainCurrency } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
@@ -394,7 +395,295 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const contract = await contractData(store.id, store.slug, subjectId);
     return contract && { contract };
   }
+  // Ecosystem plan E3.2 (D718).
+  if (event.startsWith("deal.")) {
+    const deal = await dealData(store.slug, subjectId);
+    return deal && { deal };
+  }
+  if (event.startsWith("subscriber.")) {
+    const subscriber = await subscriberData(store.id, store.slug, subjectId);
+    return subscriber && { subscriber };
+  }
+  if (event.startsWith("conversation.")) {
+    const conversation = await conversationData(store.id, store.slug, subjectId);
+    return conversation && { conversation };
+  }
+  if (event === "review.published") {
+    const review = await reviewData(store.id, store.slug, subjectId);
+    return review && { review };
+  }
+  if (event === "checkout.abandoned") {
+    const checkout = await checkoutData(store.id, store.slug, subjectId);
+    return checkout && { checkout };
+  }
+  if (event === "work_client.created") {
+    const work_client = await workClientData(store.id, store.slug, subjectId);
+    return work_client && { work_client };
+  }
+  if (event.startsWith("work_invoice.")) {
+    const work_invoice = await workInvoiceData(store.id, store.slug, subjectId);
+    return work_invoice && { work_invoice };
+  }
   return null;
+}
+
+/**
+ * A deal (ecosystem plan E3.2, D718, `deal.*`): its pipeline and stage, its value worked out where the board works it out (`listDeals()`,
+ * in the store's main currency) and who it is for, as ids. Never the reason typed for closing it.
+ */
+async function dealData(storeSlug: string, dealId: string): Promise<WebhookSubject<"deal"> | null> {
+  const [{ getStore }, { listDeals, pipelinesOf }] = await Promise.all([import("./stores"), import("./deals")]);
+  const shop = await getStore(storeSlug);
+  if (!shop) return null;
+  const [deal] = await listDeals(shop, { id: dealId });
+  if (!deal) return null;
+  const pipeline = (await pipelinesOf(shop.id)).find((p) => p.id === deal.pipelineId);
+  const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
+  const currency = mainCurrency(shop);
+  return {
+    id: deal.id,
+    title: deal.title,
+    status: deal.status,
+    pipeline: { id: deal.pipelineId, name: pipeline?.name ?? "" },
+    stage: { id: deal.stageId, name: stage?.name ?? "", position: stage?.position ?? 0 },
+    value: deal.value.minor === null ? null : amount(deal.value.minor, currency),
+    currency,
+    customer_id: deal.customer?.id ?? null,
+    company_id: deal.company?.id ?? null,
+    owner_id: deal.owner?.id ?? null,
+    expected_close_on: deal.expectedCloseOn,
+    closed_at: deal.closedAt,
+    closed_via: (deal.closedVia as WebhookSubject<"deal">["closed_via"]) ?? null,
+    stage_entered_at: deal.stageEnteredAt,
+    created_at: deal.createdAt,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/deals/${deal.id}`,
+  };
+}
+
+/** An address on the store's email list (ecosystem plan E3.2, D718, `subscriber.*`): where and how it joined or left. Never its token. */
+async function subscriberData(storeId: string, storeSlug: string, subscriberId: string): Promise<WebhookSubject<"subscriber"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      email: col.text,
+      status: z.enum(["pending", "subscribed", "unsubscribed"]),
+      source: z.enum(["form", "checkout", "account", "shopify", "woocommerce"]),
+      unsubscribe_source: z.enum(["link", "one_click", "account", "staff", "complaint", "bounce"]).nullable(),
+      customer_id: col.uuid.nullable(),
+      locale: col.text,
+      market_code: col.textOrNull,
+      consented_at: col.timestamp,
+      confirmed_at: col.timestampOrNull,
+      unsubscribed_at: col.timestampOrNull,
+    }),
+    sql`
+      select id, email, status, source, unsubscribe_source, customer_id, locale, market_code, consented_at, confirmed_at, unsubscribed_at
+      from commerce.marketing_subscribers where store_id = ${storeId}::uuid and id = ${subscriberId}::uuid
+    `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    status: row.status,
+    source: row.source,
+    unsubscribe_source: row.unsubscribe_source,
+    customer_id: row.customer_id,
+    locale: row.locale,
+    market: row.market_code,
+    consented_at: row.consented_at,
+    confirmed_at: row.confirmed_at,
+    unsubscribed_at: row.unsubscribed_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/subscribers/${row.id}`,
+  };
+}
+
+/**
+ * A support conversation of the store's desk (ecosystem plan E3.2, D718, `conversation.ended`, `conversation.rated`): how it went, as ids,
+ * states and counts. Never a message, the summary, the rating's comment or the contact the visitor typed.
+ */
+async function conversationData(storeId: string, storeSlug: string, conversationId: string): Promise<WebhookSubject<"conversation"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      source: z.enum(["site", "admin", "email", "form"]),
+      status: z.enum(["open", "ended"]),
+      handler: z.enum(["ai", "queue", "human"]),
+      ended_by: z.enum(["customer", "agent", "timeout", "system"]).nullable(),
+      rating: z.enum(["good", "bad"]).nullable(),
+      escalation: col.textOrNull,
+      customer_id: col.uuid.nullable(),
+      market: col.textOrNull,
+      locale: col.text,
+      message_seq: col.int,
+      created_at: col.timestamp,
+      first_agent_at: col.timestampOrNull,
+      ended_at: col.timestampOrNull,
+    }),
+    sql`
+      select id, source, status, handler, ended_by, rating, escalation, customer_id, market, locale, message_seq, created_at, first_agent_at, ended_at
+      from commerce.support_conversations where store_id = ${storeId}::uuid and id = ${conversationId}::uuid
+    `,
+  );
+  // An owner asking Kaizena Flow is the platform's desk, never a store's: no store's event is about one.
+  if (!row || row.source === "admin") return null;
+  return {
+    id: row.id,
+    source: row.source,
+    status: row.status,
+    handler: row.handler,
+    ended_by: row.ended_by,
+    rating: row.rating,
+    escalation: row.escalation,
+    customer_id: row.customer_id,
+    market: row.market,
+    locale: row.locale,
+    messages: row.message_seq,
+    created_at: row.created_at,
+    first_answer_at: row.first_agent_at,
+    ended_at: row.ended_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/support?c=${row.id}`,
+  };
+}
+
+/**
+ * A checkout left without paying (ecosystem plan E3.2, D718, `checkout.abandoned`): the cart as it was kept for the reminders, each line's
+ * SKU as it is now. Never the reminder links' secret.
+ */
+async function checkoutData(storeId: string, storeSlug: string, checkoutId: string): Promise<WebhookSubject<"checkout"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      cart_id: col.uuid,
+      order_id: col.uuid.nullable(),
+      email: col.textOrNull,
+      market_code: col.text,
+      locale: col.text,
+      currency: col.currency,
+      subtotal_minor: col.minor,
+      captured_at: col.timestampOrNull,
+      abandoned_at: col.timestampOrNull,
+      recovered: col.bool,
+      lines: z.array(z.object({ variant_id: col.uuid, sku: col.textOrNull, title: col.text, quantity: col.int, unit_price_minor: col.minor })),
+    }),
+    sql`
+      select a.id, a.cart_id, a.order_id, a.email, trim(a.market_code) as market_code, a.locale, trim(a.currency) as currency, a.subtotal_minor,
+        a.captured_at, a.abandoned_at, a.recovered_at is not null as recovered,
+        coalesce((select json_agg(json_build_object('variant_id', l.value ->> 'variantId', 'sku', v.sku, 'title', l.value ->> 'title',
+            'quantity', (l.value ->> 'quantity')::int, 'unit_price_minor', (l.value ->> 'unitPriceMinor')::bigint) order by l.ordinality)
+          from jsonb_array_elements(a.lines) with ordinality l
+          left join commerce.product_variants v on v.store_id = a.store_id and v.id::text = l.value ->> 'variantId'), '[]'::json) as lines
+      from commerce.abandoned_checkouts a where a.store_id = ${storeId}::uuid and a.id = ${checkoutId}::uuid
+    `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    cart_id: row.cart_id,
+    order_id: row.order_id,
+    email: row.email,
+    market: row.market_code,
+    locale: row.locale,
+    currency: row.currency,
+    subtotal: amount(row.subtotal_minor, row.currency),
+    lines: row.lines.map((l) => ({ variant_id: l.variant_id, sku: l.sku ?? "", title: l.title, quantity: l.quantity, unit_price: amount(l.unit_price_minor, row.currency) })),
+    captured_at: row.captured_at,
+    abandoned_at: row.abandoned_at,
+    recovered: row.recovered,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/cart-reminders`,
+  };
+}
+
+/** A client in Work (ecosystem plan E3.2, D718, `work_client.created`): who they are as a business. Never their email or phone. */
+async function workClientData(storeId: string, storeSlug: string, clientId: string): Promise<WebhookSubject<"work_client"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      name: col.text,
+      legal_name: col.textOrNull,
+      organisation_number: col.textOrNull,
+      vat_number: col.textOrNull,
+      country: col.textOrNull,
+      business: col.bool,
+      currency: col.currency,
+      vat_treatment: z.enum(["domestic", "reverse_charge", "outside_scope", "exempt"]),
+      customer_id: col.uuid.nullable(),
+      customer_company_id: col.uuid.nullable(),
+      archived: col.bool,
+      created_at: col.timestamp,
+    }),
+    sql`
+      select id, name, legal_name, organisation_number, vat_number, trim(country) as country, business, trim(currency) as currency, vat_treatment,
+        customer_id, customer_company_id, archived_at is not null as archived, created_at
+      from commerce.work_clients where store_id = ${storeId}::uuid and id = ${clientId}::uuid
+    `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    legal_name: row.legal_name,
+    organisation_number: row.organisation_number,
+    vat_number: row.vat_number,
+    country: row.country,
+    business: row.business,
+    currency: row.currency,
+    vat_treatment: row.vat_treatment,
+    customer_id: row.customer_id,
+    company_id: row.customer_company_id,
+    archived: row.archived,
+    created_at: row.created_at,
+    admin_url: `${siteUrl()}/admin/account/work/s/${storeSlug}/clients/${row.id}`,
+  };
+}
+
+/** An invoice in Work (ecosystem plan E3.2, D718, `work_invoice.*`): its number, amounts, and what payments and credit notes have covered. */
+async function workInvoiceData(storeId: string, storeSlug: string, invoiceId: string): Promise<WebhookSubject<"work_invoice"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      document_number: col.textOrNull,
+      status: z.enum(["draft", "sent", "paid", "void", "lost"]),
+      client_id: col.uuid,
+      assignment_id: col.uuid.nullable(),
+      currency: col.currency,
+      subtotal_minor: col.minor,
+      vat_minor: col.minor,
+      total_minor: col.minor,
+      paid_minor: col.minor,
+      credited_minor: col.minor,
+      issued_on: col.textOrNull,
+      due_on: col.textOrNull,
+      sent_at: col.timestampOrNull,
+      paid_at: col.timestampOrNull,
+    }),
+    sql`
+      select i.id, i.document_number, i.status, i.client_id, i.assignment_id, trim(i.currency) as currency, i.subtotal_minor, i.vat_minor, i.total_minor,
+        coalesce((select sum(p.amount_minor) from commerce.work_invoice_payments p where p.store_id = i.store_id and p.invoice_id = i.id), 0) as paid_minor,
+        coalesce((select sum(c.total_minor) from commerce.work_credit_notes c where c.store_id = i.store_id and c.invoice_id = i.id), 0) as credited_minor,
+        to_char(i.issued_on, 'YYYY-MM-DD') as issued_on, to_char(i.due_on, 'YYYY-MM-DD') as due_on, i.sent_at, i.paid_at
+      from commerce.work_invoices i where i.store_id = ${storeId}::uuid and i.id = ${invoiceId}::uuid
+    `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    number: row.document_number,
+    status: row.status,
+    client_id: row.client_id,
+    assignment_id: row.assignment_id,
+    currency: row.currency,
+    subtotal: amount(row.subtotal_minor, row.currency),
+    vat: amount(row.vat_minor, row.currency),
+    total: amount(row.total_minor, row.currency),
+    paid: amount(row.paid_minor, row.currency),
+    credited: amount(row.credited_minor, row.currency),
+    issued_on: row.issued_on,
+    due_on: row.due_on,
+    sent_at: row.sent_at,
+    paid_at: row.paid_at,
+    admin_url: `${siteUrl()}/admin/account/work/s/${storeSlug}/invoices/${row.id}`,
+  };
 }
 
 /** The latest paid order, or a sample in the store's own country and currency when it has none: what a test sends. */

@@ -21,8 +21,41 @@ export const isWorkflowTrigger = (value: string): value is WorkflowTrigger => (W
 /** What an event is about, by its trigger: the key its data is under (`order`, `product`, …). */
 export function subjectOf(
   trigger: WorkflowTrigger,
-): "order" | "customer" | "subscription" | "return" | "withdrawal" | "product" | "stock" | "discount" | "support" | "inventory" | "fulfilment" | "refund" | "draft" | "erasure" | "gift_card" | "review" | "experiment" | "contract" | "schedule" {
+):
+  | "order"
+  | "customer"
+  | "subscription"
+  | "return"
+  | "withdrawal"
+  | "product"
+  | "stock"
+  | "discount"
+  | "support"
+  | "inventory"
+  | "fulfilment"
+  | "refund"
+  | "draft"
+  | "erasure"
+  | "gift_card"
+  | "review"
+  | "experiment"
+  | "contract"
+  | "deal"
+  | "subscriber"
+  | "conversation"
+  | "checkout"
+  | "work_client"
+  | "work_invoice"
+  | "schedule" {
   if (trigger === "schedule") return "schedule";
+  // Ecosystem plan E3.2 (D718).
+  if (trigger.startsWith("deal.")) return "deal";
+  if (trigger.startsWith("subscriber.")) return "subscriber";
+  if (trigger.startsWith("conversation.")) return "conversation";
+  if (trigger === "review.published") return "review";
+  if (trigger === "checkout.abandoned") return "checkout";
+  if (trigger === "work_client.created") return "work_client";
+  if (trigger.startsWith("work_invoice.")) return "work_invoice";
   if (trigger === "inventory.updated") return "inventory";
   if (trigger.startsWith("fulfilment.")) return "fulfilment";
   if (trigger === "refund.created") return "refund";
@@ -122,6 +155,41 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "contract.title", kind: "text" },
     { key: "contract.language", kind: "text" },
     { key: "contract.template", kind: "text" },
+  ],
+  // Ecosystem plan E3.2 (D718).
+  deal: [
+    { key: "deal.value", kind: "number" },
+    { key: "deal.stage.name", kind: "text" },
+    { key: "deal.pipeline.name", kind: "text" },
+    { key: "deal.closed_via", kind: "text" },
+  ],
+  subscriber: [
+    { key: "subscriber.source", kind: "text" },
+    { key: "subscriber.unsubscribe_source", kind: "text" },
+    { key: "subscriber.market", kind: "text" },
+    { key: "subscriber.locale", kind: "text" },
+  ],
+  conversation: [
+    { key: "conversation.rating", kind: "text" },
+    { key: "conversation.source", kind: "text" },
+    { key: "conversation.ended_by", kind: "text" },
+    { key: "conversation.handler", kind: "text" },
+  ],
+  checkout: [
+    { key: "checkout.subtotal", kind: "number" },
+    { key: "checkout.currency", kind: "text" },
+    { key: "checkout.market", kind: "text" },
+    { key: "checkout.lines.sku", kind: "text" },
+  ],
+  work_client: [
+    { key: "work_client.country", kind: "text" },
+    { key: "work_client.business", kind: "yes_no" },
+    { key: "work_client.currency", kind: "text" },
+  ],
+  work_invoice: [
+    { key: "work_invoice.total", kind: "number" },
+    { key: "work_invoice.currency", kind: "text" },
+    { key: "work_invoice.status", kind: "text" },
   ],
   draft: [
     { key: "draft.source", kind: "text" },

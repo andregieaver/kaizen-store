@@ -370,6 +370,7 @@ export async function sendDueCartReminders(): Promise<ReminderRun> {
       `);
       continue;
     }
+    await markAbandoned(storeId, String(row.id));
     const outcome = await sendReminder({
       storeId,
       checkoutId: String(row.id),
@@ -385,6 +386,22 @@ export async function sendDueCartReminders(): Promise<ReminderRun> {
     else if (outcome === "failed") failed++;
   }
   return { sent, failed, erased: erased.length };
+}
+
+/**
+ * The checkout is judged abandoned (ecosystem plan E3.2, D718): its first reminder is due and nothing was bought since. Marked once, and
+ * `checkout.abandoned` queued in the same statement for the store's endpoints, workflows and event log; a later reminder of the same cart
+ * finds it marked and queues nothing.
+ */
+async function markAbandoned(storeId: string, checkoutId: string): Promise<void> {
+  await db().execute(sql`
+    with marked as (
+      update commerce.abandoned_checkouts set abandoned_at = now()
+      where store_id = ${storeId}::uuid and id = ${checkoutId}::uuid and abandoned_at is null
+      returning store_id, id
+    )
+    select commerce.queue_integration_event(m.store_id, 'checkout.abandoned', m.id) from marked m
+  `);
 }
 
 /**

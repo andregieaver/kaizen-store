@@ -437,6 +437,9 @@ async function importPage(
 
   if (feed === "deals") {
     const deals = fresh as PdDeal[];
+    // Deals moved in are history, not deals made now: no deal.created, won or lost for them (ecosystem plan E3.2, D718), for this
+    // transaction only.
+    await tx.execute(sql`select set_config('commerce.deal_importing', 'on', true)`);
     const persons = (
       await linksOf(tx, ctx, "person", ids(deals.map((d) => d.personId)))
     ).here;

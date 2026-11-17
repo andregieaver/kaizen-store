@@ -33,9 +33,40 @@ export async function latestSubject(storeId: string, trigger: WorkflowTrigger): 
                   ? sql`select variant_id as id from commerce.stock_alerts where store_id = ${storeId}::uuid and state = 'low' order by crossed_at desc limit 1`
                   : subject === "discount"
                     ? sql`select id from commerce.discount_codes where store_id = ${storeId}::uuid order by created_at desc limit 1`
-                    : null;
+                    : newerSubject(storeId, trigger);
   if (!query) return null;
   const [row] = await db().execute<{ id: string }>(query);
   return row ? String(row.id) : null;
+}
+
+/** The latest subject of the triggers of ecosystem plan E3.2 (D718), each as its event is queued; null for a trigger with none here. */
+function newerSubject(storeId: string, trigger: WorkflowTrigger) {
+  switch (trigger) {
+    case "deal.created":
+    case "deal.stage_changed":
+      return sql`select id from commerce.deals where store_id = ${storeId}::uuid order by updated_at desc limit 1`;
+    case "deal.won":
+    case "deal.lost":
+      return sql`select id from commerce.deals where store_id = ${storeId}::uuid and status = ${trigger === "deal.won" ? "won" : "lost"} order by closed_at desc nulls last limit 1`;
+    case "subscriber.subscribed":
+    case "subscriber.unsubscribed":
+      return sql`select id from commerce.marketing_subscribers where store_id = ${storeId}::uuid and status = ${trigger === "subscriber.subscribed" ? "subscribed" : "unsubscribed"} order by updated_at desc limit 1`;
+    case "conversation.ended":
+      return sql`select id from commerce.support_conversations where store_id = ${storeId}::uuid and status = 'ended' and source <> 'admin' order by ended_at desc nulls last limit 1`;
+    case "conversation.rated":
+      return sql`select id from commerce.support_conversations where store_id = ${storeId}::uuid and rating is not null and source <> 'admin' order by updated_at desc limit 1`;
+    case "review.published":
+      return sql`select id from commerce.product_reviews where store_id = ${storeId}::uuid and imported_from is null and status = 'published' order by created_at desc limit 1`;
+    case "checkout.abandoned":
+      return sql`select id from commerce.abandoned_checkouts where store_id = ${storeId}::uuid and abandoned_at is not null order by abandoned_at desc limit 1`;
+    case "work_client.created":
+      return sql`select id from commerce.work_clients where store_id = ${storeId}::uuid order by created_at desc limit 1`;
+    case "work_invoice.sent":
+    case "work_invoice.paid":
+    case "work_invoice.credited":
+      return sql`select id from commerce.work_invoices where store_id = ${storeId}::uuid and status <> 'draft' order by updated_at desc limit 1`;
+    default:
+      return null;
+  }
 }
 

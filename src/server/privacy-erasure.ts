@@ -727,6 +727,13 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
       -- Their contracts (D695 step 4): a payload names its signers. A signed contract itself is kept; the copies sent out are not.
       union all select c.id from commerce.contracts c where c.store_id = ${sid}::uuid and (c.customer_id = ${cid}::uuid
         or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${textList(s.addresses)})))
+      -- Ecosystem plan E3.2 (D718): their deals (a title may name them), their place on the email list and their checkouts left (the
+      -- payloads carry the address), and their support conversations.
+      union all select id from commerce.deals where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
+      union all select id from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))}) or customer_id = ${cid}::uuid)
+      union all select id from commerce.abandoned_checkouts where store_id = ${sid}::uuid and lower(email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
+      union all select id from commerce.support_conversations where store_id = ${sid}::uuid and (customer_id = ${cid}::uuid
+        or lower(contact_email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))}))
     )
     update commerce.integration_deliveries d set
       payload = null,
