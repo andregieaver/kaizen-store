@@ -146,9 +146,9 @@ commit as the fix.
 | 1.19 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3, GAP-ai-s2, GAP-ai-s3 | M | strong | 0.1, 1.1, 0.21 | Open | |
 | 1.20 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1, GAP-build-s1 | M | review | 0.38, 1.8, 1.11, 1.1 | Open | |
 | 1.21 | Give the production build room with the free switches, and fail a run before it runs out | GAP-build-2, GAP-build-s3 | S | review | 1.20 | Open | |
-| 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | In progress | 17 Nov, local: 3 commits (watcher, vercel.json one cron, pgcron.* rows). Waits for push, deploy, CRON_SECRET check. |
+| 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | In progress | 17 Nov: pushed (8976b6ae). The watcher runs only once CRON_SECRET is set in Vercel (not set: Vercel's cron calls answer 401); the daily job is pg_cron's alone. |
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | Open | |
-| 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | In progress | 17 Nov, local: 17 files over 100 KB, 12 over 2,000 lines (brief: 15, 11); 1 of 20 session files. |
+| 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Done | 17 Nov (a0c1757f; D723): session-load.mjs measures what a session loads (1 of 20 samples); files over 100 KB (17) and 2,000 lines (12) only fall. |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Open | |
 | 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
@@ -316,6 +316,7 @@ Change log:
 - 17 Nov 2026: step 1.28 Done (9d9ad9b5, D717): every admin hand-down site's words handed are counted against the words its parts name.
 - 17 Nov 2026: step 1.1 Done (64b35c61, D719): every budget has a row in docs/rules/budgets.md, and the written rules have a budget of their own, checked on every push including Markdown alone.
 - 17 Nov 2026: step 1.15 Done (23a841e2, D722): the morning briefing says when a kind of admin screen with 100 loads or more is not fast at the 75th percentile.
+- 17 Nov 2026: step 1.24 Done (a0c1757f, D723): a script measures what a session loads from its own transcript, and source files over 100 KB or 2,000 lines may only fall in number.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
