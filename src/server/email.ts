@@ -9,6 +9,8 @@ import type { RenderedEmail } from "@/lib/email-layout";
 import { emailSettings, type EmailSettings } from "@/lib/email-settings";
 import { emailClassOf } from "@/lib/personal-data";
 
+import { deskReplyTo } from "./support-reply-to";
+
 type Row = Record<string, unknown>;
 
 /**
@@ -160,6 +162,11 @@ export type OutgoingEmail = {
   /** The store's name, shown as the sender. */
   fromName: string;
   replyTo?: string | null;
+  /**
+   * An email about an order whose replies go to the store's support desk when it takes them (ecosystem plan E1.4, `deskReplyTo()`), in
+   * place of `replyTo`; set only on the shopper emails about orders, returns, exchanges, bookings and box deliveries.
+   */
+  replyToDesk?: boolean;
   /** The same key never sends twice (e.g. `order-confirmation:{orderId}`). */
   idempotencyKey?: string;
   orderId?: string | null;
@@ -265,7 +272,9 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
     await db().execute(sql`update commerce.email_messages set status = 'logged' where id = ${id}::uuid`);
     return "logged";
   }
-  const delivery = await deliver(settings, id, message);
+  // A reply to an email about an order goes to the support desk when it takes them (E1.4); asked only for an email that is sent.
+  const desk = message.replyToDesk && message.storeId ? await deskReplyTo(message.storeId).catch(() => null) : null;
+  const delivery = await deliver(settings, id, desk ? { ...message, replyTo: desk } : message);
   if (delivery.ok) {
     await db().execute(sql`
       update commerce.email_messages set status = 'sent', provider_reference = ${delivery.id}, sent_at = now(), error = null

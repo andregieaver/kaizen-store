@@ -6,6 +6,7 @@ import {
   bareAddress,
   cleanSubject,
   deskAddress,
+  deskTakesReplies,
   displayName,
   inboundDomain,
   messageIdOf,
@@ -19,6 +20,22 @@ import { MESSAGE_MAX } from "./support-rules";
 /** Email into the support desk (D332, `docs/support.md` step 16): routing, machines, and the customer's own words. */
 
 const DOMAIN = "in.example.com";
+
+describe("replies to the store's order emails (ecosystem plan E1.4)", () => {
+  const desk = { mode: "ai_first", formMessages: "inbox", emailKey: "abcdefghijkl0123" };
+
+  it("go to the desk only while it is on, takes customers' messages alone and has its address", () => {
+    expect(deskTakesReplies(desk)).toBe(true);
+    expect(deskTakesReplies({ ...desk, mode: "people" })).toBe(true);
+    expect(deskTakesReplies({ ...desk, mode: "off" })).toBe(false);
+    // Both the inbox and the owner's email would answer the same reply twice: the store's address keeps it.
+    expect(deskTakesReplies({ ...desk, formMessages: "inbox_and_email" })).toBe(false);
+    expect(deskTakesReplies({ ...desk, formMessages: "email" })).toBe(false);
+    expect(deskTakesReplies({ ...desk, formMessages: null })).toBe(false);
+    expect(deskTakesReplies({ ...desk, emailKey: null })).toBe(false);
+    expect(deskTakesReplies({ ...desk, emailKey: "NOT-A-KEY" })).toBe(false);
+  });
+});
 
 describe("addresses", () => {
   it("reads the receiving domain, bare addresses and names", () => {

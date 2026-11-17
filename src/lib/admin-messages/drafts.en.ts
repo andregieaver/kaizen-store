@@ -47,6 +47,8 @@ export const draftsEn = {
     unchecked: " (not yet checked by a person)",
   },
   pages: {
+    /** The deal the draft or quote is linked to (ecosystem plan E1.3), with its status. */
+    fromDeal: "Deal ({status}):",
     orders: "Orders",
     listTitle: "Draft orders",
     listDescription:

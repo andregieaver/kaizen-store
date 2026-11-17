@@ -174,7 +174,7 @@ async function conversations(who: Who): Promise<TimelineEvent[]> {
     email: r.email,
     label: r.subject ?? "",
     status: r.source,
-    href: `${who.base}/support/c/${r.id}`,
+    href: `${who.base}/support?c=${r.id}`,
   }));
 }
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { formatMoney } from "@/lib/money";
 import {
   authorWords,
   durationWords,
@@ -11,8 +13,9 @@ import {
   topicWords,
 } from "@/lib/support-inbox-text";
 import type { StaffConversation, StaffMessage } from "@/server/support";
+import type { ConversationCustomer } from "@/server/support-customer";
 
-import { useAdminText } from "../admin-text";
+import { useAdminLang, useAdminText } from "../admin-text";
 
 import type { ActResult } from "./desk-context";
 import { ToneChart, ToneDot } from "./tone";
@@ -226,11 +229,67 @@ export function SummaryPanel({
   );
 }
 
+/**
+ * The customer's latest orders in the Context column (ecosystem plan E1.1): each order's number, date, status and total, linked to the
+ * order, so "where is my order?" is answered from the conversation. Only for people who may read orders.
+ */
+export function CustomerOrders({
+  store,
+  customer,
+}: {
+  store: string;
+  customer: ConversationCustomer;
+}) {
+  const w = useAdminText("support").context;
+  const statusWords = useAdminText("common").orderStatus;
+  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const orders = customer.orders ?? [];
+  return (
+    <section className="flex flex-col gap-2 text-sm" aria-label={w.latestOrders}>
+      <h3 className="font-semibold">{w.latestOrders}</h3>
+      {orders.length === 0 ? (
+        <p className="text-muted">{w.noOrders}</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {orders.map((o) => (
+            <li key={o.id} className="flex flex-wrap items-baseline gap-x-2">
+              <Link
+                href={`/admin/${store}/orders/${o.id}`}
+                className="rounded-pill font-medium underline"
+              >
+                {fillWords(w.orderNumber, { number: o.number })}
+              </Link>
+              <span className="text-muted">
+                {new Date(o.placedAt).toLocaleDateString(locale, {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </span>
+              <span>{statusWords[o.status]}</span>
+              <span className="tabular-nums">
+                {formatMoney(o.totalMinor, o.currency, locale)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {customer.orderCount !== null && customer.orderCount > orders.length && (
+        <Link
+          href={`/admin/${store}/customers/${customer.id}`}
+          className="rounded-pill text-muted underline"
+        >
+          {fillWords(w.allOrders, { n: String(customer.orderCount) })}
+        </Link>
+      )}
+    </section>
+  );
+}
+
 /** Who the conversation is with and where it came from (the right column's Context tab, 2.4; more comes with later steps). */
 export function ConversationContext({
   conversation,
 }: {
-  conversation: StaffConversation;
+  conversation: StaffConversation & { customer?: ConversationCustomer | null };
 }) {
   const w = useAdminText("support").context;
   const rows: [string, string][] = [
@@ -283,17 +342,28 @@ export function ConversationContext({
           </div>
         ))}
       </dl>
-      {/* A customer with the address it was written from (D382): never proof, nothing is tied, and only for people who may read customers. */}
-      {conversation.addressCustomer && conversation.store && (
-        <p className="text-sm">
-          {w.addressCustomer}.{" "}
-          <Link
-            href={`/admin/${conversation.store.slug}/customers/${conversation.addressCustomer}`}
-            className="rounded-pill underline"
-          >
-            {w.openCustomer}
-          </Link>
-        </p>
+      {/* A signed-in customer's own account (E1.1), or a customer with the address it was written from (D382): never proof, nothing is
+          tied, and only for people who may read customers. */}
+      {conversation.store &&
+        (conversation.customerId || conversation.addressCustomer) && (
+          <p className="text-sm">
+            {conversation.customerId
+              ? w.signedInCustomer
+              : w.addressCustomer}
+            .{" "}
+            <Link
+              href={`/admin/${conversation.store.slug}/customers/${conversation.customerId ?? conversation.addressCustomer}`}
+              className="rounded-pill underline"
+            >
+              {w.openCustomer}
+            </Link>
+          </p>
+        )}
+      {conversation.store && conversation.customer?.orders && (
+        <CustomerOrders
+          store={conversation.store.slug}
+          customer={conversation.customer}
+        />
       )}
       {form && <p className="text-sm text-muted">{w.noAi}</p>}
       {form && !conversation.email && (

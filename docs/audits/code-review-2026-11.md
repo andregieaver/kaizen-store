@@ -83,7 +83,7 @@ This report is a working document: the plan below is the list of work, and this 
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 2.1 | Build *Go to* | FN1 | M | Open | |
+| 2.1 | Build *Go to* | FN1 | M | Open | The page finder is built for the store and the platform (D595, round 1, 14 Nov 2026: ⌘K, Ctrl+K or `/`); the owner's level has none yet, and it finds pages, not records (ecosystem plan E2.2, 17 Nov 2026). |
 | 2.2 | Say where you are | FN7, FN6 (and FN12) | S | Open | |
 | 2.3 | Bring Basic and groups to the platform and the account | FN4 | M | Open | |
 | 2.4 | Do the audit's phase 2 moves | (admin audit, phase 2) | M | Open | |

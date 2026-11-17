@@ -68,6 +68,7 @@ import { orderAttribution } from "@/server/affiliates";
 import { db } from "@/db/client";
 import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { dealOfThing } from "@/server/deals";
 import { orderStockHistory } from "@/server/stock-restock";
 import { componentsText } from "@/lib/bundles";
 import { estimateWeightGrams } from "@/server/bring-shipping";
@@ -113,6 +114,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { einvoiceLines } from "@/server/einvoice-sending";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { featureOn } from "@/lib/store-features";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
 export const metadata: Metadata = { title: "Order" };
@@ -142,7 +144,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // The admin's own locale for the dates the page wrote in English (D312); money and times keep the store's.
   const adminLocale = ADMIN_LANG_FACTS[lang].locale;
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices, deal] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -164,6 +166,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     archiveFactsFor(db(), store.id, [orderId]),
     // The store's tags in use, as suggestions.
     tagSuggestions(store.id),
+    // The deal the order is linked to (ecosystem plan E1.3): only while Deals are on, for people who may read customers.
+    featureOn(store, "sales") && memberCan(member, "customers:read") ? dealOfThing(store.id, "order", orderId) : Promise.resolve(null),
   ]);
   // Whether its items can be changed now, and if not why, in words (D174 2.2: copied, unpaid, sent and the rest included).
   const editability = order ? await orderEditability(store.id, orderId) : null;
@@ -964,6 +968,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <p className="mt-2">
                 {order.company.name}
                 <span className="block text-muted">{fillWords(w.organisationNumber, { number: order.company.number })}</span>
+              </p>
+            )}
+            {deal && (
+              <p className="mt-2" data-order-deal>
+                {fillWords(w.fromDeal, { status: adminText(lang, "deals").statuses[deal.status] })}{" "}
+                <Link href={`/admin/${store.slug}/deals/${deal.id}`} className="underline">
+                  {deal.title}
+                </Link>
               </p>
             )}
             {order.companyPurchase.location && <p className="mt-1">{fillWords(w.forLocation, { location: order.companyPurchase.location })}</p>}

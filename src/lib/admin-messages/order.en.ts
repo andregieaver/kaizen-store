@@ -152,6 +152,8 @@ export const orderEn = {
     customer: "Customer",
     notKnownYet: "Not known until payment.",
     organisationNumber: "Organisation number {number}",
+    /** The deal the order is linked to (ecosystem plan E1.3), with its status. */
+    fromDeal: "Deal ({status}):",
     /** A company's purchase (D321 C.2). */
     poNumber: "PO number {po}",
     checkoutAnswers: "Answers at checkout",

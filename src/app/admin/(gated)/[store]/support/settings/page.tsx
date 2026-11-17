@@ -52,6 +52,7 @@ export default async function SupportSettingsPage({
           chatHref={`/admin/${slug}/chat`}
           openCount={open}
           formChoice
+          takesEmail={emailAddress !== null}
         />
         <SupportEmailCard address={emailAddress} mode={settings.mode} keyRefused={keyRefused} words={t.email} />
       </div>

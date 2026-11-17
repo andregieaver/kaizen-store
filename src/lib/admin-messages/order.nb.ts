@@ -143,6 +143,7 @@ export const orderNb: OrderMessages = {
     customer: "Kunde",
     notKnownYet: "Ikke kjent før betaling.",
     organisationNumber: "Organisasjonsnummer {number}",
+    fromDeal: "Avtale ({status}):",
     poNumber: "Innkjøpsordrenummer {po}",
     checkoutAnswers: "Svar i kassen",
     answerYes: "Ja",

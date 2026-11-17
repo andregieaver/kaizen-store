@@ -412,6 +412,7 @@ export async function sendOrderConfirmation(
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     // Staff can send it again; the automatic one goes once.
     idempotencyKey,
     orderId,
@@ -536,6 +537,7 @@ async function orderNotice(
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     idempotencyKey: key,
     orderId,
     attachments: [...(built.attachments ?? []), ...(carried?.attachments ?? [])],
@@ -1267,6 +1269,7 @@ async function bookingEmail(
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     // Once per booking and change: a booking moved twice gets two emails.
     idempotencyKey: `${kind}:${bookingId}:${line.booking.sequence}`,
     orderId: order.id,
@@ -1510,6 +1513,7 @@ export async function sendDeliveryStarted(storeId: string, listId: string): Prom
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     idempotencyKey: `delivery-started:${listId}`,
   });
 }
@@ -1563,6 +1567,7 @@ export async function sendDeliveryPrepared(storeId: string, listId: string, date
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     idempotencyKey: `delivery-prepared:${listId}:${date}`,
     orderId: order?.id ?? null,
   });
@@ -1598,6 +1603,7 @@ export async function sendDeliveryCard(storeId: string, orderId: string): Promis
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     orderId,
   });
 }

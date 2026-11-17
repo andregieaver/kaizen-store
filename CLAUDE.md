@@ -458,7 +458,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
 - A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
-- Working plans: `docs/audits/psi-followups.md` (Open section), `docs/audits/code-review-2026-11.md` and
- `docs/audits/bloat-review-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.
+- Working plans in `docs/audits/`: `psi-followups.md` (Open), `code-review-2026-11.md`, `bloat-review-2026-11.md` and
+ `ecosystem-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.
 - Claim a decision's number with `node scripts/claim-decision.mjs "title"` before citing it, never from the file.
 - Searches skip dated reports, evidence folders and `supabase/archive`: name the path to search one.

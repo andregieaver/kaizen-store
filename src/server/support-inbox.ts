@@ -8,6 +8,7 @@ import { aiAbilities } from "./ai";
 import { INBOX_TABS, conversationChannel, deskChannels, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
 import { memberCan } from "./permissions";
 import { deskAgents } from "./support-agent";
+import { conversationCustomer, type ConversationCustomer } from "./support-customer";
 import type { StaffDesk } from "./support-desk";
 
 /**
@@ -84,6 +85,11 @@ export type ConversationFeed = StaffConversation & {
   channel: string;
   /** Whether the person may have messages and replies translated by AI (step 13): they may answer, and the desk has a text model. */
   translate: boolean;
+  /**
+   * The customer and their latest orders (ecosystem plan E1.1), only on the first answer (`after` 0) and only for people who may read
+   * customers; absent on later polls, where the inbox keeps what it has.
+   */
+  customer?: ConversationCustomer | null;
 };
 
 /** One conversation for staff after `after`; looking at it counts as read up to its last message. */
@@ -101,10 +107,17 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
   const mode = settings?.mode ?? "off";
   // A form's message is read by people only (D382): no partner and no translation by AI.
   const form = conversation.source === "form";
+  const readsCustomers = Boolean(desk.holder && memberCan(desk.holder, "customers:read"));
+  const customer =
+    after === 0 && readsCustomers && desk.desk.storeId
+      ? await conversationCustomer(desk.desk.storeId, conversation, Boolean(desk.holder && memberCan(desk.holder, "orders:read")))
+      : undefined;
   return {
     ...conversation,
-    // The customer with the address it was written from, only for people who may read customers.
-    addressCustomer: desk.holder && memberCan(desk.holder, "customers:read") ? conversation.addressCustomer : null,
+    // The customer with the address it was written from, and the signed-in account, only for people who may read customers.
+    addressCustomer: readsCustomers ? conversation.addressCustomer : null,
+    customerId: readsCustomers ? conversation.customerId : null,
+    ...(customer === undefined ? {} : { customer }),
     me: desk.account.id,
     canWrite: desk.canWrite,
     mode,

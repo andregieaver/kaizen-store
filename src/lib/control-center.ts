@@ -89,6 +89,8 @@ export type StoreFigures = {
   editRefundsOwed?: number;
   /** Support conversations waiting for a person (D216, step 14), only when some do and only for a member who may read the desk. A count only. */
   supportWaiting?: number;
+  /** Requests the chat assistant passed to the team, waiting for a decision (ecosystem plan E1.7). */
+  supportRequests?: number;
   /** Hard limits of its plan the store has used up this month (D314), only when one is: for its owner. */
   limitsReached?: number;
   /**
@@ -204,6 +206,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     }
     if (s.supportWaiting && s.supportWaiting > 0) {
       items.push({ text: say(w.supportWaiting, { n: s.supportWaiting }), href: `${base}/support`, action: a.answer, urgent: true });
+    }
+    // A refund, a cancellation or a new address the chat assistant passed on (E1.7): the customer was told someone will decide.
+    if (s.supportRequests && s.supportRequests > 0) {
+      items.push({ text: count(s.supportRequests, w.supportRequests), href: `${base}/support/requests`, action: a.openRequests });
     }
     // Reviews waiting to be checked (D301 G3): not urgent, but a buyer is waiting to see theirs shown.
     if (s.reviewsWaiting && s.reviewsWaiting > 0) {

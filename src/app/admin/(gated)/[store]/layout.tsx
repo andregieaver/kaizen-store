@@ -25,7 +25,8 @@ import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 import { waitingCount } from "@/server/support";
-import { memberDesk } from "@/server/support-desk";
+import { openRequestCount } from "@/server/support-actions";
+import { memberDesk, type Desk } from "@/server/support-desk";
 import { starterOfStore } from "@/server/store-starters";
 import { pausedAfter } from "@/server/store-trial";
 
@@ -83,8 +84,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   // A store that is not open (suspended or closed, D171) offers only what a member may still do there: its orders, customers and analytics.
   const open = store.status === "active";
   const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
-  // Support (D216): the number of conversations waiting for a person, on the Support tab of those who may read it.
-  const waiting = memberCan(member, "support:read") ? await waitingCount([memberDesk(member).desk]) : 0;
+  // Support (D216): the conversations waiting for a person, and the requests the chat assistant passed to the team (ecosystem plan E1.7),
+  // on the Support tab of those who may read it.
+  const waiting = memberCan(member, "support:read") ? await supportWaiting(memberDesk(member).desk) : 0;
   // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
   const starter = store.starter ? await starterOfStore(store.id) : null;
   // A store whose free trial or plan ended with no plan running was made private again (D420): its members are told why, and how to open it.
@@ -232,4 +234,10 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       </AdminFrame>
     </AdminViewProvider>
   );
+}
+
+/** What waits for the store's people in Support: conversations waiting for a person and the requests the chat assistant passed on. */
+async function supportWaiting(desk: Desk): Promise<number> {
+  const [conversations, requests] = await Promise.all([waitingCount([desk]), openRequestCount(desk)]);
+  return conversations + requests;
 }

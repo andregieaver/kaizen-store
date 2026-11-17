@@ -7,7 +7,7 @@ A built-in alternative to Microsoft Clarity and Hotjar, for store owners and for
 - **heatmaps**: where people click, how far down the page they scroll (a percentage), and where they look (attention);
 - **all of it per version of a running A/B test** (D148, `docs/ab-testing.md`).
 
-Asked for by the owner on 16 November 2026. Status: **planned, nothing built.**
+Asked for by the owner on 16 November 2026. Status: **built**, all 14 steps (D656); the sections below are the plan as it was written.
 
 The research behind it was done the same day: five readings of this codebase, and what vendors and open-source tools publish about
 their definitions and techniques, plus the law in Norway and the EU (sources in section 17). The plan was then reviewed adversarially

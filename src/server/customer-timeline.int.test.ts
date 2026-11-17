@@ -130,7 +130,7 @@ describe("a person's timeline", () => {
     expect(note).toMatchObject({ excerpt: "Call back about the invoice", href: null });
     expect(note?.author).toBeTruthy();
     expect(events.find((e) => e.what === "quote_requested")).toMatchObject({ excerpt: "Price for 40 totes?" });
-    expect(events.find((e) => e.what === "conversation_started")?.href).toMatch(new RegExp(`^/admin/${store.slug}/support/c/`));
+    expect(events.find((e) => e.what === "conversation_started")?.href).toMatch(new RegExp(`^/admin/${store.slug}/support\\?c=[0-9a-f-]{36}$`));
   });
 
   it("links a withdrawal to its order", async () => {

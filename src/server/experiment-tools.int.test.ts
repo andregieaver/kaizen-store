@@ -139,8 +139,11 @@ describe("the AI manager's A/B test tools (D148)", () => {
       who_takes_part: string;
       how_long: unknown;
       paid_orders_last_30_days: number;
+      where_visitors_get_stuck: unknown;
     };
     const about = suggest.can_be_tested.find((t) => t.target === "om-oss");
+    // No heatmaps measured (E1.6): it says so, and how to switch them on, rather than ranking nothing.
+    expect(suggest.where_visitors_get_stuck).toMatch(/Heatmaps are off|No page has enough/);
     expect(about).toMatchObject({ kind: "page" });
     expect(about!.blocks).toEqual(expect.arrayContaining([expect.objectContaining({ id: "heading-about", kind: "heading", text: "Om Kaizena Flow Demo" })]));
     expect(suggest.room_for_more).toBe(5);

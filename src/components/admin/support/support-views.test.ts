@@ -49,6 +49,7 @@ const conversation = (over: Partial<StaffConversation> = {}): StaffConversation 
   who: "Visitor 6F1E",
   email: null,
   signedIn: false,
+  customerId: null,
   locale: "nb-NO",
   market: "no",
   pagePath: "/s/demo/p/lamp",
@@ -157,6 +158,65 @@ describe("the conversation (C19)", () => {
     expect(out).toContain("Demo store");
     expect(out).toContain("/s/demo/p/lamp");
     expect(out).toContain("nb-NO");
+    expect(out).not.toContain("Open the customer");
+    expect(out).not.toContain("Latest orders");
+  });
+
+  it("links a signed-in customer and lists their latest orders (E1.1)", () => {
+    const customerId = "0b6f7c1e-5a4d-4c3b-9e8f-7a6b5c4d3e2f";
+    const out = html(
+      h(ConversationContext, {
+        conversation: {
+          ...conversation({ signedIn: true, customerId }),
+          customer: {
+            id: customerId,
+            verified: true,
+            orderCount: 5,
+            orders: [
+              { id: "11111111-2222-4333-8444-555555555555", number: "1042", status: "fulfilled", placedAt: "2026-10-12T09:00:00Z", totalMinor: 49900, currency: "NOK" },
+              { id: "66666666-7777-4888-8999-aaaaaaaaaaaa", number: "1038", status: "paid", placedAt: "2026-10-02T09:00:00Z", totalMinor: 12950, currency: "NOK" },
+            ],
+          },
+        },
+      }),
+    );
+    expect(out).toContain("Signed in as a customer of the store");
+    expect(out).toContain(`href="/admin/demo/customers/${customerId}"`);
+    expect(out).toContain("Latest orders");
+    expect(out).toContain('href="/admin/demo/orders/11111111-2222-4333-8444-555555555555"');
+    expect(out).toContain("Order 1042");
+    expect(out).toContain("Sent");
+    expect(out).toContain("Paid, to send");
+    expect(out).toContain("All 5 orders");
+  });
+
+  it("keeps an address match marked as not verified, and says when there are no orders", () => {
+    const customerId = "0b6f7c1e-5a4d-4c3b-9e8f-7a6b5c4d3e2f";
+    const out = html(
+      h(ConversationContext, {
+        conversation: {
+          ...conversation({ source: "email", email: "kari@example.com", addressCustomer: customerId }),
+          customer: { id: customerId, verified: false, orderCount: 0, orders: [] },
+        },
+      }),
+    );
+    expect(out).toContain("A customer has this address: not verified");
+    expect(out).toContain("No orders yet.");
+    expect(out).not.toContain("All 0 orders");
+  });
+
+  it("shows no orders to a person who may not read them", () => {
+    const customerId = "0b6f7c1e-5a4d-4c3b-9e8f-7a6b5c4d3e2f";
+    const out = html(
+      h(ConversationContext, {
+        conversation: {
+          ...conversation({ signedIn: true, customerId }),
+          customer: { id: customerId, verified: true, orderCount: null, orders: null },
+        },
+      }),
+    );
+    expect(out).toContain("Open the customer");
+    expect(out).not.toContain("Latest orders");
   });
 });
 

@@ -344,7 +344,8 @@ and never a price. Changes on a busy store go through the same plan, revision an
   domain*.
 * **Setup.** `setup_progress` stops listing a domain's DNS as the owner's only step when the domain is ours: the tools do it. For a domain
   elsewhere it names the one step, or Domain Connect.
-* **Platform AI manager.** `domains_overview` is read-only in `PLATFORM_TOOLS`: registrations, failures and margins.
+* **Platform AI manager.** `domains_overview`, read-only in `PLATFORM_TOOLS` (registrations, failures and margins), is planned and not built
+  (checked 17 November 2026, `docs/audits/ecosystem-2026-11.md`).
 
 ## 8. Moving away, made easy
 

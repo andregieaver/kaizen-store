@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -11,6 +12,7 @@ import { sql } from "drizzle-orm";
 import { draftProblemText } from "@/lib/draft-order";
 import { getOrderSettings, mayRecordOutsidePayment } from "@/server/order-settings";
 import { previewDraft } from "@/server/draft-orders";
+import { dealOfThing } from "@/server/deals";
 import { mayFindDraftCustomers, memberCan, requirePermission } from "@/server/permissions";
 import { listVatCategories } from "@/server/vat-categories";
 
@@ -61,11 +63,13 @@ export default async function DraftPage({ params }: Props) {
 async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string }) {
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
-  const [preview, settings, categories, mayRecordOutside] = await Promise.all([
+  const [preview, settings, categories, mayRecordOutside, deal] = await Promise.all([
     previewDraft(store.id, draftId),
     getOrderSettings(store.id),
     listVatCategories(),
     mayRecordOutsidePayment(member),
+    // The deal the draft or quote is linked to (ecosystem plan E1.3): only while Deals are on, for people who may read customers.
+    featureOn(store, "sales") && memberCan(member, "customers:read") ? dealOfThing(store.id, "draft", draftId) : Promise.resolve(null),
   ]);
   if (!preview) notFound();
   const { draft } = preview;
@@ -87,6 +91,14 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
       <PageHeader back={{ href: base, label: words.pages.listTitle }} title={fillWords(words.pages.draftTitle, { number: draft.number })}
         meta={[draft.source === "quote" && draft.status === "open" ? (draft.quoteDeclinedAt ? words.list.quoteDeclined : words.list.quoteRequested) : words.status[draft.status]]}
       />
+      {deal && (
+        <p className="text-sm" data-draft-deal>
+          {fillWords(words.pages.fromDeal, { status: adminText(lang, "deals").statuses[deal.status] })}{" "}
+          <Link href={`/admin/${store.slug}/deals/${deal.id}`} className="underline">
+            {deal.title}
+          </Link>
+        </p>
+      )}
       <DraftScreen
         editable={draft.status === "open" && canWrite}
         editor={{
