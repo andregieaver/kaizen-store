@@ -17,6 +17,7 @@ import {
   supportPartnerAction,
   supportPresenceAction,
 } from "./actions";
+import { carryOutRequestAction, decideRequestAction } from "./requests/actions";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
@@ -53,6 +54,13 @@ export default async function SupportInboxPage({
       partner: staff.canWrite ? supportPartnerAction.bind(null, slug) : null,
       act: staff.canWrite
         ? { byStore: false, run: supportActAction.bind(null, slug) }
+        : null,
+      // Requests carried out or decided above the reply box (ecosystem plan E2.7); carrying out asks `orders:write` too.
+      requests: staff.canWrite
+        ? {
+            carryOut: carryOutRequestAction.bind(null, slug),
+            decide: decideRequestAction.bind(null, slug),
+          }
         : null,
     },
   };

@@ -1,27 +1,29 @@
 import Link from "next/link";
 
-import {
-  ActionForm,
-  SubmitButton,
-  type FormState,
-} from "@/components/admin/action-form";
+import type { FormState } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import {
   supportEn,
   type SupportMessages,
 } from "@/lib/admin-messages/support.en";
 import type { RequestRow } from "@/server/support-actions";
+import type { RequestChoice } from "@/server/support-carry-out";
+
+import { RequestActions } from "./request-actions";
 
 /**
  * The desk's staff requests (D216, `docs/support.md` 2.4, step 10): what the AI passed to a person, with the conversation, the order and
- * the customer. A person does the work in the store's own screens (the order page), then marks it **Done** or **Declines** it, with an
- * optional note that reaches the customer. The decided ones are listed too, newest first.
+ * the customer. A request the order page's own function can do is carried out here (ecosystem plan E2.7, D713: a cancellation, an address
+ * change, a refund) for a person who may change orders; anything else is done in the store's own screens, then marked **Done**, or it is
+ * **Declined**, with an optional note that reaches the customer. The decided ones are listed too, newest first.
  */
 export function RequestsView({
   rows,
   which,
   base,
   decide,
+  carryOut = null,
+  choices = {},
   now,
   words = supportEn,
 }: {
@@ -33,6 +35,10 @@ export function RequestsView({
   decide:
     | ((id: string) => (state: FormState, form: FormData) => Promise<FormState>)
     | null;
+  /** The bound carry-out per request, for someone who may decide requests and change orders. */
+  carryOut?: ((id: string) => (state: FormState, form: FormData) => Promise<FormState>) | null;
+  /** What each open request offers (`requestChoices()`). */
+  choices?: Record<string, RequestChoice>;
   now: Date;
   words?: SupportMessages;
 }) {
@@ -127,34 +133,19 @@ export function RequestsView({
                     : ""}
                 </p>
               ) : (
-                decide && (
-                  <ActionForm
-                    action={decide(row.id)}
-                    className="flex flex-col gap-2"
-                  >
-                    <label className="flex flex-col gap-1 text-sm">
-                      {w.note}
-                      <textarea
-                        name="note"
-                        maxLength={500}
-                        rows={2}
-                        className="rounded-panel border border-line bg-card px-3 py-2"
-                      />
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <SubmitButton name="decision" value="done">
-                        {w.done}
-                      </SubmitButton>
-                      <SubmitButton
-                        name="decision"
-                        value="declined"
-                        variant="secondary"
-                      >
-                        {w.decline}
-                      </SubmitButton>
-                    </div>
-                    <p className="text-xs text-muted">{w.help}</p>
-                  </ActionForm>
+                (decide || carryOut) && (
+                  <RequestActions
+                    request={{
+                      id: row.id,
+                      kind: row.kind,
+                      orderNumber: row.orderNumber,
+                      orderId: row.orderId,
+                    }}
+                    choice={choices[row.id] ?? null}
+                    base={base}
+                    carryOut={carryOut ? carryOut(row.id) : null}
+                    decide={decide ? decide(row.id) : null}
+                  />
                 )
               )}
             </li>

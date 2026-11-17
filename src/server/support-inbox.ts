@@ -1,5 +1,6 @@
 import "server-only";
 
+import { changesRequests } from "@/lib/support-carry-out";
 import type { SupportMode } from "@/lib/support-rules";
 import { KAIZEN_TOPICS, STORE_TOPICS } from "@/lib/support-summary";
 import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
@@ -8,6 +9,7 @@ import { aiAbilities } from "./ai";
 import { INBOX_TABS, conversationChannel, deskChannels, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
 import { memberCan } from "./permissions";
 import { deskAgents } from "./support-agent";
+import type { ConversationRequest } from "./support-carry-out";
 import { conversationCustomer, type ConversationCustomer } from "./support-customer";
 import type { StaffDesk } from "./support-desk";
 
@@ -90,6 +92,11 @@ export type ConversationFeed = StaffConversation & {
    * customers; absent on later polls, where the inbox keeps what it has.
    */
   customer?: ConversationCustomer | null;
+  /**
+   * The conversation's open requests to staff, with what each offers the person (ecosystem plan E2.7): on the first answer, and again on a
+   * poll whose new messages made or decided one; absent otherwise, where the inbox keeps what it has. A store's desk only.
+   */
+  requests?: ConversationRequest[];
 };
 
 /** One conversation for staff after `after`; looking at it counts as read up to its last message. */
@@ -112,8 +119,14 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
     after === 0 && readsCustomers && desk.desk.storeId
       ? await conversationCustomer(desk.desk.storeId, conversation, Boolean(desk.holder && memberCan(desk.holder, "orders:read")))
       : undefined;
+  // Loaded only when wanted: the poll's route does not carry the order functions otherwise.
+  const requests =
+    desk.desk.storeId && (after === 0 || conversation.messages.some(changesRequests))
+      ? await import("./support-carry-out").then((m) => m.conversationRequests(desk, id))
+      : undefined;
   return {
     ...conversation,
+    ...(requests === undefined ? {} : { requests }),
     // The customer with the address it was written from, and the signed-in account, only for people who may read customers.
     addressCustomer: readsCustomers ? conversation.addressCustomer : null,
     customerId: readsCustomers ? conversation.customerId : null,
