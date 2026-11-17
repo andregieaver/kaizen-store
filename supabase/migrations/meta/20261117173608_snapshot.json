@@ -1,6 +1,6 @@
 {
-  "id": "32d95bea-de40-4972-aeca-3161d8170ec7",
-  "prevId": "ebf6aba7-b6ad-46aa-a09d-76faed6da337",
+  "id": "d9d3acc1-5ca0-4f07-892d-d5d5b986a28b",
+  "prevId": "32d95bea-de40-4972-aeca-3161d8170ec7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -58106,7 +58106,7 @@
       "checkConstraints": {
         "platform_readings_kind": {
           "name": "platform_readings_kind",
-          "value": "\"commerce\".\"platform_readings\".\"kind\" in ('statement', 'table', 'schema')"
+          "value": "\"commerce\".\"platform_readings\".\"kind\" in ('statement', 'table', 'schema', 'index', 'job', 'ai')"
         }
       },
       "isRLSEnabled": false

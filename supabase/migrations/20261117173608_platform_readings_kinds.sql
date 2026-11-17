@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."platform_readings" DROP CONSTRAINT "platform_readings_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."platform_readings" ADD CONSTRAINT "platform_readings_kind" CHECK ("commerce"."platform_readings"."kind" in ('statement', 'table', 'schema', 'index', 'job', 'ai'));

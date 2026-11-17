@@ -3025,8 +3025,10 @@ export const ownSpeedSamples = commerce.table(
  * One day's reading of Postgres's own statistics (bloat review step 0.2): for kind table, name is a commerce table and figures hold rows,
  * bytes, seq_scan, seq_tup_read, idx_scan, inserted, updated, deleted; for kind schema, name is a schema and figures hold bytes and tables;
  * for kind statement, name is the statement's queryid and figures hold calls, total_ms, mean_ms, rows and top (time, calls or both), with the
- * statement's text, values already stripped by Postgres, cut at 2,000 characters. No person, store or account. Written only by
- * src/server/production-reading.ts, deleted after 90 days.
+ * statement's text, values already stripped by Postgres, cut at 2,000 characters; for kind index, name is '<table>.<index>' and figures hold
+ * scans and backs_constraint; for kind job, name is the ledger's job key and figures hold runs and worked (null until step 3.3); for kind ai,
+ * name is '<feature>.<figure>' and figures hold value, bar and days_over (written from step 1.19's follow-up on). No person, store or
+ * account. Written only by src/server/production-reading.ts, deleted after 90 days.
  */
 export const platformReadings = commerce.table(
   "platform_readings",
@@ -3041,7 +3043,7 @@ export const platformReadings = commerce.table(
   },
   (t) => [
     uniqueIndex("platform_readings_day_kind_name_key").on(t.day, t.kind, t.name),
-    check("platform_readings_kind", sql`${t.kind} in ('statement', 'table', 'schema')`),
+    check("platform_readings_kind", sql`${t.kind} in ('statement', 'table', 'schema', 'index', 'job', 'ai')`),
   ],
 );
 
