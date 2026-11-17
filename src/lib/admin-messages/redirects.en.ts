@@ -119,6 +119,11 @@ export const redirectsEn = {
     title: "Pages not found",
     intro: "The addresses shoppers and search engines asked for that this store did not have. Fix the ones that matter with a redirect to the page they were looking for.",
     period: "Period",
+    phone: {
+      lead: "Addresses people asked for that this store does not have.",
+      read: "Read",
+      close: "Close",
+    },
     window: "Last {n} days",
     showCovered: "Show the addresses that have a redirect",
     hideCovered: "Hide the addresses that have a redirect",
@@ -148,6 +153,7 @@ export const redirectsEn = {
     byRobots: ", {n} by robots",
     suggestionKinds: { product: "Product", category: "Category", tag: "Tag", page: "Page", article: "Article" },
     table: {
+      more: "More",
       caption: "Addresses that were asked for and not found, most asked first",
       address: "Address",
       requests: "Requests",

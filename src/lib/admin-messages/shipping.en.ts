@@ -146,6 +146,7 @@ export const shippingEn = {
     localTitle: "Local delivery",
     localDescription:
       "Deliver orders yourself to customers nearby. Customers give their postal code at checkout and are offered the cheapest area that covers it, with a note for the driver. Mark an order Out for delivery to email them, and Delivered when it is there.",
+    localLead: "Deliver orders yourself to customers nearby.",
     office: "Office",
   },
   /** One country's methods (`MethodsListView`). */
@@ -309,6 +310,13 @@ export const shippingEn = {
   /** Local delivery (`LocalView`, `AreaForm`). */
   local: {
     checkTitle: "Check a postal code",
+    phone: {
+      checkSub: "Which areas cover it",
+      check: "Check",
+      noteTitle: "How distances are measured",
+      read: "Read",
+      close: "Close",
+    },
     checkDescription: "Which areas cover a postal code, before anything is saved.",
     country: "Country",
     postalCode: "Postal code",
@@ -334,6 +342,13 @@ export const shippingEn = {
     fromBasket: ", from a basket of {amount}",
     freeFrom: ", free from {amount}",
     form: {
+      phone: {
+        more: "More choices",
+        change: "Change",
+        done: "Done",
+        offered: "offered",
+        notOffered: "not offered",
+      },
       name: "Name, as shoppers see it",
       namePlaceholder: "Delivery in town",
       country: "Country",

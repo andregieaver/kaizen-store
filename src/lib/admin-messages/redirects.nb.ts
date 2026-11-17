@@ -115,6 +115,11 @@ export const redirectsNb: RedirectsMessages = {
     title: "Sider som ikke ble funnet",
     intro: "Adressene kunder og søkemotorer spurte etter som denne butikken ikke hadde. Rett opp de som betyr noe, med en omdirigering til siden de lette etter.",
     period: "Periode",
+    phone: {
+      lead: "Adresser folk spurte etter som denne butikken ikke har.",
+      read: "Les",
+      close: "Lukk",
+    },
     window: "Siste {n} dager",
     showCovered: "Vis adressene som har en omdirigering",
     hideCovered: "Skjul adressene som har en omdirigering",
@@ -144,6 +149,7 @@ export const redirectsNb: RedirectsMessages = {
     byRobots: ", {n} fra roboter",
     suggestionKinds: { product: "Produkt", category: "Kategori", tag: "Stikkord", page: "Side", article: "Artikkel" },
     table: {
+      more: "Mer",
       caption: "Adresser det ble spurt etter og som ikke ble funnet, de mest etterspurte først",
       address: "Adresse",
       requests: "Forespørsler",

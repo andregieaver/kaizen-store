@@ -31,6 +31,14 @@ export const notificationsNb: NotificationsMessages = {
     notifyWord: "Varsle kunden",
     staffAlerts: "Varsler til ansatte",
     readOnly: "Du kan se butikkens e-poster, men ikke endre dem.",
+    phone: {
+      open: "Åpne",
+      close: "Lukk",
+      setUp: "Sett opp",
+      change: "Endre",
+      shared: "Fra Kaizena Flows adresse med navnet ditt",
+      noneOffered: "ingen tilbys ennå",
+    },
     addsTitle: "Dette legger Kaizena Flow alltid til",
     addsDescription:
       "Ordene dine erstatter emnet, overskriften og den første teksten i en e-post. Resten er Kaizena Flows, så ingenting som loven eller pengene krever, kan fjernes.",

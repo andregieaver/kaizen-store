@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, secondary } from "@/components/admin/data/ui";
 import { NotFoundTable } from "@/components/admin/redirects/not-found-table";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { SelectNav } from "@/components/admin/select-nav";
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { NOT_FOUND_SCREEN_ROWS, NOT_FOUND_WINDOWS } from "@/lib/data-limits";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -35,7 +37,7 @@ export default async function NotFoundReportPage({ params, searchParams }: Props
   const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
-      <RedirectsHead slug={store.slug} active="report" title={w.report.title} intro={w.report.intro} words={w} />
+      <RedirectsHead slug={store.slug} active="report" title={w.report.title} intro={<><span className="sm:hidden">{w.report.phone.lead}</span><span className="max-sm:hidden">{w.report.intro}</span></>} words={w} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -66,13 +68,20 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   };
   return (
     <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
+      {/* On a phone (round 41, D737) the period is one choice. */}
+      <SelectNav
+        label={r.period}
+        hideLabel
+        className="sm:hidden"
+        options={WINDOW_ORDER.map((d) => ({ label: windowWords(d, w), href: reportHref(base, { days: d, covered: showCovered, ignored: showIgnored }), current: days === d }))}
+      />
       <nav aria-label={r.period} className="flex flex-wrap items-center gap-2 text-sm">
         {WINDOW_ORDER.map((d) => (
-          <Link key={d} href={reportHref(base, { days: d, covered: showCovered, ignored: showIgnored })} aria-current={days === d ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
+          <Link key={d} href={reportHref(base, { days: d, covered: showCovered, ignored: showIgnored })} aria-current={days === d ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium max-sm:hidden">
             {windowWords(d, w)}
           </Link>
         ))}
-        <span className="mx-2 text-muted" aria-hidden="true">
+        <span className="mx-2 text-muted max-sm:hidden" aria-hidden="true">
           |
         </span>
         <Link href={reportHref(base, { days, covered: !showCovered, ignored: showIgnored })} className="underline underline-offset-2">
@@ -111,6 +120,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             />
           )}
           {report.rows.length >= NOT_FOUND_SCREEN_ROWS && <p className={hint}>{fillWords(r.mostAsked, { n: NOT_FOUND_SCREEN_ROWS.toLocaleString(locale) })}</p>}
+          <PhoneRows>
+          <PhoneRow flat last title={r.howToRead} change={r.phone.read} done={r.phone.close}>
           <Notice title={r.howToRead}>
             <ul className="list-disc pl-5">
               <li>
@@ -121,6 +132,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
               <li>{r.suggestions}</li>
             </ul>
           </Notice>
+          </PhoneRow>
+          </PhoneRows>
         </>
       )}
     </AdminTextScope>

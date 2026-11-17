@@ -38,7 +38,7 @@ export default async function ShippingLocalPage({ params }: PageProps<"/admin/[s
       <PageHeader
         back={{ href: base, label: all.pages.back }}
         title={all.pages.localTitle}
-        description={all.pages.localDescription}
+        description={<><span className="sm:hidden">{all.pages.localLead}</span><span className="max-sm:hidden">{all.pages.localDescription}</span></>}
       />
       <LocalView
         markets={store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.nativeCurrency }))}

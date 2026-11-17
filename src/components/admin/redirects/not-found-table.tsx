@@ -39,10 +39,11 @@ export type ReportActions = {
 export function NotFoundTable({ rows, timeZone, actions, canWrite }: { rows: MissingRow[]; timeZone: string; actions: ReportActions; canWrite: boolean }) {
   const t = useAdminText("redirects").report.table;
   return (
+    // On a phone (round 41, D737) each address is a line: the address and its requests, then the best redirect as one press; the rest under More.
     <div className={tableShell}>
-      <table className="w-full text-sm">
+      <table className="w-full text-sm max-sm:block">
         <caption className="sr-only">{t.caption}</caption>
-        <thead>
+        <thead className="max-sm:hidden">
           <tr className="border-b border-line">
             <th scope="col" className={th}>
               {t.address}
@@ -61,7 +62,7 @@ export function NotFoundTable({ rows, timeZone, actions, canWrite }: { rows: Mis
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="max-sm:block">
           {rows.map((row) => (
             <MissingRowView key={row.path} row={row} timeZone={timeZone} actions={actions} canWrite={canWrite} />
           ))}
@@ -82,8 +83,10 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
   const [target, setTarget] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [more, setMore] = useState(false);
   const [pending, start] = useTransition();
   const ignored = hiddenNow ?? row.ignored;
+  const status = done ? t.justNow : row.covered ? t.yes : ignored ? t.hidden : t.no;
 
   const redirect = (to: string) =>
     start(async () => {
@@ -111,16 +114,17 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
     });
 
   return (
-    <tr className="border-b border-line last:border-0" aria-busy={pending}>
-      <td className={td}>
-        <code className="break-all text-xs">{row.path}</code>
+    <tr className="border-b border-line last:border-0 max-sm:flex max-sm:flex-wrap max-sm:items-baseline max-sm:gap-x-3 max-sm:px-3 max-sm:py-2" aria-busy={pending}>
+      <td className={`${td} max-sm:block max-sm:min-w-0 max-sm:flex-1 max-sm:p-0`}>
+        <code className="break-all text-xs max-sm:text-sm">{row.path}</code>
       </td>
-      <td className={td}>
+      <td className={`${td} max-sm:block max-sm:p-0 max-sm:text-xs max-sm:text-ink-2`}>
         <span className="whitespace-nowrap">{requestsWords(row.requests, row.crawlers, w, locale)}</span>
       </td>
       <td className={`${td} hidden md:table-cell`}>{momentText(row.lastAsked, timeZone, locale)}</td>
-      <td className={td}>{done ? t.justNow : row.covered ? t.yes : ignored ? t.hidden : t.no}</td>
-      <td className={td}>
+      <td className={`${td} max-sm:hidden`}>{status}</td>
+      <td className={`${td} max-sm:block max-sm:basis-full max-sm:px-0 max-sm:pb-0 max-sm:pt-1.5`}>
+        {(row.covered || ignored) && !done && <span className="text-xs text-ink-2 sm:hidden">{status}</span>}
         {done ? (
           <p className="text-sm">
             {t.redirectsTo} <code className="break-all text-xs">{done}</code>.
@@ -129,12 +133,12 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
           <div className="flex flex-col gap-2">
             {row.suggestions.length > 0 && (
               <ul className="flex flex-col gap-1" aria-label={fillWords(t.suggestedFor, { path: row.path })}>
-                {row.suggestions.map((s) => (
-                  <li key={s.path}>
+                {row.suggestions.map((s, i) => (
+                  <li key={s.path} className={i > 0 && !more ? "max-sm:hidden" : ""}>
                     <button type="button" disabled={pending} onClick={() => redirect(s.path)} className={`${primary} !min-h-9 !px-3 !text-xs`} aria-label={`${suggestionWords(s.path, w)} (${suggestionKind(s.kind, w)}: ${s.title})`}>
                       {suggestionWords(s.path, w)}
                     </button>
-                    <span className={`${hint} ml-2`}>
+                    <span className={`${hint} ml-2 ${more ? "" : "max-sm:hidden"}`}>
                       {suggestionKind(s.kind, w)}: {s.title}
                     </span>
                   </li>
@@ -163,7 +167,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
                 </div>
               </form>
             ) : (
-              <div className="flex flex-wrap gap-3 text-xs">
+              <div className={`flex flex-wrap gap-3 text-xs ${row.suggestions.length > 0 && !more ? "max-sm:hidden" : ""}`}>
                 <button type="button" onClick={() => setForm(true)} className="underline underline-offset-2">
                   {row.suggestions.length > 0 ? t.another : t.redirect}
                 </button>
@@ -171,6 +175,11 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
                   {ignored ? t.restore : t.ignore}
                 </button>
               </div>
+            )}
+            {row.suggestions.length > 0 && !more && !form && (
+              <button type="button" onClick={() => setMore(true)} className="self-start text-xs underline underline-offset-2 sm:hidden">
+                {t.more}
+              </button>
             )}
             <FindingList findings={findings.filter((f) => f.severity === "error")} />
             {problems.length > 0 && (
