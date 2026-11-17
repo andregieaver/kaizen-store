@@ -8,6 +8,11 @@ import { Pool, type PoolConfig } from "pg";
 
 import { serverEnv } from "@/lib/env";
 
+import { noteStatement } from "./statement-count";
+
+/** The clients whose `query` the statement counter has wrapped. */
+const counted = new WeakSet<object>();
+
 /** Seconds an unused connection stays open. */
 const IDLE_SECONDS = 5;
 
@@ -69,6 +74,40 @@ function create(url: string = serverEnv().DATABASE_URL) {
   });
   // A connection the pooler closes while idle must not take the function down.
   pool.on("error", () => {});
+  // The statement counter (step 1.9, `statement-count.ts`): each client's `query` is wrapped once, so a statement inside a transaction is
+  // counted too (pool.query calls client.query). Off unless a test or a render asked: the wrapper then passes the call straight through.
+  pool.on("connect", (client) => {
+    if (counted.has(client)) return;
+    counted.add(client);
+    const target: { query: (...args: unknown[]) => unknown } = client;
+    const original = target.query;
+    target.query = function (this: unknown, ...args: unknown[]) {
+      const first = args[0] as { text?: unknown; values?: unknown; submit?: unknown } | string | undefined;
+      const text = typeof first === "string" ? first : typeof first?.text === "string" ? first.text : "";
+      const values: unknown[] =
+        first && typeof first === "object" && Array.isArray(first.values) ? first.values : Array.isArray(args[1]) ? args[1] : [];
+      const done = noteStatement(text, values);
+      if (!done) return original.apply(this, args);
+      if (first && typeof first === "object" && typeof first.submit === "function") {
+        done(null);
+        return original.apply(this, args);
+      }
+      const last = args[args.length - 1];
+      if (typeof last === "function") {
+        const cb = last as (err: unknown, res?: { rowCount?: number | null; rows?: unknown[] }) => unknown;
+        const wrapped = (err: unknown, res?: { rowCount?: number | null; rows?: unknown[] }) => {
+          done(err ? null : (res?.rowCount ?? res?.rows?.length ?? null));
+          return cb(err, res);
+        };
+        return original.apply(this, [...args.slice(0, -1), wrapped]);
+      }
+      const result = original.apply(this, args) as { then?: (a: (r: { rowCount?: number | null; rows?: unknown[] }) => void, b: () => void) => unknown };
+      if (result && typeof result.then === "function") {
+        result.then((r) => done(r?.rowCount ?? r?.rows?.length ?? null), () => done(null));
+      }
+      return result;
+    };
+  });
   // Vercel freezes an instance between requests; frozen with connections
   // open, it would wake up to dead ones. This keeps the instance running
   // after each query until its idle connections have closed.
