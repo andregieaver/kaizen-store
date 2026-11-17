@@ -725,6 +725,26 @@ export const bookingsEn = {
     privacyText: "Say that when a shopper types their email at checkout and does not finish, you may email reminders about the cart; that they can say no at checkout or in any reminder; and that the email and cart are erased after 60 days.",
   },
   recommendations: {
+    /** Round 36 (D724): on a phone on or off first, then the parts as rows saying what is set. */
+    phone: {
+      offTitle: "Recommendations are off",
+      onTitle: "Recommendations are on",
+      offText: "Switch them on, then place them with a product grid's \u201cRecommend products for each shopper\u201d.",
+      onText: "Shoppers are shown products that suit what they look at.",
+      switchOn: "Switch on",
+      on: "On",
+      off: "Off",
+      aiRanks: "AI re-ranks",
+      plain: "plain ranking",
+      upsell: "upsell up to {n} %",
+      rules: { one: "{n} rule", many: "{n} rules" },
+      noRules: "No rules yet",
+      replaySub: "The last {n} paid orders",
+      resultsSub: "The last {n} days",
+      change: "Change",
+      open: "Open",
+      done: "Done",
+    },
     kinds: {
       goes_with: "goes with",
       never_with: "is never shown with",

@@ -1,5 +1,7 @@
 "use client";
 
+import { PhoneMore } from "@/components/admin/phone-more";
+import { PHONE_MORE_HIDDEN } from "@/components/admin/phone-more-class";
 import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -23,6 +25,9 @@ export type CustomerListItem = {
   spent: string;
 };
 
+/** How many customers a phone shows before Show all (round 36, D724). */
+const PHONE_FIRST = 20;
+
 export type CustomerListWords = {
   label: string;
   columns: { person: string; bought: string; last: string; spent: string };
@@ -30,6 +35,8 @@ export type CustomerListWords = {
   noOrder: string;
   subscribed: string;
   tickAll: string;
+  /** Round 36 (D724): the button under a phone's first twenty. */
+  showAll?: string;
   /** On a phone the tick boxes wait behind Select (round 20, D671). */
   select?: string;
   selectDone?: string;
@@ -63,8 +70,10 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
     });
   const allTicked = items.length > 0 && ticked.size === items.length;
   const chosen = items.filter((item) => ticked.has(item.key));
+  // Round 36 (D724): a phone shows the first twenty, then Show all; choosing shows everyone.
+  const kept = selecting || !words.showAll ? 0 : Math.max(0, items.length - PHONE_FIRST);
   return (
-    <div className="flex flex-col gap-4">
+    <PhoneMore hidden={kept} label={fillWords(words.showAll ?? "", { n: items.length })} className="flex flex-col gap-4">
       {tagAction && words.select && (
         <button
           type="button"
@@ -97,11 +106,11 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
           <span className="text-right">{words.columns.spent}</span>
         </div>
         <div role="list" aria-label={words.label}>
-        {items.map((item) => {
+        {items.map((item, n) => {
           const on = ticked.has(item.key);
           const title = item.name || item.email;
           return (
-            <div role="listitem" key={item.key} className={`${plain ? GRID_PHONE_PLAIN : GRID} border-b border-line px-5 py-3 last:border-b-0 ${on ? "bg-brand-soft/40" : ""}`}>
+            <div role="listitem" key={item.key} className={`${plain ? GRID_PHONE_PLAIN : GRID} border-b border-line px-5 py-3 last:border-b-0 ${on ? "bg-brand-soft/40" : ""} ${kept > 0 && n >= PHONE_FIRST ? PHONE_MORE_HIDDEN : ""}`}>
               {tagAction ? (
                 <input type="checkbox" checked={on} onChange={() => toggle(item.key)} aria-label={fillWords(words.tickOne, { name: title })} className={`size-4 ${plain ? "max-sm:hidden" : ""}`} />
               ) : (
@@ -156,6 +165,6 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
           </ActionForm>
         </div>
       )}
-    </div>
+    </PhoneMore>
   );
 }
