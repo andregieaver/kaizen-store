@@ -168,6 +168,21 @@ describe("the store admin's sections (D147)", () => {
     expect(sectionOf("/settings/orders")?.key).toBe("settings");
   });
 
+  it("puts the leads inbox beside Deals under Customers, behind Deals' feature, at an address of its own (ecosystem plan E2.8, D713)", () => {
+    const customers = STORE_SECTIONS.find((s) => s.key === "customers")!;
+    const paths = customers.groups.flatMap((g) => g.items.map((i) => i.path));
+    expect(paths.indexOf("/leads")).toBe(paths.indexOf("/deals") + 1);
+    expect(customers.groups.flatMap((g) => g.items).find((i) => i.path === "/leads")).toMatchObject({ feature: "sales", icon: "user-plus", basic: true });
+    expect(sectionOf("/leads")?.key).toBe("customers");
+    expect(permissionOfPath("/leads")).toBe("customers:read");
+    // Marked as the page being viewed by its own address: a query string on Deals' address never was.
+    const sidebar = storeAreas("/admin/s", { features: ["shop", "sales"] }).find((a) => a.prefixes.includes("/admin/s/leads"))!;
+    expect(sidebar.groups.flatMap((g) => g.items).find((i) => i.label === "Leads")).toMatchObject({ href: "/admin/s/leads", icon: "user-plus" });
+    expect(storeTabs("/admin/s", { features: ["shop", "sales"] }).find((t) => t.label === "Customers")!.also).toContain("/admin/s/leads");
+    // Without Deals there are no leads to follow up.
+    expect(storeSections({ features: ["shop"] }).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)))).not.toContain("/leads");
+  });
+
   it("finds a page's section by the longest address it is inside", () => {
     expect(sectionOf("/orders/abc/packing-slip")?.key).toBe("orders");
     expect(sectionOf("/settings/design")?.key).toBe("website");

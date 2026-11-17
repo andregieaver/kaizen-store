@@ -24,7 +24,7 @@ import { marketUrl } from "@/lib/paths";
 
 import { audit } from "./auth";
 import { owned } from "./owned";
-import { col, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { z } from "zod";
 import { sendEmail, type SendOutcome } from "./email";
 import { emailFooter, storeById } from "./shopper-emails";
@@ -274,6 +274,30 @@ export async function setAccountSubscription(
 // ---------------------------------------------------------------------------
 // The admin's list
 // ---------------------------------------------------------------------------
+
+/** A person's place on the list, for their page: the row and since when it is as it is (joined, asked to join, or left). */
+export type PersonSubscription = { id: string; status: SubscriberStatus; since: string };
+
+/**
+ * Whether a person of the store is on the list (ecosystem plan E2.4, D713), for their customer page: the row with their address, else the one
+ * their account subscribed with. Staff with `marketing:read` only; null when there is none.
+ */
+export async function personSubscription(storeId: string, email: string, customerId: string | null): Promise<PersonSubscription | null> {
+  const row = await typedRow(
+    z.object({ id: col.uuid, status: z.enum(SUBSCRIBER_STATUSES), since: col.timestamp }),
+    sql`
+      select id, status,
+        case status when 'subscribed' then coalesce(confirmed_at, consented_at)
+                    when 'pending' then consented_at
+                    else coalesce(unsubscribed_at, updated_at) end as since
+      from commerce.marketing_subscribers
+      where store_id = ${storeId}::uuid and (lower(email) = ${normal(email)} or customer_id = ${customerId}::uuid)
+      order by (lower(email) = ${normal(email)}) desc, updated_at desc
+      limit 1
+    `,
+  );
+  return row;
+}
 
 export type SubscriberCounts = Record<SubscriberStatus, number>;
 

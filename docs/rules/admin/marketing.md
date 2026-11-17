@@ -140,6 +140,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `segmentsOfBuyer()` (`src/server/segment-membership.ts`) in `findUsableDiscount()` and `runningCampaigns()`; a new discount that targets
   people asks it too, with a euro scenario. Bulk tags are only `tagMany()`; a segment's people are paged by `evaluateSegment(…, page)` and
   exported only by `segmentCsv()` (the owner's).
+  One view of a person (ecosystem plan E2.4, D713): a customer's page shows the saved segments they are in now through `segmentsOfPerson()`
+  (`segmentPeople()` for their address alone, which filters every part of its query by the addresses asked, and every segment's rules matched
+  in code; never a query a segment), to `customers:read`, each linked to its page where the viewer may open it; their place on the email list
+  (`personSubscription()`) and their number's SMS consent, masked (`personSms()`), only to `marketing:read` (`CustomerMarketing`).
 
 ## Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)
 
@@ -320,7 +324,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   requests, questions and forms, chats, new subscribers), never copied into a table of their own; only what staff decided about a person is
   kept (`commerce.lead_decisions`, by normalised address), written by `dismissLead()` and `makeLeadDeal()` with `customers:write` while
   Deals is on. A person who has paid for an order (restricted orders left out) or is in an open deal is no lead; a decision hides a person
-  until they ask again after it. A new kind of request a person makes of a store joins `leadRows()`.
+  until they ask again after it. A new kind of request a person makes of a store joins `leadRows()`, with where it is kept. Leads is a page
+  of its own under Customers (`/leads`, ecosystem plan E2.8, D713; `/deals?view=leads` leads there), and each kind of request on a row opens
+  where it is kept (`leadSourcePath()`): a quote request's draft, a chat's or a form message's conversation in the support inbox, a form's
+  responses (a message D705 kept that the inbox did not take), a subscriber; only for a viewer who may open that page. A form's message is
+  read from `form_responses`, never `form_submissions` (which keeps no address of a message, only the limits' counts). Leads have no owner
+  yet: that needs a column.
 
 ## Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)
 

@@ -78,13 +78,15 @@ describe("the AI manager's CRM tools", () => {
 
   it("lists a lead without what they wrote, and makes a deal of them", async () => {
     const email = `lead-${run}@example.com`;
+    // A form's message emailed to the store, kept as the form's response (D705), as the leads inbox reads it (E2.8).
+    const [form] = await db().execute<{ id: string }>(sql`insert into commerce.forms (store_id, kind, name) values (${store.storeId}::uuid, 'message', 'Contact') returning id`);
     await db().execute(sql`
-      insert into commerce.form_submissions (store_id, block_id, kind, visitor, status, email, payload, path, locale)
-      values (${store.storeId}::uuid, 'contact', 'message', 'v1', 'logged', ${email}, ${JSON.stringify({ name: "Ola Lead", message: `Secret words ${run}` })}::jsonb, '/contact', 'nb')
+      insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery)
+      values (${form.id}::uuid, ${JSON.stringify([{ label: "Email", value: email }, { label: "Message", value: `Secret words ${run}` }])}::jsonb, ${email}, '/contact', 'nb', 'sent')
     `);
     const leads = (await tools.listLeadsTool(ctx, { limit: 20 })) as { leads: { email: string; name: string | null; asked: { kind: string }[] }[] };
     const lead = leads.leads.find((l) => l.email === email);
-    expect(lead).toMatchObject({ name: "Ola Lead", asked: [{ kind: "question", times: 1 }] });
+    expect(lead).toMatchObject({ asked: [{ kind: "question", times: 1 }] });
     expect(JSON.stringify(leads)).not.toContain(`Secret words ${run}`);
 
     const made = (await tools.makeDealFromLeadTool(ctx, { email })) as { page: string };

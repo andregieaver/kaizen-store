@@ -61,6 +61,9 @@ export const NAV_NB: Record<string, string> = {
   Deals: "Avtaler",
   "What each customer or company may buy, on a board from the first talk to won or lost.":
     "Hva hver kunde eller bedrift kan kjøpe, på en tavle fra første samtale til vunnet eller tapt.",
+  Leads: "Leads",
+  "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.":
+    "Folk som har bedt om noe og ikke er kunder ennå: hva de ba om, og en avtale med dem som er verdt å følge opp.",
   Wishlists: "Ønskelister",
   "What customers have saved, and what they added to the cart from it.": "Det kundene har lagret, og hva de la i handlekurven derfra.",
   "Privacy requests": "Personvernforespørsler",

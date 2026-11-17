@@ -342,11 +342,17 @@ export const dealsNb: DealsMessages = {
   filing: "Kopier eller videresend e-post til {address}, så blir den liggende på tidslinjen til kundene, bedriftene og avtalene den gjelder.",
 
   leads: {
-    board: "Tavle",
-    tab: "Leads",
-    intro: "Folk som har bedt om noe, men ikke er kunder ennå. Gjør dem som er verdt å følge opp til avtaler, og avvis resten.",
+    title: "Leads",
+    count: { one: "{n} person har bedt om noe og er ikke kunde ennå.", many: "{n} personer har bedt om noe og er ikke kunder ennå." },
+    countRest: " Gjør dem som er verdt å følge opp til avtaler, og avvis resten.",
     none: "Ingen nye leads. Folk som ber om tilbud, stiller et spørsmål, chatter med deg eller abonnerer, dukker opp her.",
     kinds: { quote: "Tilbudsforespørsel", question: "Spørsmål", chat: "Chat", subscriber: "Abonnerer" },
+    openKinds: {
+      quote: "Åpne tilbudsforespørselen fra {name}",
+      question: "Åpne spørsmålet fra {name}",
+      chat: "Åpne chatten med {name}",
+      subscriber: "Åpne {name} blant abonnentene",
+    },
     dealKinds: { quote: "tilbudsforespørsel", question: "spørsmål", chat: "chat", subscriber: "ny abonnent" },
     makeDeal: "Lag avtale",
     dismiss: "Avvis",
