@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { minorUnitDigits } from "@/lib/money";
 import { COPY_RULES } from "@/lib/store-copy-rules";
-import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
+import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
 import { createTestDatabase } from "./testing";
@@ -8325,5 +8325,128 @@ describe("forms as their own records (D705)", () => {
     ).rejects.toThrow(/form_responses_contact/);
     await db.query("delete from commerce.forms where id = $1", [form]);
     expect((await db.query("select 1 from commerce.form_responses where id = $1", [id])).rows).toHaveLength(0);
+  });
+});
+
+describe("a page's own forms become forms, and copies take them (D705 F2)", () => {
+  const page = (blocks: unknown[], translations?: unknown) => ({
+    title: "Kontakt",
+    slug: "kontakt",
+    rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ id: "cols", type: "columns", columns: [{ id: "n1", blocks }] }] }] }],
+    ...(translations ? { translations } : {}),
+  });
+  const contact = {
+    id: "contact-1",
+    type: "emailForm",
+    recipients: ["post@example.com"],
+    subject: "Hei",
+    fields: [
+      { id: "name", kind: "name", label: "", required: true },
+      { id: "topic", kind: "select", label: "Emne", options: ["Ordre", "Annet"] },
+    ],
+    submitLabel: "Send",
+    successMessage: "",
+    consent: "Ja takk",
+    button: { variant: "outline" },
+    htmlId: "contact",
+  };
+  const news = { id: "news-1", type: "newsletter", recipients: [], askName: true, confirm: false, placeholder: "", submitLabel: "", successMessage: "", consent: "", layout: "stacked", incentive: "x", tags: ["vip"] };
+
+  it("lifts an inline form at any depth into a form of its owner, with its words, translations and settings, keeping the component's look", async () => {
+    const content = page([contact, news], { "en-GB": { "block.contact-1.topic.label": "Topic", "block.contact-1.topic.option0": "Order", "block.contact-1.submitLabel": "Send it" } });
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.pages (store_id, type, slug, draft, published, published_at) values ($1, 'page', 'f2-kontakt', $2, $2, now()) returning id",
+      [store, JSON.stringify(content)],
+    );
+    const { n } = await one<{ n: number }>("select commerce.lift_page_forms() as n");
+    expect(n).toBeGreaterThanOrEqual(1);
+    const { published, draft } = await one<{ published: { rows: { columns: { blocks: { columns: { blocks: Record<string, unknown>[] }[] }[] }[] }[] }; draft: unknown }>(
+      "select published, draft from commerce.pages where id = $1",
+      [id],
+    );
+    const [a, b] = published.rows[0].columns[0].blocks[0].columns[0].blocks;
+    expect(a).toMatchObject({ id: "contact-1", type: "form", button: { variant: "outline" }, htmlId: "contact" });
+    expect(a).not.toHaveProperty("recipients");
+    // The page reads the moved components as its own: their form ids are uuids as the schema checks them.
+    expect(pageBlockSchema.safeParse(a).success).toBe(true);
+    expect(pageBlockSchema.safeParse(b).success).toBe(true);
+    expect(b).toMatchObject({ id: "news-1", type: "form", layout: "stacked" });
+    expect(JSON.stringify(draft)).toBe(JSON.stringify(published));
+    const form = await one<{ id: string; kind: string; name: string; questions: unknown; words: unknown; delivery: unknown; signup: unknown }>(
+      "select id, kind, name, questions, words, delivery, signup from commerce.forms where id = $1",
+      [a.formId],
+    );
+    expect(form).toMatchObject({ kind: "message", name: "Contact form (Kontakt)", delivery: { recipients: ["post@example.com"], subject: "Hei" }, signup: null });
+    expect(form.questions).toEqual([
+      { id: "name", kind: "name", label: { text: "", byLocale: {} }, required: true },
+      { id: "topic", kind: "select", label: { text: "Emne", byLocale: { "en-GB": "Topic" } }, options: [{ text: "Ordre", byLocale: { "en-GB": "Order" } }, { text: "Annet", byLocale: {} }] },
+    ]);
+    expect(form.words).toMatchObject({ submit: { text: "Send", byLocale: { "en-GB": "Send it" } }, consent: { text: "Ja takk", byLocale: {} } });
+    const signup = await one<{ kind: string; signup: unknown }>("select kind, signup from commerce.forms where id = $1", [b.formId]);
+    expect(signup).toEqual({ kind: "signup", signup: { confirm: false, askName: true, incentive: "x", tags: ["vip"] } });
+    // The id is the owner's and the component's, so the site finds it from a page drawn before the move.
+    expect((await one<{ id: string }>("select commerce.lifted_form_id($1, 'contact-1') as id", [store])).id).toBe(a.formId);
+    // Run again, nothing more changes.
+    expect((await one<{ n: number }>("select commerce.lift_page_forms() as n")).n).toBe(0);
+    await db.query("delete from commerce.pages where id = $1", [id]);
+    await db.query("delete from commerce.forms where id in ($1, $2)", [a.formId, b.formId]);
+  });
+
+  it("copies a template's forms its pages show into a new store, without where they send or a sign-up's code and tags", async () => {
+    const { id: formId } = await one<{ id: string }>(
+      `insert into commerce.forms (store_id, kind, name, delivery, signup) values ($1, 'signup', 'News', '{"recipients":["a@example.com"],"subject":""}', '{"confirm":true,"askName":false,"tags":["vip"],"incentive":"x"}') returning id`,
+      [other],
+    );
+    const content = { title: "T", rows: [{ id: "r", columns: [{ id: "c", blocks: [{ id: "b", type: "form", formId }] }] }] };
+    const { cloned } = await one<{ cloned: { rows: { columns: { blocks: { formId: string }[] }[] }[] } }>("select commerce.clone_page_content($1, $2, $3) as cloned", [
+      store,
+      other,
+      JSON.stringify(content),
+    ]);
+    const copyId = cloned.rows[0].columns[0].blocks[0].formId;
+    expect(copyId).not.toBe(formId);
+    expect(await one("select store_id, delivery, signup from commerce.forms where id = $1", [copyId])).toEqual({
+      store_id: store,
+      delivery: { recipients: [], subject: "" },
+      signup: { confirm: true, askName: false },
+    });
+    // A form of a third store named in the content is left alone, never copied.
+    const { id: foreign } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name) values ($1, 'message', 'Theirs') returning id", [store]);
+    const { cloned: again } = await one<{ cloned: unknown }>("select commerce.clone_page_content($1, $2, $3) as cloned", [other, other, JSON.stringify({ formId: foreign })]);
+    expect(again).toEqual({ formId: foreign });
+    await db.query("delete from commerce.forms where id in ($1, $2, $3)", [formId, copyId, foreign]);
+  });
+
+  it("copies the source's forms a duplicated store's content names, as they are, and Kaizena Flow's into its own store", async () => {
+    const { id: formId } = await one<{ id: string }>(
+      `insert into commerce.forms (store_id, kind, name, delivery) values ($1, 'message', 'Contact', '{"recipients":["a@example.com"],"subject":""}') returning id`,
+      [store],
+    );
+    const { id: platformForm } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name) values (null, 'message', 'Ours') returning id");
+    await db.query("begin");
+    try {
+      await db.query("create temp table _copy_ids (old_id uuid primary key, new_id uuid) on commit drop");
+      const { copied } = await one<{ copied: { formId: string; other: string } }>("select commerce.copy_remap($1, $2, $3) as copied", [
+        JSON.stringify({ formId, other: platformForm }),
+        store,
+        other,
+      ]);
+      expect(copied.formId).not.toBe(formId);
+      expect(copied.other).toBe(platformForm);
+      expect(await one("select store_id, name, delivery from commerce.forms where id = $1", [copied.formId])).toEqual({
+        store_id: other,
+        name: "Contact",
+        delivery: { recipients: ["a@example.com"], subject: "" },
+      });
+      const { copied: house } = await one<{ copied: { formId: string; own: string } }>("select commerce.copy_remap($1, $2, $2) as copied", [
+        JSON.stringify({ formId: platformForm, own: formId }),
+        store,
+      ]);
+      expect(house.formId).not.toBe(platformForm);
+      expect(house.own).toBe(formId);
+    } finally {
+      await db.query("rollback");
+    }
+    await db.query("delete from commerce.forms where id in ($1, $2)", [formId, platformForm]);
   });
 });

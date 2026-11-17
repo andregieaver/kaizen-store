@@ -2,7 +2,7 @@
 
 Written 17 November 2026. The plan for a forms editor: forms an owner creates, edits and deletes in one place and picks in the
 page builder's form component, with the answers kept, the newsletter sign-up as one kind of form, and form templates the owner can
-make and share. Step F1 is built (17 November 2026, section 9 says how it differs from this plan); each step below says what it builds and
+make and share. Steps F1 and F2 are built (17 November 2026, sections 9 and 10 say how they differ from this plan); each step below says what it builds and
 what holds it.
 
 The owner's choices, 17 November 2026:
@@ -173,7 +173,7 @@ export is in the audit log (an export with its count only, as D295's).
 | Step | Builds | Held by |
 |---|---|---|
 | **F1** (built) | `forms` and `form_responses` tables and rules; the `form` component and `/api/forms` by form id; responses kept, with their personal data rules from the start (the `PERSONAL_DATA` register, export, erasure, the retention job); Website → Forms list, editor and responses, store and platform; Kaizena Flow's first templates (Contact, Quote request, Booking enquiry, Callback, Feedback, Event registration, Newsletter). | `src/db/commerce.test.ts`, `forms.test.ts`, `forms-admin.int.test.ts`, `checkout-rules.test.ts` unchanged, an e2e of make, place, send and read. |
-| **F2** | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
+| **F2** (built) | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
 | **F3** | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
 | **F4** | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
 | **F5** | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
@@ -210,5 +210,22 @@ export is in the audit log (an export with its count only, as D295's).
   that carried the forms' migration (`NOT_YET_IN_PROMPT`); the push after it (17 November 2026) took them out, with the text messages'
   pages (D565), and the agents' eval is recorded again on Platform → AI.
 - **Not yet.** The A/B tests' form goal (D148) counts a `form` component by its form's id, which no test names yet; copies of a store
-  (D129) leave a copied page's form components showing nothing (their form is the original's) until F2.
+  (D129) copy forms since F2 (section 10).
+
+## 10. F2 as built (17 November 2026)
+
+- **The move.** Migration `*_forms_lifted` runs `commerce.lift_page_forms()` once: every page (draft and published) and saved part with an
+  inline email form or sign-up, at any depth, gets a form of its owner for each and a `form` component in its place, keeping the component's
+  id and look (button, layout, spacing, its CSS id and class). The form takes the words and their translations from the page
+  (`translations.{locale}.block.{id}.…`), the questions, recipients, subject, consent and a sign-up's settings; it is named *Contact form
+  (page title)* or *Newsletter (page title)*. Production had one: the newsletter in the `kaizenalabs` store's footer, with no sends.
+- **Nothing breaks on the way.** The form's id is made from its owner and the component's id (`commerce.lifted_form_id()`, shaped as
+  `clone_id()` shapes ids, and `liftedFormId()` in `src/server/forms.ts`), so a page's draft and published copy share one form, and
+  `findForm()` still finds it when a page cached before the move sends with the old component's id, or a confirmation link emailed before it
+  is opened. A version of a page saved before the move (D305) still holds the old component, which still works if restored.
+- **Copies.** `clone_page_content()` (a new store from a template or starter, D175) copies the template's forms its pages show, without
+  where they send or a sign-up's code and tags; `copy_remap()` (a duplicated store, D129, and Kaizena Flow's site copied into its own store,
+  D469) copies the source's forms its content names, as they are. Only the source's own forms are copied (a page naming another store's
+  form copies nothing), and responses never are. A template or marketplace part used in another store still leaves its form component
+  empty (`template-content.ts`).
 

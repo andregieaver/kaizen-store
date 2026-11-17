@@ -351,7 +351,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   customer_sign_in_links: never("Sign-in links."),
   document_series: never("Invoice, credit note, order and Work numbering start again in the new store."),
   email_messages: never("A log of the original's emails."),
-  forms: never("A store's forms (D705) are copied with their pages from step F2 of docs/forms.md; until then a copy's form components show nothing until its owner picks its own forms."),
+  forms: settings("A store's forms (D705) come with the pages, headers and footers that show them (`copy_remap()`), as they are; their responses stay with the original."),
   form_responses: never("What visitors sent with the original's forms is personal data of the original."),
   form_submissions: never("What visitors wrote in forms is personal data of the original."),
   google_places: never("Holds an API key."),
