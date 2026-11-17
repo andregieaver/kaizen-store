@@ -153,7 +153,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   language, and anything it throws that nobody planned for is logged once (`action.failed`, the action's name and the store) and
   answered with a plain line in the form, never Next's error page; `redirect()`, `notFound()` and `refresh()` pass through.
   `answer` turns a message into the action's own result shape. The orders, returns and books actions use it; other `actions.ts`
-  files move onto it when touched.
+  files move onto it when touched; the ratchet holds the number of files still off the wrapper
+  (`adminRepeats.unwrappedActionFiles`).
 
 - The action refreshes; a client part does not. An action that changes what the route shows calls `refresh()` (or `redirect()`),
   and its answer already carries the route drawn again, so the client never calls `router.refresh()` after it (that draws every

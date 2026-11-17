@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ANY_SUPPRESSED, CONFIRM_CALL, OSLO_ZONE, SELECT_TAG, TABLE_TAG, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import baseline from "./ratchet.baseline.json";
 
 /**
@@ -18,10 +18,21 @@ const now = ratchetCounts(process.cwd()) as {
   untypedReads: Record<string, number>;
   byIdWrites: Record<string, number>;
   notDistinctStore: Record<string, number>;
+  adminRepeats: Record<string, number>;
 };
 const recorded: Record<string, number> = baseline.untypedReads;
 const recordedWrites: Record<string, number> = baseline.byIdWrites;
 const recordedNotDistinct: Record<string, number> = baseline.notDistinctStore;
+const recordedRepeats: Record<string, number> = baseline.adminRepeats;
+
+/** What to do instead, per count (bloat review step 1.17). A repeat made on purpose is accepted by `node scripts/ratchet.mjs --first`, shown in the diff. */
+const REPEAT_FIX: Record<string, string> = {
+  unwrappedActionFiles: "run the action through storeAction() or platformAction() (src/server/store-action.ts)",
+  tables: "this count only falls until the admin kit of step 4.1 exists; reuse a list part from src/components/admin/ui",
+  nativeSelects: "this count only falls until the admin kit of step 4.1 exists; reuse a list part from src/components/admin/ui",
+  osloFiles: "format dates with the admin's date helper, not a literal time zone",
+  confirmFiles: "use the admin's confirm button, not window.confirm",
+};
 
 describe("the ratchet (code review 1.2)", () => {
   it("adds no unchecked read: a file has no more than its baseline, and a file not in it has none", () => {
@@ -42,6 +53,13 @@ describe("the ratchet (code review 1.2)", () => {
     const raised = Object.entries(now.notDistinctStore)
       .filter(([file, n]) => n > (recordedNotDistinct[file] ?? 0))
       .map(([file, n]) => `${file}: ${n} uses of store_id is not distinct from, baseline ${recordedNotDistinct[file] ?? 0}. Filter with owned(storeId) (src/server/owned.ts); lower the baseline with node scripts/ratchet.mjs when a count falls.`);
+    expect(raised).toEqual([]);
+  });
+
+  it("adds no hand-made repeat in the admin (bloat review 1.17)", () => {
+    const raised = Object.keys(REPEAT_FIX)
+      .filter((key) => now.adminRepeats[key] > (recordedRepeats[key] ?? Infinity))
+      .map((key) => `${key}: ${now.adminRepeats[key]}, baseline ${recordedRepeats[key]}. ${REPEAT_FIX[key]}. Accepting it on purpose: node scripts/ratchet.mjs --first, and commit the diff.`);
     expect(raised).toEqual([]);
   });
 
@@ -71,6 +89,9 @@ describe("the ratchet (code review 1.2)", () => {
       ...(now.anySuppressed < baseline.anySuppressed ? [`suppressed any: ${now.anySuppressed}, baseline ${baseline.anySuppressed}`] : []),
       ...(now.filesOver100Kb < baseline.filesOver100Kb ? [`source files over 100 KB: ${now.filesOver100Kb}, baseline ${baseline.filesOver100Kb}`] : []),
       ...(now.filesOver2000Lines < baseline.filesOver2000Lines ? [`source files over 2,000 lines: ${now.filesOver2000Lines}, baseline ${baseline.filesOver2000Lines}`] : []),
+      ...Object.entries(recordedRepeats)
+        .filter(([key, n]) => (now.adminRepeats[key] ?? 0) < n)
+        .map(([key, n]) => `admin ${key}: ${now.adminRepeats[key] ?? 0}, baseline ${n}`),
     ];
     expect(lower).toEqual([]);
   });
@@ -89,6 +110,19 @@ describe("the ratchet (code review 1.2)", () => {
     expect(lines(2_000).split("\n").length > LONG_FILE_LINES).toBe(false);
     expect(Buffer.byteLength("x".repeat(BIG_FILE_BYTES + 1)) > BIG_FILE_BYTES).toBe(true);
     expect(Buffer.byteLength("x".repeat(BIG_FILE_BYTES)) > BIG_FILE_BYTES).toBe(false);
+    // The admin's repeats: a directive after leading comments counts, the wrapper in the file does not.
+    const unwrapped = (text: string) => USE_SERVER_FIRST.test(text) && !WRAPPED_ACTION.test(text);
+    expect(unwrapped('"use server";\nexport async function save() {}')).toBe(true);
+    expect(unwrapped("// Saves it.\n/* and more */\n'use server';\nexport async function save() {}")).toBe(true);
+    expect(unwrapped('// A comment\n"use server";\nexport const save = storeAction(async () => {});')).toBe(false);
+    expect(unwrapped('import x from "y";\n"use server";')).toBe(false);
+    expect(n("<table className=\"a\"><tr/></table> <tablet/>", TABLE_TAG)).toBe(1);
+    expect(n("<select value={a}><option/></select> <selection/>", SELECT_TAG)).toBe(1);
+    expect(n("<div/>", SELECT_TAG)).toBe(0);
+    expect("timeZone: \"Europe/Oslo\"".includes(OSLO_ZONE)).toBe(true);
+    expect("timeZone: \"UTC\"".includes(OSLO_ZONE)).toBe(false);
+    expect(CONFIRM_CALL.test("if (!confirm(msg)) return;")).toBe(true);
+    expect(CONFIRM_CALL.test("const confirmed = true; onConfirm(x)")).toBe(false);
     const tables = new Set(["media", "experiments"]);
     expect(unscopedWrites("sql`delete from commerce.media where id = ${id}::uuid`", tables)).toBe(1);
     expect(unscopedWrites("sql`update commerce.experiments e set status = 'done' where e.id = ${id}::uuid`", tables)).toBe(1);

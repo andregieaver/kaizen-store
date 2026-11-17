@@ -1688,5 +1688,12 @@
         "visits"
       ]
     }
+  },
+  "adminRepeats": {
+    "unwrappedActionFiles": 233,
+    "tables": 163,
+    "nativeSelects": 468,
+    "osloFiles": 68,
+    "confirmFiles": 44
   }
 }

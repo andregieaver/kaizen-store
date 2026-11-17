@@ -738,3 +738,4 @@ about 3,450, close to the checked 3,378, and that is the figure used. Severity i
 scale. `statement_timeout` on a role behind the transaction pooler (FD9) needs a test before it is trusted.
 - 16 November 2026: bloat step 0.38 commit 1: CI's e2e, hosts and signed-in builds skip their own type check (`SKIP_BUILD_TYPECHECK`); `static` and the quick gate still run `pnpm typecheck` on every push (row 1.8's status unchanged).
 - 16 November 2026: the last replay of the archived migrations (`src/db/vat.test.ts`) and the 16 files that quoted them were removed by bloat step 0.39 commit 4; `src/db/migration-files.ts` is gone. Findings FD2 and FD3 and step 1.7 stay Done.
+- 17 November 2026: bloat step 1.17 commit 1: the admin's remaining action files off the wrapper, tables, selects, Oslo dates and confirm calls are counted from now (`adminRepeats` in the ratchet baseline; steps 1.4 and 1.12 to 1.15 keep their status).

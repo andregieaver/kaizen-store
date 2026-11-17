@@ -141,7 +141,7 @@ commit as the fix.
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
 | 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Done | 17 Nov (23a841e2; D722): the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not good at p75. |
 | 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
-| 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | Open | |
+| 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | In progress | 17 Nov: commit 1 local: 233/163/468/68/44. |
 | 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 | Open | |
 | 1.19 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3, GAP-ai-s2, GAP-ai-s3 | M | strong | 0.1, 1.1, 0.21 | Open | |
 | 1.20 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1, GAP-build-s1 | M | review | 0.38, 1.8, 1.11, 1.1 | Open | |
