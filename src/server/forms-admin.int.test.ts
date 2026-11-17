@@ -168,3 +168,33 @@ describe("forms as their own records (D705)", () => {
     expect((await admin.listResponses(storeId, made.id)).responses).toHaveLength(1);
   });
 });
+
+describe("a page's own form after the move (D705 F2)", () => {
+  it("is still found from a page drawn before the move, by the id the move gave it, and keeps the response", async () => {
+    const { liftedFormId } = await import("./forms");
+    const [row] = await db().execute<Row>(sql`select commerce.lifted_form_id(${storeId}::uuid, ${`old-${run}`}) as id`);
+    expect(liftedFormId(storeId, `old-${run}`)).toBe(String(row.id));
+    // The move made the form under that id and put a `form` component with the old component's id on the page.
+    await db().execute(sql`
+      insert into commerce.forms (id, store_id, kind, name, questions, delivery)
+      values (${String(row.id)}::uuid, ${storeId}::uuid, 'message', 'Contact form (Kontakt)',
+        ${JSON.stringify(contactDraft().questions)}::jsonb, ${JSON.stringify({ recipients: [`owner-${run}@example.com`], subject: "" })}::jsonb)
+    `);
+    const page = pageInput.parse({
+      ...newPageContent(),
+      title: "Moved",
+      slug: `moved-${run}`,
+      rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ id: `old-${run}`, type: "form", formId: String(row.id) }] }] }],
+    });
+    await db().execute(sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+      values (${storeId}::uuid, 'page', ${`moved-${run}`}, ${JSON.stringify(page)}::jsonb, ${JSON.stringify(page)}::jsonb, now())
+    `);
+    const values = { q1: "Ada", q2: `ada-${run}@example.com`, q3: "Hei" };
+    // Sent with the old component's id, as a page cached before the move sends it.
+    expect(await send(`old-${run}`, values)).toMatchObject({ status: 200, body: { ok: true } });
+    // And with the form's own, as the page drawn after it sends it.
+    expect(await send(String(row.id), values)).toMatchObject({ status: 200, body: { ok: true } });
+    expect((await admin.listResponses(storeId, String(row.id))).responses).toHaveLength(2);
+  });
+});

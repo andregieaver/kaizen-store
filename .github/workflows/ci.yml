@@ -342,6 +342,13 @@ jobs:
           git fetch --depth=1 origin main
           git checkout FETCH_HEAD -- supabase/migrations
           node scripts/db-migrate.mjs --status
+      # Several pushes within minutes each reach the hook, and each call builds the same head (D710: three builds of 61dcec1 on
+      # 17 November 2026). A run whose commit is no longer the head leaves the hook and the wait to the newer push's run, whose
+      # deployment includes this commit; a newer commit of words only starts no run, so it does not count.
+      - name: Will a newer push's run deploy instead?
+        id: newer
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false'
+        run: HEAD_SHA="$(git rev-parse FETCH_HEAD)" node scripts/newer-push.mjs
       # A push that changes only tests cannot change the deployed app: it is checked above and not deployed (bloat review
       # step 0.38). Decided against what production runs, so a tests-only push after a failed deploy still deploys.
       - name: Does this push change what is deployed?
@@ -351,7 +358,7 @@ jobs:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
         run: node scripts/deploy-needed.mjs
       - name: No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now
-        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false' && steps.changed.outputs.deploy != 'false'
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false' && steps.changed.outputs.deploy != 'false' && steps.newer.outputs.newer != 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -360,7 +367,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
       - name: Wait until production runs this commit
-        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false' && steps.changed.outputs.deploy != 'false'
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false' && steps.changed.outputs.deploy != 'false' && steps.newer.outputs.newer != 'true'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
@@ -417,8 +424,13 @@ jobs:
           git fetch --depth=1 origin main
           git checkout FETCH_HEAD -- supabase/migrations
           node scripts/db-migrate.mjs --status
+      # As in `pending` (D710): a newer push's run deploys the head, this commit with it.
+      - name: Will a newer push's run deploy instead?
+        id: newer
+        if: vars.DEPLOY_VIA_CI == 'true' && needs.pending.outputs.pending == 'true' && steps.head.outputs.pending != 'true'
+        run: HEAD_SHA="$(git rev-parse FETCH_HEAD)" node scripts/newer-push.mjs
       - name: Ask Vercel to deploy the head of main
-        if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true'
+        if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true' && steps.newer.outputs.newer != 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -427,7 +439,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
       - name: Wait until production runs this commit
-        if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true'
+        if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true' && steps.newer.outputs.newer != 'true'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}

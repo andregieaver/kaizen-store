@@ -467,15 +467,22 @@
     {
       "idx": 66,
       "version": "7",
-      "when": 1794904345445,
-      "tag": "20261117083225_contract_events",
+      "when": 1794902429755,
+      "tag": "20261117080029_forms_lifted",
       "breakpoints": true
     },
     {
       "idx": 67,
       "version": "7",
-      "when": 1794904352281,
-      "tag": "20261117083232_contract_events_rules",
+      "when": 1794908460404,
+      "tag": "20261117094100_contract_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794908468498,
+      "tag": "20261117094108_contract_events_rules",
       "breakpoints": true
     }
   ]

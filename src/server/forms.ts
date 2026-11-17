@@ -51,6 +51,16 @@ type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; o
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * The id `commerce.lifted_form_id()` gave a page's own form when it became a form of its owner (D705 F2): md5 of the owner and the component's
+ * id, shaped as `clone_id()` shapes its ids (version 4, variant 8).
+ */
+export function liftedFormId(storeId: string | null, blockId: string): string {
+  const md5 = createHash("md5").update(`${storeId ?? "platform"}:${blockId}`).digest("hex");
+  const h = `${md5.slice(0, 12)}4${md5.slice(13, 16)}8${md5.slice(17, 32)}`;
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 /** A daily hash of the visitor's address: enough to count their sends, not to know them. */
 export function formVisitor(address: string): string {
   const day = new Date().toISOString().slice(0, 10);
@@ -79,14 +89,17 @@ async function formOwner(storeId: string | null): Promise<FormOwner | null> {
 /** The form with this id on one of the owner's published pages (headers and footers too), as published. */
 export async function findForm(storeId: string | null, blockId: string): Promise<FoundForm | null> {
   // A form record (D705), placed by a page's `form` component: active, able to deliver, and on one of the owner's published pages.
+  const saved = async (id: string): Promise<FoundForm | null | undefined> => {
+    const form = await getForm(storeId, id);
+    if (!form) return undefined;
+    if (!formTakesAnswers(form) || !(await formIsPublished(storeId, form.id))) return null;
+    const owner = await formOwner(storeId);
+    // The questions in the owner's main words: the answers are labelled in them, as a page's own form labels them (D93).
+    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id };
+  };
   if (UUID.test(blockId)) {
-    const form = await getForm(storeId, blockId);
-    if (form) {
-      if (!formTakesAnswers(form) || !(await formIsPublished(storeId, form.id))) return null;
-      const owner = await formOwner(storeId);
-      // The questions in the owner's main words: the answers are labelled in them, as a page's own form labels them (D93).
-      return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id };
-    }
+    const found = await saved(blockId);
+    if (found !== undefined) return found;
   }
   const rows = await db().execute<Row>(sql`
     select published from commerce.pages
@@ -101,7 +114,11 @@ export async function findForm(storeId: string | null, blockId: string): Promise
   const raw = page?.rows?.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks))).find((block) => block.id === blockId);
   const parsed = raw ? pageBlockSchema.safeParse(raw) : null;
   const block = parsed?.success ? parsed.data : null;
-  if (!block || (block.type !== "emailForm" && block.type !== "newsletter") || block.recipients.length === 0) return null;
+  // A page's own form moved into a form of its owner (D705 F2, `lift_page_forms()`): sent from a page drawn before the move, or confirmed
+  // from a link emailed before it, it is found by the id the move gave it.
+  if (!block) return (await saved(liftedFormId(storeId, blockId))) ?? null;
+  if (block.type === "form") return block.formId ? ((await saved(block.formId)) ?? null) : null;
+  if ((block.type !== "emailForm" && block.type !== "newsletter") || block.recipients.length === 0) return null;
   const owner = await formOwner(storeId);
   return owner && { block, pageTitle: page!.title, owner, formId: null };
 }

@@ -149,6 +149,14 @@ A push with a migration always deploys through `release`, which this does not to
 run calls it. Just before the call, `pending` and `release` fetch the head and read the ledger against its migration files; a
 head with a migration production has not had is not deployed by this run, and waits for its own run's `release`.
 
+**A stale run leaves the deploy to the newer one (D710).** When several pushes land within minutes, every run that reached the
+hook built the same head (three builds of `61dcec1` on 17 November 2026). After the head check, `scripts/newer-push.mjs` compares
+the run's commit with the head: when the head is newer and the files between include one that starts a CI run (anything but
+`*.md` and `docs/**`, with `content/**` back in, as the push trigger's paths), the run skips the hook and the wait. The newer
+run deploys the head, which includes this commit, and its wait verifies it. A newer commit of words only (a decision claimed
+by `claim-decision.mjs`) starts no run, so the run deploys as before; so does any doubt. If the newer run's gate fails, neither
+commit is deployed and production stays where it was (before, the stale run deployed that unchecked head).
+
 A deploy that should not have gone out: roll back in Vercel (*Deployments → the earlier one → Promote to
 Production*, seconds) and push the fix.
 
