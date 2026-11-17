@@ -782,6 +782,10 @@ export const notificationsEn = {
     remove: "Remove",
     value: "Value",
     ops: { is: "is", is_not: "is not", contains: "contains", more_than: "is more than", less_than: "is less than" } as Record<string, string>,
+    // *The customer is in segment X* (ecosystem plan E3.6, D718).
+    segmentOps: { is: "is in the segment", is_not: "is not in the segment" } as Record<string, string>,
+    segment: "Segment",
+    goneSegment: "a deleted segment",
     fields: {
       "order.total": "Order total (in its currency)",
       "order.currency": "Order currency",
@@ -794,6 +798,7 @@ export const notificationsEn = {
       "order.vat_kind": "VAT treatment",
       "customer.email": "Customer's email",
       "customer.email_confirmed": "Email confirmed (yes or no)",
+      "customer.segment": "The customer",
       "subscription.status": "Subscription status",
       "subscription.currency": "Subscription currency",
       "subscription.total_per_renewal": "Total per renewal",

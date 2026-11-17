@@ -13,7 +13,7 @@ import { formatMoney } from "@/lib/money";
 import { describeRules } from "@/lib/segments";
 import { listTiers } from "@/server/customer-tiers";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { evaluateSegment, getSegment, segmentUses } from "@/server/segments";
+import { evaluateSegment, getSegment, segmentNames, segmentUses } from "@/server/segments";
 
 import { deleteSegmentAction, previewSegmentAction, saveSegmentAction } from "../actions";
 import { editorChoices } from "../editor-props";
@@ -37,11 +37,12 @@ export default async function SegmentPage({ params, searchParams }: PageProps<"/
   const w = adminText(lang, "marketing");
   const numbers = ADMIN_LANG_FACTS[lang].locale;
   const seesPeople = memberCan(member, "customers:read");
-  const [result, tiers, choices, uses] = await Promise.all([
+  const [result, tiers, choices, uses, names] = await Promise.all([
     segment.rules ? evaluateSegment(store, segment.rules, new Date(), page) : Promise.resolve(null),
     listTiers(store.id),
     mayWrite ? editorChoices(store, lang) : Promise.resolve(null),
     segmentUses(store.id, segment.id),
+    segmentNames(store, [segment.rules]),
   ]);
   const used = uses.codes.length > 0 || uses.campaigns.length > 0;
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "nb-NO") : numbers;
@@ -56,7 +57,7 @@ export default async function SegmentPage({ params, searchParams }: PageProps<"/
         back={{ href: `${base}/segments`, label: w.segments.title }}
         title={segment.name}
         description={
-          segment.rules ? describeRules(segment.rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, words: w.describe }) : w.segments.unreadableHere
+          segment.rules ? describeRules(segment.rules, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name, ...names, words: w.describe }) : w.segments.unreadableHere
         }
         actions={
           mayWrite ? (

@@ -1044,6 +1044,9 @@ export const notificationsNb: NotificationsMessages = {
     remove: "Fjern",
     value: "Verdi",
     ops: { is: "er", is_not: "er ikke", contains: "inneholder", more_than: "er mer enn", less_than: "er mindre enn" },
+    segmentOps: { is: "er i segmentet", is_not: "er ikke i segmentet" },
+    segment: "Segment",
+    goneSegment: "et slettet segment",
     fields: {
       "order.total": "Bestillingens total (i valutaen)",
       "order.currency": "Bestillingens valuta",
@@ -1056,6 +1059,7 @@ export const notificationsNb: NotificationsMessages = {
       "order.vat_kind": "MVA-behandling",
       "customer.email": "Kundens e-post",
       "customer.email_confirmed": "E-post bekreftet (ja eller nei)",
+      "customer.segment": "Kunden",
       "subscription.status": "Abonnementets status",
       "subscription.currency": "Abonnementets valuta",
       "subscription.total_per_renewal": "Total per fornyelse",

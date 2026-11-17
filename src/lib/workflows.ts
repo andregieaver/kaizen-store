@@ -9,6 +9,8 @@ import { EVENTS, type IntegrationEvent } from "./integrations";
  * `RUNS_PER_HOUR` runs an hour each. Nothing here reads the database.
  */
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const WORKFLOWS_MAX = 50;
 export const CONDITIONS_MAX = 10;
 export const ACTIONS_MAX = 10;
@@ -45,8 +47,17 @@ export function subjectOf(
   return "support";
 }
 
-export type FieldKind = "text" | "number" | "yes_no";
+/** `segment`: the customer is (`is`) or is not (`is_not`) in one of the store's saved segments, its id the value; read now, not from the payload. */
+export type FieldKind = "text" | "number" | "yes_no" | "segment";
 export type WorkflowField = { key: string; kind: FieldKind };
+
+/**
+ * The condition *the customer is in segment X* (ecosystem plan E3.6, D718), for a trigger whose subject has a customer (an order, a customer,
+ * a subscription: those whose data carries the address, as a customer's tag reads it). The runner reads the address's segments once, only
+ * those its conditions name (`segmentsOfAddress()`), and gives them to `workflowMatches()`.
+ */
+export const SEGMENT_FIELD = "customer.segment";
+const IN_SEGMENT: WorkflowField = { key: SEGMENT_FIELD, kind: "segment" };
 
 /** The fields a condition may test, by what the event is about: paths into the event's data as its payload carries it (amounts in the currency's units). */
 export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField[]> = {
@@ -60,15 +71,18 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "order.lines.quantity", kind: "number" },
     { key: "order.shipping_address.country", kind: "text" },
     { key: "order.vat_kind", kind: "text" },
+    IN_SEGMENT,
   ],
   customer: [
     { key: "customer.email", kind: "text" },
     { key: "customer.email_confirmed", kind: "yes_no" },
+    IN_SEGMENT,
   ],
   subscription: [
     { key: "subscription.status", kind: "text" },
     { key: "subscription.currency", kind: "text" },
     { key: "subscription.total_per_renewal", kind: "number" },
+    IN_SEGMENT,
   ],
   return: [
     { key: "return.kind", kind: "text" },
@@ -243,6 +257,7 @@ export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STO
     else if ((c.op === "more_than" || c.op === "less_than") && field.kind !== "number") problems.push(`${c.field} is not a number.`);
     else if (field.kind === "number" && c.op !== "is" && c.op !== "is_not" && Number.isNaN(Number(c.value))) problems.push(`${c.field} compares with a number.`);
     else if (field.kind === "yes_no" && !["yes", "no"].includes(c.value)) problems.push(`${c.field} is yes or no.`);
+    else if (field.kind === "segment" && (!(c.op === "is" || c.op === "is_not") || !UUID.test(c.value))) problems.push("Choose one of your segments.");
   }
   const allowed = new Set(kit.actionsFor(input.trigger));
   for (const a of input.actions) if (!allowed.has(a.kind)) problems.push(`${a.kind} cannot follow this trigger.`);
@@ -261,8 +276,22 @@ export function valuesAt(data: unknown, path: string): unknown[] {
   return current.flatMap((value) => (Array.isArray(value) ? value : [value])).filter((value) => value !== undefined && value !== null);
 }
 
+/**
+ * What a condition reads beside the event's data: the segments the event's customer is in now (`SEGMENT_FIELD`), by id; null when the event
+ * has no customer or nobody read them, and then *in a segment* and *not in it* both fail, as a fact not known holds for no condition.
+ */
+export type WorkflowFacts = { segments?: ReadonlySet<string> | null };
+
+/** The segments a workflow's conditions name (the runner reads only those for the event's customer). */
+export const segmentsNamed = (conditions: readonly WorkflowCondition[]): string[] => [...new Set(conditions.filter((c) => c.field === SEGMENT_FIELD).map((c) => c.value))];
+
 /** Whether a condition holds: any value at the field passes (`is_not`: none equals). Text compares without case. */
-export function conditionHolds(condition: WorkflowCondition, data: unknown): boolean {
+export function conditionHolds(condition: WorkflowCondition, data: unknown, facts: WorkflowFacts = {}): boolean {
+  if (condition.field === SEGMENT_FIELD) {
+    if (!facts.segments) return false;
+    const inIt = facts.segments.has(condition.value);
+    return condition.op === "is" ? inIt : condition.op === "is_not" ? !inIt : false;
+  }
   const values = valuesAt(data, condition.field);
   const wanted = condition.value.trim().toLowerCase();
   const asText = (value: unknown) => (typeof value === "boolean" ? (value ? "yes" : "no") : String(value).toLowerCase());
@@ -281,7 +310,7 @@ export function conditionHolds(condition: WorkflowCondition, data: unknown): boo
 }
 
 /** Whether every condition holds (none: always). */
-export const workflowMatches = (conditions: WorkflowCondition[], data: unknown) => conditions.every((c) => conditionHolds(c, data));
+export const workflowMatches = (conditions: WorkflowCondition[], data: unknown, facts: WorkflowFacts = {}) => conditions.every((c) => conditionHolds(c, data, facts));
 
 /**
  * When a schedule is due on a day in the store's time zone: the key that makes it once (`schedule:2026-10-28`), or null when it is not due

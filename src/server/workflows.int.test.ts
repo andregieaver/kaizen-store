@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import type { WorkflowInput } from "@/lib/workflows";
+import { SEGMENT_FIELD, type WorkflowInput } from "@/lib/workflows";
 
 type Row = Record<string, unknown>;
 
@@ -16,6 +16,7 @@ process.env.REPLICATE_ALLOW_PRIVATE = "1";
 
 const flows = await import("./workflows");
 const endpoints = await import("./webhook-endpoints");
+const segments = await import("./segments");
 const { newStore, place, pay } = await import("./inventory-test-support");
 
 /**
@@ -140,4 +141,42 @@ describe("running", () => {
     await flows.runWorkflows(500);
     expect(await runsOf(saved.id)).toEqual([expect.objectContaining({ status: "done", matched: true })]);
   });
+});
+
+describe("the customer is in a segment (ecosystem plan E3.6, D718)", () => {
+  it("runs only for a member of the segment, as the customer's facts are now, and refuses another store's segment", async () => {
+    const own = await newStore("flows-seg");
+    const [mug] = await db().execute<Row>(sql`select product_id from commerce.product_variants where store_id = ${own.storeId}::uuid and sku = ${SKU}`);
+    // People who bought the mug: the segment uses one of the newer conditions, read by the segments' own reader.
+    const segment = await segments.saveSegment(own.storeId, own.accountId, null, { name: "Mug buyers", rules: { match: "all", conditions: [{ kind: "bought", has: true, products: [String(mug.product_id)] }] } });
+    if (!segment.ok) throw new Error(segment.problem);
+    const input: WorkflowInput = {
+      name: "Mug buyers again",
+      trigger: "order.paid",
+      schedule: null,
+      conditions: [{ field: SEGMENT_FIELD, op: "is", value: segment.id }],
+      actions: [{ kind: "tag_order", tag: "Mug buyer" }],
+    };
+    const foreign = await segments.saveSegment(store.storeId, store.accountId, null, { name: "Someone else's", rules: { match: "all", conditions: [] } });
+    if (!foreign.ok) throw new Error(foreign.problem);
+    expect(await flows.saveWorkflow(own.member, null, { ...input, conditions: [{ field: SEGMENT_FIELD, op: "is", value: foreign.id }] })).toEqual({ ok: false, problems: ["Choose one of your segments."] });
+    const saved = await flows.saveWorkflow(own.member, null, input);
+    if (!saved.ok) throw new Error(saved.problems.join(" "));
+    await flows.testWorkflow(own.member, saved.id);
+    expect(await flows.switchWorkflow(own.member, saved.id, true)).toBe("ok");
+
+    // Kari buys the mug (and so is in the segment when the run reads her); Ola buys a tote and never a mug.
+    const member = await place(own.storeId, [[SKU, 1]]);
+    await pay(own.storeId, member, own.account);
+    const stranger = await place(own.storeId, [["DEMO-TOTE", 1]]);
+    await pay(own.storeId, stranger, own.account);
+    await db().execute(sql`update commerce.orders set email = 'ola@example.com' where id = ${stranger.orderId}::uuid`);
+    await flows.runWorkflows(500);
+    const runs = await runsOf(saved.id);
+    expect(runs.find((r) => r.subject_id === member.orderId)).toMatchObject({ status: "done", matched: true });
+    expect(runs.find((r) => r.subject_id === stranger.orderId)).toMatchObject({ status: "done", matched: false });
+    const tags = await db().execute<Row>(sql`select order_id from commerce.order_tags where store_id = ${own.storeId}::uuid and label = 'Mug buyer'`);
+    expect(tags.map((t) => String(t.order_id))).toEqual([member.orderId]);
+    await db().execute(sql`delete from commerce.segments where store_id in (${own.storeId}::uuid, ${store.storeId}::uuid)`);
+  }, 120_000);
 });

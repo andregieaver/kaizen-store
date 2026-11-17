@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { actionsFor, conditionHolds, scheduleDue, valuesAt, workflowInputSchema, workflowMatches, workflowProblems, type WorkflowInput } from "./workflows";
+import {
+  actionsFor,
+  conditionHolds,
+  fieldsFor,
+  scheduleDue,
+  SEGMENT_FIELD,
+  segmentsNamed,
+  valuesAt,
+  workflowInputSchema,
+  workflowMatches,
+  workflowProblems,
+  type WorkflowInput,
+} from "./workflows";
 
 /** Workflows (D356): fields, conditions, actions by trigger and schedules, pure. */
 const order = { order: { number: "1001", total: 1249.5, currency: "NOK", market: "NO", lines: [{ sku: "MUG", quantity: 2 }, { sku: "TOTE", quantity: 1 }], shipping_address: { country: "NO" } } };
@@ -24,6 +36,44 @@ describe("conditions", () => {
     expect(workflowMatches([], order)).toBe(true);
     expect(workflowMatches([{ field: "order.currency", op: "is", value: "nok" }, { field: "order.total", op: "more_than", value: "2000" }], order)).toBe(false);
     expect(conditionHolds({ field: "order.missing", op: "is", value: "x" }, order)).toBe(false);
+  });
+});
+
+describe("the customer is in a segment (ecosystem plan E3.6, D718)", () => {
+  const vip = "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d";
+  const other = "6d3d9f1f-4b0e-4d8c-8f32-1e7a2b3c4d5e";
+  const inVip = { field: SEGMENT_FIELD, op: "is" as const, value: vip };
+  const notVip = { field: SEGMENT_FIELD, op: "is_not" as const, value: vip };
+
+  it("is offered where the event has a customer, and nowhere else", () => {
+    for (const trigger of ["order.paid", "customer.created", "subscription.started"] as const) expect(fieldsFor(trigger).map((f) => f.key)).toContain(SEGMENT_FIELD);
+    for (const trigger of ["product.updated", "stock.low", "schedule", "support.waiting", "return.requested"] as const) expect(fieldsFor(trigger).map((f) => f.key)).not.toContain(SEGMENT_FIELD);
+  });
+
+  it("holds by the segments the customer is in now, read beside the event's data, never from it", () => {
+    const facts = { segments: new Set([vip]) };
+    expect(conditionHolds(inVip, order, facts)).toBe(true);
+    expect(conditionHolds(notVip, order, facts)).toBe(false);
+    expect(conditionHolds({ ...inVip, value: other }, order, facts)).toBe(false);
+    expect(conditionHolds({ ...notVip, value: other }, order, facts)).toBe(true);
+    // The data cannot claim a segment.
+    expect(conditionHolds(inVip, { customer: { segment: vip } })).toBe(false);
+    expect(workflowMatches([inVip, { field: "order.currency", op: "is", value: "nok" }], order, facts)).toBe(true);
+  });
+
+  it("holds neither way when the segments are not known (no customer, or not read)", () => {
+    expect(conditionHolds(inVip, order, { segments: null })).toBe(false);
+    expect(conditionHolds(notVip, order, { segments: null })).toBe(false);
+    expect(conditionHolds(notVip, order)).toBe(false);
+  });
+
+  it("names the segments to read, each once, and is checked: is or is not, a segment's id", () => {
+    expect(segmentsNamed([inVip, notVip, { field: "order.total", op: "more_than", value: "1" }])).toEqual([vip]);
+    const base: WorkflowInput = { name: "VIP orders", trigger: "order.paid", schedule: null, conditions: [inVip], actions: [{ kind: "tag_order", tag: "vip" }] };
+    expect(workflowProblems(base)).toEqual([]);
+    expect(workflowProblems({ ...base, conditions: [{ ...inVip, op: "contains" }] })).toEqual(["Choose one of your segments."]);
+    expect(workflowProblems({ ...base, conditions: [{ ...inVip, value: "VIP" }] })).toEqual(["Choose one of your segments."]);
+    expect(workflowProblems({ ...base, trigger: "product.created", actions: [{ kind: "email_staff", subject: "s", text: "t" }] })).toEqual([`${SEGMENT_FIELD} is not a field of this trigger.`]);
   });
 });
 

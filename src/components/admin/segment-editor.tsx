@@ -7,12 +7,15 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { MarketingMessages } from "@/lib/admin-messages/marketing.en";
 import { RFM_SEGMENTS, type RfmSegment } from "@/lib/analytics-customers";
 import {
-  CONDITION_KIND_WORDS,
+  CONDITION_GROUPS,
+  conditionOffered,
   CONDITIONS_MAX,
   CONSENTS,
   newCondition,
+  SMS_CONSENTS,
   type Condition,
   type ConditionKind,
+  type ConditionOffer,
   type Consent,
   type SegmentRules,
 } from "@/lib/segments";
@@ -33,15 +36,21 @@ type Props = {
   tags: { key: string; label: string }[];
   countries: { code: string; name: string }[];
   languages: { code: string; name: string }[];
+  /** The store's products and product categories, by name, for the conditions on what people bought (ecosystem plan E3.6, D718). */
+  products: { id: string; name: string }[];
+  categories: { id: string; name: string }[];
   rfmReady: boolean;
+  /** Which conditions behind a feature or a setting are offered now. */
+  offer: ConditionOffer;
   preview: (storeSlug: string, rules: unknown) => Promise<PreviewResult>;
   save: (storeSlug: string, id: string | null, input: unknown) => Promise<{ ok: false; problem: string } | void>;
   starters?: { key: string; name: string; line: string; rules: SegmentRules }[];
 };
 
-const KINDS = Object.keys(CONDITION_KIND_WORDS) as ConditionKind[];
-
 const field = "min-h-10 rounded-md border border-line bg-card px-3";
+
+/** Options shown at once in a list a search narrows. */
+const SHOWN_AT_ONCE = 30;
 
 /**
  * The rule builder of a segment (D296): a name, *all* or *any*, and conditions from the closed list, counted as they change (a short pause, then
@@ -150,11 +159,18 @@ export function SegmentEditor(props: Props) {
               className={field}
             >
               <option value="">{w.editor.choose}</option>
-              {KINDS.filter((k) => k !== "rfm" || props.rfmReady).map((k) => (
-                <option key={k} value={k}>
-                  {w.kinds[k]}
-                </option>
-              ))}
+              {CONDITION_GROUPS.map((group) => {
+                const kinds = group.kinds.filter((k) => conditionOffered(k, { ...props.offer, rfmReady: props.rfmReady }));
+                return kinds.length === 0 ? null : (
+                  <optgroup key={group.id} label={w.editor.groups[group.id]}>
+                    {kinds.map((k) => (
+                      <option key={k} value={k}>
+                        {w.kinds[k]}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
           </label>
         )}
@@ -202,6 +218,41 @@ function Choices<T extends string>({ options, chosen, onChange, label }: { optio
   );
 }
 
+/**
+ * Many to choose from (a store's products): what is chosen first, then a search's matches, at most `SHOWN_AT_ONCE` at a time. A short list
+ * needs no search. A chosen id no longer in the list (a product deleted) stays chosen.
+ */
+function SearchChoices({
+  options,
+  chosen,
+  onChange,
+  label,
+  words,
+}: {
+  options: { value: string; label: string }[];
+  chosen: readonly string[];
+  onChange: (next: string[]) => void;
+  label: string;
+  words: { search: string; none: string; noMatch: string; more: string };
+}) {
+  const [query, setQuery] = useState("");
+  if (options.length === 0) return <span className="text-body text-muted">{words.none}</span>;
+  const q = query.trim().toLowerCase();
+  const picked = options.filter((o) => chosen.includes(o.value));
+  const matching = options.filter((o) => !chosen.includes(o.value) && (q === "" || o.label.toLowerCase().includes(q)));
+  const shown = [...picked, ...matching.slice(0, SHOWN_AT_ONCE)];
+  return (
+    <span className="flex w-full flex-col gap-2">
+      {options.length > SHOWN_AT_ONCE && (
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={words.search} aria-label={words.search} className={`${field} max-w-md`} />
+      )}
+      <Choices label={label} options={shown} chosen={chosen} onChange={onChange} />
+      {q !== "" && matching.length === 0 && <span className="text-caption text-muted">{words.noMatch}</span>}
+      {matching.length > SHOWN_AT_ONCE && <span className="text-caption text-muted">{fillWords(words.more, { n: matching.length - SHOWN_AT_ONCE })}</span>}
+    </span>
+  );
+}
+
 function ConditionFields({
   condition: c,
   onChange,
@@ -212,12 +263,123 @@ function ConditionFields({
   tags,
   countries,
   languages,
+  products,
+  categories,
 }: { condition: Condition; onChange: (next: Condition) => void; words: MarketingMessages } & Props) {
   const ed = w.editor;
   const number = (value: number, set: (n: number) => void, label: string) => (
     <input type="number" min={0} aria-label={label} value={value} onChange={(e) => set(Math.max(0, Math.floor(Number(e.target.value) || 0)))} className={`${field} w-24`} />
   );
+  // Ever, or in the last days (ecosystem plan E3.6, D718): `days` absent is ever.
+  const since = (value: number | undefined, set: (days: number | undefined) => void) => (
+    <>
+      <select aria-label={ed.when} value={value === undefined ? "ever" : "within"} onChange={(e) => set(e.target.value === "ever" ? undefined : (value ?? 30))} className={field}>
+        <option value="ever">{ed.ever}</option>
+        <option value="within">{ed.inTheLast}</option>
+      </select>
+      {value !== undefined && (
+        <>
+          {number(value, (days) => set(Math.max(1, days)), ed.days)}
+          <span className="text-body text-ink-2">{ed.daysWord}</span>
+        </>
+      )}
+    </>
+  );
+  const boughtOrNot = (has: boolean, set: (has: boolean) => void) => (
+    <select aria-label={w.kinds.bought} value={has ? "yes" : "no"} onChange={(e) => set(e.target.value === "yes")} className={field}>
+      <option value="yes">{ed.hasBought}</option>
+      <option value="no">{ed.hasNotBought}</option>
+    </select>
+  );
   switch (c.kind) {
+    case "bought":
+      return (
+        <>
+          {boughtOrNot(c.has, (has) => onChange({ ...c, has }))}
+          {since(c.days, (days) => onChange({ ...c, days }))}
+          <SearchChoices
+            label={ed.products}
+            options={products.map((p) => ({ value: p.id, label: p.name }))}
+            chosen={c.products}
+            onChange={(next) => onChange({ ...c, products: next })}
+            words={{ search: ed.searchProducts, none: ed.noProducts, noMatch: ed.noProductMatch, more: ed.moreProducts }}
+          />
+        </>
+      );
+    case "boughtCategory":
+      return (
+        <>
+          {boughtOrNot(c.has, (has) => onChange({ ...c, has }))}
+          {since(c.days, (days) => onChange({ ...c, days }))}
+          {categories.length === 0 ? (
+            <span className="text-body text-muted">{ed.noCategories}</span>
+          ) : (
+            <Choices label={ed.categories} options={categories.map((x) => ({ value: x.id, label: x.name }))} chosen={c.categories} onChange={(next) => onChange({ ...c, categories: next })} />
+          )}
+        </>
+      );
+    case "deal":
+      return (
+        <select aria-label={w.kinds.deal} value={c.status} onChange={(e) => onChange({ ...c, status: e.target.value as typeof c.status })} className={field}>
+          <option value="open">{ed.dealOpen}</option>
+          <option value="won">{ed.dealWon}</option>
+        </select>
+      );
+    case "support":
+      return (
+        <>
+          <select
+            aria-label={w.kinds.support}
+            value={c.op}
+            onChange={(e) => onChange({ ...c, op: e.target.value as typeof c.op, days: e.target.value === "within" ? (c.days ?? 30) : undefined })}
+            className={field}
+          >
+            <option value="within">{ed.supportWithin}</option>
+            <option value="ratedBad">{ed.supportBad}</option>
+          </select>
+          {c.op === "within" && (
+            <>
+              {number(c.days ?? 30, (days) => onChange({ ...c, days: Math.max(1, days) }), ed.days)}
+              <span className="text-body text-ink-2">{ed.daysWord}</span>
+            </>
+          )}
+        </>
+      );
+    case "review":
+      return (
+        <>
+          <select
+            aria-label={w.kinds.review}
+            value={c.maxStars === undefined ? "any" : "atMost"}
+            onChange={(e) => onChange({ ...c, maxStars: e.target.value === "any" ? undefined : (c.maxStars ?? 2) })}
+            className={field}
+          >
+            <option value="any">{ed.reviewAny}</option>
+            <option value="atMost">{ed.reviewAtMost}</option>
+          </select>
+          {c.maxStars !== undefined && (
+            <>
+              <select aria-label={ed.starsWord} value={c.maxStars} onChange={(e) => onChange({ ...c, maxStars: Number(e.target.value) })} className={field}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <span className="text-body text-ink-2">{ed.starsWord}</span>
+            </>
+          )}
+        </>
+      );
+    case "subscription":
+      return (
+        <select aria-label={w.kinds.subscription} value={c.has ? "yes" : "no"} onChange={(e) => onChange({ ...c, has: e.target.value === "yes" })} className={field}>
+          <option value="yes">{ed.hasSubscription}</option>
+          <option value="no">{ed.noSubscription}</option>
+        </select>
+      );
+    case "sms":
+      return <Choices label={ed.sms.label} options={SMS_CONSENTS.map((v) => ({ value: v, label: ed.sms[v] }))} chosen={c.statuses} onChange={(statuses) => onChange({ ...c, statuses })} />;
     case "consent":
       return <Choices label={ed.consent.label} options={CONSENTS.map((v: Consent) => ({ value: v, label: ed.consent[v] }))} chosen={c.statuses} onChange={(statuses) => onChange({ ...c, statuses })} />;
     case "orders":

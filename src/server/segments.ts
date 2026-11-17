@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { toMain } from "@/lib/analytics-core";
@@ -14,8 +15,10 @@ import {
   SEGMENT_CAP,
   SEGMENT_SAMPLE,
   segmentInput,
+  segmentNeeds,
   segmentRulesSchema,
   TAGS_PER_PERSON,
+  type DescribeContext,
   type Person,
   type SegmentCount,
   type SegmentRules,
@@ -24,7 +27,9 @@ import {
 import { audit } from "./auth";
 import { rfmGroups } from "./analytics-customers-data";
 import { NOT_EDIT_REFUND, PAID } from "./analytics-sql";
+import { applySegmentFacts, readSegmentFacts } from "./segment-facts";
 import type { Store } from "./stores";
+import { col, typedRows } from "./typed-rows";
 import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
@@ -52,15 +57,19 @@ export type SegmentStore = Pick<Store, "id" | "markets" | "localization"> & { ti
  * Every person of the store, by lower-case address: accounts, guests with a paid order (D152's `PAID`, never a copied or host's order, never an
  * erased person's), and the subscriber list. One query; money is net revenue without VAT per currency, converted in code. With `emails`, only
  * those people (a discount limited to a segment asks for one buyer, D380); `rfm: false` leaves their RFM group unread (no rule asks it).
+ * With `rules`, the rule sets the people will be matched against (ecosystem plan E3.6, D718): the facts of the newer conditions they ask for
+ * are read beside it (`readSegmentFacts()`), and the RFM groups only if one asks (unless `rfm` says). Without, none of those facts is read,
+ * so a newer condition holds for nobody: every reader that matches rules passes them.
  */
 export async function segmentPeople(
   store: SegmentStore,
   now = new Date(),
-  options: { emails?: readonly string[]; rfm?: boolean } = {},
+  options: { emails?: readonly string[]; rfm?: boolean; rules?: readonly SegmentRules[] } = {},
 ): Promise<People> {
   const id = store.id;
   const only = options.emails ? JSON.stringify([...new Set(options.emails.map(normaliseEmail))]) : null;
-  const rows = await db().execute<Row>(sql`
+  const needs = options.rules ? segmentNeeds(options.rules) : null;
+  const [rows, facts] = await Promise.all([db().execute<Row>(sql`
     with ord as (
       select lower(coalesce(c.email, o.email)) as email, o.placed_at, trim(o.currency) as currency, o.market_code,
         nullif(o.shipping_address ->> 'name', '') as ship_name,
@@ -124,7 +133,7 @@ export async function segmentPeople(
     left join tags t on t.email = k.email
     order by b.last_at desc nulls last, k.email
     limit ${SEGMENT_CAP + 1}
-  `);
+  `), needs ? readSegmentFacts(id, needs, only) : null]);
   const capped = rows.length > SEGMENT_CAP;
   const main = mainCurrency(store as Store);
   const missing = new Set<string>();
@@ -153,9 +162,10 @@ export async function segmentPeople(
       tags: ((r.tags ?? []) as string[]).map(String),
     };
   });
+  if (facts) applySegmentFacts(people, facts);
   // The Customers page's own groups (D380, `rfmGroups()`): a segment of Champions is the page's Champions.
   let rfmReady = false;
-  if (options.rfm !== false) {
+  if (options.rfm ?? needs?.rfm ?? true) {
     const timeZone = store.timeZone ?? (await storeTimeZone(id));
     const scored = await rfmGroups({ ...store, timeZone }, now);
     rfmReady = scored.ready;
@@ -182,7 +192,7 @@ export type SegmentResult = SegmentCount & {
 
 /** A rule set counted over the store's people now, with one page of them by last order (the first unless `page` says). */
 export async function evaluateSegment(store: SegmentStore, rules: SegmentRules, now = new Date(), page = 0): Promise<SegmentResult> {
-  const all = await segmentPeople(store, now);
+  const all = await segmentPeople(store, now, { rules: [rules], rfm: true });
   const count = countSegment(rules, all.people, now);
   const matched = all.people.filter((p) => matches(rules, p, now));
   const pages = Math.max(1, Math.ceil(matched.length / SEGMENT_SAMPLE));
@@ -196,7 +206,7 @@ export async function evaluateSegment(store: SegmentStore, rules: SegmentRules, 
  * currency (blank where a currency had no rate, never 0), customer type, email consent and tags. Through `writeCsv()`, formula-safe.
  */
 export async function segmentCsv(store: SegmentStore, rules: SegmentRules, now = new Date()): Promise<{ csv: string; rows: number }> {
-  const all = await segmentPeople(store, now);
+  const all = await segmentPeople(store, now, { rules: [rules], rfm: true });
   const currency = mainCurrency(store as Store);
   const people = all.people.filter((p) => matches(rules, p, now));
   const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
@@ -309,6 +319,71 @@ export async function deleteSegment(storeId: string, accountId: string, id: stri
   if (!rows[0]) return false;
   await audit(accountId, storeId, "segment.deleted", { name: String(rows[0].title) }, { target: { type: "segment", id } });
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// The products and categories conditions name (ecosystem plan E3.6, D718)
+// ---------------------------------------------------------------------------
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidArray = (ids: readonly string[]) => `{${ids.filter((id) => UUID.test(id)).join(",")}}`;
+
+/** A product's title in the store's first language, else its first, else its address; `p` is the product. */
+const productTitle = (locale: string) => sql`coalesce(
+  (select t.title from commerce.product_translations t where t.store_id = p.store_id and t.product_id = p.id order by (t.locale = ${locale}) desc, t.locale limit 1),
+  p.handle)`;
+
+/** The store's product categories with the path to each (*Clothes › Shoes*), A to Z by it: what a condition on a category names. */
+async function productCategories(storeId: string, ids: readonly string[] | null) {
+  return typedRows(
+    z.object({ id: col.uuid, name: col.text }),
+    sql`
+      with recursive tree (id, path, depth) as (
+        select t.id, t.name, 0 from commerce.terms t
+        where t.store_id = ${storeId}::uuid and t.content_type = 'product' and t.kind = 'category' and t.parent_id is null
+        union all
+        select t.id, tree.path || ' › ' || t.name, tree.depth + 1 from commerce.terms t join tree on t.parent_id = tree.id
+        where t.store_id = ${storeId}::uuid and t.content_type = 'product' and t.kind = 'category' and tree.depth < 8
+      )
+      select id, path as name from tree
+      where ${ids === null}::boolean or id = any(${uuidArray(ids ?? [])}::uuid[])
+      order by lower(path)
+    `,
+  );
+}
+
+/** The names of the products and categories some rule sets name, for their words (`describeRules()`); a name not found is one gone. */
+export async function segmentNames(store: Pick<Store, "id" | "localization">, sets: readonly (SegmentRules | null)[]): Promise<Pick<DescribeContext, "productName" | "categoryName">> {
+  const { products, categories } = segmentNeeds(sets.filter((s): s is SegmentRules => s !== null));
+  const [titles, paths] = await Promise.all([
+    products.length === 0
+      ? []
+      : typedRows(
+          z.object({ id: col.uuid, title: col.text }),
+          sql`select p.id, ${productTitle(store.localization.locales[0] ?? "en")} as title from commerce.products p
+            where p.store_id = ${store.id}::uuid and p.id = any(${uuidArray(products)}::uuid[])`,
+        ),
+    categories.length === 0 ? [] : productCategories(store.id, categories),
+  ]);
+  const product = new Map(titles.map((r) => [r.id, r.title]));
+  const category = new Map(paths.map((r) => [r.id, r.name]));
+  return { productName: (id) => product.get(id), categoryName: (id) => category.get(id) };
+}
+
+/** The most products the rule builder lists to choose from (a search narrows them in the browser). */
+export const PRODUCT_CHOICES_MAX = 2000;
+
+/** What the rule builder's conditions on what people bought choose from: the store's products (not archived) and product categories, by name. */
+export async function boughtChoices(store: Pick<Store, "id" | "localization">): Promise<{ products: { id: string; name: string }[]; categories: { id: string; name: string }[] }> {
+  const [products, categories] = await Promise.all([
+    typedRows(
+      z.object({ id: col.uuid, name: col.text }),
+      sql`select p.id, ${productTitle(store.localization.locales[0] ?? "en")} as name from commerce.products p
+        where p.store_id = ${store.id}::uuid and p.status <> 'archived' order by 2 limit ${PRODUCT_CHOICES_MAX}`,
+    ),
+    productCategories(store.id, null),
+  ]);
+  return { products, categories };
 }
 
 // ---------------------------------------------------------------------------

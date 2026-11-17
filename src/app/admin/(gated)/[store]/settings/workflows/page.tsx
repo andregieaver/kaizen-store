@@ -7,6 +7,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { EVENTS } from "@/lib/integrations";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { listSegments } from "@/server/segments";
 import { listEndpoints } from "@/server/webhook-endpoints";
 import { listWorkflows, workflowRuns } from "@/server/workflows";
 
@@ -24,7 +25,9 @@ export default async function WorkflowsPage({ params }: PageProps<"/admin/[store
   const canWrite = memberCan(member, "settings:write");
   const triggerLabels = Object.fromEntries(EVENTS.map((e) => [e.id, all.integrations.events[e.id]?.label ?? e.label]));
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
-  const [flows, endpoints] = await Promise.all([listWorkflows(store.id), listEndpoints(store.id)]);
+  const [flows, endpoints, segments] = await Promise.all([listWorkflows(store.id), listEndpoints(store.id), listSegments(store.id)]);
+  // *The customer is in segment X* (ecosystem plan E3.6, D718) chooses from the store's segments, by name.
+  const segmentChoices = segments.map((s) => ({ id: s.id, name: s.name }));
   const views: WorkflowView[] = await Promise.all(
     flows.map(async (flow) => ({
       id: flow.id,
@@ -53,13 +56,15 @@ export default async function WorkflowsPage({ params }: PageProps<"/admin/[store
         <PageHeader title={w.title} description={<>{w.description}</>} />
         {canWrite && (
           <Card title={w.make}>
-            <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} />
+            <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} segments={segmentChoices} />
           </Card>
         )}
         {views.length === 0 ? (
           <p className="text-sm text-muted">{w.none}</p>
         ) : (
-          views.map((flow) => <WorkflowCard key={flow.id} flow={flow} endpoints={endpointChoices} triggerLabels={triggerLabels} canWrite={canWrite} actions={actions} />)
+          views.map((flow) => (
+            <WorkflowCard key={flow.id} flow={flow} endpoints={endpointChoices} triggerLabels={triggerLabels} canWrite={canWrite} actions={actions} segments={segmentChoices} />
+          ))
         )}
         <p className="text-sm text-muted">{w.limits}</p>
       </div>

@@ -12,12 +12,14 @@ import {
   actionsFor,
   RUNS_PER_HOUR,
   scheduleDue,
+  segmentsNamed,
   workflowInputSchema,
   workflowMatches,
   workflowProblems,
   WORKFLOWS_MAX,
   type WorkflowAction,
   type WorkflowCondition,
+  type WorkflowFacts,
   type WorkflowInput,
   type WorkflowSchedule,
   type WorkflowTrigger,
@@ -32,9 +34,11 @@ import { SYSTEM_ACTOR } from "./order-actor";
 import { addOrderNote } from "./order-admin";
 import { changeOrderTags } from "./order-tags";
 import { memberCan } from "./permissions";
+import { segmentsOfAddress } from "./segment-membership";
 import { addTag } from "./segments";
 import { emailFooter, storeById } from "./shopper-emails";
 import { alertRecipients } from "./staff-alerts";
+import { currentStore } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { latestSubject } from "./workflow-subjects";
 
@@ -118,6 +122,15 @@ async function checked(member: Membership, raw: unknown): Promise<{ ok: true; in
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const input = parsed.data as WorkflowInput;
   const problems = workflowProblems(input);
+  // *The customer is in segment X* (ecosystem plan E3.6, D718): X is one of the store's own segments.
+  const named = segmentsNamed(input.conditions).filter((id) => z.uuid().safeParse(id).success);
+  if (named.length > 0) {
+    const own = await typedRows(
+      z.object({ id: col.uuid }),
+      sql`select id from commerce.segments where store_id = ${member.store.id}::uuid and id = any(${`{${named.join(",")}}`}::uuid[])`,
+    );
+    if (own.length < named.length) problems.push("Choose one of your segments.");
+  }
   for (const action of input.actions) {
     if ((action.kind === "tag_order" || action.kind === "tag_customer") && !normaliseTag(action.tag).ok) problems.push("A tag is at most 40 characters, without a comma.");
     if (action.kind === "ask_ai_manager" && !memberCan(member, "owner")) problems.push("Only an owner can make a workflow that asks the AI manager: it runs in their name.");
@@ -209,7 +222,7 @@ export async function testWorkflow(member: Membership, id: string): Promise<Test
     data = subject ? await subjectData(store, flow.trigger, subject) : null;
     found = data !== null;
   }
-  const matched = found && workflowMatches(flow.conditions, data ?? {});
+  const matched = found && workflowMatches(flow.conditions, data ?? {}, await factsOf(member.store.slug, flow.conditions, data, new Date()));
   await db().execute(sql`update commerce.workflows set tested_version = version where store_id = ${member.store.id}::uuid and id = ${id}::uuid`);
   await audit(member.account.id, member.store.id, "automation.workflow_tested", { found, matched }, { target: { type: "workflow", id } });
   return { ok: true, found, matched, about: aboutOf(data), actions: matched ? flow.actions.map((action) => ({ kind: action.kind, would: wouldDo(action, data) })) : [] };
@@ -269,6 +282,20 @@ function emailOf(data: Record<string, unknown>): string | null {
     if (typeof email === "string" && email.includes("@")) return email;
   }
   return null;
+}
+
+/**
+ * What the conditions read beside the event (ecosystem plan E3.6, D718): the segments the event's customer is in now, of those the
+ * conditions name, by their address (as a customer's tag finds them) through the segments' own reader for that address alone. Nothing is read
+ * when no condition names a segment; an event without a customer, or a store gone, knows no segments.
+ */
+async function factsOf(slug: string, conditions: WorkflowCondition[], data: Record<string, unknown> | null, now: Date): Promise<WorkflowFacts> {
+  const named = segmentsNamed(conditions);
+  if (named.length === 0) return {};
+  const email = data ? emailOf(data) : null;
+  const store = email ? await currentStore(slug) : null;
+  if (!email || !store) return { segments: null };
+  return { segments: await segmentsOfAddress(store, email, named, now) };
 }
 
 async function act(run: { id: string; storeId: string; workflowId: string; event: string; subjectId: string | null; name: string; account: string | null }, action: WorkflowAction, index: number, data: Record<string, unknown>): Promise<ActionOutcome> {
@@ -426,7 +453,7 @@ export async function runWorkflows(limit = 50, now = new Date()): Promise<{ runs
       const conditions = (run.conditions as WorkflowCondition[]) ?? [];
       let data: Record<string, unknown> | null = run.event === "schedule" ? {} : await subjectData({ id: run.store_id, slug: run.slug, name: run.store_name }, run.event, run.subject_id);
       if (!run.open) data = null;
-      const matched = data !== null && workflowMatches(conditions, data);
+      const matched = data !== null && workflowMatches(conditions, data, await factsOf(run.slug, conditions, data, now));
       const outcomes: ActionOutcome[] = [];
       if (matched) {
         matchedCount++;
