@@ -19,6 +19,8 @@ export const sv: Messages = {
     confirmValid: "Länken fungerar i 7 dagar.",
     messageSubject: (site: string) => `Nytt meddelande från ${site}`,
     messageHeading: "Nytt meddelande från formuläret på webbplatsen",
+    payNote: (title: string, price: string) => `När du har skickat betalar du ${price} för ${title} i kassan.`,
+    paymentNext: "Det här formuläret ber om betalning: besökaren gick vidare till kassan, och svaret visar beställningen när den är betald.",
     filesInAdmin: "Filerna som skickades med finns vid svaret under Webbplats → Formulär, där du kan ladda ner dem.",
     replyHint: "Svara på det här e-postmeddelandet för att svara avsändaren.",
     subscriberSubject: (site: string) => `Ny prenumerant på nyhetsbrevet från ${site}`,

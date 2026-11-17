@@ -12,11 +12,12 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import type { PageType } from "@/lib/page-content";
 import { signupCodeChoices } from "@/server/discounts";
 import { formUses, getForm } from "@/server/forms-admin";
+import { formPaymentChosen } from "@/server/form-payments";
 import { templatesOfForm } from "@/server/form-templates";
 import { isStoreOwner } from "@/server/templates";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { deleteFormAction, saveAsTemplateAction, saveFormAction, setFormStatusAction, updateTemplateAction } from "../actions";
+import { deleteFormAction, saveAsTemplateAction, saveFormAction, searchFormPaymentAction, setFormStatusAction, updateTemplateAction } from "../actions";
 
 export const metadata: Metadata = { title: "Form" };
 
@@ -29,11 +30,12 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
   if (!form) notFound();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "forms");
-  const [uses, codes, linked, owner] = await Promise.all([
+  const [uses, codes, linked, owner, paying] = await Promise.all([
     formUses(store.id, form.id),
     form.kind === "signup" ? signupCodeChoices(store.id) : Promise.resolve([]),
     templatesOfForm({ accountId: account.id, storeId: store.id }, form.id, store.markets[0]?.lang ?? "en"),
     isStoreOwner(account.id, store.id),
+    form.kind === "message" ? formPaymentChosen(store.id, form.paymentVariantId) : Promise.resolve(null),
   ]);
   const base = `/admin/${store.slug}/forms`;
   // The store's other languages (F3), named in the admin's language, for the words a visitor in them sees.
@@ -69,6 +71,7 @@ export default async function FormPage({ params }: PageProps<"/admin/[store]/for
               update={updateTemplateAction.bind(null, store.slug)}
             />
           }
+          payment={form.kind === "message" ? { chosen: paying, search: searchFormPaymentAction.bind(null, store.slug) } : undefined}
           listHref={base}
           save={saveFormAction.bind(null, store.slug, form.id)}
           setStatus={setFormStatusAction.bind(null, store.slug, form.id)}

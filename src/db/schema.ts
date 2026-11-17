@@ -11336,6 +11336,11 @@ export const forms = commerce.table(
     keepMonths: integer("keep_months").notNull().default(12),
     /** What it was made from: `starter:{key}` (Kaizena Flow's starters), `template:{id}` (a form template, F4), or null. Never a link that changes the form. */
     madeFrom: text("made_from"),
+    /**
+     * The product variant a message form's visitors pay for after sending (D738 F6c), at its price in the page's market, through the store's own
+     * checkout; null: no payment. A store's forms only. No foreign key (product_variants is a hot table): the rules trigger checks it is the store's.
+     */
+    paymentVariantId: uuid("payment_variant_id"),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -11354,6 +11359,7 @@ export const forms = commerce.table(
     check("forms_signup", sql`(${t.kind} = 'signup') = (${t.signup} is not null) and (${t.signup} is null or jsonb_typeof(${t.signup}) = 'object')`),
     check("forms_keep_months", sql`${t.keepMonths} between 1 and 36`),
     check("forms_made_from", sql`${t.madeFrom} is null or char_length(${t.madeFrom}) between 1 and 80`),
+    check("forms_payment", sql`${t.paymentVariantId} is null or (${t.storeId} is not null and ${t.kind} = 'message')`),
   ],
 );
 
@@ -11451,6 +11457,26 @@ export const formResponses = commerce.table(
     check("form_responses_delivery", sql`${t.delivery} in ('sent', 'logged', 'failed', 'inbox')`),
     check("form_responses_contact", sql`${t.contactEmail} is null or (char_length(${t.contactEmail}) <= 254 and ${t.contactEmail} = lower(${t.contactEmail}))`),
   ],
+);
+
+/**
+ * A response that went on to pay (D738 F6c): the cart its form's product was put in, so the order placed from that cart is the response's
+ * order. Written in the same transaction as the cart's line; gone with its response. No foreign keys to carts (a hot table).
+ */
+export const formPayments = commerce.table(
+  "form_payments",
+  {
+    responseId: uuid("response_id")
+      .primaryKey()
+      .references(() => formResponses.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    cartId: uuid("cart_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("form_payments_cart_idx").on(t.storeId, t.cartId)],
 );
 
 /**

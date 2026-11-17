@@ -55,6 +55,8 @@ export function SiteForm({
   preview = false,
   endpoint = "/api/forms",
   extra,
+  market,
+  payNote,
 }: {
   form: PublicForm;
   store: string | null;
@@ -64,6 +66,10 @@ export function SiteForm({
   endpoint?: string;
   /** More of the request, read when it is sent (the product question's product and chosen variant). */
   extra?: () => Record<string, unknown>;
+  /** The page's market: where a form's payment goes in the cart (D738 F6c). */
+  market?: string;
+  /** What is paid after sending and its price, in the page's language (F6c): shown above the button. */
+  payNote?: string;
 }) {
   const pageLang = usePageLanguage();
   const m = t(lang ?? pageLang);
@@ -124,6 +130,7 @@ export function SiteForm({
         consent,
         website: website.current?.value ?? "",
         lang: lang ?? pageLang,
+        ...(market ? { market } : {}),
         path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
         elapsed: msSince(shown.current),
       });
@@ -138,6 +145,11 @@ export function SiteForm({
       }
       const response = await fetch(endpoint, { method: "POST", ...(asked.length > 0 ? {} : { headers: { "Content-Type": "application/json" } }), body });
       const answer = (await response.json().catch(() => ({ ok: false }))) as FormResponse;
+      if (answer.ok && answer.outcome === "pay") {
+        // Kept, and on to the store's checkout with the form's product in the cart (F6c).
+        window.location.assign(answer.url);
+        return;
+      }
       if (answer.ok) {
         const text =
           answer.outcome === "confirm"
@@ -225,6 +237,11 @@ export function SiteForm({
             }}
             error={errors[CONSENT_KEY]}
           />
+        )}
+        {payNote && (
+          <p className="text-sm" data-form-pay-note>
+            {payNote}
+          </p>
         )}
         {(form.type === "emailForm" || form.layout === "stacked") && <div>{button}</div>}
         {state.kind === "failed" && (

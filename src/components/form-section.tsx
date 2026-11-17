@@ -2,6 +2,8 @@ import { formAsBlock, formTakesAnswers } from "@/lib/form-records";
 import { publicForm } from "@/lib/forms";
 import type { EmailFormBlock, FormBlock, NewsletterBlock } from "@/lib/page-content";
 import type { GridPlace } from "@/server/content-grid";
+import { t } from "@/lib/i18n";
+import { formPaymentOffer } from "@/server/form-payments";
 import { siteForm } from "@/server/form-site";
 import { storeSlugOf } from "@/server/menus";
 import { getOpenStore } from "@/server/stores";
@@ -27,5 +29,15 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
   if (block.type !== "form") return <SiteForm form={publicForm(block)} store={place.owner} lang={lang} />;
   const form = block.formId ? await siteForm(place.owner, block.formId) : null;
   if (!form || !formTakesAnswers(form)) return null;
-  return <SiteForm form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))} store={place.owner} lang={lang} />;
+  // A form with a payment (D738 F6c) says what is paid and its price in this market, worded here so visitors' scripts carry no more words.
+  const offer = place.owner && form.paymentVariantId ? await formPaymentOffer(place.owner, form.paymentVariantId, place.market) : null;
+  return (
+    <SiteForm
+      form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))}
+      store={place.owner}
+      lang={lang}
+      market={place.market}
+      payNote={offer ? t(lang).form.payNote(offer.title, offer.price) : undefined}
+    />
+  );
 }

@@ -1632,7 +1632,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - A countdown timer and animated stats (D561, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`): a countdown only ever counts to a fixed moment the owner chose, the same for every visitor, and draws nothing once it has passed; never add one that starts again per visitor (false urgency). Stats' figures are the owner's own, in the server's HTML as typed; the count is decoration only, never under reduced motion and never read to a screen reader.
 
-## Forms as their own records, kept responses and form templates (D705, D738, `docs/forms.md`; F1 to F5, F6a and F6b built, its AI tools live)
+## Forms as their own records, kept responses and form templates (D705, D738, `docs/forms.md`; F1 to F6 built, its AI tools live)
 
 - Read `docs/forms.md` (section 9 is F1 as built) before changing a page's form components, `src/lib/forms.ts`, `src/lib/form-records.ts`,
   `src/server/forms.ts`, `src/server/forms-admin.ts` (the only writer of `forms` and `form_responses`) or the checkout's question rules, which
@@ -1653,6 +1653,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 - A file (F6b, `docs/forms.md` 15.2) is taken only through `takeFile()` (a picture as `readPicture()` reads it, a PDF as `pdfProblem()` passes it)
   and stored by `storeFiles()` before its response's row; it leaves the bucket only through `fileForStaff()` as `fileDownload()` makes it (an
   attachment), never in an email, event or API answer; `pruneFormFiles()` is the only remover.
+- A form's payment (F6c, `docs/forms.md` 15.3) is one of the store's products, paid only through the store's own checkout: `startFormPayment()`
+  puts it in the visitor's cart and writes `form_payments` in the same transaction; never a payment outside an order, never on Kaizena Flow's forms.
 - A form template never changes a form made from it; a form on a page is archived, never deleted.
 - Form templates (F4) are `commerce.form_templates`, written only by `src/server/form-templates.ts`: Kaizena Flow's seven starters are
   seeded rows (`starter`), hidden but never deleted; a template holds no recipients, subject, inbox, welcome code or tags; only a store's

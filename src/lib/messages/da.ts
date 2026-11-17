@@ -19,6 +19,8 @@ export const da: Messages = {
     confirmValid: "Linket virker i 7 dage.",
     messageSubject: (site: string) => `Ny besked fra ${site}`,
     messageHeading: "Ny besked fra formularen på webstedet",
+    payNote: (title: string, price: string) => `Når du har sendt, betaler du ${price} for ${title} i kassen.`,
+    paymentNext: "Denne formular beder om betaling: den besøgende gik videre til kassen, og svaret viser ordren, når den er betalt.",
     filesInAdmin: "Filerne, der blev sendt med, ligger ved svaret under Websted → Formularer, hvor du kan downloade dem.",
     replyHint: "Svar på denne e-mail for at svare afsenderen.",
     subscriberSubject: (site: string) => `Ny tilmelding til nyhedsbrevet fra ${site}`,

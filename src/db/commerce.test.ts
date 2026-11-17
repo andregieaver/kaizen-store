@@ -8469,6 +8469,25 @@ describe("forms as their own records (D705)", () => {
   });
 });
 
+describe("payments in a form (D738 F6c)", () => {
+  it("lets a store's message form pay only for the store's own variant, and keeps which cart a response went on to pay with", async () => {
+    const mine = await createProduct({ storeId: store });
+    const theirs = await createProduct({ storeId: other });
+    const { id } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name, payment_variant_id) values ($1, 'message', 'Course', $2) returning id", [store, mine.variantId]);
+    await expect(db.query("update commerce.forms set payment_variant_id = $2 where id = $1", [id, theirs.variantId])).rejects.toThrow(/forms\.payment/);
+    await expect(db.query("insert into commerce.forms (store_id, kind, name, signup, payment_variant_id) values ($1, 'signup', 'News', '{}', $2)", [store, mine.variantId])).rejects.toThrow(/forms_payment/);
+    await expect(db.query("insert into commerce.forms (store_id, kind, name, payment_variant_id) values (null, 'message', 'Ours', $1)", [mine.variantId])).rejects.toThrow(/forms[._]payment/);
+    const { id: response } = await one<{ id: string }>("insert into commerce.form_responses (form_id, answers, path, locale, delivery) values ($1, '[]', '/', 'en', 'sent') returning id", [id]);
+    await expect(
+      db.query("insert into commerce.form_payments (response_id, store_id, cart_id, variant_id) values ($1, $2, gen_random_uuid(), $3)", [response, other, mine.variantId]),
+    ).rejects.toThrow(/form_payments\.store/);
+    await db.query("insert into commerce.form_payments (response_id, store_id, cart_id, variant_id) values ($1, $2, gen_random_uuid(), $3)", [response, store, mine.variantId]);
+    await expect(db.query("update commerce.form_payments set cart_id = gen_random_uuid() where response_id = $1", [response])).rejects.toThrow(/form_payments\.fixed/);
+    await db.query("delete from commerce.forms where id = $1", [id]);
+    expect((await db.query("select 1 from commerce.form_payments where response_id = $1", [response])).rows).toHaveLength(0);
+  });
+});
+
 describe("form templates (D705 F4)", () => {
   it("seeds Kaizena Flow's seven starters as the marketplace's, in four languages, readable as a form's content", async () => {
     const rows = (await db.query<{ starter: string; kind: string; sharing: string; name: { text: string; byLocale: Record<string, string> }; content: { questions: unknown[]; signup: unknown } }>(

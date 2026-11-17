@@ -70,6 +70,11 @@ export type FormDraft = {
   delivery: FormDelivery;
   signup: FormSignup | null;
   keepMonths: number;
+  /**
+   * The product variant a message form's visitors pay for after sending (D738 F6c): its price in the page's market, through the store's own
+   * checkout, as any order. A store's forms only; left out or null: no payment.
+   */
+  paymentVariantId?: string | null;
 };
 
 export type FormRecord = FormDraft & { id: string; storeId: string | null; status: FormStatus; madeFrom: string | null };

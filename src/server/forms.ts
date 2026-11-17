@@ -17,6 +17,7 @@ import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { storeFiles, takeFile, type SentFile, type TakenFile } from "./form-files";
+import { startFormPayment } from "./form-payments";
 import { recordFormSent } from "./experiments";
 import { issueSignupCode } from "./discounts";
 import { houseStoreId } from "./house-customers";
@@ -50,7 +51,15 @@ const CONFIRM_DAYS = 7;
 
 type FormOwner = { storeId: string | null; store: EmailStore | null; name: string; origin: string; lang: string; timeZone: string };
 /** A form found: a page's own email form or sign-up (D93), or a form record (D705) as one, with its id in `formId` (its responses are kept). */
-type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; owner: FormOwner; formId: string | null; inbox?: FormInboxChoice };
+type FoundForm = {
+  block: EmailFormBlock | NewsletterBlock;
+  pageTitle: string;
+  owner: FormOwner;
+  formId: string | null;
+  inbox?: FormInboxChoice;
+  /** The product its visitors go on to pay for (D738 F6c): a store's message form only. */
+  paymentVariantId?: string | null;
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -98,7 +107,7 @@ export async function findForm(storeId: string | null, blockId: string): Promise
     if (!formTakesAnswers(form) || !(await formIsPublished(storeId, form.id))) return null;
     const owner = await formOwner(storeId);
     // The questions in the owner's main words: the answers are labelled in them, as a page's own form labels them (D93).
-    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id, inbox: form.delivery.inbox };
+    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id, inbox: form.delivery.inbox, paymentVariantId: form.paymentVariantId };
   };
   if (UUID.test(blockId)) {
     const found = await saved(blockId);
@@ -241,10 +250,16 @@ export async function submitForm(request: FormRequest, visitor: string, files: R
       found.formId
         ? keepResponse({ id: responseId, formId: found.formId, answers, contactEmail: checked.replyTo, path: request.path, locale: request.lang, delivery, files: stored })
         : Promise.resolve();
+    // A form with a payment (D738 F6c): once the response is kept, its product goes into the visitor's cart and they go on to the checkout.
+    // When the payment cannot start (payments off, the product not sold there), the response stands unpaid and the visitor is told it was sent.
+    const sent = async (): Promise<{ status: number; body: FormResponse }> => {
+      const url = owner.storeId && found.formId && found.paymentVariantId ? await startFormPayment(owner.storeId, found.paymentVariantId, request.market, responseId) : null;
+      return { status: 200, body: url ? { ok: true, outcome: "pay", url } : { ok: true, outcome: "sent" } };
+    };
     if (inbox.kept && !inbox.emailToo) {
       await db().execute(sql`update commerce.form_submissions set status = 'sent' where id = ${String(row.id)}::uuid and ${owned(owner.storeId)}`);
       await keep("inbox");
-      return { status: 200, body: { ok: true, outcome: "sent" } };
+      return sent();
     }
     const status = await relay(
       found,
@@ -259,6 +274,7 @@ export async function submitForm(request: FormRequest, visitor: string, files: R
           { type: "divider" },
           pageLine(o, owner, request.path),
           ...(stored.length > 0 ? [{ type: "paragraph" as const, text: o.form.filesInAdmin }] : []),
+          ...(found.paymentVariantId && owner.storeId ? [{ type: "paragraph" as const, text: o.form.paymentNext }] : []),
         ],
       },
       checked.replyTo,
@@ -267,7 +283,7 @@ export async function submitForm(request: FormRequest, visitor: string, files: R
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${String(row.id)}::uuid and ${owned(owner.storeId)}`);
     // Kept even when the email failed: the owner finds it under the form's responses (D705).
     await keep(status);
-    return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: { ok: true, outcome: "sent" } };
+    return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : sent();
   }
 
   const checked = checkSignup(block, request.values, request.consent, v);
