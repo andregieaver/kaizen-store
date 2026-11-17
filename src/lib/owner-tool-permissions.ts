@@ -125,6 +125,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Settings, Checkout rules asks `settings:read` to see and `settings:write` to change (D357).
   checkout_questions: "settings:read",
   save_checkout_question: "settings:write",
+  // Contracts for deals (D695): the deals pages' own permissions.
+  list_contracts: "customers:read",
+  draft_contract: "customers:write",
+  remind_contract_signer: "customers:write",
   // Blogs (D341): the Blogs and Comments pages' own keys (articles are the Website area's).
   list_blogs: "website:read",
   blog_comments: "website:read",

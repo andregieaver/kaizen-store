@@ -77,6 +77,10 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   save_producer_registration: "shop",
   checkout_questions: "shop",
   save_checkout_question: "shop",
+  // Deals (D464) carry their contracts: off, the deals pages and their tools go.
+  list_contracts: "sales",
+  draft_contract: "sales",
+  remind_contract_signer: "sales",
   search_merchandising: "shop",
   save_search_synonym: "shop",
   save_search_rule: "shop",

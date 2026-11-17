@@ -136,6 +136,7 @@ import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
 import { declineQuoteTool, preflightDeclineQuote, preflightPriceDisplay, priceDisplayTool, setDraftPricesTool, setPriceDisplayTool, setQuoteRequestsTool } from "./quote-tools";
+import { draftContractTool, listContractsTool, preflightRemindSigner, remindContractSignerTool } from "./contract-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
 import { checkoutQuestionsTool, preflightCheckoutQuestion, saveCheckoutQuestionTool } from "./checkout-question-tools";
@@ -2215,6 +2216,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     }
     return preflightPriceDisplay(ctx, input.input as OwnerToolInput<"set_price_display">);
   }
+  // A contract not out for signing, with no signer waiting, or a signer asked within the day is refused now, never kept for a yes (D695).
+  if (name === "remind_contract_signer") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    await preflightRemindSigner(ctx, input.input as OwnerToolInput<"remind_contract_signer">);
+    return;
+  }
   // A draft that could not be sent (not open, a problem that blocks it, payments off, a closed store) is refused now, never kept for a yes (D173).
   if (name === "send_draft_order") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2428,6 +2436,10 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   price_display: (ctx: OwnerToolContext) => priceDisplayTool(ctx),
   set_price_display: setPriceDisplayTool,
   set_quote_requests: setQuoteRequestsTool,
+  // Contracts for deals (D695 step 4).
+  list_contracts: listContractsTool,
+  draft_contract: draftContractTool,
+  remind_contract_signer: remindContractSignerTool,
   checkout_questions: checkoutQuestionsTool,
   save_checkout_question: saveCheckoutQuestionTool,
   list_returns: listReturnsTool,

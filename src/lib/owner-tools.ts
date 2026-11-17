@@ -35,6 +35,7 @@ import { categoryApprovalSummary, listCategoriesInput, updateCategoryInput } fro
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
 import { checkoutQuestionSummary, checkoutQuestionsInput, saveCheckoutQuestionInput } from "./checkout-question-tools";
 import { declineQuoteInput, priceDisplayInput, quoteToolSummary, setDraftPricesInput, setPriceDisplayInput, setQuoteRequestsInput } from "./quote-tools";
+import { draftContractInput, listContractsInput, remindContractSignerInput, remindSummary } from "./contract-tools";
 import {
   saveShippingMethodInput,
   setCountriesInput,
@@ -1390,6 +1391,23 @@ export const OWNER_TOOLS = [
     setQuoteRequestsInput,
     "public",
   ),
+  // Contracts for deals (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`).
+  tool(
+    "list_contracts",
+    "The store's contracts for deals (D695), as a deal's Contracts card shows them: each one's title, deal, status (draft, sent for signing, signed, declined, expired, cancelled), when it was sent and must be signed by, and its signers in order (the store's and the customer's) with whose turn it is, whether they were asked, reminded and opened it; and the store's contract templates. `deal` narrows them to one deal by its title or id, `status` to one status (open, the default: drafts and contracts out for signing). Read-only. A signer's email, a reason for declining and the contract's words are read on its page, never here.",
+    listContractsInput,
+  ),
+  tool(
+    "draft_contract",
+    "Drafts a contract on an open deal from one of the store's templates (D695), as the deal's Contracts card does: the template's words with the deal's person, company, linked quote and the store's details filled in when it is sent, the deal's owner signing for the store and the deal's person for the customer. It makes a DRAFT only: nothing is sent to anyone. The answer is the draft's page and what still stops it being sent. Sending is never yours: the owner reads the draft on its page and presses Send for signing there. Never write a contract's words yourself.",
+    draftContractInput,
+  ),
+  tool(
+    "remind_contract_signer",
+    "Emails the signer whose turn it is on a contract out for signing a reminder (D695), with their link to the signing page (the store's own signer: that it is their turn in the admin). At most once a day for a signer; the store also reminds them by itself every few days, as its template says. Needs the owner's approval.",
+    remindContractSignerInput,
+    "send",
+  ),
   // Questions at checkout (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`).
   tool(
     "checkout_questions",
@@ -2330,6 +2348,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "set_quote_requests":
     case "decline_quote":
       return quoteToolSummary(name, input) ?? inputSummary(name, input);
+    // The contract's title and the signer are put in by the server (`remindApprovalWords()`).
+    case "remind_contract_signer":
+      return remindSummary(null, input);
     // A change names the question by its own words, put in by the server (`checkoutQuestionApprovalWords()`).
     case "save_checkout_question":
       return checkoutQuestionSummary(input);

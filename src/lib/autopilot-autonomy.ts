@@ -73,6 +73,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_quote_requests: "setup",
   // What the checkout asks (D357): a setting of the shop, as its shipping is.
   save_checkout_question: "setup",
+  // A reminder to sign goes to a customer in the store's name.
+  remind_contract_signer: "messages",
   save_shipping_method: "setup",
   // A member of staff's hours (AGT-01): when shoppers can book them.
   set_working_hours: "setup",

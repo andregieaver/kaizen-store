@@ -160,6 +160,14 @@ wins it, as step 1's rules said. A person's and a company's timeline shows each 
 migration for the workflows' trigger list and a new API contract version), and the AI manager's contract tools (a prompt change: the
 agents' eval is recorded again on Platform → AI once it is live).
 
+*Step 4, the AI manager (17 November 2026):* three tools (`src/lib/contract-tools.ts`, `src/server/contract-tools.ts`, rules in
+`docs/rules/admin/ai.md`): `list_contracts` (contracts, their signers' turn and the templates; never an email, a decline's reason or the
+words), `draft_contract` (a draft on an open deal from a template, saying what stops it being sent) and `remind_contract_signer` (the
+owner's yes; once a day at most). The design said the manager would also *send*: it does not, as sending draws the PDF with Chromium and
+only the contract's page route carries it; the manager gives that page and the owner presses Send for signing. In the same push the pages
+held out of the manager's prompt for a deploy (Forms, D705; text messages, D632) went back in, so one eval run covers both.
+`src/server/contract-tools.int.test.ts`. The API contract is 1.35.
+
 ## 8. The owner's answers (16 November 2026)
 
 - **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.
