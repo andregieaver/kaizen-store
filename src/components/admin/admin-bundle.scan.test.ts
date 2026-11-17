@@ -116,7 +116,7 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     const known = new Set(baseline.zodReach);
     expect(
       now.filter((name) => !known.has(name)),
-      "Move the schema to a -schema.ts file beside the helper, or read the helper from a module without zod. The list only shrinks.",
+      "Move the schema to a -schema.ts file beside the helper, or read the helper from a module without zod; if the chain cannot be cut now, add it on purpose with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts, so it shows in the diff.",
     ).toEqual([]);
     const gone = baseline.zodReach.filter((name) => !now.includes(name));
     expect(gone, "These no longer reach zod: take them off with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts").toEqual([]);

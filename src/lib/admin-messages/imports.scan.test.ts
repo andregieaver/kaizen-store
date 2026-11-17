@@ -78,7 +78,7 @@ describe.skipIf(WRITE)("a catalogue file holds text only (bloat review step 1.4)
     const known = new Set(baseline.already);
     expect(
       directImports().filter((line) => !known.has(line)),
-      "A catalogue file holds text only: import the type, or keep the label in the module that uses it. The list only shrinks.",
+      "A catalogue file holds text only: import the type, or keep the label in the module that uses it; if it must stay, add it on purpose with WRITE_ADMIN_IMPORTS_BASELINE=1 pnpm exec vitest run src/lib/admin-messages/imports.scan.test.ts, so it shows in the diff.",
     ).toEqual([]);
   });
 
