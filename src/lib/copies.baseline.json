@@ -1,0 +1,124 @@
+{
+  "exactAcrossFiles": 4108,
+  "exactInsideFiles": 630,
+  "nearLines": 22550,
+  "repeatedHelperNames": 98,
+  "repeatedHelperDeclarations": 483,
+  "twins": {
+    "src/app/admin/(gated)/(owner)/account/domains/move/[domain]/page.tsx|src/app/admin/(gated)/[store]/settings/domains/move/[domain]/page.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/app/admin/(gated)/[store]/cart-reminders/page.tsx|src/app/admin/(gated)/platform/plan-reminders/page.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/app/admin/(gated)/[store]/customers/import/[jobId]/page.tsx|src/app/admin/(gated)/[store]/orders/history-import/[jobId]/page.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/app/admin/(gated)/[store]/integrations/[provider]/page.tsx|src/app/admin/(gated)/platform/integrations/[provider]/page.tsx": {
+      "reason": "the platform's twin of a store engine; step 3.10 folds it"
+    },
+    "src/app/admin/(gated)/[store]/integrations/fiken/actions.ts|src/app/admin/(gated)/[store]/integrations/tripletex/actions.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/app/admin/(gated)/[store]/integrations/fiken/page.tsx|src/app/admin/(gated)/[store]/integrations/tripletex/page.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/app/admin/(gated)/[store]/inventory/import/[jobId]/page.tsx|src/app/admin/(gated)/[store]/products/import/[jobId]/page.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx|src/app/s/[store]/[market]/order/[orderId]/order-section.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/affiliate-settings-form.tsx|src/components/admin/bonus-settings-form.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/chat-agent-form.tsx|src/components/admin/docs-guide-form.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/content-type-editor.tsx|src/components/admin/field-group-editor.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/customer-import-flow.tsx|src/components/admin/data/import-flow.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/customer-import-flow.tsx|src/components/admin/inventory/stock-import-flow.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/customer-import-views.tsx|src/components/admin/inventory/stock-import-views.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/data/import-flow.tsx|src/components/admin/inventory/stock-import-flow.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/data/import-flow.tsx|src/components/admin/redirects/redirect-import-flow.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/domain-buyer.tsx|src/components/admin/domain-checkout.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/inventory/stock-import-flow.tsx|src/components/admin/redirects/redirect-import-flow.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/work/invoices-list.tsx|src/components/admin/work/owner-invoices.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/work/owner-overview.tsx|src/components/admin/work/work-overview.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/work/owner-time.tsx|src/components/admin/work/time-filters.tsx": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/lib/xml-read.ts|src/lib/xml-tree.test-helper.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/customer-import.ts|src/server/inventory-jobs.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/customer-import.ts|src/server/order-history-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/customer-import.ts|src/server/product-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/customer-import.ts|src/server/redirect-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/fiken-sync.ts|src/server/tripletex-sync.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/helthjem-shipping.ts|src/server/porterbuddy-shipping.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/inventory-jobs.ts|src/server/order-history-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/inventory-jobs.ts|src/server/redirect-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/order-history-import.ts|src/server/product-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/order-history-import.ts|src/server/redirect-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/platform-endpoints.ts|src/server/webhook-endpoints.ts": {
+      "reason": "the platform's twin of a store engine; step 3.10 folds it"
+    },
+    "src/server/platform-workflows.ts|src/server/workflows.ts": {
+      "reason": "the platform's twin of a store engine; step 3.10 folds it"
+    },
+    "src/server/product-import.ts|src/server/redirect-import.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/work-attention.ts|src/server/work-overview.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/work-attention.ts|src/server/work-owner.ts": {
+      "reason": "copied; step 4.2 folds it"
+    },
+    "src/server/work-overview.ts|src/server/work-owner.ts": {
+      "reason": "copied; step 4.2 folds it"
+    }
+  },
+  "raised": []
+}
