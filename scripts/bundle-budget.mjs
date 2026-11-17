@@ -81,4 +81,4 @@ const notes = [...bad.filter((line) => line.includes("new route at")), ...fallen
 for (const line of notes) console.log(`note: ${line}`);
 for (const line of failures) console.error(line);
 if (failures.length > 0) process.exit(1);
-console.log(`${Object.keys(now.routes).length} routes within ${ROOM.toLocaleString("en-US")} bytes of the baseline`);
+console.log(`${Object.keys(now.routes).length} routes within ${ROOM.toLocaleString("en-US")} bytes or 5% of the baseline`);
