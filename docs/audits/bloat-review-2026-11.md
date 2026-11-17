@@ -137,7 +137,7 @@ commit as the fix.
 | 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | Open | |
 | 1.11 | Hold the storefront's server side: statements per page, cached reads and render modes | SD-13, CA-16, GAP-page-model-s2 | M | review | 1.9, 0.1, 0.3, 1.1 | Open | |
 | 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Open | |
-| 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | In progress | 17 Nov: commits 1, 2 local: eight rules (14 cases), kinds check widened (platform_readings_kinds), index and job rows in the reading. |
+| 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | In progress | 17 Nov: commits 1 to 3 done locally (eight rules, 14 cases; migration platform_readings_kinds; Flags card, briefing line); build and e2e not run. |
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
 | 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Done | 17 Nov (23a841e2; D722): the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not good at p75. |
 | 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
