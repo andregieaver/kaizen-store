@@ -6,14 +6,18 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { RequestsView } from "@/components/admin/support/requests-view";
 import { requirePermission } from "@/server/permissions";
 import { listRequests } from "@/server/support-actions";
+import { memberReach, requestChoices } from "@/server/support-carry-out";
 import { memberDesk } from "@/server/support-desk";
 import { PageHeader } from "@/components/admin/ui";
 
-import { decideRequestAction } from "./actions";
+import { carryOutRequestAction, decideRequestAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support requests" };
 
-/** What the store's chat assistant passed to a person (D216, `docs/support.md` 2.4, step 10): decide each, and the customer is told. */
+/**
+ * What the store's chat assistant passed to a person (D216, `docs/support.md` 2.4, step 10): decide each, and the customer is told. A request
+ * the order page's own function can do is carried out here (ecosystem plan E2.7, D713), for a person who may change orders.
+ */
 export default async function SupportRequestsPage({
   params,
   searchParams,
@@ -25,6 +29,17 @@ export default async function SupportRequestsPage({
   const t = adminText(lang, "support");
   const which = (await searchParams).show === "decided" ? "decided" : "open";
   const rows = await listRequests(staff.desk, which);
+  const reach = memberReach(member);
+  const choices =
+    which === "open"
+      ? Object.fromEntries(
+          await requestChoices(
+            member.store.id,
+            rows.map((r) => r.id),
+            reach,
+          ),
+        )
+      : {};
   return (
     <AdminTextScope texts={adminTexts(lang, ["support"])}>
       <div className="flex flex-col gap-6">
@@ -42,6 +57,12 @@ export default async function SupportRequestsPage({
               ? (id) => decideRequestAction.bind(null, slug, id)
               : null
           }
+          carryOut={
+            reach.decide && reach.changeOrders
+              ? (id) => carryOutRequestAction.bind(null, slug, id)
+              : null
+          }
+          choices={choices}
           now={new Date()}
         />
       </div>

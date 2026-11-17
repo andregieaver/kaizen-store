@@ -1,3 +1,4 @@
+import type { FormState } from "@/components/admin/action-form";
 import type { SavedReply } from "@/lib/support-replies";
 
 /**
@@ -31,6 +32,14 @@ export type SupportDeskContext = {
      * action takes the conversation and the act; the owner's level's takes the conversation's store first.
      */
     act: { byStore: false; run: (conversationId: string, act: unknown) => Promise<ActResult> } | { byStore: true; run: (store: string, conversationId: string, act: unknown) => Promise<ActResult> } | null;
+    /**
+     * A store's requests above the reply box (ecosystem plan E2.7): carry one out (the server asks `orders:write` too) or mark it done or
+     * declined, each taking the request first. Left out at the owner's level and for those who only read: the box links the Requests page.
+     */
+    requests?: {
+      carryOut: (requestId: string, state: FormState, form: FormData) => Promise<FormState>;
+      decide: (requestId: string, state: FormState, form: FormData) => Promise<FormState>;
+    } | null;
   };
 };
 
