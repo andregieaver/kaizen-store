@@ -94,6 +94,12 @@ export const staffNb: StaffMessages = {
     description:
       "En rolle sier, for hver del av administrasjonen, om noen kan se den, endre den eller ikke åpne den i det hele tatt. Eiere har alt. En administrator uten egen rolle kan gjøre alt unntatt teamet og abonnementet, og leser regnskapet uten å endre det. Endrer du en rolle, endres det alle som har den kan gjøre, med en gang.",
     nobody: "Ingen har den",
+    phone: {
+      lead: "Hva hver rolle kan se og endre.",
+      makeSub: "Velg hva den kan se og endre",
+      make: "Lag",
+      close: "Lukk",
+    },
     holds: { one: "{n} person har den", many: "{n} personer har den" },
     heldBy: "Har den: {emails}.",
     save: "Lagre rollen",

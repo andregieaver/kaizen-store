@@ -85,10 +85,11 @@ export function EbayProducts({ rows, choose }: { rows: EbayProductRow[]; choose:
       <h2 id="ebay-products" className="text-title text-ink">
         {w.productsTitle}
       </h2>
-      <p className={hint}>{w.productsIntro}</p>
-      <ul className="flex flex-col divide-y divide-line rounded-panel border border-line bg-sunken">
+      <p className={`${hint} max-sm:hidden`}>{w.productsIntro}</p>
+      {/* On a phone (round 42, D739) each product is one line: its box, its name and where it stands; the SKU is from 640 px. */}
+      <ul className="flex flex-col divide-y divide-line rounded-panel border border-line bg-sunken max-sm:bg-card">
         {rows.map((r) => (
-          <li key={r.variantId} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
+          <li key={r.variantId} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm max-sm:min-h-11 max-sm:flex-nowrap">
             <input
               type="checkbox"
               aria-label={r.name}
@@ -101,9 +102,9 @@ export function EbayProducts({ rows, choose }: { rows: EbayProductRow[]; choose:
                 setChosen(next);
               }}
             />
-            <span className="min-w-48 flex-1 font-medium">{r.name}</span>
-            <span className="text-muted">{r.sku}</span>
-            <span className={r.state === "error" ? "text-danger-text" : "text-muted"}>{stateText(r)}</span>
+            <span className="min-w-48 flex-1 font-medium max-sm:min-w-0 max-sm:truncate">{r.name}</span>
+            <span className="text-muted max-sm:hidden">{r.sku}</span>
+            <span className={`${r.state === "error" ? "text-danger-text" : "text-muted"} max-sm:shrink-0 max-sm:text-xs`}>{stateText(r)}</span>
           </li>
         ))}
       </ul>

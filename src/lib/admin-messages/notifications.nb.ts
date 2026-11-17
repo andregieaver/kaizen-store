@@ -562,6 +562,13 @@ export const notificationsNb: NotificationsMessages = {
       refused: "eBay godtar ikke lenger tilkoblingen: koble til på nytt.",
       outcomes: { connected: "eBay er tilkoblet.", declined: "Du tillot det ikke hos eBay.", failed: "eBay kunne ikke kobles til. Prøv igjen." },
       settingsTitle: "Det eBay trenger for hver annonse",
+      phone: {
+        lead: "Selg produktene dine på eBay, med lageret og prisene dine.",
+        allSet: "alle fem numrene er satt",
+        someSet: "{n} av 5 numre satt",
+        change: "Endre",
+        done: "Ferdig",
+      },
       settingsIntro: "Fra eBay-selgerkontoen din: markedsplassen, forretningsreglene for frakt, betaling og retur (numrene står i adressen til hver regel), nøkkelen til lokasjonen din og kategorien du vil legge ut i.",
       marketplace: "Markedsplass",
       fulfillmentPolicyId: "Nummer på fraktregel",

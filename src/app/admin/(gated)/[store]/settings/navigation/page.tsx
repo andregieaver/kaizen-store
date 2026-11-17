@@ -30,7 +30,7 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={<>{fillWords(w.descriptionStart, { store: store.name })}<Link href={`/admin/${store.slug}/menus`} className="underline">{w.menusLink}</Link>{w.descriptionMiddle}<Link href={`/admin/${store.slug}/headers`} className="underline">{w.headersLink}</Link>{w.and}<Link href={`/admin/${store.slug}/footers`} className="underline">{w.footersLink}</Link>{w.descriptionEnd}</>}
+        description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{fillWords(w.descriptionStart, { store: store.name })}<Link href={`/admin/${store.slug}/menus`} className="underline">{w.menusLink}</Link>{w.descriptionMiddle}<Link href={`/admin/${store.slug}/headers`} className="underline">{w.headersLink}</Link>{w.and}<Link href={`/admin/${store.slug}/footers`} className="underline">{w.footersLink}</Link>{w.descriptionEnd}</span></>}
       />
       <NavigationEditor
         initial={{ ...store.navigation, headerMenuId: store.headerMenuId, footerMenuId: store.footerMenuId }}

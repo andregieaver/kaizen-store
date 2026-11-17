@@ -396,6 +396,13 @@ export const notificationsEn = {
       refused: "eBay no longer takes the connection: connect again.",
       outcomes: { connected: "eBay is connected.", declined: "You did not allow it on eBay.", failed: "eBay could not be connected. Try again." },
       settingsTitle: "What eBay needs for every listing",
+      phone: {
+        lead: "Sell your products on eBay, with your stock and prices.",
+        allSet: "all five numbers set",
+        someSet: "{n} of 5 numbers set",
+        change: "Change",
+        done: "Done",
+      },
       settingsIntro: "From your eBay seller account: the marketplace, your Business policies for shipping, payment and returns (their numbers are in each policy's address), the key of your location, and the category to list in.",
       marketplace: "Marketplace",
       fulfillmentPolicyId: "Shipping policy number",

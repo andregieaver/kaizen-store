@@ -8,6 +8,8 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { EbayButton, EbayMarkSent, EbayProducts, EbaySettingsForm } from "@/components/admin/ebay-parts";
 import { PageHeader } from "@/components/admin/ui";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { EBAY_MARKETPLACES } from "@/lib/ebay";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -30,7 +32,7 @@ export default async function EbayPage({ params, searchParams }: Props) {
   const outcome = (await searchParams).ebay;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.intro} />
+      <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
       {typeof outcome === "string" && outcome in w.outcomes && (
         <p role="status" className="text-sm">
           {w.outcomes[outcome as keyof typeof w.outcomes]}
@@ -69,6 +71,10 @@ async function Body({ storeSlug }: { storeSlug: string }) {
     ),
   ]);
   const locale = ADMIN_LANG_FACTS[lang].locale;
+  // The phone's line for what every listing needs (round 42, D739): the marketplace and how many of the five numbers are set.
+  const settings = (connection.settings ?? {}) as Record<string, string>;
+  const setCount = ["fulfillmentPolicyId", "paymentPolicyId", "returnPolicyId", "merchantLocationKey", "categoryId"].filter((k) => (settings[k] ?? "").trim() !== "").length;
+  const market = EBAY_MARKETPLACES[(settings.marketplace ?? "EBAY_DE") as keyof typeof EBAY_MARKETPLACES]?.name ?? settings.marketplace;
   return (
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
@@ -79,7 +85,21 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           {isOwner && connection.state === "refused" && <EbayButton text={w.reconnect} tone="primary" act={connectEbayAction.bind(null, store.slug)} />}
           {isOwner && <EbayButton text={w.disconnect} act={disconnectEbayAction.bind(null, store.slug)} />}
         </div>
-        {isOwner && <EbaySettingsForm initial={(connection.settings ?? {}) as Record<string, string>} save={saveEbaySettingsAction.bind(null, store.slug)} />}
+        {isOwner && (
+          <PhoneRows>
+            <PhoneRow
+              flat
+              last
+              title={w.settingsTitle}
+              sub={`${market} · ${setCount === 5 ? w.phone.allSet : fillWords(w.phone.someSet, { n: setCount })}`}
+              change={w.phone.change}
+              done={w.phone.done}
+              defaultOpen={setCount < 5}
+            >
+              <EbaySettingsForm initial={settings} save={saveEbaySettingsAction.bind(null, store.slug)} />
+            </PhoneRow>
+          </PhoneRows>
+        )}
         {isOwner && connection.settings && (
           <EbayProducts
             rows={products.map((p) => ({ variantId: p.variant_id, name: p.name, sku: p.sku, state: (p.state as "pending" | "listed" | "error" | "ended" | null) ?? null, error: p.error }))}

@@ -103,6 +103,12 @@ export const staffEn = {
     description:
       "A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no role of their own can do everything except the team and the plan, and reads the books without changing them. Changing a role changes what everyone who holds it can do, at once.",
     nobody: "Nobody holds it",
+    phone: {
+      lead: "What each role can see and change.",
+      makeSub: "Choose what it can see and change",
+      make: "Make",
+      close: "Close",
+    },
     holds: { one: "{n} person holds it", many: "{n} people hold it" },
     heldBy: "Held by {emails}.",
     save: "Save role",
