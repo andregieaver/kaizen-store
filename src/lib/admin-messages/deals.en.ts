@@ -100,6 +100,8 @@ export const dealsEn = {
     wonByPlan: "Won when the store's plan was paid.",
     reason: "Reason: {reason}",
     markWon: "Won",
+    /** A new draft order for the deal's customer, linked to the deal (ecosystem plan E2.6, D713). */
+    makeQuote: "Make a quote",
     markLost: "Lost",
     reopen: "Open again",
     remove: "Delete the deal",

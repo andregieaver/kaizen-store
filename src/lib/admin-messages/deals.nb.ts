@@ -92,6 +92,7 @@ export const dealsNb: DealsMessages = {
     wonByPlan: "Vunnet da butikkens abonnement ble betalt.",
     reason: "Årsak: {reason}",
     markWon: "Vunnet",
+    makeQuote: "Lag et tilbud",
     markLost: "Tapt",
     reopen: "Åpne igjen",
     remove: "Slett avtalen",
