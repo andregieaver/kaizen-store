@@ -63,6 +63,21 @@ describe("the AI manager's form tools (D705 F5)", () => {
     ).rejects.toThrow(/not changed/);
   });
 
+  it("asks a hidden question and a file, keeping the part of the address a hidden question read (D738)", async () => {
+    const made = await tools.makeFormTool(ctx(), makeFormInput.parse({ template: "Contact", name: "Manager campaign" }));
+    await tools.changeFormTool(
+      ctx(),
+      changeFormInput.parse({
+        form: "Manager campaign",
+        questions: [{ kind: "email", required: true }, { kind: "hidden", label: "Campaign", param: "code" }, { kind: "file", label: "Receipt" }],
+      }),
+    );
+    expect((await getForm(store.storeId, made.form))!.questions.map((q) => [q.kind, q.param])).toEqual([["email", undefined], ["hidden", "code"], ["file", undefined]]);
+    // Asked again without its part of the address, the hidden question keeps the one it read.
+    await tools.changeFormTool(ctx(), changeFormInput.parse({ form: "Manager campaign", questions: [{ kind: "email", required: true }, { kind: "hidden", label: "Campaign" }] }));
+    expect((await getForm(store.storeId, made.form))!.questions[1]).toMatchObject({ kind: "hidden", param: "code" });
+  });
+
   it("places a form on a page's draft only, and finds no form of another store", async () => {
     const made = await tools.makeFormTool(ctx(), makeFormInput.parse({ template: "Contact", name: "Manager placed" }));
     const content = pageInput.parse({ ...newPageContent(), title: "Contact us", slug: "manager-contact", rows: [] });
