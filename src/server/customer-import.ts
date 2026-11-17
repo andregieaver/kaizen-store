@@ -169,7 +169,7 @@ export const customerDryCountsOf = (job: Pick<DataJob, "counts">): CustomerDry =
   return { toCreate: Number(d.toCreate ?? 0), toUpdate: Number(d.toUpdate ?? 0), withProblems: Number(d.withProblems ?? 0) };
 };
 
-/** Starts the apply of a checked import; the start is written to the activity log first (counts only), and an import whose entry cannot be written does not start. */
+/** Starts the apply of a checked import; the start is written to the change log first (counts only), and an import whose entry cannot be written does not start. */
 export async function applyCustomerImport(member: Membership, jobId: string, run: (id: string) => Promise<unknown>, deps: DataDeps = {}): Promise<StepResult> {
   if (!memberCan(member, KEY)) return { ok: false, problem: NO_ACCESS };
   const job = await getJob(member.store.id, jobId);
@@ -181,7 +181,7 @@ export async function applyCustomerImport(member: Membership, jobId: string, run
     await audit(member.account.id, member.store.id, "customer.import_started", { job: job.id, rows: job.rowsTotal, toCreate: dry.toCreate, toUpdate: dry.toUpdate }, { area: "customers", target: { type: "data_job", id: job.id } });
   } catch (error) {
     log("error", "customer_import.start_audit_failed", {}, error);
-    return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
+    return { ok: false, problem: "The change log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
   const rows = await db().execute<Row>(sql`

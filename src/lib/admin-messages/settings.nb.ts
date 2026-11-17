@@ -81,7 +81,7 @@ export const settingsNb: SettingsMessages = {
       referrals: {
         words: "Kundene deler en lenke; en venn får en velkomstrabatt og kunden tjener bonuspoeng. Trenger bonusprogrammet.",
         offWords:
-          "Vervelenker slutter å gi rabatt, nye bestillinger gir ingen belønning, og Vervekampanje forsvinner fra administrasjonen. Bestillinger som allerede er lagt inn, belønnes fortsatt; ververe og historikken deres beholdes.",
+          "Vervelenker slutter å gi rabatt, nye bestillinger gir ingen belønning, og Tips en venn forsvinner fra administrasjonen. Bestillinger som allerede er lagt inn, belønnes fortsatt; ververe og historikken deres beholdes.",
       },
       reviews: {
         words: "Kundene gir omtale av det de har kjøpt og mottatt; du sjekker omtalene før de vises, og produktsiden viser stjernene.",

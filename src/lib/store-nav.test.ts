@@ -183,6 +183,18 @@ describe("the store admin's sections (D147)", () => {
     expect(storeSections({ features: ["shop"] }).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)))).not.toContain("/leads");
   });
 
+  it("has one Discounts page, whose Automatic tab the old Campaigns address and its offers' pages are inside (ecosystem plan E3.7, D718)", () => {
+    const marketing = STORE_SECTIONS.find((s) => s.key === "marketing")!;
+    const discounts = marketing.groups.flatMap((g) => g.items).filter((i) => i.path === "/discounts" || i.path === "/campaigns");
+    expect(discounts).toEqual([expect.objectContaining({ path: "/discounts", label: "Discounts", basic: true, also: ["/campaigns"] })]);
+    for (const path of ["/campaigns", "/campaigns/new", "/campaigns/abc", "/discounts/abc"]) expect(sectionOf(path)?.key, path).toBe("marketing");
+    expect(permissionOfPath("/campaigns/abc")).toBe("marketing:read");
+    // The sidebar marks Discounts on an offer's page, and Marketing's tab is marked there too.
+    const sidebar = storeAreas("/admin/s", ALL).find((a) => a.prefixes.includes("/admin/s/campaigns"))!;
+    expect(sidebar.groups.flatMap((g) => g.items).find((i) => i.label === "Discounts")).toMatchObject({ href: "/admin/s/discounts", also: ["/admin/s/campaigns"] });
+    expect(storeTabs("/admin/s", ALL).find((t) => t.label === "Marketing")!.also).toEqual(expect.arrayContaining(["/admin/s/discounts", "/admin/s/campaigns"]));
+  });
+
   it("finds a page's section by the longest address it is inside", () => {
     expect(sectionOf("/orders/abc/packing-slip")?.key).toBe("orders");
     expect(sectionOf("/settings/design")?.key).toBe("website");
@@ -216,7 +228,7 @@ describe("what a member's navigation offers (wave 1, 1f)", () => {
 
   it("offers a role only the areas it holds, and the activity log to every role", () => {
     expect(paths(role("orders"))).toEqual(expect.arrayContaining(["/orders", "/returns", "/customers", "/products", "/activity"]));
-    expect(paths(role("orders"))).not.toContain("/campaigns");
+    expect(paths(role("orders"))).not.toContain("/discounts");
     expect(paths(role("orders"))).not.toContain("/settings/shipping");
     expect(paths(role("marketing"))).toContain("/discounts");
     expect(paths(role("marketing"))).not.toContain("/orders/");

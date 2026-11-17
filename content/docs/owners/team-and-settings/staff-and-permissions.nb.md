@@ -75,7 +75,7 @@ fjern tilgangen før. Når tiden er ute, slutter tilgangen av seg selv.
 
 ## Se hvem som endret hva
 
-Åpne **Innstillinger** og velg [Aktivitetslogg](/admin/{store}/activity), under Konto. Den viser hva folk har endret i butikken, og
+Åpne **Innstillinger** og velg [Endringslogg](/admin/{store}/activity), under Konto. Den viser hva folk har endret i butikken, og
 når: produkter, priser, sider, rabattkoder, frakt, teamet og betalingsinnstillingene. Endringer KI-assistenten gjorde for noen, er merket
 med det.
 

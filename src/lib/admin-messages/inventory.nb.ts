@@ -449,7 +449,7 @@ export const inventoryNb: InventoryMessages = {
       failed: "Ikke lagret",
       written: "Hva som ble importert",
       stopped: "Hva som ble importert før den stoppet",
-      reference: "Referanse for aktivitetsloggen og historikken:",
+      reference: "Referanse for endringsloggen og historikken:",
       referenceEnd: "Hver endring står i lagerhistorikken med radens begrunnelse.",
     },
     will: { update: "Ville bli endret", unchanged: "Uendret", conflict: "Utdatert: latt være", skip: "Ville bli hoppet over", checked: "Sjekket" },

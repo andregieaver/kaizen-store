@@ -300,7 +300,7 @@ export const privacyEn = {
       privacy_requests: "The privacy request log",
       search_queries: "Search log",
       visits: "Visit counts",
-      audit_log: "Activity log",
+      audit_log: "Change log",
       form_submissions: "Form submissions",
       integration_deliveries: "Integration deliveries",
       abandoned_checkouts: "Abandoned checkouts",
@@ -353,7 +353,7 @@ export const privacyEn = {
     review: "Review",
     changeTitle: "Change a period",
     changeText:
-      'A change ends the period in force and starts a new one from the date you give, and is written to the activity log. Periods marked "Set in code" are enforced by the application\'s own constants: a new row records the decision, but does not change what is removed.',
+      'A change ends the period in force and starts a new one from the date you give, and is written to the change log. Periods marked "Set in code" are enforced by the application\'s own constants: a new row records the decision, but does not change what is removed.',
     registerTitle: "The register of personal data",
     registerText:
       "Every table that holds a shopper's data is listed in the register, with what erasure does to it. A test fails when a table with personal columns is added and not classified.",

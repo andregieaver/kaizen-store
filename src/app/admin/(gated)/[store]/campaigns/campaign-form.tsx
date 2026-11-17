@@ -8,6 +8,7 @@ import { listSegments } from "@/server/segments";
 import { listProductChoices } from "@/server/discounts";
 import { listTerms } from "@/server/taxonomy";
 import type { Store } from "@/server/stores";
+import { discountTabHref } from "@/lib/discount-tabs";
 
 import { saveCampaignAction } from "./actions";
 import { nextWeekend, SALES, type SaleKey } from "@/lib/campaign-offers";
@@ -153,7 +154,7 @@ export async function CampaignForm({
       segments={segments.map((s) => ({ id: s.id, name: s.name }))}
       orders={orders}
       save={saveCampaignAction.bind(null, store.slug, campaign?.id ?? null)}
-      back={`/admin/${store.slug}/campaigns`}
+      back={discountTabHref(store.slug, "automatic")}
     />
   );
 }

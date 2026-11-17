@@ -296,7 +296,7 @@ export const platformSiteEn = {
     pubUnpublish: "Unpublish takes it away at once: looks shown on it start new stores from the Standard store, and the theme store shows them there.",
     pubArchive: "Archive leaves it out of the demo stores; Restore brings it back, unpublished.",
     pubDeletable: "Nothing used it yet, so it can be deleted.",
-    changedInStore: "Its store changed since it was last published (from its activity log).",
+    changedInStore: "Its store changed since it was last published (from its change log).",
     noCopy: "Published before copies were kept: new stores copy its store as it is now. Publish it again to keep a copy.",
     openAdmin: "Open the store's admin",
     features: "Features",

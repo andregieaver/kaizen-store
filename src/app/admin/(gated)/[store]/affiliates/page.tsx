@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { blockAffiliateAction, saveAffiliateAction } from "./actions";
 
-export const metadata: Metadata = { title: "Referral program" };
+export const metadata: Metadata = { title: "Refer a friend" };
 
 /**
  * The store's referral program (D131): signed-in customers share a link, a friend's first order gets a welcome discount

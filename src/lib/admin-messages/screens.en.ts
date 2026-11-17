@@ -31,7 +31,7 @@ export const screensEn = {
       options: "The choices for the export could not be read. Check them and try again.",
       too_big: "This export has more than {max} rows. Choose a narrower period or filter.",
       too_many: "{n} exports are already being made for this store. Wait for one to finish.",
-      not_logged: "The activity log could not be written, so no file was made. Try again.",
+      not_logged: "The change log could not be written, so no file was made. Try again.",
       no_orders: "None of those order numbers belong to this store.",
       failed: "The export could not be made. Try again.",
     },

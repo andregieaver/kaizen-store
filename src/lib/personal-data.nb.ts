@@ -253,7 +253,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   ledger_vouchers: "Bilagene i butikkens eget regnskap (D490), som kvitteringen for et kjøp: filens navn slik den ble lastet opp, og filen i det private dokumentlageret, oppbevart for bokføringsplikten med posteringen den dokumenterer. " + OWN,
   suppliers: "Butikkens egne leverandører (D492): hvem som sender den regninger, med navn og organisasjonsnummer (et enkeltpersonforetaks navn er en persons), oppbevart med regningene under bokføringsplikten. " + OWN,
   supplier_invoices: "Butikkens egne regninger (D492): hva hver var, slik eieren skrev det eller leverandørens navn og nummer, ført i regnskapet under bokføringsplikten. " + OWN,
-  recurring_costs: "Butikkens egne abonnementer (D503): det den betaler for igjen og igjen og ordene trekket har i banken, eierens egen liste. " + OWN,
+  recurring_costs: "Butikkens egne faste kostnader (D503): det den betaler for igjen og igjen og ordene trekket har i banken, eierens egen liste. " + OWN,
   books_inbox: "Kvitteringer og fakturaer sendt til butikkens regnskapsadresse (D504): hvem som sendte hver og emnet, beholdt som regnskapets dokumenter mens de venter på banklinjen og etterpå, under bokføringsplikten. " + OWN,
   work_recurring_invoices: WORK + OWN,
   work_time_entries: WORK + OWN,
@@ -308,7 +308,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   page_looks: "Hvem som ba om en gjennomgang av en side, og hva den fant på siden, aldri en kunde; beholdes i 30 dager (D310).",
   assistant_plan_steps: "Stegene i en plan: hva autopiloten gjorde og spurte om, og eierens svar (D309); slettes med planen.",
   audit_log:
-    "Aktivitetsloggen inneholder ID-er, antall og typer, aldri en e-post eller et navn (en test sjekker den); beholdes i 24 måneder som dokumentasjon på hvem som gjorde hva.",
+    "Endringsloggen inneholder ID-er, antall og typer, aldri en e-post eller et navn (en test sjekker den); beholdes i 24 måneder som dokumentasjon på hvem som gjorde hva.",
   booking_resources: "En ansatt, et rom eller en verts eiendom. " + OWN,
   economic_operators: "Butikkens egne opplysninger om produsent eller importør. " + OWN,
   host_stripe_accounts: OWN,

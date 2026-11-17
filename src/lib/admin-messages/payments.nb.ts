@@ -209,7 +209,7 @@ export const paymentsNb: PaymentsMessages = {
     subDraft: "Betalingslenker varer i {days} dager",
     subOwnerOnly: "Bare eieren registrerer det",
     change: "Endre",
-    title: "Bestillinger",
+    title: "Innstillinger for bestillinger",
     intro:
       "Hvordan butikken håndterer bestillinger etter at de er lagt inn: om kundene kan sende en gavehilsen, om ferdige bestillinger arkiveres for deg, og hvordan utkast til bestillinger betales.",
     saved: "Lagret.",

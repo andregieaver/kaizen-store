@@ -17,7 +17,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
-export const metadata: Metadata = { title: "Activity log" };
+export const metadata: Metadata = { title: "Change log" };
 
 /**
  * Who did what, and when (wave 1, 1f, docs/wave-1-trust.md 2.9). Every member opens it: an owner sees every entry of the store, anyone else the

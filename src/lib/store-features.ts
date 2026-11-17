@@ -161,7 +161,7 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     group: "customers",
     label: "Referral program",
     words: "Customers share a link; a friend gets a welcome discount and the customer earns bonus credits. Needs the bonus program.",
-    offWords: "Referral links stop giving discounts and new orders earn no rewards, and Referral program leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
+    offWords: "Referral links stop giving discounts and new orders earn no rewards, and Refer a friend leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
     needs: ["shop", "bonus"],
     setupPath: "/affiliates",
   },

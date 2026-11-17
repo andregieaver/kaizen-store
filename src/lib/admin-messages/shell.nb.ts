@@ -27,7 +27,7 @@ export const shellNb: ShellMessages = {
   },
   loading: {
     page: "Laster siden…",
-    activityLog: "Laster aktivitetsloggen…",
+    activityLog: "Laster endringsloggen…",
     customerFigures: "Laster kundetallene…",
     finance: "Laster økonomien…",
     stockFigures: "Laster lagertallene…",

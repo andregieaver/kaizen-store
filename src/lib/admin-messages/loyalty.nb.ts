@@ -258,7 +258,7 @@ export const loyaltyNb: LoyaltyMessages = {
     adjust: "Juster kreditt",
   },
   affiliatePage: {
-    title: "Vervekampanje",
+    title: "Tips en venn",
     on: "Vervekampanjen er på.",
     paused: "Vervekampanjen står på pause: bonusprogrammet er av.",
     off: "Vervekampanjen er av.",
@@ -285,7 +285,7 @@ export const loyaltyNb: LoyaltyMessages = {
     ],
     offNote:
       "Slår du den av, slutter lenkene å virke og belønningene stopper. Kreditt som allerede er tjent, blir hos kundene, og bestillinger som allerede er lagt inn, belønnes hvis de betales mens kampanjen er på.",
-    heading: "Vervekampanje",
+    heading: "Tips en venn",
     switch: "Vervekampanjen er på",
     whileOn: "Mens den er på",
     whenOn: "Når du slår den på",
@@ -400,7 +400,7 @@ export const loyaltyNb: LoyaltyMessages = {
     saving: "Lagrer …",
     unblock: "Opphev blokkering av {who}",
     block: "Blokker {who}",
-    reason: "Begrunnelse (lagres i aktivitetsloggen)",
+    reason: "Begrunnelse (lagres i endringsloggen)",
     submit: "Blokker",
     cancel: "Avbryt",
   },

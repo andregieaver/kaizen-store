@@ -13,7 +13,7 @@ const act = await import("./activity");
 type Row = Record<string, unknown>;
 
 /**
- * The owner's CSV of the activity log (wave 1, 1f, docs/wave-1-trust.md 2.9): owners only, a period required, never more than 50,000 entries
+ * The owner's CSV of the change log (wave 1, 1f, docs/wave-1-trust.md 2.9): owners only, a period required, never more than 50,000 entries
  * (refused, not cut short), cells that start with `=`, `+`, `-` or `@` made harmless, the export itself written down, and never another
  * store's entries.
  */
@@ -96,7 +96,7 @@ describe("the owner's download", () => {
     await addMember(store.id, admin.id, "admin");
     const member = await membershipOf(store.slug, admin, "admin");
     const before = (await auditRows(store.id, "activity.exported")).length;
-    expect(await act.exportActivity(member, { from: "2026-05-01", to: "2026-05-31" })).toEqual({ ok: false, problem: "Only an owner can download the activity log." });
+    expect(await act.exportActivity(member, { from: "2026-05-01", to: "2026-05-31" })).toEqual({ ok: false, problem: "Only an owner can download the change log." });
     expect((await auditRows(store.id, "activity.exported")).length).toBe(before);
   });
 

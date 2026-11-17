@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { saveExchangeLabelSettingsAction, saveReturnSettingsAction } from "./actions";
 
-export const metadata: Metadata = { title: "Returns settings" };
+export const metadata: Metadata = { title: "Return settings" };
 
 /**
  * The store's rules for returns (D153): the return window, who pays return shipping, when refunds are made, what the law

@@ -62,8 +62,8 @@ own, or none:
 | Website (monitor) | Pages · Blog · Media · Templates · Menus · Header · Footer · Fonts |
 | Stores (shopping bag) | None |
 | Customers (people) | None |
-| Plans (credit card) | Editor · Features · Reminders · Discounts · Referrals |
-| Requests (bell, with the number waiting) | None |
+| Plans (credit card) | Editor · Plan features · Plan analytics · Reminders · Discounts · Referrals |
+| Access requests (bell, with the number waiting) | None |
 | Settings (cog) | Header and footer · Search · SEO · Cookies · Google reviews · Stripe · AI · AI usage · AI prices · Chat agent · Emails · Languages |
 
 Website and Settings open on a page of cards, one for each page in the sidebar. The AI manager is opened from the
@@ -127,7 +127,7 @@ in `src/lib/store-nav.ts`; the layout, the hub pages and the tests read from it.
 | Orders (box) | Orders · Subscriptions · Subscription boxes (if on) · Emails |
 | Products (tag) | Products · Inventory · Product layouts · Custom fields |
 | Customers (people) | Customers · Customer groups · Companies · Wishlists |
-| Marketing (megaphone) | Campaigns · Coupons · Recommendations · Cart reminders · Bonus credits · Referral program |
+| Marketing (megaphone) | Discounts (two tabs: Codes, and Automatic at `?tab=automatic`, where `/campaigns` leads) · Recommendations · Cart reminders · Bonus credits · Refer a friend |
 | Website (monitor) | Pages · Blog · Media · Menus · Headers · Footers · Design · Translate the store |
 | Bookings (calendar, only when switched on) | Calendar · Staff and hours · Stays and rentals · Rooms and items · Hosts |
 | Settings (cog) | Store: Company, Domains, Languages and currencies, Features. Selling: Payments, Shipping, Integrations. Site: Header and footer, SEO & Reach, Cookies and tracking. Tools: Search, Chat agent, AI. Account: Billing, Team |
@@ -172,6 +172,11 @@ eight screens (bloat review step 0.13).
 - A level's own pages check who is asking themselves (`requirePlatformAdmin()`,
   `requireAccount()`, `requireMember()`): a layout's check redirects only
   after its pages have started to be sent.
+- One word per thing (ecosystem plan E3.7, D718): no two places of a store's menu share a name in any language, unless they open the
+  same page (a section's tab and its main page), and a name the owner's or the platform's menu shares with a store's means the same thing
+  at that level (Website, Support, Discounts), listed with its reason in `src/lib/nav-labels.scan.test.ts`. So Analytics' pages are
+  Customer analytics and Product analytics, Support's are Support reports and Support settings, Settings' Order settings and Return
+  settings; the audit log is the Change log; the platform's are Access requests, Content notices and VAT rates.
 - No new top-level `/admin/{word}` for owners' pages: `/admin/{store}` takes
   every other first segment, so a new word reserves a store address. Owner
   pages go under `/admin/account/…`.

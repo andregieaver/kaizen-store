@@ -330,7 +330,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   ledger_vouchers: never("The original's vouchers (D490): the receipts of its own books."),
   suppliers: never("The original's suppliers (D492): who sends its own bills."),
   supplier_invoices: never("The original's bills (D492): in its own books."),
-  recurring_costs: never("The original's subscriptions (D503): what it pays for, matched to its own bank."),
+  recurring_costs: never("The original's recurring costs (D503): what it pays for, matched to its own bank."),
   books_email: never("The original's books address (D504): a copy gets its own when it opens its books."),
   books_inbox: never("The original's receipts by email (D504): documents of its own books."),
   ledger_budgets: never("The original's budget (D505): a plan for its own books."),

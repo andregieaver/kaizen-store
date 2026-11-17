@@ -75,7 +75,7 @@ Mens butikken settes opp, endrer den innstillingene i oppsettet med en gang; nå
 Du kan også si ja med ord, skrevet eller muntlig. Det teller bare når din egen melding tydelig sier ja, og bare for en endring som
 allerede ventet. Et kort ingen svarer på, faller bort etter sju dager: *Ingen svar på sju dager, så det ble ikke gjort.*
 
-Hver endring den gjør, står i **Aktivitetslogg** (Innstillinger, Konto) under ditt navn, merket *gjennom KI-assistenten*.
+Hver endring den gjør, står i **Endringslogg** (Innstillinger, Konto) under ditt navn, merket *gjennom KI-assistenten*.
 
 ## Varsler
 

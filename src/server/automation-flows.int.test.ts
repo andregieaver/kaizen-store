@@ -120,7 +120,7 @@ describe("follow-ups", () => {
   it("are added only after the first email is saved, at most two, and the third moves up when the second goes", async () => {
     expect(await au.saveFollowUp(await store(), owner, "cross_sell", null, { delayDays: 3, content: words("2") })).toEqual({
       ok: false,
-      problem: "Save the first email before adding a follow-up.",
+      problem: "Save the first email before adding a second.",
     });
     await switchOn("cross_sell", 2);
     expect((await au.saveFollowUp(await store(), owner, "cross_sell", null, { delayDays: 0, content: words("2") })).ok).toBe(false);

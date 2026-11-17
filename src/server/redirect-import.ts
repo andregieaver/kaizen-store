@@ -49,7 +49,7 @@ type Row = Record<string, unknown>;
  * 500 lines, each chunk in one transaction under the store's lock through `writeLines()`, EACH LINE JUDGED AGAIN against the store at that moment (the dry run
  * is advice: a product may have been renamed and a source become live since); a line with an error is skipped and listed, the others go on, and no redirect
  * is ever deleted by an import. Items are written by (job, line) so a run that was killed goes on where the cursor is and writes nothing twice. One redirect
- * import is open per store at a time. The activity log gets one pair of entries per job, never one per redirect.
+ * import is open per store at a time. The change log gets one pair of entries per job, never one per redirect.
  */
 
 const WRITE = "website:write" as const;
@@ -148,7 +148,7 @@ export const redirectDryCountsOf = (job: Pick<DataJob, "counts">): RedirectDry =
 
 /**
  * Starts the apply of a checked import: the same file (its SHA-256 is checked again when the run begins) with the options it was checked with. The start is
- * written to the activity log first (`redirects.import_started`: counts, job and file name, never an address), and an import whose entry cannot be written
+ * written to the change log first (`redirects.import_started`: counts, job and file name, never an address), and an import whose entry cannot be written
  * does not start.
  */
 export async function applyRedirectImport(member: Membership, jobId: string, run: (id: string) => Promise<unknown>, deps: DataDeps = {}): Promise<StepResult> {
@@ -162,7 +162,7 @@ export async function applyRedirectImport(member: Membership, jobId: string, run
     await audit(member.account.id, member.store.id, "redirects.import_started", { job: job.id, file: job.inputName, lines: job.rowsTotal, toCreate: dry.toCreate, toReplace: dry.toReplace }, { area: "website", target: { type: "data_job", id: job.id } });
   } catch (error) {
     log("error", "redirect_import.start_audit_failed", {}, error);
-    return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
+    return { ok: false, problem: "The change log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
   const rows = await db().execute<Row>(sql`

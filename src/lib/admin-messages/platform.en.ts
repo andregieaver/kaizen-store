@@ -598,7 +598,8 @@ export const platformEn = {
     },
   },
   reports: {
-    title: "Illegal content notices",
+    // Notices of illegal content (DSA), named apart from Reports and the AI manager's notices (ecosystem plan E3.7, D718).
+    title: "Content notices",
     description: "Notices people sent about content on stores. Decide each one in good time, with the reason: the sender is told, and the store too when you restrict something.",
     waiting: "Waiting for a decision",
     decided: "Decided",
@@ -926,7 +927,7 @@ export const platformEn = {
     ownFee: "own fee",
   },
   activity: {
-    title: "Activity log",
+    title: "Change log",
     description:
       "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets and approvals. A store's own changes are in that store's log. Entries are kept for 24 months and cannot be changed.",
   },
@@ -953,7 +954,7 @@ export const platformEn = {
     hours: "{n} hours",
     minutes: "{n} minutes",
   },
-  loadingActivity: "Loading the activity log…",
+  loadingActivity: "Loading the change log…",
   actions: {
     unknownRequest: "Unknown request.",
     declinedTheRequestIsIn:
@@ -1014,7 +1015,7 @@ export const platformEn = {
     planCode:
       "Shown in the email and applied to the plan when the owner follows the link. Make codes under Discounts; a code that is switched off is left out.",
     cartCode:
-      "Shown in the email and added to the cart when the shopper follows the link. Make codes under Coupons; a code that is switched off is left out.",
+      "Shown in the email and added to the cart when the shopper follows the link. Make codes under Discounts; a code that is switched off is left out.",
     email: "The email",
     language: "Language",
     subject: "Subject",

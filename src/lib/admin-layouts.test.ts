@@ -46,7 +46,7 @@ describe("the admin's layouts", () => {
 
   it("carry the counts waiting on the platform's tiles, and none when nothing waits", () => {
     const tabs = platformTabs({ requests: 2, support: 5 });
-    expect(tabs.find((t) => t.label === "Requests")?.badge).toBe(2);
+    expect(tabs.find((t) => t.label === "Access requests")?.badge).toBe(2);
     expect(tabs.find((t) => t.label === "Support")?.badge).toBe(5);
     expect(platformTabs().some((t) => t.badge)).toBe(false);
   });

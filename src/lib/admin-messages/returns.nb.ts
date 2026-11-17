@@ -721,7 +721,7 @@ export const returnsNb: ReturnsMessages = {
     subAuto: "Bestilles av seg selv",
     subByHand: "Bestilles fra en retur",
     change: "Endre",
-    title: "Returer",
+    title: "Innstillinger for retur",
     description:
       "Kunder i EU kan gå fra de fleste kjøp innen 14 dager, uten å oppgi grunn. Dette er butikkens regler rundt det: dagene den gir i tillegg, hvem som betaler for å sende varer tilbake, og når tilbakebetalingen skjer. Standardvalgene er lovens. Tekstene kundene leser om rettigheten sin, gjennomgås av en person: dette er ikke juridisk rådgivning.",
     saved: "Lagret.",

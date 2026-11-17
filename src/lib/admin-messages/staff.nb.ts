@@ -26,7 +26,7 @@ export const staffNb: StaffMessages = {
   templates: {
     orders: { name: "Ordre", description: "Håndterer ordre og returer, og kan slå opp kunder og produkter." },
     products: { name: "Produkter", description: "Holder katalogen i orden: produkter, priser, lager og oppsett." },
-    marketing: { name: "Markedsføring", description: "Kjører kampanjer, rabattkoder, tester og e-poster, og leser tallene." },
+    marketing: { name: "Markedsføring", description: "Kjører rabatter, tester og e-poster, og leser tallene." },
     content: { name: "Innhold", description: "Skriver og utformer nettstedet: sider, blogg, menyer, bilder og oversettelser." },
     analytics: { name: "Analyse", description: "Leser tallene og det som ligger bak dem." },
     support: { name: "Kundestøtteagent", description: "Svarer kunder i innboksen for kundestøtte, og kan slå opp ordrene, kontoene og produktene deres." },
@@ -43,7 +43,7 @@ export const staffNb: StaffMessages = {
     description:
       "De som står her, kan logge inn med en lenke sendt til e-posten sin, eller med passordet sitt. Eiere styrer teamet og abonnementet; alle andre arbeider i de delene av administrasjonen rollen deres gir dem.",
     roles: "Roller",
-    activity: "Aktivitetslogg",
+    activity: "Endringslogg",
     members: "Medlemmer",
     houseTitle: "Dette er Kaizena Flows egen butikk",
     houseText: "Alle som driver plattformen, arbeider her: eierne som eiere, de andre rollene som administratorer i rollen for samme arbeid. De legges til, endres og fjernes på plattformens Team-side.",
@@ -146,7 +146,7 @@ export const staffNb: StaffMessages = {
     moreFilters: "Flere filtre og nedlasting",
     today: "I dag",
     yesterday: "I går",
-    title: "Aktivitetslogg",
+    title: "Endringslogg",
     description: "Hva folk har endret i butikken, og når: produkter, priser, sider, rabattkoder, frakt, teamet og betalingsinnstillingene.",
     ownerSees: "Du ser alle oppføringer.",
     othersSee: "Du ser dine egne oppføringer og dem fra de delene av administrasjonen du kan åpne.",
@@ -186,7 +186,7 @@ export const staffNb: StaffMessages = {
     no: "nei",
     it: "den",
     problems: {
-      owner: "Bare en eier kan laste ned aktivitetsloggen.",
+      owner: "Bare en eier kan laste ned endringsloggen.",
       days: "Velg første og siste dag som skal lastes ned.",
       order: "Første dag kan ikke være etter siste dag.",
       tooMany: "Den perioden har {total} oppføringer, og en nedlasting rommer høyst {max}. Velg en kortere periode.",
@@ -241,7 +241,7 @@ export const staffNb: StaffMessages = {
       "account.two_step_reset": "En plattformadministrator nullstilte totrinns innlogging for {label}",
       "account.recovery_codes_generated": "{label} laget nye gjenopprettingskoder",
       "account.recovery_code_used": "{label} brukte en gjenopprettingskode",
-      "activity.exported": "Lastet ned aktivitetsloggen",
+      "activity.exported": "Lastet ned endringsloggen",
     },
   },
 };

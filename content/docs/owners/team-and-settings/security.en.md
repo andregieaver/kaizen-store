@@ -57,7 +57,7 @@ AI assistants and apps you let work with your stores keep their access until you
    asked to, sign in again with an email link first.
 2. **Connect your apps again.** A new password disconnects every AI assistant and app you connected, so they ask again.
 3. **Turn on two-step sign-in**, if it is not on yet.
-4. **Look at the [Activity log](/admin/{store}/activity)** for changes you did not make.
+4. **Look at the [Change log](/admin/{store}/activity)** for changes you did not make.
 5. **Was it a team member's password?** On **Team**, press **Remove access** for them until it is changed, or require two-step sign-in
    of everyone.
 

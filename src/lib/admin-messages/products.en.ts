@@ -14,7 +14,8 @@ export const productsEn = {
   bulkLib: BULK_WORDS,
   /** Settings, Products (D557): what a product's tile in a content grid shows. */
   settings: {
-    title: "Products",
+    // Named apart from the Products section (ecosystem plan E3.7, D718).
+    title: "Product settings",
     intro: "What shoppers see of your products in grids across your site. Each grid can say otherwise for itself in the page builder.",
     tilesTitle: "Product tiles",
     stock: "Show how many are left",
@@ -317,7 +318,7 @@ export const productsEn = {
     result: "Result",
     imported: "What was imported",
     importedBefore: "What was imported before it stopped",
-    reference: "Reference for the activity log:",
+    reference: "Reference for the change log:",
     priceHistory: "A price that changed is in the product's price history.",
   },
   importPage: {

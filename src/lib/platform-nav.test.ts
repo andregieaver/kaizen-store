@@ -46,7 +46,7 @@ describe("the platform admin's sections (D144)", () => {
     const links = withBase(PLAN_ITEMS);
     expect(links[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", icon: "credit-card", exact: true });
     expect(links[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits", icon: "gauge" });
-    expect(links[2]).toEqual({ href: "/admin/platform/plans/features", label: "Features", icon: "toggle" });
+    expect(links[2]).toEqual({ href: "/admin/platform/plans/features", label: "Plan features", icon: "toggle" });
     expect(sectionPrefixes("/website", WEBSITE_ITEMS)[0]).toBe("/admin/platform/website");
     expect(sectionPrefixes(null, PLAN_ITEMS)[0]).toBe("/admin/platform/plans");
   });

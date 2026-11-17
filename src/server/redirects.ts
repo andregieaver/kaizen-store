@@ -38,7 +38,7 @@ const READ = "website:read" as const;
 export const REDIRECT_PROBLEMS = {
   forbidden: NO_ACCESS,
   not_found: "This redirect no longer exists. It may have been deleted.",
-  not_logged: "The activity log could not be written, so nothing was changed. Try again.",
+  not_logged: "The change log could not be written, so nothing was changed. Try again.",
   too_many: `Choose at most ${REDIRECT_BULK_DELETE_MAX} redirects at a time.`,
   nothing: "Choose at least one redirect.",
   taken: "Another redirect already goes from that address. Edit that one instead.",
@@ -73,7 +73,7 @@ export type SavedRedirect = {
 export type RedirectInput = { from: string; to: string };
 export type RedirectDeps = { limit?: number };
 
-/** Writes an entry of the activity log in the transaction of the change it describes (an entry that fails undoes the change). */
+/** Writes an entry of the change log in the transaction of the change it describes (an entry that fails undoes the change). */
 async function auditIn(tx: Tx, member: Pick<Membership, "account" | "store">, action: string, details: Record<string, unknown>, target: { type: string; id: string }): Promise<void> {
   await tx.execute(sql`
     insert into commerce.audit_log (account_id, store_id, action, details, area, target_type, target_id, acted_by)

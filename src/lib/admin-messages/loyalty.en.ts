@@ -261,7 +261,8 @@ export const loyaltyEn = {
     adjust: "Adjust credits",
   },
   affiliatePage: {
-    title: "Referral program",
+    // Refer a friend, as the navigation and the customers' own page name it (ecosystem plan E3.7, D718).
+    title: "Refer a friend",
     on: "The referral program is on.",
     paused: "The referral program is paused: the bonus program is off.",
     off: "The referral program is off.",
@@ -288,7 +289,7 @@ export const loyaltyEn = {
     ],
     offNote:
       "Turning it off stops links working and stops rewards. Credits already earned stay with customers, and orders already placed are rewarded if they are paid while the program is on.",
-    heading: "Referral program",
+    heading: "Refer a friend",
     switch: "The referral program is on",
     whileOn: "While it is on",
     whenOn: "When you turn it on",
@@ -402,7 +403,7 @@ export const loyaltyEn = {
     saving: "Saving …",
     unblock: "Unblock {who}",
     block: "Block {who}",
-    reason: "Reason (kept in the audit log)",
+    reason: "Reason (kept in the change log)",
     submit: "Block",
     cancel: "Cancel",
   },

@@ -25,7 +25,7 @@ price of the last 30 days (see [Prices](/docs/owners/products/prices)).
 
 ## Make a coupon
 
-1. Open **Marketing** in the menu and choose [Coupons](/admin/{store}/discounts). Press **New coupon**.
+1. Open **Marketing** in the menu and choose [Discounts](/admin/{store}/discounts): codes are its **Codes** tab. Press **Write your own**.
 2. Type the **Code shoppers type**: 3 to 40 letters, digits, - or _. Shoppers can type it in capitals or not.
 3. Under **What it gives**, choose **A percentage off**, **An amount off** or **Free shipping**. An amount is given in each country's
    currency; leave a country empty and the code does not work there. A code never takes off more than the items cost.
@@ -73,7 +73,7 @@ Each single-use code works for one order. **Uses in all (optional)** and **Once 
 
 ## Start a campaign
 
-1. Open **Marketing** and choose [Campaigns](/admin/{store}/campaigns). Press **New campaign**.
+1. Open **Marketing**, choose [Discounts](/admin/{store}/campaigns) and its **Automatic** tab. Press **Write your own**.
 2. Give it a **Name**. Shoppers see it in their cart, at checkout and on their order, so write it for them: "Summer sale".
 3. Choose **What it gives** (see the table below), then what it applies to: the whole store, or chosen products, categories or tags.
 4. Under **When**, set **Starts (optional)** and **Ends (optional)** if you like, in Norwegian time. Without dates it runs while it is

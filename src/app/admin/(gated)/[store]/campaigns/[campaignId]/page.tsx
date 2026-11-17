@@ -9,6 +9,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { campaignStatus } from "@/lib/campaigns";
+import { discountTabHref } from "@/lib/discount-tabs";
 import { requirePermission } from "@/server/permissions";
 import { getCampaign, listCampaigns } from "@/server/campaigns";
 import { PageHeader } from "@/components/admin/ui";
@@ -16,7 +17,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { deleteCampaignAction } from "../actions";
 import { CampaignForm } from "../campaign-form";
 
-export const metadata: Metadata = { title: "Campaign" };
+export const metadata: Metadata = { title: "Automatic discount" };
 
 export default async function CampaignPage({ params }: PageProps<"/admin/[store]/campaigns/[campaignId]">) {
   const { store: slug, campaignId } = await params;
@@ -36,7 +37,7 @@ export default async function CampaignPage({ params }: PageProps<"/admin/[store]
     <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: `/admin/${store.slug}/campaigns`, label: w.campaigns.title }}
+        back={{ href: discountTabHref(store.slug, "automatic"), label: w.campaigns.title }}
         title={<>{campaign.name}</>}
         description={<>{status === "active" ? w.status.running : w.status[status]}. {countWords(orders, w.campaigns.gotSomething)}</>}
       />

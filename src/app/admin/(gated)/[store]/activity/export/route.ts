@@ -11,7 +11,7 @@ import type { StaffMessages } from "@/lib/admin-messages/staff.en";
 
 /** The server's English refusal in the owner's words (D312 A8), as written when it is none of the known ones. */
 function problemIn(problem: string, w: StaffMessages["activity"]["problems"], locale: string): string {
-  if (problem === "Only an owner can download the activity log.") return w.owner;
+  if (problem === "Only an owner can download the change log.") return w.owner;
   if (problem === "Choose the first and last day to download.") return w.days;
   if (problem === "The first day must not be after the last day.") return w.order;
   const many = /^That period has ([\d,]+) entries and a download holds at most ([\d,]+)\. Choose a shorter period\.$/.exec(problem);
@@ -20,7 +20,7 @@ function problemIn(problem: string, w: StaffMessages["activity"]["problems"], lo
 }
 
 /**
- * The activity log as a CSV (wave 1, 1f, docs/wave-1-trust.md 2.9): owners only, the period required, at most 50,000 entries. A refusal goes
+ * The change log as a CSV (wave 1, 1f, docs/wave-1-trust.md 2.9): owners only, the period required, at most 50,000 entries. A refusal goes
  * back to the log with the reason; someone who is not an owner of the store gets a 404, as for any page they cannot open. The download is
  * itself an entry in the log (`exportActivity()` writes it). Never cached.
  */
