@@ -5348,6 +5348,34 @@ export const emailMessages = commerce.table(
 );
 
 /**
+ * A store's marketing email held by the sending guard (D730, step M1.6 of `docs/audits/email-marketing-2026-11.md`), written only by
+ * `src/server/sending-guard.ts`: one row a store (Kaizena Flow's own with no store), paused while `resumed_at` is null. The guard pauses when
+ * the store's marketing emails since the later of seven days ago and the last resume bounce or are marked as spam past the line
+ * (`src/lib/sending-guard.ts`); broadcasts and email automations hold, order emails go on. An owner resumes; a later pause writes over it.
+ */
+export const sendingPauses = commerce.table(
+  "sending_pauses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `bounces` or `complaints`: the line that was passed. */
+    reason: text("reason").notNull(),
+    /** What was counted when it paused: `{ sent, bounced, complained }`. */
+    counts: jsonb("counts").notNull(),
+    pausedAt: timestamp("paused_at", { withTimezone: true }).notNull().defaultNow(),
+    resumedAt: timestamp("resumed_at", { withTimezone: true }),
+    resumedBy: uuid("resumed_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    unique("sending_pauses_store_key").on(t.storeId).nullsNotDistinct(),
+    index("sending_pauses_resumed_by_idx").on(t.resumedBy),
+    check("sending_pauses_reason", sql`${t.reason} in ('bounces', 'complaints')`),
+    check("sending_pauses_counts", sql`jsonb_typeof(${t.counts}) = 'object'`),
+    check("sending_pauses_resumed", sql`${t.resumedAt} is null or ${t.resumedAt} >= ${t.pausedAt}`),
+  ],
+);
+
+/**
  * A store's own sending domain (D727, step M1.1 of `docs/audits/email-marketing-2026-11.md`; Kaizena Flow's own when `store_id` is null),
  * written only by `src/server/sending-domains.ts`. The domain is added to Resend in its EU region; its DNS records (DKIM on
  * `resend._domainkey`, SPF and the return path on `send.`) are written into the zone when Kaizena Flow keeps it, else shown to copy. While

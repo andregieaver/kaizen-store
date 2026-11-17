@@ -45,6 +45,7 @@ import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
 import { senderFor } from "./sending-domains";
+import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
@@ -295,10 +296,14 @@ class OverLimit extends Error {}
  * Starts a send: freezes the addresses that are `subscribed` now (the audience's) as its recipients, in one transaction under the broadcast's lock,
  * and sets it `sending`. The emails go out from `runBroadcasts()`.
  */
+/** Why a broadcast does not start while the sending guard holds the store's marketing email (D730). */
+export const SENDING_PAUSED = "Your marketing email is paused because too many recent emails bounced or were marked as spam. Resume it on the Marketing page first.";
+
 export async function startBroadcast(storeId: string, accountId: string | null, id: string): Promise<StartResult> {
   const [store, broadcast] = await Promise.all([storeById(storeId), getBroadcast(storeId, id)]);
   if (!store || !broadcast) return { ok: false, problem: "Unknown broadcast." };
   if (broadcast.status !== "draft" && broadcast.status !== "scheduled") return { ok: false, problem: "This broadcast was sent already." };
+  if (await isPaused(storeId)) return { ok: false, problem: SENDING_PAUSED };
   const notReady = await readiness(store, broadcast);
   if (notReady) return { ok: false, problem: notReady };
   const audience = await audienceOf(store, broadcast);
@@ -472,6 +477,8 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
       join commerce.broadcasts b on b.id = r.broadcast_id and b.store_id = r.store_id and b.status = 'sending'
       where r.status = 'queued' and (r.claimed_until is null or r.claimed_until < now())
         ${only ? sql`and r.broadcast_id = ${only}::uuid` : sql``}
+        -- A store whose marketing email the sending guard holds (D730): its recipients wait, queued, until it resumes.
+        and not exists (select 1 from commerce.sending_pauses p where p.store_id = r.store_id and p.resumed_at is null)
       order by b.started_at, r.created_at, r.subscriber_id
       limit ${limit}
       for update of r skip locked

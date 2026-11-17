@@ -23,7 +23,11 @@ import { customerCounts } from "@/server/customer-admin";
 import { listedTests } from "@/server/experiment-list";
 import { bestSellerByCount } from "@/server/marketing-home";
 import { subscriberCounts } from "@/server/marketing-subscribers";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
+import { sendingHealth } from "@/server/sending-guard";
+import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
+
+import { resumeSendingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Marketing" };
 
@@ -44,7 +48,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   const shop = featureOn(store, "shop");
   const currency = store.markets[0]?.currency ?? "EUR";
   const ex = adminText(lang, "experiments");
-  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests] = await Promise.all([
+  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests, health] = await Promise.all([
     getAutomations(store),
     automationStats(store.id),
     shop ? getCartReminderSettings(store.id) : Promise.resolve(null),
@@ -53,6 +57,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
     customerCounts(store.id, currency),
     shop ? bestSellerByCount(store.id) : Promise.resolve(null),
     listedTests(store, { words: ex, numberLocale: ADMIN_LANG_FACTS[lang].locale }),
+    sendingHealth(store.id),
   ]);
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
 
@@ -95,6 +100,13 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   return (
     <div className="flex flex-col gap-7">
       <PageHeader title={w.title} meta={[lead]} />
+      <SendingGuardNotice
+        state={noticeState(health)}
+        words={adminText(lang, "marketing").sendingGuard}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
+        resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
+      />
 
       {plays.length > 0 && (
         <section aria-labelledby="plays" className="flex flex-col gap-3">

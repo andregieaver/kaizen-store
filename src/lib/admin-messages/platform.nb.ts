@@ -893,6 +893,13 @@ export const platformNb: PlatformMessages = {
     since: "Siden {date}",
   },
   emails: {
+    paused: {
+      title: "Markedsførings-e-post på pause",
+      lead: "Utsendelsesvakten holdt tilbake nyhetsbrev og automatiseringer for disse butikkene fordi for mange av e-postene deres kom i retur eller ble merket som søppelpost. Eierne har fått beskjed og starter dem igjen selv.",
+      bounces: "returer",
+      complaints: "søppelpostmerkinger",
+      since: "siden {date}",
+    },
     leadNotSetUp: { one: "E-post er ikke satt opp: {n} e-post ble tatt vare på, ingen sendt.", many: "E-post er ikke satt opp: {n} e-poster ble tatt vare på, ingen sendt." },
     leadNotSetUpRest: "Hver er tatt vare på her, så du kan lese hva som ville ha gått.",
     leadWeek: "{sent} sendt og {failed} feilet de siste sju dagene.",

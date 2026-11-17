@@ -51,6 +51,19 @@ export const staffEmailsEn = {
     days: { one: "{n} day", many: "{n} days" },
     button: "Open the test",
   },
+  /** The sending guard paused a store's marketing email (D730): the counts are code's, the words only say them. */
+  sendingPaused: {
+    subject: "Marketing email from {store} is paused",
+    preview: "Too many of your recent emails {what}, so Kaizena Flow held the rest to protect your sending.",
+    whatBounces: "bounced back",
+    whatComplaints: "were marked as spam",
+    heading: "Kaizena Flow paused your marketing email",
+    bounces: "{bounced} of the {sent} marketing emails {store} sent since {since} bounced back ({rate}). Addresses that bounce usually come from an old or bought list.",
+    complaints: "{complained} of the {sent} marketing emails {store} sent since {since} were marked as spam ({rate}). Above about 0.3 %, mail services start sending everything from a sender to spam.",
+    held: "Newsletters and email automations are held until you resume them. Order emails, receipts and tracking go on as before.",
+    advice: "Before you resume, remove addresses you are not sure want your emails, and send only to people who signed up themselves.",
+    button: "See it and resume",
+  },
   guardrail: {
     days: { one: "{n} day", many: "{n} days" },
     figures:

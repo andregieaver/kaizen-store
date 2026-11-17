@@ -1,6 +1,6 @@
 {
-  "id": "bd6e2613-ff53-496b-aff7-d133ba240efa",
-  "prevId": "f0aa9b8c-221e-471b-a4c0-cc30557b73b0",
+  "id": "ebf6aba7-b6ad-46aa-a09d-76faed6da337",
+  "prevId": "78aac283-8bd1-46af-9b4c-6ac43a44f8ca",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -73146,6 +73146,129 @@
         "sending_domains_problem": {
           "name": "sending_domains_problem",
           "value": "\"commerce\".\"sending_domains\".\"problem\" is null or char_length(\"commerce\".\"sending_domains\".\"problem\") between 1 and 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.sending_pauses": {
+      "name": "sending_pauses",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "counts": {
+          "name": "counts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "resumed_at": {
+          "name": "resumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resumed_by": {
+          "name": "resumed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sending_pauses_resumed_by_idx": {
+          "name": "sending_pauses_resumed_by_idx",
+          "columns": [
+            {
+              "expression": "resumed_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "sending_pauses_store_id_stores_id_fk": {
+          "name": "sending_pauses_store_id_stores_id_fk",
+          "tableFrom": "sending_pauses",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "sending_pauses_resumed_by_accounts_id_fk": {
+          "name": "sending_pauses_resumed_by_accounts_id_fk",
+          "tableFrom": "sending_pauses",
+          "columnsFrom": [
+            "resumed_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sending_pauses_store_key": {
+          "name": "sending_pauses_store_key",
+          "columns": [
+            "store_id"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "sending_pauses_reason": {
+          "name": "sending_pauses_reason",
+          "value": "\"commerce\".\"sending_pauses\".\"reason\" in ('bounces', 'complaints')"
+        },
+        "sending_pauses_counts": {
+          "name": "sending_pauses_counts",
+          "value": "jsonb_typeof(\"commerce\".\"sending_pauses\".\"counts\") = 'object'"
+        },
+        "sending_pauses_resumed": {
+          "name": "sending_pauses_resumed",
+          "value": "\"commerce\".\"sending_pauses\".\"resumed_at\" is null or \"commerce\".\"sending_pauses\".\"resumed_at\" >= \"commerce\".\"sending_pauses\".\"paused_at\""
         }
       },
       "isRLSEnabled": false

@@ -47,6 +47,18 @@ export const staffEmailsNb: StaffEmailsMessages = {
     days: { one: "{n} dag", many: "{n} dager" },
     button: "Åpne testen",
   },
+  sendingPaused: {
+    subject: "Markedsførings-e-post fra {store} er satt på pause",
+    preview: "For mange av de siste e-postene dine {what}, så Kaizena Flow holdt resten tilbake for å beskytte utsendelsene dine.",
+    whatBounces: "kom i retur",
+    whatComplaints: "ble merket som søppelpost",
+    heading: "Kaizena Flow satte markedsførings-e-posten din på pause",
+    bounces: "{bounced} av de {sent} markedsførings-e-postene {store} sendte siden {since} kom i retur ({rate}). Adresser som kommer i retur, kommer som regel fra en gammel eller kjøpt liste.",
+    complaints: "{complained} av de {sent} markedsførings-e-postene {store} sendte siden {since} ble merket som søppelpost ({rate}). Over omtrent 0,3 % begynner e-posttjenestene å sende alt fra en avsender til søppelpost.",
+    held: "Nyhetsbrev og e-postautomatiseringer holdes tilbake til du starter dem igjen. Ordre-e-poster, kvitteringer og sporing går som før.",
+    advice: "Før du starter igjen, fjern adresser du ikke er sikker på vil ha e-postene dine, og send bare til folk som har meldt seg på selv.",
+    button: "Se og start igjen",
+  },
   guardrail: {
     days: { one: "{n} dag", many: "{n} dager" },
     figures:

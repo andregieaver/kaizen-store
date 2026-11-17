@@ -561,6 +561,20 @@
       "when": 1794929478775,
       "tag": "20261117153118_sending_domains_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1794933175927,
+      "tag": "20261117163255_broken_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1794933178616,
+      "tag": "20261117163258_sending_pauses_rules",
+      "breakpoints": true
     }
   ]
 }

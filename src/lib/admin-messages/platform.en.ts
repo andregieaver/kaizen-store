@@ -896,6 +896,14 @@ export const platformEn = {
     since: "Since {date}",
   },
   emails: {
+    /** The sending guard (D730): stores whose marketing email is held now. */
+    paused: {
+      title: "Marketing email paused",
+      lead: "The sending guard held these stores' newsletters and automations because too many of their emails bounced or were marked as spam. Their owners were told and resume it themselves.",
+      bounces: "bounces",
+      complaints: "spam reports",
+      since: "since {date}",
+    },
     leadNotSetUp: { one: "Email is not set up: {n} email was kept, none sent.", many: "Email is not set up: {n} emails were kept, none sent." },
     leadNotSetUpRest: "Each is kept here so you can read what would have gone.",
     leadWeek: "{sent} sent and {failed} failed in the last seven days.",

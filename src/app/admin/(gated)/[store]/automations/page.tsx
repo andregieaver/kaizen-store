@@ -12,6 +12,10 @@ import { formatMoney } from "@/lib/money";
 import { featureOn } from "@/lib/store-features";
 import { automationStats, getAutomations } from "@/server/automations";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { sendingHealth } from "@/server/sending-guard";
+import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
+
+import { resumeSendingAction } from "../marketing/actions";
 
 import { switchAutomationAction } from "./actions";
 
@@ -26,7 +30,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
   const { store } = member;
   const base = `/admin/${store.slug}/automations`;
   const mayWrite = memberCan(member, "marketing:write");
-  const [automations, stats] = await Promise.all([getAutomations(store), automationStats(store.id)]);
+  const [automations, stats, health] = await Promise.all([getAutomations(store), automationStats(store.id), sendingHealth(store.id)]);
   const stock = automations.back_in_stock;
   const startKind = LIFECYCLE_KINDS.find((kind) => !automations[kind].enabled) ?? null;
   const shop = featureOn(store, "shop");
@@ -59,6 +63,13 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
             {onNames.length === 0 ? fillWords(wa.leadNoneRest, { first: wa.kinds[LIFECYCLE_KINDS[0]].title }) : wa.leadSomeRest}
           </span>,
         ]}
+      />
+      <SendingGuardNotice
+        state={noticeState(health)}
+        words={w.sendingGuard}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
+        resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
       />
       <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="grid gap-4 lg:grid-cols-2">

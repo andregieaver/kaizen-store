@@ -41,6 +41,7 @@ import { inStockNow, OFFERED } from "./product-conditions";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
 import { PRODUCT_VIEW_DAYS } from "@/lib/automation-kinds";
 import { col, typedRows } from "./typed-rows";
+import { isPaused } from "./sending-guard";
 
 type Row = Record<string, unknown>;
 
@@ -685,7 +686,8 @@ export async function runAutomations(options: { only?: string; deadline?: number
   try {
     for (const flow of await enabledLifecycles(options.only)) {
       if (late()) break;
-      if (!stores.has(flow.storeId)) stores.set(flow.storeId, await storeById(flow.storeId));
+      if (!stores.has(flow.storeId)) stores.set(flow.storeId, (await isPaused(flow.storeId)) ? null : await storeById(flow.storeId));
+      // A store the sending guard holds (D730) sends nothing; moments within the catch-up days still go once it resumes.
       const store = stores.get(flow.storeId);
       if (!store) continue;
       const emails = [

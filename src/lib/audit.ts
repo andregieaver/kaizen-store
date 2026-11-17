@@ -120,6 +120,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "marketing_automation.": "marketing",
   // A sign-up form tagging confirmed addresses (D304 J3): the count, never an address.
   "marketing.form_tagged": "marketing",
+  // The sending guard holding and resuming a store's marketing email (D730).
+  "marketing.sending_": "marketing",
   // The ad platforms' server connections (D303 I2): which platform and what it sends, never a token.
   "marketing.ad_connection_": "marketing",
   // An ad account connected for its budgets, its limit and the budgets changed in it (D585).

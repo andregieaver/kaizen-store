@@ -793,6 +793,19 @@ export const marketingEn = {
     cost: "Cost: {cost} {currency}",
     ownerOnly: "Only the store's owner connects the account and changes its rules.",
   },
+  /** The sending guard (D730): what the Marketing pages say while marketing email is held, or close to it. */
+  sendingGuard: {
+    pausedTitle: "Your marketing email is paused",
+    pausedBounces: "{bounced} of {sent} recent marketing emails bounced back ({rate}), so Kaizena Flow held your newsletters and automations on {date}. Order emails go on as before.",
+    pausedComplaints: "{complained} of {sent} recent marketing emails were marked as spam ({rate}), so Kaizena Flow held your newsletters and automations on {date}. Order emails go on as before.",
+    advice: "Before you resume, remove addresses you are not sure want your emails, and send only to people who signed up themselves. Counting starts again when you resume.",
+    resume: "Resume sending",
+    resumed: "Resumed. Your newsletters and automations go out again.",
+    ownerOnly: "Someone who may change marketing can resume it.",
+    warnTitle: "Watch your list",
+    warnBounces: "{bounced} of {sent} marketing emails in the last days bounced back ({rate}). At 5 % Kaizena Flow pauses your marketing email to protect your sending.",
+    warnComplaints: "{complained} of {sent} marketing emails in the last days were marked as spam ({rate}). At 0.3 % Kaizena Flow pauses your marketing email to protect your sending.",
+  },
   problems: {
     chooseSome: "Choose at least one.",
     noAccess: "You do not have access to this.",
@@ -820,6 +833,7 @@ export const marketingEn = {
     segmentRules: "Its segment's rules can no longer be read. Open the segment and save it again.",
     segmentCap: "The segment is read from at most {n} people, so it would not reach all of them.",
     sentAlready: "This broadcast was sent already.",
+    sendingPaused: "Your marketing email is paused because too many recent emails bounced or were marked as spam. Resume it on the Marketing page first.",
     nobodyInSegment: "Nobody in the segment wants your emails, so nobody would get it.",
     nobodyOnList: "Nobody on your list wants your emails yet, so nobody would get it.",
     fiveMinutes: "Choose a time at least five minutes from now.",

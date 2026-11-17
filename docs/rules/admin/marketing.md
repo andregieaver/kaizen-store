@@ -171,6 +171,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   back to the shared address. The card sits on Settings, Notifications (`settings:write`) and on Platform, Emails (`settings`). Adding a
   domain needs Resend's key to have full access; a sending-only key is refused in plain words.
 
+## The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
+
+- **The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)**: a store's marketing email
+  (`MARKETING_KINDS`: broadcasts and email automations, never an order's emails) is held when, since the later of seven days ago and its
+  last resume, at least 100 were sent and 5 % bounced or 0.3 % were marked as spam (`guardVerdict()`). The check runs when a bounce or a
+  spam report on a marketing email arrives (`applyEmailEvent()` calls `guardStore()` for that store), never as a scan of every store.
+  While `commerce.sending_pauses` holds the store (`resumed_at` null), `startBroadcast()` refuses, `runBroadcasts()` claims none of its
+  recipients (they wait, queued) and `runAutomations()` skips it; its owners get one email in their admin language. The Marketing,
+  Broadcasts and Email automations pages show the pause, or a warning at 2 % bounces or 0.1 % spam reports, and an owner with
+  `marketing:write` resumes it; counting then starts again from the resume. Platform, Emails lists the stores held now.
+
 ## SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
 
 - **SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)**: a

@@ -9,6 +9,10 @@ import type { BroadcastTemplateKey } from "@/lib/broadcast-templates";
 import { listBroadcasts } from "@/server/broadcasts";
 import { subscriberCounts } from "@/server/marketing-subscribers";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { sendingHealth } from "@/server/sending-guard";
+import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
+
+import { resumeSendingAction } from "../marketing/actions";
 
 export const metadata: Metadata = { title: "Broadcasts" };
 
@@ -27,7 +31,7 @@ const SIGNAL: Record<BroadcastStatus, "neutral" | "insight" | "warning" | "posit
 export default async function BroadcastsPage({ params }: PageProps<"/admin/[store]/broadcasts">) {
   const member = await requirePermission((await params).store, "marketing:read");
   const { store } = member;
-  const [broadcasts, counts] = await Promise.all([listBroadcasts(store.id), subscriberCounts(store.id)]);
+  const [broadcasts, counts, health] = await Promise.all([listBroadcasts(store.id), subscriberCounts(store.id), sendingHealth(store.id)]);
   const people = counts.subscribed;
   const base = `/admin/${store.slug}/broadcasts`;
   const mayWrite = memberCan(member, "marketing:write");
@@ -59,6 +63,13 @@ export default async function BroadcastsPage({ params }: PageProps<"/admin/[stor
             )}
           </>
         }
+      />
+      <SendingGuardNotice
+        state={noticeState(health)}
+        words={w.sendingGuard}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
+        resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
       />
       {broadcasts.length > 0 && (
         <Card compact>
