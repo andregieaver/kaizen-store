@@ -16,6 +16,20 @@ A number rises only where its row says so, with a decision.
 | src/lib/permissions.baseline.json | src/lib/permissions.scan.test.ts and src/lib/permissions.matrix.test.ts | never rewritten (the oracle from before roles; scripts/permission-baseline.mjs made it once) | what each admin entry point asked for before roles |
 | src/lib/docs-budget.baseline.json | src/lib/docs-budget.scan.test.ts | node scripts/docs-ratchet.mjs | the written rules (see The written rules below) |
 
+## The written rules
+
+`node scripts/docs-ratchet.mjs --check` and src/lib/docs-budget.scan.test.ts hold, against src/lib/docs-budget.baseline.json:
+
+- CLAUDE.md's bytes and lines, and the bytes loaded in every session (CLAUDE.md, its imports, unpathed .claude/rules files).
+- No new import in CLAUDE.md, and no .claude/rules file without a paths list.
+- Lines over 500 characters: none in CLAUDE.md; counts that only fall in the rules, the decisions and the living docs.
+- Table rows over 500 characters, per file, which only fall.
+- A new rule or decision is at most 4,000 bytes; the old large ones are listed and may not grow.
+- A rule file's headings are at most 10,000 bytes together; a decision number stands once.
+- The ten never-sentences stay in CLAUDE.md; a tracker row is at most 300 characters; one line of CLAUDE.md names the plan.
+- A dated report or evidence folder under docs/audits has an ignore file that covers it.
+- `node scripts/docs-ratchet.mjs` lowers the baseline; no flag raises it.
+
 ## CLAUDE.md
 
 The bytes of CLAUDE.md outside its Storefront and Admin sections only fall: src/lib/docs-budget.scan.test.ts fails when they rise
