@@ -234,3 +234,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Running: 1.1 (Sonnet, /home/user/kaizen-store), 1.15 (Sonnet, kz-b), 1.27 then 1.28 (Sonnet, kz-c). Template: run/phase1-template.md (mk via sed __STEPS__/__DIR__/__BRIEFS__).
 - Next after 1.1: 1.2, 1.4, 1.5, 1.8, 1.9 (then 1.10, 1.11, 1.12, 1.13, 1.25), 1.17, 1.18, 1.23, 1.3 (then 1.6, 1.7, 1.14); 1.22 (scheduler, careful), 1.24; 1.19 strong; 1.20→1.21→1.29 (1.29 only if needed; no paid machines).
 - Write-ups: claim with scripts/claim-decision.mjs from /home/user/kz-fix.
+
+## 17 Nov 14:40 UTC
+- Done: 1.1 (D719), 1.27 (D716), 1.28 (D717, loosened ef857b33), 1.15 (D722), 1.24 (D723). 1.22 pushed 8976b6ae, In progress: needs CRON_SECRET in Vercel (owner).
+- D705 trimmed under 4,000 bytes (other session's) to unbreak the docs budget.
+- Running: 1.9 (kaizen-store, commits 2–3 adapting), 1.2 (kz-b, allowed-absent markers), 1.4 then 1.17 (kz-c).
+- Next.js 16.4.3 has GHSA-mfr8-8qww-v76h (moderate): upgrade to 16.4.6 after 1.2's build (check patches/next.patch applies; e2e/store-pages.spec.ts).
+- Next steps: 1.5, 1.8, 1.18, 1.23, 1.3 (then 1.6, 1.7, 1.14), 1.10–1.13, 1.16, 1.19, 1.20, 1.21, 1.25, 1.26.
