@@ -72,6 +72,12 @@ by more than 2,000 bytes or a tenth, or hands an area nothing under it reads; a 
 writes today's figures, so a rewrite is the deliberate step that accepts growth, shown in the baseline's diff; it never writes in a
 newly handed area that nothing reads.
 
+### Source file size (step 1.24)
+
+The code ratchet (scripts/ratchet.mjs, src/server/ratchet.scan.test.ts, src/server/ratchet.baseline.json) also holds two counts that
+only fall: source files over 100 KB (filesOver100Kb, 17 on 17 November 2026) and over 2,000 lines (filesOver2000Lines, 12), tests
+aside. A file this large is read by window; split it, or move code out of it, and run `node scripts/ratchet.mjs` to lower the count.
+
 ## Searches
 
 Default searches (ripgrep and the tools built on it) skip docs/shopify-parity.md, docs/wave-10-notes, docs/ab-testing-spike,
