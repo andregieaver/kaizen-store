@@ -495,3 +495,28 @@ and none in the next 2 s. At each Next upgrade read `optimistic-routes.js` for t
 
 `partialPrefetching` is false as a recorded choice: unset, Next treats it as false and prints a warning on every build and start,
 and the next major release turns it on for everyone. Step 2.8 of the bloat review decides adoption by trial.
+
+## What is static (bloat review step 1.11)
+
+`scripts/render-modes.mjs` reads the build (`.next`, no server) and holds, in `scripts/render-modes.baseline.json`, the compute mode, the
+holes, the platform-wide tags and the revalidate time of twelve routes, and what the demo store's resume data keeps. CI runs it after
+the build in the e2e job and fails on a regression or on a gain not yet written down (`node scripts/render-modes.mjs --write`).
+
+<!-- render-modes:start -->
+| / | static | 3 | 3600 | platform-navigation, platform-pages, platform-seo, referrals, site-from-store, template-store | yes |
+| /docs | static | 0 | 3600 | platform-navigation | yes |
+| /docs/owners/getting-started/create-your-store | static | 0 | 3600 | platform-navigation | yes |
+| /themes | resuming | 4 | 3600 | design-presets, platform-navigation, platform-pages, platform-seo, referrals, site-from-store, store-starters | yes |
+| /s/demo/no | resuming | 3 | 900 | catalog | yes |
+| /s/demo/no/om-oss | resuming | 3 | 3600 | none | yes |
+| /s/demo/no/blog/nye-produkter | resuming | 3 | 3600 | none | yes |
+| /s/demo/no/products | resuming | 4 | 900 | catalog | yes |
+| /s/demo/no/category/belysning | resuming | 4 | 3600 | catalog | yes |
+| /s/demo/no/p/demo-keramikkopp | resuming | 4 | 3600 | catalog | yes |
+| /s/demo/no/search | resuming | 4 | 3600 | none | yes |
+| /s/demo/no/cart | resuming | 3 | 3600 | none | yes |
+<!-- render-modes:end -->
+
+A hole is a boundary that is not in the prerendered file (it streams at request time). What makes a page per-request: the cart cookie,
+the country header, `searchParams`, stock, sign-in. The rule in one sentence: a new `cookies()`, `headers()` or `connection()` in a layout
+or a shared part moves every page under it to per-request, and `scripts/render-modes.mjs` says so in CI.

@@ -86,6 +86,8 @@ A push to `main` takes one of two paths, chosen by reading production's ledger (
 The `integration` job runs the integration files in three shards, each on a database of its own seeded fresh; shard 1 first runs
 `src/server/query-budget.int.test.ts` alone, which counts statements and rows read per scheduled job with 1 and with 20 stores, and the
 sharded run leaves it out (bloat review step 1.10).
+In the `e2e` job the build is followed by `scripts/render-modes.mjs` (which routes are static, how many holes each has), and Playwright by
+`scripts/server-budget.mjs` (statements per store page): both fail the job, so a push with a migration waits for them (bloat review step 1.11).
 
 Either way the job then waits for production to run the commit (D389, `scripts/await-deploy.mjs`): it reads `/api/health` until the
 `commit` there is this one, or a later one that includes it, and fails, saying what production reports, after twenty minutes. Set the
