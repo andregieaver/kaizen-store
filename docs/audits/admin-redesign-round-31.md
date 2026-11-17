@@ -26,7 +26,7 @@ Below 640 px wide, each page changes as described here; from 640 px it is as bef
 
 ## Ads and conversions (`/admin/{store}/ads`)
 
-- **Sending sales:** Meta, Google Analytics 4 and TikTok are one row each.
+- **Sending sales:** Meta, Google Analytics 4, TikTok and Pinterest are one row each.
   - A platform that is not connected says *Not connected*, with *Connect*.
   - A connected one says how many sales it sent in the last 7 days, with *Change*.
 - **Spending:** Ad budgets (Meta) is a row after them (*Your Meta ad account · the AI manager can move budgets*).
