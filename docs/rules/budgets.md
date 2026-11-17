@@ -40,7 +40,10 @@ entry gets an empty reason, which the test refuses until you write why it cannot
 
 src/components/admin/admin-words-handed.scan.test.ts holds every site that hands words to the browser (src/components/admin/admin-words-handed.baseline.json):
 bytes handed in English and Norwegian, bytes named by the client parts, areas nothing names. Rewrite it with
-`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`; the writer never raises a site's bytes.
+`WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`. A site fails when it grows
+by more than 2,000 bytes or a tenth, or hands an area nothing under it reads; a new site passes unless it hands over 50 KB. The writer
+writes today's figures, so a rewrite is the deliberate step that accepts growth, shown in the baseline's diff; it never writes in a
+newly handed area that nothing reads.
 
 ## Searches
 

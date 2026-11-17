@@ -662,12 +662,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "whole": [
         "discounts"
@@ -679,12 +679,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "whole": [
         "discounts"
@@ -696,8 +696,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
         "en": 639,
@@ -886,12 +886,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "whole": [
         "discounts"
@@ -903,12 +903,12 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "whole": [
         "discounts"
@@ -920,8 +920,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
         "en": 639,
@@ -1142,12 +1142,29 @@
         "blocks"
       ],
       "handed": {
-        "en": 62784,
-        "nb": 65767
+        "en": 64497,
+        "nb": 67557
       },
       "named": {
-        "en": 10765,
-        "nb": 11218
+        "en": 12478,
+        "nb": 13008
+      },
+      "whole": [
+        "forms"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/forms/new/page.tsx#forms": {
+      "areas": [
+        "forms"
+      ],
+      "handed": {
+        "en": 6716,
+        "nb": 7001
+      },
+      "named": {
+        "en": 6716,
+        "nb": 7001
       },
       "whole": [
         "forms"
@@ -1159,8 +1176,8 @@
         "forms"
       ],
       "handed": {
-        "en": 5003,
-        "nb": 5211
+        "en": 6716,
+        "nb": 7001
       },
       "named": {
         "en": 0,
@@ -1176,8 +1193,8 @@
         "forms"
       ],
       "handed": {
-        "en": 5003,
-        "nb": 5211
+        "en": 6716,
+        "nb": 7001
       },
       "named": {
         "en": 624,
@@ -2922,8 +2939,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
         "en": 639,
@@ -2937,8 +2954,8 @@
         "discounts"
       ],
       "handed": {
-        "en": 19631,
-        "nb": 20135
+        "en": 20248,
+        "nb": 20737
       },
       "named": {
         "en": 639,
@@ -2985,12 +3002,29 @@
         "blocks"
       ],
       "handed": {
-        "en": 62784,
-        "nb": 65767
+        "en": 64497,
+        "nb": 67557
       },
       "named": {
-        "en": 10765,
-        "nb": 11218
+        "en": 12478,
+        "nb": 13008
+      },
+      "whole": [
+        "forms"
+      ],
+      "unnamed": []
+    },
+    "src/app/admin/(gated)/platform/forms/new/page.tsx#forms": {
+      "areas": [
+        "forms"
+      ],
+      "handed": {
+        "en": 6716,
+        "nb": 7001
+      },
+      "named": {
+        "en": 6716,
+        "nb": 7001
       },
       "whole": [
         "forms"
@@ -3002,8 +3036,8 @@
         "forms"
       ],
       "handed": {
-        "en": 5003,
-        "nb": 5211
+        "en": 6716,
+        "nb": 7001
       },
       "named": {
         "en": 0,
@@ -3019,8 +3053,8 @@
         "forms"
       ],
       "handed": {
-        "en": 5003,
-        "nb": 5211
+        "en": 6716,
+        "nb": 7001
       },
       "named": {
         "en": 624,
