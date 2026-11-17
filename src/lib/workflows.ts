@@ -328,7 +328,7 @@ export const STORE_WORKFLOWS: WorkflowKit = {
 const tag = z.string().trim().min(1).max(40);
 const text = (max: number) => z.string().trim().min(1).max(max);
 
-/** The actions as the AI manager's `draft_workflow` knows them (`draftWorkflowInputSchema`). */
+/** Every action but the hold, which only `order.paid` takes (`actionsFor()`). */
 const DRAFT_ACTIONS = [
   z.object({ kind: z.literal("tag_order"), tag }),
   z.object({ kind: z.literal("note_order"), text: text(1000) }),
@@ -367,17 +367,6 @@ export const workflowSchemaFor = (
 
 export const workflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS);
 
-/**
- * The AI manager's `draft_workflow` input, frozen as it was before the order rules' fold (ecosystem plan E3.3, D718): the five operators, a
- * value of 200 characters and no `hold_order`, so the tool's schema, and with it the recorded agents' eval, stays as it is. The release step
- * opens it (the tool's schema and description name the new operators, the paid order's fields and the hold, with a new run of the eval
- * recorded). Until then a workflow the AI drafts is checked again by `workflowInputSchema` on save, like any other.
- */
-export const draftWorkflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS, {
-  actions: z.discriminatedUnion("kind", [...DRAFT_ACTIONS]),
-  operators: ["is", "is_not", "contains", "more_than", "less_than"],
-  valueMax: 200,
-});
 
 /** What is wrong with a workflow beyond its shape: a field the trigger does not have, an action it cannot take, a schedule where none belongs. */
 export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STORE_WORKFLOWS): string[] {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // The segment tools take the conditions frozen before ecosystem plan E3.6 (D718): their schema and eval stay as recorded until the release step.
-import { toolSegmentRulesSchema } from "./segments";
+import { segmentRulesSchema } from "./segments";
 
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
@@ -66,7 +66,7 @@ import {
 } from "./site-tools";
 import { inputSummary, ownWordsSummary, plainText } from "./approval-summaries";
 import { draftStoreInput } from "./store-drafts";
-import { draftWorkflowInputSchema } from "./workflows";
+import { workflowInputSchema } from "./workflows";
 import { purchaseInput } from "./purchase-input";
 
 
@@ -260,8 +260,8 @@ export const SITE_TOOLS = [
 const ALL_OWNER_TOOLS = [
   tool(
     "draft_workflow",
-    "Drafts a workflow from what the owner describes (D356), saved OFF: they test it on the latest event and switch it on at Settings, Workflows. trigger: one of the store's events (order.paid, order.sent, order.cancelled, order.refunded, customer.created, subscription.started, subscription.cancelled, return.requested, withdrawal.received, product.created, product.updated, stock.low, discount.created, support.waiting) or schedule, with schedule { every: day or week, at: HH:MM, weekday 1 to 7 for a week }. conditions (none for a schedule): { field, op (is, is_not, contains, more_than, less_than), value } on the trigger's fields, such as order.total (in the order's currency units), order.currency, order.market, order.lines.sku, order.shipping_address.country, customer.email, product.status, stock.available, return.kind. actions, 1 to 10: tag_order { tag }, note_order { text } and ask_ai_manager { question } after an order event; tag_customer { tag } after an order, customer or subscription event; email_staff { subject, text }; post_slack { text }; send_request { endpointId } (one of the owner's endpoints) after any event. Never an email to a customer, a refund or a price.",
-    draftWorkflowInputSchema,
+    "Drafts a workflow from what the owner describes (D356), saved OFF: they test it on the latest event and switch it on at Settings, Workflows. trigger: one of the store's events (order.paid, order.sent, order.cancelled, order.refunded, customer.created, subscription.started, subscription.cancelled, return.requested, withdrawal.received, product.created, product.updated, stock.low, discount.created, support.waiting, deal.created, deal.stage_changed, deal.won, deal.lost, subscriber.subscribed, subscriber.unsubscribed, conversation.ended, conversation.rated, review.published, checkout.abandoned, form.response) or schedule, with schedule { every: day or week, at: HH:MM, weekday 1 to 7 for a week }. conditions (none for a schedule): { field, op (is, is_not, contains, more_than, less_than, at_least, is_one_of with the values between commas), value } on the trigger's fields, such as order.total (in the order's currency units), order.currency, order.market, order.lines.sku, order.shipping_address.country, customer.email, product.status, stock.available, return.kind; after order.paid also order.total_main (in the store's main currency), order.first_order (yes or no), order.buyer (business or consumer), order.products (product ids), order.delivery (shipping, pickup, local or none), order.backordered, order.gift, order.source (checkout, draft, subscription or delivery), order.tags, order.seller (store or host) and order.risk (normal, elevated, highest or none); customer.segment (is or is_not, a segment's id from list_segments) after an order, customer or subscription event. actions, 1 to 10: tag_order { tag }, note_order { text } and ask_ai_manager { question } after an order event; hold_order { reason } after order.paid (staff release it on the order page); tag_customer { tag } after an order, customer or subscription event; email_staff { subject, text }; post_slack { text }; send_request { endpointId } (one of the owner's endpoints) after any event. Never an email to a customer, a refund or a price.",
+    workflowInputSchema,
   ),
   tool(
     "draft_store",
@@ -2037,7 +2037,7 @@ const ALL_OWNER_TOOLS = [
   ),
   tool(
     "remove_staff",
-    "Ends someone's access to the store at once; their account and what they did stay in the activity log. Not the owner's own access, and never the last owner. Needs the owner's approval.",
+    "Ends someone's access to the store at once; their account and what they did stay in the change log. Not the owner's own access, and never the last owner. Needs the owner's approval.",
     z.object({ person: z.email().max(254).describe("Their email address, as list_staff gives it.") }),
     "access",
   ),
@@ -2245,15 +2245,15 @@ const ALL_OWNER_TOOLS = [
   ),
   tool(
     "count_segment",
-    "Counts how many people match a set of segment rules now, and how many of them want the store's emails, worked out by the store (D380). Turn the owner's words into rules: conditions on orders, money spent (in minor units of the main currency, without VAT), first or last order (days), customer type from analytics (VIP, Loyal, Promising, New, At risk, Lost), country or language (two-letter codes), customer group (ids from the groups the store has), company, account, tags (by name) and email consent; all or any of them. Never lists who. Read-only.",
-    z.object({ rules: toolSegmentRulesSchema }),
+    "Counts how many people match a set of segment rules now, and how many of them want the store's emails, worked out by the store (D380). Turn the owner's words into rules: conditions on orders, money spent (in minor units of the main currency, without VAT), first or last order (days), customer type from analytics (VIP, Loyal, Promising, New, At risk, Lost), country or language (two-letter codes), customer group (ids from the groups the store has), company, account, tags (by name), email consent, the texts list (SMS consent), what they bought (product ids from list_products or category ids from list_categories: ever, in the last N days, or not), a deal (open or won), support (a conversation in the last N days, or a bad rating), a review (any, or at most N stars) and a subscription box; all or any of them. Never lists who. Read-only.",
+    z.object({ rules: segmentRulesSchema }),
   ),
   tool(
     "save_segment",
     "Saves a segment under a name, with rules as count_segment takes them; give the id of an existing one (from list_segments) to change it. It changes nothing a shopper sees: a broadcast, a code or a campaign uses it only when the owner chooses it there.",
     z.object({
       name: z.string().trim().min(1).max(80),
-      rules: toolSegmentRulesSchema,
+      rules: segmentRulesSchema,
       segment: z.string().trim().max(120).optional().describe("An existing segment's id or name, to change it; leave out for a new one."),
     }),
   ),
@@ -2354,16 +2354,7 @@ const ALL_OWNER_TOOLS = [
  * eval's replay among them, and a run can only be recorded once the tools are live: so they go live in a push without a migration, the eval
  * is run on Platform → AI, and its recording is committed. Empty but for that.
  */
-export const HELD_FOR_EVAL: ReadonlySet<string> = new Set([
-  "list_deals",
-  "get_deal",
-  "move_deal",
-  "list_leads",
-  "make_deal_from_lead",
-  "crm_today",
-  "log_activity",
-  "customer_timeline",
-]);
+export const HELD_FOR_EVAL: ReadonlySet<string> = new Set<string>([]);
 
 export const OWNER_TOOLS = ALL_OWNER_TOOLS.filter((t) => !HELD_FOR_EVAL.has(t.name));
 

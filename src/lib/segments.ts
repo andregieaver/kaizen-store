@@ -75,7 +75,7 @@ const CHOOSE_SOME = "Choose at least one.";
 const days = z.number().int().min(1).max(3650);
 const codes = (max: number) => z.array(z.string().regex(/^[a-z]{2}$/i).transform((c) => c.toLowerCase())).min(1, CHOOSE_SOME).max(max);
 
-/** The twelve conditions segments had before ecosystem plan E3.6 (D718); the AI manager's segment tools take only these (`toolSegmentRulesSchema`). */
+/** The twelve conditions segments had before ecosystem plan E3.6 (D718); `MORE_CONDITIONS` are E3.6's. */
 const FIRST_CONDITIONS = [
   z.object({ kind: z.literal("consent"), statuses: z.array(z.enum(CONSENTS as [Consent, ...Consent[]])).min(1, CHOOSE_SOME).max(4) }),
   z.object({ kind: z.literal("orders"), op: z.enum(["atLeast", "atMost", "exactly"]), value: count }),
@@ -128,14 +128,6 @@ export const segmentRulesSchema = z
   .superRefine(checkRules);
 export type SegmentRules = z.infer<typeof segmentRulesSchema>;
 
-/**
- * The rules as the AI manager's `count_segment` and `save_segment` take them: a frozen copy of the conditions before ecosystem plan E3.6
- * (D718), so the tools' input schema, and the agents' eval recorded on it (D391), stay as they were. The release step opens the new
- * conditions to the tools (they take `segmentRulesSchema` again) with a new eval run. Every rule set it takes is a `SegmentRules`.
- */
-export const toolSegmentRulesSchema = z
-  .object({ match: z.enum(["all", "any"]), conditions: z.array(z.discriminatedUnion("kind", [...FIRST_CONDITIONS])).max(CONDITIONS_MAX) })
-  .superRefine(checkRules);
 
 export const segmentInput = z.object({
   name: z.string().trim().min(1, "Give the segment a name.").max(80),

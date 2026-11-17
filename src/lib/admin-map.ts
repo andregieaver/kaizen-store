@@ -1576,15 +1576,9 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * Pages kept out of the AI manager's prompt for one deploy (`docs/ci-migrations.md`, D391): they arrived on main in the same push as a
  * migration, which deploys only once the agents' eval replay passes, and the replay can only be recorded again on production running the
  * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
- * recorded again on Platform → AI. Empty but for that, and for a page that came without a new recording of the eval: Leads (ecosystem plan
- * E2.8, D713) joins the prompt with the CRM tools of E2.5, which record the eval again.
+ * recorded again on Platform → AI. Empty but for that.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
-  // Leads (ecosystem plan E2.8, D713): joins the map with the CRM tools, in the push that records the eval with both (`HELD_FOR_EVAL`).
-  "store:leads",
-  // Settings → Automatic (ecosystem plan E3.3, D718): joins the map in the release step that opens draft_workflow, with the eval recorded.
-  "store:automatic",
-]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {

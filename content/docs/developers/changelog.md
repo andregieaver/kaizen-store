@@ -9,12 +9,22 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D715, D718]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.41 — 2026-11-17
+
+The owner MCP's tools (D713, D718).
+
+- Eight new tools for deals, leads and activities: `list_deals`, `get_deal`, `move_deal`, `list_leads`, `make_deal_from_lead`, `crm_today`,
+  `log_activity` and `customer_timeline`, each under the permission its admin page asks.
+- `count_segment` and `save_segment` take the segment conditions the editor offers: what people bought (products or categories), deals,
+  support, reviews, subscription boxes and the texts list.
+- `draft_workflow` takes `at_least` and `is_one_of`, a paid order's facts, `customer.segment` and a `hold_order` action after `order.paid`.
 
 ## 1.40 — 2026-11-17
 
