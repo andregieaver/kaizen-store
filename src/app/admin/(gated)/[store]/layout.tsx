@@ -109,8 +109,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         }
         actions={
           <>
-            {/* The page finder (round 1): any page by name, ⌘K. */}
-            <PageFinder find={findStorePagesAction.bind(null, store.slug)} words={w.finder} />
+            {/* The page finder (round 1): any page by name, ⌘K; and the store's records, or a question for the AI manager (ecosystem plan E2.2, D713). */}
+            <PageFinder find={findStorePagesAction.bind(null, store.slug)} words={{ ...w.finder, placeholder: w.finder.placeholderRecords, hint: w.finder.hintRecords }} />
             {/* Basic or Advanced (D454), from every page; on phones it is in the menu. */}
             <div className="hidden md:block">
               <AdminViewToggle compact />

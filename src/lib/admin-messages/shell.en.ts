@@ -17,14 +17,22 @@ export const shellEn = {
     checkingSession: "Checking your session …",
     skipToContent: "Skip to content",
   },
-  /** The page finder (admin redesign round 1): the search button in the top bar and ⌘K. `{query}` is what was typed. */
+  /**
+   * The page finder (admin redesign round 1): the search button in the top bar and ⌘K. `{query}` is what was typed. In a store and at the
+   * owner's level it finds records too (ecosystem plan E2.2, D713): `placeholderRecords` and `hintRecords` say so, `groups` head each kind.
+   */
   finder: {
     open: "Search the admin",
     placeholder: "Search pages and tasks, such as refunds or shipping",
+    placeholderRecords: "Search orders, customers, products and pages",
     hint: "Type a page or a task. Every page is found here, in Basic view too.",
+    hintRecords: "Type an order number, a name, an email, a SKU, a page or a task.",
     none: "Nothing matches “{query}”. Try another word, or ask the AI manager.",
-    results: "Pages",
+    results: "Results",
     close: "Close",
+    groups: { pages: "Pages", order: "Orders", customer: "Customers", conversation: "Conversations", deal: "Deals", product: "Products" },
+    ask: "Ask the AI manager about “{query}”",
+    askWhat: "Opens the AI manager with these words as your message.",
   },
   /** What a page's loading screen says while it is read (D312), drawn by `LoadingWords`. */
   loading: {
