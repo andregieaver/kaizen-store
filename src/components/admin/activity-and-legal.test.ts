@@ -10,7 +10,7 @@ import type { ActivityEntry } from "@/server/activity";
 import type { LegalOverview } from "@/server/legal-starters";
 
 import { AccessibilityForm, factLines } from "./a11y-statement-form";
-import { ActivityFilters, ActivityList, valuesFromQuery } from "./activity-view";
+import { ActivityFilters, ActivityList, activityRuns, runTitle, valuesFromQuery } from "./activity-view";
 import { legalLead, LegalPagesPanel } from "./legal-pages-panel";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 
@@ -40,6 +40,35 @@ describe("the activity log", () => {
     changes: { price: { from: 1000, to: 1200 }, note: { changed: true } },
     actedBy: "person",
     ...over,
+  });
+
+  it("folds changes one after another by one person in one area into a run, ten minutes apart at most (round 32, D706)", () => {
+    const at = (min: number) => new Date(Date.parse("2026-10-03T08:30:00.000Z") - min * 60_000).toISOString();
+    const runs = activityRuns([
+      entry({ id: 1, at: at(0), action: "integration.token_revoked", area: "settings" }),
+      entry({ id: 2, at: at(1), action: "integration.token_revoked", area: "settings" }),
+      entry({ id: 3, at: at(2), action: "integration.token_made", area: "settings" }),
+      entry({ id: 4, at: at(3), action: "integration.token_made", area: "settings", actedBy: "autopilot" }),
+      entry({ id: 5, at: at(4), area: "products" }),
+      entry({ id: 6, at: at(30), area: "products" }),
+      entry({ id: 7, at: at(31), area: "products", accountId: "b", email: "bo@example.no" }),
+    ]);
+    expect(runs.map((run) => run.map((e) => e.id))).toEqual([[1, 2, 3], [4], [5], [6], [7]]);
+    expect(runTitle(runs[0])).toBe("Integration: token revoked (2), Integration: token made");
+    const many = activityRuns(["a.one", "a.two", "a.three", "a.four"].map((action, i) => entry({ id: i, action })));
+    expect(runTitle(many[0])).toBe("A: one, A: two and 2 more");
+  });
+
+  it("draws a run as one row on a phone with each change inside, and keeps back all after the first 20 rows (round 32, D706)", () => {
+    const run = [entry({ id: 1 }), entry({ id: 2 })];
+    const out = html(createElement(ActivityList, { entries: run, zone: "UTC" }));
+    expect(out).toContain("2 changes");
+    expect(out.match(/Changed the price of Demo: Lampe/g)).toHaveLength(2);
+    const day = (n: number) => entry({ id: n, at: new Date(Date.parse("2026-10-03T08:30:00.000Z") - n * 3_600_000).toISOString(), accountId: String(n) });
+    const long = html(createElement(ActivityList, { entries: Array.from({ length: 25 }, (_, n) => day(n)), zone: "UTC", older: "/admin/kaffe/activity?before=7" }));
+    expect(long).toContain("Show 5 more");
+    expect(long.match(/max-sm:group-data-\[more=some\]\/more:hidden/g)!.length).toBeGreaterThanOrEqual(6);
+    expect(html(createElement(ActivityList, { entries: [entry()], zone: "UTC" }))).not.toContain("Show ");
   });
 
   it("says when the AI manager or the autopilot made the change in the person's name (D309)", () => {

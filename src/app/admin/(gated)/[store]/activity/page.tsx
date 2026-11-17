@@ -63,7 +63,10 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
                 ? w.leadNone
                 : fillWords(w.leadWeek, { entries: countWords(week.entries, w.entriesN), people: countWords(week.people, w.peopleN) })}
             </span>
-            {w.leadRest} {owner ? w.ownerSees : w.othersSee}
+            {/* Round 32 (D706): on a phone the week alone; what is kept and who sees what goes under the list. */}
+            <span className="max-sm:hidden">
+              {w.leadRest} {owner ? w.ownerSees : w.othersSee}
+            </span>
           </span>,
         ]}
       />
@@ -110,7 +113,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
           {problem}
         </p>
       )}
-      <details className={`px-5 py-3 ${CARD_CLASS}`} open={Boolean(values.action || values.from || values.to)}>
+      <details className={`px-5 py-3 max-sm:order-last ${CARD_CLASS}`} open={Boolean(values.action || values.from || values.to)}>
         <summary className="flex min-h-10 cursor-pointer items-center text-body text-ink">{w.moreFilters}</summary>
         <div className="pt-3">
       <ActivityFilters
@@ -125,6 +128,9 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
       />
         </div>
       </details>
+      <p className="order-last -mt-3 text-caption text-ink-2 sm:hidden">
+        {w.leadRest.trim()} {owner ? w.ownerSees : w.othersSee}
+      </p>
       <ActivityList
         now={drawnAt.getTime()}
         entries={page.entries}

@@ -9,6 +9,7 @@ import { type ChatAgentInput } from "@/lib/chat-schema";
 import { useAdminText } from "./admin-text";
 import { ChatAvatarFields } from "./chat-avatar-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
+import { PhoneRow, PhoneRows } from "./phone-row";
 
 export type SaveChatAgent = (json: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
 
@@ -40,6 +41,12 @@ export function ChatAgentForm({
   const [pending, start] = useTransition();
   const [outcome, setOutcome] = useState<{ ok: boolean; messages: string[] } | null>(null);
   const set = (patch: Partial<ChatAgentInput>) => setValue((current) => ({ ...current, ...patch }));
+  // Round 32 (D706): on a phone each part is a row saying what is set; from the small breakpoint up the form is as before.
+  const p = w.phone;
+  const row = { change: p.change, done: p.done };
+  const agentSub = [value.enabled ? p.on : p.off, value.name.trim() || p.noName, value.avatar ? p.picture : p.noPicture].join(" · ");
+  const ownGreeting = Object.values(value.greeting).some((text) => text?.trim());
+  const guidance = value.instructions.trim();
 
   return (
     <form
@@ -52,6 +59,9 @@ export function ChatAgentForm({
         });
       }}
     >
+      <PhoneRows className="sm:gap-5">
+      <PhoneRow title={w.agentRow} sub={agentSub} {...row}>
+      <div className="flex flex-col gap-5">
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={value.enabled} onChange={(event) => set({ enabled: event.target.checked })} className="size-4" />
         <span className="font-medium">{w.show}</span>
@@ -104,6 +114,10 @@ export function ChatAgentForm({
       </div>
 
       <ChatAvatarFields value={value.avatarStyle} onChange={(avatarStyle) => set({ avatarStyle })} />
+      </div>
+      </PhoneRow>
+
+      <PhoneRow title={w.greeting} sub={ownGreeting ? p.greetingOwn : p.greetingDefault} {...row}>
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-sm font-medium">{w.greeting}</legend>
@@ -122,6 +136,9 @@ export function ChatAgentForm({
           </label>
         ))}
       </fieldset>
+      </PhoneRow>
+
+      <PhoneRow title={w.guidance} sub={guidance ? (guidance.length > 48 ? `${guidance.slice(0, 47)}…` : guidance) : p.guidanceNone} {...row}>
 
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium">{w.guidance}</span>
@@ -135,6 +152,9 @@ export function ChatAgentForm({
           placeholder={w.guidanceHint}
         />
       </label>
+      </PhoneRow>
+
+      <PhoneRow title={w.talk} sub={value.voice ? p.talkOn : p.talkOff} {...row}>
 
       <label className="flex items-start gap-2">
         <input type="checkbox" checked={value.voice} onChange={(event) => set({ voice: event.target.checked })} className="mt-1 size-4" />
@@ -146,6 +166,9 @@ export function ChatAgentForm({
           </span>
         </span>
       </label>
+      </PhoneRow>
+
+      <PhoneRow last title={w.perDay} sub={p.perDay.replace("{n}", String(value.dailyLimit))} {...row}>
 
       <label className="flex max-w-60 flex-col gap-1">
         <span className="text-sm font-medium">{w.perDay}</span>
@@ -159,9 +182,11 @@ export function ChatAgentForm({
           className={field}
         />
       </label>
+      </PhoneRow>
+      </PhoneRows>
 
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40">
+      <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
+        <button type="submit" disabled={pending} className="min-h-10 max-sm:min-h-11 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40">
           {pending ? w.saving : w.save}
         </button>
         <div role="status" aria-live="polite" className="text-sm">

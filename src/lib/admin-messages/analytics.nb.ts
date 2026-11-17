@@ -175,6 +175,13 @@ export const analyticsNb: AnalyticsMessages = {
       ownerCan: "Butikkens eier kan sette dette opp.",
     },
     everything: "Alle tall, sammenlignet",
+    phone: {
+      open: "Åpne",
+      close: "Lukk",
+      start: "Start",
+      bestSub: "{name} {amount} · så {n} til",
+      bestOne: "{name} {amount}",
+    },
     everythingSub: "nettoomsetning og refusjoner, kunder som kommer tilbake, hvorfor salget endret seg, fra besøk til kjøp, hvor salget kommer fra, prognosen",
     title: "Oversikt",
     description: "Tjener vi penger, hvorfor endrer salget seg, og er det noe å gjøre i dag? Hvert tall lenker til siden som forklarer det.",

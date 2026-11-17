@@ -131,7 +131,7 @@ export function FunnelStream({ ctx, frame, reads }: StreamProps) {
 export function ProductsStream({ ctx, frame }: StreamProps) {
   return (
     <Streamed id="overview-products" title={analyticsWords().overview.products.title} load={() => topProducts(ctx.store, ctx.params.period)}>
-      {(top) => <ProductsSection frame={frame} top={top} />}
+      {(top) => <ProductsSection frame={frame} top={top} phoneRow />}
     </Streamed>
   );
 }

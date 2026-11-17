@@ -122,6 +122,18 @@ export const platformToolsEn = {
     needsAi: "The chat needs an AI provider with a text model: {link}.",
     needsAiLink: "choose one on the AI page",
     agent: "The agent",
+    /** Round 32 (D706): what a phone shows first, and the rows of the knowledge base and how it works. */
+    phone: {
+      offTitle: "The chat is off",
+      onTitle: "The chat is on",
+      needsAi: "It needs an AI model that writes text. Then visitors can ask about the site in the corner of every page.",
+      switchOn: "Switch it on under The agent, then Save.",
+      chooseModel: "Choose a model",
+      knowledgeSub: "{documents} · the site's pages are read anyway",
+      open: "Open",
+      close: "Close",
+      read: "Read",
+    },
     knowledge: "Knowledge base",
     knowledgeText:
       "What the agent should know beyond the site's pages: delivery and returns in detail, care guides, sizes, opening hours, answers to common questions. It reads {passages} from {pages} and {documents}",
@@ -142,7 +154,24 @@ export const platformToolsEn = {
     add: "Add to the knowledge base",
     full: "The knowledge base is full ({n} documents). Delete one to add another.",
     form: {
+      /** Round 32 (D706): the form's parts as rows on a phone, each saying what is set. */
+      phone: {
+        change: "Change",
+        done: "Done",
+        on: "On",
+        off: "Off",
+        noName: "No name yet",
+        picture: "picture",
+        noPicture: "no picture",
+        greetingOwn: "Your own words",
+        greetingDefault: "The agent introduces itself by name",
+        guidanceNone: "None · follows the site's own words",
+        talkOn: "On · in writing and aloud",
+        talkOff: "Off · writing only",
+        perDay: "Up to {n}, then it rests until tomorrow",
+      },
       saved: "Saved.",
+      agentRow: "The agent",
       show: "Show the chat on the site",
       noPicture: "No picture",
       changePicture: "Change picture",

@@ -17,6 +17,7 @@ export function PhoneRow({
   children,
   last = false,
   flat = false,
+  inset = false,
 }: {
   title: string;
   sub?: ReactNode;
@@ -26,6 +27,8 @@ export function PhoneRow({
   last?: boolean;
   /** Content that is a card of its own: on a phone its frame is taken off, so it is not a card in a card. */
   flat?: boolean;
+  /** A row inside a card that already has its frame and padding (round 32, D706): no card colour or padding of its own. */
+  inset?: boolean;
   /** The row's anchor: a link to `#id` (a strip's Post it) opens it and brings it into view. */
   id?: string;
   /** Another anchor that opens it too: the id of a section inside, which older links name (round 27, D700). */
@@ -48,7 +51,7 @@ export function PhoneRow({
     return () => window.removeEventListener("hashchange", follow);
   }, [id, opens]);
   return (
-    <div ref={ref} id={id} className={`scroll-mt-20 max-sm:bg-card max-sm:px-4 ${last ? "" : "max-sm:border-b max-sm:border-line"}`}>
+    <div ref={ref} id={id} className={`scroll-mt-20 ${inset ? "" : "max-sm:bg-card max-sm:px-4"} ${last ? "" : "max-sm:border-b max-sm:border-line"}`}>
       <div className="flex items-center gap-3 sm:hidden">
         <button type="button" aria-expanded={open} onClick={() => setOpen((shown) => !shown)} className="flex min-h-14 min-w-0 flex-1 items-center justify-between gap-3 py-2 text-left">
           <span className="flex min-w-0 flex-col gap-0.5">

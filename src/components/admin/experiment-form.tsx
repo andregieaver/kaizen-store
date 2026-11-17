@@ -223,7 +223,7 @@ export function ExperimentForm({
           {(moreGoals || MORE_GOALS.includes(goal)) && <div className="grid gap-3 md:grid-cols-3">{MORE_GOALS.map(goalCard)}</div>}
         </fieldset>
         {!MORE_GOALS.includes(goal) && (
-          <Button kind="link" className="self-start" onClick={() => setMoreGoals(!moreGoals)}>
+          <Button kind="link" className="max-w-full self-start text-left whitespace-normal!" onClick={() => setMoreGoals(!moreGoals)}>
             {moreGoals ? s.fewerGoals : `${s.moreGoals}: ${MORE_GOALS.map((g) => w.goals[g].label.toLowerCase()).join(", ")}`}
           </Button>
         )}

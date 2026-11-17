@@ -183,6 +183,14 @@ export const analyticsEn = {
       ownerCan: "The store's owner can set this up.",
     },
     everything: "Every figure, compared",
+    /** Round 32 (D706): the overview's rows on a phone. */
+    phone: {
+      open: "Open",
+      close: "Close",
+      start: "Start",
+      bestSub: "{name} {amount} · then {n} more",
+      bestOne: "{name} {amount}",
+    },
     everythingSub: "net revenue and refunds, returning customers, why sales moved, from visit to purchase, where sales come from, the forecast",
     title: "Overview",
     description: "Are we making money, why are sales moving, and is there anything to do today? Each figure links to the page that explains it.",

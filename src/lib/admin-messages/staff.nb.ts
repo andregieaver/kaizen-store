@@ -173,6 +173,13 @@ export const staffNb: StaffMessages = {
     details: "Detaljer",
     changed: "endret",
     older: "Eldre oppføringer",
+    phone: {
+      changes: "{n} endringer",
+      show: "Vis",
+      hide: "Skjul",
+      more: "Vis {n} til",
+      andMore: "og {n} til",
+    },
     actedBy: { ai_manager: "gjennom KI-assistenten", autopilot: "gjennom autopiloten" },
     none: "(ingen)",
     yes: "ja",
