@@ -9,7 +9,7 @@ import { cacheLife, cacheTag, updateTag } from "next/cache";
 import { db } from "@/db/client";
 import { countActiveMarkets } from "@/db/health";
 import { atomFeed, type AtomEntry } from "@/lib/atom";
-import { jobsNeedingLook } from "@/lib/cron-health";
+import { jobsCheck } from "@/lib/cron-health";
 import { renderEmail } from "@/lib/email-layout";
 import { emailSetup } from "@/lib/email-settings";
 import { publicEnv } from "@/lib/env";
@@ -164,10 +164,7 @@ export const PROBES: Probes = {
     }
   },
   async jobs() {
-    const look = jobsNeedingLook(await cronJobRows());
-    if (look.some((j) => j.health === "failing")) return { ok: false, reason: "failing" };
-    if (look.some((j) => j.health === "late" && j.job.startsWith("dispatcher"))) return { ok: false, reason: "late" };
-    return { ok: true, reason: null };
+    return jobsCheck(await cronJobRows());
   },
 };
 

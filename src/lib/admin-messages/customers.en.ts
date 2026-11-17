@@ -50,6 +50,7 @@ export const customersEn = {
     subscribed: "Subscribed",
     more: "More",
     tickAll: "Tick everyone on the page",
+    showAll: "Show all {n}",
     select: "Select",
     selectDone: "Done",
     tickOne: "Tick {name}",

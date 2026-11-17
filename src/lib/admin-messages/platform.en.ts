@@ -356,6 +356,17 @@ export const platformEn = {
     emails: "Emails from Kaizena Flow",
     noEmails: "No emails yet.",
   },
+  /** The watcher outside the scheduler (bloat review step 1.22): to the platform's admins when the scheduled jobs have stopped. */
+  watchdog: {
+    subject: "Kaizena Flow: scheduled jobs have stopped",
+    preview: "The scheduler has not run for {minutes} minutes.",
+    heading: "Scheduled jobs have stopped",
+    body: "Nothing scheduled is running: reminders, emails, imports and upkeep wait until the scheduler runs again. Check that pg_cron is running in the Supabase project.",
+    job: "{job}: last finished {minutes} minutes ago.",
+    never: "{job}: has never finished a run.",
+    button: "Open Usage and limits",
+    footer: "Sent by the watcher that runs outside the scheduler, at most once every six hours while it lasts.",
+  },
   /** The platform's figures, targets, alerts and morning briefing (C2, D513). */
   briefing: {
     thisMonth: "This month",

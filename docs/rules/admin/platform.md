@@ -208,6 +208,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`replicaDb()`, `setBasedReplica()`, off without `READ_DATABASE_URL`) is only for the modules `replica-readers.scan.test.ts` lists:
   never a read after a write, a cache refill, checkout, stock, payments or tax reports. Budgets on costly public endpoints are
   `takeBudget()` (`src/server/request-budget.ts`), never on a page load, the cart, checkout, payment or a webhook.
+  The scheduler is watched from outside by `/api/cron/watchdog` (Vercel's one cron, every 15 minutes: it emails the platform's admins when
+  the dispatcher's ledger row is over 15 minutes old), and the status page's jobs check fails on a late watcher or a late daily job
+  (`jobsCheck()`, `src/lib/cron-health.ts`); pg_cron's SQL jobs are kept as `pgcron.*` (`src/server/pg-cron-jobs.ts`).
 
 ## The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)
 

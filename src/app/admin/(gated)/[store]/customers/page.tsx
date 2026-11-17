@@ -240,6 +240,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             noOrder: words.noOrder,
             subscribed: words.subscribed,
             tickAll: words.tickAll,
+            showAll: words.showAll,
             select: words.select,
             selectDone: words.selectDone,
             tickOne: words.tickOne,

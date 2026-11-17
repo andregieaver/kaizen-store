@@ -51,6 +51,8 @@ export const productEn = {
     text: "The standard category, who buys it, words around its price, prices by quantity, subscriptions, product safety, tax, returns and where it is sold.",
   },
   terms: {
+    /** Round 36 (D724): on a phone the categories and tags are one row saying how many are chosen. */
+    phone: { none: "None chosen", chosen: { one: "{n} chosen", many: "{n} chosen" }, change: "Change", done: "Done" },
     title: "Categories and tags",
     intro: "Shoppers find the product through its categories and tags, in menus and in content grids.",
     layout: "Page layout",

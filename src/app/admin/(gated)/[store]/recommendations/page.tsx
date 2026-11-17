@@ -12,7 +12,8 @@ import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
 import { costWords } from "@/lib/ai-usage";
 import { getRecommendSettingsFresh, listRules, ruleProducts, usedThisMonth, type RuleKind } from "@/server/recommend-settings";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
@@ -55,14 +56,29 @@ export default async function RecommendationsPage({ params, searchParams }: Page
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "nb-NO") : ADMIN_LANG_FACTS[lang].locale;
   const canEdit = memberCan(current, "owner");
   const aiOn = Boolean(ai?.textModel);
+  const p = w.phone;
+  const settingsSub = [settings.enabled ? p.on : p.off, settings.ai && aiOn ? p.aiRanks : p.plain, fillWords(p.upsell, { n: settings.upsellCeilingPercent })].join(" · ");
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title={w.title}
-        description={<>{settings.enabled ? w.on : w.off} {w.intro}{" "}<Link href={`${base}/pages`} className="underline">{w.pageLink}</Link>{w.introEnd}</>}
+        description={<span className="max-sm:hidden">{settings.enabled ? w.on : w.off} {w.intro}{" "}<Link href={`${base}/pages`} className="underline">{w.pageLink}</Link>{w.introEnd}</span>}
       />
 
+      {/* Round 36 (D724): on a phone whether recommendations are on comes first; the parts follow as rows saying what is set. */}
+      <section aria-label={w.title} className={`flex flex-col gap-2.5 rounded-panel p-4 sm:hidden ${settings.enabled ? "bg-card" : "bg-warning-soft"}`}>
+        <p className="text-body-strong text-ink">{settings.enabled ? p.onTitle : p.offTitle}</p>
+        <p className={`text-caption ${settings.enabled ? "text-ink-2" : "text-warning-text"}`}>{settings.enabled ? p.onText : p.offText}</p>
+        {!settings.enabled && canEdit ? (
+          <a href="#settings" className="inline-flex min-h-11 items-center self-start rounded-pill bg-ink px-4 text-sm font-medium text-inverse-ink">
+            {p.switchOn}
+          </a>
+        ) : null}
+      </section>
+
+      <div className="flex flex-col gap-8 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat id="settings" title={w.settings} sub={settingsSub} change={p.change} done={p.done}>
       <Card title={w.settings} className="flex max-w-2xl flex-col gap-3" compact>
         <ActionForm action={saveRecommendSettingsAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-medium">
@@ -106,7 +122,9 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           {canEdit ? <SubmitButton>{w.save}</SubmitButton> : <p className="text-sm text-muted">{w.ownersOnly}</p>}
         </ActionForm>
       </Card>
+      </PhoneRow>
 
+      <PhoneRow flat title={w.rules} sub={rules.length === 0 ? p.noRules : countWords(rules.length, p.rules)} change={p.change} done={p.done}>
       <section aria-labelledby="rules" className="flex flex-col gap-3">
         <h2 id="rules" className="text-title text-ink">{w.rules}</h2>
         <p className="text-sm text-muted">{w.rulesHint}</p>
@@ -158,6 +176,9 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </ActionForm>
       </section>
 
+      </PhoneRow>
+
+      <PhoneRow flat defaultOpen={Boolean(replay)} title={w.replay} sub={fillWords(p.replaySub, { n: REPLAY_ORDERS })} change={p.open} done={p.done}>
       <section aria-labelledby="replay" className="flex flex-col gap-3">
         <h2 id="replay" className="text-title text-ink">{w.replay}</h2>
         <p className="text-sm text-muted">{fillWords(w.replayHint, { n: REPLAY_ORDERS })}</p>
@@ -204,6 +225,9 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         )}
       </section>
 
+      </PhoneRow>
+
+      <PhoneRow flat last title={w.results} sub={fillWords(p.resultsSub, { n: days })} change={p.open} done={p.done}>
       <section aria-labelledby="results" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="results" className="text-title text-ink">{w.results}</h2>
@@ -316,6 +340,8 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           </div>
         )}
       </section>
+      </PhoneRow>
+      </div>
     </div>
   );
 }

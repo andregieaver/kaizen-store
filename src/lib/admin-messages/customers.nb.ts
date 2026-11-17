@@ -45,6 +45,7 @@ export const customersNb: CustomersMessages = {
     subscribed: "Abonnerer",
     more: "Mer",
     tickAll: "Kryss av alle på siden",
+    showAll: "Vis alle {n}",
     select: "Velg",
     selectDone: "Ferdig",
     tickOne: "Kryss av {name}",

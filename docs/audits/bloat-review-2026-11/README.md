@@ -89,3 +89,7 @@ Plain lists, one entry a line, kept as they were made on 12 November. A step tha
 | `dead-text-keys.txt` | 44 | catalogue keys with no reader (the file's own two comment lines say how it was checked) | the TX findings |
 
 `PLAYWRIGHT_CHROMIUM_PATH` names the browser where one is preinstalled; `BASE_URL` another address than `http://localhost:3000`.
+
+## Before a session's last push
+
+Run `node scripts/session-load.mjs --step <the step's id>` once, before the last push, and commit the file it writes under `session-load/`. It reads this session's own transcript; a cloud session's transcript is gone when its container is. Do not add this sentence to CLAUDE.md.
