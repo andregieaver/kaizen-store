@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { OWNER_TOOLS } from "./owner-tools";
+import { HELD_FOR_EVAL, OWNER_TOOLS } from "./owner-tools";
 import { TOOL_PERMISSIONS, mayUseTool, toolKey, toolRefusal } from "./owner-tool-permissions";
 import { ROLE_TEMPLATES, isPermissionKey, type PermissionHolder } from "./permissions";
 
@@ -36,7 +36,8 @@ const template = (key: keyof typeof ROLE_TEMPLATES): PermissionHolder => ({ role
 
 describe("the AI manager's store tools and what they need", () => {
   it("has a permission for every tool and for nothing else (the table is exhaustive, in both directions)", () => {
-    const tools = OWNER_TOOLS.map((tool) => tool.name).sort();
+    // Tools held out until the eval is recorded with them (D713) keep their permission, ready for the push that makes them live.
+    const tools = [...OWNER_TOOLS.map((tool) => tool.name), ...HELD_FOR_EVAL].sort();
     expect(Object.keys(TOOL_PERMISSIONS).sort()).toEqual(tools);
     for (const name of tools) expect(isPermissionKey(TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS]), name).toBe(true);
   });

@@ -145,14 +145,13 @@ describe("the admin map (D103)", () => {
     expect(pagesFor("platform").some((p) => p.area === "store")).toBe(false);
   });
 
-  it("finds Leads by its words, and puts it in the AI's map while Deals is on (ecosystem plan E2.8, D713)", () => {
+  it("finds Leads by its words, and keeps it out of the AI's map until the eval is recorded with it (ecosystem plan E2.8, D713)", () => {
     const selling: SiteFlags = { owner: true, features: ["shop", "sales"] };
     expect(findPages("store", "leads", selling)[0]?.id).toBe("leads");
     expect(matchPath("/admin/kaffe/leads")?.page.id).toBe("leads");
     const text = adminMapText("store", selling);
     expect(text).toContain("Deals [deals]");
-    expect(text).toContain("[leads]");
-    expect(adminMapText("store", { owner: true, features: ["shop"] })).not.toContain("[leads]");
+    expect(text).not.toContain("[leads]");
   });
 
   it("has pages behind store features (D178) and Work, offered only when they are on", () => {

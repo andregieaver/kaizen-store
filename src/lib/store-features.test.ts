@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { TOOL_FEATURES, toolFeatureRefusal, toolOffered } from "./owner-tool-features";
-import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
+import { HELD_FOR_EVAL, OWNER_TOOLS_BY_NAME } from "./owner-tools";
 import {
   COUNTED_FEATURES,
   FEATURE_GROUPS,
@@ -148,7 +148,8 @@ describe("what blocks switching a feature off, and what is confirmed", () => {
 
 describe("the AI manager's tools behind a feature", () => {
   it("names only tools that exist", () => {
-    for (const name of Object.keys(TOOL_FEATURES)) expect(OWNER_TOOLS_BY_NAME[name], name).toBeDefined();
+    // A tool held out until the eval is recorded with it (D713) keeps its feature, ready for the push that makes it live.
+    for (const name of Object.keys(TOOL_FEATURES)) expect(OWNER_TOOLS_BY_NAME[name] ?? (HELD_FOR_EVAL.has(name) || undefined), name).toBeDefined();
   });
 
   it("offers a tool only while its feature is on", () => {

@@ -256,7 +256,7 @@ export const SITE_TOOLS = [
   ),
 ] as const satisfies readonly OwnerTool[];
 
-export const OWNER_TOOLS = [
+const ALL_OWNER_TOOLS = [
   tool(
     "draft_workflow",
     "Drafts a workflow from what the owner describes (D356), saved OFF: they test it on the latest event and switch it on at Settings, Workflows. trigger: one of the store's events (order.paid, order.sent, order.cancelled, order.refunded, customer.created, subscription.started, subscription.cancelled, return.requested, withdrawal.received, product.created, product.updated, stock.low, discount.created, support.waiting) or schedule, with schedule { every: day or week, at: HH:MM, weekday 1 to 7 for a week }. conditions (none for a schedule): { field, op (is, is_not, contains, more_than, less_than), value } on the trigger's fields, such as order.total (in the order's currency units), order.currency, order.market, order.lines.sku, order.shipping_address.country, customer.email, product.status, stock.available, return.kind. actions, 1 to 10: tag_order { tag }, note_order { text } and ask_ai_manager { question } after an order event; tag_customer { tag } after an order, customer or subscription event; email_staff { subject, text }; post_slack { text }; send_request { endpointId } (one of the owner's endpoints) after any event. Never an email to a customer, a refund or a price.",
@@ -2347,8 +2347,27 @@ export const OWNER_TOOLS = [
   ),
 ] as const satisfies readonly OwnerTool[];
 
-export type OwnerToolName = (typeof OWNER_TOOLS)[number]["name"];
-export type OwnerToolInput<N extends OwnerToolName> = z.output<Extract<(typeof OWNER_TOOLS)[number], { name: N }>["input"]>;
+/**
+ * Tools built and tested but held out of everything an assistant is offered (the AI manager, the autopilot, the owner MCP) until the agents'
+ * eval is recorded with them on production (D391, ecosystem plan E2.5, D713). A deploy that carries a migration waits for every check, the
+ * eval's replay among them, and a run can only be recorded once the tools are live: so they go live in a push without a migration, the eval
+ * is run on Platform → AI, and its recording is committed. Empty but for that.
+ */
+export const HELD_FOR_EVAL: ReadonlySet<string> = new Set([
+  "list_deals",
+  "get_deal",
+  "move_deal",
+  "list_leads",
+  "make_deal_from_lead",
+  "crm_today",
+  "log_activity",
+  "customer_timeline",
+]);
+
+export const OWNER_TOOLS = ALL_OWNER_TOOLS.filter((t) => !HELD_FOR_EVAL.has(t.name));
+
+export type OwnerToolName = (typeof ALL_OWNER_TOOLS)[number]["name"];
+export type OwnerToolInput<N extends OwnerToolName> = z.output<Extract<(typeof ALL_OWNER_TOOLS)[number], { name: N }>["input"]>;
 
 // Without a prototype, so a name such as `constructor` or `toString` finds nothing (D439 review).
 export const OWNER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.assign(Object.create(null) as Record<string, OwnerTool>, Object.fromEntries(OWNER_TOOLS.map((t) => [t.name, t])));
