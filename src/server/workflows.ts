@@ -7,9 +7,11 @@ import { db } from "@/db/client";
 import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { normaliseTag } from "@/lib/order-tags";
+import { paidFactsData } from "@/lib/rules-to-workflows";
 import { siteUrl } from "@/lib/site";
 import {
   actionsFor,
+  needsPaidFacts,
   RUNS_PER_HOUR,
   scheduleDue,
   workflowInputSchema,
@@ -30,6 +32,8 @@ import { postToSlack, subjectData } from "./integrations";
 import { log } from "./log";
 import { SYSTEM_ACTOR } from "./order-actor";
 import { addOrderNote } from "./order-admin";
+import { holdOrder } from "./order-hold";
+import { forgetMovedRule, ruleFacts } from "./order-rules";
 import { changeOrderTags } from "./order-tags";
 import { memberCan } from "./permissions";
 import { addTag } from "./segments";
@@ -47,6 +51,11 @@ import { latestSubject } from "./workflow-subjects";
  * of the owner's endpoints (a delivery the integrations job signs and sends) and the AI manager (`askFromWorkflow()`). No action makes an
  * event a workflow waits for, so a workflow cannot start itself; and each is capped at `RUNS_PER_HOUR` runs an hour. An email to a customer,
  * a refund or anything that spends is not an action (they are a person's).
+ *
+ * Since the order rules' fold (ecosystem plan E3.3, D718) a workflow on `order.paid` also does what a rule did: its conditions may test what a
+ * rule knew of the order (`PAID_ORDER_FIELDS`, read by `ruleFacts()` only for a run that needs them, its tags as they were when the order was
+ * paid) and it may hold the order (`holdOrder()`, as a rule's hold). A rule moved here is a workflow with the rule's id (`workflow-moves.ts`
+ * makes it and queues its runs for events the rules had not handled).
  */
 
 export type Workflow = WorkflowInput & {
@@ -182,10 +191,37 @@ export async function switchWorkflow(member: Membership, id: string, on: boolean
 }
 
 export async function deleteWorkflow(member: Membership, id: string): Promise<boolean> {
-  const rows = await db().execute(sql`delete from commerce.workflows where store_id = ${member.store.id}::uuid and id = ${id}::uuid returning id`);
+  const rows = await db().transaction(async (tx) => {
+    // A rule moved to this workflow (E3.3) goes with it, so it never comes back as a rule.
+    await forgetMovedRule(tx, member.store.id, id);
+    return tx.execute(sql`delete from commerce.workflows where store_id = ${member.store.id}::uuid and id = ${id}::uuid returning id`);
+  });
   if (rows.length === 0) return false;
   await audit(member.account.id, member.store.id, "automation.workflow_deleted", {}, { target: { type: "workflow", id } });
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// What a run reads
+// ---------------------------------------------------------------------------
+
+/**
+ * What a run reads about its event: its data as the owner's endpoints get it (`subjectData()`), and for a paid order whose conditions test
+ * one, what an order rule knew of it beside it under `order` (E3.3): its tags as they were at `asOf` (when it was paid), Stripe's risk only
+ * when a condition asks.
+ */
+export async function workflowData(
+  store: { id: string; slug: string; name: string },
+  event: string,
+  subjectId: string | null,
+  conditions: readonly WorkflowCondition[],
+  asOf: string,
+): Promise<Record<string, unknown> | null> {
+  const data = await subjectData(store, event, subjectId);
+  if (!data || event !== "order.paid" || !subjectId || !needsPaidFacts(conditions)) return data;
+  const facts = await ruleFacts(store.id, subjectId, { tagsAsOf: asOf, risk: conditions.some((c) => c.field === "order.risk") });
+  if (!facts) return data;
+  return { ...data, order: { ...(data.order as Record<string, unknown>), ...paidFactsData(facts) } };
 }
 
 // ---------------------------------------------------------------------------
@@ -206,7 +242,7 @@ export async function testWorkflow(member: Membership, id: string): Promise<Test
   if (flow.trigger === "support.waiting") data = await subjectData(store, flow.trigger, null);
   else if (flow.trigger !== "schedule") {
     const subject = await latestSubject(member.store.id, flow.trigger);
-    data = subject ? await subjectData(store, flow.trigger, subject) : null;
+    data = subject ? await workflowData(store, flow.trigger, subject, flow.conditions, new Date().toISOString()) : null;
     found = data !== null;
   }
   const matched = found && workflowMatches(flow.conditions, data ?? {});
@@ -241,6 +277,8 @@ function wouldDo(action: WorkflowAction, data: Record<string, unknown> | null): 
       return data ? "signed request" : "nothing to send";
     case "ask_ai_manager":
       return action.question.slice(0, 120);
+    case "hold_order":
+      return action.reason.slice(0, 120);
   }
 }
 
@@ -303,14 +341,18 @@ async function act(run: { id: string; storeId: string; workflowId: string; event
           ? chosen.map((t) => ({ to: t.to, recipient: t.recipient.kind === "contact" ? "contact" : t.recipient.accountId }))
           : await ownersOf(run.storeId);
       if (targets.length === 0) return fail("no_recipients");
+      // An email about an order names it and links it (E3.3: as an order rule's *Notify staff* did); never a shopper's personal field.
+      const raw = (data.order as Record<string, unknown> | undefined)?.number;
+      const number = typeof raw === "string" ? raw : null;
       const email = renderEmail({
-        subject: `${action.subject} (${run.name})`.slice(0, 200),
+        subject: (action.subject === run.name ? action.subject : `${action.subject} (${run.name})`).concat(number ? ` (order ${number})` : "").slice(0, 200),
         preview: action.text.slice(0, 120),
         lang: "en",
         footer: emailFooter(store, emailText("en")),
         blocks: [
           { type: "heading", text: action.subject },
           { type: "paragraph", text: action.text },
+          ...(number ? [{ type: "button" as const, text: `Open order ${number}`, url: `${siteUrl()}/admin/${store.slug}/orders/${run.subjectId}` }] : []),
           { type: "paragraph", text: `Sent by the workflow "${run.name}" of the store.` },
           { type: "button", text: "Open the workflows", url: `${siteUrl()}/admin/${store.slug}/settings/workflows` },
         ],
@@ -344,6 +386,12 @@ async function act(run: { id: string; storeId: string; workflowId: string; event
         askFromWorkflow(tx, { storeId: run.storeId, workflowId: run.workflowId, name: run.name, question: action.question, orderId: run.subjectId!, orderNumber: String(order?.number ?? "") }),
       );
       return asked === "ok" ? { kind: action.kind, ok: true } : fail(asked);
+    }
+    case "hold_order": {
+      // As an order rule's hold (E3.3): nothing of the order is sent until a person releases it; the hold names the workflow.
+      if (!run.subjectId) return fail("invalid");
+      const held = await holdOrder(run.storeId, run.subjectId, { reason: action.reason, by: { workflow: { id: run.workflowId } } });
+      return held.ok ? { kind: action.kind, ok: true } : fail(held.problem);
     }
   }
 }
@@ -396,6 +444,7 @@ export async function runWorkflows(limit = 50, now = new Date()): Promise<{ runs
       workflow_id: col.uuid,
       event: col.text,
       subject_id: col.uuid.nullable(),
+      created_at: col.timestamp,
       name: col.text,
       conditions: z.unknown(),
       actions: z.unknown(),
@@ -412,7 +461,7 @@ export async function runWorkflows(limit = 50, now = new Date()): Promise<{ runs
         for update skip locked
       ), claimed as (
         update commerce.workflow_runs r set claimed_until = now() + interval '5 minutes' from due where r.id = due.id
-        returning r.id, r.store_id, r.workflow_id, r.event, r.subject_id
+        returning r.id, r.store_id, r.workflow_id, r.event, r.subject_id, r.created_at
       )
       select c.*, w.name, w.conditions, w.actions, coalesce(w.updated_by, w.created_by) as account, s.slug, s.name as store_name,
         commerce.store_is_active(s.id) as open
@@ -424,7 +473,8 @@ export async function runWorkflows(limit = 50, now = new Date()): Promise<{ runs
     try {
       const actions = (run.actions as WorkflowAction[]) ?? [];
       const conditions = (run.conditions as WorkflowCondition[]) ?? [];
-      let data: Record<string, unknown> | null = run.event === "schedule" ? {} : await subjectData({ id: run.store_id, slug: run.slug, name: run.store_name }, run.event, run.subject_id);
+      let data: Record<string, unknown> | null =
+        run.event === "schedule" ? {} : await workflowData({ id: run.store_id, slug: run.slug, name: run.store_name }, run.event, run.subject_id, conditions, run.created_at);
       if (!run.open) data = null;
       const matched = data !== null && workflowMatches(conditions, data);
       const outcomes: ActionOutcome[] = [];

@@ -326,6 +326,8 @@ export const NAV_NB: Record<string, string> = {
   AI: "KI",
   "Apps and API": "Apper og API",
   Workflows: "Arbeidsflyter",
+  Automatic: "Automatisk",
+  "Everything that happens by itself in the store, and when it last did: what follows a paid order, workflows, emails, alerts and connections.": "Alt som skjer av seg selv i butikken, og når det sist skjedde: det som følger en betalt bestilling, arbeidsflyter, e-poster, varsler og tilkoblinger.",
   "Checkout rules": "Regler i kassen",
   "What product tiles in your grids show: how many are left, and a quantity chooser with Add to cart.": "Hva produktflisene i rutenettene viser: hvor mange som er igjen, og en antallsvelger med Legg i handlekurven.",
   "Prices and quantity": "Priser og antall",

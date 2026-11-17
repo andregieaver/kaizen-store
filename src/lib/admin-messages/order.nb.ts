@@ -434,6 +434,7 @@ export const orderNb: OrderMessages = {
   },
   hold: {
     byRule: "av regelen",
+    byWorkflow: "av arbeidsflyten",
     ruleDeleted: "som er slettet siden",
     byPerson: "av {name}",
     staffMember: "en ansatt",

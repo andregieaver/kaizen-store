@@ -232,6 +232,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `platform-workflows.ts` (a platform owner's, the settings area) and queued by `queue_platform_event()`; their triggers, fields and actions are
   `PLATFORM_WORKFLOWS` (`src/lib/platform-workflows.ts`), the kit the shared editor (`scope="platform"`) and `workflowProblems()` take, and
   they read the event as `platformPayload()` builds it. A new platform event is a trigger there with its fields.
+  Order rules are folded into workflows (ecosystem plan E3.3, D718): `order.paid` has the rules' facts as fields (`PAID_ORDER_FIELDS`, read by
+  `ruleFacts()` in `workflowData()` only for a run whose conditions name one, the tags as of the run's time so workflows never chain) and the
+  action `hold_order` (`holdOrder()`, `held_by_rule` holding the workflow's id); a store's rules are moved by `moveRulesToWorkflows()`
+  (`src/lib/rules-to-workflows.ts` writes each as its workflow, with the rule's id; one needing *any* of several conditions stays a rule), and
+  the order-rules engine queues a moved rule's workflow (`queueMovedRuns()`) for an event it had not handled, so nothing stops. The AI manager's
+  `draft_workflow` keeps its schema as it was (`draftWorkflowInputSchema`) until its release step records the eval with the new fields and the
+  hold. Settings → Automatic (`src/lib/automatic.ts`, `src/server/automatic.ts`) lists what runs by itself and, in order, what follows a paid
+  order: a new engine that acts by itself adds its lines there.
 
 ## Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 

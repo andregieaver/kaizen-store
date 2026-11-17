@@ -9,8 +9,8 @@ import { fillWords } from "@/lib/admin-fill";
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
 
 /**
- * An order's fulfilment hold on its page (wave 3, D238, `docs/wave-3-notifications.md` 2.6): the banner *On hold: {reason}* (by the rule, linked, or by the
- * person) with *Release*, or, for a paid order not sent in full, *Hold fulfilment* with a reason. While held, nothing of the order can be sent or handed
+ * An order's fulfilment hold on its page (wave 3, D238, `docs/wave-3-notifications.md` 2.6): the banner *On hold: {reason}* (by the rule or the workflow, linked,
+ * or by the person) with *Release*, or, for a paid order not sent in full, *Hold fulfilment* with a reason. While held, nothing of the order can be sent or handed
  * over; refunds, cancelling, editing, notes, tags and emails are not affected. The buttons are offered with `orders:write` (the actions ask again).
  */
 export function HoldPanel({
@@ -33,7 +33,14 @@ export function HoldPanel({
   holdAction: FormAction | null;
 }) {
   if (hold) {
-    const by = hold.rule ? (
+    const by = hold.workflow ? (
+      <>
+        {w.byWorkflow}{" "}
+        <Link href={`${base}/settings/workflows`} className="underline underline-offset-2">
+          {hold.workflow.name}
+        </Link>
+      </>
+    ) : hold.rule ? (
       <>
         {w.byRule}{" "}
         {hold.rule.name ? (

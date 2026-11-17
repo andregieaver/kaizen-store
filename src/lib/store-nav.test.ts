@@ -274,6 +274,8 @@ describe("the pages' icons and the Basic view (D454)", () => {
       "Features",
       "Payments",
       "Shipping",
+      // One home for what runs by itself (ecosystem plan E3.3, D718).
+      "Automatic",
       "Legal pages",
       "Tax",
       "Header and footer",

@@ -1,8 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
+import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { ruleAnswerText } from "@/lib/notification-words";
@@ -11,6 +13,8 @@ import { can } from "@/lib/permissions";
 import { holderOf, type Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
 import { deleteRule, listRules, orderRules, saveRule, setRuleEnabled } from "@/server/order-rules";
+import { moveRulesToWorkflows } from "@/server/rules-to-workflows";
+import { storeAction } from "@/server/store-action";
 
 /** The words of a member's language, or of the request's before a member is known. */
 const wordsOf = async (member: Membership | null) => adminText(member ? adminLangOf(member.account.adminLocale) : await actionAdminLang(), "notifications");
@@ -69,4 +73,20 @@ export async function deleteRuleAction(storeSlug: string, ruleId: string, _previ
   if (!result.ok) return { status: "error", messages: [words.rules.answers.gone] };
   refresh();
   return { status: "ok", messages: [words.rules.deleted] };
+}
+
+/**
+ * *Move my rules to workflows* (ecosystem plan E3.3, D718), `settings:write`: every rule that can be a workflow is moved. With none left the
+ * person is taken to the workflows, which name what came from here; with some left (they cannot move) the page says what was moved.
+ */
+export async function moveRulesAction(storeSlug: string): Promise<FormState> {
+  const refuse = (message: string): FormState => ({ status: "error", messages: [message] });
+  return storeAction({ store: storeSlug, key: "settings:write", action: "automation.rules_moved", answer: refuse }, async (member, lang) => {
+    const w = adminText(lang, "automatic").move;
+    const outcome = await moveRulesToWorkflows(member.store.id, member.account.id);
+    if (outcome.moved.length === 0) return refuse(w.nothing);
+    if (outcome.kept.length === 0) redirect(`/admin/${member.store.slug}/settings/workflows?moved=${outcome.moved.map((m) => m.id).join(",")}`);
+    refresh();
+    return { status: "ok", messages: [countWords(outcome.moved.length, w.done, { names: outcome.moved.map((m) => m.name).join(", ") })] };
+  });
 }

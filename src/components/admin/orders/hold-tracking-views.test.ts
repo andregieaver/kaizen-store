@@ -29,7 +29,7 @@ const when = (iso: string) => iso.slice(0, 10);
 
 describe("the order's hold (D238, 2.6)", () => {
   it("says who held it and why, with Release for those who may", () => {
-    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check the address", rule: { id: "r1", name: "Big orders" }, byAccount: null }, base: "/admin/kaffe", when, release: action, holdAction: null })));
+    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check the address", rule: { id: "r1", name: "Big orders" }, workflow: null, byAccount: null }, base: "/admin/kaffe", when, release: action, holdAction: null })));
     expect(html).not.toMatch(BAD);
     expect(html).toContain("On hold: Check the address");
     expect(html).toContain('href="/admin/kaffe/settings/automation/r1"');
@@ -38,11 +38,19 @@ describe("the order's hold (D238, 2.6)", () => {
   });
 
   it("names a deleted rule plainly and a person by name; no Release without orders:write", () => {
-    const deleted = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: { id: "r1", name: null }, byAccount: null }, base: "/b", when, release: null, holdAction: null })));
+    const deleted = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: { id: "r1", name: null }, workflow: null, byAccount: null }, base: "/b", when, release: null, holdAction: null })));
     expect(deleted).toContain("that was deleted since");
     expect(deleted).not.toContain(">Release<");
-    const person = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: null, byAccount: { id: "a", name: "Kari" } }, base: "/b", when, release: null, holdAction: null })));
+    const person = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "x", rule: null, workflow: null, byAccount: { id: "a", name: "Kari" } }, base: "/b", when, release: null, holdAction: null })));
     expect(person).toContain("by Kari");
+  });
+
+  it("names the workflow that held it, linked to the workflows (ecosystem plan E3.3, D718)", () => {
+    const html = plain(renderToString(h(HoldPanel, { hold: { heldAt: "2026-10-01T10:00:00Z", reason: "Check it", rule: null, workflow: { id: "w1", name: "Big orders" }, byAccount: null }, base: "/admin/kaffe", when, release: null, holdAction: null })));
+    expect(html).toContain("by the workflow");
+    expect(html).toContain('href="/admin/kaffe/settings/workflows"');
+    expect(html).toContain("Big orders");
+    expect(html).not.toContain("by the rule");
   });
 
   it("offers Hold with a reason when the order can be held, and nothing when it cannot", () => {
