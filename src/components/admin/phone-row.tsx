@@ -18,6 +18,7 @@ export function PhoneRow({
   last = false,
   flat = false,
   inset = false,
+  defaultOpen = false,
 }: {
   title: string;
   sub?: ReactNode;
@@ -29,6 +30,8 @@ export function PhoneRow({
   flat?: boolean;
   /** A row inside a card that already has its frame and padding (round 32, D706): no card colour or padding of its own. */
   inset?: boolean;
+  /** Open when the page is drawn (round 34, D708): a form with nothing to show yet. */
+  defaultOpen?: boolean;
   /** The row's anchor: a link to `#id` (a strip's Post it) opens it and brings it into view. */
   id?: string;
   /** Another anchor that opens it too: the id of a section inside, which older links name (round 27, D700). */
@@ -36,7 +39,7 @@ export function PhoneRow({
   /** One press on the row itself on a phone, beside Change (a switch that is off: Turn on). */
   action?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!id && !opens) return;

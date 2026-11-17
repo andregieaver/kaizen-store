@@ -6,6 +6,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ReportBuilder } from "@/components/admin/reports/report-builder";
 import { ReportView } from "@/components/admin/reports/report-view";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { analyticsWords } from "@/lib/analytics-words";
@@ -81,7 +82,8 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics", "customReports"])}>
       <div className="flex flex-col gap-8">
-        <PageHeader back={{ href: `${ctx.base}/analytics/reports`, label: w.page.title }} title={title} description={description} />
+        {/* Round 34 (D708): on a phone what the report shows is said once, in the form's row. */}
+        <PageHeader back={{ href: `${ctx.base}/analytics/reports`, label: w.page.title }} title={title} description={description ? <span className="max-sm:hidden">{description}</span> : undefined} />
 
         {saved && one(query.saved) === "1" && (
           <p role="status" className="rounded-panel border border-positive-line bg-positive-soft p-3 text-sm text-positive-text">
@@ -89,15 +91,19 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
           </p>
         )}
 
-        <Card title={w.builder.title}>
-          <ReportBuilder
-            path={path}
-            id={saved?.id ?? null}
-            initial={spec}
-            words={{ builder: w.builder, catalogue: w.catalogue, problems: w.problems }}
-            periodWords={{ presets: aw.period.presets, compare: aw.compare.modes }}
-          />
-        </Card>
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow flat last defaultOpen={!description} title={w.builder.title} sub={description} change={w.result.phone.change} done={w.result.phone.done}>
+            <Card title={w.builder.title}>
+              <ReportBuilder
+                path={path}
+                id={saved?.id ?? null}
+                initial={spec}
+                words={{ builder: w.builder, catalogue: w.catalogue, problems: w.problems }}
+                periodWords={{ presets: aw.period.presets, compare: aw.compare.modes }}
+              />
+            </Card>
+          </PhoneRow>
+        </div>
 
         <Card title={title}>
           {outcome === null ? (

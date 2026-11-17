@@ -928,6 +928,8 @@ export const reportsEn = {
     changeAgainst: " Change is against {from} to {to}.",
   },
   inventory: {
+    /** Round 34 (D708): a variant's line on a phone. */
+    phone: { onHand: "{n} on hand" },
     n: {
       unit: {
         one: "unit",

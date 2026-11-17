@@ -16,6 +16,8 @@ export const settingsEn = {
     noChange: "You may not change the store's settings.",
   },
   features: {
+    /** Round 34 (D708): on a phone a feature is its name and switch; what it does behind a small i; the times one row. */
+    phone: { about: "What {label} does", change: "Change", done: "Done", noReminder: "no reminder" },
     title: "Features",
     description: "Switch on what your store uses; the rest stays out of your way. Nothing is deleted when you switch something off.",
     count: "{on} of {total} on",

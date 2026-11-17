@@ -76,6 +76,8 @@ type ItemProps = {
 function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) {
   const w = useAdminText("settings").features;
   const [confirming, setConfirming] = useState(false);
+  // Round 34 (D708): on a phone what a feature does waits behind a small i.
+  const [about, setAbout] = useState(false);
   const [answer, setAnswer] = useState<SwitchResult | null>(null);
   const [pending, start] = useTransition();
   const asleep = row.kept && !row.on;
@@ -101,16 +103,29 @@ function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) 
   };
 
   return (
-    <li className={`flex flex-col gap-3 p-4 ${row.missing.length > 0 ? "opacity-70" : ""}`} data-feature={row.id}>
-      <div className="flex items-start justify-between gap-4">
+    <li className={`flex flex-col gap-3 p-4 ${master ? "" : "max-sm:py-2.5"} ${row.missing.length > 0 ? "opacity-70" : ""}`} data-feature={row.id}>
+      <div className={`flex items-start justify-between gap-4 ${master ? "" : "max-sm:items-center"}`}>
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <span id={`feature-${row.id}-label`} className={master ? "text-lg font-medium" : "font-medium"}>
               {row.label}
             </span>
             {row.inUse && !master && <span className="rounded border border-line px-1.5 py-0.5 text-xs text-muted">{w.inUse}</span>}
+            {!master && (
+              <button
+                type="button"
+                aria-expanded={about}
+                aria-label={fillWords(w.phone.about, { label: row.label.toLowerCase() })}
+                onClick={() => setAbout((shown) => !shown)}
+                className="-my-2 flex size-9 items-center justify-center sm:hidden"
+              >
+                <span aria-hidden="true" className="flex size-5 items-center justify-center rounded-full border border-edge text-xs text-ink-2">
+                  i
+                </span>
+              </button>
+            )}
           </div>
-          <p className="text-sm text-muted">{row.words}</p>
+          <p className={`text-sm text-muted ${master || about ? "" : "max-sm:hidden"}`}>{row.words}</p>
           {row.missing.length > 0 && (
             <p className="text-sm">
               {fillWords(w.needs, { list: row.missing.join(w.and) })}
