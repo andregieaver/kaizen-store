@@ -48,6 +48,7 @@ export function subjectOf(
   | "checkout"
   | "work_client"
   | "work_invoice"
+  | "form_response"
   | "schedule" {
   if (trigger === "schedule") return "schedule";
   // Ecosystem plan E3.2 (D718).
@@ -69,6 +70,7 @@ export function subjectOf(
   if (trigger === "review.created") return "review";
   if (trigger === "experiment.answered") return "experiment";
   if (trigger.startsWith("contract.")) return "contract";
+  if (trigger === "form.response") return "form_response";
   if (trigger.startsWith("order.")) return "order";
   if (trigger.startsWith("subscription.")) return "subscription";
   if (trigger.startsWith("product.")) return "product";
@@ -205,6 +207,12 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "work_invoice.total", kind: "number" },
     { key: "work_invoice.currency", kind: "text" },
     { key: "work_invoice.status", kind: "text" },
+  ],
+  form_response: [
+    { key: "form_response.form_name", kind: "text" },
+    { key: "form_response.form_kind", kind: "text" },
+    { key: "form_response.locale", kind: "text" },
+    { key: "form_response.path", kind: "text" },
   ],
   draft: [
     { key: "draft.source", kind: "text" },

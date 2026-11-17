@@ -27,7 +27,8 @@ export default async function PlatformTemplatesPage() {
   const account = await requirePlatformReader();
   const { w } = await platformSiteWords();
   const [templates, formTemplates] = await Promise.all([listMarketplaceTemplates(), listSharedFormTemplates()]);
-  const f = adminText(adminLangOf(account.adminLocale), "forms");
+  const forms = adminText(adminLangOf(account.adminLocale), "forms");
+  const f = { kinds: forms.kinds, templates: adminText(adminLangOf(account.adminLocale), "formTemplates") };
   const hidden = templates.filter((t) => t.hidden).length;
 
   return (

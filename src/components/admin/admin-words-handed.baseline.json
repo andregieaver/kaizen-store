@@ -131,8 +131,8 @@
         "platform"
       ],
       "handed": {
-        "en": 49007,
-        "nb": 53564
+        "en": 49117,
+        "nb": 53674
       },
       "named": {
         "en": 1358,
@@ -146,8 +146,8 @@
         "platform"
       ],
       "handed": {
-        "en": 49007,
-        "nb": 53564
+        "en": 49117,
+        "nb": 53674
       },
       "named": {
         "en": 4189,
@@ -499,12 +499,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -516,12 +516,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -533,12 +533,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -628,12 +628,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -645,12 +645,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -711,8 +711,8 @@
         "platform"
       ],
       "handed": {
-        "en": 49007,
-        "nb": 53564
+        "en": 49117,
+        "nb": 53674
       },
       "named": {
         "en": 1663,
@@ -1057,8 +1057,8 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
         "en": 2748,
@@ -1136,38 +1136,42 @@
         "builder"
       ]
     },
-    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks": {
+    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
       "areas": [
         "forms",
-        "blocks"
+        "blocks",
+        "formTemplates"
       ],
       "handed": {
-        "en": 64497,
-        "nb": 67557
+        "en": 64484,
+        "nb": 67544
       },
       "named": {
-        "en": 12478,
-        "nb": 13008
+        "en": 12465,
+        "nb": 12995
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/forms/new/page.tsx#forms": {
+    "src/app/admin/(gated)/[store]/forms/new/page.tsx#forms+formTemplates": {
       "areas": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "named": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
@@ -1176,8 +1180,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 0,
@@ -1193,8 +1197,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 624,
@@ -1208,12 +1212,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 33496,
+        "nb": 34699
       },
       "whole": [],
       "unnamed": []
@@ -1223,12 +1227,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 33496,
+        "nb": 34699
       },
       "whole": [],
       "unnamed": []
@@ -1238,12 +1242,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 33496,
+        "nb": 34699
       },
       "whole": [],
       "unnamed": []
@@ -1253,8 +1257,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
         "en": 1773,
@@ -1268,8 +1272,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
         "en": 0,
@@ -1285,8 +1289,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
         "en": 0,
@@ -1531,8 +1535,8 @@
         "builder"
       ],
       "handed": {
-        "en": 169026,
-        "nb": 181432
+        "en": 169057,
+        "nb": 181464
       },
       "named": {
         "en": 54239,
@@ -2120,12 +2124,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -2137,12 +2141,12 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "whole": [
         "marketing"
@@ -2169,12 +2173,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 7636,
-        "nb": 7882
+        "en": 7733,
+        "nb": 7983
       },
       "whole": [],
       "unnamed": []
@@ -2184,29 +2188,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
-      },
-      "whole": [
-        "notifications"
-      ],
-      "unnamed": []
-    },
-    "src/app/admin/(gated)/[store]/settings/automation/new/page.tsx#notifications": {
-      "areas": [
-        "notifications"
-      ],
-      "handed": {
-        "en": 70470,
-        "nb": 73428
-      },
-      "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 73967,
+        "nb": 77228
       },
       "whole": [
         "notifications"
@@ -2218,8 +2205,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
         "en": 0,
@@ -2410,12 +2397,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 73967,
+        "nb": 77228
       },
       "whole": [
         "notifications"
@@ -2427,12 +2414,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 69305,
-        "nb": 72239
+        "en": 73967,
+        "nb": 77228
       },
       "whole": [
         "notifications"
@@ -2579,12 +2566,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 3729,
-        "nb": 4017
+        "en": 6119,
+        "nb": 6485
       },
       "whole": [],
       "unnamed": []
@@ -2754,8 +2741,8 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
         "en": 4261,
@@ -2769,8 +2756,8 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
         "en": 4261,
@@ -2784,8 +2771,8 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
         "en": 4261,
@@ -2799,8 +2786,8 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
         "en": 4261,
@@ -2814,8 +2801,8 @@
         "marketing"
       ],
       "handed": {
-        "en": 35420,
-        "nb": 36697
+        "en": 37840,
+        "nb": 39332
       },
       "named": {
         "en": 4261,
@@ -2971,8 +2958,8 @@
         "website"
       ],
       "handed": {
-        "en": 123845,
-        "nb": 131366
+        "en": 123955,
+        "nb": 131476
       },
       "named": {
         "en": 7991,
@@ -2996,38 +2983,42 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks": {
+    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
       "areas": [
         "forms",
-        "blocks"
+        "blocks",
+        "formTemplates"
       ],
       "handed": {
-        "en": 64497,
-        "nb": 67557
+        "en": 64484,
+        "nb": 67544
       },
       "named": {
-        "en": 12478,
-        "nb": 13008
+        "en": 12465,
+        "nb": 12995
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/forms/new/page.tsx#forms": {
+    "src/app/admin/(gated)/platform/forms/new/page.tsx#forms+formTemplates": {
       "areas": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "named": {
-        "en": 6716,
-        "nb": 7001
+        "en": 6703,
+        "nb": 6988
       },
       "whole": [
-        "forms"
+        "forms",
+        "formTemplates"
       ],
       "unnamed": []
     },
@@ -3036,8 +3027,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 0,
@@ -3053,8 +3044,8 @@
         "forms"
       ],
       "handed": {
-        "en": 6716,
-        "nb": 7001
+        "en": 5003,
+        "nb": 5211
       },
       "named": {
         "en": 624,
@@ -3068,8 +3059,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
         "en": 1773,
@@ -3083,8 +3074,8 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
         "en": 0,
@@ -3100,12 +3091,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 33496,
+        "nb": 34699
       },
       "whole": [],
       "unnamed": []
@@ -3115,12 +3106,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 5084,
-        "nb": 5185
+        "en": 5181,
+        "nb": 5286
       },
       "whole": [],
       "unnamed": []
@@ -3130,12 +3121,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 31321,
-        "nb": 32279
+        "en": 33496,
+        "nb": 34699
       },
       "whole": [],
       "unnamed": []
@@ -3372,8 +3363,8 @@
         "platform"
       ],
       "handed": {
-        "en": 49007,
-        "nb": 53564
+        "en": 49117,
+        "nb": 53674
       },
       "named": {
         "en": 1663,
@@ -3621,12 +3612,12 @@
         "notifications"
       ],
       "handed": {
-        "en": 70470,
-        "nb": 73428
+        "en": 73967,
+        "nb": 77228
       },
       "named": {
-        "en": 3729,
-        "nb": 4017
+        "en": 6119,
+        "nb": 6485
       },
       "whole": [],
       "unnamed": []

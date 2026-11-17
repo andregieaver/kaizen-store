@@ -24,7 +24,7 @@ export default async function NewFormPage({ params }: PageProps<"/admin/[store]/
   const [items, owner] = await Promise.all([listFormTemplates({ accountId: account.id, storeId: store.id }, siteLang), isStoreOwner(account.id, store.id)]);
   const own = items.filter((i) => i.source === "own");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms"])}>
+    <AdminTextScope texts={adminTexts(lang, ["forms", "formTemplates"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/forms`, label: w.start.back }} title={w.start.title} description={w.start.description} />
         <FormStart lang={lang} items={items} make={makeFormAction.bind(null, store.slug)} />

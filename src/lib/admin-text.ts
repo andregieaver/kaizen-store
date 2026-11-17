@@ -49,6 +49,8 @@ import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.
 import { redirectsNb } from "./admin-messages/redirects.nb";
 import { formsEn, type FormsMessages } from "./admin-messages/forms.en";
 import { formsNb } from "./admin-messages/forms.nb";
+import { formTemplatesEn, type FormTemplatesMessages } from "./admin-messages/form-templates.en";
+import { formTemplatesNb } from "./admin-messages/form-templates.nb";
 import type { ExperimentsMessages } from "./admin-messages/experiments.en";
 import { EXPERIMENTS_WORDS } from "./admin-words/experiments";
 import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
@@ -198,6 +200,7 @@ export type AdminAreaMessages = {
   design: DesignMessages;
   redirects: RedirectsMessages;
   forms: FormsMessages;
+  formTemplates: FormTemplatesMessages;
   moving: MovingMessages;
   experiments: ExperimentsMessages;
   products: ProductsMessages;
@@ -292,6 +295,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   design: { en: designEn, nb: designNb },
   redirects: { en: redirectsEn, nb: redirectsNb },
   forms: { en: formsEn, nb: formsNb },
+  formTemplates: { en: formTemplatesEn, nb: formTemplatesNb },
   moving: { en: movingEn, nb: movingNb },
   experiments: EXPERIMENTS_WORDS,
   products: { en: productsEn, nb: productsNb },

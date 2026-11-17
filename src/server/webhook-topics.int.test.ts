@@ -202,6 +202,14 @@ beforeAll(async () => {
     insert into commerce.work_invoices (store_id, client_id, currency) values (${store.storeId}::uuid, ${String(workClient.id)}::uuid, 'NOK') returning id
   `);
   subjects.work_invoice = String(invoice.id);
+
+  // A visitor's response to one of the store's forms (D705 F5).
+  const [form] = await db().execute<Row>(sql`insert into commerce.forms (store_id, kind, name) values (${store.storeId}::uuid, 'message', 'Topics form') returning id`);
+  const [response] = await db().execute<Row>(sql`
+    insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery)
+    values (${String(form.id)}::uuid, '[{"label":"Message","value":"Hello"}]', 'kari@example.com', '/kontakt', 'nb', 'logged') returning id
+  `);
+  subjects.form_response = String(response.id);
 }, 180_000);
 
 afterAll(async () => {

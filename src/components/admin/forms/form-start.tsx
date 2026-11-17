@@ -15,7 +15,7 @@ type Card = { key: string; icon: NavIconName; name: string; text: string; kind: 
  */
 export function FormStart({ lang, items, make }: { lang: AdminLang; items: (FormTemplateItem & { hidden: boolean })[]; make: (key: string) => Promise<void> }) {
   const w = adminText(lang, "forms");
-  const t = w.templates;
+  const t = adminText(lang, "formTemplates");
   const card = (item: FormTemplateItem): Card => ({
     key: item.id,
     icon: CATEGORY_ICONS[item.category] as NavIconName,

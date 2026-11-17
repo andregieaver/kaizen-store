@@ -36,7 +36,7 @@ export function TemplateManager({
   hide?: (id: string, hidden: boolean) => Promise<TemplateDone>;
 }) {
   const w = useAdminText("forms");
-  const t = w.templates;
+  const t = useAdminText("formTemplates");
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -131,7 +131,7 @@ export function SaveAsTemplateCard({
   update: (id: string) => Promise<TemplateDone>;
   adopt?: () => Promise<TemplateDone>;
 }) {
-  const t = useAdminText("forms").templates;
+  const t = useAdminText("formTemplates");
   const [meta, setMeta] = useState<TemplateMeta>({ name: formName, description: "", category: "other", sharing: platform ? "marketplace" : "private" });
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);

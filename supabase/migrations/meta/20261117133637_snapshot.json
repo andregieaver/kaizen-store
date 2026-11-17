@@ -1,6 +1,6 @@
 {
-  "id": "a8174ee1-8e28-4e15-88f4-774812a54c0c",
-  "prevId": "5abdd6d0-eee3-4764-bbd8-ba29b27cdcea",
+  "id": "79f83452-5a2f-4047-9b9b-6382b7d3ba56",
+  "prevId": "bdebfef3-e6ec-4e69-ad46-cbba3827704c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -97689,7 +97689,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",
