@@ -280,6 +280,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   model's. The briefing is off until turned on (offered once on the home), daily or weekly at seven in Oslo, and goes only from
   `sendPlatformBriefing()` (the dispatcher's `platformBriefing` job), claimed in `platform_settings.briefing_last_period` first so a period
   goes once, to the owners and the finance role, each in their language.
+  It also says when a kind of admin screen with 100 loads or more is not 'good' on largest paint or interaction time (`adminSpeedAlerts()`).
 
 
 ## Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)

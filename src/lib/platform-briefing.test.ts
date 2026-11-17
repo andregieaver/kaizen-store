@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { briefingDue, platformAlertsFor, targetProgress, type PlatformSnapshot } from "./platform-briefing";
+import { adminSpeedAlerts, briefingDue, platformAlertsFor, targetProgress, type PlatformSnapshot } from "./platform-briefing";
+import { speedRow } from "./speed";
 
 const snapshot = (over: Partial<PlatformSnapshot> = {}): PlatformSnapshot => ({
   today: "2026-11-15",
@@ -63,5 +64,24 @@ describe("the platform's targets, alerts and briefing (D513)", () => {
     expect(briefingDue("daily", "daily:2026-11-15", monday)).toBeNull();
     expect(briefingDue("weekly", null, monday)).toEqual({ key: "weekly:2026-11-15", from: "2026-11-09", to: "2026-11-15" });
     expect(briefingDue("weekly", null, { date: "2026-11-17", hour: 9, weekday: 2 })).toBeNull();
+  });
+
+  it("says when a kind of admin screen with 100 loads or more is not fast (step 1.15)", () => {
+    const loads = (n: number, lcp: number | null, inp: number | null) => Array.from({ length: n }, () => ({ lcp, inp, cls: 50, ttfb: 300 }));
+    const slow = speedRow("category", "computer", loads(120, 4_000, null));
+    const found = adminSpeedAlerts([slow]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ id: "admin_slow", severity: "warning", values: { kind: "category", screen: "computer", metric: "lcp", value: 4_000 } });
+    expect(adminSpeedAlerts([speedRow("home", "computer", loads(120, 1_800, 120))])).toEqual([]);
+    expect(adminSpeedAlerts([speedRow("category", "computer", loads(99, 4_000, null))])).toEqual([]);
+    const inpOnly = adminSpeedAlerts([speedRow("list", "computer", loads(120, 1_800, 350))]);
+    expect(inpOnly).toHaveLength(1);
+    expect(inpOnly[0].values.metric).toBe("inp");
+    expect(platformAlertsFor(snapshot()).some((a) => a.id === "admin_slow")).toBe(false);
+    expect(platformAlertsFor(snapshot({ adminSpeed: [slow] })).filter((a) => a.id === "admin_slow")).toHaveLength(1);
+    // The page builder and the product editor are told apart: one slow, one good, one line, for the slow one.
+    const both = platformAlertsFor(snapshot({ adminSpeed: [slow, speedRow("product", "computer", loads(120, 1_800, 120))] })).filter((a) => a.id === "admin_slow");
+    expect(both).toHaveLength(1);
+    expect(both[0].values.kind).toBe("category");
   });
 });

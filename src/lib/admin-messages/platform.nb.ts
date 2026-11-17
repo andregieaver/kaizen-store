@@ -378,6 +378,7 @@ export const platformNb: PlatformMessages = {
       mrr_down: "Gjentakende inntekter falt med {amount} de siste 7 dagene.",
       target_behind: "{metric} ligger bak målet denne måneden ({pct} %).",
       trials_ending: { one: "1 prøveperiode slutter de neste 3 dagene.", many: "{n} prøveperioder slutter de neste 3 dagene." },
+      admin_slow: "Adminpanelet er tregt: {kind} på {screen}, {metric} {value} ved 75-persentilen over 28 dager.",
     },
     asked: { one: "1 ba om en butikk", many: "{n} ba om en butikk" },
     opened: { one: "1 butikk åpnet", many: "{n} butikker åpnet" },
