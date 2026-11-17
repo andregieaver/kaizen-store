@@ -20,7 +20,8 @@ export const BIG_FILE_BYTES = 100_000;
 export const LONG_FILE_LINES = 2_000;
 
 /** Tests, and what only tests use, are not held to it. */
-const NOT_COUNTED = /(\.test\.tsx?$|^src\/test\/|fixture\.ts$|test-support\.ts$)/;
+export const TEST_SUPPORT = /(fixtures?|test-support|testing|test-helper|test-days)\.tsx?$/;
+const NOT_COUNTED = new RegExp(`(\\.test\\.tsx?$|^src/test/|${TEST_SUPPORT.source})`);
 
 function sources(root, dir) {
   return readdirSync(path.join(root, dir)).flatMap((name) => {
