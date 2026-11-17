@@ -229,6 +229,18 @@ export const fieldsEn = {
     notHere: "Not here: raw HTML, scripts and CSS. Pages and the site's own code have their places for those.",
   },
   group: {
+    phone: {
+      everywhere: "Everywhere it can be",
+      rules: { one: "{n} set of rules", many: "{n} sets of rules" },
+      fromName: "Made from the name",
+      on: "on",
+      off: "off",
+      change: "Change",
+      done: "Done",
+      open: "Open",
+      close: "Close",
+      previewSub: "The form staff will get",
+    },
     fixFirst: "Nothing was saved yet. Please fix:",
     added: "{type} field added.",
     confirmDelete: "Delete the field {label}? What was entered in it is deleted when you save the group.",

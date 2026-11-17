@@ -474,6 +474,12 @@ export const websiteNb: WebsiteMessages = {
     newMenu: "Ny meny",
     or: "eller",
     createNew: "lag en ny meny",
+    phone: {
+      addTitle: "Legg til lenker",
+      addSub: "Sider, produkter, kategorier, en egen lenke",
+      add: "Legg til",
+      done: "Ferdig",
+    },
     structure: "Menyens oppbygning",
     name: "Menyens navn",
     saving: "Lagrer …",
@@ -547,6 +553,7 @@ export const websiteNb: WebsiteMessages = {
     title: "Menyer",
     description:
       "Lister med lenker til bruk rundt om i {store}: i standardtoppteksten og -bunnteksten (valgt under Topptekst og bunntekst) og med en meny-komponent i hvilken som helst side, topptekst eller bunntekst. En lenke til en side, artikkel, kategori eller et stikkord vises når den er publisert, og følger den til en ny adresse.",
+    lead: "Lister med lenker til topptekst, bunntekst og sider.",
     kinds: {
       home: "Forside",
       products: "Alle produkter",

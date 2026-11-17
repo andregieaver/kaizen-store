@@ -15,6 +15,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -197,9 +198,9 @@ export function MenuEditor({
       <div className={`flex flex-wrap items-center gap-2 p-4 text-sm ${CARD_CLASS}`}>
         {menus.length > 0 && (
           <>
-            <label className="flex flex-wrap items-center gap-2">
-              {w.select}
-              <select value={menu.id ?? ""} onChange={(event) => choose(event.target.value)} className={`${input} w-auto min-w-48`}>
+            <label className="flex flex-wrap items-center gap-2 max-sm:flex-1">
+              <span className="max-sm:sr-only">{w.select}</span>
+              <select value={menu.id ?? ""} onChange={(event) => choose(event.target.value)} className={`${input} w-auto min-w-48 max-sm:w-full max-sm:min-w-0`}>
                 {!menu.id && <option value="">{w.newMenu}</option>}
                 {menus.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -208,7 +209,7 @@ export function MenuEditor({
                 ))}
               </select>
             </label>
-            <span>{w.or}</span>
+            <span className="max-sm:hidden">{w.or}</span>
           </>
         )}
         <Link
@@ -218,13 +219,19 @@ export function MenuEditor({
           }}
           className="underline"
         >
-          {w.createNew}
+          <span className="max-sm:hidden">{w.createNew}</span>
+          <span className="sm:hidden">{w.newMenu}</span>
         </Link>
-        .
+        <span className="max-sm:hidden">.</span>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <AddItems kinds={kinds} targets={targets} copy={copy} locale={main.locale} full={items.length >= MENU_MAX_ITEMS} onAdd={add} />
+        {/* On a phone (round 40, D735) the menu comes first and adding links is a row under it, open while the menu has none. */}
+        <div className="max-sm:order-last max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow flat title={w.phone.addTitle} sub={w.phone.addSub} change={w.phone.add} done={w.phone.done} defaultOpen={items.length === 0}>
+            <AddItems kinds={kinds} targets={targets} copy={copy} locale={main.locale} full={items.length >= MENU_MAX_ITEMS} onAdd={add} />
+          </PhoneRow>
+        </div>
 
         <section aria-labelledby="menu-structure-heading" className={`flex min-w-0 flex-col ${CARD_CLASS}`}>
           <div className="flex flex-wrap items-end gap-3 border-b border-line p-4">
@@ -249,14 +256,14 @@ export function MenuEditor({
               type="button"
               onClick={submit}
               disabled={saving}
-              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50 max-sm:hidden"
             >
               {saving ? w.saving : menu.id ? w.save : w.create}
             </button>
           </div>
 
           <div className="flex flex-col gap-4 p-4">
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted max-sm:hidden">
               {items.length === 0
                 ? w.addFromLeft
                 : w.dragHint}
