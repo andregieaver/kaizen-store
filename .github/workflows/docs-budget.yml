@@ -1,0 +1,45 @@
+# Reports and never deploys: a push of Markdown alone runs nothing in ci.yml, so the written rules' budget is checked here. A push
+# with code runs the same check in the unit tests (src/lib/docs-budget.scan.test.ts).
+name: Docs budget
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "README.md"
+      - "docs/**"
+      - ".claude/rules/**"
+      - "**/.ignore"
+      - "**/.rgignore"
+      - "scripts/docs-ratchet.mjs"
+      - "scripts/lib/docs-count.mjs"
+      - "src/lib/docs-budget.baseline.json"
+  pull_request:
+    paths:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "README.md"
+      - "docs/**"
+      - ".claude/rules/**"
+      - "**/.ignore"
+      - "**/.rgignore"
+      - "scripts/docs-ratchet.mjs"
+      - "scripts/lib/docs-count.mjs"
+      - "src/lib/docs-budget.baseline.json"
+
+permissions:
+  contents: read
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - run: node scripts/docs-ratchet.mjs --check

@@ -235,3 +235,24 @@ describe("the rules cite only code that exists (bloat review step 1.1)", () => {
     }
   });
 });
+
+describe("a push of Markdown alone runs the docs budget (bloat review step 1.1)", () => {
+  const workflow = readFileSync(path.join(process.cwd(), ".github/workflows/docs-budget.yml"), "utf8");
+  const ci = readFileSync(path.join(process.cwd(), ".github/workflows/ci.yml"), "utf8");
+
+  it("runs the check with node alone: no install, no secret, no deploy", () => {
+    expect(workflow).toContain("run: node scripts/docs-ratchet.mjs --check");
+    expect(/pnpm install|VERCEL|secrets\.|needs:/.test(workflow)).toBe(false);
+  });
+
+  it("watches the rules, the ignore files and the budget's own files", () => {
+    for (const watched of ["CLAUDE.md", "docs/**", ".claude/rules/**", "**/.rgignore", "scripts/docs-ratchet.mjs", "src/lib/docs-budget.baseline.json"]) {
+      expect(workflow, watched).toContain(`"${watched}"`);
+    }
+  });
+
+  it("leaves ci.yml's paths and jobs alone: it only names the workflow in a comment", () => {
+    expect(ci).toContain("docs-budget.yml");
+    expect(ci.split("\n").filter((line) => line.includes("docs-budget") && !line.trim().startsWith("#"))).toEqual([]);
+  });
+});
