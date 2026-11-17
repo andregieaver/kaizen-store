@@ -98,6 +98,13 @@ export const experimentsNb: ExperimentsMessages = {
       "Denne siden kan ikke testes nå: den er i en pågående test, den er ikke publisert, eller den er en side med egen plass som ikke kan testes ennå (informasjonskapselsiden, bloggen …). En arbeidsside som handlekurven testes med en del av den: velg delen i sidebyggeren.",
     cannotPart:
       "Den delen av siden kan ikke testes: den er ikke på den publiserte siden (publiser endringene først), eller den er en del av butikkens funksjoner. Gå tilbake til siden og velg en annen.",
+    noPlan: {
+      title: "A/B-tester følger med et annet abonnement",
+      body: "Vis besøkende to versjoner av en side, og behold den som selger mest. Abonnementet ditt har dem ikke.",
+      plans: "Med i {plans}.",
+      choose: "Velg abonnement",
+      kept: "Tester som allerede kjører, fortsetter til du har bestemt deg.",
+    },
   },
   form: {
     noPages:
@@ -595,6 +602,8 @@ export const experimentsNb: ExperimentsMessages = {
     missing: "Versjon {key} har ikke lenger {part}: en test trenger delen i alle versjoner.",
     modal: "Versjon {key} endrer adressenavnet til {part}, eller om det er et modalvindu: lenker til det andre steder ville sluttet å virke. Behold adressenavnet og behold det som modalvindu.",
     running: "En butikk kan kjøre {max} tester om gangen. Stopp en først.",
+    planNone: "Abonnementet ditt har ikke A/B-tester. Velg et abonnement med dem for å teste dette.",
+    planFull: "Abonnementet ditt kjører opptil {max} om gangen. Stopp en test først, eller velg et abonnement med mer.",
     buttonProblem: "Velg knappen eller lenken du vil ha flere klikk på.",
     buttonGone: "Den knappen er ikke på siden.",
     formProblem: "Velg skjemaet du vil ha flere svar på.",

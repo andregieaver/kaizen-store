@@ -64,6 +64,12 @@ one `recordings` row (about 0.5 KB) each, about 330 MB at 100,000 kept for 30 da
 plan values are the real brake. Heat totals are about 250 bytes a row: a store with 200 pages viewed every day on three devices adds about
 60 MB a year.
 
+### Running A/B tests (D721, 17 November 2026)
+
+`ab_tests_running` is how many A/B tests a store runs at once (D148 phase 21): counted live from `experiments`, never metered, hard; 0 is a
+plan without A/B tests and a number never raises the engine's five. No plan has a number yet: the owner sets one per plan here when deciding
+which plans include tests.
+
 ### Waiting on the owner
 
 1. ~~The numbers per plan~~: decided 2026-10-23 (section 9, question 1), seeded by migration `20261023122903_capacity_plan_limits`.

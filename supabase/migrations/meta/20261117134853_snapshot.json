@@ -1,6 +1,6 @@
 {
-  "id": "79f83452-5a2f-4047-9b9b-6382b7d3ba56",
-  "prevId": "bdebfef3-e6ec-4e69-ad46-cbba3827704c",
+  "id": "37ffba24-3cbd-405e-9caa-6d204bda8ed3",
+  "prevId": "e0fe3dad-889e-4674-a067-274f606d144b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -43350,7 +43350,7 @@
         },
         "limit_overrides_known": {
           "name": "limit_overrides_known",
-          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'stores_owned')"
+          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -56155,7 +56155,7 @@
         },
         "plan_limits_known": {
           "name": "plan_limits_known",
-          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'stores_owned')"
+          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned')"
         }
       },
       "isRLSEnabled": false

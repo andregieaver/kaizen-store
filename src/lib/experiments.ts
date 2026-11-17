@@ -4,6 +4,8 @@
  * `ab_experiments`).
  */
 
+import { AB_TESTS_MOST } from "./limits";
+
 export const EXPERIMENT_STATUSES = ["draft", "scheduled", "running", "stopped", "applied", "discarded"] as const;
 export type ExperimentStatus = (typeof EXPERIMENT_STATUSES)[number];
 
@@ -36,7 +38,8 @@ export const STATUS_SIGNAL = {
   discarded: "neutral",
 } as const satisfies Record<ExperimentStatus, "positive" | "warning" | "danger" | "neutral" | "insight">;
 
-export const MAX_RUNNING_PER_STORE = 5;
+/** The engine's most, whatever the plan; a plan's `ab_tests_running` (phase 21) can only lower it. */
+export const MAX_RUNNING_PER_STORE = AB_TESTS_MOST;
 export const MAX_VARIANTS = 4;
 export const MAX_RUN_DAYS = 90;
 /** A test past its planned end keeps counting this long, then stops itself. */
@@ -158,6 +161,8 @@ export function startProblems(test: {
   variants: VariantDraft[];
   pagePublished: boolean;
   runningInStore: number;
+  /** The store's plan's `ab_tests_running` (phase 21): null is the engine's most, 0 a plan without A/B tests. */
+  planAllows?: number | null;
   pageIsSpecial: boolean;
   /** A working page (the cart, the checkout, …) is tested by a part of it, not as a whole. */
   needsPart?: boolean;
@@ -185,9 +190,21 @@ export function startProblems(test: {
     if (v.scope === "missing") problems.push(`Version ${v.key.toUpperCase()} no longer has ${part}: a test needs the part in every version.`);
     if (v.scope === "modal") problems.push(`Version ${v.key.toUpperCase()} changes the address name of ${part}, or whether it is a modal: links to it elsewhere would stop working. Keep the address name and keep it a modal.`);
   }
-  if (test.runningInStore >= MAX_RUNNING_PER_STORE) problems.push(`A store can run ${MAX_RUNNING_PER_STORE} tests at a time. Stop one first.`);
+  const allows = test.planAllows ?? null;
+  if (allows === 0) problems.push(PLAN_WITHOUT_TESTS);
+  else if (allows !== null && allows < MAX_RUNNING_PER_STORE && test.runningInStore >= allows) problems.push(planFullProblem(allows));
+  else if (test.runningInStore >= MAX_RUNNING_PER_STORE) problems.push(`A store can run ${MAX_RUNNING_PER_STORE} tests at a time. Stop one first.`);
   return problems;
 }
+
+/** Said when a store's plan has no A/B tests (phase 21); the words are `problems.planNone`. */
+export const PLAN_WITHOUT_TESTS = "Your plan does not include A/B tests. Choose a plan with them to test this.";
+
+/** Said when a store runs as many tests as its plan allows (phase 21); the words are `problems.planFull`. */
+export const planFullProblem = (max: number) => `Your plan runs up to ${max} at a time. Stop a test first, or choose a plan with more.`;
+
+/** How many tests a store may run at once: its plan's limit, never more than the engine's. */
+export const runningAllowed = (planAllows: number | null): number => Math.min(planAllows ?? MAX_RUNNING_PER_STORE, MAX_RUNNING_PER_STORE);
 
 /** An even split between the versions, as shares that add up to one. */
 export function evenSplit(count: number): number[] {

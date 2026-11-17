@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bestYearlySaving, cardDisplay, comparisonTable, offerCurrency, planCards, yearlySaving, type PublicPlans } from "./plan-offer";
+import { bestYearlySaving, cardDisplay, comparisonTable, offerCurrency, planCards, shownLimits, yearlySaving, type PublicPlans } from "./plan-offer";
 
 const feature = (id: string, category: string, name: string, position: number) => ({ id, category, name, description: "", position });
 const data: PublicPlans = {
@@ -101,6 +101,14 @@ describe("planCards", () => {
 
   it("is empty when no plan has a price", () => {
     expect(planCards({ ...data, plans: [data.plans[2]] }, {})).toEqual({ currency: null, cards: [] });
+  });
+});
+
+describe("shownLimits (D148 phase 21)", () => {
+  it("leaves out a plan's 0 A/B tests and says unlimited ones as the engine's five", () => {
+    expect(shownLimits([{ key: "products", value: 0 }, { key: "ab_tests_running", value: 0 }])).toEqual([{ key: "products", value: 0 }]);
+    expect(shownLimits([{ key: "ab_tests_running", value: null }])).toEqual([{ key: "ab_tests_running", value: 5 }]);
+    expect(shownLimits([{ key: "ab_tests_running", value: 2 }, { key: "stores_owned", value: null }])).toEqual([{ key: "ab_tests_running", value: 2 }, { key: "stores_owned", value: null }]);
   });
 });
 

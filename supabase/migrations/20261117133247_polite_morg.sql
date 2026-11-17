@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."limit_overrides" DROP CONSTRAINT "limit_overrides_known";--> statement-breakpoint
+ALTER TABLE "commerce"."plan_limits" DROP CONSTRAINT "plan_limits_known";--> statement-breakpoint
+ALTER TABLE "commerce"."limit_overrides" ADD CONSTRAINT "limit_overrides_known" CHECK ("commerce"."limit_overrides"."key" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned'));--> statement-breakpoint
+ALTER TABLE "commerce"."plan_limits" ADD CONSTRAINT "plan_limits_known" CHECK ("commerce"."plan_limits"."key" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned'));

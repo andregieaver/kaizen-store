@@ -1,4 +1,4 @@
-import type { LimitKey } from "./limits";
+import { AB_TESTS_MOST, type LimitKey } from "./limits";
 import { cardCampaignPrice, type PublicCampaign } from "./plan-campaigns";
 import { featureGroups, type PlanFeature } from "./plan-features";
 import type { PlanInterval } from "./plans";
@@ -143,7 +143,7 @@ export function planCards(
         .filter((f): f is NonNullable<typeof f> => Boolean(f))
         .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
         .map((f) => ({ id: f.id, name: f.name, description: f.description })),
-      limits: plan.limits ?? [],
+      limits: shownLimits(plan.limits ?? []),
       highlighted: plan.id === options.highlightId,
       campaign,
       display: cardDisplay(first, campaign),
@@ -187,4 +187,16 @@ export function planChoices(data: PublicPlans): PlanChoice[] {
 /** Every currency some plan has a price in, sorted. */
 export function planCurrencies(choices: PlanChoice[]): string[] {
   return [...new Set(choices.flatMap((choice) => choice.currencies))].sort();
+}
+
+/**
+ * A plan's limits as its card says them: running A/B tests (D148 phase 21) are not said at 0 (the plan has none), and "unlimited" is the
+ * engine's five, which is the most any store runs.
+ */
+export function shownLimits(limits: { key: LimitKey; value: number | null }[]): { key: LimitKey; value: number | null }[] {
+  return limits.flatMap((limit) => {
+    if (limit.key !== "ab_tests_running") return [limit];
+    if (limit.value === 0) return [];
+    return [{ key: limit.key, value: Math.min(limit.value ?? AB_TESTS_MOST, AB_TESTS_MOST) }];
+  });
 }

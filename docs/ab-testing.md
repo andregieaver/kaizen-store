@@ -1,8 +1,8 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 16, 19 and 20 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is
-next") (20: going on to a page, forms elsewhere, new or returning visitors and preview links to share, D715) (19: the guardrails
+its place. Status: **phases 1 to 16, 19, 20 and 21 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is
+next") (21: a number of running tests per plan, 0 a plan without them, D721) (20: going on to a page, forms elsewhere, new or returning visitors and preview links to share, D715) (19: the guardrails
 as designed, and a sign-up goal for Kaizena Flow's store, D712) (16: the original and a version side by side, D684) (15: the list,
 ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it
 taught, D662)
@@ -625,6 +625,32 @@ Migration `20261117121405_sticky_gateway` (the goal `page` added to the two goal
   showing B, `noindex`, with nothing counted (`e2e/ab-phase-20.spec.ts`), and the owner making a page-goal test for new visitors and a preview
   link (`e2e/signed-in/ab-phase-20.spec.ts`).
 
+## What phase 21 built: A/B tests as a plan's feature (D721)
+
+Migration `20261117133247_polite_morg` (the key `ab_tests_running` allowed in `plan_limits` and `limit_overrides`).
+
+- **The choice, made in code so the owner makes it on a screen:** Open question 2 asked on/off or a number per plan. It is a number, which
+  holds both: `ab_tests_running` is a plan limit of D314 (`src/lib/limits.ts`, hard, store, counted live), set on Platform → Plans →
+  Limits per plan, as a platform default, or for one store on its platform page. **0 is a plan without A/B tests**; a number lowers the
+  engine's five (`AB_TESTS_MOST`, `MAX_RUNNING_PER_STORE`), never raises it; no number is the engine's five. No plan has a number yet, so
+  every store keeps what it had until the owner sets them. Templates, starters and Kaizena Flow's own store are never limited (D314).
+- **Read where a test is made or started:** `createExperiment()` refuses on a plan without tests (`PLAN_WITHOUT_TESTS`), so the new-test
+  form, the builder's *A/B test this* and the AI manager's `draft_experiment` all meet it; `checkStart()` passes the plan's number to
+  `startProblems()`, so a start, a schedule, the scheduler's start and `start_experiment` refuse in the plan's words (`planFullProblem()`,
+  said in Norwegian by `experimentProblemText()`). A draft may be made on a plan whose number is used up, to start when one stops.
+  `list_experiments` and `suggest_experiments` tell the model the plan's number (`most_at_once`, `room_for_more`, `plan`). The Admin API
+  only reads tests, so it has nothing to refuse.
+- **What a store without them sees:** New A/B test shows *A/B tests come with another plan*: what they give, the active plans that have
+  them (`plansWithTests()`, by each plan's own number or the default), *Choose a plan* to the store's Billing, and that running tests go on.
+- **A move to a smaller plan:** nothing stops; a running test keeps counting its visitors in the versions they hold until it is decided,
+  and is stopped and applied as before. A scheduled test does not start when its time comes: it goes back to a draft that says why.
+- **The plans' cards** say the number (`shownLimits()` in `src/lib/plan-offer.ts`): nothing at 0, the engine's five for no limit. The
+  comparison's row "A/B tests of pages" is still ticked by hand, in the plans the owner gives a number above 0.
+- **Tests:** `src/server/experiment-plans.int.test.ts` (a store on no plan, on a plan without tests, on a plan of one and on a plan above
+  five; a move to a plan without tests keeping its running test, a visitor's version and refusing the scheduled start),
+  `e2e/signed-in/ab-plans.spec.ts` (the card in place of the form), `experiments.test.ts`, `plan-offer.test.ts`, `redirect-words.test.ts`.
+- **Kaizena Flow's own store** is never limited, as every limit; its own plans are the ones it sells, so this is the platform's side.
+
 ## Rules of phases 19 and 20
 
 For anyone changing the A/B code (moved here from `docs/rules/admin/marketing.md`, whose rule points here):
@@ -696,7 +722,7 @@ since phase 1, so the numbers can now come from production rather than a preview
   indexed, ending when the test ends (phase 2 left only the admin's preview).
 - Done when: each goal has a browser test, as `e2e/ab-form-goal.spec.ts` is for forms, and the preview link counts no exposure.
 
-**Phase 21: the paid-plan feature (the owner decides first).** Decision 4 makes A/B tests a paid-plan feature; the plan comparison
+**Phase 21: the paid-plan feature (built, D721: see "What phase 21 built" above).** Decision 4 makes A/B tests a paid-plan feature; the plan comparison
 has the row "A/B tests of pages" in no plan, and no code reads it. This settles Open question 2:
 
 - The owner chooses: on or off per plan, or a number of running tests per plan (the engine's limit of five is the largest).
@@ -1063,7 +1089,7 @@ reports (D106, D145).
 | **18** | The legal note, then signed-in customers assigned from their account where it allows | The note is written; one customer sees the same version on two browsers |
 | **19** (built, D712) | The guardrails as designed: speed and failed payments at checkout stop a test, refunds and returns are read late; and the sign-up goal of 22 | Each guardrail tested on its own kind of trouble, never firing on a person's stop |
 | **20** (built, D715) | Viewed another page, a form outside the part, new or returning visitors, a preview link to share | A browser test per goal; the preview link counts no exposure |
-| **21** | The paid-plan feature read in code, once the owner chooses on/off or a limit per plan | Each kind of plan tested; a downgrade keeps its running tests |
+| **21** (built, D721) | The paid-plan feature read in code: a number of running tests per plan, 0 a plan without them | Each kind of plan tested; a downgrade keeps its running tests |
 | **22** (the sign-up goal built, D712) | Kaizena Flow's plans-page test (with a sign-up goal for the house store), and the moderated check with two owners | The plans-page test has an answer; two owners made a test in a few minutes |
 | **23** | A line on consent skew; the daily rollup when its measured trigger fires | The consent line tested; the rollup built or its trigger logged |
 
@@ -1089,7 +1115,8 @@ and in `ADMIN_PAGES`.
 
 1. The signed-in path: consent or legitimate interest, per country (phase 18).
    (Technical side: the session-cookie matcher, see the spike.)
-2. Whether the plan feature has tiers (a limit on running tests per plan) or is on/off (phase 21, the owner's choice).
+2. ~~Whether the plan feature has tiers (a limit on running tests per plan) or is on/off.~~ Answered as built: a number per plan, 0 is off
+   (D721); the owner sets the numbers on Platform → Plans → Limits.
 3. ~~Whether owners can export results (CSV through `toCsv()`) in version 1.~~ Answered: yes, the list's CSV (D678).
 4. ~~Whether a variant of a *translated* page tests the translation alone (variants per language) or all languages.~~
    Answered as built: a version is a full copy of the page with its own translations, so a test covers every language.
