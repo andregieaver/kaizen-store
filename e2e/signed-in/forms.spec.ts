@@ -219,6 +219,27 @@ test("asks for a file, drawing a picture again in the browser and refusing a pro
   await visitor.close();
 });
 
+test("asks for a payment with one of the store's products (F6c)", async ({ page: p }) => {
+  await p.goto(`${base}/${formId}`);
+  const card = p.locator("[data-form-payment]");
+  await expect(card).toBeVisible();
+  // Found by its name, chosen, saved, and still chosen after a reload; No payment takes it off again.
+  await card.locator("[data-payment-query]").fill("Keramikkopp");
+  await card.getByRole("button", { name: "Search" }).click();
+  await card.locator("[data-payment-results] button").first().click();
+  await expect(card.locator("[data-payment-chosen]")).toContainText("Keramikkopp");
+  await shoot(p, "17-payment");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+  await p.reload();
+  await expect(p.locator("[data-payment-chosen]")).toContainText("Keramikkopp");
+  await p.locator("[data-payment-chosen]").getByRole("button", { name: "No payment" }).click();
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+  await p.reload();
+  await expect(p.locator("[data-payment-chosen]")).toHaveCount(0);
+});
+
 test("saves a form as a template and starts a new form from it (F4)", async ({ page: p }) => {
   await p.goto(`${base}/${formId}`);
   const card = p.locator("[data-save-template]");

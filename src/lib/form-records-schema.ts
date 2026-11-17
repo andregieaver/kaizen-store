@@ -139,6 +139,8 @@ const draftObject = z.object({
       })
       .nullable(),
     keepMonths: z.number().int().min(1).max(FORM_KEEP_MONTHS_MAX, `Responses are kept at most ${FORM_KEEP_MONTHS_MAX} months.`),
+    // Left out, a save keeps the form's payment as it is (the AI manager's and the Admin API's drafts know nothing of it); null removes it.
+    paymentVariantId: z.uuid("Choose one of your products to be paid for.").nullable().optional(),
   });
 
 export const formDraftSchema = draftObject
@@ -149,6 +151,7 @@ export const formDraftSchema = draftObject
     }
   })
   .refine((f) => (f.kind === "signup") === (f.signup !== null), { message: "Only a sign-up has sign-up settings.", path: ["signup"] })
+  .refine((f) => f.kind === "message" || !f.paymentVariantId, { message: "Only a message form takes a payment.", path: ["paymentVariantId"] })
   .transform((f) => (f.kind === "signup" ? { ...f, questions: [] } : f));
 
 /** What is kept in the row's `questions`, `words`, `delivery` and `signup`: read back with the same shapes. */

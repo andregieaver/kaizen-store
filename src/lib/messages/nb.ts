@@ -19,6 +19,8 @@ export const nb: Messages = {
     confirmValid: "Lenken virker i 7 dager.",
     messageSubject: (site: string) => `Ny melding fra ${site}`,
     messageHeading: "Ny melding fra skjemaet på nettstedet",
+    payNote: (title: string, price: string) => `Etter at du har sendt, betaler du ${price} for ${title} i kassen.`,
+    paymentNext: "Dette skjemaet ber om betaling: den besøkende gikk videre til kassen, og svaret viser bestillingen når den er betalt.",
     filesInAdmin: "Filene som ble sendt med, ligger ved svaret under Nettsted → Skjemaer, der du kan laste dem ned.",
     replyHint: "Svar på denne e-posten for å svare avsenderen.",
     subscriberSubject: (site: string) => `Ny påmelding til nyhetsbrevet fra ${site}`,

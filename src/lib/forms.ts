@@ -260,6 +260,8 @@ export function checkSignup(
 /** What `/api/forms` answers. */
 export type FormResponse =
   | { ok: true; outcome: "sent" | "confirm" }
+  /** Kept, and the visitor goes on to pay at the store's checkout (D738 F6c). */
+  | { ok: true; outcome: "pay"; url: string }
   | { ok: false; errors?: FormErrors; error?: string };
 
 /** The address a confirmed or expired sign-up returns to: the page, marked for its form. */

@@ -18,7 +18,6 @@ import {
 import { browserText as t } from "@/lib/browser-text";
 import type { BrowserMessages as Messages } from "@/lib/browser-text";
 import type { FormField } from "@/lib/page-content";
-import { FORM_PDF_BYTES, FORM_PICTURE_BYTES, FORM_PICTURE_SIZE } from "@/lib/form-files";
 import { daysAfter, todayInZone } from "@/lib/questions";
 
 import { Dropdown } from "./dropdown";
@@ -55,6 +54,8 @@ export function SiteForm({
   preview = false,
   endpoint = "/api/forms",
   extra,
+  market,
+  payNote,
 }: {
   form: PublicForm;
   store: string | null;
@@ -64,6 +65,10 @@ export function SiteForm({
   endpoint?: string;
   /** More of the request, read when it is sent (the product question's product and chosen variant). */
   extra?: () => Record<string, unknown>;
+  /** The page's market: where a form's payment goes in the cart (D738 F6c). */
+  market?: string;
+  /** What is paid after sending and its price, in the page's language (F6c): shown above the button. */
+  payNote?: string;
 }) {
   const pageLang = usePageLanguage();
   const m = t(lang ?? pageLang);
@@ -124,6 +129,7 @@ export function SiteForm({
         consent,
         website: website.current?.value ?? "",
         lang: lang ?? pageLang,
+        ...(market ? { market } : {}),
         path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
         elapsed: msSince(shown.current),
       });
@@ -138,6 +144,11 @@ export function SiteForm({
       }
       const response = await fetch(endpoint, { method: "POST", ...(asked.length > 0 ? {} : { headers: { "Content-Type": "application/json" } }), body });
       const answer = (await response.json().catch(() => ({ ok: false }))) as FormResponse;
+      if (answer.ok && answer.outcome === "pay") {
+        // Kept, and on to the store's checkout with the form's product in the cart (F6c).
+        window.location.assign(answer.url);
+        return;
+      }
       if (answer.ok) {
         const text =
           answer.outcome === "confirm"
@@ -225,6 +236,11 @@ export function SiteForm({
             }}
             error={errors[CONSENT_KEY]}
           />
+        )}
+        {payNote && (
+          <p className="text-sm" data-form-pay-note>
+            {payNote}
+          </p>
         )}
         {(form.type === "emailForm" || form.layout === "stacked") && <div>{button}</div>}
         {state.kind === "failed" && (
@@ -419,6 +435,8 @@ function FileField({
     if (!file) return;
     setPreparing(true);
     try {
+      // Loaded only once a visitor picks a file: most pages with a form never need it (the front page's first scripts, `performance.spec.ts`).
+      const { prepareFile } = await import("./form-file-prepare");
       const ready = await prepareFile(file);
       if (typeof ready === "string") {
         onFile(null);
@@ -473,31 +491,6 @@ function FileField({
       )}
     </div>
   );
-}
-
-/** A chosen file made ready to send: a picture drawn again, a PDF as it is within its size, anything else refused. */
-async function prepareFile(file: File): Promise<File | "too_big" | "not_allowed"> {
-  const base = file.name.replace(/\.[A-Za-z0-9]{1,5}$/, "") || "file";
-  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return file.size > FORM_PDF_BYTES ? "too_big" : new File([file], `${base}.pdf`, { type: "application/pdf" });
-  if (!file.type.startsWith("image/")) return "not_allowed";
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  } catch {
-    return "not_allowed";
-  }
-  const scale = Math.min(1, FORM_PICTURE_SIZE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const blob = (type: string) => new Promise<Blob | null>((done) => canvas.toBlob(done, type, 0.85));
-  let out = await blob("image/webp");
-  if (!out || out.type !== "image/webp") out = await blob("image/jpeg");
-  if (!out) return "not_allowed";
-  if (out.size > FORM_PICTURE_BYTES) return "too_big";
-  return new File([out], `${base}.${out.type === "image/webp" ? "webp" : "jpg"}`, { type: out.type });
 }
 
 /** A number's or a date's `min` and `max` for its input: a date's days counted from the visitor's today. */

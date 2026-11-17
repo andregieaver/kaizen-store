@@ -24,6 +24,8 @@ export const en = {
     confirmValid: "The link works for 7 days.",
     messageSubject: (site: string) => `New message from ${site}`,
     messageHeading: "A new message from the form on your site",
+    payNote: (title: string, price: string) => `After sending, you pay ${price} for ${title} at the checkout.`,
+    paymentNext: "This form asks for a payment: the visitor went on to the checkout, and the response shows the order once it is paid.",
     filesInAdmin: "The files sent with it are kept with the response under Website → Forms, where you can download them.",
     replyHint: "Reply to this email to answer the sender.",
     subscriberSubject: (site: string) => `New newsletter sign-up from ${site}`,

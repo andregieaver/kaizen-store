@@ -9,6 +9,7 @@ import { deleteForm, saveForm, setFormStatus, type DeleteFormOutcome, type SaveF
 import { changeFormTemplate, deleteFormTemplate, makeFormFromTemplate, saveFormAsTemplate, updateTemplateFromForm, type TemplateOutcome } from "@/server/form-templates";
 import type { TemplateMeta } from "@/lib/form-templates";
 import { normaliseEmail } from "@/lib/email-address";
+import { formPaymentChoices } from "@/server/form-payments";
 
 /** Where a new form sends: the store's contact address, else the owner's own, so it is ready to place. */
 const ownAddress = (member: Awaited<ReturnType<typeof requirePermission>>) => {
@@ -38,6 +39,13 @@ export async function saveFormAction(storeSlug: string, id: string, draft: FormD
   const outcome = await saveForm({ accountId: member.account.id, storeId: member.store.id }, id, draft);
   if (outcome.ok) refresh();
   return outcome;
+}
+
+/** The store's products a form may be paid with (D738 F6c), by name or SKU: for those who may change the site. */
+export async function searchFormPaymentAction(storeSlug: string, query: string): Promise<{ variantId: string; title: string; price: string }[]> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member || typeof query !== "string") return [];
+  return formPaymentChoices(member.store.id, query);
 }
 
 export async function setFormStatusAction(storeSlug: string, id: string, status: FormStatus): Promise<boolean> {

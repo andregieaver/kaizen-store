@@ -158,8 +158,8 @@ by `claim-decision.mjs`) starts no run, so the run deploys as before; so does an
 commit is deployed and production stays where it was (before, the stale run deployed that unchecked head).
 
 **A run that left its deploy makes sure it happens (D741).** On 17 November 2026 run 1544 passed, applied its migrations and left
-the deploy to 1545, whose gate failed: production stayed hours behind and nothing said so. Now a run that defers runs
-`scripts/deploy-fallback.mjs`: it waits while newer push runs go on, and is done once `/api/health` reports this commit or a later
+the deploy to 1545, whose gate failed: production stayed hours behind and nothing said so. Now a run that defers (to a newer run, or to the head's
+own release because the head brings a migration, as run 1551 did) runs `scripts/deploy-fallback.mjs`: it waits while newer push runs go on, and is done once `/api/health` reports this commit or a later
 one that includes it. When every newer run has finished and production still lacks the commit, it deploys THIS commit (which
 passed every check, and whose migrations are applied) through Vercel's API with its sha (the hook would build the failing head),
 then `await-deploy.mjs` verifies it. It needs the repository secret `VERCEL_TOKEN` (a Vercel token for the team that may create

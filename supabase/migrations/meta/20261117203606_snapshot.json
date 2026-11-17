@@ -1,6 +1,6 @@
 {
-  "id": "41e706f1-f0ed-4134-90e0-154e8e8fcdef",
-  "prevId": "e15ed646-2808-4ea2-a43c-99b548b0057f",
+  "id": "2bddaa18-9a4b-40e5-8d86-acb5008ae104",
+  "prevId": "b87b2e47-a529-49d7-bf6d-408d5a40a16d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -35466,6 +35466,101 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.form_payments": {
+      "name": "form_payments",
+      "schema": "commerce",
+      "columns": {
+        "response_id": {
+          "name": "response_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cart_id": {
+          "name": "cart_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "variant_id": {
+          "name": "variant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "form_payments_cart_idx": {
+          "name": "form_payments_cart_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cart_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "form_payments_response_id_form_responses_id_fk": {
+          "name": "form_payments_response_id_form_responses_id_fk",
+          "tableFrom": "form_payments",
+          "columnsFrom": [
+            "response_id"
+          ],
+          "tableTo": "form_responses",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "form_payments_store_id_stores_id_fk": {
+          "name": "form_payments_store_id_stores_id_fk",
+          "tableFrom": "form_payments",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "commerce.form_responses": {
       "name": "form_responses",
       "schema": "commerce",
@@ -36287,6 +36382,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "payment_variant_id": {
+          "name": "payment_variant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
@@ -36450,6 +36551,10 @@
         "forms_made_from": {
           "name": "forms_made_from",
           "value": "\"commerce\".\"forms\".\"made_from\" is null or char_length(\"commerce\".\"forms\".\"made_from\") between 1 and 80"
+        },
+        "forms_payment": {
+          "name": "forms_payment",
+          "value": "\"commerce\".\"forms\".\"payment_variant_id\" is null or (\"commerce\".\"forms\".\"store_id\" is not null and \"commerce\".\"forms\".\"kind\" = 'message')"
         }
       },
       "isRLSEnabled": false

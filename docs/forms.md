@@ -359,3 +359,31 @@ manager's tools and its words for *New form* with one eval run by the owner.
   server's emails read (the confirmation and the owner's emails) moved to the server's messages (`messages/{lang}.ts`, `form` spread over
   the browser's), so visitors' scripts carry 2,552 bytes less than before (`browserTextBytes` 31,808).
 - **Kaizena Flow's own forms** take files in the same change.
+
+### 15.3 F6c as built: payments in a form (17 November 2026)
+
+- **The owner's choice** (asked 17 November 2026): a payment in a form is a real order, paid at once. Asked as a typed amount on a custom
+  line, it met the draft orders' own rule that a custom item is never sold to a private buyer (`custom_consumer`: it has no right of
+  withdrawal of its own). So **a form pays for one of the store's products**: the product brings its price per market and currency, its VAT
+  category, its right of withdrawal and its terms, and the store's own checkout takes the payment as for any order (order number, invoice,
+  VAT reports, the books). No new order source and no change to the orders table.
+- **The form**: `forms.payment_variant_id`, a store's message form only (`forms_payment`; Kaizena Flow's own forms take none, since it
+  sells only plans), a variant of the store's own (`forms_payment_rules()`; no foreign key, product_variants being a hot table). What may be
+  paid with (`PAYABLE` in `src/server/form-payments.ts`): an active product of kind goods, sold once (not subscription-only), not a host's
+  listing. The editor's *Payment* card finds one by name or SKU (`formPaymentChoices()`) and shows it with its price in the first market;
+  *No payment* removes it. A save whose draft says nothing of it (the AI manager's, the Admin API's) keeps it; `null` removes it.
+- **The page** says what is paid and its price in its market above the button (`formPaymentOffer()`, cached under the catalogue's and the
+  forms' tags; the words are the server's `form.payNote`, so visitors' scripts carry no more words). It shows only while the product has a
+  price in that market and payments are on there.
+- **Sending**: the response is kept and emailed as any (the owner's email says a payment follows), then `startFormPayment()` puts the
+  variant into the visitor's cart in the page's market (`changeLine()`, with the cart cookie) and, in the same transaction, links the
+  response to that cart (`form_payments`, never changed, gone with its response). The answer is `{ outcome: "pay", url }` and the browser
+  goes on to the market's checkout. When the payment cannot start (payments off, the product not sold there or out of stock, the store
+  closed) the response stands, unpaid, and the visitor reads that it was sent.
+- **Paid**: the response's order is the first paid order (paid, fulfilled or closed) placed from its cart after it (`responsePayments()`);
+  the responses screen shows *Not paid yet* or *Paid · order 1042* with a link to the order. An order placed but not paid, held
+  (authorised) or cancelled leaves it waiting.
+- **Personal data**: `form_payments` holds only a response's id, its store, a cart's id and the variant, and goes with its response (so with
+  its erasure and its months); the whole-store file leaves it out as a record.
+- **Not covered end to end**: the e2e builds have no Stripe, so the page's note and the way to the checkout are proved by
+  `src/server/form-payments.int.test.ts` (the cart cookie, the cart's line, the link, *Paid* with the order); the editor's card by the e2e test.
