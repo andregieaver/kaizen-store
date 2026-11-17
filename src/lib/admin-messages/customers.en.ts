@@ -576,6 +576,8 @@ export const customersEn = {
       title: "Edit details",
       guest: "This person has bought as a guest. Give them an account to keep their details, tags and orders together.",
       makeAccount: "Give them an account",
+      /** A draft order that starts with the customer's details (ecosystem plan E2.6, D713). */
+      makeDraft: "Make a draft order",
     },
     notes: {
       title: "Notes",

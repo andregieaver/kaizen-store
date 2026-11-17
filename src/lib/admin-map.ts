@@ -1572,7 +1572,7 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * recorded again on Platform → AI. Empty but for that, and for a page that came without a new recording of the eval: Leads (ecosystem plan
  * E2.8, D713) joins the prompt with the CRM tools of E2.5, which record the eval again.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>(["store:leads"]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {

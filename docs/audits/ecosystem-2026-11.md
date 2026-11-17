@@ -35,18 +35,18 @@ behaviour joins pages, never people.
 | E1.8 | The domain jobs run inside `tracked()` | S | Done, 17 Nov 2026 | `daily.domain-renewals`, `daily.domain-reminders`, `daily.domain-moves`, `daily.domain-arrivals` in `commerce.cron_jobs`, so a failure shows on the platform home |
 | E1.9 | Docs that no longer matched the code | S | Done, 17 Nov 2026 | `heatmaps-and-recordings.md` (status), `admin-navigation.md` (page counts), `domains.md` 7.2 (`domains_overview` is not built), code review 2.1 (the finder is built for the store and the platform) |
 
-## Phase 2: one front door
+## Phase 2: one front door (D713)
 
-| Id | Step | Size | Status |
-|---|---|---|---|
-| E2.1 | One attention source (`src/server/attention.ts`) behind Home, the briefing, the notices bell, push and Slack; disputes, leads, autopilot decisions, blog comments and overdue activities added | M | Open |
-| E2.2 | ⌘K finds orders, customers, conversations, deals and products, hands a miss to the AI manager, and is at the owner's level too | M | Open |
-| E2.3 | A *how it performs* strip in the page and product editors: conversion, heatmap, recordings, speed, the running test | M | Open |
-| E2.4 | Consent, segments and SMS on the customer page | S | Open |
-| E2.5 | CRM tools for the AI manager: deals, leads, activities and the timeline (prompt drawings and a new eval recording) | M | Open |
-| E2.6 | *Quote for this deal*; drafts prefilled from a customer or a deal | S | Open |
-| E2.7 | Act from the conversation: refund, return, store credit, address, then the request decided | L | Open |
-| E2.8 | Leads in the menu, each with a link to its source and an owner | S | Open |
+| Id | Step | Size | Status | Notes |
+|---|---|---|---|---|
+| E2.1 | One attention source behind Home and the briefing; disputes, leads, AI decisions, blog comments and activities added | M | Done, 17 Nov 2026 | `src/server/attention.ts` counts the new queues for any number of stores; `attentionFor()` items carry a `kind`; the briefing reads `storeAttention()`. Left: push, Slack and the bell read it next; `store_checkup` keeps its own (different) definitions of late orders and low stock |
+| E2.2 | ⌘K finds orders, customers, conversations, deals and products, hands a miss to the AI manager, and is at the owner's level | M | Done, 17 Nov 2026 | `src/server/finder-records.ts`, five a kind, each kind by its permission and feature, erased people never found; the owner's level searches every store by that store's own rights. Left: the platform's own records; partial email and order-word search (no index) |
+| E2.3 | *How it performs* in the page and product editors; *Edit this part* and *A/B test this part* on a heatmap | M | Done, 17 Nov 2026 | `src/lib/page-signals.ts`, `src/server/page-signals.ts`, `PageSignalsStrip`, loaded after the editor; `analytics:read`. Left: views of pages without heatmaps (no index on landing pages), nested pages and a second blog's articles |
+| E2.4 | The email list, texts and segments on the customer page | S | Done, 17 Nov 2026 | `CustomerMarketing`; `segmentsOfPerson()` reads the person once and checks every saved segment in code; `segmentPeople()` now filters by the addresses asked for |
+| E2.5 | CRM tools for the AI manager | M | Done, 17 Nov 2026 | `list_deals`, `get_deal`, `move_deal`, `list_leads`, `make_deal_from_lead`, `crm_today`, `log_activity`, `customer_timeline`; eval case `manager-lead-name`; API contract 1.37. **The eval must be recorded again on Platform → AI after the deploy** |
+| E2.6 | *Make a quote* on a deal; a draft starts from a customer | S | Done, 17 Nov 2026 | `createDraft({ customerId })`, `drafts/new?customer=&deal=`; *Make a draft order* in the customer page's More menu |
+| E2.7 | Carry a support request out from the conversation | L | Done, 17 Nov 2026 | `src/server/support-carry-out.ts`: cancel, address and refund through the order page's own functions, a two-minute claim, then the request done; a person's own Done or Decline waits for a running carry-out. Left: *Make a deal* from the conversation (needs a deal for a customer who is not a lead), a return (a customer's own action) |
+| E2.8 | Leads in the menu, each request linked to where it is kept | S | Done, 17 Nov 2026 | `/leads` under Customers; a form's message read from its responses (D705), so form leads are counted at last. Left: an owner for a lead (needs a column) |
 
 ## Phase 3: one nervous system
 

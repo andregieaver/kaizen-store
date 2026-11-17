@@ -183,6 +183,12 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                     {all.staff.merge.link}
                   </AdminLink>
                 )}
+                {/* A draft order that starts with this customer's details (ecosystem plan E2.6, D713). */}
+                {customer.customerId && featureOn(store, "shop") && memberCan(member, "orders:write") && (
+                  <AdminLink href={`${base}/orders/drafts/new?customer=${customer.customerId}`} className={menuItem}>
+                    {all.staff.edit.makeDraft}
+                  </AdminLink>
+                )}
                 {privacy && (
                   <>
                     <form method="post" action={`${base}/customers/${ref.key}/export`}>

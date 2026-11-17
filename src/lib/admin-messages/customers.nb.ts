@@ -560,6 +560,7 @@ export const customersNb: CustomersMessages = {
       title: "Endre opplysninger",
       guest: "Denne personen har handlet som gjest. Gi dem en konto for å holde opplysningene, merkene og ordrene samlet.",
       makeAccount: "Gi dem en konto",
+      makeDraft: "Lag et ordreutkast",
     },
     notes: {
       title: "Notater",
