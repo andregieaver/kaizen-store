@@ -206,7 +206,16 @@ async function count(group: Group, name: string, work: () => Promise<unknown>): 
   return figures;
 }
 
-/** A figure above the baseline fails with both numbers and what was sent most; one below asks for the baseline to be lowered. */
+/**
+ * The room a figure has over its baseline: none for statements (a statement more is a real change), a tenth (at least 50) for rows read,
+ * which move with the planner and Postgres's version (reviewed 17 November 2026: CI runs Postgres 17, the baseline was measured on 16).
+ */
+const roomOf = (key: keyof Figures, held: number): number => (key === "rowsRead" ? Math.max(50, Math.round(held * 0.1)) : 0);
+
+/**
+ * A figure above the baseline fails with both numbers and what was sent most. One below is a note: lower the baseline when it suits
+ * (a fall never fails, so the other work's improvements do not hold back a release).
+ */
 function compare(group: Group, name: string, now: Figures): void {
   // With UPDATE_BASELINE=1 the figures are written in afterAll, which refuses a rise without FIRST=1.
   if (WRITE) return;
@@ -218,13 +227,13 @@ function compare(group: Group, name: string, now: Figures): void {
     return;
   }
   for (const key of keysOf(name, group)) {
-    if (now[key] > held[key]) {
+    if (now[key] > held[key] + roomOf(key, held[key])) {
       const sent = support.mostRepeated(records[`${group}:${name}`] ?? []).join("\n  ");
       throw new Error(
         `${name} (${group}) now has ${now[key]} ${key}, baseline ${held[key]}: read less, or accept the growth with FIRST=1 ${FIX} and say why in the commit message. Sent most:\n  ${sent}`,
       );
     }
-    if (now[key] < held[key]) throw new Error(`${name} (${group}) now has ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
+    if (now[key] < held[key] - roomOf(key, held[key])) console.warn(`query budget: ${name} (${group}) now has ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
   }
 }
 
@@ -234,17 +243,17 @@ const growthOf = (name: string): Figures | null => {
   return one && twenty ? { statements: twenty.statements - one.statements, rowsRead: twenty.rowsRead - one.rowsRead } : null;
 };
 
-/** The growth from 1 to 20 stores may not rise, and when it fell the baseline is lowered. */
+/** The growth from 1 to 20 stores may not rise (rows read with the same room as above); a fall is a note. */
 function compareGrowth(name: string): void {
   if (WRITE) return;
   const now = growthOf(name);
   const held = support.readBaseline().growth?.[name];
   if (!now || !held) return;
   for (const key of keysOf(name, "growth")) {
-    if (now[key] > held[key]) {
+    if (now[key] > held[key] + roomOf(key, held[key])) {
       throw new Error(`${name}'s growth from 1 to 20 stores is now ${now[key]} ${key}, baseline ${held[key]}: it does more per store than it did (read the stores' work in one statement), or accept it with FIRST=1 ${FIX} and say why in the commit message`);
     }
-    if (now[key] < held[key]) throw new Error(`${name}'s growth from 1 to 20 stores is now ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
+    if (now[key] < held[key] - roomOf(key, held[key])) console.warn(`query budget: ${name}'s growth from 1 to 20 stores is now ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
   }
 }
 

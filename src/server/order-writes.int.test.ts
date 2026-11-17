@@ -52,10 +52,11 @@ function compareWrites(name: string, now: Writes, held: Writes | undefined): str
   for (const t of added) problems.push(`${name} now writes commerce.${t}, which the baseline does not list: a trigger or a new write; accept it with FIRST=1 ${FIX} and say why`);
   for (const key of ["statements", "rowsInserted", "rowsUpdated"] as const) {
     if (now[key] > held[key]) problems.push(`${name} now has ${now[key]} ${key}, baseline ${held[key]}${added.length ? ` (newly written: ${added.join(", ")})` : ""}: write less, or accept it with FIRST=1 ${FIX}`);
-    if (now[key] < held[key]) problems.push(`${name} now has ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
+    // A fall is a note, never a failure, so the other work's improvements do not hold back a release (reviewed 17 November 2026).
+    if (now[key] < held[key]) console.warn(`order writes: ${name} now has ${now[key]} ${key}, baseline ${held[key]}: lower the baseline with ${FIX}`);
   }
   const gone = held.tables.filter((t) => !now.tables.includes(t));
-  if (gone.length > 0) problems.push(`${name} no longer writes ${gone.join(", ")}: lower the baseline with ${FIX}`);
+  if (gone.length > 0) console.warn(`order writes: ${name} no longer writes ${gone.join(", ")}: lower the baseline with ${FIX}`);
   return problems;
 }
 
