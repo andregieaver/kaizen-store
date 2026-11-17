@@ -71,7 +71,7 @@ const question = z
   .transform((q) =>
     // A hidden field is never asked (D738 F6a): only its name in the responses and the part of the address it reads.
     q.kind === "hidden"
-      ? { id: q.id, kind: q.kind, label: q.label, param: q.param }
+      ? { id: q.id, kind: q.kind, label: q.label, param: q.param, showWhen: undefined }
       : {
           ...q,
           param: undefined,
