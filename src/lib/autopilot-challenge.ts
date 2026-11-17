@@ -132,6 +132,8 @@ export const CHALLENGE_PLANNING = {
   plansPerWeek: 10,
   reacts: true,
   waitMinutes: 5,
+  // Its page changes are tested first where the store's traffic answers soon enough (E4.1, D729), as for any store.
+  testsPageChanges: true,
 } as const satisfies AutonomySettings["planning"];
 
 /**

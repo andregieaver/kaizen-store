@@ -17925,7 +17925,7 @@ export const assistantNotices = commerce.table(
     index("assistant_notices_created_idx").on(t.createdAt),
     check(
       "assistant_notices_kind",
-      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered')`,
+      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered', 'test_decided')`,
     ),
     check("assistant_notices_ref", sql`length(${t.ref}) between 1 and 200`),
     check("assistant_notices_href", sql`${t.href} like '/admin/%' and length(${t.href}) <= 300`),
@@ -18277,6 +18277,48 @@ export const autopilotEventChecks = commerce.table("autopilot_event_checks", {
     .references(() => stores.id, { onDelete: "cascade" }),
   alertsAt: timestamp("alerts_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * The A/B tests the autopilot started instead of publishing its change to a live page (ecosystem plan E4.1, D729, `src/lib/autopilot-tests.ts`):
+ * the test (an ordinary one on the A/B tests screens), the page, in whose name, the goal and days it was sized for, and how the store decided
+ * it by code. Written only by `src/server/autopilot-tests.ts` (the start) and `src/server/autopilot-test-decider.ts` (the decision).
+ */
+export const autopilotTests = commerce.table(
+  "autopilot_tests",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    experimentId: uuid("experiment_id").notNull(),
+    /** The page the change is to: the test's original. */
+    pageId: uuid("page_id").notNull(),
+    /** In whose name the autopilot made the change and the store decides the test: the plan's maker, read again before each decision. */
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** The counted goal (`orders`, `cart`, `checkout`) and the days the test was sized for at the store's traffic, at most 21 (`AUTOPILOT_TEST_MAX_DAYS`). */
+    goal: text("goal").notNull(),
+    days: integer("days").notNull(),
+    /** Null while undecided; `applied` (the change went live), `asked` (kept for the owner's yes), `kept` (the page stays as it was), `left` (a person decides). */
+    outcome: text("outcome"),
+    /** The owner's yes it waits for, when `asked`, and the conversation that keeps it. */
+    approvalId: uuid("approval_id").references(() => assistantApprovals.id, { onDelete: "set null" }),
+    conversationId: uuid("conversation_id").references(() => assistantConversations.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.experimentId] }),
+    foreignKey({ name: "autopilot_tests_experiment_fk", columns: [t.storeId, t.experimentId], foreignColumns: [experiments.storeId, experiments.id] }).onDelete("cascade"),
+    foreignKey({ name: "autopilot_tests_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
+    index("autopilot_tests_open_idx").on(t.createdAt).where(sql`${t.outcome} is null`),
+    index("autopilot_tests_store_idx").on(t.storeId, t.createdAt),
+    index("autopilot_tests_page_idx").on(t.storeId, t.pageId),
+    index("autopilot_tests_account_idx").on(t.accountId),
+    index("autopilot_tests_approval_idx").on(t.approvalId),
+    index("autopilot_tests_conversation_idx").on(t.conversationId),
+    check("autopilot_tests_goal", sql`${t.goal} in ('orders', 'cart', 'checkout')`),
+    check("autopilot_tests_days", sql`${t.days} between 1 and 90`),
+    check("autopilot_tests_outcome", sql`${t.outcome} is null or ${t.outcome} in ('applied', 'asked', 'kept', 'left')`),
+    check("autopilot_tests_decided", sql`(${t.outcome} is null) = (${t.decidedAt} is null)`),
+  ],
+);
 
 // ---------------------------------------------------------------------------
 // Web research (D329, `docs/ai-autopilot.md` 13)

@@ -19,7 +19,9 @@ import { localInstant } from "@/lib/follow-ups";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
+import { currentActor } from "./actor";
 import { audit } from "./auth";
+import { decidingAutopilotTest } from "./autopilot-tests";
 import {
   buttonsOf,
   createExperiment,
@@ -80,6 +82,16 @@ async function findTest(store: Store, ref: string): Promise<ExperimentInfo> {
 
 const claimsIn = (...texts: string[]) => [...new Set(texts.flatMap((text) => findClaims(text).map((c) => c.phrase)))];
 
+/**
+ * The autopilot's own test of its change (E4.1, D729) is decided by the store from its results (`decideAutopilotTests()`), never stopped or
+ * chosen by the autopilot's model on its own; a person, and the AI manager in their conversation, decide it as any test.
+ */
+function refuseAutopilotsOwn(test: ExperimentInfo): void {
+  if (test.byAutopilot && currentActor() === "autopilot" && !decidingAutopilotTest()) {
+    fail(`"${test.name}" is the autopilot's own test of its change: the store decides it by its results, and the change goes live only if the test answers for it. Leave it running.`);
+  }
+}
+
 const targetWords = (t: ExperimentInfo) => `${targetLabel(t.page.kind, t.page.slug, t.page.title, t.page.role)}${t.part ? `, ${t.part.label}` : ""}`;
 
 /** What the store's plan says of A/B tests (phase 21), for the model to pass on; nothing when the plan does not limit them. */
@@ -113,6 +125,8 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
         winner: t.status === "applied" ? t.variants.find((v) => v.key === t.appliedVariant)?.name : undefined,
         verdict: verdict ? { kind: verdict.kind, headline: verdict.headline } : undefined,
         learned: t.learning ?? undefined,
+        // E4.1 (D729): the autopilot's own test of its change, decided by the store from its results.
+        started_by: t.byAutopilot ? "the autopilot, to try its own change before it goes live; the store decides it by its results" : undefined,
       };
     }),
   );
@@ -478,6 +492,7 @@ export async function startExperimentTool(ctx: Ctx, { experiment, at }: OwnerToo
 
 export async function stopExperimentTool(ctx: Ctx, { experiment }: OwnerToolInput<"stop_experiment">) {
   const test = await findTest(ctx.store, experiment);
+  refuseAutopilotsOwn(test);
   const result = await stopExperiment(ctx.account, ctx.store.id, test.id, "person");
   if (!result.ok) return fail(result.problems.join(" "));
   return { done: `The A/B test "${test.name}" is stopped: everyone sees the original again. Choose a version or keep the original with apply_winner.`, admin: adminLink(ctx.store, `/experiments/${test.id}`) };
@@ -486,6 +501,7 @@ export async function stopExperimentTool(ctx: Ctx, { experiment }: OwnerToolInpu
 export async function applyWinnerTool(ctx: Ctx, { experiment, version, learning }: OwnerToolInput<"apply_winner">) {
   const { store, account } = ctx;
   const test = await findTest(store, experiment);
+  refuseAutopilotsOwn(test);
   if (test.status === "running") {
     const stopped = await stopExperiment(account, store.id, test.id, "person");
     if (!stopped.ok) return fail(stopped.problems.join(" "));
@@ -507,6 +523,7 @@ export async function applyWinnerTool(ctx: Ctx, { experiment, version, learning 
  */
 export async function preflightExperimentTool(ctx: Ctx, name: string, input: Record<string, unknown>): Promise<void> {
   const test = await findTest(ctx.store, String(input.experiment ?? ""));
+  if (name !== "start_experiment") refuseAutopilotsOwn(test);
   if (name === "start_experiment") {
     if (test.status !== "draft" && test.status !== "scheduled") return fail(`"${test.name}" is ${STATUS_WORDS[test.status].toLowerCase()}, not a draft.`);
     if (typeof input.at === "string" && input.at) {

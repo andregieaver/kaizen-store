@@ -1,6 +1,6 @@
 {
-  "id": "eede0115-7c95-4b34-b59c-09fb0d6d1b26",
-  "prevId": "56f5235b-917f-4661-93dd-40421b988ede",
+  "id": "4e7263e5-0e70-452f-b482-ad6cf0aca828",
+  "prevId": "45343a43-bdc0-48dc-91c1-d11cd29e5c0f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -6784,7 +6784,7 @@
       "checkConstraints": {
         "assistant_notices_kind": {
           "name": "assistant_notices_kind",
-          "value": "\"commerce\".\"assistant_notices\".\"kind\" in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered')"
+          "value": "\"commerce\".\"assistant_notices\".\"kind\" in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered', 'test_decided')"
         },
         "assistant_notices_ref": {
           "name": "assistant_notices_ref",
@@ -9228,6 +9228,304 @@
         "autopilot_settings_challenge": {
           "name": "autopilot_settings_challenge",
           "value": "\"commerce\".\"autopilot_settings\".\"challenge\" is null or jsonb_typeof(\"commerce\".\"autopilot_settings\".\"challenge\") = 'object'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.autopilot_tests": {
+      "name": "autopilot_tests",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "experiment_id": {
+          "name": "experiment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "goal": {
+          "name": "goal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "days": {
+          "name": "days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approval_id": {
+          "name": "approval_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "autopilot_tests_open_idx": {
+          "name": "autopilot_tests_open_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"autopilot_tests\".\"outcome\" is null",
+          "concurrently": false
+        },
+        "autopilot_tests_store_idx": {
+          "name": "autopilot_tests_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "autopilot_tests_page_idx": {
+          "name": "autopilot_tests_page_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "autopilot_tests_account_idx": {
+          "name": "autopilot_tests_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "autopilot_tests_approval_idx": {
+          "name": "autopilot_tests_approval_idx",
+          "columns": [
+            {
+              "expression": "approval_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "autopilot_tests_conversation_idx": {
+          "name": "autopilot_tests_conversation_idx",
+          "columns": [
+            {
+              "expression": "conversation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "autopilot_tests_store_id_stores_id_fk": {
+          "name": "autopilot_tests_store_id_stores_id_fk",
+          "tableFrom": "autopilot_tests",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "autopilot_tests_account_id_accounts_id_fk": {
+          "name": "autopilot_tests_account_id_accounts_id_fk",
+          "tableFrom": "autopilot_tests",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "autopilot_tests_approval_id_assistant_approvals_id_fk": {
+          "name": "autopilot_tests_approval_id_assistant_approvals_id_fk",
+          "tableFrom": "autopilot_tests",
+          "columnsFrom": [
+            "approval_id"
+          ],
+          "tableTo": "assistant_approvals",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "autopilot_tests_conversation_id_assistant_conversations_id_fk": {
+          "name": "autopilot_tests_conversation_id_assistant_conversations_id_fk",
+          "tableFrom": "autopilot_tests",
+          "columnsFrom": [
+            "conversation_id"
+          ],
+          "tableTo": "assistant_conversations",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "autopilot_tests_experiment_fk": {
+          "name": "autopilot_tests_experiment_fk",
+          "tableFrom": "autopilot_tests",
+          "columnsFrom": [
+            "store_id",
+            "experiment_id"
+          ],
+          "tableTo": "experiments",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "autopilot_tests_page_fk": {
+          "name": "autopilot_tests_page_fk",
+          "tableFrom": "autopilot_tests",
+          "columnsFrom": [
+            "store_id",
+            "page_id"
+          ],
+          "tableTo": "pages",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "autopilot_tests_store_id_experiment_id_pk": {
+          "name": "autopilot_tests_store_id_experiment_id_pk",
+          "columns": [
+            "store_id",
+            "experiment_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "autopilot_tests_goal": {
+          "name": "autopilot_tests_goal",
+          "value": "\"commerce\".\"autopilot_tests\".\"goal\" in ('orders', 'cart', 'checkout')"
+        },
+        "autopilot_tests_days": {
+          "name": "autopilot_tests_days",
+          "value": "\"commerce\".\"autopilot_tests\".\"days\" between 1 and 90"
+        },
+        "autopilot_tests_outcome": {
+          "name": "autopilot_tests_outcome",
+          "value": "\"commerce\".\"autopilot_tests\".\"outcome\" is null or \"commerce\".\"autopilot_tests\".\"outcome\" in ('applied', 'asked', 'kept', 'left')"
+        },
+        "autopilot_tests_decided": {
+          "name": "autopilot_tests_decided",
+          "value": "(\"commerce\".\"autopilot_tests\".\"outcome\" is null) = (\"commerce\".\"autopilot_tests\".\"decided_at\" is null)"
         }
       },
       "isRLSEnabled": false

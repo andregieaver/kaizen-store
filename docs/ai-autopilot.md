@@ -1154,3 +1154,54 @@ did and what it earned. Built so:
 Tests: `src/lib/autopilot-effects.test.ts` (target, windows, trend, month, review lines), `src/lib/autopilot-report.test.ts` (the monthly email),
 `src/components/admin/autopilot/autopilot-page.test.ts` (the Results tab), `src/server/autopilot-effects.int.test.ts` (a product change and a page
 change measured on a real database with the store beside them, once, never a person's or a young one, the month's summary).
+
+## 17. Testing its page changes first (ecosystem plan E4.1, D729)
+
+The loop closed: a change the autopilot would publish to a live page by itself is tried on real visitors first, where the page's traffic answers a
+test soon enough, and goes live only when the test answers for it. Built so (`src/lib/autopilot-tests.ts` pure, `src/server/autopilot-tests.ts`,
+`src/server/autopilot-test-decider.ts`, `commerce.autopilot_tests`):
+
+- **When.** `publish_page` of a store's page run as the autopilot itself (`currentActor() === "autopilot"`: a plan's tool step or task turn, an
+  event's turn, at *Do it* or *Do it and tell me* for the Website), after its own checks (a page in a running test, a blocking accessibility
+  issue). Never on a person's yes (an approved call runs as the AI manager), never the AI manager in a person's conversation, never an article,
+  Kaizena Flow's own null-row pages or a page whose draft is what is live.
+- **Where traffic allows.** The page must be one a test covers as a whole (`testablePages()`: an own-address page, the front page or the All
+  products page; not a working page, a legal page or a page in a running test), the store must have room for another test (`testRoom()`: its
+  plan's `ab_tests_running`, at most five), and the page's own visitors must answer within **21 days** (`AUTOPILOT_TEST_MAX_DAYS`, `chooseTest()`):
+  the estimate is `experimentTraffic()`'s (the last 30 days' visits that began on the page, the share accepting statistics cookies, the store's own
+  funnel), two versions, all eligible visitors, sized for a change of a fifth (`AUTOPILOT_TEST_CHANGE`); orders when they answer in time, else the
+  counted goal that answers soonest (adding to the cart or reaching checkout). A test runs whole weeks and at least two (`MIN_DAYS`), so the cap
+  means two or three weeks: longer would hold a change back too long. Otherwise, or with *Test my page changes first when there is enough traffic*
+  off (`planning.testsPageChanges`, on by default, the Autopilot's settings under *What it may do*), the page is published as before and the watch
+  (D628) guards it.
+- **The test.** An ordinary test of the page (`createExperiment()`, `startExperiment()`, the store's guardrails as on every test), named *The
+  autopilot's change to {page}* in the admin language of whoever the autopilot works for, its planned end the estimate's days: the live page is
+  the original, the autopilot's draft is version B (published as the version), and the page's draft goes back to what is live, so nothing of the
+  change waits to be published over the test (the change stays in version B and in the page's versions, D305). The row in `autopilot_tests`
+  (the test, the page, in whose name, the goal and days) is written before the start, and the database holds **one undecided autopilot test per
+  page** (`autopilot_tests.one_per_page`; `asked` still counts as undecided). The tool's answer to the model says the change is under test and to
+  leave the page until it ends; *Do it and tell me* tells the test, not a publish.
+- **Nothing stacked.** A publish of a page under the autopilot's test is refused with words saying the store decides it; the autopilot's model may
+  not stop the test or choose its winner (`stop_experiment`, `apply_winner` refused as the autopilot unless the store's own decision runs them,
+  `asTheStoresDecision()`); a person, and the AI manager in their conversation, decide it as any test. The autopilot's events leave these tests
+  out (`test_ended`, `test_answered`), and the watch records a publish that became a test as *not watched*: only part of the visitors see the
+  change, and the test's guardrails watch it.
+- **The decision, by code.** Hourly (the dispatcher's `autopilotTests`, `decideAutopilotTests()`), from the test's verdict (`verdictOf()`), never a
+  model (`testAction()`): version B clearly better goes live through `apply_winner`, within the owner's levels (`autopilotDecision()`, area
+  Website), as the autopilot, never while it is paused for the store or platform-wide; at *Ask me first* or past a limit it is kept for the
+  owner's yes like any gated call, in the store's conversation *Autopilot: page tests*, with a notice. Clearly worse, harming a guardrail, a broken
+  split, or its planned end without an answer for the change: the page stays as it was (the test stopped and its original kept), whatever the
+  levels, as the watch undoes a change without asking. A test a person stopped or decided, or whose maker can no longer act in the store, is left
+  to a person. Each decision is kept once (`outcome`: `applied`, `asked`, `kept`, `left`).
+- **What the owner sees.** The Autopilot page's Decisions tab, *Testing first*: *Testing my change to {page} against the current page: about N days
+  left*, *… waits for your yes*, *… is live*, *{page} stays as it was*, each opening the test; the daily digest and weekly report carry the same
+  lines (*Tested before going live*), never given to the model that writes the weekly note. The A/B tests list marks the test *By the autopilot*
+  and its page says how the store decides it; at *Do it and tell me* a notice says what was decided (`test_decided`).
+- **Kaizena Flow's own site.** Served from its house store (D484), whose autopilot is a store's: the same path reaches kaizenaflow.com. Its pages
+  sell no goods, so no counted goal has a rate there and every publish goes live as before; counting the house store's sign-ups per visit
+  (`signup`, D712) in `experimentTraffic()` and `chooseTest()` is the next step.
+
+Tests: `src/lib/autopilot-tests.test.ts` (the goal and days, the decision, the lines), `src/db/autopilot-tests.test.ts` (the table's rules),
+`src/lib/autopilot-report.test.ts` and `src/components/admin/autopilot/autopilot-page.test.ts` (the lines and the switch),
+`src/server/autopilot-tests.int.test.ts` (a busy page tested instead of published, nothing stacked, the model kept off the test, a quiet page, the
+switch off and a person publishing as before, the watch, the winner kept for a yes and made live on it or at once, a worse change keeping the page).

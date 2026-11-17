@@ -1013,7 +1013,9 @@ async function callTool(
               ? runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: heldBy(ctx.holder) }, name, args)
               : runPlatformTool(ctx, name, args),
           );
-          if (decision.tell) ctx.autopilot.told.push(approvalSummary(name, input.input as Record<string, unknown>));
+          // A publish that became an A/B test of the change (E4.1, D729) is told as the test, not as a publish.
+          const tested = (result as { tested?: unknown } | null)?.tested;
+          if (decision.tell) ctx.autopilot.told.push(typeof tested === "string" ? tested : approvalSummary(name, input.input as Record<string, unknown>));
           return { result };
         } catch (error) {
           if (error instanceof OwnerToolError) return { error: error.message };

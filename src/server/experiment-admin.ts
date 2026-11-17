@@ -105,6 +105,8 @@ export type ExperimentInfo = {
   answeredAt: string | null;
   /** What it taught, in the owner's words (D662). */
   learning: string | null;
+  /** The autopilot started it to try its own change to the page (ecosystem plan E4.1, D729): the store decides it by its results. */
+  byAutopilot: boolean;
   createdAt: string;
   scheduledStart: string | null;
   scheduleProblem: string | null;
@@ -155,6 +157,7 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
   answeredAt: row.answered_at ? new Date(String(row.answered_at)).toISOString() : null,
   learning: row.learning ? String(row.learning) : null,
+  byAutopilot: row.by_autopilot === true,
   createdAt: iso(row.created_at)!,
   scheduledStart: iso(row.scheduled_start),
   scheduleProblem: row.schedule_problem ? String(row.schedule_problem) : null,
@@ -244,7 +247,8 @@ const partOfExperimentRow = (row: Row) => (row.target_part ? { id: String(row.ta
 
 const SELECT = sql`
   select e.*, p.slug as page_slug, p.type as page_type, p.draft as page_draft, p.published as page_published, p.published_at as page_published_at,
-    commerce.page_place(e.store_id, e.target_page_id) as page_role
+    commerce.page_place(e.store_id, e.target_page_id) as page_role,
+    exists (select 1 from commerce.autopilot_tests t where t.store_id = e.store_id and t.experiment_id = e.id) as by_autopilot
   from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
 `;
 
@@ -418,6 +422,8 @@ export type NewExperiment = {
   audience?: Audience;
   minDays?: number;
   minVisitors?: number;
+  /** When it should end, for a test sized to the store's traffic (the autopilot's, E4.1); else its minimum days after it starts. */
+  plannedEnd?: Date;
 };
 
 export type Outcome<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
@@ -534,10 +540,11 @@ export async function createExperiment(account: Account, storeId: string, input:
   }
 
   const [made] = await db().execute<Row>(sql`
-    insert into commerce.experiments (store_id, name, hypothesis, target_page_id, target_part, target_part_kind, primary_goal, goal_params, traffic_share, audience, min_days, min_visitors, created_by, updated_by)
+    insert into commerce.experiments (store_id, name, hypothesis, target_page_id, target_part, target_part_kind, primary_goal, goal_params, traffic_share, audience, min_days, min_visitors, planned_end, created_by, updated_by)
     values (${storeId}::uuid, ${name}, ${(input.hypothesis ?? "").slice(0, 500)}, ${input.pageId}::uuid, ${part?.id ?? null}, ${part?.kind ?? null}, ${input.goal},
       ${JSON.stringify(goalParamsOf(input.goal, input.goalBlock ?? null, input.goalPage ?? null))}::jsonb, ${traffic}, ${JSON.stringify(parseAudience(input.audience ?? {}))}::jsonb,
-      ${Math.min(90, Math.max(1, Math.round(input.minDays ?? MIN_DAYS)))}, ${Math.max(0, Math.round(input.minVisitors ?? 0))}, ${account.id}::uuid, ${account.id}::uuid)
+      ${Math.min(90, Math.max(1, Math.round(input.minDays ?? MIN_DAYS)))}, ${Math.max(0, Math.round(input.minVisitors ?? 0))}, ${input.plannedEnd ? input.plannedEnd.toISOString() : null}::timestamptz,
+      ${account.id}::uuid, ${account.id}::uuid)
     returning id
   `);
   const id = String(made.id);

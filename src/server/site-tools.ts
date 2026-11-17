@@ -53,6 +53,7 @@ import {
 import { addNotice } from "./assistant-notices";
 import { ACTORS, actingAs, currentActor, type Actor } from "./actor";
 import { activeAccount, passMembership, type Account, type Membership } from "./auth";
+import { isAutopilotTest, testInsteadOfPublishing } from "./autopilot-tests";
 import { runningTestOf } from "./experiment-admin";
 import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
@@ -400,6 +401,12 @@ export async function preflightPublishPage(ctx: SiteToolContext, { page: ref, ty
 async function refusePublish(ctx: SiteToolContext, id: string, type: PageType, draft: PageContent): Promise<void> {
   if (ctx.store && type !== "article") {
     const test = await runningTestOf(ctx.store.id, id);
+    // The autopilot's own test of its change (E4.1, D729): the store decides it by its results, so nothing is stacked on the page meanwhile.
+    if (test && (await isAutopilotTest(ctx.store.id, test.id))) {
+      fail(
+        `This page is in the A/B test "${test.name}", which tries an earlier change of the autopilot's against the page as it is. The store decides it by its results, and that change goes live only if the test answers for it. Leave the page as it is until the test has ended; the owner can decide it sooner on the test's page.`,
+      );
+    }
     if (test) fail(`This page is in the running A/B test "${test.name}". Publishing a change now would spoil its results: stop the test first.`);
   }
   // Until the owner's autonomy level says otherwise (unit B), a page with a blocking issue is never published by the AI manager: the
@@ -421,6 +428,22 @@ export async function publishPageTool(ctx: SiteToolContext, { page: ref, type }:
   const page = await getPageForEdit(ownerOf(ctx), id, type);
   if (!page) return fail("That page is gone.");
   await refusePublish(ctx, id, type, page.draft);
+  // The autopilot publishing a change to a live page by itself tests it first where the page's traffic allows (E4.1, D729); never on a
+  // person's yes, which runs as the AI manager.
+  // A page whose pictures are still being made (they go into its draft) is published as before: version B would go without them.
+  if (ctx.store && type === "page" && currentActor() === "autopilot" && (await pictureCounts(id)).waiting === 0) {
+    const tried = await testInsteadOfPublishing({ account: ctx.account, store: ctx.store }, { id, state: page.state, draft: page.draft });
+    if ("started" in tried) {
+      ctx.invalidate(pagesTag(ownerOf(ctx)));
+      const { experimentId, name, days } = tried.started;
+      return {
+        done: `Not published yet: "${page.draft.title}" has enough visitors to test the change first, so it is now the A/B test "${name}": half of the visitors who accept statistics cookies see the change, the rest the page as it is, for about ${days} days. The store decides by the test's result: the change goes live only if it does better, as far as the owner's levels allow; otherwise the page stays as it is. Leave this page as it is until the test has ended.`,
+        tested: `Started an A/B test of my change to "${page.draft.title}" instead of publishing it, for about ${days} days.`,
+        ab_test: `${adminBase(ctx)}/experiments/${experimentId}`,
+        editor: editorLink(ctx, type, id),
+      };
+    }
+  }
   const saved = await savePage(ctx.account, ownerOf(ctx), id, page.draft, { publish: true, type });
   if (!saved.ok) return fail(`The page could not be published: ${saved.problems.join(" ")}`);
   ctx.invalidate(pagesTag(ownerOf(ctx)));

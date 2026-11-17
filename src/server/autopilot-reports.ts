@@ -22,6 +22,7 @@ import { activeAccount, passMembership, type Account } from "./auth";
 import { effectsOfMonth } from "./autopilot-effects";
 import { goalsWithProgress } from "./autopilot-goals";
 import { aiBudgetSpent, autonomyFor } from "./autopilot-settings";
+import { autopilotTestsOf } from "./autopilot-tests";
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { currentStore, type Store } from "./stores";
@@ -255,6 +256,11 @@ async function sendOne(who: Recipient, kind: "daily" | "weekly" | "monthly", per
     facts.goals = goals.filter((g) => g.status !== "dropped").map((g) => ({ title: g.title, met: g.progress.filter((p) => p.met === true).length, all: g.progress.length }));
   }
   const note = kind === "weekly" ? await noteFor(who, facts, deps) : null;
+  // Its tests of its own page changes (E4.1, D729), made in the person's name: after the note, so a page's title never reaches its model.
+  if (who.store && kind !== "monthly") {
+    const tests = await autopilotTestsOf(who.store.id, { now, limit: STEPS_LISTED, accountId: who.account.id });
+    if (tests.length > 0) facts.tests = tests.map((t) => ({ page: t.page.slice(0, 200), state: t.state, daysLeft: t.daysLeft }));
+  }
   const claimed = await typedRow(
     z.object({ id: col.uuid }),
     sql`
