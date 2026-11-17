@@ -716,6 +716,7 @@ this file wins.
 | D714 | **Admin redesign round 35: Accessibility, a new campaign and a product layout on a phone** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 | D715 | **A/B tests, phase 20: going on to a page, forms elsewhere, new or returning visitors, preview links to share (D148)** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 | D716 | **A store page's first scripts held by name** (claimed 2026-11-17, text follows) | 2026-11-17 | |
+| D717 | **Admin words handed counted against words named** (claimed 2026-11-17, text follows) | 2026-11-17 | |
 
 ### Selling from Norway to Sweden and Denmark
 
