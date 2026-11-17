@@ -47,7 +47,7 @@ behaviour joins pages, never people.
 | E2.6 | *Make a quote* on a deal; a draft starts from a customer | S | Done, 17 Nov 2026 | `createDraft({ customerId })`, `drafts/new?customer=&deal=`; *Make a draft order* in the customer page's More menu |
 | E2.7 | Carry a support request out from the conversation | L | Done, 17 Nov 2026 | `src/server/support-carry-out.ts`: cancel, address and refund through the order page's own functions, a two-minute claim, then the request done; a person's own Done or Decline waits for a running carry-out. Left: *Make a deal* from the conversation (needs a deal for a customer who is not a lead), a return (a customer's own action) |
 | E2.8 | Leads in the menu, each request linked to where it is kept | S | Done, 17 Nov 2026 | `/leads` under Customers; a form's message read from its responses (D705), so form leads are counted at last. Left: an owner for a lead (needs a column) |
-| E2.5r | Release the CRM tools, their eval case and Leads in the AI's map; API contract 1.41; record the eval | S | Done, 17 Nov 2026, with F5's form tools (D705), E3.7 and the tools' segment and workflow powers; the eval to be recorded on Platform → AI |
+| E2.5r | Release the CRM tools, their eval case and Leads in the AI's map; API contract 1.41; record the eval | S | Done, 17 Nov 2026, with F5's form tools (D705), E3.7 and the tools' segment and workflow powers; eval recorded, run 9a773d05, 32 of 32 |
 
 ## Phase 3: one nervous system
 
