@@ -182,6 +182,20 @@ describe("the written rules are held to a budget (bloat review step 1.1)", () =>
     expect(planted((c) => void (c.planLines = 2)).join("\n")).toContain("on 2 lines");
   });
 
+  it("lets CLAUDE.md's index grow by a rule's line, and a decision be a long table row", () => {
+    // The index is held by its own rules (step 0.43) and a decision by the 4,000-byte rule: neither fails here.
+    expect(planted((c) => void ((c.claude.bytes += 200), (c.claude.lines += 1), (c.loaded += 200)))).toEqual([]);
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "docs-count-"));
+    try {
+      writeFileSync(path.join(tmp, "CLAUDE.md"), "x\n");
+      mkdirSync(path.join(tmp, "docs"), { recursive: true });
+      writeFileSync(path.join(tmp, "docs", "decisions.md"), `| D1 | **A decision.** ${"word ".repeat(180)}|\n`);
+      expect(docsCounts(tmp).longLines.decisions).toBe(0);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("counts a long line in the rules from real text", () => {
     const tmp = mkdtempSync(path.join(os.tmpdir(), "docs-count-"));
     try {

@@ -10,7 +10,7 @@
   ],
   "longLines": {
     "rules": 0,
-    "decisions": 691,
+    "decisions": 0,
     "living": 27,
     "tableRows": {
       "docs/100-day-challenge.md": 10,

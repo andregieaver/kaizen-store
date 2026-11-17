@@ -20,10 +20,11 @@ A number rises only where its row says so, with a decision.
 
 `node scripts/docs-ratchet.mjs --check` and src/lib/docs-budget.scan.test.ts hold, against src/lib/docs-budget.baseline.json:
 
-- CLAUDE.md's bytes and lines, and the bytes loaded in every session (CLAUDE.md, its imports, unpathed .claude/rules files).
+- CLAUDE.md's bytes and lines, and the bytes loaded in every session (CLAUDE.md, its imports, unpathed .claude/rules files), are
+  reported; what is held is the part outside the Storefront and Admin index (above), since a new rule adds its index line.
 - No new import in CLAUDE.md, and no .claude/rules file without a paths list.
-- Lines over 500 characters: none in CLAUDE.md; counts that only fall in the rules, the decisions and the living docs.
-- Table rows over 500 characters, per file, which only fall.
+- Lines over 500 characters: none in CLAUDE.md; counts that only fall in the rules, the decisions' prose and the living docs.
+- Table rows over 500 characters, per file, which only fall (not docs/decisions.md, whose rows the 4,000-byte rule holds).
 - A new rule or decision is at most 4,000 bytes; the old large ones are listed and may not grow.
 - A rule file's headings are at most 10,000 bytes together; a decision number stands once.
 - The ten never-sentences stay in CLAUDE.md; a tracker row is at most 300 characters; one line of CLAUDE.md names the plan.

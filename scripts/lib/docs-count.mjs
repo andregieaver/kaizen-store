@@ -271,7 +271,8 @@ export function docsCounts(root) {
     ...(existsSync(path.join(root, "docs/decisions.md")) ? ["docs/decisions.md"] : []),
     ...filesUnder(root, "docs/decisions", markdown),
   ];
-  const decisionLong = decisionFiles.reduce((sum, file) => sum + overLong(read(root, file)), 0);
+  // Prose lines only: a decision is a table row, usually over 500 characters, held by the 4,000-byte rule (reviewed 17 November 2026).
+  const decisionLong = decisionFiles.reduce((sum, file) => sum + overLong(read(root, file), (line) => !line.startsWith("|")), 0);
 
   let living = 0;
   const tableRows = {};
@@ -363,9 +364,9 @@ export function docsProblems(counts, baseline) {
   const rise = (name, now, was, hint) => {
     if (now > was) problems.push(`${name} rose from ${was} to ${now}. ${hint}`);
   };
-  rise("CLAUDE.md bytes", counts.claude.bytes, baseline.claude.bytes, "CLAUDE.md only gets smaller: move the text to docs/rules.");
-  rise("CLAUDE.md lines", counts.claude.lines, baseline.claude.lines, "CLAUDE.md only gets smaller: move the text to docs/rules.");
-  rise("The bytes loaded in every session", counts.loaded, baseline.loaded, "Move the text to docs/rules.");
+  // CLAUDE.md's whole size and the bytes loaded are reported, not held: its Storefront and Admin index grows by one line with every new
+  // rule until step 2.1 moves it, and the bytes outside the index are held by src/lib/docs-budget.scan.test.ts (step 0.43).
+  // Reviewed 17 November 2026: holding the whole file would fail every new rule's index line.
   if (JSON.stringify(counts.imports) !== JSON.stringify(baseline.imports)) {
     problems.push("CLAUDE.md imports a new file: it loads in every session. Move the text to docs/rules.");
   }
@@ -375,6 +376,8 @@ export function docsProblems(counts, baseline) {
     rise(`Prose lines over 500 characters in ${key}`, counts.longLines[key], baseline.longLines[key], "Wrap them: node scripts/wrap-docs.mjs.");
   }
   for (const [file, n] of Object.entries(counts.longLines.tableRows)) {
+    // A decision is a table row that is usually over 500 characters; its size is held by the 4,000-byte rule below instead.
+    if (file === "docs/decisions.md") continue;
     const was = baseline.longLines.tableRows[file] ?? 0;
     rise(`Table rows over 500 characters in ${file}`, n, was, "Move the detail out of the row.");
   }
@@ -409,9 +412,6 @@ export function docsFallen(counts, baseline) {
   const fell = (name, now, was) => {
     if (now < was) fallen.push(`${name} fell from ${was} to ${now}. Run node scripts/docs-ratchet.mjs.`);
   };
-  fell("CLAUDE.md bytes", counts.claude.bytes, baseline.claude.bytes);
-  fell("CLAUDE.md lines", counts.claude.lines, baseline.claude.lines);
-  fell("The bytes loaded in every session", counts.loaded, baseline.loaded);
   for (const key of ["rules", "decisions", "living"]) fell(`Prose lines over 500 characters in ${key}`, counts.longLines[key], baseline.longLines[key]);
   for (const [file, was] of Object.entries(baseline.longLines.tableRows)) fell(`Table rows over 500 characters in ${file}`, counts.longLines.tableRows[file] ?? 0, was);
   for (const [key, was] of Object.entries(baseline.bigRules)) fell(`The rule ${key}`, counts.bigRules[key] ?? 0, was);
