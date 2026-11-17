@@ -665,6 +665,7 @@ export const notificationsNb: NotificationsMessages = {
       "subscription.payment_failed": { label: "Abonnementsbetaling feilet", hint: "Fornyelsen av et abonnement kunne ikke belastes: den venter på abonnentens betaling." },
       "gift_card.issued": { label: "Gavekort utstedt", hint: "Et gavekort eller en tilgodelapp ble utstedt: aldri koden." },
       "review.created": { label: "Anmeldelse skrevet", hint: "En kjøper skrev en produktanmeldelse, som venter på butikkens kontroll eller ble publisert med en gang." },
+      "form.response": { label: "Skjema sendt", hint: "En besøkende sendte et av butikkens skjemaer, eller bekreftet en påmelding til nyhetsbrevet: skjemaet og det de svarte, slik svaret lagres." },
       "experiment.answered": { label: "A/B-test har et svar", hint: "En A/B-test som pågår har et svar for første gang: dommen, versjonen som gjorde det best og tallene for hver versjon." },
       "support.waiting": {
         label: "Noen venter i kundeservice",
@@ -1245,6 +1246,8 @@ export const notificationsNb: NotificationsMessages = {
       "checkout:read": "Lese kasseregler og spørsmål",
       "checkout:write": "Endre kasseregler og spørsmål",
       "content:read": "Lese sider, blogginnlegg, innhold og menyer",
+      "forms:read": "Lese skjemaer og det besøkende sendte med dem",
+      "forms:write": "Lage og endre skjemaer",
       "content:write": "Skrive utkast av sider, blogginnlegg og innhold: ingenting på nettstedet endres",
       "settings:read": "Lese butikkens innstillinger: land, valutaer, frakt, mva",
       "reports:read": "Kjøre lagrede rapporter",

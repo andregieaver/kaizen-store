@@ -394,6 +394,10 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const contract = await contractData(store.id, store.slug, subjectId);
     return contract && { contract };
   }
+  if (event === "form.response") {
+    const form_response = await formResponseData(store.id, store.slug, subjectId);
+    return form_response && { form_response };
+  }
   return null;
 }
 
@@ -729,6 +733,32 @@ async function contractData(storeId: string, storeSlug: string, contractId: stri
     completed_at: row.completed_at,
     admin_url: row.deal_id ? `${siteUrl()}/admin/${storeSlug}/deals/${row.deal_id}/contracts/${row.id}` : `${siteUrl()}/admin/${storeSlug}/deals`,
   };
+}
+
+/**
+ * What a visitor sent with one of the store's forms (D705 F5, `form.response`): the form, and the answers as kept, labelled in the owner's
+ * language. Sent only to the owner's own endpoints, apps that read customers and workflows; a response deleted by then sends nothing.
+ */
+async function formResponseData(storeId: string, storeSlug: string, responseId: string): Promise<WebhookSubject<"form_response"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      form_id: col.uuid,
+      form_name: col.text,
+      form_kind: z.enum(["message", "signup"]),
+      answers: z.array(z.object({ label: z.string(), value: z.string() })),
+      contact_email: col.textOrNull,
+      path: col.text,
+      locale: col.text,
+      created_at: col.timestamp,
+    }),
+    sql`
+    select r.id, r.form_id, f.name as form_name, f.kind as form_kind, r.answers, r.contact_email, r.path, r.locale, r.created_at
+    from commerce.form_responses r join commerce.forms f on f.id = r.form_id
+    where r.store_id = ${storeId}::uuid and r.id = ${responseId}::uuid
+  `,
+  );
+  return row && { ...row, admin_url: `${siteUrl()}/admin/${storeSlug}/forms/responses/${row.form_id}` };
 }
 
 /** A gift card or store credit (D440, `gift_card.issued`): what it holds and how it came; never its code, which is kept only as a hash. */

@@ -42,7 +42,7 @@ export default async function PlatformFormPage({ params }: PageProps<"/admin/pla
   const [uses, linked, starter] = await Promise.all([formUses(null, form.id), templatesOfForm({ accountId: account.id, storeId: null }, form.id, "en"), starterOfForm(form.id, "en")]);
   const base = "/admin/platform/forms";
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms", "blocks"])}>
+    <AdminTextScope texts={adminTexts(lang, ["forms", "blocks", "formTemplates"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: w.title }}

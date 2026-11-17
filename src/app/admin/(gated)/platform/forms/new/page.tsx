@@ -23,7 +23,7 @@ export default async function NewPlatformFormPage() {
   const w = adminText(lang, "forms");
   const items = await listFormTemplates({ accountId: account.id, storeId: null }, "en");
   return (
-    <AdminTextScope texts={adminTexts(lang, ["forms"])}>
+    <AdminTextScope texts={adminTexts(lang, ["forms", "formTemplates"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: "/admin/platform/forms", label: w.start.back }} title={w.start.title} description={w.start.description} />
         <FormStart lang={lang} items={items} make={makePlatformFormAction} />

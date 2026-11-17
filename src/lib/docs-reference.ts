@@ -35,6 +35,7 @@ export const TAG_AREAS: Record<string, DocArea> = {
   Reports: "analytics",
   Settings: "settings",
   "Webhook endpoints": "webhooks",
+  Forms: "website",
 };
 
 /** What a webhook topic is about, as the docs' areas. */
@@ -56,6 +57,7 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   refund: "payments",
   erasure: "customers",
   contract: "customers",
+  form_response: "customers",
   experiment: "marketing",
   installation: "apps",
 };

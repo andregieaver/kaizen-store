@@ -1221,6 +1221,21 @@ describe("a token made before D440 (D440 review)", () => {
   });
 });
 
+describe("forms (D705 F5)", () => {
+  it("lists, makes, gets, changes a form and reads its responses with forms:write and the right to read customers", async () => {
+    const token = await makeApiToken(store.member, { name: "Forms", scopes: ["forms:write", "customers:read"] });
+    if (!token.ok) throw new Error(token.problem);
+    const [template] = await db().execute<Row>(sql`select id from commerce.form_templates where starter = 'newsletter'`);
+    const made = await call("POST", "forms", token.token, { template_id: String(template.id) });
+    expect(made.status).toBe(201);
+    const id = String(made.body.data.id);
+    expect((await call("GET", "forms", token.token)).status).toBe(200);
+    expect((await call("GET", `forms/${id}`, token.token)).status).toBe(200);
+    expect((await call("PATCH", `forms/${id}`, token.token, { draft: { ...made.body.data.draft, name: "News" } })).body.data.name).toBe("News");
+    expect((await call("GET", `forms/${id}/responses`, token.token)).body).toEqual({ data: [], next: null });
+  });
+});
+
 describe("every operation's answer (D438)", () => {
   it("is parsed with its contract, the documents and orders of another store included", async () => {
     const order = await place(store.storeId, [[SKU, 1]], fi);

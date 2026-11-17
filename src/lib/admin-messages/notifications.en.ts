@@ -987,6 +987,8 @@ export const notificationsEn = {
       "checkout:read": "Read checkout rules and questions",
       "checkout:write": "Change checkout rules and questions",
       "content:read": "Read pages, blog articles, content and menus",
+      "forms:read": "Read forms and what visitors sent with them",
+      "forms:write": "Make and change forms",
       "content:write": "Write drafts of pages, blog articles and content: nothing on the site changes",
       "settings:read": "Read the store's settings: countries, currencies, shipping, tax",
       "reports:read": "Run saved reports",

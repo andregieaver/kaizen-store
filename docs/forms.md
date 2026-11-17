@@ -176,7 +176,7 @@ export is in the audit log (an export with its count only, as D295's).
 | **F2** (built) | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
 | **F3** (built) | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
 | **F4** (built) | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
-| **F5** | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
+| **F5** (half built) | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
 
 ## 9. F1 as built (17 November 2026)
 
@@ -276,4 +276,20 @@ export is in the audit log (an export with its count only, as D295's).
 - **Copies.** A store copy (D129) does not copy its templates (`store-copy-rules.ts`): the owner's other stores, the copy among them, use
   those shared with `stores`. The whole-store file (PSI DATA-05) holds them. They hold no one's data (`NOT_PERSONAL`).
 - **Not yet.** The AI manager's form tools and the admin map's words for *New form* wait for F5, with a new eval recording.
+
+## 13. F5 as built, its first half (17 November 2026)
+
+- **`form.response`.** A store's response, kept when a message is sent or a sign-up confirmed, is queued for the store's own endpoints,
+  apps that read customers and workflows (`integration_form_response_events()`, migration `*_form_response_event_rules`; the workflows'
+  trigger check gains it, `*_form_response_event`). Its `form_response` (`formResponseData()`) carries the form's id, name and kind, the
+  answers as kept, labelled in the owner's language, the contact email, the page, the language and a link to the responses. Never Zapier,
+  Make or Slack (`ENDPOINT_ONLY`). A workflow's conditions may test the form's name and kind, the language and the page. Kaizena Flow's own
+  forms have no events.
+- **The Admin API** (contract 1.38, `src/lib/admin-api-forms.ts`, `src/server/admin-api-forms.ts`): `forms:read` and `forms:write`;
+  list, get (with the editor's `draft`), make (from a template or a whole draft) and change a form through the editor's own `saveForm()`;
+  responses in pages with the right to read customers. The Read-only kind of token holds `forms:read`.
+- **Words.** Form templates' words are their own area (`formTemplates`), so the forms list and the responses no longer hand them to the
+  browser (bloat 1.28).
+- **Next (F5b).** The AI manager's form tools, an eval case with instructions hidden in a response, and the admin map's words for *New
+  form*; the owner runs the eval on Platform → AI and its recording is committed.
 

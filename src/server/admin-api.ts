@@ -11,6 +11,7 @@ import { DISCOUNT_KINDS } from "@/lib/discounts";
 import { answerCatalogue, CATALOGUE_NAMES, type CatalogueRoute } from "./admin-api-catalogue";
 import { answerContent, CONTENT_NAMES, type ContentRoute } from "./admin-api-content";
 import { answerCustomers, CUSTOMERS_NAMES, type CustomersRoute } from "./admin-api-customers";
+import { answerForms, FORMS_NAMES, type FormsRoute } from "./admin-api-forms";
 import { answerOrders, ORDERS_NAMES, type OrdersRoute } from "./admin-api-orders";
 import {
   asTool,
@@ -182,14 +183,16 @@ const isCatalogue = (route: ApiRoute): route is CatalogueRoute => (CATALOGUE_NAM
 const isOrders = (route: ApiRoute): route is OrdersRoute => (ORDERS_NAMES as readonly string[]).includes(route.name);
 const isCustomers = (route: ApiRoute): route is CustomersRoute => (CUSTOMERS_NAMES as readonly string[]).includes(route.name);
 const isContent = (route: ApiRoute): route is ContentRoute => (CONTENT_NAMES as readonly string[]).includes(route.name);
+const isForms = (route: ApiRoute): route is FormsRoute => (FORMS_NAMES as readonly string[]).includes(route.name);
 /** The operations of unit A and before, answered here; each slice of wave 14 unit C answers its own (D440). */
-type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute>;
+type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute | FormsRoute>;
 
 async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
   if (isCatalogue(route)) return answerCatalogue(caller, route, request);
   if (isOrders(route)) return answerOrders(caller, route, request);
   if (isCustomers(route)) return answerCustomers(caller, route, request);
   if (isContent(route)) return answerContent(caller, route, request);
+  if (isForms(route)) return answerForms(caller, route, request);
   return answerCore(caller, route as CoreRoute, request);
 }
 
