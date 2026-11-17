@@ -1,3 +1,4 @@
+import { SelectNav } from "@/components/admin/select-nav";
 import type { Metadata } from "next";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
@@ -118,21 +119,22 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
 
       {counts.people > 0 && (
         // Round 20 (D671): on a phone the three figures share one row, small, so the people are on the first screen.
-        <section aria-label={words.figures.fresh} className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
-            <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.fresh}</span>
+        // Round 30 (D703): on a phone the three share one card, each number above its words, which wrap rather than cut.
+        <section aria-label={words.figures.fresh} className="grid grid-cols-3 gap-2 max-sm:gap-0 max-sm:rounded-card max-sm:bg-card sm:gap-3">
+          <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 max-sm:flex-col-reverse max-sm:justify-end max-sm:bg-transparent sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
+            <span className="text-[11px] text-muted sm:truncate sm:text-caption">{words.figures.fresh}</span>
             <span className="text-[17px] tracking-tight sm:text-[26px]">{counts.fresh}</span>
           </div>
-          <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
-            <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.back}</span>
+          <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 max-sm:flex-col-reverse max-sm:justify-end max-sm:bg-transparent sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
+            <span className="text-[11px] text-muted sm:truncate sm:text-caption">{words.figures.back}</span>
             <span className="text-[17px] tracking-tight sm:text-[26px]">
               {counts.back} <span className="text-[11px] tracking-normal text-muted sm:text-caption">{fillWords(words.figures.backOf, { n: counts.people })}</span>
             </span>
             {counts.back === 0 && <span className="hidden text-caption text-muted sm:block">{words.figures.backHint}</span>}
           </div>
           {counts.averageSpentMinor !== null && (
-            <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
-              <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.average}</span>
+            <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 max-sm:flex-col-reverse max-sm:justify-end max-sm:bg-transparent sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
+              <span className="text-[11px] text-muted sm:truncate sm:text-caption">{words.figures.average}</span>
               <span className="truncate text-[17px] tracking-tight tabular-nums sm:text-[26px]">{moneyByCurrency({ [currency]: counts.averageSpentMinor }, locale, { whole: true })}</span>
             </div>
           )}
@@ -140,7 +142,14 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
       )}
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <nav aria-label={words.views.label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-pill bg-card p-1 [scrollbar-width:none]">
+        {/* Round 30 (D703): on a phone the kinds of customer are one choice beside the sort; the chips from the small breakpoint up. */}
+        <SelectNav
+          label={words.views.label}
+          hideLabel
+          className="order-2 flex-1 sm:hidden"
+          options={views.map((view) => ({ label: `${view.label} · ${view.count}`, href: hrefWith({ show: view.show }), current: view.show === show }))}
+        />
+        <nav aria-label={words.views.label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-pill bg-card p-1 [scrollbar-width:none] max-sm:hidden">
           {views.map((view) => (
             <AdminLink
               key={view.label}
@@ -152,7 +161,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             </AdminLink>
           ))}
         </nav>
-        <form role="search" action={base} className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-pill bg-card py-1 pr-1.5 pl-4 shadow-[inset_0_0_0_1px_var(--color-edge)]">
+        <form role="search" action={base} className="flex min-w-[16rem] flex-1 items-center max-sm:order-1 max-sm:basis-full gap-2 rounded-pill bg-card py-1 pr-1.5 pl-4 shadow-[inset_0_0_0_1px_var(--color-edge)]">
           {show && <input type="hidden" name="show" value={show} />}
           {sort !== "recent" && <input type="hidden" name="sort" value={sort} />}
           <Search aria-hidden className="size-4 shrink-0 text-muted" />
@@ -189,6 +198,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             {words.searchButton}
           </button>
         </form>
+        <div className="max-sm:order-3">
         <MoreMenu label={words.sort[sort]}>
           {SORTS.map((option) => (
             <AdminLink key={option} href={hrefWith({ sort: option === "recent" ? null : option })} aria-current={option === sort ? "true" : undefined} className={`${menuItem} gap-2 aria-[current=true]:font-medium`}>
@@ -197,8 +207,9 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             </AdminLink>
           ))}
         </MoreMenu>
+        </div>
         {filtered && (
-          <AdminLink href={hrefWith({ q: null, tag: null })} className="flex min-h-10 items-center px-2 text-body underline">
+          <AdminLink href={hrefWith({ q: null, tag: null })} className="flex min-h-10 items-center px-2 text-body underline max-sm:order-4">
             {words.showEveryone}
           </AdminLink>
         )}

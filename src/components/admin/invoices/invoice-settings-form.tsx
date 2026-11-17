@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { fillWords } from "@/lib/admin-fill";
+import { PhoneRow } from "@/components/admin/phone-row";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { invoicesEn, type InvoicesMessages } from "@/lib/admin-messages/invoices.en";
 import { FOOTER_NOTE_MAX } from "@/lib/invoice-settings";
 import { dayLabel, sellerFieldLabel } from "@/lib/invoice-admin";
@@ -27,9 +28,17 @@ export function InvoiceReadinessList({ base, readiness, words: w = invoicesEn }:
   }
   if (!readiness.taxProfileSaved) items.push({ key: "tax", text: t.taxMissing, href: `${base}/settings/tax` });
   return (
-    <section aria-labelledby="readiness" className={card}>
+    <section aria-labelledby="readiness" className={`${card} ${items.length > 0 ? "max-sm:border-0 max-sm:bg-warning-soft" : ""}`}>
       <h2 id="readiness" className="text-title text-ink">
-        {t.before}
+        {/* Round 30 (D703): on a phone the card says why orders wait, and how many things are missing. */}
+        {items.length > 0 ? (
+          <>
+            <span className="max-sm:hidden">{t.before}</span>
+            <span className="text-body-strong sm:hidden">{countWords(items.length, w.phone.missing, { n: String(items.length) })}</span>
+          </>
+        ) : (
+          t.before
+        )}
       </h2>
       {items.length === 0 ? (
         <p role="status" className="text-sm">
@@ -37,10 +46,10 @@ export function InvoiceReadinessList({ base, readiness, words: w = invoicesEn }:
         </p>
       ) : (
         <>
-          <p className="text-sm text-muted">{t.waitText}</p>
-          <ul className="divide-y divide-line rounded-panel border border-line text-sm">
-            {items.map((item) => (
-              <li key={item.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+          <p className="text-sm text-muted max-sm:hidden">{t.waitText}</p>
+          <ul className="divide-y divide-line rounded-panel border border-line text-sm max-sm:divide-y-0 max-sm:border-0">
+            {items.map((item, i) => (
+              <li key={item.key} className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 max-sm:px-0 max-sm:py-1.5 ${i >= 3 ? "max-sm:hidden" : ""}`}>
                 <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-warning-solid" />
                 <span className="min-w-0 flex-1">{item.text}</span>
                 {item.href && (
@@ -51,10 +60,27 @@ export function InvoiceReadinessList({ base, readiness, words: w = invoicesEn }:
               </li>
             ))}
           </ul>
+          {items.length > 3 && (
+            <details className="text-sm sm:hidden">
+              <summary className="cursor-pointer underline">{fillWords(w.phone.andMore, { n: String(items.length - 3) })}</summary>
+              <ul className="mt-1 flex flex-col gap-1.5">
+                {items.slice(3).map((item) => (
+                  <li key={item.key} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">{item.text}</span>
+                    {item.href && (
+                      <Link href={item.href} className="shrink-0 underline">
+                        {t.fixIt}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </>
       )}
       {readiness.ratesByHand && (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted max-sm:hidden">
           {t.ratesByHand}{" "}
           <Link href={`${base}/settings/localization`} className="underline">
             {t.languagesAndCurrencies}
@@ -81,8 +107,15 @@ export function InvoiceSettingsForm({
   words?: InvoicesMessages;
 }) {
   const t = w.settings;
+  const p = w.phone;
+  const row = { change: p.change, done: p.done, flat: true } as const;
+  const invoicesSub = settings.enabled ? `${p.everyOrder}${settings.emailWithConfirmation ? ` · ${p.withEmail}` : ""}` : p.off;
+  const note = settings.footerNote?.trim();
   return (
     <ActionForm action={saveAction} successMessage={t.saved} className="flex flex-col gap-6">
+      {/* Round 30 (D703): on a phone the switch and the note are rows in one card, saying what is set. */}
+      <div className="flex flex-col gap-6 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow title={t.invoices} sub={invoicesSub} {...row}>
       <section aria-labelledby="switch" className={card}>
         <h2 id="switch" className="text-title text-ink">
           {t.invoices}
@@ -118,7 +151,9 @@ export function InvoiceSettingsForm({
           </p>
         )}
       </section>
+      </PhoneRow>
 
+      <PhoneRow title={t.note} sub={note ? (note.length > 40 ? `${note.slice(0, 40)}…` : note) : p.none} last {...row}>
       <section aria-labelledby="note" className={card}>
         <h2 id="note" className="text-title text-ink">
           {t.note}
@@ -135,6 +170,8 @@ export function InvoiceSettingsForm({
           <span className={hint}>{t.noteHint}</span>
         </label>
       </section>
+      </PhoneRow>
+      </div>
 
       <div>
         <SubmitButton>{t.save}</SubmitButton>
@@ -150,7 +187,15 @@ export function InvoiceSettingsForm({
 export function SeriesForm({ state, action, words: w = invoicesEn }: { state: SeriesState; action: Action; words?: InvoicesMessages }) {
   const t = w.settings;
   const title = t.series[state.series];
+  const p = w.phone;
   return (
+    <PhoneRow
+      title={title}
+      sub={fillWords(state.locked ? p.next : p.first, { number: state.nextDocumentNumber })}
+      change={p.change}
+      done={p.done}
+      flat
+    >
     <section aria-labelledby={`series-${state.series}`} className={card}>
       <h2 id={`series-${state.series}`} className="text-title text-ink">
         {title}
@@ -190,12 +235,14 @@ export function SeriesForm({ state, action, words: w = invoicesEn }: { state: Se
         </ActionForm>
       )}
     </section>
+    </PhoneRow>
   );
 }
 
 /** The plain-English notes for an accountant's eyes. */
 export function InvoiceNotes({ words: w = invoicesEn }: { words?: InvoicesMessages }) {
   return (
+    <PhoneRow title={w.settings.notesTitle} sub={w.phone.notesSub} change={w.phone.open} done={w.phone.close} flat>
     <section aria-labelledby="notes" className={card}>
       <h2 id="notes" className="text-title text-ink">
         {w.settings.notesTitle}
@@ -207,5 +254,6 @@ export function InvoiceNotes({ words: w = invoicesEn }: { words?: InvoicesMessag
       </ul>
       <p className="text-sm text-muted">{w.settings.notAdvice}</p>
     </section>
+    </PhoneRow>
   );
 }
