@@ -26,9 +26,7 @@ import { attentionFor, hidden } from "@/lib/control-center";
 import { demoTotal, demoWords } from "@/lib/demo-content";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
-import { controlCenter } from "@/server/control-center";
-import { demoContent } from "@/server/demo-content";
-import { getSetupProgress } from "@/server/setup";
+import { storeHomeReads } from "@/server/admin-screens";
 import { latestDreamRun } from "@/server/dream-factory";
 import { platformModes } from "@/server/stripe";
 
@@ -58,12 +56,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   const words = adminText(lang, "home");
   const { store: h } = words;
   const statuses = adminText(lang, "common").orderStatus;
-  const [progress, center, demo] = await Promise.all([
-    getSetupProgress(store),
-    controlCenter(account, store.slug),
-    // What the store template brought and the owner has not changed (`docs/theme-showcase-phase-1.md` step 4b): theirs to remove.
-    owner ? demoContent(store.id, store.localization.locales[0] ?? "en") : null,
-  ]);
+  const { progress, center, demo } = await storeHomeReads(current);
   const demoSummary =
     demo && demoTotal(demo.counts) > 0
       ? { words: demoWords(demo.counts, words.demo), items: demo.items.map(({ noun, title }) => ({ noun, title })), changed: demo.changed.map(({ noun, title }) => ({ noun, title })) }

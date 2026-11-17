@@ -1,5 +1,7 @@
 import "server-only";
 
+import { AsyncResource } from "node:async_hooks";
+
 import { attachDatabasePool } from "@vercel/functions";
 import { sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -76,6 +78,15 @@ function create(url: string = serverEnv().DATABASE_URL) {
   pool.on("error", () => {});
   // The statement counter (step 1.9, `statement-count.ts`): each client's `query` is wrapped once, so a statement inside a transaction is
   // counted too (pool.query calls client.query). Off unless a test or a render asked: the wrapper then passes the call straight through.
+  // pool.query waits for a free connection and then calls client.query from whoever released it, which would count the statement in
+  // that statement's context, not its caller's: the callback is bound to the caller's context, so the count is the caller's own.
+  const pooled: { connect: (...args: unknown[]) => unknown } = pool;
+  const connect = pooled.connect;
+  pooled.connect = function (this: unknown, ...args: unknown[]) {
+    const last = args[args.length - 1];
+    if (typeof last === "function") args[args.length - 1] = AsyncResource.bind(last as (...a: unknown[]) => unknown);
+    return connect.apply(this, args);
+  };
   pool.on("connect", (client) => {
     if (counted.has(client)) return;
     counted.add(client);

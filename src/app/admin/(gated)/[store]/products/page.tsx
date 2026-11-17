@@ -8,17 +8,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import type { BulkTools } from "@/components/admin/products-bulk";
 import { ProductCatalogue } from "@/components/admin/product-catalogue";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
-import { productSkus } from "@/server/home";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
-import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { listAdminProducts } from "@/server/products";
-import { listTerms } from "@/server/taxonomy";
-import { countProductsNeedingMeasure, productsNeedingMeasure } from "@/server/unit-price-gaps";
+import { productsListReads } from "@/server/admin-screens";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
@@ -86,17 +82,7 @@ async function ProductList({
   const archived = query.show === "archived";
   const needsFilter = !archived && query.needs === "unit-price";
   const locale = store.markets[0]?.locale ?? "en";
-  // Unit price (D160): active products that need a content and have none, for the notice and its filter.
-  const [products, needingCount, needing, terms, imports] = await Promise.all([
-    needsFilter ? Promise.resolve([]) : listAdminProducts(store, { archived }),
-    // The notice needs the number; the list itself is read only on its own filter.
-    archived || needsFilter ? Promise.resolve(0) : countProductsNeedingMeasure(store.id),
-    needsFilter ? productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale) : Promise.resolve([]),
-    // Bulk editing (D165): the store's categories and tags for the action panels (the markets come from the store), read only for a member who can change products.
-    canWrite && !needsFilter ? listTerms({ storeId: store.id, contentType: "product" }) : Promise.resolve(null),
-    canWrite && !archived && !needsFilter ? listJobs(member, "product_import", 5) : Promise.resolve([]),
-  ]);
-  const skus = needsFilter ? {} : await productSkus(store.id);
+  const { products, needingCount, needing, terms, imports, skus } = await productsListReads(member, { archived, needsFilter, canWrite, locale });
   const openImport = imports.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const bulk: BulkTools | null = terms
     ? {

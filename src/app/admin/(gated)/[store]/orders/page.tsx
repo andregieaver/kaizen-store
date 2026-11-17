@@ -7,15 +7,13 @@ import { OrderListView } from "@/components/admin/orders/order-list-view";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { tableRowsOf } from "@/lib/order-list-admin";
-import { listOrdersPage, resolveOrderList } from "@/server/order-list";
-import { listOrderViews } from "@/server/order-views";
-import { tagSuggestions } from "@/server/order-tags";
+import { ordersListReads } from "@/server/admin-screens";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { AdminLink, PageHeader } from "@/components/admin/ui";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { whenWords } from "@/lib/home";
-import { orderPreviews, toSendSummary } from "@/server/home";
+import { toSendSummary } from "@/server/home";
 
 import { bulkOrdersAction, deleteOrderViewAction, reorderOrderViewsAction, saveOrderViewAction, updateOrderViewAction } from "./list-actions";
 
@@ -87,15 +85,8 @@ export default async function OrdersPage({ params, searchParams }: Props) {
 async function OrderListBody({ storeSlug, query, toSend }: { storeSlug: string; query: Awaited<Props["searchParams"]>; toSend: number }) {
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
-  const resolved = await resolveOrderList(store.id, query);
-  const [page, views, suggestions] = await Promise.all([
-    listOrdersPage(store.id, resolved.params, resolved.context),
-    listOrderViews(store.id),
-    tagSuggestions(store.id),
-  ]);
+  const { resolved, page, views, suggestions, previews } = await ordersListReads(store, query);
   const lang = adminLangOf(member.account.adminLocale);
-  // Round 2 (D597): a picture of what is in each order on the page.
-  const previews = await orderPreviews(store.id, page.rows.map((r) => r.id));
   const pictures = new Map(previews.map((p) => [p.id, p.lines.map(({ title, picture }) => ({ title, picture }))]));
   // Dates and totals in the store's own format for English, as before; another admin language writes them its own way.
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "en") : ADMIN_LANG_FACTS[lang].locale;

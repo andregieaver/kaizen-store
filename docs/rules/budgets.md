@@ -25,6 +25,7 @@ A route more than 15,000 bytes over its baseline, or a marker in more routes, fa
 note: --write adds it or locks the gain in.
 Two markers (the storefront language and the cookie purposes) are allowed to be in no chunk at all, since step 0.16 made them server-only; their count is 0 and the check fails if either returns to a client chunk's first scripts.
 A route that must grow takes it on purpose with --write --accept, so the growth shows in the baseline's diff; say why in the commit.
+| src/server/admin-statements.baseline.json | src/server/admin-statements.int.test.ts | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts (it writes today's counts, so a rise is accepted deliberately, shown in the diff, with the reason in the commit message) | statements the admin's five screens send (store shell, store Home, orders list, products list, platform Home), counted by src/db/statement-count.ts |
 
 ## The written rules
 

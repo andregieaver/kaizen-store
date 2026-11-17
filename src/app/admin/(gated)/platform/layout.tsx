@@ -13,10 +13,7 @@ import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { platformRoleOf } from "@/lib/platform-access";
 import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
 import { requirePlatformReader } from "@/server/auth";
-import { countPendingRequests } from "@/server/platform";
-import { waitingCount } from "@/server/support";
-import { openRequestCount } from "@/server/support-actions";
-import { kaizenDesk } from "@/server/support-desk";
+import { platformShellReads } from "@/server/admin-screens";
 
 import {
   decidePlatformApprovalAction,
@@ -68,9 +65,7 @@ const areas: NavArea[] = [
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
   const account = await requirePlatformReader();
   const role = platformRoleOf(account) ?? "read_only";
-  const { desk } = await kaizenDesk();
-  // Support: owners waiting for a person and the requests Kaizena Flow's chat assistant passed on (ecosystem plan E1.7), as a store counts them.
-  const [waiting, supportWaiting, supportRequests] = await Promise.all([countPendingRequests(), waitingCount([desk]), openRequestCount(desk)]);
+  const { waiting, supportWaiting, supportRequests } = await platformShellReads();
   const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting + supportRequests });
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "shell");

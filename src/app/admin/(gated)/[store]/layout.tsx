@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
-import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
+import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -21,14 +21,10 @@ import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
 import { storeNav } from "@/lib/store-nav";
 import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
+import { storeShellReads } from "@/server/admin-screens";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
-import { waitingCount } from "@/server/support";
-import { openRequestCount } from "@/server/support-actions";
-import { memberDesk, type Desk } from "@/server/support-desk";
-import { starterOfStore } from "@/server/store-starters";
-import { pausedAfter } from "@/server/store-trial";
 
 import {
   assistantHearAction,
@@ -75,7 +71,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   }
   // Payment methods added to Kaizen since the store's accounts were made (D23).
   if (store.status === "active" && selling) after(() => ensureStorePaymentMethods(store.id));
-  const stores = await storesOf(account);
+  const { stores, waiting, starter, trialPaused } = await storeShellReads(member);
 
   const base = `/admin/${store.slug}`;
   // The store's sections (D147): a tab each with its own sidebar, none for Home. The AI manager is in the header.
@@ -84,13 +80,6 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   // A store that is not open (suspended or closed, D171) offers only what a member may still do there: its orders, customers and analytics.
   const open = store.status === "active";
   const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
-  // Support (D216): the conversations waiting for a person, and the requests the chat assistant passed to the team (ecosystem plan E1.7),
-  // on the Support tab of those who may read it.
-  const waiting = memberCan(member, "support:read") ? await supportWaiting(memberDesk(member).desk) : 0;
-  // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
-  const starter = store.starter ? await starterOfStore(store.id) : null;
-  // A store whose free trial or plan ended with no plan running was made private again (D420): its members are told why, and how to open it.
-  const trialPaused = open ? await pausedAfter(store.id) : null;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "shell");
   const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
@@ -234,10 +223,4 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       </AdminFrame>
     </AdminViewProvider>
   );
-}
-
-/** What waits for the store's people in Support: conversations waiting for a person and the requests the chat assistant passed on. */
-async function supportWaiting(desk: Desk): Promise<number> {
-  const [conversations, requests] = await Promise.all([waitingCount([desk]), openRequestCount(desk)]);
-  return conversations + requests;
 }
