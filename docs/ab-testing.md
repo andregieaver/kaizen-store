@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662)
+its place. Status: **phases 1 to 16 built, 17 to 23 planned** (see "What is next") (16: the original and a version side by side, D684) (15: the list, ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it taught, D662)
 (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659,
 [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9:
 modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and
@@ -535,7 +535,94 @@ scheduled, running or stopped test; a decided test has none, as the original is 
 A version's changes saved in the builder and not published (D686) are said as such: the checklist and the main button ask for them to be
 published, and the start waits until they are, as visitors are shown a version's published copy.
 
+## What is next: phases 17 to 23 (plan, 17 November 2026)
 
+Phases 1 to 16 built what this file designed, and [`ab-testing-usability.md`](ab-testing-usability.md) is built to its last step.
+What is left is gathered here from the "Not done" lines above, the phase 0 checks that never ran, the Build order's done-when
+columns and the Open questions. Each phase is one change or a few, ends as every phase does (Build order, below) and gets its decision
+when it starts. Read against the code on 17 November 2026; the items it found already done are listed last.
+
+**Phase 17: measure what the spike could not (no code; the owner's part is marked).** The proxy has served tests in production
+since phase 1, so the numbers can now come from production rather than a preview of the spike:
+
+- Run `scripts/ab-ttfb.mjs` against production on a test running on the demo store, with the marker cookie and without it. Pass as in
+  the spike: median within 20 ms of the original, 95th percentile within 50 ms, the request without the cookie unchanged.
+- Read `x-vercel-id` on an enrolled request and the Vercel docs for our plan: does the Node proxy run in `dub1` (D5)? If it does not,
+  say so here and in `docs/residency-register.md`, and choose from "Alternatives" above.
+- Close the build-time question: a variant made while the site runs is not built, so the only build cost is the variant route,
+  which is already in every build `docs/build-memory.md` measures (D709). Record that, rather than a separate measurement.
+- Done when: the figures and the region are in "What the spike found", phase 0's row says built, and the risk "Variant serving costs
+  speed" names the production figures.
+
+**Phase 18: the legal check, then signed-in customers (the owner and legal advice first).** This settles Open question 1.
+
+- The note the design asks for: how each market's regulator treats `kaizen_ab` under ePrivacy, whether assigning a signed-in
+  customer from their account needs consent or rests on legitimate interest in each country, and the privacy text's sentence. It goes
+  into "Who is counted" with a decision, and it is needed before any store relies on a result, whatever the next step.
+- If the note allows it, build the signed-in path as designed: the key is an HMAC of the customer id with a platform secret, a second
+  matcher entry on the session cookie, the first view already the assigned version, the same version on every device. Without consent
+  where the note says it is needed, nothing changes: they are counted only with `statistics`, as today.
+- Done when: the note is written; with the path built, an e2e test signs one customer in on two browsers and both see the same
+  version, and a customer in a country that needs consent who has not given it sees the original.
+
+**Phase 19: the guardrails as designed.** Today one guardrail stops a test: orders per visitor clearly worse (`harmedVersion()`,
+1,000 visitors a version, z 3.29). "Goals" above names four more:
+
+- **Speed:** a version's LCP against the original's, from the speed reports (D336) tagged by version as the heatmaps' totals are
+  (D656). It stops a test when clearly worse.
+- **Checkout errors:** the failed payments and checkout errors of each version's carts (`experiment_carts`). They stop a test when
+  clearly above the original's.
+- **Refunds and returns:** read 30 days after each order, so they arrive after most tests end. They are a line on the result and in
+  `explain_results`, never a stop.
+- The guardrail email and the platform's view say which guardrail stopped or warned. Done when: each guardrail has a test of its
+  own kind of trouble, and none fires on a person's stop or on a version below the minimum.
+
+**Phase 20: the goals and the reach that were left for later.**
+
+- The goal **Viewed another page** (Goals above): the share who then open a chosen page of the store, counted as clicks and forms are,
+  once per visitor in the version they saw.
+- A **form goal for a form outside the part** (phase 11's "Not done"): a form in the footer, or on another page, chosen in the
+  new-test form.
+- **New or returning visitors** in *Customise* (the engine's `Audience.returning` has had it since phase 1, but the form does not offer it).
+- A **preview link to share**: a signed link that shows one version on the live site to whoever has it, never counted, never
+  indexed, ending when the test ends (phase 2 left only the admin's preview).
+- Done when: each goal has a browser test, as `e2e/ab-form-goal.spec.ts` is for forms, and the preview link counts no exposure.
+
+**Phase 21: the paid-plan feature (the owner decides first).** Decision 4 makes A/B tests a paid-plan feature; the plan comparison
+has the row "A/B tests of pages" in no plan, and no code reads it. This settles Open question 2:
+
+- The owner chooses: on or off per plan, or a number of running tests per plan (the engine's limit of five is the largest).
+- Then the row goes into the plans that include it, and the new-test form, the AI manager's `draft_experiment` and `start_experiment` and the Admin API
+  read it. A store without the feature sees what it gets and its plan's upgrade, not the form.
+- A store that moves to a plan without the feature keeps its running tests until they are decided, and cannot start new ones.
+- Done when: a store on each kind of plan is tested, and a downgrade with a running test keeps its visitors' versions.
+
+**Phase 22: Kaizena Flow's own test, and owners trying it (the owner's part).** These are two done-when lines that were never met.
+
+- **Phase 3's "Platform runs the plans-page test".** Since kaizenaflow.com is served from Kaizena Flow's own store (D484), its pages
+  are tested in that store's Marketing → A/B tests (`docs/platform-parity.md` lists the row there). Sign-up is a platform route, not a
+  store page, so the plans page cannot count a sign-up yet. Add a goal of a completed sign-up for the house store, read from the
+  sign-ups the platform already counts as ad conversions (D523). Then run the plans-page test, and record its result here.
+- **Phase 2's moderated check**, on today's screens (phases 12 to 16): two owners who have never seen the tool each make a test
+  while someone watches. Write down where they stopped, and fix those places the way `ab-testing-usability.md` fixed its findings.
+- Done when: the plans-page test has an answer, and both owners made a test in a few minutes.
+
+**Phase 23: an honest sample, and room to grow.**
+
+- **Consent skew** (Risks): a line on the result compares the original's rate among the visitors in the test with the same page's rate
+  across all its visits (D152's funnel), so the owner sees whether the people who accepted statistics behave like everyone else. No
+  one outside the test is enrolled or stored to do it.
+- **The daily rollup** (phase 1 left it out): add it when a look takes more than a moment. The trigger is measured: when the
+  results read logs more than 500 ms at the 95th percentile for a store, or the hourly guardrail check outgrows its slot in
+  `runExperimentJobs()`.
+- Done when: the consent line is tested on a store with a known split, and either the rollup is built or the trigger is logged and
+  has not fired.
+
+**Found already done while writing this:** CSV export (Open question 3, D678); stores on their own hosts (the proxy resolves the
+store from the host, `storeOfHost()` in `src/lib/ab-routing.ts`); a version's texts in every language (Open question 4: a version
+is a full copy with its own translations, and a part test compares and applies the other languages' texts, phase 2).
+
+## Principles (kept from `measurement.md`)
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
   not.
@@ -861,6 +948,14 @@ reports (D106, D145).
 | **9** (built) | Modals; the surrounding rows of working pages | A popup and the cart's trust row tested, served and applied; the shop's own component never |
 | **11** (built) | The goal "more people sending a form" | A newsletter sign-up counted once per visitor in the version they saw, and never for a robot, a refused answer or a visitor outside the test |
 | **10** (built) | The front page and the All products page, whole or by a part | A front page tested whole and the products page by a part, served at their own addresses, held in place, applied |
+| **12 to 16** (built) | A/B tests made plain (`ab-testing-usability.md`): the test's page as a record, the shop's own traffic, news and learnings, the list and ideas, side by side | Every step of that plan built (D659, D660, D662, D677, D678, D680, D684) |
+| **17** | Measure in production what the spike could not: speed with and without the cookie, the proxy's region | The figures and the region are in this file; phase 0's row says built |
+| **18** | The legal note, then signed-in customers assigned from their account where it allows | The note is written; one customer sees the same version on two browsers |
+| **19** | The guardrails as designed: speed and checkout errors stop a test, refunds and returns are read late | Each guardrail tested on its own kind of trouble, never firing on a person's stop |
+| **20** | Viewed another page, a form outside the part, new or returning visitors, a preview link to share | A browser test per goal; the preview link counts no exposure |
+| **21** | The paid-plan feature read in code, once the owner chooses on/off or a limit per plan | Each kind of plan tested; a downgrade keeps its running tests |
+| **22** | Kaizena Flow's plans-page test (with a sign-up goal for the house store), and the moderated check with two owners | The plans-page test has an answer; two owners made a test in a few minutes |
+| **23** | A line on consent skew; the daily rollup when its measured trigger fires | The consent line tested; the rollup built or its trigger logged |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,
@@ -882,9 +977,9 @@ and in `ADMIN_PAGES`.
 
 ## Open questions
 
-1. The signed-in path: consent or legitimate interest, per country (phase 0).
+1. The signed-in path: consent or legitimate interest, per country (phase 18).
    (Technical side: the session-cookie matcher, see the spike.)
-2. Whether the plan feature has tiers (a limit on running tests per plan) or is on/off.
-3. Whether owners can export results (CSV through `toCsv()`) in version 1.
-4. Whether a variant of a *translated* page tests the translation alone (variants per language) or all languages.
-   Default: a test is per market, and a variant carries its own translations.
+2. Whether the plan feature has tiers (a limit on running tests per plan) or is on/off (phase 21, the owner's choice).
+3. ~~Whether owners can export results (CSV through `toCsv()`) in version 1.~~ Answered: yes, the list's CSV (D678).
+4. ~~Whether a variant of a *translated* page tests the translation alone (variants per language) or all languages.~~
+   Answered as built: a version is a full copy of the page with its own translations, so a test covers every language.
