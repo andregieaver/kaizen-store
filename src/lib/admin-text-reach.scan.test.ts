@@ -67,6 +67,24 @@ function reach(entry: string, planted: Map<string, string[]> = new Map()): Set<s
   return seen;
 }
 
+/** The files outside the admin with a value import of the registry; `planted` adds specifiers to a file's imports. */
+function offenders(planted: Map<string, string[]> = new Map()): string[] {
+  return files(SRC)
+    .filter((file) => {
+      const name = rel(file);
+      return !name.startsWith("src/app/admin/") && !name.startsWith("src/components/admin/");
+    })
+    .filter((file) => {
+      const specifiers = [...(planted.get(file) ?? [])];
+      for (const match of readFileSync(file, "utf8").matchAll(IMPORT)) {
+        if (match[2] === undefined || typesOnly(match[1])) continue;
+        specifiers.push(match[2]);
+      }
+      return specifiers.some((specifier) => resolve(file, specifier) === REGISTRY);
+    })
+    .map(rel);
+}
+
 const catalogues = (seen: Set<string>) => [...seen].filter((file) => file.startsWith(MESSAGES)).length;
 
 /** Catalogue files behind each entry that runs for shoppers; each only falls. */
@@ -82,20 +100,12 @@ const CEILINGS: Record<string, number> = {
 
 describe("the admin's words outside the admin (bloat review step 0.7)", () => {
   it("is imported by no file outside the admin: Case A", () => {
-    const found = files(SRC)
-      .filter((file) => {
-        const name = rel(file);
-        return !name.startsWith("src/app/admin/") && !name.startsWith("src/components/admin/");
-      })
-      .filter((file) => {
-        for (const match of readFileSync(file, "utf8").matchAll(IMPORT)) {
-          if (match[2] === undefined || typesOnly(match[1])) continue;
-          if (resolve(file, match[2]) === REGISTRY) return true;
-        }
-        return false;
-      })
-      .map(rel);
-    expect(found).toEqual([]);
+    expect(offenders()).toEqual([]);
+  });
+
+  it("would notice: a planted import of the registry in the cart", () => {
+    const cart = join(process.cwd(), "src/server/cart.ts");
+    expect(offenders(new Map([[cart, ["@/lib/admin-text"]]]))).toContain("src/server/cart.ts");
   });
 
   for (const [entry, ceiling] of Object.entries(CEILINGS)) {

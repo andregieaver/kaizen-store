@@ -128,7 +128,7 @@ commit as the fix.
 | 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | Done | 17 Nov (64b35c61; D719): every budget in docs/rules/budgets.md; the written rules held by docs-ratchet; Markdown pushes run the Docs budget workflow. |
 | 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | Open | |
 | 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Open | |
-| 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | In progress | 17 Nov, local (not pushed): commit 1 walker and admin-bundle scan, 145 admin client modules reach zod (149 before step 0.9), frame clean. |
+| 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | In progress | 17 Nov local: 4 scans; 145 zod-reaching modules; 36 imports; 68 unread keys held. |
 | 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | cheap | 0.9, 0.13, 0.1, 1.1 | Open | |
 | 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1, 0.43 | Open | |
 | 1.7 | Put a cart with products and the checkout's payment step into the measured set | GAP-shopper-browser-2 | M | strong | 1.3, 0.1 | Open | |

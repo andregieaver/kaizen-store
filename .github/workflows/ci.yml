@@ -33,7 +33,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 
-# The type check and the build need more than Node's default heap once the admin's catalogues are typed (D312).
+# The type check of the whole program and the build need more than Node's default heap (D312); the catalogues alone take about 125 MB.
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 

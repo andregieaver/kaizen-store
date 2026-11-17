@@ -17,6 +17,7 @@ A number rises only where its row says so, with a decision.
 | src/lib/docs-budget.baseline.json | src/lib/docs-budget.scan.test.ts | node scripts/docs-ratchet.mjs | the written rules (see The written rules below) |
 | src/components/admin/admin-bundle.baseline.json | src/components/admin/admin-bundle.scan.test.ts | WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts | admin client modules that reach zod (a new one fails; a rewrite is the deliberate step) |
 | src/lib/admin-messages/imports.baseline.json | src/lib/admin-messages/imports.scan.test.ts | WRITE_ADMIN_IMPORTS_BASELINE=1 pnpm exec vitest run src/lib/admin-messages/imports.scan.test.ts | value imports of code in the admin's catalogue files, `file -> target` |
+| src/lib/message-keys.baseline.json | src/lib/message-keys.scan.test.ts | WRITE_MESSAGE_KEYS_BASELINE=1 pnpm exec vitest run src/lib/message-keys.scan.test.ts | interface keys that no code names and no matched table covers |
 
 ## The written rules
 
@@ -51,6 +52,15 @@ that no code defines.
 ## Sentences from the plan
 
 Steps of the bloat review write their sentence under a heading of their own below this line.
+
+### Where the words and the scripts may go (step 1.4)
+
+- src/components/admin/admin-bundle.scan.test.ts: the frame reaches no zod, Supabase client or catalogue; ZOD_REACH only shrinks.
+- src/lib/admin-text-reach.scan.test.ts: the admin's words are not imported outside the admin.
+- src/lib/admin-messages/imports.scan.test.ts: a catalogue file holds text only; the listed imports only shrink until step 2.50.
+- src/lib/message-keys.scan.test.ts: a key nothing reads fails; tables read by matching are named in MATCHED_TABLES.
+- The three baselines (admin-bundle, imports, message-keys) are rewritten by the writer each failure message names, which writes
+  today's figures: a rewrite is the deliberate step that accepts growth, shown in the diff.
 
 ### Migrations in tests (step 0.39)
 
