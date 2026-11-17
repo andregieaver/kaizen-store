@@ -56,8 +56,8 @@ behaviour joins pages, never people.
 | E3.1 | An append-only event log (`commerce.events`), written by `queue_integration_event()` and `queue_store_event()`, read by every engine with a cursor | L | Open |
 | E3.2 | The missing events: deal, lead, activity, subscriber, checkout abandoned, conversation ended or rated, review published, domain problem, and the `work_*` events queued today but dropped | M | Open |
 | E3.3 | Order rules folded into workflows, with a hold action (0 rows to move on 17 Nov 2026) | M | Open |
-| E3.4 | Workflows gain customer actions: marketing email, SMS, start an automation, wait | L | Open |
-| E3.5 | One contact policy across email and SMS: a cap per person, spacing, quiet hours, priority | M | Open |
+| E3.4 | Workflows gain customer actions: marketing email, SMS, start an automation, wait | L | Moved to M2.3 of `email-marketing-2026-11.md` (D720) |
+| E3.5 | One contact policy across email and SMS: a cap per person, spacing, quiet hours, priority | M | Moved to M1.5 of `email-marketing-2026-11.md` (D720) |
 | E3.6 | Segments on products bought, deals, support, reviews and engagement, usable by every engine | M | Open |
 | E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Open |
 
@@ -68,9 +68,9 @@ behaviour joins pages, never people.
 | E4.1 | The autopilot tests its page changes as A/B tests where traffic allows | L | Open |
 | E4.2 | Frustration, slow-page and domain alerts; the autopilot driven by the event log instead of its own scans | M | Open |
 | E4.3 | Questions the assistant could not answer feed its knowledge | M | Open |
-| E4.4 | A sending domain per store | M | Open |
-| E4.5 | Split tests of broadcasts and email automations | L | Open |
-| E4.6 | Owners nurtured from trial to plan through the house store | M | Open |
+| E4.4 | A sending domain per store | M | Moved to M1.1 of `email-marketing-2026-11.md` (D720) |
+| E4.5 | Split tests of broadcasts and email automations | L | Moved to M2.5 of `email-marketing-2026-11.md` (D720) |
+| E4.6 | Owners nurtured from trial to plan through the house store | M | Moved to M4.5 of `email-marketing-2026-11.md` (D720) |
 
 Every step that changes a prompt or a tool's description needs a new run of the agents' eval on Platform → AI and its recording
 committed; every store step names its platform step in the same decision.
