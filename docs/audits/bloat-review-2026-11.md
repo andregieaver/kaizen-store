@@ -118,7 +118,7 @@ commit as the fix.
 | 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Done | 16 Nov: Done (6b903353), counted on b6b4c1f2. FT-16 and FT-17 tolerated: 0 shared 10-line windows each; 16 and 5 shared modules. |
 | 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Done | 16 Nov (D697; 1c2133cf, 83bb4d81, 3859ac22): page pictures offered the 800 px copy in one lookup per render; a column's share sizes its picture on a phone. |
-| 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Done | 16 Nov: Done (ecc6f773; D674). Live at 59a188d3: the 12:00 round ran 80 jobs in 3.7 s (about 1.3 s before), longest 2.4 s, no error. The query for connection timeouts runs on 17 Nov. |
+| 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Done | 16 Nov (ecc6f773; D674): four jobs at a time. 17 Nov: 0 connection timeouts in the day, a round of 81 jobs in 0.5 s, no dispatcher job failed. |
 | 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | Done | 16 Nov (D698; 88320369): themes, packs and seed write today's grid shape, held by page-shapes.test.ts; grids unchanged on the demo store live. |
 
 **Phase 1: Budgets, so it stays removed**
