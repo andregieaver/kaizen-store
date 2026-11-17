@@ -4,11 +4,11 @@ Decision D725, 17 November 2026. The boards are on the design canvas of round 37
 
 After round 36 no store page on a phone was above 2,500 px. The three tallest:
 
-| Page | Before |
-|---|---|
-| A new A/B test (`/experiments/new`) | 2,495 px |
-| Search (`/search`) | 2,305 px |
-| Product analytics (`/analytics/products`) | 2,255 px |
+| Page | Before | After |
+|---|---|---|
+| A new A/B test (`/experiments/new`) | 2,495 px | 1,349 px |
+| Search (`/search`) | 2,305 px | 681 px |
+| Product analytics (`/analytics/products`) | 2,255 px | 1,608 px |
 
 Below 640 px wide, each page changes as described here; from 640 px it is as before.
 
