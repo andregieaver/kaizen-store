@@ -346,6 +346,25 @@ baseline (200 bytes of room) or an area no client part under it names (`src/comp
 `unnamed` list. Named is counted from source, by static import, not what a browser reads at load: `e2e/signed-in/admin-scripts.spec.ts` (step 1.5) is the
 browser's cross-check on five screens.
 
+## Statements per screen (bloat review step 1.9)
+
+The database client counts statements (`src/db/statement-count.ts`): off unless a test asks inside `countStatements()` or an admin render
+is running, when it adds one to the render's count. `src/server/admin-statements.int.test.ts` holds what five screens send, through the
+reads in `src/server/admin-screens.ts`, in `src/server/admin-statements.baseline.json` (17 November 2026, a store whose setup is done):
+
+| Screen | Statements |
+|---|---|
+| Store shell (the layout's reads) | 4 |
+| Store Home | 33 |
+| Orders list | 6 |
+| Products list | 5 |
+| Platform Home (its layout and page) | 22 |
+
+A change that adds a read to the shell or to a home screen raises its number in the baseline in the same commit and says why
+(`UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts` writes today's
+counts); one that removes a read lowers it. Waves are not held: they move with how many of the pool's five connections are free.
+To count anything else, wrap it in `countStatements()`. Production's figure is the `admin.render` log line: `statements` and `ms`, nothing else.
+
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
 The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { Suspense } from "react";
 
 import { AdminColorSync } from "@/components/admin/admin-colors";
@@ -10,6 +11,8 @@ import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { AdminServiceWorker } from "@/components/admin/admin-service-worker";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
+import { log } from "@/server/log";
+import { renderCount, renderFields } from "@/server/render-count";
 import { shellEn } from "@/lib/admin-messages/shell.en";
 import { shellNb } from "@/lib/admin-messages/shell.nb";
 
@@ -39,6 +42,9 @@ async function Gate({ children }: { children: React.ReactNode }) {
     if (destination) redirect(destination);
     return <SessionRecovery waiting={{ en: shellEn.frame.checkingSession, nb: shellNb.frame.checkingSession }} />;
   }
+  // One line per render with two numbers and nothing else (step 1.9, D400): the statements it sent and how long it took.
+  const counted = renderCount();
+  after(() => log("info", "admin.render", renderFields(counted)));
   // The account's language for the admin (D312 A0): its client parts read their areas' words from the provider.
   const lang = adminLangOf(account.adminLocale);
   return (
