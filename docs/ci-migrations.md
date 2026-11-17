@@ -187,6 +187,9 @@ and set `DEPLOY_VIA_CI` to anything but `true`.
   tool, so `DROP` statements, triggers and multi-statement files run as written.
 - Advisors (RLS, search path, indexes) are still checked by hand after a migration that adds tables
   or functions; record the result in `docs/decisions.md` as before.
+- A migration that adds a table, or an index or trigger on a hot table, raises the surface budget
+  (`src/lib/surface-budget.scan.test.ts`); the scan runs with the full checks, so for a push without a migration it reports
+  beside the deploy and does not hold it back.
 - If a migration fails, the job is red, nothing from that file is applied and later files wait; fix it
   with a new file (or, when it never ran, edit it: only a file that is not in the ledger may change).
 - Never change an AI prompt in the same push as a migration. The agents' eval replay (D391) fails until the eval is recorded
