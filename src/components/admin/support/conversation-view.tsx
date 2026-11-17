@@ -246,7 +246,7 @@ export function CustomerOrders({
   const orders = customer.orders ?? [];
   return (
     <section className="flex flex-col gap-2 text-sm" aria-label={w.latestOrders}>
-      <h3 className="font-semibold">{w.latestOrders}</h3>
+      <h3 className="text-body-strong text-ink">{w.latestOrders}</h3>
       {orders.length === 0 ? (
         <p className="text-muted">{w.noOrders}</p>
       ) : (
