@@ -65,7 +65,15 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Each topic's `data` is typed in `WEBHOOK_TOPICS` (D438, `src/lib/webhook-topics.ts`): a builder returns its `WebhookSubject<…>` and
   `subjectData()` checks what it built against the topic's schema, logging a drift (`webhooks.payload_shape`, paths only) and never holding a
   delivery back; within `PAYLOAD_VERSION` 1 a payload only gains fields. A new topic or subject also gets its schema there, its subject made
-  in `webhook-topics.int.test.ts`, and the contract's next version (*API contracts*, under the Admin API).
+  in `webhook-topics.int.test.ts`, and the contract's next version (*API contracts*, under the Admin API). Every event the three queues are
+  given (`queue_integration_event()`, `queue_store_event()`, `queue_platform_event()`) is also kept in the event log `commerce.events`
+  (ecosystem plan E3.1, D718: `commerce.log_event()`, in the same transaction, whoever subscribes, once per transaction, store, event and
+  subject; ids only; append-only, pruned after `EVENT_KEEP_DAYS` by `daily.events`). A new engine reads it with a cursor of its own
+  (`readEventsAfter()`/`advanceCursor()` or `consumeEvents()`, `src/server/event-log.ts`): in `(tx, id)` order and only below the oldest
+  transaction still running, so an event that commits late is never skipped; a claim keeps two runners of one reader apart. The events of
+  E3.2 (deals, the email list, support conversations ended or rated, a review published, `checkout.abandoned` from the cart reminders job
+  once a cart, Work's clients and invoices) are endpoint topics and workflow triggers; imports send none (`commerce.deal_importing`, the
+  `shopify`/`woocommerce` sources, `imported_from`).
 
 ## The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
 

@@ -9,12 +9,35 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D712, D715]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D712, D715, D718]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.39 — 2026-11-17
+
+Fourteen webhook topics for what happened without a topic until now (D718), for an owner's own endpoints and workflows' triggers; Zapier,
+Make and Slack keep the eight they had. Apps that read customers may choose the deals', apps that read marketing the email list's and
+`review.published`, apps that read support the conversations', apps that read orders `checkout.abandoned`; Work's are the owner's alone.
+
+- `deal.created`, `deal.stage_changed`, `deal.won`, `deal.lost` carry `deal`: its `id`, `title`, `status`, `pipeline` and `stage`
+  (`id`, `name`, the stage's `position`), `value` in the store's main `currency`, `customer_id`, `company_id`, `owner_id`,
+  `expected_close_on`, `closed_at`, `closed_via`, `stage_entered_at`, `created_at` and `admin_url`. Never the reason typed for closing it.
+  Deals moved in from Pipedrive send none.
+- `subscriber.subscribed`, `subscriber.unsubscribed` carry `subscriber`: its `id`, `email`, `status`, `source`, `unsubscribe_source`,
+  `customer_id`, `locale`, `market`, `consented_at`, `confirmed_at`, `unsubscribed_at` and `admin_url`. Addresses moved in from another shop
+  send none.
+- `conversation.ended`, `conversation.rated` carry `conversation`: its `id`, `source`, `status`, `handler`, `ended_by`, `rating`,
+  `escalation`, `customer_id`, `market`, `locale`, `messages` (how many), `created_at`, `first_answer_at`, `ended_at` and `admin_url`.
+  Never a message, its summary or the rating's comment.
+- `review.published` carries `review`, as `review.created` does.
+- `checkout.abandoned`, once a cart, when its first cart reminder is due, carries `checkout`: its `id`, `cart_id`, `order_id`, `email`,
+  `market`, `locale`, `currency`, `subtotal`, `lines` (`variant_id`, `sku`, `title`, `quantity`, `unit_price`), `captured_at`,
+  `abandoned_at`, `recovered` and `admin_url`. Never the reminder links.
+- `work_client.created` carries `work_client` (never its email or phone); `work_invoice.sent`, `work_invoice.paid` and
+  `work_invoice.credited` carry `work_invoice`, with what payments (`paid`) and credit notes (`credited`) have covered.
 
 ## 1.38 — 2026-11-17
 

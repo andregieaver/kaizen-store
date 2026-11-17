@@ -2,6 +2,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { EVENT_KEEP_DAYS } from "@/lib/event-log";
 import { minorUnitDigits } from "@/lib/money";
 import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
@@ -5138,6 +5139,118 @@ describe("work: invoices imported from Kaizen Life (WP15)", () => {
     const issued = await issue(w, draft);
     const { rows: lines } = await db.query<{ id: string }>("select id from commerce.work_invoice_lines where invoice_id = $1", [issued.id]);
     await expect(entry(lines[0].id)).rejects.toThrow(/work_time\.draft_only/);
+  });
+});
+
+describe("the event log (ecosystem plan E3.1, D718)", () => {
+  type Logged = { store: string | null; event: string; subject: string | null; tx: string };
+  const logged = async (storeId: string | null, since = 0) =>
+    (
+      await db.query<Logged>(
+        `select store_id as store, event, subject_id as subject, tx::text as tx from commerce.events
+         where ${storeId ? "store_id = $2" : "store_id is null"} and id > $1 order by tx, id`,
+        storeId ? [since, storeId] : [since],
+      )
+    ).rows;
+  const newest = async () => Number((await one<{ id: string | null }>("select max(id)::text as id from commerce.events")).id ?? 0);
+
+  it("logs every event the three queues are given, whoever subscribes, once per transaction, store, event and subject", async () => {
+    const shop = await createStore("event-log", ["DE"]);
+    const before = await newest();
+    const subject = "00000000-0000-4000-8000-0000000000e1";
+    await db.transaction(async (tx) => {
+      await tx.query("select commerce.queue_integration_event($1, 'order.paid', $2)", [shop, subject]);
+      // The order-paid queue of the same payment: the same event, logged once.
+      await tx.query("select commerce.queue_store_event($1, 'order.paid', $2)", [shop, subject]);
+      await tx.query("select commerce.queue_integration_event($1, 'order.paid', $2)", [shop, subject]);
+      // No subject is a subject too: twice in one transaction is once.
+      await tx.query("select commerce.queue_integration_event($1, 'support.waiting', null)", [shop]);
+      await tx.query("select commerce.queue_integration_event($1, 'support.waiting', null)", [shop]);
+      await tx.query("select commerce.queue_platform_event('store.created', $1)", [shop]);
+      await tx.query("select commerce.queue_platform_event('store.created', $1)", [shop]);
+    });
+    const mine = await logged(shop, before);
+    expect(mine.map((e) => [e.event, e.subject])).toEqual([
+      ["order.paid", subject],
+      ["support.waiting", null],
+    ]);
+    // One transaction wrote them: one transaction id.
+    expect(new Set(mine.map((e) => e.tx)).size).toBe(1);
+    expect((await logged(null, before)).map((e) => [e.event, e.subject])).toEqual([["store.created", shop]]);
+    // Nobody subscribed: nothing was delivered, and the log has them all the same.
+    expect((await db.query("select 1 from commerce.integration_deliveries where store_id = $1", [shop])).rows).toEqual([]);
+    // The same event in another transaction is another event, in a later transaction.
+    await db.query("select commerce.queue_integration_event($1, 'order.paid', $2)", [shop, subject]);
+    const again = await logged(shop, before);
+    expect(again.map((e) => e.event)).toEqual(["order.paid", "support.waiting", "order.paid"]);
+    expect(BigInt(again[2].tx) > BigInt(again[0].tx)).toBe(true);
+  });
+
+  it("logs what the triggers queue where the row changes: an order made and paid", async () => {
+    const before = await newest();
+    const order = await createOrder(`EV-${Date.now()}`);
+    const events = (await logged(store, before)).filter((e) => e.subject === order).map((e) => e.event);
+    expect(events).toContain("order.created");
+  });
+
+  it("is append-only: never changed, and deleted only once older than the log keeps it, or with its store", async () => {
+    const shop = await createStore("event-log-keep", ["DE"]);
+    await db.query("select commerce.queue_integration_event($1, 'product.updated', null)", [shop]);
+    await expect(db.query("update commerce.events set event = 'order.paid' where store_id = $1", [shop])).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from commerce.events where store_id = $1", [shop])).rejects.toThrow(/append-only for 90 days/);
+    const young = await one<{ id: string }>(
+      `insert into commerce.events (store_id, event, at) values ($1, 'order.paid', now() - make_interval(days => $2)) returning id`,
+      [shop, EVENT_KEEP_DAYS - 1],
+    );
+    await expect(db.query("delete from commerce.events where id = $1", [young.id])).rejects.toThrow(/append-only/);
+    const old = await one<{ id: string }>(
+      `insert into commerce.events (store_id, event, at) values ($1, 'order.paid', now() - make_interval(days => $2)) returning id`,
+      [shop, EVENT_KEEP_DAYS + 1],
+    );
+    await db.query("delete from commerce.events where id = $1", [old.id]);
+    expect((await db.query("select 1 from commerce.events where id = $1", [old.id])).rows).toEqual([]);
+    // Ids only: an event's name is an event's name, never a sentence.
+    await expect(db.query("insert into commerce.events (store_id, event) values ($1, 'Kari wrote to us')", [shop])).rejects.toThrow(/events_event/);
+
+    // A store that goes takes its events with it: the rest of its rows cleared as a test clears them, then the store itself.
+    const { rows: tables } = await db.query<{ table_name: string }>(
+      `select c.table_name from information_schema.columns c
+       join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
+       where c.table_schema = 'commerce' and c.column_name = 'store_id' and c.table_name <> 'events'`,
+    );
+    await db.exec("set session_replication_role = replica");
+    try {
+      for (const { table_name } of tables) await db.query(`delete from commerce."${table_name}" where store_id = $1`, [shop]);
+    } finally {
+      await db.exec("set session_replication_role = origin");
+    }
+    await db.query("delete from commerce.stores where id = $1", [shop]);
+    expect((await db.query("select 1 from commerce.events where store_id = $1", [shop])).rows).toEqual([]);
+  });
+
+  it("keeps a reader's cursor: a name it checks, a position, and a claim with its time", async () => {
+    await db.query("insert into commerce.event_cursors (consumer) values ('test:reader')");
+    expect(await one("select last_tx::int as tx, last_id::int as id, claim from commerce.event_cursors where consumer = 'test:reader'")).toEqual({ tx: 0, id: 0, claim: null });
+    await expect(db.query("insert into commerce.event_cursors (consumer) values ('Not A Name')")).rejects.toThrow(/event_cursors_consumer/);
+    await expect(db.query("update commerce.event_cursors set claim = gen_random_uuid() where consumer = 'test:reader'")).rejects.toThrow(/event_cursors_claim/);
+    await db.query("update commerce.event_cursors set claim = gen_random_uuid(), claimed_until = now() + interval '1 minute' where consumer = 'test:reader'");
+    await expect(db.query("update commerce.event_cursors set last_id = -1 where consumer = 'test:reader'")).rejects.toThrow(/event_cursors_position/);
+    await db.query("delete from commerce.event_cursors where consumer = 'test:reader'");
+  });
+
+  it("offers the new events as workflows' triggers (E3.2)", async () => {
+    const shop = await createStore("event-log-flows", ["DE"]);
+    const triggers = ["deal.created", "deal.stage_changed", "deal.won", "deal.lost", "subscriber.subscribed", "subscriber.unsubscribed", "conversation.ended", "conversation.rated", "review.published", "checkout.abandoned", "work_client.created", "work_invoice.sent", "work_invoice.paid", "work_invoice.credited"];
+    for (const trigger of triggers) {
+      await db.query(
+        "insert into commerce.workflows (store_id, name, trigger, actions) values ($1, $2, $3, '[{\"kind\":\"email_staff\",\"subject\":\"x\",\"text\":\"y\"}]')",
+        [shop, `On ${trigger}`, trigger],
+      );
+    }
+    expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.workflows where store_id = $1", [shop])).n)).toBe(triggers.length);
+    await expect(
+      db.query("insert into commerce.workflows (store_id, name, trigger, actions) values ($1, 'Nope', 'deal.dreamt', '[]')", [shop]),
+    ).rejects.toThrow(/workflows_trigger/);
   });
 });
 

@@ -394,6 +394,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   staff_alert_settings: "A store's staff summary choice and which alerts its contact address gets (D238).",
   staff_alert_recipients: "Which staff accounts get which store alerts (D238): staff, not shoppers.",
   store_events: "A queue of order and return events for staff alerts and rules (D238): ids, times and an error code text, never a person's data.",
+  events: "The event log (ecosystem plan E3.1, D718): each event's store, name, subject id, transaction id and time, kept 90 days; ids only, never a person's data (what an event is about is read where it lives).",
+  event_cursors: "Where each engine reading the event log is (ecosystem plan E3.1, D718): an engine's name, the last event's ids and a claim; no person.",
   order_rules: "A store's automation rules (D238): conditions, the owner's tag, note and hold reason, never a person.",
   ai_model_prices: "A model's price and the platform admin's note about it.",
   booking_seasons: "A season's name for a booking's price.",

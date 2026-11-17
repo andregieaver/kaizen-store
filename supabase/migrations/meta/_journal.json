@@ -512,6 +512,20 @@
       "when": 1794917645644,
       "tag": "20261117121405_sticky_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794920264984,
+      "tag": "20261117125744_amazing_rhino",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794920277329,
+      "tag": "20261117125757_event_log_rules",
+      "breakpoints": true
     }
   ]
 }

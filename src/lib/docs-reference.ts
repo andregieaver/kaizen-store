@@ -58,6 +58,13 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   contract: "customers",
   experiment: "marketing",
   installation: "apps",
+  // Ecosystem plan E3.2 (D718).
+  deal: "customers",
+  subscriber: "marketing",
+  conversation: "customers",
+  checkout: "orders",
+  work_client: "payments",
+  work_invoice: "payments",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];

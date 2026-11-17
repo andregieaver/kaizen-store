@@ -46,6 +46,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   analytics_alert_sends: never("Which analytics alerts were emailed on which day (D348) is the original's history: a copy's own alerts are its own."),
   staff_alert_recipients: never("The staff chosen for alerts are the original's people (D238): a copy starts with the defaults, its own owners."),
   store_events: never("The original's queue of order and return events for staff alerts and rules (D238)."),
+  events: derived("The event log (ecosystem plan E3.1, D718): never the original's; a copy's starts with what happens to it, its own making included, written by the database's queues."),
   order_rules: settings("Automation rules (D238), with new ids; a rule naming a product that was not copied loses it and is switched off."),
   order_rule_runs: never("The log of the original's automation runs (D238)."),
   carrier_labels: never("Shipping labels of the original's parcels (D458): copied orders have no parcels."),

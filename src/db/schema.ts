@@ -7525,6 +7525,8 @@ export const abandonedCheckouts = commerce.table(
     clickedAt: timestamp("clicked_at", { withTimezone: true }),
     recoveredAt: timestamp("recovered_at", { withTimezone: true }),
     recoveredOrderId: uuid("recovered_order_id"),
+    /** When the reminders job judged it abandoned and queued `checkout.abandoned` (ecosystem plan E3.2, D718): once a cart. */
+    abandonedAt: timestamp("abandoned_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -16283,6 +16285,56 @@ export const storeEvents = commerce.table(
     check("store_events_event", sql`${t.event} in ('order.paid', 'return.requested')`),
     check("store_events_attempts", sql`${t.attempts} between 0 and 10`),
     check("store_events_last_error", sql`${t.lastError} is null or char_length(${t.lastError}) <= 500`),
+  ],
+);
+
+/**
+ * The event log (ecosystem plan E3.1, D718): every event the database queues (`commerce.queue_integration_event()`,
+ * `queue_store_event()`, `queue_platform_event()`, each through `commerce.log_event()`), whether or not anyone subscribes, in the
+ * transaction that made it; once per transaction, store, event and subject (`events_once_key`, as a workflow's run is). Ids only, never a
+ * person's data. Append-only (a trigger refuses an update, and a delete before `EVENT_KEEP_DAYS` unless its store is gone); pruned daily.
+ * Read in order of `(tx, id)` by `readEventsAfter()` (`src/server/event-log.ts`): `tx` is the writing transaction's id, so a reader that
+ * takes only what is older than every transaction still running never skips an event that commits after a later one.
+ */
+export const eventLog = commerce.table(
+  "events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    /** Null for Kaizena Flow's own events. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    subjectId: uuid("subject_id"),
+    /** The writing transaction's id (`pg_current_xact_id()`), the first key of the log's order. */
+    tx: bigint("tx", { mode: "number" }).notNull().default(sql`(pg_current_xact_id()::text)::bigint`),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("events_order_idx").on(t.tx, t.id),
+    index("events_store_order_idx").on(t.storeId, t.tx, t.id),
+    unique("events_once_key").on(t.tx, t.storeId, t.event, t.subjectId).nullsNotDistinct(),
+    check("events_event", sql`${t.event} ~ '^[a-z][a-z0-9_]*([.][a-z][a-z0-9_]*)+$' and char_length(${t.event}) <= 80`),
+  ],
+);
+
+/**
+ * Where each reader of the event log is (ecosystem plan E3.1, D718): the last event it took, as `(last_tx, last_id)`, and its claim while
+ * a run reads and handles a batch, so two runners of one reader never take the same events. Written only by `src/server/event-log.ts`.
+ */
+export const eventCursors = commerce.table(
+  "event_cursors",
+  {
+    consumer: text("consumer").primaryKey(),
+    lastTx: bigint("last_tx", { mode: "number" }).notNull().default(0),
+    lastId: bigint("last_id", { mode: "number" }).notNull().default(0),
+    claim: uuid("claim"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("event_cursors_consumer", sql`${t.consumer} ~ '^[a-z][a-z0-9_.:-]{0,99}$'`),
+    check("event_cursors_claim", sql`(${t.claim} is null) = (${t.claimedUntil} is null)`),
+    check("event_cursors_position", sql`${t.lastTx} >= 0 and ${t.lastId} >= 0`),
   ],
 );
 
