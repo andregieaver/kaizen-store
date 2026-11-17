@@ -55,6 +55,7 @@ import { prunePlatformDeliveries } from "@/server/platform-integrations";
 import { pruneWorkflowRuns } from "@/server/workflows";
 import { prunePlatformWorkflowRuns } from "@/server/platform-workflows";
 import { log } from "@/server/log";
+import { checkPgCronJobs } from "@/server/pg-cron-jobs";
 import { pruneSearchLog } from "@/server/search";
 import { pruneSearchCache } from "@/server/search-cache";
 import { pruneFormSubmissions } from "@/server/forms";
@@ -81,6 +82,8 @@ async function run(request: Request) {
   await prunePlatformAdSignals();
   // The database's door (PSI SEC-03): the Data API's roles still reach nothing in commerce. Kept as its own job, so an open door reads as failing.
   const databaseDoor = await tracked("daily.database-door", 86400, () => checkDatabaseDoor());
+  // pg_cron's own SQL jobs, each a row of its own in the ledger, and its run log (bloat review step 1.22); never stops the run.
+  const pgCron = await checkPgCronJobs().catch((error) => (log("error", "pg_cron_jobs.check_failed", {}, error), { jobs: 0, failed: [] as string[] }));
   // Sent events (30 days) and workflow runs (90 days) of the stores and of Kaizena Flow: pruned here once a day, not by the every-minute runners (bloat review step 0.31). Each never stops the run.
   const never = (job: string) => (error: unknown) => {
     log("error", "daily.prune_failed", { job }, error);
@@ -130,7 +133,7 @@ async function run(request: Request) {
     revalidateTag(storeTag(store.slug), "max");
     revalidateTag(catalogTag(store.id), "max");
   }
-  return Response.json({ ...run, databaseDoor, deliveriesPruned, platformDeliveriesPruned, workflowRunsPruned, platformWorkflowRunsPruned, dailyPrunes, productionReading, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, speedSamplesPruned, ownSpeedSamplesPruned, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPicturesSwept: reviewPictureFiles.removed, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned, noticesPruned, domainRenewals, domainReminders, domainMoves, domainsArrived }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ ...run, databaseDoor, pgCronJobs: pgCron.jobs, pgCronFailed: pgCron.failed.length, deliveriesPruned, platformDeliveriesPruned, workflowRunsPruned, platformWorkflowRunsPruned, dailyPrunes, productionReading, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, speedSamplesPruned, ownSpeedSamplesPruned, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPicturesSwept: reviewPictureFiles.removed, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned, noticesPruned, domainRenewals, domainReminders, domainMoves, domainsArrived }, { headers: { "Cache-Control": "no-store" } });
 }
 
 // Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.

@@ -224,7 +224,10 @@ guess past a gate. The open questions are collected in section 9.
   dispatcher is `cart-reminders`; new heavy work gets a route of its own. The theme-shots migration above shows how a
   schedule is made. `runJobs()` runs the dispatcher's jobs four at a time (`JOB_LANES`; the pool has five connections)
   and a job that has run 60 s gives up its lane (`JOB_LANE_MS`, `src/lib/job-pool.ts`): it goes on and is recorded when
-  it ends.
+  it ends. Vercel's cron calls only the watcher `/api/cron/watchdog` every 15 minutes (it reads the dispatcher's row in
+  `commerce.cron_jobs` and emails the platform's admins when it is over 15 minutes old; the daily job is scheduled by pg_cron
+  alone). The daily route keeps pg_cron's own SQL jobs in that ledger as `pgcron.*`, and the log's age as `pgcron.run-log`
+  (`src/server/pg-cron-jobs.ts`).
 - **The database client.** `src/db/client.ts`: node-postgres through Supabase's transaction pooler, `max: 5` per
   instance. `readDb()` retries cached reads once. `setBased()` (analytics) runs heavy reads in a read-only transaction.
 - **Hosts and requests.**

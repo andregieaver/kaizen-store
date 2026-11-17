@@ -146,7 +146,7 @@ commit as the fix.
 | 1.19 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3, GAP-ai-s2, GAP-ai-s3 | M | strong | 0.1, 1.1, 0.21 | Open | |
 | 1.20 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1, GAP-build-s1 | M | review | 0.38, 1.8, 1.11, 1.1 | Open | |
 | 1.21 | Give the production build room with the free switches, and fail a run before it runs out | GAP-build-2, GAP-build-s3 | S | review | 1.20 | Open | |
-| 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | In progress | 17 Nov, local: commit 1 of 3 (the watcher route, stoppedJobs, jobsCheck); commits 2 and 3 follow. |
+| 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | In progress | 17 Nov, local: 3 commits (watcher, vercel.json one cron, pgcron.* rows). Waits for push, deploy, CRON_SECRET check. |
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | Open | |
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | In progress | 17 Nov, local: 17 files over 100 KB, 12 over 2,000 lines (brief: 15, 11); 1 of 20 session files. |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Open | |
