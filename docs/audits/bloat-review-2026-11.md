@@ -125,7 +125,7 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | In progress | 17 Nov, local, 4 of 4. Today: living long lines 27, table rows 677, big rules 25, big decisions 49, decisions long lines 691; MCP_TOOLS fixed. |
+| 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | Done | 17 Nov (64b35c61; D719): every budget in docs/rules/budgets.md; the written rules held by docs-ratchet; Markdown pushes run the Docs budget workflow. |
 | 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | Open | |
 | 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Open | |
 | 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | Open | |
@@ -314,6 +314,7 @@ Change log:
 - 16 Nov 2026: step 0.46 Done (88320369, D698): the themes, content packs and seed write a grid's columns in today's shape, and a test parses every page they make.
 - 17 Nov 2026: step 1.27 Done (da36c66c, D716): a store page's first scripts are held by name in a baseline that only shrinks.
 - 17 Nov 2026: step 1.28 Done (9d9ad9b5, D717): every admin hand-down site's words handed are counted against the words its parts name.
+- 17 Nov 2026: step 1.1 Done (64b35c61, D719): every budget has a row in docs/rules/budgets.md, and the written rules have a budget of their own, checked on every push including Markdown alone.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
