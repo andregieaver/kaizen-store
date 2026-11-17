@@ -1,3 +1,5 @@
+import { brotliCompressSync } from "node:zlib";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { parsePageContent } from "../src/lib/page-content";
@@ -133,6 +135,64 @@ test.describe("a page's document and its payload stay within their budgets", () 
       expect(measured.main, text).toBeLessThan(budget.main);
     });
   }
+});
+
+/**
+ * The stylesheets a page links (bloat review step 1.3): every `<link>` whose `rel` is stylesheet and whose `href` is under `/_next/static/`
+ * (the fonts' route is not counted), each fetched once; `raw` is the sum of the bodies' bytes, `brotli` the sum of what Brotli makes of
+ * each. Each budget is its figure plus 4 %, rounded up to the next 500, measured on the build of 17 November 2026 (the store home and Kaizena Flow's front page, one file each: 217,830 raw and 28,866 Brotli, 183,124 raw on the review's build of 12 November; the admin's sign-in, two files: 238,913 raw and 32,362 Brotli).
+ * A budget only falls.
+ */
+async function stylesheetsOf(page: Page, address: string): Promise<{ raw: number; brotli: number; files: number }> {
+  const html = await (await page.request.get(address)).text();
+  const hrefs = [
+    ...new Set(
+      [...html.matchAll(/<link\b[^>]*>/g)]
+        .map((match) => match[0])
+        .filter((tag) => /\srel="stylesheet"/.test(tag))
+        .map((tag) => /\shref="([^"]+)"/.exec(tag)?.[1])
+        .filter((href): href is string => Boolean(href) && href!.startsWith("/_next/static/"))
+        .map((href) => new URL(href.replaceAll("&amp;", "&"), base).href),
+    ),
+  ];
+  const bodies = await Promise.all(hrefs.map(async (href) => (await page.request.get(href)).body()));
+  return {
+    raw: bodies.reduce((sum, body) => sum + Buffer.byteLength(body), 0),
+    brotli: bodies.reduce((sum, body) => sum + brotliCompressSync(body).length, 0),
+    files: hrefs.length,
+  };
+}
+
+const STYLESHEET_BUDGETS: Record<string, { raw: number; brotli: number }> = {
+  "/s/demo/no": { raw: 227_000, brotli: 30_500 },
+  "/": { raw: 227_000, brotli: 30_500 },
+  "/admin/sign-in": { raw: 248_500, brotli: 34_000 },
+};
+
+for (const [path, budget] of Object.entries(STYLESHEET_BUDGETS)) {
+  test(`${path}'s stylesheets stay within their budget, raw and Brotli`, async ({ page }) => {
+    const measured = await stylesheetsOf(page, path);
+    if (MEASURE) {
+      console.log(`[stylesheet] ${path} ${measured.raw} ${measured.brotli} ${measured.files} files`);
+      return;
+    }
+    const text = `${path}: ${JSON.stringify(measured)}`;
+    expect(measured.files, text).toBeGreaterThanOrEqual(1);
+    expect(measured.raw, text).toBeLessThan(budget.raw);
+    expect(measured.brotli, text).toBeLessThan(budget.brotli);
+  });
+}
+
+test("the store home's style text and breakpoint sheets stay few", async ({ page }) => {
+  const html = await (await page.request.get("/s/demo/no")).text();
+  const styleText = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].reduce((sum, match) => sum + match[1].length, 0);
+  const breakpointSheets = html.split("kz-bp-").length - 1;
+  if (MEASURE) {
+    console.log(`[style-text] /s/demo/no ${styleText} ${breakpointSheets}`);
+    return;
+  }
+  expect(styleText, "characters inside <style> elements").toBeLessThanOrEqual(6_000);
+  expect(breakpointSheets, "occurrences of kz-bp-").toBeLessThanOrEqual(4);
 });
 
 test("a page's scripts carry the texts its client components read, never a language's whole interface text (D212)", async ({ page }) => {
