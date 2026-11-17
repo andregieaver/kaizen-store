@@ -150,6 +150,10 @@ describe("ownSpeedKind", () => {
     expect(ownSpeedKind("admin", "/admin/acme")).toBe("home");
     expect(ownSpeedKind("admin", "/admin/acme/orders")).toBe("list");
     expect(ownSpeedKind("admin", "/admin/acme/products/123")).toBe("product");
+    expect(ownSpeedKind("admin", "/admin/acme/pages/123")).toBe("category");
+    expect(ownSpeedKind("admin", "/admin/platform/pages/123")).toBe("category");
+    expect(ownSpeedKind("admin", "/admin/acme/articles/9")).toBe("category");
+    expect(ownSpeedKind("admin", "/admin/acme/pages/new")).toBe("page");
     expect(ownSpeedKind("admin", "/admin/acme/settings/tax")).toBe("page");
     expect(ownSpeedKind("admin", "/admin/sign-in")).toBeNull();
     expect(ownSpeedKind("admin", "/pricing")).toBeNull();

@@ -130,7 +130,7 @@ export const capacityNb: CapacityMessages = {
     loads: "{n} sidevisninger",
     kinds: {
       platform: { home: "Forsiden", product: "Et temas side", category: "Andre sider", list: "Temabutikken og bloggen", page: "Andre sider" },
-      admin: { home: "Oversikter", product: "Redigering (produkter, sider)", category: "Andre sider", list: "Lister (ordrer, produkter, kunder …)", page: "Andre sider" },
+      admin: { home: "Oversikter", product: "Produktredigering", category: "Sidebyggeren (sider, artikler)", list: "Lister (ordrer, produkter, kunder …)", page: "Andre sider" },
     },
   },
   jobs: {

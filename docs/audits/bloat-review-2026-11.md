@@ -139,7 +139,7 @@ commit as the fix.
 | 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Open | |
 | 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | Open | |
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
-| 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Open | |
+| 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | In progress | 17 Nov: commit 1 done locally (the page builder is kind 'category' beside the product editor); commit 2 (the briefing line) follows. |
 | 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
 | 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | Open | |
 | 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 | Open | |
