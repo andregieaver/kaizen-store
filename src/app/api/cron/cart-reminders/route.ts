@@ -53,6 +53,7 @@ import { refreshVatLabelsAtMidnight } from "@/server/vat-admin";
 import { runStatusChecks, STATUS_TAG } from "@/server/status";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
 import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";
+import { watchDomains } from "@/server/domain-watch";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
@@ -250,6 +251,9 @@ async function dispatch() {
     schedules: () => runSchedules(),
     // The status page's checks (D360): each part measured, admins emailed once when one fails twice in a row.
     status: () => runStatusChecks(),
+    // The domain watch (E4.2): a few active domains not asked for a day asked whether they still serve their store, and when one registered
+    // elsewhere expires, for the Domains page's health and the domain alert.
+    domainWatch: () => watchDomains(),
     // A rotation of the settings key (PSI SEC-06): while a previous key is set, a batch of secrets written again under the current one.
     secretRotation: () => reencryptSecrets(),
     // The AI manager's calls nobody answered in seven days (PSI AGT-03): ended, never run.

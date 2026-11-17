@@ -27,7 +27,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   ties a visit to a cart made that day (`carts.visit_id`) so orders know their channel and device; any new claim about it must
   stay true to that. Alerts, the forecast and the diagnosis are code (`alertsFor()`, `forecastMonth()`, `explainChange()`), with
   minimum volumes; the AI manager's `analytics_overview`, `explain_change` and `analytics_alerts` repeat them and never make a
-  number.
+  number. A rule's input is read in `alertSnapshotFor()` and nowhere else, so the Overview, Home, the alert emails, the briefing and
+  the autopilot's alert events read one list; since E4.2 (D729) that includes the heat totals (`pageFrustrationRows()`), the speed
+  samples' 75th percentiles (`speedWindowRows()`) and the domains' health over what is kept (`domainAlertRows()`, never a lookup on
+  read: the domain watch asks the world once a day, `src/server/domain-watch.ts`).
 
 
 ## Heatmaps and recordings: the owner's screens (D656, `docs/heatmaps-and-recordings.md`, `src/server/page-heat-read.ts`, `src/server/recordings-read.ts`, `src/lib/replay-sanitize.ts`)

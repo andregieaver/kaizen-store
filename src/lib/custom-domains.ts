@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { DomainWatch } from "./domain-health";
 import { storeDomain } from "./paths";
 import { siteUrl } from "./site";
 
@@ -60,6 +61,8 @@ export type DomainChecks = {
   cname?: string;
   /** Why the check could not finish, in words for the owner. */
   problem?: string;
+  /** What the daily domain watch found for an active domain (E4.2, `src/server/domain-watch.ts`): whether it still serves the store. */
+  watch?: DomainWatch;
 };
 
 /** Vercel's general values, until a check has its recommendation. */

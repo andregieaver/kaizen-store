@@ -366,8 +366,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `commerce.autopilot_events` (written only by that module, once per store, kind and reference) answered by one headless turn with
   only `EVENT_TOOLS[kind]` and `EVENT_LINES[kind]`; a support event only leaves a staff note (never a word to the customer), a
   gated call meets `autopilotDecision()`, and an alert's plan starts only by `startDecision()`. A new kind of event is a kind in
-  `EVENT_KINDS` (and the table's check), its finder in `detectEvents()`, its tools and lines, its facts in `eventMessage()`, its
-  still-open check in `stillOpen()` and words in the `assistant` catalogues' `events`.
+  `EVENT_KINDS` (and the table's check), its finder, its tools and lines, its facts in `eventMessage()`, its still-open check in
+  `stillOpen()` and words in the `assistant` catalogues' `events`. Its finder is the event log's reader where its fact is an event the
+  database logs (E4.2, D729: `LOGGED_EVENT_KINDS` and its query in `keepLogged()`, the autopilot's own cursor `AUTOPILOT_READER`, the
+  same reference as a scan would keep, only for a store that reacts), and a scan in `detectEvents()` only for what time passing makes or
+  what the log does not carry yet, said in a comment there; never both for one kind.
 
 - **Pausing and budgets platform-wide (PSI AST-07)**: Platform → AI's *AI acting on its own* (`setAiAutonomyPaused()`, `src/server/ai-pause.ts`, a platform
   admin's, audited `platform.ai_autonomy_paused`) pauses every AI that acts without a person at once: `runAutopilot()`, `runEvents()`,
@@ -588,8 +591,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `NEVER_AUTOMATIC` and `REFUND_TOOLS`, since it refunds; `create_purchase_order` only through
   `createPurchaseOrder()`/`placePurchaseOrder()`, and the autopilot places one itself only when `purchaseBudgetProblem()` says
   null (a new budget rule is a case there); `answer_supplier_order` only through `answerSupplierOrder()`. A supplier's reason
-  reaches a prompt only as `suppliers_reason`, data. The order events are found only by `detectOrderEvents()` and answered with
-  `EVENT_TOOLS[kind]`; a new kind of order event is a kind in `EVENT_KINDS` and the table's check (a migration), its finder there,
+  reaches a prompt only as `suppliers_reason`, data. The order events are found only by `detectOrderEvents()` (a parcel in trouble, since E4.2, by the
+  event log's reader from `fulfilment.updated`) and answered with `EVENT_TOOLS[kind]`; a new kind of order event is a kind in `EVENT_KINDS` and the table's check (a migration), its finder there,
   its facts in `FACTS`, its message, reference, still-open check and words in both `assistant` catalogues, and it never lets the
   model write to a customer. An order's customer hears only `tell_customer_about_order` (D635, `src/server/order-updates.ts`): the
   store's fixed updates in `src/lib/order-update-email.ts` (each language by hand, no date, refund or amount), sent through

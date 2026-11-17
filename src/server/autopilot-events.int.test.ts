@@ -23,7 +23,8 @@ type Row = Record<string, unknown>;
  * Reacting to events (D331, `docs/ai-autopilot.md` 15.5), with a stand-in turn that acts through the real tools: nothing while the switch
  * is off; a customer waiting longer than the minutes is one event, answered once with a staff note, and one a person answered first is
  * skipped; a test that ended by itself is an event with only the test's tools; an alert's plan waits for a yes as a review's does; another
- * store is never touched.
+ * store is never touched. Since E4.2 a waiting customer and a test's answer come from the event log (the desk's `support.waiting`, the
+ * test's `experiment.answered`), read with the autopilot's own cursor.
  */
 
 let store: Awaited<ReturnType<typeof makeStore>>;
@@ -58,13 +59,17 @@ const react = () => runEvents({ turn: fakeTurn, connection: null, alerts: async 
 const eventsOf = async (storeId = store.id) => db().execute<Row>(sql`select * from commerce.autopilot_events where store_id = ${storeId}::uuid order by created_at`);
 const settings = (planning: Record<string, unknown>) => saveAutonomy(actor(owner), { planning });
 
-async function waitingConversation(minutes: number): Promise<string> {
+async function waitingConversation(minutes: number, storeId = store.id): Promise<string> {
   const [c] = await db().execute<Row>(sql`
     insert into commerce.support_conversations (store_id, source, handler, token_hash, locale, queued_at)
-    values (${store.id}::uuid, 'site', 'queue', ${`e-${Math.random()}`}, 'en', now() - make_interval(mins => ${minutes})) returning id
+    values (${storeId}::uuid, 'site', 'queue', ${`e-${Math.random()}`}, 'en', now() - make_interval(mins => ${minutes})) returning id
   `);
   return String(c.id);
 }
+
+/** What the desk's waiting alert queues once a conversation has waited its minutes (`sendWaitingAlerts()`): `support.waiting`, into the event log. */
+const deskAlert = (conversation: string, storeId = store.id) =>
+  db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'support.waiting', ${conversation}::uuid)`);
 
 beforeAll(async () => {
   store = await makeStore("autopilot-events");
@@ -72,6 +77,8 @@ beforeAll(async () => {
   for (const s of [store, other]) await db().execute(sql`update commerce.stores set status = 'active' where id = ${s.id}::uuid`);
   await db().execute(sql`insert into commerce.support_settings (store_id, mode, tone_on, summaries_on) values (${store.id}::uuid, 'people', false, false)`);
   owner = await membershipOf(store.slug, store.account, "owner");
+  // The autopilot's reader starts at now the first time it reads the log (E4.2): one read before any test queues an event.
+  await runEvents({ turn: fakeTurn, connection: null, alerts: async () => [] });
 });
 
 beforeEach(() => {
@@ -91,7 +98,7 @@ afterAll(async () => {
 
 describe("reacting to events", () => {
   it("finds nothing while the switch is off", async () => {
-    await waitingConversation(60);
+    await deskAlert(await waitingConversation(60));
     await settings({ reacts: false });
     await react();
     expect(await eventsOf()).toHaveLength(0);
@@ -104,10 +111,15 @@ describe("reacting to events", () => {
     await settings({ reacts: true, waitMinutes: 15 });
     const fresh = await waitingConversation(5);
     const waiting = await waitingConversation(20);
+    // The desk told its people about both (its own minutes, 5 by default); the autopilot waits for the owner's 15.
+    await deskAlert(fresh);
+    await deskAlert(waiting);
     await react();
     const rows = await eventsOf();
-    expect(rows.map((r) => [r.kind, r.ref])).toEqual([["support_waiting", waiting]]);
-    expect(rows[0]).toMatchObject({ status: "done", outcome: "Handled the support_waiting.", account_id: store.account.id });
+    expect(rows.map((r) => [r.kind, r.ref, r.status]).sort()).toEqual([["support_waiting", fresh, "pending"], ["support_waiting", waiting, "done"]].sort());
+    expect(rows.find((r) => r.ref === waiting)).toMatchObject({ status: "done", outcome: "Handled the support_waiting.", account_id: store.account.id });
+    expect(turns).toHaveLength(1);
+    expect(turns[0].message).toMatch(/has waited (20|21) minutes/);
     expect(turns[0].autopilot).toMatchObject({ event: "support_waiting" });
     expect(turns[0].autopilot?.tools).toContain("add_support_note");
     expect(turns[0].autopilot?.tools).not.toContain("reply_to_support");
@@ -115,9 +127,20 @@ describe("reacting to events", () => {
     expect(notes.map((n) => n.author)).toEqual(["note"]);
     expect(fresh).not.toBe(waiting);
 
+    // Logged again (a second time in the queue): still one event per conversation, and the fresh one still waits for its minutes.
+    await deskAlert(waiting);
     await react();
-    expect(await eventsOf()).toHaveLength(1);
+    expect(await eventsOf()).toHaveLength(2);
     expect(turns).toHaveLength(1);
+  });
+
+  it("reads the desk's alert only for a store that reacts: another store's is passed by", async () => {
+    await db().execute(sql`insert into commerce.support_settings (store_id, mode, tone_on, summaries_on) values (${other.id}::uuid, 'people', false, false) on conflict do nothing`);
+    const elsewhere = await waitingConversation(30, other.id);
+    await deskAlert(elsewhere, other.id);
+    await react();
+    expect(await eventsOf(other.id)).toHaveLength(0);
+    expect(turns.filter((t) => t.message.includes(elsewhere))).toHaveLength(0);
   });
 
   it("skips a conversation a person took before the autopilot looked", async () => {
@@ -201,8 +224,11 @@ describe("reacting to events", () => {
 
   it("keeps what it changed at Do it and tell me with the event, for the page and the digest (D309 7.4)", async () => {
     await db().execute(sql`delete from commerce.support_conversations where store_id = ${store.id}::uuid`).catch(() => undefined);
+    // The earlier tests' customer who had not waited long enough is gone with the rest: its event is let go, so this run takes the new one.
+    await db().execute(sql`delete from commerce.autopilot_events where store_id = ${store.id}::uuid and status = 'pending'`);
     await settings({ reacts: true, waitMinutes: 15 });
     const waiting = await waitingConversation(25);
+    await deskAlert(waiting);
     const tellingTurn = async (input: TurnInput) => {
       input.autopilot?.told.push("Add a note to the conversation, for the store's staff only.");
       input.emit({ type: "done", message: { id: "m", role: "assistant", content: "Noted it.", tools: [], feedback: null, createdAt: "" } });

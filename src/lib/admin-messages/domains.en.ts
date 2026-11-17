@@ -436,6 +436,8 @@ export const domainsEn = {
   healthTitle: "Health",
   healthChecking: "Checked as you open this page.",
   health: {
+    points_away: "{domain} no longer reaches your store: when it was checked on {date}, it answered with another site or not at all. Check where its DNS points.",
+    certificate_failing: "{domain}'s https certificate failed when it was checked on {date}, so visitors see a warning instead of your store.",
     not_pointed: "{domain} doesn't reach your store yet: its DNS doesn't point here.",
     proof_missing: "The record that shows {domain} is yours isn't there yet.",
     check_problem: "The last check couldn't finish: {problem}",

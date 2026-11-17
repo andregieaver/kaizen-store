@@ -7,6 +7,7 @@ import {
   dmarcOf,
   domainHealth,
   isVercelNameserver,
+  servingOf,
   spfOf,
   type DnsHost,
   type DomainFacts,
@@ -137,6 +138,8 @@ export async function hostHealth(
           txt: connection.checks.txt,
           misconfigured: connection.checks.misconfigured,
           problem: connection.checks.problem,
+          // What the daily watch found when it asked the domain for the store (E4.2), while it is fresh.
+          serving: connection.status === "active" ? servingOf(connection.checks.watch, deps.now) : null,
         }
       : null,
     dnsHost,

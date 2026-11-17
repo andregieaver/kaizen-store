@@ -1,4 +1,6 @@
 import { formatCount, formatPercent } from "./analytics-core";
+import type { FindingCode, Severity as DomainSeverity } from "./domain-health";
+import { rateMetric, SPEED_KINDS, SPEED_SCREENS, SPEED_THRESHOLDS, speedValueText, type SpeedKind, type SpeedMetric, type SpeedScreen } from "./speed";
 import { formatAmount } from "./analytics-format";
 import type { CreepingResult } from "./analytics-discounts";
 import { onBackorder, type StockoutAlert } from "./analytics-inventory";
@@ -162,7 +164,50 @@ export const ALERT_RULES = {
     /** Orders yesterday. */
     minOrders: 5,
   },
+  /**
+   * A page where visitors get stuck more often (E4.2, heatmaps D656): its share of page views with a rage or dead click
+   * (`frustrated_views`) over the last 7 complete days against its own 28 days before them.
+   */
+  frustration: {
+    /** Rise, in share points (0.1 is 10 points), that raises a warning. */
+    minRisePoints: 0.1,
+    /** And at least this many times the share before, so a page that was always hard to use is not news (none before passes). */
+    minRatio: 1.5,
+    /** Rise that makes it urgent: a part that has stopped working. */
+    urgentRisePoints: 0.25,
+    /** Page views in the last 7 days and in the 28 days before: at both, a 10-point rise is about three standard errors. */
+    minViews7d: 100,
+    minViewsBefore: 200,
+  },
+  /**
+   * A kind of page that turned slow (E4.2, speed D336): its 75th percentile of a Core Web Vital on one screen is poor on Google's line over
+   * the last 7 days, today included, and was not poor over the 21 days before them (the speed report's 28 days).
+   */
+  slowPage: {
+    recentDays: 7,
+    beforeDays: 21,
+    /** Measurements of the figure in each window (the speed report shows a figure from 20 in 28 days). */
+    minSamples7d: 50,
+    minSamplesBefore: 100,
+    /** Urgent from this many times Google's poor line (a main content shown after 8 s). */
+    urgentRatio: 2,
+  },
+  /**
+   * A store domain whose health check fails (E4.2, domains D315: `domainHealth()`): it no longer reaches the store, its certificate fails,
+   * it lapsed or lapses without renewing, its registrant is not confirmed, or one added days ago still does not reach the store.
+   */
+  domain: {
+    /** A domain still waiting this many whole days after it was added is stuck; before that it is being set up. */
+    minPendingDays: 2,
+    /** A lapsed domain is said for this many days after its expiry; after that the Domains page keeps it. */
+    lapsedDays: 30,
+  },
 } as const;
+
+/** The Core Web Vitals the slow-page rule reads (the first answer, TTFB, is the server's and is on the Speed page only). */
+export const SLOW_PAGE_METRICS = ["lcp", "inp", "cls"] as const satisfies readonly SpeedMetric[];
+/** The health findings the domain rule speaks of, the most serious first; the email records and advice stay on the Domains page. */
+export const DOMAIN_ALERT_CODES = ["points_away", "certificate_failing", "expired", "expires_soon", "contact_unverified", "not_pointed", "proof_missing"] as const satisfies readonly FindingCode[];
 
 /** The most alerts returned: urgent ones are never dropped for it. */
 export const MAX_ALERTS = 8;
@@ -235,6 +280,26 @@ export type CheckoutCounts = { started: number; completed: number };
 /** One completed month of returning customers' revenue. */
 export type ReturningMonth = { month: string; revenueMinor: number; orders: number };
 
+/** A page's heat totals (D656, every visitor's) over the last 7 complete days and the 28 before them: page views, and those with a dead or rage click. */
+export type PageFrustrationRow = { page: string; views7: number; frustrated7: number; viewsBefore: number; frustratedBefore: number };
+
+/** One window's measurements of a figure and their 75th percentile (null for none). */
+export type SpeedWindow = { n: number; p75: number | null };
+
+/** A kind of page's figure on one screen over the last 7 days and the 21 before them (`ALERT_RULES.slowPage`). */
+export type SpeedWindowRow = { kind: SpeedKind; screen: SpeedScreen; metric: SpeedMetric; recent: SpeedWindow; before: SpeedWindow };
+
+/** One of the store's domains and what its health check found (`domainHealth()`), from the store's own rows and the daily domain watch. */
+export type DomainAlertRow = {
+  hostname: string;
+  /** Its connection to the store; null for a domain the store holds and has not connected. */
+  status: "pending" | "active" | null;
+  primary: boolean;
+  /** Whole days since it was added; null when not known. */
+  ageDays: number | null;
+  findings: readonly { code: FindingCode; severity: DomainSeverity; values: Readonly<Record<string, string | number>> }[];
+};
+
 /**
  * Everything `alertsFor()` reads. Only the first four fields are required; a rule whose input is missing or null raises
  * nothing.
@@ -268,6 +333,12 @@ export type AlertSnapshot = {
   costs?: { coverage: number | null; orders: number } | null;
   /** Returning customers' revenue by completed month, oldest first. */
   returningMonthly?: readonly ReturningMonth[] | null;
+  /** Per page, its heat totals in the two windows (`PageFrustrationRow`); null when they could not be read. */
+  pageFrustration?: readonly PageFrustrationRow[] | null;
+  /** Per kind of page, screen and Core Web Vital, the two windows' 75th percentiles (`SpeedWindowRow`). */
+  speed?: readonly SpeedWindowRow[] | null;
+  /** The store's domains and their findings (`DomainAlertRow`). */
+  domains?: readonly DomainAlertRow[] | null;
 };
 
 const SEVERITY_RANK: Record<AlertSeverity, number> = { urgent: 0, warning: 1, info: 2, good: 3 };
@@ -707,6 +778,147 @@ function bestDayAlert(s: AlertSnapshot, days: DayMap, words: Words): Alert | nul
   };
 }
 
+function frustrationAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.frustration;
+  const r = ALERT_RULES.frustration;
+  type Hit = { row: PageFrustrationRow; now: number; before: number; rise: number };
+  const hits: Hit[] = [];
+  for (const row of s.pageFrustration ?? []) {
+    if (typeof row.page !== "string" || ![row.views7, row.frustrated7, row.viewsBefore, row.frustratedBefore].every(finite)) continue;
+    if (row.views7 < r.minViews7d || row.viewsBefore < r.minViewsBefore) continue;
+    const now = Math.min(row.views7, Math.max(0, row.frustrated7)) / row.views7;
+    const before = Math.min(row.viewsBefore, Math.max(0, row.frustratedBefore)) / row.viewsBefore;
+    const rise = now - before;
+    if (rise < r.minRisePoints - EPS) continue;
+    if (before > 0 && now / before < r.minRatio - EPS) continue;
+    hits.push({ row, now, before, rise });
+  }
+  if (hits.length === 0) return null;
+  hits.sort((a, b) => b.rise - a.rise || b.row.views7 - a.row.views7 || (a.row.page < b.row.page ? -1 : a.row.page > b.row.page ? 1 : 0));
+  const top = hits[0];
+  const others = hits.length - 1;
+  let text = fillWords(w.text, { page: top.row.page, now: formatPercent(top.now, 0), before: formatPercent(top.before, 0) });
+  if (others > 0) text += countText(w.others, others, {}, formatCount(others));
+  return {
+    id: "page-frustration",
+    severity: top.rise >= r.urgentRisePoints - EPS ? "urgent" : "warning",
+    text,
+    // Its heatmap, where the parts visitors click in vain are drawn.
+    href: `/analytics/heatmaps?${new URLSearchParams({ page: top.row.page }).toString()}`,
+    action: w.action,
+    evidence: hits.slice(0, 3).map((h) => ({
+      label: fillWords(w.label, { page: h.row.page }),
+      value: fillWords(w.value, { frustrated: formatCount(h.row.frustrated7), views: formatCount(h.row.views7), share: formatPercent(h.now, 1) }),
+      baseline: fillWords(w.baseline, { share: formatPercent(h.before, 1) }),
+    })),
+    size: top.rise / r.minRisePoints,
+  };
+}
+
+function slowPageAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.slowPage;
+  const r = ALERT_RULES.slowPage;
+  const locale = s.locale ?? "en";
+  type Hit = { row: SpeedWindowRow; now: number; before: number; poor: number; ratio: number };
+  const hits: Hit[] = [];
+  for (const row of s.speed ?? []) {
+    if (!(SLOW_PAGE_METRICS as readonly string[]).includes(row.metric) || !SPEED_KINDS.includes(row.kind) || !SPEED_SCREENS.includes(row.screen)) continue;
+    const { recent, before } = row;
+    if (!finite(recent.n) || !finite(before.n) || !finite(recent.p75) || !finite(before.p75)) continue;
+    if (recent.n < r.minSamples7d || before.n < r.minSamplesBefore) continue;
+    // Turned poor: poor now, and not poor before (a page that was always slow is the Speed page's to say, not news).
+    if (rateMetric(row.metric, recent.p75) !== "poor" || rateMetric(row.metric, before.p75) === "poor") continue;
+    const poor = SPEED_THRESHOLDS[row.metric][1];
+    hits.push({ row, now: recent.p75, before: before.p75, poor, ratio: recent.p75 / poor });
+  }
+  if (hits.length === 0) return null;
+  // The furthest past the line first; then in the Speed page's order (kind, screen, figure), so the order is stable.
+  const rank = (h: Hit) => (SPEED_KINDS.indexOf(h.row.kind) * 10 + SPEED_SCREENS.indexOf(h.row.screen)) * 10 + SLOW_PAGE_METRICS.indexOf(h.row.metric as (typeof SLOW_PAGE_METRICS)[number]);
+  hits.sort((a, b) => b.ratio - a.ratio || rank(a) - rank(b));
+  const top = hits[0];
+  const others = hits.length - 1;
+  const value = (h: Hit, v: number) => speedValueText(h.row.metric, v, locale);
+  let text = fillWords(w.text, {
+    page: w.kinds[top.row.kind],
+    screen: w.screens[top.row.screen],
+    metric: w.metrics[top.row.metric as (typeof SLOW_PAGE_METRICS)[number]],
+    now: value(top, top.now),
+    before: value(top, top.before),
+    poor: value(top, top.poor),
+  });
+  if (others > 0) text += countText(w.others, others, {}, formatCount(others));
+  return {
+    id: "page-slow",
+    severity: top.ratio >= r.urgentRatio - EPS ? "urgent" : "warning",
+    text,
+    href: "/analytics/speed",
+    action: w.action,
+    evidence: hits.slice(0, 3).map((h) => ({
+      label: fillWords(w.label, { metric: w.metrics[h.row.metric as (typeof SLOW_PAGE_METRICS)[number]], page: w.kinds[h.row.kind], screen: w.screens[h.row.screen] }),
+      value: value(h, h.now),
+      baseline: fillWords(w.baseline, { value: value(h, h.before), n: formatCount(h.row.before.n) }),
+    })),
+    size: top.ratio,
+  };
+}
+
+/** A domain's own setup findings: while it is waiting they are the owner's work in hand, said only once it has waited `minPendingDays`. */
+const SETUP_FINDINGS: ReadonlySet<string> = new Set(["not_pointed", "proof_missing"]);
+
+function domainAlert(s: AlertSnapshot, words: Words): Alert | null {
+  const w = words.domain;
+  const r = ALERT_RULES.domain;
+  type Hit = { row: DomainAlertRow; code: (typeof DOMAIN_ALERT_CODES)[number]; values: Readonly<Record<string, string | number>>; urgent: boolean };
+  const hits: Hit[] = [];
+  for (const row of s.domains ?? []) {
+    if (typeof row.hostname !== "string" || row.hostname === "") continue;
+    for (const f of row.findings ?? []) {
+      const code = (DOMAIN_ALERT_CODES as readonly string[]).includes(f.code) ? (f.code as Hit["code"]) : null;
+      if (!code || (f.severity !== "error" && f.severity !== "warning")) continue;
+      const setup = SETUP_FINDINGS.has(code);
+      // A connection still being set up speaks once it has waited; a lapsed domain for its first days, while it can still come back.
+      if (setup && (row.status !== "pending" || !finite(row.ageDays) || row.ageDays < r.minPendingDays)) continue;
+      if (code === "expired") {
+        const date = String(f.values.date ?? "");
+        if (!isDay(date) || daysBetween(date, s.today) > r.lapsedDays) continue;
+      }
+      hits.push({ row, code, values: f.values, urgent: f.severity === "error" && !setup });
+    }
+  }
+  if (hits.length === 0) return null;
+  hits.sort(
+    (a, b) =>
+      Number(b.urgent) - Number(a.urgent) ||
+      Number(b.row.primary) - Number(a.row.primary) ||
+      DOMAIN_ALERT_CODES.indexOf(a.code) - DOMAIN_ALERT_CODES.indexOf(b.code) ||
+      (a.row.hostname < b.row.hostname ? -1 : a.row.hostname > b.row.hostname ? 1 : 0),
+  );
+  // One line per domain: its most serious finding.
+  const seen = new Set<string>();
+  const domains = hits.filter((h) => (seen.has(h.row.hostname) ? false : (seen.add(h.row.hostname), true)));
+  const top = domains[0];
+  const fill = (h: Hit, template: string) =>
+    fillWords(template, {
+      domain: h.row.hostname,
+      date: String(h.values.date ?? ""),
+      days: h.code === "expires_soon" ? formatCount(Number(h.values.days ?? 0)) : formatCount(h.row.ageDays ?? 0),
+      registrar: String(h.values.registrar || w.theirRegistrar),
+    });
+  const textOf = (h: Hit) => (h.code === "expires_soon" && h.values.registrar && h.values.registrar !== "Kaizena Flow" ? w.text.expiresElsewhere : w.text[h.code]);
+  let text = fill(top, textOf(top));
+  const others = domains.length - 1;
+  if (others > 0) text += countText(w.others, others, {}, formatCount(others));
+  return {
+    id: "domain-problem",
+    severity: top.urgent ? "urgent" : "warning",
+    text,
+    href: "/settings/domains",
+    action: w.action,
+    evidence: domains.slice(0, 3).map((h) => ({ label: h.row.hostname, value: fill(h, w.short[h.code]), baseline: null })),
+    size: domains.filter((h) => h.urgent).length + domains.length / 10,
+  };
+}
+
 /**
  * Sorts alerts: urgent, warning, info, then good; within a severity the larger first (then by id, so the order is
  * stable). Keeps at most `MAX_ALERTS`, and never drops an urgent one.
@@ -740,6 +952,9 @@ export function alertsFor(snapshot: AlertSnapshot, words: Words = analyticsWords
     costAlert(snapshot, words),
     returningHighAlert(snapshot, words),
     bestDayAlert(snapshot, days, words),
+    frustrationAlert(snapshot, words),
+    slowPageAlert(snapshot, words),
+    domainAlert(snapshot, words),
   ].filter((a): a is Alert => a !== null);
   return orderAlerts(found);
 }

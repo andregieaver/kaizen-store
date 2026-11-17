@@ -4,7 +4,20 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { ALERT_RULES, alertsFor, type Alert, type AlertSnapshot, type ChannelCacRow, type DailyPoint, type ProductRefundRow, type ReturningMonth } from "@/lib/analytics-alerts";
+import {
+  ALERT_RULES,
+  alertsFor,
+  SLOW_PAGE_METRICS,
+  type Alert,
+  type AlertSnapshot,
+  type ChannelCacRow,
+  type DailyPoint,
+  type DomainAlertRow,
+  type PageFrustrationRow,
+  type ProductRefundRow,
+  type ReturningMonth,
+  type SpeedWindowRow,
+} from "@/lib/analytics-alerts";
 import {
   explainChange,
   type ChangeExplanation,
@@ -17,19 +30,25 @@ import { derive } from "@/lib/analytics-kpi";
 import { addDays, addMonths, addYears, customPeriod, lastYearOf, previousPeriodOf, startOfMonth, todayIn, type AnalyticsParams, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { periodProgress, targetProgress, type DailyActual, type PeriodDay, type PeriodProgress, type TargetProgress } from "@/lib/analytics-targets";
 import { isNotAChannel, UNKNOWN_CHANNEL } from "@/lib/analytics-traffic";
+import type { DomainChecks } from "@/lib/custom-domains";
+import { apexOf, domainHealth, servingOf, watchFresh, type DomainFacts } from "@/lib/domain-health";
 import { mainCurrency } from "@/lib/markets";
+import { SPEED_KINDS, SPEED_SCREENS } from "@/lib/speed";
+import { storeDayKey } from "@/lib/visit-hash";
 import { analyticsWords, countText } from "@/lib/analytics-words";
 
 import { geoReport } from "./analytics-geo-data";
 import { discountsReport } from "./analytics-discounts-data";
+import { registrationFacts } from "./domain-registrations";
 import { inventoryReport } from "./analytics-inventory-data";
 import { OTHER_ID, productsReport } from "./analytics-products-data";
 import { getAnalyticsSettings, listPeriodTargets, listTargets, type StoredAnalyticsSettings, type StoredPeriodTarget } from "./analytics-settings";
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn } from "./analytics-sql";
 import { periodTotals, seriesByBucket, setBased } from "./analytics-totals";
 import { marketingReport, sessionTotals, trafficReport, type MarketingReport, type TrafficReport } from "./analytics-traffic-data";
+import { owned } from "./owned";
 import type { Store } from "./stores";
-import { checkedRows, col } from "./typed-rows";
+import { checkedRows, col, typedRows } from "./typed-rows";
 
 /**
  * What the store's own figures say needs a look, where sales are heading and why they moved (D152, docs/analytics.md, "Alerts,
@@ -394,6 +413,147 @@ async function costCoverage(store: Store, today: string, settings: StoredAnalyti
 }
 
 // ---------------------------------------------------------------------------
+// Where visitors get stuck, slow pages and domains (ecosystem plan E4.2, D729)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per page, every visitor's heat totals (D656, tag `''`) over the last 7 complete days and the 28 before them: only pages with enough views
+ * in the last 7 for the rule to read, at most 500. Daily totals only, never a visitor.
+ */
+export async function pageFrustrationRows(store: Store, today: string): Promise<PageFrustrationRow[]> {
+  const recentFrom = addDays(today, -RECENT_DAYS);
+  const from = addDays(today, -(RECENT_DAYS + BASELINE_DAYS));
+  const rows = checkedRows(
+    z.object({ page: col.text, views7: col.minor, frustrated7: col.minor, views_before: col.minor, frustrated_before: col.minor }),
+    await setBased(sql`
+      select page,
+        coalesce(sum(views) filter (where day >= ${recentFrom}::date), 0)::bigint as views7,
+        coalesce(sum(frustrated_views) filter (where day >= ${recentFrom}::date), 0)::bigint as frustrated7,
+        coalesce(sum(views) filter (where day < ${recentFrom}::date), 0)::bigint as views_before,
+        coalesce(sum(frustrated_views) filter (where day < ${recentFrom}::date), 0)::bigint as frustrated_before
+      from commerce.page_heat_days
+      where ${owned(store.id)} and tag = '' and day >= ${from}::date and day < ${today}::date
+      group by page
+      having coalesce(sum(views) filter (where day >= ${recentFrom}::date), 0) >= ${ALERT_RULES.frustration.minViews7d}
+      order by page limit 500
+    `),
+  );
+  return rows.map((r) => ({ page: r.page, views7: r.views7, frustrated7: r.frustrated7, viewsBefore: r.views_before, frustratedBefore: r.frustrated_before }));
+}
+
+const p75 = col.int.nullable();
+const SPEED_WINDOWS = z.object({
+  kind: z.enum(SPEED_KINDS),
+  screen: z.enum(SPEED_SCREENS),
+  lcp_n: col.minor,
+  lcp: p75,
+  lcp_nb: col.minor,
+  lcp_b: p75,
+  inp_n: col.minor,
+  inp: p75,
+  inp_nb: col.minor,
+  inp_b: p75,
+  cls_n: col.minor,
+  cls: p75,
+  cls_nb: col.minor,
+  cls_b: p75,
+});
+
+/**
+ * Per kind of page and screen, the 75th percentile of each Core Web Vital (D336) over the last 7 store days, today included, and over the
+ * 21 before them, worked out by the database (`percentile_disc`, the nearest rank `percentile75()` takes), so no sample is fetched.
+ */
+export async function speedWindowRows(store: Store, now: Date): Promise<SpeedWindowRow[]> {
+  const { recentDays, beforeDays } = ALERT_RULES.slowPage;
+  const to = storeDayKey(now, store.timeZone);
+  const recent = sql`day > ${to}::date - ${recentDays}::int`;
+  const before = sql`day <= ${to}::date - ${recentDays}::int`;
+  const rows = await typedRows(
+    SPEED_WINDOWS,
+    sql`select kind, screen,
+          count(lcp_ms) filter (where ${recent})::bigint as lcp_n, percentile_disc(0.75) within group (order by lcp_ms) filter (where ${recent}) as lcp,
+          count(lcp_ms) filter (where ${before})::bigint as lcp_nb, percentile_disc(0.75) within group (order by lcp_ms) filter (where ${before}) as lcp_b,
+          count(inp_ms) filter (where ${recent})::bigint as inp_n, percentile_disc(0.75) within group (order by inp_ms) filter (where ${recent}) as inp,
+          count(inp_ms) filter (where ${before})::bigint as inp_nb, percentile_disc(0.75) within group (order by inp_ms) filter (where ${before}) as inp_b,
+          count(cls_milli) filter (where ${recent})::bigint as cls_n, percentile_disc(0.75) within group (order by cls_milli) filter (where ${recent}) as cls,
+          count(cls_milli) filter (where ${before})::bigint as cls_nb, percentile_disc(0.75) within group (order by cls_milli) filter (where ${before}) as cls_b
+        from commerce.speed_samples
+        where ${owned(store.id)} and day > ${to}::date - ${recentDays + beforeDays}::int and day <= ${to}::date
+        group by kind, screen`,
+  );
+  return rows.flatMap((r) =>
+    SLOW_PAGE_METRICS.map((m): SpeedWindowRow => ({
+      kind: r.kind,
+      screen: r.screen,
+      metric: m,
+      recent: { n: r[`${m}_n`], p75: r[m] },
+      before: { n: r[`${m}_nb`], p75: r[`${m}_b`] },
+    })),
+  );
+}
+
+const DOMAIN_ROW = z.object({ hostname: col.text, status: z.enum(["pending", "active"]), is_primary: col.bool, age_days: col.int, checks: z.unknown() });
+
+/**
+ * The store's domains and what their health check finds (D315 `domainHealth()`) from what is kept, without asking the world: the
+ * connection's last check and the daily watch's answer (`checks.watch`, `src/server/domain-watch.ts`, while fresh), and the registrations
+ * with Kaizena Flow (expiry, renewal, the registrant's email); a domain registered elsewhere by the registry's expiry the watch kept. A
+ * registration the store holds and has not connected is a row of its own.
+ */
+export async function domainAlertRows(store: Store, now: Date): Promise<DomainAlertRow[]> {
+  const [domains, registrations] = await Promise.all([
+    typedRows(
+      DOMAIN_ROW,
+      sql`select hostname, status, is_primary, floor(extract(epoch from (${now.toISOString()}::timestamptz - created_at)) / 86400)::int as age_days, checks
+          from commerce.store_domains where ${owned(store.id)} order by is_primary desc, hostname`,
+    ),
+    registrationFacts(store.id),
+  ]);
+  const byApex = new Map(registrations.map((r) => [r.apex, r]));
+  const findings = (facts: DomainFacts) => domainHealth(facts, now).map((f) => ({ code: f.code, severity: f.severity, values: f.values }));
+  const rows: DomainAlertRow[] = domains.map((d) => {
+    const checks = (d.checks && typeof d.checks === "object" ? d.checks : {}) as DomainChecks;
+    const apex = checks.apexName || apexOf(d.hostname);
+    const reg = byApex.get(apex);
+    const watch = watchFresh(checks.watch, now) ? checks.watch : null;
+    const facts: DomainFacts = {
+      hostname: d.hostname,
+      apex,
+      connection: {
+        status: d.status,
+        isPrimary: d.is_primary,
+        txt: checks.txt,
+        misconfigured: checks.misconfigured,
+        problem: checks.problem,
+        serving: d.status === "active" ? servingOf(checks.watch, now) : null,
+      },
+      dnsHost: "unknown",
+      registration: reg
+        ? { withUs: true, registrar: "Kaizena Flow", expiresAt: reg.expiresAt, renews: reg.renews, contactVerified: reg.contactVerified }
+        : { withUs: false, registrar: watch?.registrar ?? null, expiresAt: watch?.expiresAt ?? null, renews: null, contactVerified: null },
+      email: null,
+      caa: null,
+    };
+    return { hostname: d.hostname, status: d.status, primary: d.is_primary, ageDays: d.age_days, findings: findings(facts) };
+  });
+  const connected = new Set(domains.map((d) => (d.checks as DomainChecks | null)?.apexName || apexOf(d.hostname)));
+  for (const reg of registrations) {
+    if (connected.has(reg.apex)) continue;
+    const facts: DomainFacts = {
+      hostname: reg.apex,
+      apex: reg.apex,
+      connection: null,
+      dnsHost: "unknown",
+      registration: { withUs: true, registrar: "Kaizena Flow", expiresAt: reg.expiresAt, renews: reg.renews, contactVerified: reg.contactVerified },
+      email: null,
+      caa: null,
+    };
+    rows.push({ hostname: reg.apex, status: null, primary: false, ageDays: null, findings: findings(facts) });
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
 // Alerts
 // ---------------------------------------------------------------------------
 
@@ -406,7 +566,7 @@ export async function alertSnapshotFor(store: Store, now: Date, options: History
   const history = options.history ?? dailyHistory(store, now, settings);
   const h = await history;
   const today = h.today;
-  const [productRefunds, channelCac, stockouts, checkout, creeping, targetMinor, costs, returningMonthly] = await Promise.all([
+  const [productRefunds, channelCac, stockouts, checkout, creeping, targetMinor, costs, returningMonthly, pageFrustration, speed, domains] = await Promise.all([
     safe("refunds by product", () => productRefundRows(store, today)),
     safe("channels", () => channelCacRows(store, now, today)),
     safe("stock", async () => (await inventoryReport(store, now)).alerts),
@@ -415,6 +575,9 @@ export async function alertSnapshotFor(store: Store, now: Date, options: History
     safe("target", () => monthTargetMinor(store, today)),
     safe("costs", () => costCoverage(store, today, settings)),
     safe("returning customers", () => returningMonths(store, today)),
+    safe("page behaviour", () => pageFrustrationRows(store, today)),
+    safe("speed", () => speedWindowRows(store, now)),
+    safe("domains", () => domainAlertRows(store, now)),
   ]);
   const daily: DailyPoint[] = h.days.map((d) => ({ day: d.day, orders: d.orders, checkoutOrders: d.checkoutOrders, revenueMinor: d.netRevenueMinor, sessions: d.sessions }));
   return {
@@ -432,6 +595,9 @@ export async function alertSnapshotFor(store: Store, now: Date, options: History
     target: targetMinor === null ? null : targetFrom(h, targetMinor),
     costs,
     returningMonthly,
+    pageFrustration,
+    speed,
+    domains,
   };
 }
 
