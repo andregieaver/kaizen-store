@@ -921,7 +921,7 @@
       },
       "route.subscription-reminders": {
         "statements": 174,
-        "rowsRead": 2744
+        "rowsRead": 2746
       },
       "route.theme-shots": {
         "statements": 9,
@@ -1287,7 +1287,7 @@
       },
       "route.subscription-reminders": {
         "statements": 314,
-        "rowsRead": 5565
+        "rowsRead": 5566
       },
       "route.theme-shots": {
         "statements": 9,
@@ -1653,7 +1653,7 @@
       },
       "route.subscription-reminders": {
         "statements": 140,
-        "rowsRead": 2821
+        "rowsRead": 2820
       },
       "route.theme-shots": {
         "statements": 0,

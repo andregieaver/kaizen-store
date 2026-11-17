@@ -93,6 +93,21 @@ const REACHES_NETWORK: readonly string[] = [
   "dispatcher.knowledge",
 ];
 
+/**
+ * Work whose rows read follow the database's own clock (`now()` in SQL, which the fixed clock of this file cannot reach): only its
+ * statements are compared, its rows read are written down. The VAT labels' check reads the countries' rates differently in the minutes
+ * around a country's midnight (29 rows at 21:59 UTC, 257 at 22:00). Only shrinks.
+ */
+const CLOCK_ROWS: readonly string[] = ["dispatcher.vat-labels"];
+/**
+ * Work whose rows read with 20 stores differ by a few between runs on fresh databases however the tables are vacuumed (its runners read
+ * with a limit rows that other jobs wrote side by side, so where a scan stops moves): with 20 stores only its statements are compared.
+ * route.broadcasts read 7,229 to 7,258 rows in nine runs. Only shrinks.
+ */
+const UNSTEADY_TWENTY_ROWS: readonly string[] = ["route.broadcasts"];
+const keysOf = (name: string, group: Group | "growth" = "one") =>
+  CLOCK_ROWS.includes(name) || (group !== "one" && UNSTEADY_TWENTY_ROWS.includes(name)) ? (["statements"] as const) : (["statements", "rowsRead"] as const);
+
 const ROUTES = Object.fromEntries(
   await Promise.all(
     [...MINUTE_ROUTES, ...DAILY_ROUTES].map(async (name) => [name, ((await import(`../app/api/cron/${name}/route.ts`)) as { POST: (r: Request) => Promise<Response> }).POST]),
@@ -133,8 +148,12 @@ beforeAll(async () => {
     }
   }
   syncBuiltinESMExports();
-  // Vacuumed and analysed first, so the planner's statistics and the visibility map are as they will stay: autovacuum would otherwise come by
-  // in the middle of a run and turn an index scan into an index-only one, and the rows read would change with when it came.
+  // Vacuumed and analysed first, so the planner's statistics and the visibility map are as they will stay, and autovacuum kept away until
+  // the file ends: coming by in the middle of a run it turned an index scan into an index-only one, or analysed a table a job had just
+  // filled (the knowledge base's passages read 39,700 rows or 78,893), and the rows read changed with when it came.
+  for (const { tablename } of await support.side()`select tablename from pg_tables where schemaname = 'commerce'`) {
+    await support.side().unsafe(`alter table commerce."${String(tablename)}" set (autovacuum_enabled = false)`);
+  }
   await support.side()`vacuum analyze`;
 });
 
@@ -143,9 +162,15 @@ afterAll(async () => {
   for (const restore of originals) restore();
   syncBuiltinESMExports();
   vi.useRealTimers();
-  if (WRITE) write();
-  await closeDb();
-  await support.closeSide();
+  try {
+    if (WRITE) write();
+  } finally {
+    await closeDb();
+    for (const { tablename } of await support.side()`select tablename from pg_tables where schemaname = 'commerce'`) {
+      await support.side().unsafe(`alter table commerce."${String(tablename)}" reset (autovacuum_enabled)`);
+    }
+    await support.closeSide();
+  }
 });
 
 /** Runs the work of an answered request: what the route left for after its answer. */
@@ -192,7 +217,7 @@ function compare(group: Group, name: string, now: Figures): void {
     expect(now.statements, `${name} is new and sends ${now.statements} statements when idle`).toBeLessThanOrEqual(20);
     return;
   }
-  for (const key of ["statements", "rowsRead"] as const) {
+  for (const key of keysOf(name, group)) {
     if (now[key] > held[key]) {
       const sent = support.mostRepeated(records[`${group}:${name}`] ?? []).join("\n  ");
       throw new Error(
@@ -215,7 +240,7 @@ function compareGrowth(name: string): void {
   const now = growthOf(name);
   const held = support.readBaseline().growth?.[name];
   if (!now || !held) return;
-  for (const key of ["statements", "rowsRead"] as const) {
+  for (const key of keysOf(name, "growth")) {
     if (now[key] > held[key]) {
       throw new Error(`${name}'s growth from 1 to 20 stores is now ${now[key]} ${key}, baseline ${held[key]}: it does more per store than it did (read the stores' work in one statement), or accept it with FIRST=1 ${FIX} and say why in the commit message`);
     }
@@ -231,7 +256,7 @@ function write(): void {
   for (const [group, now] of [["one", measured.one], ["twenty", measured.twenty], ["growth", growth]] as const) {
     if (Object.keys(now).length === 0) continue;
     const held = before[group] ?? {};
-    const raised = Object.entries(now).filter(([name, f]) => held[name] && (f.statements > held[name].statements || f.rowsRead > held[name].rowsRead));
+    const raised = Object.entries(now).filter(([name, f]) => held[name] && keysOf(name, group).some((key) => f[key] > held[name][key]));
     if (raised.length > 0 && !RAISE) {
       throw new Error(`Not written: ${raised.map(([name]) => `${group} ${name}`).join(", ")} rose; with FIRST=1 the rise is accepted.`);
     }

@@ -375,14 +375,16 @@ that have every per-store feature a job looks at switched on, and holds statemen
 | | Statements, 1 store | Rows read, 1 store | Statements, 20 stores | Rows read, 20 stores |
 |---|---|---|---|---|
 | The idle tick (78 jobs, one by one) | 143 | 387 | 595 | 54,235 |
-| The minute and daily routes (11) | 286 | 2,875 | 526 | 13,869 |
+| The minute and daily routes (11) | 286 | 2,877 | 526 | 13,870 |
 | A store's cold frame (the demo store) | 5 | 54 | 5 | 444 |
 | Kaizena Flow's cold frame | 17 | 47 | 17 | 329 |
 
 What 20 stores add is held too (growth, which only falls; 0 once a job reads every store's work in one statement): one statement or more
 per store in auto-archive (+20), the autopilot's budget alerts (+20), Tripletex and Fiken (+80 each, ten stores each), the knowledge base
 (+160), the ledger (+50), repeating Work invoices (+40), the broadcasts route (+100) and the daily route (+140). The frames send no more
-statements with 20 stores, but read more rows.
+statements with 20 stores, but read more rows. Two rows-read figures are written down but not held: the VAT labels' check, which
+follows the database's own clock (29 rows, 257 in the minutes around a country's midnight), and the broadcasts route's with 20 stores,
+which moves by a few rows between runs; their statements are held.
 
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
