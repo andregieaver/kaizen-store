@@ -228,3 +228,9 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Open: 0.19 commits 2–3 (blocked by the other session's Products/customers rewrite: needs a new brief).
 - Scheduled: 17 Nov 10:07 UTC day-after check for 0.45 (trig_01VQNkTk9E662mkjfKDJebJc).
 - Owner's: invoices drill (0.30); upload >1600 px photo (0.33; media_with_800 was 0 on 16 Nov); unwired.md (0.36); VAT registration stored twice (FT-16).
+
+## 17 Nov 10:20 UTC — phase 1 started (owner: "Start phase 1")
+- 0.45 day-after: 0 connection timeouts, round 81 jobs 0.5 s (in D674).
+- Running: 1.1 (Sonnet, /home/user/kaizen-store), 1.15 (Sonnet, kz-b), 1.27 then 1.28 (Sonnet, kz-c). Template: run/phase1-template.md (mk via sed __STEPS__/__DIR__/__BRIEFS__).
+- Next after 1.1: 1.2, 1.4, 1.5, 1.8, 1.9 (then 1.10, 1.11, 1.12, 1.13, 1.25), 1.17, 1.18, 1.23, 1.3 (then 1.6, 1.7, 1.14); 1.22 (scheduler, careful), 1.24; 1.19 strong; 1.20→1.21→1.29 (1.29 only if needed; no paid machines).
+- Write-ups: claim with scripts/claim-decision.mjs from /home/user/kz-fix.
