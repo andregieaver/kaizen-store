@@ -1,6 +1,6 @@
 {
-  "id": "37ffba24-3cbd-405e-9caa-6d204bda8ed3",
-  "prevId": "e0fe3dad-889e-4674-a067-274f606d144b",
+  "id": "bd6e2613-ff53-496b-aff7-d133ba240efa",
+  "prevId": "f0aa9b8c-221e-471b-a4c0-cc30557b73b0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -72964,6 +72964,188 @@
         "selling_plans_min_cycles": {
           "name": "selling_plans_min_cycles",
           "value": "\"commerce\".\"selling_plans\".\"min_cycles\" between 0 and 24"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.sending_domains": {
+      "name": "sending_domains",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_local": {
+          "name": "from_local",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'news'"
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "records": {
+          "name": "records",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "records_written": {
+          "name": "records_written",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "sending_domains_created_by_idx": {
+          "name": "sending_domains_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "sending_domains_store_id_stores_id_fk": {
+          "name": "sending_domains_store_id_stores_id_fk",
+          "tableFrom": "sending_domains",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "sending_domains_created_by_accounts_id_fk": {
+          "name": "sending_domains_created_by_accounts_id_fk",
+          "tableFrom": "sending_domains",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sending_domains_store_key": {
+          "name": "sending_domains_store_key",
+          "columns": [
+            "store_id"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "sending_domains_domain": {
+          "name": "sending_domains_domain",
+          "value": "\"commerce\".\"sending_domains\".\"domain\" ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$' and char_length(\"commerce\".\"sending_domains\".\"domain\") <= 253"
+        },
+        "sending_domains_from_local": {
+          "name": "sending_domains_from_local",
+          "value": "\"commerce\".\"sending_domains\".\"from_local\" ~ '^[a-z0-9]([a-z0-9._-]{0,38}[a-z0-9])?$'"
+        },
+        "sending_domains_status": {
+          "name": "sending_domains_status",
+          "value": "\"commerce\".\"sending_domains\".\"status\" in ('pending', 'verified', 'failed')"
+        },
+        "sending_domains_records": {
+          "name": "sending_domains_records",
+          "value": "jsonb_typeof(\"commerce\".\"sending_domains\".\"records\") = 'array' and jsonb_array_length(\"commerce\".\"sending_domains\".\"records\") <= 10"
+        },
+        "sending_domains_verified_at": {
+          "name": "sending_domains_verified_at",
+          "value": "\"commerce\".\"sending_domains\".\"status\" <> 'verified' or \"commerce\".\"sending_domains\".\"verified_at\" is not null"
+        },
+        "sending_domains_problem": {
+          "name": "sending_domains_problem",
+          "value": "\"commerce\".\"sending_domains\".\"problem\" is null or char_length(\"commerce\".\"sending_domains\".\"problem\") between 1 and 500"
         }
       },
       "isRLSEnabled": false

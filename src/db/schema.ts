@@ -5348,6 +5348,50 @@ export const emailMessages = commerce.table(
 );
 
 /**
+ * A store's own sending domain (D727, step M1.1 of `docs/audits/email-marketing-2026-11.md`; Kaizena Flow's own when `store_id` is null),
+ * written only by `src/server/sending-domains.ts`. The domain is added to Resend in its EU region; its DNS records (DKIM on
+ * `resend._domainkey`, SPF and the return path on `send.`) are written into the zone when Kaizena Flow keeps it, else shown to copy. While
+ * `status` is `verified` the store's emails go from `{from_local}@{domain}`; otherwise from Kaizena Flow's shared address, as before.
+ */
+export const sendingDomains = commerce.table(
+  "sending_domains",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** The registrable domain or a subdomain of it, lower case, without a trailing dot. */
+    domain: text("domain").notNull(),
+    /** The part before the @ (`news`, `hello`, `butikk`, …). */
+    fromLocal: text("from_local").notNull().default("news"),
+    /** Resend's id for the domain; null until Resend has it. */
+    providerId: text("provider_id"),
+    /** `pending` (records not seen yet), `verified`, `failed` (Resend gave up; check again after fixing the records). */
+    status: text("status").notNull().default("pending"),
+    /** `SendingRecord[]` (`src/lib/sending-domains.ts`): the records Resend asks for, with each one's own status. */
+    records: jsonb("records").notNull().default(sql`'[]'::jsonb`),
+    /** Whether Kaizena Flow wrote the records into a zone it keeps. */
+    recordsWritten: boolean("records_written").notNull().default(false),
+    /** Why the last step failed, in the staff's words; null when it did not. */
+    problem: text("problem"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("sending_domains_store_key").on(t.storeId).nullsNotDistinct(),
+    index("sending_domains_created_by_idx").on(t.createdBy),
+    check("sending_domains_domain", sql`${t.domain} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$' and char_length(${t.domain}) <= 253`),
+    check("sending_domains_from_local", sql`${t.fromLocal} ~ '^[a-z0-9]([a-z0-9._-]{0,38}[a-z0-9])?$'`),
+    check("sending_domains_status", sql`${t.status} in ('pending', 'verified', 'failed')`),
+    check("sending_domains_records", sql`jsonb_typeof(${t.records}) = 'array' and jsonb_array_length(${t.records}) <= 10`),
+    check("sending_domains_verified_at", sql`${t.status} <> 'verified' or ${t.verifiedAt} is not null`),
+    check("sending_domains_problem", sql`${t.problem} is null or char_length(${t.problem}) between 1 and 500`),
+  ],
+);
+
+/**
  * A paid order's download link for one file (D24). The token is the secret
  * in the link; limits come from the product when the order is paid.
  */

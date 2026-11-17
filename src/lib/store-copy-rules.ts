@@ -438,6 +438,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   domain_purchases: never("What the original paid for its domains (D315)."),
   dns_zones: never("The DNS Kaizena Flow keeps for the original's domains (D315): a domain belongs to one store."),
   dns_changes: never("The history of the original's DNS (D315)."),
+  sending_domains: never("The original's own sending domain (D727): a domain is verified at Resend for one store, and a copy sends from the shared address until it adds its own."),
   page_versions: never("A page's earlier versions (D305) are its own history: a copy starts with its pages as they are now."),
   // Blogs in depth (wave 7 unit G, D341).
   blogs: derived("A store's first blog is made with it by a trigger (stores_first_blog()); the original's other blogs are not copied, so a copy's articles that were in them are its first blog's until its owner makes them again."),

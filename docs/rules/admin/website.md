@@ -1632,7 +1632,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - A countdown timer and animated stats (D561, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`): a countdown only ever counts to a fixed moment the owner chose, the same for every visitor, and draws nothing once it has passed; never add one that starts again per visitor (false urgency). Stats' figures are the owner's own, in the server's HTML as typed; the count is decoration only, never under reduced motion and never read to a screen reader.
 
-## Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F5 built, the AI tools held for the eval)
+## Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F5 built, its AI tools live)
 
 - Read `docs/forms.md` (section 9 is F1 as built) before changing a page's form components, `src/lib/forms.ts`, `src/lib/form-records.ts`,
   `src/server/forms.ts`, `src/server/forms-admin.ts` (the only writer of `forms` and `form_responses`) or the checkout's question rules, which

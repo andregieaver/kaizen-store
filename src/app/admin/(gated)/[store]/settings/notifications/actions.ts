@@ -11,6 +11,8 @@ import { TEMPLATE_SLOTS, type EmailTemplate, type TemplateProblem, type Template
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
+import { sendingDomainForm } from "@/server/sending-domain-form";
+import { storeAction } from "@/server/store-action";
 import { previewNotification, resetTemplate, saveTemplate, sendTestNotification, setNotification } from "@/server/notifications";
 
 /** The words of a member's language, or of the request's before a member is known. */
@@ -104,4 +106,16 @@ export async function sendTestNotificationAction(storeSlug: string, id: string, 
   const to = member.account.email || words.answers.yourAddress;
   if (result.outcome === "logged") return { ok: true, message: fillWords(words.answers.loggedTo, { to }) };
   return { ok: true, message: fillWords(words.answers.sentTo, { to }) };
+}
+
+/** The store's own sending domain (D727): add, check, change the address or stop, by the button pressed. `settings:write`. */
+export async function sendingDomainAction(storeSlug: string, state: FormState, form: FormData): Promise<FormState> {
+  return storeAction(
+    { store: storeSlug, key: "settings:write", action: "store.sending_domain", answer: (message): FormState => ({ status: "error", messages: [message] }) },
+    async (member, lang) => {
+      const answer = await sendingDomainForm(member.account, member.store.id, form, adminText(lang, "notifications").sendingDomain);
+      if (answer.status === "ok") refresh();
+      return answer;
+    },
+  );
 }

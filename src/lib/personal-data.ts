@@ -369,6 +369,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   ad_conversions: "That an order's event was sent to an ad platform (D303 I2): order id, platform, event, status and the platform's answer code; the payload, with the ids, is built when sent and never kept.",
   domain_registrations: "A domain registered by Kaizena Flow (D315, D317), held by an account and maybe used by a store: the name, its dates and renewal; the registrant is its own entry.",
   dns_zones: "A domain whose DNS Kaizena Flow keeps (D315, D317): its name, state and what it shows while no store uses it; no person.",
+  sending_domains: "A store's or Kaizena Flow's own sending domain (D727): the domain, the part before the @, Resend's id and records, and the staff account that added it; no shopper.",
   dns_changes: "DNS records changed (D315): record types, names and values of the store's own zone, and who changed them (a staff account id).",
   store_usage_daily: "What a store used per day (D314): counts and bytes per metric; no person, address, path or query.",
   store_traffic_hourly: "A store's requests and server errors per hour (D669): counts only; no person, address, path or query.",

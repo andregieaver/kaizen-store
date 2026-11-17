@@ -44,6 +44,7 @@ import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type 
 import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
+import { senderFor } from "./sending-domains";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
@@ -580,6 +581,9 @@ async function sendBatch(
     }
     return;
   }
+  // Each store's own address while its domain is verified (D727); a batch may hold several stores' broadcasts.
+  const fromAddresses = new Map<string, string | null>();
+  for (const item of toSend) if (!fromAddresses.has(item.r.storeId)) fromAddresses.set(item.r.storeId, await senderFor(item.r.storeId));
   const deliveries: Delivery[] = await deliverBatch(
     settings,
     toSend.map((item) => ({
@@ -592,6 +596,7 @@ async function sendBatch(
         fromName: item.store.name,
         replyTo: item.store.details.contactEmail ?? null,
         headers: item.email.headers,
+        fromAddress: fromAddresses.get(item.r.storeId) ?? null,
       },
     })),
     fetcher,

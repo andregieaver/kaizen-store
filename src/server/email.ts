@@ -9,6 +9,7 @@ import type { RenderedEmail } from "@/lib/email-layout";
 import { emailSettings, type EmailSettings } from "@/lib/email-settings";
 import { emailClassOf } from "@/lib/personal-data";
 
+import { senderFor } from "./sending-domains";
 import { deskReplyTo } from "./support-reply-to";
 
 type Row = Record<string, unknown>;
@@ -42,9 +43,18 @@ export type Delivery = { ok: true; id: string } | { ok: false; error: string };
 export async function deliver(
   settings: EmailSettings,
   id: string,
-  message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers" | "attachments">,
+  message: ResendMessage,
   fetcher: typeof fetch = fetch,
 ): Promise<Delivery> {
+  const first = await deliverOnce(settings, id, message, fetcher);
+  // The store's own address (D727) that Resend refuses (the domain was unverified since the last check): sent from the shared address instead.
+  if (!first.ok && message.fromAddress && /^(403|422)/.test(first.error)) {
+    return deliverOnce(settings, `${id}-shared`, { ...message, fromAddress: null }, fetcher);
+  }
+  return first;
+}
+
+async function deliverOnce(settings: EmailSettings, id: string, message: ResendMessage, fetcher: typeof fetch): Promise<Delivery> {
   const body = JSON.stringify(resendEmail(settings, message));
   let error = "unknown";
   for (let attempt = 0; attempt < TRIES; attempt++) {
@@ -74,12 +84,15 @@ export async function deliver(
   return { ok: false, error };
 }
 
-type ResendMessage = Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers" | "attachments">;
+type ResendMessage = Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers" | "attachments"> & {
+  /** The store's own verified address (D727, `senderFor()`); the shared `EMAIL_FROM` when null or left out. */
+  fromAddress?: string | null;
+};
 
 /** One email as Resend's API takes it. */
 function resendEmail(settings: EmailSettings, message: ResendMessage) {
   return {
-    from: `"${senderName(message.fromName)}" <${settings.from}>`,
+    from: `"${senderName(message.fromName)}" <${message.fromAddress || settings.from}>`,
     to: [message.to],
     subject: message.email.subject,
     html: message.email.html,
@@ -274,7 +287,9 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
   }
   // A reply to an email about an order goes to the support desk when it takes them (E1.4); asked only for an email that is sent.
   const desk = message.replyToDesk && message.storeId ? await deskReplyTo(message.storeId).catch(() => null) : null;
-  const delivery = await deliver(settings, id, desk ? { ...message, replyTo: desk } : message);
+  // The store's own address while its domain is verified (D727); the shared one otherwise.
+  const fromAddress = await senderFor(message.storeId);
+  const delivery = await deliver(settings, id, { ...message, ...(desk && { replyTo: desk }), fromAddress });
   if (delivery.ok) {
     await db().execute(sql`
       update commerce.email_messages set status = 'sent', provider_reference = ${delivery.id}, sent_at = now(), error = null

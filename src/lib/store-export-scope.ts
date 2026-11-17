@@ -64,6 +64,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   document_pdf_state: "record",
   document_series: "record",
   domain_registrations: "secret",
+  // A store's own sending domain (D727): verified at Resend for this store, so set again after a move.
+  sending_domains: "secret",
   feed_settings: "secret",
   field_search: "record",
   google_places: "record",

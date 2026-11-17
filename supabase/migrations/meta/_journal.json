@@ -547,6 +547,20 @@
       "when": 1794923333156,
       "tag": "20261117134853_event_log_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794929466692,
+      "tag": "20261117153106_broad_vulcan",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1794929478775,
+      "tag": "20261117153118_sending_domains_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -3,15 +3,19 @@ import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { NotificationList } from "@/components/admin/notifications/notification-list";
+import { SendingDomainCard } from "@/components/admin/sending-domain-card";
+import { apexOf } from "@/lib/domain-health";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { PageHeader } from "@/components/admin/ui";
 import { listLocalAreas } from "@/server/local-delivery";
 import { listNotifications } from "@/server/notifications";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { listStoreDomains } from "@/server/domains";
 import { listPickupPlaces } from "@/server/pickup";
+import { getSendingDomain } from "@/server/sending-domains";
 
-import { switchNotificationAction } from "./actions";
+import { sendingDomainAction, switchNotificationAction } from "./actions";
 
 export const metadata: Metadata = { title: "Notifications" };
 
@@ -27,7 +31,15 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
   const lang = adminLangOf(member.account.adminLocale);
   const words = adminText(lang, "notifications");
   const w = words.emails;
-  const [items, places, areas] = await Promise.all([listNotifications(store.id), listPickupPlaces(store.id), listLocalAreas(store.id)]);
+  const [items, places, areas, sending, domains] = await Promise.all([
+    listNotifications(store.id),
+    listPickupPlaces(store.id),
+    listLocalAreas(store.id),
+    getSendingDomain(store.id),
+    listStoreDomains(store.id),
+  ]);
+  // The store's own domain is filled in for a new sending domain (D727): the primary one, else the first active.
+  const ownDomain = (domains.find((d) => d.isPrimary && d.status === "active") ?? domains.find((d) => d.status === "active"))?.hostname ?? null;
   const handovers = places.some((p) => p.option?.active) || areas.some((a) => a.active);
   const canWrite = memberCan(member, "settings:write");
   const base = `/admin/${store.slug}/settings/notifications`;
@@ -43,6 +55,13 @@ export default async function NotificationsPage({ params }: PageProps<"/admin/[s
             </Link>
           ) : undefined
         }
+      />
+      <SendingDomainCard
+        domain={sending && { domain: sending.domain, fromLocal: sending.fromLocal, from: sending.from, status: sending.status, records: sending.records, recordsWritten: sending.recordsWritten, checkedAt: sending.checkedAt }}
+        suggested={ownDomain ? apexOf(ownDomain) : null}
+        words={words.sendingDomain}
+        action={canWrite ? sendingDomainAction.bind(null, store.slug) : null}
+        display={ADMIN_LANG_FACTS[lang].tag}
       />
       <NotificationList items={items} base={base} handovers={handovers} words={words} display={ADMIN_LANG_FACTS[lang].tag} switchAction={canWrite ? (id) => switchNotificationAction.bind(null, store.slug, id) : null} />
       {!canWrite && <p className="text-sm text-muted">{w.readOnly}</p>}
