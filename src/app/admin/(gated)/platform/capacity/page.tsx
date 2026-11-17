@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { OwnSpeedView } from "@/components/admin/own-speed-view";
+import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
 import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -16,8 +17,10 @@ import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
 import { cronJobRows } from "@/server/cron-runs";
 import { ownSpeedReport } from "@/server/own-speed";
+import { currentFlags } from "@/server/platform-flags";
 import { adminFromDublin } from "@/server/status";
 import { cronHealth } from "@/lib/cron-health";
+import { COSTLY_ALLOWED, WHOLE_READ_ALLOWED } from "@/lib/platform-flags";
 
 import { recordingsOpenAction } from "./actions";
 
@@ -37,7 +40,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen] = await Promise.all([
+  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen, flagged] = await Promise.all([
     platformUsage(month),
     databaseGlance(),
     drainConnected(),
@@ -47,6 +50,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
     ownSpeedReport("admin"),
     adminFromDublin(),
     recordingsOpenNow(),
+    currentFlags(),
   ]);
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
@@ -65,6 +69,13 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
         </p>
         {!drain && <p className="mt-2 text-body text-muted">{w.platform.drainOff}</p>}
       </Card>
+      <PlatformFlagsCard
+        flags={flagged?.flags ?? []}
+        difference={flagged?.difference ?? null}
+        allowed={{ wholeRead: WHOLE_READ_ALLOWED, costly: COSTLY_ALLOWED }}
+        words={w.flags}
+        locale={locale}
+      />
       {/* Recordings of visits (D656): the platform's hold, open to every store or Kaizena Flow's own only. */}
       <div id="recordings">
         <Card title={w.recordings.title} description={w.recordings.description} compact>

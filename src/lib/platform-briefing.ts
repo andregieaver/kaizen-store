@@ -63,9 +63,11 @@ export type PlatformSnapshot = {
   targets: { target: PlatformTarget; progress: TargetProgress }[];
   /** The admin's own speed over 28 days, a row per kind of screen and screen size (step 1.15). */
   adminSpeed?: SpeedRow[];
+  /** What the database flags raise from the two latest stored readings (step 1.13); none when there are fewer than two days. */
+  flags?: { id: string; subject: string }[];
 };
 
-export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow";
+export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag";
 export type PlatformAlert = { id: AlertId; severity: "urgent" | "warning" | "info"; values: Record<string, string | number>; href: string };
 
 /** A request older than two days waits too long. */
@@ -104,6 +106,9 @@ export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
   }
   if (s.trialsEnding > 0) alerts.push({ id: "trials_ending", severity: "info", values: { n: s.trialsEnding }, href: "/admin/platform/stores" });
   alerts.push(...adminSpeedAlerts(s.adminSpeed ?? []));
+  if (s.flags && s.flags.length > 0) {
+    alerts.push({ id: "database_flag", severity: "warning", values: { n: s.flags.length, first: s.flags[0].id }, href: "/admin/platform/capacity" });
+  }
   const order = { urgent: 0, warning: 1, info: 2 } as const;
   return alerts.sort((a, b) => order[a.severity] - order[b.severity]);
 }

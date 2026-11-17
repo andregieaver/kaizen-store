@@ -70,6 +70,18 @@ plan values are the real brake. Heat totals are about 250 bytes a row: a store w
 plan without A/B tests and a number never raises the engine's five. No plan has a number yet: the owner sets one per plan here when deciding
 which plans include tests.
 
+### Database flags (bloat review step 1.13, 17 November 2026)
+
+Usage and limits compares the two newest daily readings of production (`commerce.platform_readings`) and raises eight flags
+(`src/lib/platform-flags.ts`): a statement new among today's 25 most called; a table of over 500 rows read whole more than 10 times in a
+day; a write that changed under a tenth as many rows as it was called (at least 10 calls); the `cron` schema over 80 MB (20 MB from step
+3.1); an index of a hot table that no read has used and that backs no constraint, from 56 days after opening (off until an opening date is
+recorded); a statement among the 40 that took the most time, called over 10 times at over 5 ms each; scheduled routes called over 1,100
+times in a day with nothing to do (off until step 3.3 records what a run worked); an AI figure over its bar for 7 days. A difference
+exists only for a statement, table, job or index present in both readings. Two written lists hold the exceptions, each entry with a
+reason (both empty): tables allowed to be read whole (at most 5) and statements allowed to cost more, with a ceiling (at most 3). Each
+flag is also one line of the platform's morning briefing.
+
 ### Waiting on the owner
 
 1. ~~The numbers per plan~~: decided 2026-10-23 (section 9, question 1), seeded by migration `20261023122903_capacity_plan_limits`.

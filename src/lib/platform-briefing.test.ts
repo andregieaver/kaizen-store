@@ -84,4 +84,16 @@ describe("the platform's targets, alerts and briefing (D513)", () => {
     expect(both).toHaveLength(1);
     expect(both[0].values.kind).toBe("category");
   });
+
+  it("a snapshot with database flags gives one database_flag line that leads to Usage and limits (step 1.13)", () => {
+    const flags = [{ id: "costly_statement", subject: "select 1" }, { id: "cron_schema_large", subject: "cron" }];
+    const found = platformAlertsFor(snapshot({ flags })).filter((a) => a.id === "database_flag");
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ severity: "warning", values: { n: 2, first: "costly_statement" }, href: "/admin/platform/capacity" });
+  });
+
+  it("gives no database_flag line with no flags, or without the field", () => {
+    expect(platformAlertsFor(snapshot({ flags: [] })).some((a) => a.id === "database_flag")).toBe(false);
+    expect(platformAlertsFor(snapshot()).some((a) => a.id === "database_flag")).toBe(false);
+  });
 });
