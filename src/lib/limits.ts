@@ -24,11 +24,16 @@ export const LIMITS = {
   egress_bytes_month: { metric: "egress_bytes", period: "month", enforce: "soft", scope: "store" },
   /** Recordings of visits started this month (D656): past it the store stops recording, silently. */
   recordings_month: { metric: "recordings", period: "month", enforce: "hard", scope: "store" },
+  /** A/B tests running at once (D148 phase 21): 0 is a plan without A/B tests; counted live, never metered; at most the engine's five. */
+  ab_tests_running: { metric: null, period: "now", enforce: "hard", scope: "store" },
   /** How many stores an owner may have; counted live, never metered. */
   stores_owned: { metric: null, period: "now", enforce: "hard", scope: "owner" },
 } as const satisfies Record<string, LimitDef>;
 
 export type LimitKey = keyof typeof LIMITS;
+
+/** The most A/B tests a store runs at once whatever its plan (D148): `ab_tests_running` can only lower it. */
+export const AB_TESTS_MOST = 5;
 export const LIMIT_KEYS = Object.keys(LIMITS) as LimitKey[];
 
 export function isLimitKey(value: unknown): value is LimitKey {

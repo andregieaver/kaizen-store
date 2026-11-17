@@ -25,6 +25,7 @@ export const capacityNb: CapacityMessages = {
     requests_month: "Besøk i måneden",
     egress_bytes_month: "Båndbredde i måneden",
     recordings_month: "Opptak av besøk i måneden",
+    ab_tests_running: "A/B-tester om gangen (0: ingen; høyst 5)",
     stores_owned: "Butikker per eier",
   },
   units: { gb: "GB", count: "", money: "EUR" },
@@ -55,6 +56,7 @@ export const capacityNb: CapacityMessages = {
     requests_month: "",
     egress_bytes_month: "",
     recordings_month: "Butikken har tatt opp de {limit} besøkene abonnementet gir denne måneden. Opptak starter igjen neste måned, eller velg et abonnement med mer.",
+    ab_tests_running: "Abonnementet ditt kjører opptil {limit} A/B-tester om gangen. Stopp en først, eller velg et abonnement med mer.",
     stores_owned: "Abonnementet ditt tillater {limit} butikker. Velg et abonnement med mer for å legge til en til.",
   },
   owner: {

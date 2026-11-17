@@ -36,6 +36,7 @@ import {
   startProblemsOf,
   stopExperiment,
   testablePages,
+  testRoom,
   saveLearning,
   versionDifferences,
   type ExperimentInfo,
@@ -81,10 +82,19 @@ const claimsIn = (...texts: string[]) => [...new Set(texts.flatMap((text) => fin
 
 const targetWords = (t: ExperimentInfo) => `${targetLabel(t.page.kind, t.page.slug, t.page.title, t.page.role)}${t.part ? `, ${t.part.label}` : ""}`;
 
+/** What the store's plan says of A/B tests (phase 21), for the model to pass on; nothing when the plan does not limit them. */
+const planWords = (room: Awaited<ReturnType<typeof testRoom>>): string | undefined =>
+  room.planAllows === 0
+    ? "The store's plan does not include A/B tests: no test can be drafted or started. Tests that already run go on until they are decided. The owner can choose a plan with them in Billing."
+    : room.planAllows !== null && room.planAllows < MAX_RUNNING_PER_STORE
+      ? `The store's plan runs up to ${room.allows} A/B tests at a time; a plan with more is chosen in Billing.`
+      : undefined;
+
 // Reading ---------------------------------------------------------------------------------------------
 
 export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolInput<"list_experiments">) {
-  const tests = (await listExperiments(store.id)).slice(0, limit);
+  const [all, room] = await Promise.all([listExperiments(store.id), testRoom(store.id)]);
+  const tests = all.slice(0, limit);
   const rows = await Promise.all(
     tests.map(async (t) => {
       // The verdict is worked out for a test that is counting or has just stopped: the rest are history.
@@ -109,7 +119,8 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
   return {
     tests: rows,
     running: tests.filter((t) => t.status === "running").length,
-    most_at_once: MAX_RUNNING_PER_STORE,
+    most_at_once: room.allows,
+    plan: planWords(room),
     note: tests.length === 0 ? "No A/B tests yet. suggest_experiments helps choose one." : "Verdicts are worked out by the store; explain_results gives the detail.",
     admin: adminLink(store, "/experiments"),
   };
@@ -272,7 +283,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
 
 export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInput<"suggest_experiments">) {
   const today = todayIn(new Date(), store.timeZone);
-  const [targets, tests, funnel, consents, [orders], heat] = await Promise.all([
+  const [targets, tests, funnel, consents, [orders], heat, room] = await Promise.all([
     testablePages(store.id),
     listExperiments(store.id),
     salesFunnel({ store }, { days: 30 }),
@@ -287,6 +298,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     `),
     // Where visitors get stuck over the last 30 days (ecosystem plan E1.6): the heatmaps' daily totals, as page_behaviour's overview.
     heatPages(store.id, { from: addDays(today, -29), to: addDays(today, 1) }),
+    testRoom(store.id),
   ]);
   const stuck = hubFigures(heat).where_visitors_get_stuck;
   const running = tests.filter((t) => t.status === "running" || t.status === "scheduled");
@@ -345,7 +357,8 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
           ? "No page has enough page views with dead or rage clicks to rank yet."
           : "Heatmaps are off, so nothing says where visitors get stuck. The owner switches them on in Analytics → Settings.",
     running_or_scheduled: running.map((t) => ({ name: t.name, tests: targetWords(t), status: STATUS_WORDS[t.status] })),
-    room_for_more: Math.max(0, MAX_RUNNING_PER_STORE - tests.filter((t) => t.status === "running").length),
+    room_for_more: Math.max(0, room.allows - room.running),
+    plan: planWords(room),
     who_takes_part: sample === null ? "Too few cookie choices recorded to say how many visitors accept statistics cookies." : `About ${Math.round(sample * 100)} % of the visitors who made a cookie choice in the last 90 days accepted statistics cookies: only they are in a test.`,
     paid_orders_last_30_days: Number(orders?.n ?? 0),
     from_cart_to_paid_order: { carts_with_products: funnel.carts_with_products, paid: funnel.orders_paid, share: funnel.from_filled_cart_to_paid },

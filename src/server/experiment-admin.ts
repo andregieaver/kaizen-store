@@ -23,6 +23,8 @@ import {
   MIN_DAYS,
   NEXT_STATUSES,
   parseAudience,
+  PLAN_WITHOUT_TESTS,
+  runningAllowed,
   startProblems,
   type Audience,
   type ExperimentStatus,
@@ -32,6 +34,7 @@ import {
 
 import { audit, type Account } from "./auth";
 import { houseStoreId } from "./house-customers";
+import { limitFor } from "./limits";
 import { owned } from "./owned";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
@@ -462,8 +465,36 @@ async function destinationProblem(storeId: string, page: string | null, target: 
 /** Said when the goal `page` has no page, or one that is not a published page of the store; the words are `problems.goalPage`. */
 const GOAL_PAGE_PROBLEM = "Choose the page you want more visitors to go on to: one of the store's published pages.";
 
+/**
+ * A store's room for A/B tests (D148 phase 21): its plan's `ab_tests_running` (null when the plan does not limit it, 0 when the plan has
+ * none), what that lets it run at once (never more than the engine's five) and how many run now. Running tests are never stopped by it.
+ */
+export async function testRoom(storeId: string): Promise<{ planAllows: number | null; allows: number; running: number }> {
+  const [planAllows, row] = await Promise.all([
+    limitFor(storeId, "ab_tests_running"),
+    typedRow(z.object({ n: col.int }), sql`select count(*)::int as n from commerce.experiments where store_id = ${storeId}::uuid and status = 'running'`),
+  ]);
+  return { planAllows, allows: runningAllowed(planAllows), running: row?.n ?? 0 };
+}
+
+/** The active plans that include A/B tests, cheapest first (phase 21): the platform's default decides for a plan without its own number. */
+export async function plansWithTests(): Promise<string[]> {
+  const rows = await typedRows(
+    z.object({ name: col.text, own: col.bool, value: col.int.nullable(), fallback: col.int.nullable(), defaulted: col.bool }),
+    sql`
+      select p.name, l.id is not null as own, l.value::int as value, d.value::int as fallback, d.id is not null as defaulted
+      from commerce.plans p
+      left join commerce.plan_limits l on l.plan_id = p.id and l.key = 'ab_tests_running'
+      left join commerce.plan_limits d on d.plan_id is null and d.key = 'ab_tests_running'
+      where p.active order by p.position, p.name`,
+  );
+  return rows.filter((r) => (r.own ? r.value : r.defaulted ? r.fallback : null) !== 0).map((r) => r.name);
+}
+
 /** Makes a test as a draft: the original and a first version, a copy of the page to change. */
 export async function createExperiment(account: Account, storeId: string, input: NewExperiment): Promise<Outcome<{ id: string }>> {
+  // A plan without A/B tests makes none (phase 21); a store whose plan allows fewer than run now may still draft one to start later.
+  if ((await limitFor(storeId, "ab_tests_running")) === 0) return { ok: false, problems: [PLAN_WITHOUT_TESTS] };
   const name = input.name.trim();
   if (name === "" || name.length > 120) return { ok: false, problems: ["Give the test a name of up to 120 characters."] };
   if (!isGoal(input.goal)) return { ok: false, problems: ["Choose what the test should improve."] };
@@ -653,6 +684,7 @@ async function checkStart(storeId: string, test: ExperimentInfo): Promise<string
     variants: test.variants.map((v) => ({ key: v.key, name: v.name, share: v.share, published: v.published, scope: v.scope })),
     pagePublished: test.page.published,
     runningInStore: Number(special?.running ?? 0),
+    planAllows: await limitFor(storeId, "ab_tests_running"),
     pageIsSpecial: Boolean(special?.special),
     needsPart: test.page.kind === "role" && isPartOnlyPlace(test.page.role) && !test.part,
     partLabel: test.part?.label ?? null,

@@ -104,6 +104,13 @@ export const experimentsEn = {
       "This page cannot be tested now: it is in a running test, it is not published, or it is a page with a place of its own that cannot be tested yet (the cookies page, the blog …). A working page such as the cart is tested by a part of it: choose the part in the page builder.",
     cannotPart:
       "That part of the page cannot be tested: it is not in the published page (publish your changes first), or it is a working part of the shop. Go back to the page and choose another.",
+    noPlan: {
+      title: "A/B tests come with another plan",
+      body: "Show two versions of a page to your visitors and keep the one that sells more. Your plan does not include them.",
+      plans: "Included in {plans}.",
+      choose: "Choose a plan",
+      kept: "Tests that already run go on until you decide them.",
+    },
   },
   form: {
     noPages:
@@ -609,6 +616,8 @@ export const experimentsEn = {
     missing: "Version {key} no longer has {part}: a test needs the part in every version.",
     modal: "Version {key} changes the address name of {part}, or whether it is a modal: links to it elsewhere would stop working. Keep the address name and keep it a modal.",
     running: "A store can run {max} tests at a time. Stop one first.",
+    planNone: "Your plan does not include A/B tests. Choose a plan with them to test this.",
+    planFull: "Your plan runs up to {max} at a time. Stop a test first, or choose a plan with more.",
     buttonProblem: "Choose the button or link whose clicks you want more of.",
     buttonGone: "That button is not on the page.",
     formProblem: "Choose the form whose answers you want more of.",
