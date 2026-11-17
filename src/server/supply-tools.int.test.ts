@@ -156,6 +156,7 @@ describe("order events (C5)", () => {
       values (${store.storeId}::uuid, ${String(parcel.id)}::uuid, ${sent.id}::uuid, 'bring', 'returned_to_sender', now())
       on conflict (store_id, shipment_id) do update set phase = excluded.phase, checked_at = excluded.checked_at
     `);
+    // The parcel's new phase is logged as `fulfilment.updated` (E4.2): the autopilot reads it from the event log, not by a scan.
     for (let i = 0; i < 6; i++) {
       const tried = await order("pending_payment", 0);
       await db().execute(sql`

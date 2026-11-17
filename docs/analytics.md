@@ -380,7 +380,8 @@ delivery method is wave 8. Counts only, never a customer, for a member who may r
   normal, a product's refunds over twice its normal, CAC up, stock out within a week, high checkout abandonment, rising
   discount dependency, target at risk, missing costs (under 30 % of sales with a cost: a warning that profit is not shown;
   from there to 80 %: information that profit is estimated), and the good news (yesterday the best day in 90 days; returning
-  customers' revenue at a 12-month high). Each has severity, words, a link (a path after the store's admin base), and its
+  customers' revenue at a 12-month high), and since E4.2 a page where visitors get stuck, a kind of page that turned slow and a
+  domain that needs a look (below). Each has severity, words, a link (a path after the store's admin base), and its
   evidence; each has a minimum volume (`ALERT_RULES`). The stock-out alert names a variant that keeps selling with nothing on hand as *on backorder* with the units owed, and is a warning, not urgent (the store chose to sell past its stock; D172): it is urgent only when something that stops at zero is gone. `alertSnapshotFor()` (`src/server/analytics-insights.ts`) reads the
   inputs from the existing reports, all at once; a report that fails leaves its rule out and never reaches the page
   (`alertsForStore()` does not throw). A product's refund rate is in units, and Kaizen keeps a refund as an amount: a refund
@@ -395,6 +396,32 @@ delivery method is wave 8. Counts only, never a customer, for a member who may r
   snapshot has no hourly profile) and only when a usual day brings 15 orders by then; a target at risk needs seven whole
   days of the month, 30 orders in it, and a shortfall over 2.5 standard deviations of what the days so far could add up
   to by chance (from the last 56 days' spread of a day's revenue).
+  Since E4.2 (D729) three rules read what the store measures besides sales, each through `alertSnapshotFor()` and so in every
+  place that reads the alerts (the Overview, Home, the alert emails, the briefing, `analytics_alerts` and the autopilot's `alert`
+  events):
+  - *Visitors get stuck more often* (`page-frustration`, heatmaps D656): a page's share of page views with a dead or rage click over
+    the last 7 complete days, against its own 28 days before, up by 10 points or more **and** to 1.5 times it or more (a page with
+    none before on the points alone); 100 views in the week and 200 before (at both, 10 points is about three standard errors);
+    urgent from 25 points (a part that stopped working). Every visitor's totals (`tag ''`), pages with 100 views in the week only
+    (`pageFrustrationRows()`); the link opens the page's heatmap.
+  - *A kind of page turned slow* (`page-slow`, speed D336): per kind of page, screen and Core Web Vital (largest paint, response to
+    a press, layout moving; never the server's first answer), the 75th percentile of the last 7 days, today included, is poor on
+    Google's line (`rateMetric()`) and that of the 21 days before was not; 50 measurements in the week and 100 before; urgent at
+    twice the poor line. Worked out by the database (`percentile_disc`, the speed report's nearest rank, `speedWindowRows()`), no
+    sample fetched; per kind of page, since a sample keeps the address's kind, never the address. Figures are written in the store's
+    way of writing numbers, as its amounts are.
+  - *A domain needs a look* (`domain-problem`, domains D315): the store's domains through `domainHealth()` over what is kept
+    (`domainAlertRows()`): an active domain the daily watch found no longer reaching the store or with a failing certificate
+    (`points_away`, `certificate_failing`, urgent), a registration with Kaizena Flow lapsed within 30 days (urgent), expiring
+    within 30 days without renewal or with its registrant's email unconfirmed, a domain registered elsewhere whose registry says it
+    expires within 30 days (an expiry urgent within 14 days, as on the Domains page), and a domain added two days ago or more that
+    still does not point at the store (a warning). Email
+    records and advice stay on the Domains page. One line per domain, the store's address first. The watch (`watchDomains()`,
+    `src/server/domain-watch.ts`, the dispatcher's `domainWatch`, every active domain once a day) asks
+    `https://{domain}/api/health` at its public address: the store's own health answer is fine, a TLS error is a failing
+    certificate, another site's answer or nothing listening is a domain that points away, a time-out, a redirect or a server error
+    is not known; it keeps the answer, and RDAP's expiry for a domain registered elsewhere, in the connection's checks
+    (`checks.watch`), read for three days (`WATCH_FRESH_DAYS`). The Domains page's health reads the same answer.
 - **Targets** (`analytics_targets`): a month's net revenue; progress, the share expected by today (the month's
   weekday-weighted run), and ahead or behind. Since D348 a target is also of **orders**, the **conversion rate** or the
   **average order value**, over a **week** (Monday to Sunday), a **month**, a **quarter** or **chosen days** (up to two years),
@@ -631,6 +658,8 @@ Both are off for every store until its owner switches them on under Analytics â†
 - **On an A/B test's page:** *How visitors behaved* per version (page views, reached half the page, page views with rage and dead
   clicks), links to each version's heatmap and recordings, and a warning when a version meets clearly more rage or dead clicks than the
   original (`frustratedVersion()`); it never stops a test.
+- **In the alerts** (E4.2, D729): a page whose frustration rose clearly against its own four weeks before is *Visitors get stuck more
+  often* (`page-frustration`, see *Alerts* above), linked to its heatmap.
 
 **What is measured.** Per page view, only for a visitor who allowed statistics (heatmaps, asked again when they start) or recordings
 (a category of its own): scroll reach, attention, clicks by part of the page, dead and rage clicks, the A/B versions the visitor's

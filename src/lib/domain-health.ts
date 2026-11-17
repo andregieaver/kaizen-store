@@ -6,6 +6,8 @@
 
 export type Severity = "error" | "warning" | "advice" | "info";
 
+const DAY_MS = 86_400_000;
+
 /** Where a domain's DNS is answered: Vercel's nameservers in Kaizena Flow's team, somewhere else, or not known (the lookup failed). */
 export type DnsHost = "kaizena" | "elsewhere" | "unknown";
 
@@ -13,8 +15,18 @@ export type DomainFacts = {
   hostname: string;
   /** The registrable domain, `example.no` for `butikk.example.no`. */
   apex: string;
-  /** The connection to the store (P8), as the latest check found it; null for a registration the store holds but has not connected. */
-  connection: { status: "pending" | "active"; isPrimary: boolean; txt?: boolean; misconfigured?: boolean; problem?: string } | null;
+  /**
+   * The connection to the store (P8), as the latest check found it; null for a registration the store holds but has not connected. An
+   * active one's `serving` is what the daily domain watch found when it asked it for the store's own page (E4.2), while that is fresh.
+   */
+  connection: {
+    status: "pending" | "active";
+    isPrimary: boolean;
+    txt?: boolean;
+    misconfigured?: boolean;
+    problem?: string;
+    serving?: Serving | null;
+  } | null;
   dnsHost: DnsHost;
   /** The registration: with Kaizena Flow (D315) or elsewhere, as RDAP or the registrar says. Null fields are not known. */
   registration: {
@@ -31,7 +43,35 @@ export type DomainFacts = {
   caa: { tag: string; value: string }[] | null;
 };
 
+/** Whether an active domain still serves the store over https (E4.2): its certificate failed, or it answered with another site or not at all. */
+export type Serving = { state: "certificate" | "elsewhere"; at: string };
+
+/** What the daily domain watch keeps in a connection's checks (`store_domains.checks.watch`, E4.2). */
+export type DomainWatch = {
+  at: string;
+  /** What `https://{domain}/api/health` answered: the store's own health, a certificate error, another site or nothing; null when not known. */
+  serving: "ok" | "certificate" | "elsewhere" | null;
+  /** For a domain registered elsewhere: the registry's own expiry and registrar (RDAP), when it answered. */
+  expiresAt?: string | null;
+  registrar?: string | null;
+};
+
+/** The watch's findings are facts for this many days; older ones are not known (the watch stopped, or the domain was not reached). */
+export const WATCH_FRESH_DAYS = 3;
+
+/** Whether the watch's facts are fresh enough to read at `now`. */
+export const watchFresh = (watch: DomainWatch | null | undefined, now: Date): watch is DomainWatch =>
+  !!watch && typeof watch.at === "string" && !Number.isNaN(Date.parse(watch.at)) && now.getTime() - Date.parse(watch.at) <= WATCH_FRESH_DAYS * DAY_MS;
+
+/** An active domain's failure to serve the store, from a fresh watch; null when it served it, or when that is not known. */
+export function servingOf(watch: DomainWatch | null | undefined, now: Date): Serving | null {
+  if (!watchFresh(watch, now) || (watch.serving !== "certificate" && watch.serving !== "elsewhere")) return null;
+  return { state: watch.serving, at: watch.at };
+}
+
 export type FindingCode =
+  | "points_away"
+  | "certificate_failing"
   | "not_pointed"
   | "proof_missing"
   | "check_problem"
@@ -58,8 +98,6 @@ export const EXPIRY_ERROR_DAYS = 14;
 /** The certificate authorities Vercel issues certificates with: a CAA record that names none of them stops the certificate. */
 export const VERCEL_CAS = ["letsencrypt.org", "sectigo.com", "pki.goog"] as const;
 
-const DAY_MS = 86_400_000;
-
 /** Whole days from `now` to `at` (negative once passed). */
 export const daysUntil = (at: string, now: Date): number => Math.floor((new Date(at).getTime() - now.getTime()) / DAY_MS);
 
@@ -73,6 +111,11 @@ export function domainHealth(facts: DomainFacts, now: Date): Finding[] {
   const ours = facts.dnsHost === "kaizena";
 
   const c = facts.connection;
+  // An active domain the watch could not reach the store through (E4.2): its DNS moved away, or its certificate failed.
+  if (c && c.status === "active" && c.serving) {
+    const fix: Fix = ours ? { tool: "check_domain" } : { place: "records" };
+    add(c.serving.state === "certificate" ? "certificate_failing" : "points_away", "error", fix, { date: c.serving.at.slice(0, 10) });
+  }
   if (c && c.status === "pending") {
     if (c.misconfigured !== false) add("not_pointed", "error", ours ? { tool: "check_domain" } : { place: "records" });
     if (c.txt === false) add("proof_missing", "warning", { place: "records" });

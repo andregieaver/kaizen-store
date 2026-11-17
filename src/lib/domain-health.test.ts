@@ -2,7 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import { domainsEn } from "./admin-messages/domains.en";
 import { domainsNb } from "./admin-messages/domains.nb";
-import { apexOf, dmarcOf, domainHealth, findingText, isVercelNameserver, spfOf, worstSeverity, type DomainFacts, type FindingCode } from "./domain-health";
+import {
+  apexOf,
+  dmarcOf,
+  domainHealth,
+  findingText,
+  isVercelNameserver,
+  servingOf,
+  spfOf,
+  WATCH_FRESH_DAYS,
+  watchFresh,
+  worstSeverity,
+  type DomainFacts,
+  type DomainWatch,
+  type FindingCode,
+} from "./domain-health";
 
 const NOW = new Date("2026-10-23T12:00:00Z");
 
@@ -95,5 +109,30 @@ describe("the small readers", () => {
     expect(spfOf(["v=spf1 -all", "google-site-verification=x"])).toEqual(["v=spf1 -all"]);
     expect(dmarcOf(["v=DMARC1; p=quarantine"])).toBe("v=DMARC1; p=quarantine");
     expect(dmarcOf(["nothing"])).toBeNull();
+  });
+});
+
+describe("what the daily watch found (E4.2)", () => {
+  const watch = (serving: DomainWatch["serving"], hoursAgo = 2): DomainWatch => ({ at: new Date(NOW.getTime() - hoursAgo * 3_600_000).toISOString(), serving });
+
+  it("says an active domain that answered with another site no longer reaches the store, and a failing certificate, with the day it was asked", () => {
+    const away = domainHealth(facts({ connection: { status: "active", isPrimary: true, serving: servingOf(watch("elsewhere"), NOW) } }), NOW);
+    expect(away[0]).toMatchObject({ code: "points_away", severity: "error", fix: { place: "records" }, values: { date: "2026-10-23" } });
+    const cert = domainHealth(facts({ dnsHost: "kaizena", connection: { status: "active", isPrimary: true, serving: servingOf(watch("certificate"), NOW) } }), NOW);
+    expect(cert[0]).toMatchObject({ code: "certificate_failing", severity: "error", fix: { tool: "check_domain" } });
+    expect(codes(facts({ connection: { status: "active", isPrimary: true, serving: servingOf(watch("ok"), NOW) } }))).toEqual(["healthy"]);
+    expect(findingText(away[0], domainsEn.health)).toContain("example.no no longer reaches your store");
+    expect(findingText(cert[0], domainsNb.health)).toContain("https-sertifikatet til example.no sviktet");
+  });
+
+  it("reads the watch only while it is fresh, and never a time-out or a redirect as a failure", () => {
+    expect(WATCH_FRESH_DAYS).toBe(3);
+    expect(servingOf(watch("elsewhere", 72), NOW)).not.toBeNull();
+    expect(servingOf(watch("elsewhere", 73), NOW)).toBeNull();
+    expect(servingOf(watch(null), NOW)).toBeNull();
+    expect(servingOf(undefined, NOW)).toBeNull();
+    expect(watchFresh({ at: "not a date", serving: "elsewhere" }, NOW)).toBe(false);
+    // A waiting domain is the connection check's, never the watch's.
+    expect(codes(facts({ connection: { status: "pending", isPrimary: false, txt: true, misconfigured: false, serving: servingOf(watch("elsewhere"), NOW) } }))).toEqual(["healthy"]);
   });
 });

@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 import { readAutonomy } from "./autopilot-autonomy";
-import { EVENT_KINDS, EVENT_LINES, EVENT_TOOLS, eventMessage, eventRef, isoWeek, stockoutCheckDue, type EventFacts } from "./autopilot-events";
+import {
+  AUTOPILOT_READER,
+  EVENT_KINDS,
+  EVENT_LINES,
+  EVENT_TOOLS,
+  eventMessage,
+  eventRef,
+  eventsByKind,
+  isoWeek,
+  LOGGED_EVENT_KINDS,
+  LOGGED_EVENTS,
+  stockoutCheckDue,
+  type EventFacts,
+} from "./autopilot-events";
+import { isConsumerName } from "./event-log";
+import { isEvent } from "./integrations";
 import { MANAGER_TOOLS_BY_NAME } from "./manager-tools";
 import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 
@@ -128,5 +143,32 @@ describe("a test that has an answer (D670)", () => {
     expect(message).toContain("explain_results (x2)");
     expect(EVENT_LINES.test_answered).toContain("never make one of your own");
     expect(EVENT_LINES.test_answered).toContain("If there is no clear difference, choose nothing");
+  });
+});
+
+describe("the kinds read from the event log (E4.2, D729)", () => {
+  it("maps each logged event the database queues to the kind it makes, and nothing else", () => {
+    expect(LOGGED_EVENT_KINDS).toEqual({ "support.waiting": "support_waiting", "experiment.answered": "test_answered", "fulfilment.updated": "delivery_problem" });
+    for (const [event, kind] of Object.entries(LOGGED_EVENT_KINDS)) {
+      expect(isEvent(event), event).toBe(true);
+      expect(EVENT_KINDS).toContain(kind);
+    }
+    expect(LOGGED_EVENTS).toEqual(Object.keys(LOGGED_EVENT_KINDS));
+    expect(isConsumerName(AUTOPILOT_READER)).toBe(true);
+  });
+
+  it("sorts a batch by the kind each event makes, in the log's order, leaving out what the autopilot does not react to", () => {
+    const batch = [
+      { id: 1, event: "fulfilment.updated" },
+      { id: 2, event: "order.paid" },
+      { id: 3, event: "support.waiting" },
+      { id: 4, event: "fulfilment.updated" },
+      { id: 5, event: "experiment.answered" },
+      { id: 6, event: "toString" },
+    ];
+    const kinds = eventsByKind(batch);
+    expect([...kinds.keys()]).toEqual(["delivery_problem", "support_waiting", "test_answered"]);
+    expect(kinds.get("delivery_problem")?.map((e) => e.id)).toEqual([1, 4]);
+    expect(eventsByKind([]).size).toBe(0);
   });
 });

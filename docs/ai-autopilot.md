@@ -1059,7 +1059,7 @@ when it is answered and what the turn may touch are the code's; what to say or d
 
 | Kind | Found when | The turn may | Never |
 |---|---|---|---|
-| `support_waiting` | A store's conversation has waited for a person (`handler = 'queue'`, open) longer than the owner's minutes (`waitMinutes`, 5 to 240, default 15) | Read the conversation, the customer's orders and the store's facts with read-only tools; write one staff note (`add_support_note`): what it checked and a reply a person could send | Write to the customer (`reply_to_support` is not offered: an answer in a person's name must come from the person), end or take over the conversation |
+| `support_waiting` | A store's conversation has waited for a person (`handler = 'queue'`, open) longer than the owner's minutes (`waitMinutes`, 5 to 240, default 15); since E4.2 from the desk's `support.waiting` in the event log | Read the conversation, the customer's orders and the store's facts with read-only tools; write one staff note (`add_support_note`): what it checked and a reply a person could send | Write to the customer (`reply_to_support` is not offered: an answer in a person's name must come from the person), end or take over the conversation |
 | `test_ended` | An A/B test stopped by itself (`stop_reason` `guardrail` or `planned_end`) in the last 7 days and is still `stopped` | Read its results (`explain_results`) and choose with `apply_winner`, gated as ever: it runs only where the owner's level for the website allows, else it waits for their yes | Choose a version the verdict does not support; touch another test |
 | `alert` | An urgent or warning alert of `alertsFor()` (the Analytics alerts), checked once a day per store; one event per alert and ISO week | Look with a goal review's read tools and make at most one plan, which starts as a review's plan does (`startDecision()`, the plans a week) | Change anything itself in the turn |
 
@@ -1086,6 +1086,20 @@ From `/api/cron/autopilot` (every minute), after the reviews:
 - `detectEvents()`: per store with `reacts` on and the autopilot not paused, inserts the waiting conversations and the tests that ended
   (one query each), and once a day (`ALERT_CHECK_HOURS`, kept in `commerce.autopilot_event_checks`) the store's alerts through
   `alertsForStore()`. Conflicts on the reference do nothing.
+- **Since E4.2 (D729), from the event log.** Every kind whose fact is an event of `commerce.events` is read from the log with the
+  autopilot's own cursor (`AUTOPILOT_READER`, `readLoggedEvents()` inside `tracked("autopilot.event-log")`, a few batches of
+  `LOG_BATCH` a run), not by a scan: `support.waiting` (the desk's waiting alert, after the desk's minutes) is `support_waiting`,
+  `experiment.answered` is `test_answered`, and `fulfilment.updated` whose parcel's tracking is now in trouble is `delivery_problem`
+  (`LOGGED_EVENT_KINDS`). Each is written as the scan wrote it (the same reference, so nothing is answered twice), from what the event is
+  about, read where it lives, and only for a store that reacts and is open for jobs; events older than `EVENT_STALE_HOURS`, of other
+  stores and the platform's own are passed by. The cursor is made at now the first time it reads, so the autopilot never answers what
+  happened before; a store that switches *React to what happens* on starts from then. A waiting customer comes when the desk's minutes
+  pass: `runEvents()` holds its row until the owner's own `waitMinutes` have passed too (or the customer no longer waits, then it is
+  skipped), and the turn is told how long they have waited by then. The scans left are what time passing makes (an order unsent for 48
+  hours, a supplier late, failed payments over a window, a stock-out the forecast sees, the daily alert check) and what the log does not
+  carry yet: a test that ended by itself, an order held, a dispute opened, a customer's request to staff and a confirmed exchange (the
+  next step: queue `experiment.ended`, `order.held`, `dispute.opened`, `request.proposed` and `exchange.confirmed` where those rows change,
+  and move their kinds to the reader).
 - `runEvents()`: takes up to `EVENTS_PER_RUN` (2) pending events, at most one per store, under `EVENTS_PER_DAY` per store and kind in 24
   hours (48 waiting customers, 12 of each other kind, since 14 November 2026), each claimed (`running`, `claimed_until`); a run that died leaves it `failed` once its claim passes. A pending event older than
   `EVENT_STALE_HOURS` (24) is `skipped` as stale; a support event whose conversation has been answered, taken or ended since is `skipped`
