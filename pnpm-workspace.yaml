@@ -25,5 +25,9 @@ overrides:
 # leaves, so the visitor was taken to that page and not where they asked (D423); the patch waits instead. Applied to whichever Next.js
 # is installed, so its updates go on as before; where a new Next.js changes the lines it patches, pnpm refuses the install, and the
 # patch is moved to it or dropped (e2e/store-pages.spec.ts says whether it is still needed).
+# Next.js is held at 16.4.3 (package.json): 16.4.5 drops the Content-Encoding header a route handler sets, so a recording's events
+# (D656, already gzipped) reached the browser as raw gzip (e2e/signed-in/recordings.spec.ts). The advisory 16.4.5 fixes,
+# GHSA-mfr8-8qww-v76h (moderate), concerns 'use cache' functions called through unstable_cache(), which nothing here calls.
+# Move up once the events route no longer needs that header, or a release keeps it.
 patchedDependencies:
   next: patches/next.patch

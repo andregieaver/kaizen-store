@@ -113,14 +113,16 @@ async function run(request: Request) {
   // The AI manager's notices go after 60 days (D350, never throws).
   const noticesPruned = await pruneNotices().catch((error) => (console.error("[assistant-notices] prune failed", error), 0));
   // GDPR (wave 1, 1g): the retention schedule, erasures that began and did not finish, and the reminders about requests due. Each never throws.
-  // Domains (D315, never throws): renewals invoiced 30 days ahead, the registrar's auto-renew turned off where renewal is off or unpaid.
-  const domainRenewals = await runDomainRenewals().catch((error) => (console.error("[domains] renewals failed", error), { quoted: 0, stopped: 0 }));
+  // Domains (D315): each its own job in commerce.cron_jobs (ecosystem plan E1.8), so a failure shows on the platform home and in Usage and
+  // limits instead of only in the logs; tracked() answers null when one throws and the run goes on.
+  // Renewals invoiced 30 days ahead, the registrar's auto-renew turned off where renewal is off or unpaid.
+  const domainRenewals = await tracked("daily.domain-renewals", 86_400, () => runDomainRenewals());
   // The holder hears of a renewal not paid or switched off at 30, 14, 7 and 1 days (D315 9.1), after the renewals are invoiced.
-  const domainReminders = await sendRenewalReminders().catch((error) => (console.error("[domains] reminders failed", error), 0));
-  // Domains moving away (D315 8, never throws): transfers followed until done, zones kept 30 days after their nameservers moved let go.
-  const domainMoves = await runDomainMoves().catch((error) => (console.error("[domains] moves failed", error), { moved: 0, given_up: 0, zonesLeft: 0 }));
-  // Zones moving here (D315 5.4, never throws): arrived once public DNS shows only Vercel's nameservers for them.
-  const domainsArrived = (await checkArrivals().catch((error) => (console.error("[domains] arrivals failed", error), []))).length;
+  const domainReminders = await tracked("daily.domain-reminders", 86_400, () => sendRenewalReminders());
+  // Domains moving away (D315 8): transfers followed until done, zones kept 30 days after their nameservers moved let go.
+  const domainMoves = await tracked("daily.domain-moves", 86_400, () => runDomainMoves());
+  // Zones moving here (D315 5.4): arrived once public DNS shows only Vercel's nameservers for them.
+  const domainsArrived = (await tracked("daily.domain-arrivals", 86_400, () => checkArrivals()))?.length ?? null;
   const [retention, erasures, privacyReminders, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPictureFiles, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned] = await Promise.all([runRetention(), resumeErasures().catch((error) => (console.error("[privacy] resume failed", error), { resumed: 0, failed: 0 })), sendPrivacyReminders().catch((error) => (console.error("[privacy] reminders failed", error), { dueSoon: 0, overdue: 0 })), pruneDataJobs(), pruneNotFound(), pruneThemeDetaches().catch((error) => (console.error("[theme-detach] prune failed", error), 0)), pruneThemeUpdates().catch((error) => (console.error("[theme-updates] prune failed", error), 0)), pruneSubscribers().catch((error) => (console.error("[subscribers] prune failed", error), 0)), pruneBroadcastRecipients().catch((error) => (console.error("[broadcasts] prune failed", error), 0)), pruneAutomations().catch((error) => (console.error("[automations] prune failed", error), 0)), pruneStockRequests().catch((error) => (console.error("[stock-requests] prune failed", error), 0)), expireGiftCards(), prunePageJobs().catch((error) => (console.error("[page-jobs] prune failed", error), 0)), pruneReviewRequests().catch((error) => (console.error("[review-requests] prune failed", error), 0)), pruneReviewPictureFiles().catch((error) => (console.error("[review-pictures] sweep failed", error), { removed: 0 })), prunePageLooks().catch((error) => (console.error("[page-looks] prune failed", error), 0)), pruneResearch(), pruneAutopilotEvents().catch((error) => (console.error("[autopilot-events] prune failed", error), 0)), pruneInboundEmails().catch((error) => (console.error("[support-inbound] prune failed", error), 0))]);
   for (const store of rates) {
     revalidateTag(storeTag(store.slug), "max");

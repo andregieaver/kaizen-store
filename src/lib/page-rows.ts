@@ -129,6 +129,9 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       };
     case "newsletter":
       return { id: id(), type, recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" };
+    // One of the owner's forms (D705), picked in its settings.
+    case "form":
+      return { id: id(), type, formId: null };
     case "countdown":
       // Ends in a week, at the minute (D561); the owner sets the real end.
       return { id: id(), type, endsAt: null, title: "" };

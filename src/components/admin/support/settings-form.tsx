@@ -67,6 +67,7 @@ export function SupportSettingsForm({
   chatHref,
   openCount,
   formChoice = false,
+  takesEmail = false,
 }: {
   settings: DeskSettingsView;
   save: ((state: FormState, form: FormData) => Promise<FormState>) | null;
@@ -80,6 +81,8 @@ export function SupportSettingsForm({
   openCount: number;
   /** A store's desk: where its contact forms' messages go (D382). */
   formChoice?: boolean;
+  /** The desk has its own email address, so replies to the store's order emails can come here (ecosystem plan E1.4). */
+  takesEmail?: boolean;
 }) {
   const w = useAdminText("support").settings;
   const kindWords = w.actionKinds as Record<string, string>;
@@ -388,6 +391,9 @@ export function SupportSettingsForm({
                   ))}
                 </select>
                 <span className="text-muted">{w.forms.note}</span>
+                {takesEmail && (
+                  <span className="text-muted">{w.forms.replies}</span>
+                )}
               </label>
             )}
           </section>

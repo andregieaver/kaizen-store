@@ -8,6 +8,8 @@ import {
   checkMessage,
   checkSignup,
   fieldLabel,
+  shownQuestions,
+  chosenPlaces,
   type FormErrors,
   type FormResponse,
   type PublicForm,
@@ -16,6 +18,7 @@ import {
 import { browserText as t } from "@/lib/browser-text";
 import type { BrowserMessages as Messages } from "@/lib/browser-text";
 import type { FormField } from "@/lib/page-content";
+import { daysAfter, todayInZone } from "@/lib/questions";
 
 import { Dropdown } from "./dropdown";
 import { Inline } from "./inline-text";
@@ -98,7 +101,7 @@ export function SiteForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (preview || state.kind === "sending") return;
-    const checked = form.type === "newsletter" ? checkSignup(form, values, consent, m) : checkMessage(form, values, consent, m, m);
+    const checked = form.type === "newsletter" ? checkSignup(form, values, consent, m) : checkMessage(form, values, consent, m, m, visitorToday());
     if (!checked.ok) {
       setErrors(checked.errors);
       const first = Object.keys(checked.errors)[0];
@@ -175,7 +178,14 @@ export function SiteForm({
         {form.type === "newsletter" ? (
           <NewsletterFields form={form} m={m} values={values} errors={errors} set={set} button={button} />
         ) : (
-          form.fields.map((field) => <Field key={field.id} field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} />)
+          // The questions asked given the answers so far (D705 F3); half-width ones side by side on a wider screen.
+          <div className="grid gap-4 sm:grid-cols-2">
+            {shownQuestions(form.fields, values).map((field) => (
+              <div key={field.id} className={field.width === "half" ? "min-w-0" : "min-w-0 sm:col-span-2"}>
+                <Field field={field} m={m} value={values[field.id]} error={errors[field.id]} set={set} />
+              </div>
+            ))}
+          </div>
         )}
         {(form.type === "newsletter" || form.consent) && (
           <Tick
@@ -239,7 +249,10 @@ function NewsletterFields({
 }
 
 const AUTOCOMPLETE: Partial<Record<FormField["kind"], string>> = { name: "name", email: "email", phone: "tel" };
-const INPUT_TYPE: Partial<Record<FormField["kind"], string>> = { email: "email", phone: "tel" };
+const INPUT_TYPE: Partial<Record<FormField["kind"], string>> = { email: "email", phone: "tel", number: "number", date: "date" };
+
+/** The visitor's today (`YYYY-MM-DD`): a date question's days count from it in the browser, from the owner's on the server. */
+const visitorToday = () => todayInZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 function Field({
   field,
@@ -258,8 +271,46 @@ function Field({
       {error}
     </span>
   );
+  const helpLine = field.help && <span className="text-sm font-normal text-muted">{field.help}</span>;
   if (field.kind === "checkbox") {
-    return <Tick name={field.id} label={label} checked={value === true} onChange={(ticked) => set(field.id, ticked)} error={error} />;
+    return (
+      <div className="flex flex-col gap-1">
+        <Tick name={field.id} label={label} checked={value === true} onChange={(ticked) => set(field.id, ticked)} error={error} />
+        {helpLine}
+      </div>
+    );
+  }
+  if (field.kind === "radio" || field.kind === "checklist") {
+    // The choices' places are sent, as a dropdown's are; a tick list's as `0,2`.
+    const chosen = chosenPlaces(field, text);
+    const many = field.kind === "checklist";
+    return (
+      <fieldset className="flex flex-col gap-2" data-field={field.id} tabIndex={-1} aria-invalid={error ? true : undefined} aria-describedby={described}>
+        <legend className="text-sm font-medium">
+          {label}
+          {!field.required && <span className="font-normal text-muted"> ({m.form.optional})</span>}
+        </legend>
+        {helpLine}
+        {(field.options ?? []).map((option, index) => (
+          <label key={index} className="flex items-start gap-2 text-sm">
+            <input
+              type={many ? "checkbox" : "radio"}
+              name={field.id}
+              value={index}
+              checked={chosen.includes(index)}
+              onChange={(event) => {
+                if (!many) return set(field.id, String(index));
+                const next = event.target.checked ? [...chosen, index] : chosen.filter((p) => p !== index);
+                set(field.id, [...next].sort((a, b) => a - b).join(","));
+              }}
+              className="mt-0.5 size-4 shrink-0 accent-accent"
+            />
+            <span>{option}</span>
+          </label>
+        ))}
+        {errorLine}
+      </fieldset>
+    );
   }
   if (field.kind === "select") {
     return (
@@ -270,6 +321,7 @@ function Field({
           value={text}
           onChange={(next) => set(field.id, next)}
         />
+        {helpLine}
         {errorLine}
       </div>
     );
@@ -297,14 +349,24 @@ function Field({
           {...common}
           type={INPUT_TYPE[field.kind] ?? "text"}
           autoComplete={AUTOCOMPLETE[field.kind]}
-          maxLength={field.kind === "email" ? 254 : 300}
+          maxLength={field.kind === "number" || field.kind === "date" ? undefined : field.kind === "email" ? 254 : 300}
+          {...boundsOfInput(field)}
           onChange={(event) => set(field.id, event.target.value)}
           className={input}
         />
       )}
+      {helpLine}
       {errorLine}
     </div>
   );
+}
+
+/** A number's or a date's `min` and `max` for its input: a date's days counted from the visitor's today. */
+function boundsOfInput(field: FormField): { min?: string | number; max?: string | number; step?: number; inputMode?: "numeric" } {
+  if (field.kind === "number") return { step: 1, inputMode: "numeric", ...(field.min !== undefined && { min: field.min }), ...(field.max !== undefined && { max: field.max }) };
+  if (field.kind !== "date") return {};
+  const today = visitorToday();
+  return { ...(field.min !== undefined && { min: daysAfter(today, field.min) }), ...(field.max !== undefined && { max: daysAfter(today, field.max) }) };
 }
 
 function Tick({ name, label, checked, onChange, error }: { name: string; label: string; checked: boolean; onChange: (ticked: boolean) => void; error?: string }) {

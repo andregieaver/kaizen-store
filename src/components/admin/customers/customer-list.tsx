@@ -108,21 +108,25 @@ export function CustomerList({ base, items, words, tagAction }: { base: string; 
                 <span className={plain ? "max-sm:hidden" : ""} />
               )}
               <AdminLink href={`${base}/${item.key}`} className="flex min-w-0 items-center gap-3 text-ink hover:underline">
-                {item.avatar}
+                <span className="shrink-0 max-sm:hidden">{item.avatar}</span>
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="flex flex-wrap items-center gap-2 text-body">
                     <span className="truncate">{title}</span>
                     {item.subscribed && <span className="rounded-pill bg-insight-soft px-2 py-0.5 text-[12px] text-insight-text">{words.subscribed}</span>}
                   </span>
-                  <span className="truncate text-caption text-muted">{[item.city, item.name ? item.email : null].filter(Boolean).join(" · ")}</span>
+                  <span className="truncate text-caption text-muted max-sm:hidden">{[item.city, item.name ? item.email : null].filter(Boolean).join(" · ")}</span>
+                  {/* Round 30 (D703): on a phone one line under the name says where, how many orders and when. */}
+                  <span className="truncate text-caption text-muted sm:hidden">
+                    {[item.city, item.orders > 0 ? countWords(item.orders, words.orders) : null, item.last].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
               </AdminLink>
               <span className="text-right text-body tabular-nums sm:hidden">{item.spent}</span>
-              <div className={`${plain ? "col-start-1" : "col-start-2"} flex items-center gap-2 sm:col-start-auto`}>
+              <div className={`${plain ? "col-start-1" : "col-start-2"} flex items-center gap-2 max-sm:hidden sm:col-start-auto`}>
                 {item.lines.length > 0 && <Pictures lines={item.lines} size={36} max={3} moreWord={(n) => fillWords(words.morePictures, { n })} />}
                 {item.orders > 0 && <span className="text-caption text-muted">{countWords(item.orders, words.orders)}</span>}
               </div>
-              <span className={`${plain ? "col-start-2" : "col-start-3"} row-start-2 text-right text-caption text-muted sm:col-start-auto sm:row-start-auto sm:text-left sm:text-body sm:text-ink-2`}>{item.last}</span>
+              <span className={`${plain ? "col-start-2" : "col-start-3"} row-start-2 text-right text-caption text-muted max-sm:hidden sm:col-start-auto sm:row-start-auto sm:text-left sm:text-body sm:text-ink-2`}>{item.last}</span>
               <span className="hidden text-right text-body tabular-nums sm:block">{item.spent}</span>
             </div>
           );

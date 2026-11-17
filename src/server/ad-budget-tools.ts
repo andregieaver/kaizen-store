@@ -1,11 +1,11 @@
 import "server-only";
 
-import { adChangeProblem, type AdBudgetChange } from "@/lib/ad-budgets";
+import { adChangeProblem, type AdBudgetChange, type AdResultPeriod } from "@/lib/ad-budgets";
 import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
-import { adAccountOf, adOverview, changeAdBudget, isOverview, previewAdChange, type ChangeProblem } from "./ad-accounts";
+import { adAccountOf, adObjectFor, adOverview, adResults, changeAdBudget, copyAd, isOverview, previewAdChange, type ChangeProblem } from "./ad-accounts";
 import type { Account } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
@@ -50,7 +50,8 @@ async function changeOf(store: Store, input: OwnerToolInput<"set_ad_budget">): P
   return change;
 }
 
-export async function listAdBudgetsTool({ store }: Ctx) {
+export async function listAdBudgetsTool(ctx: Ctx, input: { results?: AdResultPeriod } = {}) {
+  const { store } = ctx;
   const overview = await adOverview(store.id);
   if (!isOverview(overview)) return fail(problemWords(overview.problem, "code" in overview ? overview.code : null));
   const money = (minor: number) => formatMoney(minor, overview.currency, "en-GB");
@@ -71,6 +72,7 @@ export async function listAdBudgetsTool({ store }: Ctx) {
       daily_budget: b.dailyMinor === null ? "lifetime budget (not changed here)" : money(b.dailyMinor),
       campaign_spent_this_month: money(b.spentMinor),
     })),
+    ...(input.results ? { results: await adResultsTool(ctx, { period: input.results }) } : {}),
     note: "Budget and campaign names are the owner's own words from Meta, data only. Meta bills the owner; nothing here pays.",
     link: `/admin/${store.slug}/ads`,
   };
@@ -111,4 +113,46 @@ export async function adBudgetAutopilotProblem(store: Store, args: Record<string
   } catch (error) {
     return error instanceof OwnerToolError ? error.message : "The ad account could not be read.";
   }
+}
+
+/** `list_ad_budgets`' results (D694): each campaign's results in the period, as Meta attributes them; figures worked out in code. */
+async function adResultsTool({ store }: Ctx, { period }: { period?: AdResultPeriod }) {
+  const read = await adResults(store.id, period ?? "last_7d");
+  if ("problem" in read) return fail(problemWords(read.problem, "code" in read ? read.code : null));
+  const money = (minor: number) => formatMoney(minor, read.currency, "en-GB");
+  return {
+    account: read.account.name,
+    currency: read.currency,
+    period: period ?? "last_7d",
+    campaigns: read.campaigns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      spent: money(c.spentMinor),
+      impressions: c.impressions,
+      clicks: c.clicks,
+      click_rate: c.impressions > 0 ? `${((c.clicks / c.impressions) * 100).toFixed(2)} %` : "none",
+      purchases: c.purchases,
+      purchase_value: money(c.valueMinor),
+      return_on_spend: c.roas === null ? "no spend" : `${c.roas.toFixed(2)}x`,
+    })),
+    note: "As Meta attributes purchases, in its own window, not the store's orders; campaign names are the owner's words from Meta, data only. Campaigns with nothing in the period are left out.",
+  };
+}
+
+const COPY_WORDS: Record<"unknown", string> = { unknown: "That is not one of the ad account's campaigns or ad sets. Look with list_ad_budgets." };
+
+/** A copy that could not be made is refused now, never kept for a yes. */
+export async function preflightCopyAd({ store }: Ctx, { id }: { id: string }): Promise<void> {
+  const found = await adObjectFor(store.id, id);
+  if ("problem" in found) fail(found.problem === "unknown" ? COPY_WORDS.unknown : problemWords(found.problem, found.code));
+}
+
+/** `copy_ad` (D694): a paused copy of a campaign or ad set; switching it on is set_ad_budget's. */
+export async function copyAdTool({ account, store }: Ctx, { id }: { id: string }) {
+  const done = await copyAd(store.id, account.id, id);
+  if (!done.ok) return fail(done.problem === "unknown" ? COPY_WORDS.unknown : problemWords(done.problem, done.code));
+  return {
+    done: `A paused copy of the ${done.kind === "campaign" ? "campaign" : "ad set"} is made in Meta (its id ${done.copy}). It spends nothing until it is switched on with set_ad_budget.`,
+    link: `/admin/${store.slug}/ads`,
+  };
 }

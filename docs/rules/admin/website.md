@@ -1632,3 +1632,20 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - A countdown timer and animated stats (D561, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`): a countdown only ever counts to a fixed moment the owner chose, the same for every visitor, and draws nothing once it has passed; never add one that starts again per visitor (false urgency). Stats' figures are the owner's own, in the server's HTML as typed; the count is decoration only, never under reduced motion and never read to a screen reader.
 
+## Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F3 built, F4 and F5 planned)
+
+- Read `docs/forms.md` (section 9 is F1 as built) before changing a page's form components, `src/lib/forms.ts`, `src/lib/form-records.ts`,
+  `src/server/forms.ts`, `src/server/forms-admin.ts` (the only writer of `forms` and `form_responses`) or the checkout's question rules, which
+  forms will share (`src/lib/questions.ts`, F3).
+- A saved form reaches the site and `/api/forms` only as `formAsBlock()` makes it, so D93's checks, emails, inbox, confirmation and limits
+  serve it; it takes answers only while active, able to deliver and on a published page (`formIsPublished()`). The site reads it through
+  `siteForm()` (tag `forms:{storeId}`), which every write refreshes.
+- A form is a row of `commerce.forms` (kind `message` or `signup`), picked by id in the page's `form` component, which keeps only its
+  look. Its responses are kept for the form's `keep_months` and are a person's data from the first step (D162): register, export,
+  erasure and the retention job ship with them.
+- Copies take forms (F2): `clone_page_content()` copies a template's forms without recipients, code or tags, `copy_remap()` a source's
+  forms as they are; only the source's own, never responses. A page's own form moved by `lift_page_forms()` keeps a findable id
+  (`lifted_form_id()` / `liftedFormId()`).
+- A question is asked only as `shownQuestions()` says (F3), in the browser and in `checkMessage()` alike; a number's and a date's rules are
+  `src/lib/questions.ts`, shared with the checkout's questions. A form's `delivery.inbox` routes a message only while the support desk is on.
+- A form template never changes a form made from it; a form on a page is archived, never deleted.

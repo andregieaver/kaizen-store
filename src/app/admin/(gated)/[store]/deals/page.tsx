@@ -131,6 +131,9 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
             <ButtonLink kind="quiet" href={`${base}/pipelines`}>
               {w.pipelines}
             </ButtonLink>
+            <ButtonLink kind="quiet" href={`${base}/contract-templates`}>
+              {w.templates.link}
+            </ButtonLink>
           </div>
         }
       />

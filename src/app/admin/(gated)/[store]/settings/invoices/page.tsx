@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { PhoneRows } from "@/components/admin/phone-row";
+
 import { requireFeature } from "@/components/admin/feature-off";
 import { InvoiceNotes, InvoiceReadinessList, InvoiceSettingsForm, SeriesForm } from "@/components/admin/invoices/invoice-settings-form";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -30,14 +32,23 @@ export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/
     <div className="flex flex-col gap-6">
       <PageHeader
         title={words.settings.title}
-        description={words.settings.description}
+        description={
+          <>
+            <span className="max-sm:hidden">{words.settings.description}</span>
+            <span className="sm:hidden">{words.phone.lead}</span>
+          </>
+        }
       />
       <InvoiceReadinessList base={base} readiness={readiness} words={words} />
       <InvoiceSettingsForm settings={settings} readiness={readiness} paymentsHref={`${base}/settings/payments`} saveAction={saveInvoiceSettingsAction.bind(null, store.slug)} words={words} />
-      {series.map((state) => (
-        <SeriesForm key={state.series} state={state} action={setSeriesAction.bind(null, store.slug)} words={words} />
-      ))}
-      <InvoiceNotes words={words} />
+      <PhoneRows>
+        {series.map((state) => (
+          <SeriesForm key={state.series} state={state} action={setSeriesAction.bind(null, store.slug)} words={words} />
+        ))}
+      </PhoneRows>
+      <PhoneRows>
+        <InvoiceNotes words={words} />
+      </PhoneRows>
     </div>
   );
 }

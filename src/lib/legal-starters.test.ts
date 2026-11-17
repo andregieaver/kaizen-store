@@ -76,6 +76,8 @@ const VARIANTS: Record<string, LegalFacts> = {
   supportAi: assembleLegalFacts(input({ supportAi: { tone: true, summaries: true, answers: true } })),
   // An appointment with a deposit and a no-show fee (PSI REG-12).
   noShow: assembleLegalFacts(input({ noShowFee: true })),
+  // The browse email is on (D691).
+  browse: assembleLegalFacts(input({ browseEmails: true })),
   empty: assembleLegalFacts(
     input({
       store: { name: "", legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: null, audience: "consumers", visitCounting: false, modules: [], tracking: {} },
@@ -289,6 +291,16 @@ describe("what a starter holds", () => {
     expect(privacy(answers, "da")).toContain("kan en AI svare på egen hånd");
     expect(assembleLegalFacts(input({ supportAi: { tone: false, summaries: false, answers: true } }))).toMatchObject({ aiAnswers: true });
     expect(assembleLegalFacts(input())).toMatchObject({ aiAnswers: false });
+  });
+
+  it("says what product views are kept for only while the browse email is on (D691)", () => {
+    const privacy = (facts: LegalFacts, lang: "en" | "nb" | "sv" | "da" = "en") => JSON.stringify(legalStarterSections("privacy", lang, facts));
+    expect(privacy(FULL)).not.toContain("products you looked at");
+    const browse = { ...FULL, browseEmails: true as const };
+    expect(privacy(browse)).toContain("products you looked at and did not buy, only while you are signed in");
+    expect(privacy(browse, "nb")).toContain("produkter du så på uten å kjøpe");
+    expect(assembleLegalFacts(input({ browseEmails: true }))).toMatchObject({ browseEmails: true });
+    expect(assembleLegalFacts(input())).not.toHaveProperty("browseEmails");
   });
 
   it("says a no-show can cost a fee only where an appointment takes a deposit and has one (PSI REG-12)", () => {

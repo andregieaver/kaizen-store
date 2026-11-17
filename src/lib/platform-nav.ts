@@ -22,6 +22,7 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/media", "Media", "Pictures and videos for Kaizena Flow's pages, searchable, with alt texts.", "image"),
   item("/templates", "Templates", "The marketplace's templates, store owners' and Kaizena Flow's own: hide one from every store's list, or show it again.", "layout-template"),
   item("/menus", "Menus", "Lists of links for Kaizena Flow's header, footer and pages.", "menu"),
+  item("/forms", "Forms", "Kaizena Flow's contact forms and newsletter sign-ups to place on any page, and what visitors sent with them.", "clipboard-list"),
   item("/headers", "Header", "Headers built from components; choose the one Kaizena Flow's site shows.", "panel-top"),
   item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows.", "panel-bottom"),
   item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use.", "type"),

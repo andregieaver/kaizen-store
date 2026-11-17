@@ -177,6 +177,22 @@ export const invoicesNb: InvoicesMessages = {
     tryAgain: "Prøv igjen",
     sent: "Sendt.",
   },
+  phone: {
+    missing: { one: "Ordrer venter på fakturaen sin: {n} ting mangler", many: "Ordrer venter på fakturaen sin: {n} ting mangler" },
+    andMore: "Og {n} til",
+    lead: "En faktura for hver betalte ordre, en kreditnota for hver refusjon.",
+    change: "Endre",
+    done: "Ferdig",
+    open: "Åpne",
+    close: "Lukk",
+    off: "Av",
+    none: "Ingen",
+    everyOrder: "For hver betalte ordre",
+    withEmail: "sendes med bekreftelsen",
+    first: "Den første er {number}",
+    next: "Den neste er {number}",
+    notesSub: "EU-regler, valuta, hva som ikke er bygget ennå",
+  },
   settings: {
     title: "Fakturering",
     description:

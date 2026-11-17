@@ -1,6 +1,8 @@
+import { formAsBlock, formTakesAnswers } from "@/lib/form-records";
 import { publicForm } from "@/lib/forms";
-import type { EmailFormBlock, NewsletterBlock } from "@/lib/page-content";
+import type { EmailFormBlock, FormBlock, NewsletterBlock } from "@/lib/page-content";
 import type { GridPlace } from "@/server/content-grid";
+import { siteForm } from "@/server/form-site";
 import { storeSlugOf } from "@/server/menus";
 import { getOpenStore } from "@/server/stores";
 
@@ -10,9 +12,11 @@ import { marketIn } from "@/server/shop";
 /**
  * A page's form on the site (D93): drawn in the page's language, sending
  * for the page's owner. Only what the visitor needs reaches the browser
- * (`publicForm()`): where it sends stays on the server.
+ * (`publicForm()`): where it sends stays on the server. A `form` component
+ * (D705) draws the owner's form it names, read through the forms cache, and
+ * nothing while it is archived, gone or cannot deliver.
  */
-export async function FormSection({ block, place }: { block: EmailFormBlock | NewsletterBlock; place: GridPlace }) {
+export async function FormSection({ block, place }: { block: EmailFormBlock | NewsletterBlock | FormBlock; place: GridPlace }) {
   let lang = "en";
   if (place.owner) {
     const slug = await storeSlugOf(place.owner);
@@ -20,5 +24,8 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
     const market = store ? marketIn(store, place.market) : undefined;
     if (market) lang = market.lang;
   }
-  return <SiteForm form={publicForm(block)} store={place.owner} lang={lang} />;
+  if (block.type !== "form") return <SiteForm form={publicForm(block)} store={place.owner} lang={lang} />;
+  const form = block.formId ? await siteForm(place.owner, block.formId) : null;
+  if (!form || !formTakesAnswers(form)) return null;
+  return <SiteForm form={publicForm(formAsBlock(form, lang, { button: block.button, layout: block.layout }))} store={place.owner} lang={lang} />;
 }

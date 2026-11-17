@@ -318,6 +318,11 @@ export const supportEn = {
     formPage: "Sent from",
     addressCustomer: "A customer has this address: not verified",
     openCustomer: "Open the customer",
+    signedInCustomer: "Signed in as a customer of the store",
+    latestOrders: "Latest orders",
+    noOrders: "No orders yet.",
+    orderNumber: "Order {number}",
+    allOrders: "All {n} orders",
     noAddress: "No email address was given, so this message cannot be answered by email.",
     noAi: "Sent through the contact form: only people read it, never the AI.",
   },
@@ -557,6 +562,9 @@ export const supportEn = {
         email: "Emailed to the form's recipients only",
       },
       note: "While support is on, a message sent through a contact form on your site becomes a conversation here that your people answer by email. The AI never reads or answers it.",
+      /** Ecosystem plan E1.4: with the inbox only, replies to the store's emails about orders come to the desk's address. */
+      replies:
+        "With In this inbox only, customers' replies to your emails about their orders, returns, exchanges and bookings come here too, to this inbox's own address.",
     },
     save: "Save",
     toneLine: { off: "Off", veryBad: "very bad", bad: "bad" },
@@ -609,6 +617,15 @@ export const supportEn = {
     days: "{n} d",
     noneYet: "None yet",
     needed: "{n} of the {min} needed",
+  },
+  /** Round 31 (D704): the reports on a phone, and a period with no conversation. */
+  reportsPhone: {
+    emptyTitle: "No conversations in the {period}",
+    emptyText: "The figures appear from the first one: who answered, how long customers waited, how it went and what they asked about. For the desk, never per person.",
+    openInbox: "Open the inbox",
+    open: "Open",
+    close: "Close",
+    volumeSub: "{n} started · {open} still open",
   },
   reports: {
     takenOver: "A person took it over",

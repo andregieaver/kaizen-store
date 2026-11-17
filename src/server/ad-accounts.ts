@@ -9,6 +9,7 @@ import {
   adChangeEffect,
   adChangeWords,
   budgetsOf,
+  campaignResults,
   dailySpendRows,
   daysLeftInMonth,
   META_ACTIVE,
@@ -17,14 +18,18 @@ import {
   metaAccountSchema,
   metaAdSetsSchema,
   metaCampaignsSchema,
+  metaCopySchema,
   metaDailySpendSchema,
   metaErrorSchema,
   metaInsightsSchema,
+  metaResultsSchema,
   projectedMonthMinor,
   spendMinor,
   type AdBudget,
   type AdBudgetChange,
   type AdChangeFacts,
+  type AdResultPeriod,
+  type CampaignResult,
 } from "@/lib/ad-budgets";
 import { parseAmount } from "@/lib/field-money";
 import { decryptSecret, encryptSecret, parseKey, secretHint } from "@/lib/secret-box";
@@ -256,6 +261,81 @@ export async function changeAdBudget(storeId: string, actorId: string, change: A
     { target: { type: before.kind === "campaign" ? "ad_campaign" : "ad_set", id: before.id }, changes: { dailyMinor: { from: before.dailyMinor, to: after.dailyMinor }, on: { from: before.on, to: after.on } } },
   );
   return { ok: true, before, after, words: preview.words, overview: preview.overview };
+}
+
+/**
+ * Each campaign's results in a period, as Meta attributes them (D694, D1 of `docs/100-day-challenge.md`): spend, impressions, clicks, purchases
+ * and their value, and the return on spend worked out in code. Campaigns with nothing in the period are left out by Meta.
+ */
+export async function adResults(
+  storeId: string,
+  period: AdResultPeriod,
+  fetcher: MetaFetch = realFetch,
+): Promise<{ account: AdAccountView; currency: string; campaigns: CampaignResult[] } | { problem: "not_connected" } | MetaProblem> {
+  const opened = await tokenOf(storeId);
+  if (!opened) return (await adAccountOf(storeId)) ? { problem: "refused", code: null } : { problem: "not_connected" };
+  const read = await meta(
+    fetcher,
+    opened.token,
+    `act_${opened.view.account}/insights?level=campaign&fields=campaign_id,campaign_name,spend,impressions,clicks,actions,action_values&date_preset=${period}&limit=200`,
+    metaResultsSchema,
+  );
+  if (isProblem(read)) return read;
+  const campaigns = campaignResults(read.data, opened.view.currency);
+  if (!campaigns) return { problem: "shape", code: null };
+  return { account: opened.view, currency: opened.view.currency, campaigns };
+}
+
+export type CopyProblem = "not_connected" | "unknown" | MetaProblem["problem"];
+
+/**
+ * A paused copy of one of the account's campaigns (with its ad sets and ads) or ad sets (with its ads), for the AI to test a variation (D694).
+ * The copy is made paused: it spends nothing until a budget is switched on through `changeAdBudget()`, under the owner's limit. The id must
+ * be one of the account's campaigns or ad sets that is on or paused. Audited.
+ */
+export async function copyAd(
+  storeId: string,
+  actorId: string,
+  id: string,
+  fetcher: MetaFetch = realFetch,
+): Promise<{ ok: true; kind: "campaign" | "ad_set"; name: string; copy: string } | { ok: false; problem: CopyProblem; code?: number | null }> {
+  const opened = await tokenOf(storeId);
+  if (!opened) return { ok: false, problem: (await adAccountOf(storeId)) ? "refused" : "not_connected" };
+  const found = await adObjectOf(opened.view, opened.token, id, fetcher);
+  if (isProblem(found)) return { ok: false, problem: found.problem, code: found.code };
+  if (!found) return { ok: false, problem: "unknown" };
+  const form: Record<string, string> = { status_option: "PAUSED", deep_copy: "true" };
+  const done = await meta(fetcher, opened.token, `${encodeURIComponent(id)}/copies`, metaCopySchema, form);
+  if (isProblem(done)) return { ok: false, problem: done.problem, code: done.code };
+  const copy = "copied_campaign_id" in done ? done.copied_campaign_id : done.copied_adset_id;
+  await audit(actorId, storeId, "marketing.ad_copied", { platform: "meta", kind: found.kind, from: id, copy }, { target: { type: found.kind === "campaign" ? "ad_campaign" : "ad_set", id } });
+  return { ok: true, kind: found.kind, name: found.name, copy };
+}
+
+/** The account's campaign or ad set with this id (on or paused), or null when it is not one of them. */
+export async function adObjectOf(view: AdAccountView, token: string, id: string, fetcher: MetaFetch): Promise<{ kind: "campaign" | "ad_set"; name: string } | null | MetaProblem> {
+  if (!/^\d{1,20}$/.test(id)) return null;
+  const act = `act_${view.account}`;
+  const states = encodeURIComponent(JSON.stringify(["ACTIVE", "PAUSED"]));
+  const [campaigns, adSets] = await Promise.all([
+    meta(fetcher, token, `${act}/campaigns?fields=id,name,status&effective_status=${states}&limit=200`, metaCampaignsSchema),
+    meta(fetcher, token, `${act}/adsets?fields=id,name,status,campaign_id&effective_status=${states}&limit=200`, metaAdSetsSchema),
+  ]);
+  if (isProblem(campaigns)) return campaigns;
+  if (isProblem(adSets)) return adSets;
+  const campaign = campaigns.data.find((c) => c.id === id);
+  if (campaign) return { kind: "campaign", name: campaign.name };
+  const adSet = adSets.data.find((a) => a.id === id);
+  return adSet ? { kind: "ad_set", name: adSet.name } : null;
+}
+
+/** Whether an id is one of the account's campaigns or ad sets, for a tool's check before it is kept for a yes. */
+export async function adObjectFor(storeId: string, id: string, fetcher: MetaFetch = realFetch): Promise<{ kind: "campaign" | "ad_set"; name: string } | { problem: CopyProblem; code?: number | null }> {
+  const opened = await tokenOf(storeId);
+  if (!opened) return { problem: (await adAccountOf(storeId)) ? "refused" : "not_connected" };
+  const found = await adObjectOf(opened.view, opened.token, id, fetcher);
+  if (isProblem(found)) return found;
+  return found ?? { problem: "unknown" };
 }
 
 /** The days of spend read again each time: Meta still corrects a day's figure for a while after it. */

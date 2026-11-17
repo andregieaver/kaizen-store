@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
+import { TOKEN_KINDS, type TokenKind } from "@/lib/admin-api";
 
 import { useAdminText } from "./admin-text";
 import { Button } from "./ui";
@@ -33,6 +34,7 @@ export function MakeApiToken({
   make,
   scopeWords,
   namePlaceholder,
+  kinds = false,
 }: {
   scopes: string[];
   powers: string[];
@@ -41,6 +43,8 @@ export function MakeApiToken({
   scopeWords?: Record<string, string>;
   /** The name's example, when the store's (*Warehouse*) does not fit. */
   namePlaceholder?: string;
+  /** Round 27 (D700): start from the ready kinds of token (a store's); Choose yourself shows every scope. */
+  kinds?: boolean;
 }) {
   const w = useAdminText("notifications").apiTokens;
   const wordsOf = (scope: string) => scopeWords?.[scope] ?? w.scopeWords[scope] ?? scope;
@@ -49,6 +53,7 @@ export function MakeApiToken({
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [key, setKey] = useState(0);
+  const [kind, setKind] = useState<TokenKind>(kinds ? "warehouse" : "custom");
   if (token)
     return (
       <div role="status" className="flex flex-col gap-2 rounded-panel border border-warning-line bg-warning-soft p-4 text-sm">
@@ -89,6 +94,34 @@ export function MakeApiToken({
         {w.name}
         <input name="name" required maxLength={80} placeholder={namePlaceholder ?? w.namePlaceholder} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal" />
       </label>
+      {kinds && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">{w.kind}</legend>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {(["warehouse", "accounting", "read", "custom"] as const).map((k) => (
+              <label
+                key={k}
+                className="flex cursor-pointer flex-col gap-0.5 rounded-panel border border-line p-3 text-sm has-checked:border-ink has-checked:ring-1 has-checked:ring-ink has-focus-visible:outline-2"
+              >
+                <span className="flex items-center gap-2">
+                  <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => setKind(k)} className="size-4" />
+                  {w.kinds[k].name}
+                </span>
+                <span className="text-xs text-muted">{w.kinds[k].sub}</span>
+              </label>
+            ))}
+          </div>
+          {kind !== "custom" && (
+            <>
+              <p className="text-sm text-ink-2">{w.kinds[kind].does}</p>
+              {TOKEN_KINDS[kind].map((scope) => (
+                <input key={scope} type="hidden" name="scopes" value={scope} />
+              ))}
+            </>
+          )}
+        </fieldset>
+      )}
+      {kind === "custom" && (
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">{w.scopes}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -107,13 +140,14 @@ export function MakeApiToken({
           </details>
         )}
       </fieldset>
+      )}
       {problem && (
         <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
       <div>
-        <Button kind="main" type="submit" disabled={pending}>
+        <Button kind="main" type="submit" disabled={pending} className="max-sm:w-full">
           {pending ? w.making : w.make}
         </Button>
       </div>

@@ -8,13 +8,69 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-16
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D673, D678, D679]
+checked: 2026-11-17
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.36 — 2026-11-17
+
+Three webhook topics for contracts on deals (D695), for an owner's own endpoints, apps that read customers, and workflows' triggers.
+
+- `contract.sent`: a contract was sent for signing. `contract.signed`: every signer signed it (the deal is won).
+  `contract.declined`: a signer declined it.
+- Each carries `contract`: its `id`, `title`, `status`, `language`, `deal_id`, `template`, `signers` in order (`role`, `name`,
+  `signed_at`, `declined_at`), `sent_at`, `expires_at`, `completed_at` and `admin_url`. Never a signer's email, the reason a signer gave
+  for declining or the contract's words.
+
+## 1.35 — 2026-11-17
+
+Additions to the owner MCP's catalogue for contracts on deals (D695). They are offered while Deals is on.
+
+- `list_contracts` (new, optional `deal` and `status`): the store's contracts with their deal, status, dates and signers in order (role,
+  name, whose turn it is, asked, reminded, opened), and the store's contract templates. Never a signer's email. Read-only; needs
+  `customers:read`.
+- `draft_contract` (new, `deal`, optional `template`): a draft on an open deal from one of the store's templates, with the deal's owner
+  and person as its signers, and what still stops it being sent. Nothing is sent: a contract is sent for signing on its admin page.
+  Needs `customers:write`.
+- `remind_contract_signer` (new, `contract`): emails the signer whose turn it is a reminder, at most once a day. Needs approval and
+  `customers:write`.
+
+## 1.34 — 2026-11-16
+
+A clearer description for `page_behaviour` (D656): it now says it answers where visitors get stuck, dead and rage clicks and how far
+they scroll, which the analytics overview does not. Its arguments and answer are unchanged.
+
+## 1.33 — 2026-11-16
+
+Additions to the owner MCP's catalogue for the store's Meta ad account (D694).
+
+- `list_ad_budgets`: takes an optional `results` (`last_7d`, `last_30d` or `this_month`) and then also answers each campaign's spend,
+  impressions, clicks, purchases, their value and the return on spend for it, as Meta attributes them (`results`). Read-only.
+- `copy_ad` (new, `id`): a paused copy of a campaign (with its ad sets and ads) or an ad set (with its ads). It spends nothing until its
+  budget is switched on with `set_ad_budget`. Needs approval; owner only.
+
+## 1.32 — 2026-11-16
+
+An addition to the owner MCP's catalogue for email automations (D691).
+
+- `write_email_automation`, `switch_email_automation` and `list_email_automations`: a new kind, `browse` (still thinking about it): an
+  email 1 to 5 days after a signed-in customer on the list last looked at products, showing those they did not buy. Views are kept only
+  for customers who allowed marketing cookies, for 7 days.
+
+## 1.31 — 2026-11-16
+
+Two read-only additions to the owner MCP's catalogue for heatmaps (D656).
+
+- `page_behaviour` (new, `analytics`): the pages where visitors get stuck and the most viewed ones, or one page's scroll reach, attention
+  and the parts clicked most with their dead and rage clicks, from the heatmaps' daily totals. `analytics:read`.
+- `version_behaviour` (new, `analytics`): an A/B test's behaviour per version and whether a version meets clearly more rage or dead
+  clicks. `analytics:read`.
+
+No tool reads recordings of visits.
 
 ## 1.30 — 2026-11-16
 

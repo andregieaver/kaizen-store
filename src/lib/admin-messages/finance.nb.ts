@@ -6,6 +6,17 @@ import type { FinanceMessages } from "./finance.en";
  * postering, tilbakeføring and tvist, refusjon, gavekort, betalingsfrist, angrerett.
  */
 export const financeNb: FinanceMessages = {
+  phone: {
+    open: "Åpne",
+    close: "Lukk",
+    needsCosts: "Fortjeneste trenger hva produktene koster.",
+    someCosts: "Fortjenesten er delvis anslått: noen produkter mangler kostnad.",
+    withoutCost: { one: "{n} mangler ennå.", many: "{n} mangler ennå." },
+    addCosts: "Legg til kostnader",
+    bridgeSub: "Bruttosalg {amount}",
+    profitSub: { one: "{n} ordre", many: "{n} ordrer" },
+    paymentsSub: "{method} {n}",
+  },
   /** How a figure's decimals are written. */
   numbers: { decimal: "," },
   pages: {

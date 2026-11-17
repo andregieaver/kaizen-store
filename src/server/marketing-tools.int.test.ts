@@ -91,7 +91,7 @@ describe("the marketing tools", () => {
     expect(await run("tag_customer", { email: "reader@example.com", tag: "Coffee club", remove: true })).toEqual({ done: 'The tag "Coffee club" is taken off.' });
     await expect(run("tag_customer", { email: "reader@example.com", tag: "Coffee club", remove: true })).rejects.toThrow(/no tag/);
     const automations = (await run("list_email_automations", {})) as { automations: { kind: string; on: boolean }[] };
-    expect(automations.automations.map((a) => a.kind)).toEqual(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "back_in_stock"]);
+    expect(automations.automations.map((a) => a.kind)).toEqual(["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse", "back_in_stock"]);
     expect(automations.automations.every((a) => a.on === false)).toBe(true);
   });
 

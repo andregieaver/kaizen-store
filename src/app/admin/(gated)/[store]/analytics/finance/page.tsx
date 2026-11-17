@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { countWords, fillWords } from "@/lib/admin-fill";
+
 import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
@@ -69,11 +72,13 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
     periodOrderProfits(store, period),
   ]);
 
+  const row = { change: words.phone.open, done: words.phone.close, flat: true } as const;
+
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["finance", "analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
-        <AnalyticsHeader ctx={ctx} path="/analytics/finance" title={words.pages.financeTitle} description={words.pages.financeDescription} />
+        <AnalyticsHeader ctx={ctx} path="/analytics/finance" title={words.pages.financeTitle} description={<span className="max-sm:hidden">{words.pages.financeDescription}</span>} />
         <FinanceView
           base={ctx.base}
           currency={mainCurrency(store)}
@@ -87,6 +92,9 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
           setup={setup}
           words={words}
         />
+        {/* Round 28 (D701): on a phone the other reports are rows, each saying what it holds. */}
+        <PhoneRows>
+        <PhoneRow opens="finance-order-profit" title={words.orderProfits.title} sub={countWords(orderProfits.rows.length, words.phone.profitSub, { n: String(orderProfits.rows.length) })} {...row}>
         <OrderProfitsView
           base={ctx.base}
           locale={locale}
@@ -97,10 +105,31 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
           cappedAt={PROFIT_ORDERS_MAX}
           words={words}
         />
-        <PaymentsView currency={mainCurrency(store)} locale={locale} report={payments} words={words} />
-        <TermsOwedView base={ctx.base} currency={mainCurrency(store)} locale={locale} owed={owed} words={words} />
-        <LiabilitiesView locale={locale} rows={liabilities} words={words} />
-        <GiftCardsView base={ctx.base} locale={locale} lines={giftCards.lines} words={words} />
+        </PhoneRow>
+        <PhoneRow
+          opens="payment-methods"
+          title={words.payments.title}
+          sub={payments.lines[0] ? fillWords(words.phone.paymentsSub, { method: payments.lines[0].label, n: String(payments.lines[0].payments) }) : undefined}
+          {...row}
+        >
+          <PaymentsView currency={mainCurrency(store)} locale={locale} report={payments} words={words} />
+        </PhoneRow>
+        {owed.dueOrders + owed.overdueOrders > 0 && (
+          <PhoneRow title={words.termsOwed.title} {...row}>
+            <TermsOwedView base={ctx.base} currency={mainCurrency(store)} locale={locale} owed={owed} words={words} />
+          </PhoneRow>
+        )}
+        {liabilities.length > 0 && (
+          <PhoneRow opens="owed" title={words.liabilities.title} {...row}>
+            <LiabilitiesView locale={locale} rows={liabilities} words={words} />
+          </PhoneRow>
+        )}
+        {giftCards.lines.length > 0 && (
+          <PhoneRow title={words.giftCards.title} {...row}>
+            <GiftCardsView base={ctx.base} locale={locale} lines={giftCards.lines} words={words} />
+          </PhoneRow>
+        )}
+        </PhoneRows>
       </div>
     </ExportScope>
     </AdminTextScope>

@@ -125,6 +125,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Settings, Checkout rules asks `settings:read` to see and `settings:write` to change (D357).
   checkout_questions: "settings:read",
   save_checkout_question: "settings:write",
+  // Contracts for deals (D695): the deals pages' own permissions.
+  list_contracts: "customers:read",
+  draft_contract: "customers:write",
+  remind_contract_signer: "customers:write",
   // Blogs (D341): the Blogs and Comments pages' own keys (articles are the Website area's).
   list_blogs: "website:read",
   blog_comments: "website:read",
@@ -196,6 +200,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   explain_change: "analytics:read",
   analytics_alerts: "analytics:read",
   speed_report: "analytics:read",
+  page_behaviour: "analytics:read",
+  version_behaviour: "analytics:read",
   // Reports (D345): read like the Reports page; saving one is `analytics:write`, as the page's Save.
   report_catalogue: "analytics:read",
   run_report: "analytics:read",
@@ -296,6 +302,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // The ad account's figures are marketing's; moving its money is the owner's, as connecting it is (D585).
   list_ad_budgets: "marketing:read",
   set_ad_budget: "owner",
+  copy_ad: "owner",
   // The AI wallet is the owner's own money (D599): only the owner's assistant reads or uses it.
   wallet_status: "owner",
   request_purchase: "owner",

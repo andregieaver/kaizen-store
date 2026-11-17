@@ -151,11 +151,11 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   deals:
     "Ansattes salgsmuligheter med en person (D464): hva de kan kjøpe, steg og verdi, og hvorfor den ble tapt; eksporteres med personens notater og slettes når personen slettes (en bedrifts salgsmulighet beholder bedriften og mister personen).",
   contracts:
-    "Avtaler sendt til en person for signering (D695): det de sa, fylt ut med personens navn og opplysninger; eksporteres med personens salgsmuligheter og slettes når personen slettes (at en signert avtale beholdes etter bokføringsreglene, kommer med signeringen, D695 steg 3).",
+    "Kontrakter sendt til en person for signering (D695): det de sa, fylt ut med personens navn og opplysninger; eksporteres med personens salgsmuligheter. En som ikke er signert, slettes når personen slettes; en signert kontrakt beholdes etter bokføringsloven § 13(2), løsrevet fra kontoen, og slettes med filene når oppbevaringstiden er ute.",
   contract_signers:
-    "Hvem som ble bedt om å signere en avtale (D695), og hvordan de signerte eller hvorfor de avslo, knyttet til personen gjennom avtalen: eksporteres og slettes med den.",
+    "Hvem som ble bedt om å signere en kontrakt (D695), og hvordan de signerte eller hvorfor de avslo, knyttet til personen gjennom kontrakten: eksporteres med den, slettes med en usignert og beholdes med en signert i oppbevaringstiden som bevis.",
   contract_events:
-    "En avtales logg (D695): når den ble sendt, åpnet, signert eller avslått, fra hvilken adresse og nettleser, knyttet gjennom avtalen: eksporteres og slettes med den.",
+    "En kontrakts logg (D695): når den ble sendt, åpnet, signert eller avslått, fra hvilken adresse og nettleser, knyttet gjennom kontrakten: eksporteres med den, slettes med en usignert og beholdes med en signert i oppbevaringstiden som bevis.",
   activities:
     "De ansattes samtaler, møter og oppgaver om en person (D468): hva og når, og det som ble skrevet om dem; eksporteres med personens notater og slettes når personen slettes (en aktivitet om en bedrift eller en avtale beholder den og mister personen).",
   customer_tags: "De ansattes stikkord på en person (D296), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",
@@ -187,6 +187,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "En oppføring om reservasjon mot e-post: beholdes så butikken ikke sender personen e-post igjen (personens eget ønske); å slette den ville oppheve reservasjonen.",
   blog_comments:
     "En kommentar personen skrev til en artikkel (D341): navnet de valgte, e-posten de oppga (vises aldri) og ordene deres, funnet via de bekreftede adressene deres; eksporteres, og slettes når personens opplysninger slettes. Avviste kommentarer og søppelkommentarer slettes 30 dager etter at de ble sendt inn.",
+  form_responses:
+    "Det personen sendte med et skjema i butikken (D705): svarene slik de er merket for eieren, funnet via e-postadressen de oppga (aldri knyttet til en kunde gjennom den); eksporteres og slettes når personens opplysninger slettes, og slettes etter skjemaets egne måneder (1 til 36).",
   form_submissions: "Påmeldinger og meldinger sendt fra denne adressen slettes.",
   consents: "Samtykke til informasjonskapsler lagres under en tilfeldig nettleser-ID og kan ikke knyttes til en person; dette står i filens notIncluded.",
   visits: PSEUDO,

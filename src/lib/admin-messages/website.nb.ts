@@ -151,6 +151,8 @@ export const websiteNb: WebsiteMessages = {
     categories: "Kategorier og stikkord",
     createAi: "Lag med KI",
     cards: {
+      find: "Finn en side",
+      noneFound: "Ingen side passer.",
       live: { one: "{n} side er publisert.", many: "{n} sider er publisert." },
       noneLive: "Ingen side er publisert ennå.",
       opensOn: " Butikken åpner på {page}.",
@@ -167,6 +169,11 @@ export const websiteNb: WebsiteMessages = {
       changeNote: "Endre åpner et lite vindu: behold standarden, velg en av sidene dine, eller start en ny side som ser ut som standarden.",
       close: "Lukk",
       products: "Produktene dine",
+      phone: {
+        showAll: "Vis alle {n}",
+        ownSub: "{own} egne · {standard} standard",
+        allStandard: "Alle er standard",
+      },
     },
     siteName: "Butikken din",
     roles: {

@@ -64,6 +64,7 @@ import { blogPath, blogTitle } from "@/lib/blogs";
 import { storeCssVersionAction, storeCssVersionsAction, storePageVersionAction, storePageVersionsAction } from "./version-actions";
 import { planMotionAction } from "./motion-action";
 import { signupCodeChoices } from "@/server/discounts";
+import { builderForms } from "@/server/forms-admin";
 import { planChoices } from "@/lib/plan-offer";
 import { getPublicPlans } from "@/server/public-plans";
 
@@ -168,6 +169,8 @@ export async function storePageContext(
     aiChange: (type === "page" || type === "article") && (await canChangePages(store.id)) ? { endpoint: `/admin/${store.slug}/pages/change` } : null,
     // A newsletter form's welcome code is one of the store's discounts with single-use codes (D304 J3).
     signupCodes: await signupCodeChoices(store.id),
+    // The store's forms (D705), for a form component.
+    forms: await builderForms(store.id, store.markets[0]?.lang ?? "en", `/admin/${store.slug}/forms`),
     startVideo: uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null,
     // A store's grids show its own products.
     gridStores: [],

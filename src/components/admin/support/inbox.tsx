@@ -206,6 +206,9 @@ export function Inbox({
             const seen = new Set(current.messages.map((m) => m.seq));
             return {
               ...fresh,
+              // The customer comes with the first answer only (E1.1): later polls keep it.
+              customer:
+                fresh.customer === undefined ? current.customer : fresh.customer,
               messages: [
                 ...current.messages,
                 ...fresh.messages.filter((m) => !seen.has(m.seq)),

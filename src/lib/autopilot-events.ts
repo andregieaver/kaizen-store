@@ -95,9 +95,10 @@ export const EVENT_TOOLS: Readonly<Record<EventKind, readonly string[]>> = {
     "list_products",
     "get_brand",
   ],
-  test_ended: ["list_experiments", "explain_results", "apply_winner", "get_brand"],
+  // version_behaviour (E1.6): whether the winning version meets more rage or dead clicks than the original, before it is applied.
+  test_ended: ["list_experiments", "explain_results", "version_behaviour", "apply_winner", "get_brand"],
   // The same tools as a test that ended: apply_winner stops a running test first and waits for the owner's yes where they keep it.
-  test_answered: ["list_experiments", "explain_results", "apply_winner", "get_brand"],
+  test_answered: ["list_experiments", "explain_results", "version_behaviour", "apply_winner", "get_brand"],
   // A goal review's tools (D328), without the platform's own: events are a store's.
   alert: [...REVIEW_PLAN_TOOLS, ...REVIEW_READ_TOOLS.filter((name) => name !== "platform_overview")],
   // Orders (C5): the order's own tools, and the customer told only in the store's fixed words (D635): cancelling one always waits for the

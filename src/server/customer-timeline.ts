@@ -174,7 +174,7 @@ async function conversations(who: Who): Promise<TimelineEvent[]> {
     email: r.email,
     label: r.subject ?? "",
     status: r.source,
-    href: `${who.base}/support/c/${r.id}`,
+    href: `${who.base}/support?c=${r.id}`,
   }));
 }
 
@@ -391,6 +391,28 @@ async function deals(who: Who): Promise<TimelineEvent[]> {
   });
 }
 
+/** The person's or the company's contracts (D695 step 4): each sent, and signed or declined; shown with the deals, linked to the contract's page. */
+async function contracts(who: Who): Promise<TimelineEvent[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, deal_id: col.uuid.nullable(), title: col.text, status: col.text, sent: col.timestamp, completed: col.timestampOrNull, closed: col.timestampOrNull, email: col.textOrNull }),
+    sql`
+      select k.id, k.deal_id, k.title, k.status, k.sent_at as sent, k.completed_at as completed, k.closed_at as closed, lower(c.email) as email
+      from commerce.contracts k left join commerce.customers c on c.store_id = k.store_id and c.id = k.customer_id
+      where k.store_id = ${who.storeId}::uuid and k.sent_at is not null
+        and (k.customer_id = any(${uuidList(who.ids)}) ${who.companyId ? sql`or k.company_id = ${who.companyId}::uuid` : sql``})
+      order by greatest(k.sent_at, coalesce(k.completed_at, k.closed_at, k.sent_at)) desc, k.id
+      limit ${who.n}
+    `,
+  );
+  return rows.flatMap((r) => {
+    const base = { email: r.email, label: r.title, status: r.status, href: r.deal_id ? `${who.base}/deals/${r.deal_id}/contracts/${r.id}` : null };
+    const events: TimelineEvent[] = [{ ...base, key: `contract:${r.id}:sent`, what: "contract_sent", at: r.sent }];
+    if (r.status === "signed" && r.completed) events.push({ ...base, key: `contract:${r.id}:signed`, what: "contract_signed", at: r.completed });
+    if (r.status === "declined" && r.closed) events.push({ ...base, key: `contract:${r.id}:declined`, what: "contract_declined", at: r.closed });
+    return events;
+  });
+}
+
 /** The person's or the company's calls, meetings and tasks that were done (D468): each when it was done, by its title; its kind as the status. */
 async function activities(who: Who): Promise<TimelineEvent[]> {
   const rows = await typedRows(
@@ -418,7 +440,8 @@ async function activities(who: Who): Promise<TimelineEvent[]> {
 const READERS: Record<TimelineKind, (who: Who) => Promise<TimelineEvent[]>> = {
   order: orders,
   quote: quotes,
-  deal: deals,
+  // A deal's contracts (D695 step 4) are read with its deals: the same kind, so the same filter.
+  deal: async (who) => [...(await deals(who)), ...(await contracts(who))],
   activity: activities,
   conversation: conversations,
   email: emails,

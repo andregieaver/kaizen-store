@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { readAutonomy } from "./autopilot-autonomy";
-import { REVIEW_PLAN_TOOLS, reviewMessage, startDecision } from "./autopilot-reviews";
+import { REVIEW_PLAN_TOOLS, REVIEW_READ_TOOLS, reviewMessage, startDecision } from "./autopilot-reviews";
+import { isReadOnly } from "./mcp-catalogue";
+import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 
 /** The autopilot keeps going (D328, `docs/ai-autopilot.md` 12): the settings, the start rule and the review's message. */
 
@@ -56,5 +58,14 @@ describe("reviewMessage", () => {
 
   it("offers no tool that starts or decides anything", () => {
     for (const name of REVIEW_PLAN_TOOLS) expect(name).not.toMatch(/start|resume|decide|answer/);
+  });
+
+  it("sees where visitors get stuck and how fast pages load, only reading (ecosystem plan E1.6)", () => {
+    for (const name of ["page_behaviour", "version_behaviour", "speed_report"] as const) {
+      expect(REVIEW_READ_TOOLS).toContain(name);
+      const tool = OWNER_TOOLS_BY_NAME[name];
+      expect(tool, name).toBeDefined();
+      expect(isReadOnly(tool), name).toBe(true);
+    }
   });
 });

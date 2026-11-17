@@ -135,3 +135,14 @@ export type ApiErrorCode = keyof typeof API_ERRORS;
 
 /** Seconds until the next minute begins: what a 429 asks the caller to wait. */
 export const retryAfter = (now: Date = new Date()): number => 60 - now.getUTCSeconds();
+
+/**
+ * Round 27 (D700): the ready kinds of token the owner starts from, so Homer picks what will use it rather than twenty scopes. Each holds only
+ * everyday scopes, never a power; *Choose yourself* is every scope as before.
+ */
+export const TOKEN_KINDS = {
+  warehouse: ["products:read", "inventory:read", "inventory:write", "orders:read", "orders:write"],
+  accounting: ["products:read", "orders:read", "customers:read", "settings:read", "reports:read"],
+  read: ["products:read", "inventory:read", "orders:read", "customers:read", "discounts:read", "checkout:read", "content:read", "settings:read", "reports:read"],
+} as const satisfies Record<string, readonly ApiScope[]>;
+export type TokenKind = keyof typeof TOKEN_KINDS | "custom";

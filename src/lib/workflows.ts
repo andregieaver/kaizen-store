@@ -21,7 +21,7 @@ export const isWorkflowTrigger = (value: string): value is WorkflowTrigger => (W
 /** What an event is about, by its trigger: the key its data is under (`order`, `product`, …). */
 export function subjectOf(
   trigger: WorkflowTrigger,
-): "order" | "customer" | "subscription" | "return" | "withdrawal" | "product" | "stock" | "discount" | "support" | "inventory" | "fulfilment" | "refund" | "draft" | "erasure" | "gift_card" | "review" | "experiment" | "schedule" {
+): "order" | "customer" | "subscription" | "return" | "withdrawal" | "product" | "stock" | "discount" | "support" | "inventory" | "fulfilment" | "refund" | "draft" | "erasure" | "gift_card" | "review" | "experiment" | "contract" | "schedule" {
   if (trigger === "schedule") return "schedule";
   if (trigger === "inventory.updated") return "inventory";
   if (trigger.startsWith("fulfilment.")) return "fulfilment";
@@ -33,6 +33,7 @@ export function subjectOf(
   if (trigger === "gift_card.issued") return "gift_card";
   if (trigger === "review.created") return "review";
   if (trigger === "experiment.answered") return "experiment";
+  if (trigger.startsWith("contract.")) return "contract";
   if (trigger.startsWith("order.")) return "order";
   if (trigger.startsWith("subscription.")) return "subscription";
   if (trigger.startsWith("product.")) return "product";
@@ -116,6 +117,11 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "experiment.best", kind: "text" },
     { key: "experiment.goal", kind: "text" },
     { key: "experiment.name", kind: "text" },
+  ],
+  contract: [
+    { key: "contract.title", kind: "text" },
+    { key: "contract.language", kind: "text" },
+    { key: "contract.template", kind: "text" },
   ],
   draft: [
     { key: "draft.source", kind: "text" },

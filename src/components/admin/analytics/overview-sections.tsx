@@ -1,3 +1,4 @@
+import { PhoneRow } from "@/components/admin/phone-row";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -237,9 +238,13 @@ export function AnswerSection({ frame, data, visitCounting, pick }: { frame: Ove
     const chosen = pick.flatMap((id) => cards.filter((card) => card.id === id && card.state !== "missing"));
     if (chosen.length === 0) return null;
     return (
-      <section aria-label={words.overview.figuresLabel} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      // Round 32 (D706): on a phone the figures share one card, two by two, with a line between them.
+      <section
+        aria-label={words.overview.figuresLabel}
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent lg:grid-cols-4 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2"
+      >
         {chosen.map(({ id, ...props }) => (
-          <KpiCard key={id} {...props} emphasis={false} />
+          <KpiCard key={id} {...props} emphasis={false} phoneCompact />
         ))}
       </section>
     );
@@ -393,7 +398,11 @@ export function SeeMoreSection({ frame, data, visitCounting }: { frame: Overview
     ...(!visitCounting ? [{ key: "visits", title: w.visits, body: w.visitsBody, button: w.visitsButton }] : []),
   ];
   if (steps.length === 0) return null;
+  const p = analyticsWords().overview.phone;
+  // Round 32 (D706): on a phone the steps are one row saying what they give; from the small breakpoint up as before.
   return (
+    <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+    <PhoneRow flat last title={w.title} sub={steps.map((step) => step.title).join(" · ")} change={p.start} done={p.close}>
     <section aria-labelledby="overview-see-more" className="flex flex-col gap-4 rounded-panel bg-insight-soft p-5 lg:mt-14">
       <h2 id="overview-see-more" className="text-title text-ink">
         {w.title}
@@ -414,6 +423,8 @@ export function SeeMoreSection({ frame, data, visitCounting }: { frame: Overview
         ))}
       </div>
     </section>
+    </PhoneRow>
+    </div>
   );
 }
 
@@ -533,7 +544,7 @@ export function FunnelSection({ frame, traffic }: { frame: OverviewFrame; traffi
 // Best sellers and channels
 // ---------------------------------------------------------------------------
 
-export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: TopProducts }) {
+export function ProductsSection({ frame, top, phoneRow = false }: { frame: OverviewFrame; top: TopProducts; /** Round 32 (D706): one row on a phone, naming the best seller. */ phoneRow?: boolean }) {
   const money = moneyWriter(frame.currency, frame.locale);
   const settingsHref = `${frame.base}/analytics/settings`;
   const w = analyticsWords().overview.products;
@@ -546,7 +557,7 @@ export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: Top
     valueText: p.profitMinor === null ? NO_FIGURE : money(p.profitMinor),
     ...(p.costCoverage !== null && p.costCoverage < 1 ? { detail: fillWords(w.costed, { share: formatPercent(p.costCoverage, 0) }) } : {}),
   }));
-  return (
+  const section = (
     <AnalyticsSection
       id="overview-products"
       title={w.title}
@@ -580,6 +591,17 @@ export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: Top
       </div>
       {top.truncated ? <p className="text-xs text-muted">{w.truncated}</p> : null}
     </AnalyticsSection>
+  );
+  const first = top.byRevenue[0];
+  if (!phoneRow || !first) return section;
+  const p = analyticsWords().overview.phone;
+  const named = { name: first.name, amount: money(first.revenueMinor), n: top.byRevenue.length - 1 };
+  return (
+    <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow last title={w.title} sub={fillWords(top.byRevenue.length > 1 ? p.bestSub : p.bestOne, named)} change={p.open} done={p.close}>
+        {section}
+      </PhoneRow>
+    </div>
   );
 }
 

@@ -7,6 +7,18 @@ import type { Widen } from "./common.en";
  * word for word (`finance-words.test.ts` holds it), so a page without words is unchanged. A figure never comes from a word.
  */
 export const financeEn = {
+  /** Round 28 (D701): the finance page on a phone. */
+  phone: {
+    open: "Open",
+    close: "Close",
+    needsCosts: "Profit needs what your products cost.",
+    someCosts: "Profit is partly estimated: some products have no cost.",
+    withoutCost: { one: "{n} has none yet.", many: "{n} have none yet." },
+    addCosts: "Add costs",
+    bridgeSub: "Gross sales {amount}",
+    profitSub: { one: "{n} order", many: "{n} orders" },
+    paymentsSub: "{method} {n}",
+  },
   /** How a figure's decimals are written. */
   numbers: { decimal: "." },
   pages: {

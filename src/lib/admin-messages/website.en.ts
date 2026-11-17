@@ -163,6 +163,8 @@ export const websiteEn = {
     createAi: "Create with AI",
     /** The pages list as cards (D615): the sentence, the cards and the shop's own pages, each changed in a small window. */
     cards: {
+      find: "Find a page",
+      noneFound: "No page matches.",
       live: { one: "{n} page is live.", many: "{n} pages are live." },
       noneLive: "No page is live yet.",
       opensOn: " Your shop opens on {page}.",
@@ -179,6 +181,12 @@ export const websiteEn = {
       changeNote: "Change opens a small window: keep the standard, choose one of your pages, or start a new page that looks like the standard.",
       close: "Close",
       products: "Your products",
+      /** Round 33 (D707): the list on a phone: ten pages, then all; the shop's own pages one row. */
+      phone: {
+        showAll: "Show all {n}",
+        ownSub: "{own} your own · {standard} standard",
+        allStandard: "All standard",
+      },
     },
     siteName: "Your store",
     roles: {

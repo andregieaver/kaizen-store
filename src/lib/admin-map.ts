@@ -595,6 +595,18 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
     feature: "sales",
   }),
+  store("deals.contract_templates", "/deals/contract-templates", "Contract templates", "Sales", "The store's contract templates (D695): the words a new contract starts from, in Norwegian or English.", {
+    tasks: ["Change the contract template", "Add a contract template"],
+    keywords: ["contract template", "agreement template", "terms"],
+    feature: "sales",
+  }),
+  store("deals.contract_template", "/deals/contract-templates/[templateId]", "Contract template", "Sales", "One contract template (D695): its words, language, days to sign and reminders, beside how it will look.", {
+    feature: "sales",
+  }),
+  store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "Sales", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", {
+    tasks: ["Change a contract's words", "Choose who signs a contract"],
+    feature: "sales",
+  }),
   store("deals.pipelines", "/deals/pipelines", "Pipelines", "Sales", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", {
     keywords: ["pipelines", "stages", "probability", "sales process"],
     feature: "sales",
@@ -901,6 +913,13 @@ const PAGES: readonly AdminPage[] = [
   store("seo", "/settings/seo", "SEO & Reach", "Store", "How search engines, social sharing and AI crawlers see the store, per country.", {
     keywords: ["google", "meta description", "crawlers"],
   }),
+  store("forms", "/forms", "Forms", "Store", "The store's forms (D705): contact forms and newsletter sign-ups, each made once from a ready-made start and placed on any page with the Form component. Change what a form asks and who it emails, read and export what visitors sent, archive or delete a form. Needs the right to change the website; the responses need the right to read customers.", {
+    tasks: ["Make a contact form", "Make a newsletter sign-up", "Read form responses", "Export form responses", "Change who a form emails", "Archive a form"],
+    keywords: ["form", "contact form", "skjema", "kontaktskjema", "newsletter", "sign-up", "responses", "submissions", "quote request", "booking enquiry"],
+  }),
+  store("forms.form", "/forms/[formId]", "A form", "Store", "One form: its questions, who it emails, how long it keeps responses, and its responses."),
+  store("forms.responses", "/forms/responses/[formId]", "Form responses", "Store", "What visitors sent with one of the store's forms: open, archive, delete or reply to a response, and export them as CSV. Needs the right to read customers."),
+  store("forms.new", "/forms/new", "New form", "Store", "Start a form from a ready-made one: contact, quote request, booking enquiry, call me back, feedback, event registration or newsletter."),
   store("menus", "/menus", "Menus", "Store", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
     keywords: ["navigation", "links"],
   }),
@@ -1291,6 +1310,12 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["marketplace", "saved parts", "moderation"],
   }),
   platform("menus", "/menus", "Menus", "Kaizena Flow site", "Kaizena Flow's menus."),
+  platform("forms", "/forms", "Forms", "Kaizena Flow site", "Kaizena Flow's own forms (D705): contact forms and newsletter sign-ups for its pages, and what visitors sent with them.", {
+    keywords: ["form", "contact form", "newsletter", "responses"],
+  }),
+  platform("forms.form", "/forms/[formId]", "A form", "Kaizena Flow site", "One of Kaizena Flow's forms and its responses."),
+  platform("forms.responses", "/forms/responses/[formId]", "Form responses", "Kaizena Flow site", "What visitors sent with one of Kaizena Flow's forms, and their export."),
+  platform("forms.new", "/forms/new", "New form", "Kaizena Flow site", "Start one of Kaizena Flow's forms from a ready-made one."),
   platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
   platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
   platform("site_themes", "/site-design", "Design", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {
@@ -1541,14 +1566,7 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
  * recorded again on Platform → AI. Empty but for that.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([
-  // Heatmaps (D656) enter the AI manager's prompt with the next recorded eval run.
-  "store:analytics.heatmaps",
-  "store:analytics.recordings",
-  "store:analytics.recording",
-  "store:text-messages",
-  "store:text-message.new",
-]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {

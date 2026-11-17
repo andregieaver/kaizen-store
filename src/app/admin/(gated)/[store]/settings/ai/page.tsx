@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import Link from "next/link";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -56,6 +58,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   const lang = adminLangOf(staffer.account.adminLocale);
   const w = adminText(lang, "settings").ai;
   const usingOwn = own?.enabled === true;
+  const p = w.phone;
   const current = usingOwn
     ? fillWords(w.yourOwn, { what: describe(own, w) })
     : kaizen?.enabled
@@ -67,7 +70,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
     <div className="flex flex-col gap-6">
       <div>
         <PageHeader title={w.title} description={<>{current}</>} />
-        <p className="text-sm text-muted">{usingOwn ? pictureLine(own, w.yourAi, undefined, w.pictures) : pictureLine(kaizen, w.kaizenaAi, w.chooseOwn, w.pictures)}</p>
+        <p className="text-sm text-muted max-sm:hidden">{usingOwn ? pictureLine(own, w.yourAi, undefined, w.pictures) : pictureLine(kaizen, w.kaizenaAi, w.chooseOwn, w.pictures)}</p>
         {owner && (
           <p className="mt-1 text-sm">
             <Link href={`/admin/account/usage?store=${store.slug}`} className="underline">
@@ -78,16 +81,21 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
         )}
       </div>
 
-      <section aria-labelledby="about" className={card}>
-        <h2 id="about" className="mb-1 text-title text-ink">{w.about}</h2>
-        <p className="text-sm">{w.aboutText}</p>
-      </section>
+      {/* Round 29 (D702): on a phone what the AI is for, and keeping and testing it, are rows; your own AI's parts are rows in its form. */}
+      <PhoneRows>
+        <PhoneRow title={p.about} sub={p.aboutSub} change={p.open} done={p.close} flat>
+          <section aria-labelledby="about" className={card}>
+            <h2 id="about" className="mb-1 text-title text-ink">{w.about}</h2>
+            <p className="text-sm">{w.aboutText}</p>
+          </section>
+        </PhoneRow>
+      </PhoneRows>
 
       <section aria-labelledby="own" className={card}>
         <h2 id="own" className="mb-1 text-title text-ink">{w.own}</h2>
         {owner ? (
           <>
-            <p className="mb-4 text-sm text-muted">{w.ownText}</p>
+            <p className="mb-4 text-sm text-muted max-sm:hidden">{w.ownText}</p>
             <AiProviderForm
               action={saveStoreAiAction.bind(null, store.slug)}
               settings={own}
@@ -100,7 +108,15 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
         )}
       </section>
 
+      <PhoneRows>
       {owner && (
+        <PhoneRow
+          title={w.keep.title}
+          sub={countWords(keepMonths ?? ASSISTANT_KEEP_MONTHS, p.keptFor, { n: String(keepMonths ?? ASSISTANT_KEEP_MONTHS) })}
+          change={p.change}
+          done={p.done}
+          flat
+        >
         <section aria-labelledby="keep" className={card}>
           <h2 id="keep" className="mb-1 text-title text-ink">{w.keep.title}</h2>
           <p className="mb-3 text-sm text-muted">
@@ -123,9 +139,11 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
             <SubmitButton>{w.keep.save}</SubmitButton>
           </ActionForm>
         </section>
+        </PhoneRow>
       )}
 
       {own && owner && (
+        <PhoneRow title={p.tests} sub={p.testsSub} change={p.open} done={p.close} flat>
         <section aria-labelledby="test" className={card}>
           <h2 id="test" className="mb-1 text-title text-ink">{w.test}</h2>
           <p className="mb-3 text-sm text-muted">{w.testText}</p>
@@ -147,7 +165,9 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
             />
           </div>
         </section>
+        </PhoneRow>
       )}
+      </PhoneRows>
     </div>
     </AdminTextScope>
   );

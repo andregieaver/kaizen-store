@@ -181,6 +181,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   // A deal's links and its history (D464): what happened, by ids.
   deal_links: "record",
   deal_moves: "record",
+  // The codes a contract's signer proves their email with (D695): a door, gone in a day.
+  contract_codes: "secret",
   // Kaizena Flow's own customers (D467): which of its store's customers is an account or a request, by ids; the platform's own.
   house_customer_links: "platform",
   // Kaizena Flow's site copied into its store (D469): which copy each of the platform's own rows became.

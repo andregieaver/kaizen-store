@@ -35,7 +35,9 @@ const DISABLED = 'disabled=""';
 /** The switch of a feature, as drawn. */
 const switchOf = (out: string, id: string) => {
   const row = out.slice(out.indexOf(`data-feature="${id}"`));
-  return row.slice(row.indexOf("<button"), row.indexOf("</button>"));
+  // The switch, not the small i before it that says what the feature does on a phone (round 34, D708).
+  const from = row.indexOf('role="switch"');
+  return row.slice(row.lastIndexOf("<button", from), row.indexOf("</button>", from));
 };
 
 describe("the Features page (D178)", () => {
@@ -153,5 +155,13 @@ describe("a feature's part of another page while it is off (D178 step 2)", () =>
     expect(rows.bonus.warnings.join(" ")).toContain("expiry dates that pass meanwhile are moved on by as long as it was off");
     expect(rows.referrals.warnings.join(" ")).toContain("earned while the program was on");
     expect(rows.business.offWords).toContain("products for businesses only are hidden");
+  });
+});
+
+describe("the Features page on a phone (round 34, D708)", () => {
+  it("keeps what a feature does behind a small i on a phone, and the shop's own words always", () => {
+    const out = view([], true);
+    expect(out).toContain('aria-label="What subscriptions does"');
+    expect(out).toMatch(/<p class="text-sm text-muted max-sm:hidden">/);
   });
 });

@@ -58,6 +58,8 @@ export type LegalFacts = {
    */
   heatmaps?: true;
   sessionRecordings?: true;
+  /** The browse email is on (D691): the privacy starter says which product views are kept for it. */
+  browseEmails?: true;
   /** The names of the tracking tools the store has set up (they load only with consent). */
   trackingTools: string[];
   chatAgent: boolean;
@@ -120,6 +122,8 @@ export type LegalFactsInput = {
   supportAi?: { tone: boolean; summaries: boolean; answers?: boolean };
   /** An active appointment takes a deposit and has a no-show fee; none when left out. */
   noShowFee?: boolean;
+  /** The store's browse email is on (D691): a signed-in subscriber's product views are kept 7 days for it. */
+  browseEmails?: boolean;
   links?: { withdraw?: string; cookies?: string };
   phone?: string | null;
 };
@@ -184,6 +188,7 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
     visitCounting: store.visitCounting,
     ...(store.heatmaps ? { heatmaps: true as const } : {}),
     ...(store.recordings ? { sessionRecordings: true as const } : {}),
+    ...(input.browseEmails ? { browseEmails: true as const } : {}),
     trackingTools: (Object.keys(TRACKING_TOOL_NAMES) as (keyof typeof TRACKING_TOOL_NAMES)[]).filter((k) => Boolean(store.tracking[k])).map((k) => TRACKING_TOOL_NAMES[k]),
     chatAgent: input.chatOn,
     aiTone: input.supportAi?.tone ?? false,

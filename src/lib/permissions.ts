@@ -96,6 +96,8 @@ const AREA_OVERRIDES: { path: string; area: Area }[] = [
   { path: "/billing", area: "billing" },
   // The store's own books (D512) live in the Settings sidebar but are an area of their own, an accountant's.
   { path: "/settings/books", area: "books" },
+  // What visitors sent with the store's forms (D705) is people's data: read with the customers, though the forms are the website's.
+  { path: "/forms/responses", area: "customers" },
 ];
 
 /** The area of a page after the store's address (`/orders/[orderId]`, `/settings/shipping`), or null for Home's pages (membership only). */

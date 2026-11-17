@@ -173,6 +173,10 @@ export const NAV_NB: Record<string, string> = {
   Media: "Medier",
   "Pictures and videos for the store, searchable, with alt texts.": "Bilder og videoer for butikken, søkbare, med alternative tekster.",
   Menus: "Menyer",
+  Forms: "Skjemaer",
+  "Contact forms and newsletter sign-ups to place on any page, and what visitors sent with them.": "Kontaktskjemaer og påmeldinger til nyhetsbrev som kan plasseres på hvilken som helst side, og det besøkende har sendt med dem.",
+  "Kaizena Flow's contact forms and newsletter sign-ups to place on any page, and what visitors sent with them.":
+    "Kaizena Flows kontaktskjemaer og påmeldinger til nyhetsbrev som kan plasseres på hvilken som helst side, og det besøkende har sendt med dem.",
   "Lists of links for the header, footer and pages.": "Lister med lenker til toppteksten, bunnteksten og sider.",
   Redirects: "Omdirigeringer",
   "Redirects for addresses that changed and a report of the addresses shoppers could not find.":

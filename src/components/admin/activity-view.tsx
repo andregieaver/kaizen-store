@@ -6,6 +6,9 @@ import type { AuditArea } from "@/lib/audit";
 import { avatarFor } from "@/server/avatars";
 import type { ActivityEntry } from "@/server/activity";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { PhoneRow } from "@/components/admin/phone-row";
+import { PhoneMore } from "@/components/admin/phone-more";
+import { PHONE_MORE_HIDDEN } from "@/components/admin/phone-more-class";
 import { fillWords } from "@/lib/admin-fill";
 import { staffEn, type StaffMessages } from "@/lib/admin-messages/staff.en";
 
@@ -145,9 +148,57 @@ export function ActivityFilters({
 const time = (iso: string, zone: string, locale = "en-GB") => new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: zone }).format(new Date(iso));
 const dayKey = (iso: string, zone: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 
+/** The most minutes between two changes for them to be one run (round 32, D706). */
+const RUN_GAP_MS = 10 * 60_000;
+
+/**
+ * Round 32 (D706): the entries of one day as runs: changes one after another by the same person, in the same way (themselves, the AI manager,
+ * the autopilot), in the same area and no more than ten minutes apart. A run of one is an entry as before.
+ */
+export function activityRuns(entries: readonly ActivityEntry[]): ActivityEntry[][] {
+  const runs: ActivityEntry[][] = [];
+  for (const entry of entries) {
+    const run = runs.at(-1);
+    const last = run?.at(-1);
+    const same =
+      last &&
+      (last.accountId ?? last.email) === (entry.accountId ?? entry.email) &&
+      last.actedBy === entry.actedBy &&
+      last.area === entry.area &&
+      Math.abs(Date.parse(last.at) - Date.parse(entry.at)) <= RUN_GAP_MS;
+    if (same) run!.push(entry);
+    else runs.push([entry]);
+  }
+  return runs;
+}
+
+/** An action's name without its target, for a run's line: the account's sentence with the name left out, else the log's words. */
+const kindName = (action: string, words?: StaffMessages) => {
+  const sentence = words?.activity.sentences[action];
+  return sentence ? fillWords(sentence, { label: "" }).replace(/\s+([,.:;])/g, "$1").replace(/\s+/g, " ").trim() : actionLabel(action);
+};
+
+/** A run's line: its kinds of change in order, with how many where more than one, the first two named. */
+export function runTitle(run: readonly ActivityEntry[], words?: StaffMessages): string {
+  const w = (words ?? staffEn).activity;
+  const kinds: { action: string; n: number }[] = [];
+  for (const entry of run) {
+    const kind = kinds.find((k) => k.action === entry.action);
+    if (kind) kind.n += 1;
+    else kinds.push({ action: entry.action, n: 1 });
+  }
+  const named = kinds.slice(0, 2).map((k) => (k.n > 1 ? `${kindName(k.action, words)} (${k.n})` : kindName(k.action, words)));
+  const rest = kinds.length - named.length;
+  return rest > 0 ? `${named.join(", ")} ${fillWords(w.phone.andMore, { n: rest })}` : named.join(", ");
+}
+
+/** How many runs a phone shows before its Show more (round 32, D706). */
+const PHONE_FIRST = 20;
+
 /**
  * The entries, newest first: a sentence made by code, who did it, where it belongs and when; the changed fields as from and to behind
- * "Details". A page of 50 with a link to the older ones.
+ * "Details". A page of 50 with a link to the older ones. On a phone (round 32, D706) a run of changes by one person is one row that opens to
+ * each, and the first 20 rows show before a Show more.
  */
 export function ActivityList({
   entries,
@@ -188,51 +239,81 @@ export function ActivityList({
       : key === yesterday
         ? w.yesterday
         : new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" }).format(new Date(`${key}T12:00:00Z`));
+  const who = (entry: ActivityEntry) => `${entry.name ?? entry.email ?? w.platform}${entry.actedBy !== "person" ? ` ${w.actedBy[entry.actedBy]}` : ""}`;
+  const row = (entry: ActivityEntry, className = "") => {
+    const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change, values)) : [];
+    return (
+      <li key={entry.id} className={`flex gap-3 py-3 text-sm max-sm:py-2 ${className}`}>
+        {/* Round 29 (D702): on a phone one line of what and one of who, where and when; the face waits for wider screens. */}
+        <span className="shrink-0 max-sm:hidden">
+          <Avatar avatar={avatarFor({ email: entry.email ?? "", name: entry.name, avatarPath: entry.avatarPath })} size={32} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium break-words">{entrySentence(entry, words)}</p>
+          <p className="text-muted">
+            {who(entry)} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{time(entry.at, zone, locale)}</time>
+          </p>
+          {lines.length > 0 && (
+            <details className="mt-2 max-sm:mt-0.5">
+              <summary className="cursor-pointer text-muted max-sm:text-xs">{w.details}</summary>
+              <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
+                {lines.map((line) => (
+                  <div key={line.label} className="contents">
+                    <dt className="text-muted">{line.label}</dt>
+                    <dd className="break-words">{line.from === null ? w.changed : `${line.from} → ${line.to}`}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          )}
+        </div>
+      </li>
+    );
+  };
+  // Each run numbered across the days, so the phone can keep back all after the first 20.
+  let counted = 0;
+  const drawn = days.map((day) => ({ ...day, runs: activityRuns(day.entries).map((run) => ({ run, n: counted++ })) }));
+  const kept = Math.max(0, counted - PHONE_FIRST);
+  const later = (n: number) => (n >= PHONE_FIRST ? PHONE_MORE_HIDDEN : "");
   return (
-    <div className="flex flex-col gap-4">
-      {days.map((day) => (
-        <section key={day.key} aria-label={dayName(day.key)} className={`px-4 pt-3 ${CARD_CLASS}`}>
+    <PhoneMore hidden={kept} label={fillWords(w.phone.more, { n: Math.min(kept, PHONE_FIRST) })} className="flex flex-col gap-4">
+      {drawn.map((day) => (
+        <section key={day.key} aria-label={dayName(day.key)} className={`px-4 pt-3 ${CARD_CLASS} ${later(day.runs[0].n)}`}>
           <h2 className="pb-1 text-eyebrow text-ink-2">{dayName(day.key)}</h2>
           <ol className="divide-y divide-line">
-            {day.entries.map((entry) => {
-              const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change, values)) : [];
-              return (
-                <li key={entry.id} className="flex gap-3 py-3 text-sm">
-                  <Avatar avatar={avatarFor({ email: entry.email ?? "", name: entry.name, avatarPath: entry.avatarPath })} size={32} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium break-words">{entrySentence(entry, words)}</p>
-                    <p className="text-muted">
-                      {entry.name ?? entry.email ?? w.platform}
-                      {entry.actedBy !== "person" && ` ${w.actedBy[entry.actedBy]}`} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{time(entry.at, zone, locale)}</time>
-                    </p>
-                    {lines.length > 0 && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-muted">{w.details}</summary>
-                        <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
-                          {lines.map((line) => (
-                            <div key={line.label} className="contents">
-                              <dt className="text-muted">{line.label}</dt>
-                              <dd className="break-words">{line.from === null ? w.changed : `${line.from} → ${line.to}`}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </details>
-                    )}
-                  </div>
+            {day.runs.map(({ run, n }) =>
+              run.length === 1 ? (
+                row(run[0], later(n))
+              ) : (
+                <li key={run[0].id} className={later(n)}>
+                  <PhoneRow
+                    inset
+                    last
+                    title={runTitle(run, words)}
+                    sub={
+                      <>
+                        {who(run[0])} · <time dateTime={run[0].at}>{time(run[0].at, zone, locale)}</time> · {fillWords(w.phone.changes, { n: run.length })}
+                      </>
+                    }
+                    change={w.phone.show}
+                    done={w.phone.hide}
+                  >
+                    <ol className="divide-y divide-line max-sm:border-l-2 max-sm:border-line max-sm:pl-3">{run.map((entry) => row(entry))}</ol>
+                  </PhoneRow>
                 </li>
-              );
-            })}
+              ),
+            )}
           </ol>
         </section>
       ))}
       {older && (
-        <p>
+        <p className={kept > 0 ? PHONE_MORE_HIDDEN : ""}>
           <Link href={older} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
             {w.older}
           </Link>
         </p>
       )}
-    </div>
+    </PhoneMore>
   );
 }
 

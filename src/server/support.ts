@@ -770,6 +770,8 @@ export type StaffConversation = {
   who: string;
   email: string | null;
   signedIn: boolean;
+  /** The signed-in customer's account (ecosystem plan E1.1); the inbox hands it on only to people who may read customers. */
+  customerId: string | null;
   locale: string;
   market: string | null;
   pagePath: string | null;
@@ -838,6 +840,7 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     who: c.who_name ? String(c.who_name) : c.who_email ? String(c.who_email) : visitorLabel(String(c.id)),
     email: c.who_email ? String(c.who_email) : null,
     signedIn: Boolean(c.customer_id),
+    customerId: c.customer_id ? String(c.customer_id) : null,
     locale: String(c.locale),
     market: c.market ? String(c.market) : null,
     pagePath: c.page_path ? String(c.page_path) : null,

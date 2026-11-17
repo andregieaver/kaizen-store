@@ -118,6 +118,8 @@ describe("the owner assistant (D94)", () => {
       stock_history: { sku: "DEMO-MUG-BLACK" },
       get_customer: { customer: "nobody@example.com" },
       explain_results: { experiment: "nobody" },
+      // An A/B test's behaviour per version (D656) is asked for by the test's id; one the store doesn't have is said so.
+      version_behaviour: { experiment: "00000000-0000-4000-8000-000000000000" },
       explain_return: { return: "NOBODY-R1" },
       explain_privacy_request: { request: "00000000-0000-4000-8000-000000000000" },
       // A page (D308) is read by its address; a store has none by that name, which the tool says.
@@ -153,12 +155,12 @@ describe("the owner assistant (D94)", () => {
     // Searching the web and reading a page reach the network, and keeping a note or a comparison writes (D329): `research.int.test.ts`, with stand-ins.
     // Keeping the brand and designing a look write (D330): `brand.int.test.ts`. Writing an entry's draft (D326): `content-tools.int.test.ts`.
     // Saving a report (D346): `report-query.int.test.ts`. Saving a segment (D380): `segment-audiences.int.test.ts`. Typing a draft's prices (D437):
-    // `quote-tools.int.test.ts`.
-    const WRITES_WITHOUT_A_YES = new Set(["save_report", "save_segment", "set_draft_prices", "create_transfer", "set_target", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "cancel_page_build", "edit_page", "draft_broadcast", "draft_text_message", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry", "draft_store", "draft_header_footer", "draft_workflow", "cancel_purchase"]);
+    // `quote-tools.int.test.ts`. Drafting a contract on a deal (D695): `contract-tools.int.test.ts`.
+    const WRITES_WITHOUT_A_YES = new Set(["draft_contract", "save_report", "save_segment", "set_draft_prices", "create_transfer", "set_target", "set_brand", "design_look", "make_brand_marks", "search_web", "read_web_page", "save_research_note", "compare_options", "add_order_note", "draft_experiment", "tag_orders", "archive_orders", "create_draft_order", "create_product", "write_product_texts", "build_page", "cancel_page_build", "edit_page", "draft_broadcast", "draft_text_message", "tag_customer", "add_support_note", "end_support_conversation", "log_time", "add_theme", "look_at_page", "look_at_store", "save_entry", "draft_store", "draft_header_footer", "draft_workflow", "cancel_purchase"]);
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && !WRITES_WITHOUT_A_YES.has(t.name))) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order" || tool.name === "parcel_tracking") await expect(result).rejects.toThrow("No order 1 in this store.");
-      else if (tool.name === "get_customer" || tool.name === "list_ad_budgets" || tool.name === "explain_results" || tool.name === "explain_return" || tool.name === "explain_privacy_request" || tool.name === "get_page" || tool.name === "check_domain" || tool.name === "list_dns_records" || tool.name === "plan_domain_move" || tool.name === "start_dns_move_here" || tool.name === "get_support_conversation" || tool.name === "preview_order_change" || tool.name === "preview_exchange" || tool.name === "try_theme" || tool.name === "get_page_look" || tool.name === "list_entries" || tool.name === "get_entry" || tool.name.startsWith("work_") || tool.name.startsWith("list_work_")) await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
+      else if (tool.name === "get_customer" || tool.name === "list_ad_budgets" || tool.name === "explain_results" || tool.name === "version_behaviour" || tool.name === "explain_return" || tool.name === "explain_privacy_request" || tool.name === "get_page" || tool.name === "check_domain" || tool.name === "list_dns_records" || tool.name === "plan_domain_move" || tool.name === "start_dns_move_here" || tool.name === "get_support_conversation" || tool.name === "preview_order_change" || tool.name === "preview_exchange" || tool.name === "try_theme" || tool.name === "get_page_look" || tool.name === "list_entries" || tool.name === "get_entry" || tool.name.startsWith("work_") || tool.name.startsWith("list_work_")) await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
       else await expect(result, tool.name).resolves.toBeTruthy();
     }
     expect(await ownerTools.runOwnerTool(ctx, "get_product", { product: productHandle })).toMatchObject({

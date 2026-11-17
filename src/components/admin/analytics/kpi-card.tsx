@@ -42,6 +42,8 @@ export type KpiCardProps = {
   emphasis?: boolean;
   /** One line on how the figure is worked out; shown as the label's tooltip. */
   help?: string;
+  /** Round 32 (D706): one of four in a shared card on a phone: no frame, no trend line and no last year's change there. */
+  phoneCompact?: boolean;
 };
 
 /** The trend line takes the colour of the main change's news (green good, red bad), else the plain one. */
@@ -57,10 +59,10 @@ function valueSize(value: string | null, emphasis: boolean): string {
   return emphasis ? "text-2xl @[16rem]:text-3xl" : "text-xl @[13rem]:text-2xl";
 }
 
-export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, deltaLastYear, good = "neutral", series, hint, href, emphasis = false, help }: KpiCardProps) {
+export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, deltaLastYear, good = "neutral", series, hint, href, emphasis = false, help, phoneCompact = false }: KpiCardProps) {
   // A card is its own container, so its figure is sized by the room the card has, not by the screen: a narrow card in a row of four
   // keeps the figure whole at a smaller size instead of breaking it in the middle.
-  const box = `@container flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border border-line ${emphasis ? "bg-sunken" : "bg-card"} p-4`;
+  const box = `@container flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border border-line ${emphasis ? "bg-sunken" : "bg-card"} p-4${phoneCompact ? " max-sm:gap-1 max-sm:rounded-none max-sm:border-0 max-sm:p-3.5" : ""}`;
   const title = help ? { title: help } : {};
 
   if (state === "missing") {
@@ -74,9 +76,10 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
             <span aria-hidden="true">–</span>
             <span className="sr-only">{analyticsWords().kpi.notAvailable}</span>
           </p>
-          {missing ? <p className="text-xs text-muted">{missing.text}</p> : null}
+          {/* Round 34 (D708): in a shared card on a phone the dash alone; what is missing is said once, above the figures. */}
+          {missing ? <p className={`text-xs text-muted ${phoneCompact ? "max-sm:hidden" : ""}`}>{missing.text}</p> : null}
           {missing?.action ? (
-            <Link href={missing.action.href} className="inline-block text-xs font-medium text-(--brand-text) underline-offset-2 hover:underline">
+            <Link href={missing.action.href} className={`inline-block text-xs font-medium text-(--brand-text) underline-offset-2 hover:underline ${phoneCompact ? "max-sm:hidden" : ""}`}>
               {missing.action.label}
             </Link>
           ) : null}
@@ -97,7 +100,7 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
       <div className="flex flex-col gap-1 @[17rem]:flex-row @[17rem]:flex-wrap @[17rem]:items-end @[17rem]:justify-between @[17rem]:gap-x-3">
         <p className={`max-w-full break-words font-medium leading-tight ${valueSize(value, emphasis)}`}>{known ? value : <span className="text-muted">–</span>}</p>
         {series && series.length > 0 ? (
-          <span className="self-end @[17rem]:self-auto">
+          <span className={`self-end @[17rem]:self-auto ${phoneCompact ? "max-sm:hidden" : ""}`}>
             <Sparkline values={series} tone={toneOf(deltaPrevious ?? deltaLastYear, good)} />
           </span>
         ) : null}
@@ -110,11 +113,11 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
             </p>
           ) : null}
           {deltaLastYear !== undefined ? (
-            <p>
+            <p className={phoneCompact ? "max-sm:hidden" : undefined}>
               <Delta delta={deltaLastYear} versus={analyticsWords().compare.vsLastYear} good={good} />
             </p>
           ) : null}
-          {hint ? <p className="text-xs text-muted">{hint}</p> : null}
+          {hint ? <p className={`text-xs text-muted ${phoneCompact ? "max-sm:hidden" : ""}`}>{hint}</p> : null}
         </div>
       ) : null}
     </>

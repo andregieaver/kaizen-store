@@ -49,6 +49,11 @@ export const REVIEW_READ_TOOLS = [
   "list_experiments",
   "explain_results",
   "suggest_experiments",
+  // Where visitors get stuck, how each test's versions behaved and how fast pages load (ecosystem plan E1.6): a review sees friction, not
+  // only sales, before it plans a page change or a test.
+  "page_behaviour",
+  "version_behaviour",
+  "speed_report",
   "support_overview",
   "reviews_overview",
   "list_campaigns",

@@ -73,6 +73,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_quote_requests: "setup",
   // What the checkout asks (D357): a setting of the shop, as its shipping is.
   save_checkout_question: "setup",
+  // A reminder to sign goes to a customer in the store's name.
+  remind_contract_signer: "messages",
   save_shipping_method: "setup",
   // A member of staff's hours (AGT-01): when shoppers can book them.
   set_working_hours: "setup",
@@ -117,6 +119,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   block_affiliate: "money",
   // An ad budget in the owner's own ad account (D585): a raise also meets the account's monthly limit and the largest raise (`adProblem`).
   set_ad_budget: "money",
+  // A paused copy spends nothing (D694): switching it on is set_ad_budget's, under the owner's limit.
+  copy_ad: "money",
   // Stock bought from a supplier (`docs/100-day-challenge.md` C3): also within the purchasing budget, per order and a month (`purchaseProblem`).
   create_purchase_order: "money",
   // A drop-ship supplier's order sent again or cancelled (C2): the parcel and the stock, as counting a delivery in is.

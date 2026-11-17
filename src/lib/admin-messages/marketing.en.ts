@@ -390,6 +390,18 @@ export const marketingEn = {
     useThis: "Use this",
   },
   ads: {
+    /** Round 31 (D704): the page on a phone. */
+    phone: {
+      lead: "Sales sent to your ad platforms, for shoppers who allowed marketing cookies.",
+      sending: "Sending sales",
+      spending: "Spending",
+      budgetsSub: "Your Meta ad account · the AI manager can move budgets",
+      sentWeek: "{n} sent in the last 7 days",
+      connect: "Connect",
+      change: "Change",
+      open: "Open",
+      close: "Close",
+    },
     title: "Ads and conversions",
     description:
       "Send checkouts and purchases to your ad platforms from our server, only for shoppers who allowed marketing cookies. It counts sales an ad blocker would hide.",
@@ -458,6 +470,13 @@ export const marketingEn = {
       inCampaign: "Ad set in {campaign}",
       spentShort: "{amount} this month",
       noBudgets: "No campaign or ad set with a budget yet.",
+      /** What each campaign brought in the last 7 days, as Meta attributes it (D694). */
+      results: "What the ads brought, last 7 days",
+      resultsNone: "No campaign spent anything in the last 7 days.",
+      resultsRow: "{purchases} purchases worth {value}",
+      roas: "{roas}x return",
+      noRoas: "no spend",
+      resultsNote: "As Meta counts purchases, in its own attribution window: not the store's own orders.",
       manage: "Open in Ads Manager",
       connection: "Connection",
       tokenSaved: "Token saved ({hint}). Paste a new one to replace it.",
@@ -594,6 +613,13 @@ export const marketingEn = {
         daysLabel: "Days after delivery",
         now: "",
         days: { one: "Sent {n} day after the order is delivered.", many: "Sent {n} days after the order is delivered." },
+      },
+      browse: {
+        title: "Still thinking about it?",
+        does: "Shows signed-in customers on your list the products they looked at and did not buy. Only for those who allowed marketing cookies; what they looked at is kept 7 days.",
+        daysLabel: "Days after they looked",
+        now: "",
+        days: { one: "Sent {n} day after they last looked.", many: "Sent {n} days after they last looked." },
       },
     },
     /** An automation's follow-ups (D653): up to two more emails, each its days after the one before. */

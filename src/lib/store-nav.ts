@@ -243,6 +243,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/articles/comments", "Blog comments", "Visitors' comments on the articles: approve, refuse or mark them as spam.", { icon: "message-square" }),
           item("/content", "Content", "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like.", { icon: "library" }),
           item("/media", "Media", "Pictures and videos for the store, searchable, with alt texts.", { icon: "image", basic: true }),
+          item("/forms", "Forms", "Contact forms and newsletter sign-ups to place on any page, and what visitors sent with them.", { icon: "clipboard-list", basic: true }),
         ],
       },
       {

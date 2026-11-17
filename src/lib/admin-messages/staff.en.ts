@@ -184,6 +184,14 @@ export const staffEn = {
     details: "Details",
     changed: "changed",
     older: "Older entries",
+    /** Round 32 (D706): on a phone a run of changes by one person in one area is one row, and the list shows 20 at a time. */
+    phone: {
+      changes: "{n} changes",
+      show: "Show",
+      hide: "Hide",
+      more: "Show {n} more",
+      andMore: "and {n} more",
+    },
     actedBy: { ai_manager: "through the AI manager", autopilot: "through the autopilot" },
     none: "(none)",
     yes: "yes",

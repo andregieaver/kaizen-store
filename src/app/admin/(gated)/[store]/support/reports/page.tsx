@@ -35,10 +35,11 @@ export default async function SupportReportsPage({
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.storeReports.title}
-          description={t.pages.storeReports.description}
+          description={<span className="max-sm:hidden">{t.pages.storeReports.description}</span>}
         />
         {notice && <p className="text-sm">{notice}</p>}
         <ReportsView
+          inboxHref={`/admin/${slug}/support`}
           words={t}
           report={report}
           periodLabel={period.label}

@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { submitClass } from "@/lib/submit-class";
+import { setVisitCountingAction } from "../settings/actions";
+
 import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
@@ -68,6 +74,9 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
   const w = adminText(ctx.lang, "reports");
   const say = analyticsSay(ctx.lang, ctx.locale);
+  const hasSpend = report.spend.totalMinor > 0;
+  const pw = w.marketing.phone;
+  const row = { change: pw.open, done: pw.close, flat: true } as const;
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
@@ -77,8 +86,38 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           ctx={ctx}
           path="/analytics/marketing"
           title={w.pages.marketing.title}
-          description={w.pages.marketing.description}
+          description={<span className="max-sm:hidden">{w.pages.marketing.description}</span>}
         />
+        {/* Round 29 (D702): on a phone what the figures need is said once, with its press, and every section is a row. */}
+        {(!hasSpend || !report.counting) && (
+          <section aria-label={pw.needsTitle} className="flex flex-col gap-3 rounded-panel bg-card p-4 sm:hidden">
+            <h2 className="text-body-strong text-ink">{pw.needsTitle}</h2>
+            <p className="flex items-center justify-between gap-3 text-sm text-ink-2">
+              {hasSpend ? pw.spendIn : pw.spendNone}
+              {!hasSpend && (
+                <a href="#spend" className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-canvas">
+                  {pw.addSpend}
+                </a>
+              )}
+            </p>
+            <p className="flex items-center justify-between gap-3 text-sm text-ink-2">
+              {report.counting ? pw.countingOn : pw.countingOff}
+              {!report.counting &&
+                (ctx.owner ? (
+                  <ActionForm action={setVisitCountingAction.bind(null, store.slug)} successMessage={adminText(ctx.lang, "analytics").settings.visits.nowOn}>
+                    <SubmitButton name="enabled" value="on" className={`${submitClass()} min-h-9`}>
+                      {pw.turnOn}
+                    </SubmitButton>
+                  </ActionForm>
+                ) : (
+                  <a href={`${ctx.base}/analytics/settings#visits`} className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">
+                    {pw.turnOn}
+                  </a>
+                ))}
+            </p>
+          </section>
+        )}
+        <PhoneRows>
         <MarketingView
           base={ctx.base}
           currency={currency}
@@ -90,12 +129,15 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           channelWords={w.channels}
           say={say}
         />
+        <PhoneRow opens="campaigns" title={w.campaigns.title} sub={pw.campaignsSub} {...row}>
         <CampaignsView report={campaigns} currency={currency} locale={locale} modelHref={modelHref} words={w.campaigns}>
           <div className="grid gap-4 lg:grid-cols-2">
             <CampaignLinkBuilder origins={linkOrigins} start={start.startsWith("http") ? start : `${linkOrigins[0]}${start}`} />
             <SpendImportForm action={importSpendAction.bind(null, store.slug)} currency={currency} />
           </div>
         </CampaignsView>
+        </PhoneRow>
+        <PhoneRow id="spend-row" opens="spend" title={pw.spendTitle} sub={spend.length > 0 ? countWords(spend.length, pw.spendEntries, { n: String(spend.length) }) : pw.spendNoneSub} {...row}>
         <SpendSection
           currency={currency}
           locale={locale}
@@ -104,7 +146,16 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           limit={SPEND_LISTED}
           actions={{ add: addSpendAction.bind(null, store.slug), remove: deleteSpendAction.bind(null, store.slug) }}
         />
-        <DiscountsView currency={currency} locale={locale} report={discounts} words={w.discounts} say={say} />
+        </PhoneRow>
+        <PhoneRow
+          opens="discounts"
+          title={w.discounts.title}
+          sub={fillWords(pw.discountsSub, { n: String(discounts.summary.discountedOrders), all: String(discounts.summary.orders) })}
+          {...row}
+        >
+          <DiscountsView currency={currency} locale={locale} report={discounts} words={w.discounts} say={say} />
+        </PhoneRow>
+        </PhoneRows>
       </div>
     </ExportScope>
     </AdminTextScope>

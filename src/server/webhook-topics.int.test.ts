@@ -154,6 +154,20 @@ beforeAll(async () => {
   const started = await admin.startExperiment(account, store.storeId, made.id);
   if (!started.ok) throw new Error(started.problems.join(" "));
   subjects.experiment = made.id;
+
+  // D695 step 4: a deal's contract, sent (contract.sent, signed, declined): frozen as sending freezes it, without drawing a PDF.
+  const deals = await import("./deals");
+  const [pipeline] = await deals.ensurePipeline(store.storeId, { name: "Sales", stages: [{ name: "New" }] });
+  const deal = await deals.createDeal(store.member, { title: "Topics deal", customerId: subjects.customer!, pipelineId: pipeline.id, stageId: pipeline.stages[0].id });
+  if (!deal.ok) throw new Error(deal.problems.join(" "));
+  const contract = await (await import("./contracts")).createContract(store.member, deal.id);
+  if (!contract.ok) throw new Error(contract.problem);
+  await db().execute(sql`
+    update commerce.contracts set status = 'sent', sent_at = now(), sent_by = ${store.accountId}::uuid, expires_at = now() + interval '30 days',
+      snapshot = blocks, pdf_path = 'contracts/topics.pdf', pdf_sha256 = ${"a".repeat(64)}
+    where store_id = ${store.storeId}::uuid and id = ${contract.id}::uuid
+  `);
+  subjects.contract = contract.id;
 }, 180_000);
 
 afterAll(async () => {

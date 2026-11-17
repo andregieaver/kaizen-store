@@ -39,6 +39,7 @@ import { emailPictureProblem, factsForEmail, marketingEmail } from "./marketing-
 import { storeById, type EmailStore } from "./shopper-emails";
 import { inStockNow, OFFERED } from "./product-conditions";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
+import { PRODUCT_VIEW_DAYS } from "@/lib/automation-kinds";
 import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
@@ -172,6 +173,8 @@ export async function switchAutomation(store: Pick<EmailStore, "id" | "localizat
       enabled_at = case when excluded.enabled and commerce.automations.enabled then commerce.automations.enabled_at else excluded.enabled_at end,
       updated_by = excluded.updated_by
   `);
+  // Browse off (D691): the product views kept for it go at once; nothing is kept for an email that will not go.
+  if (kind === "browse" && !on) await db().execute(sql`delete from commerce.customer_product_views where store_id = ${store.id}::uuid`);
   await audit(accountId, store.id, "marketing_automation.switched", { kind, on }, { target: { type: "automation", id: kind } });
   return { ok: true };
 }
@@ -412,7 +415,7 @@ const rebought = (storeId: string, productId: ReturnType<typeof sql>) => sql`exi
 )`;
 
 /** A delivered order that starts an after-a-purchase, cross-sell or restock email: its key is `{kind}:{order}`. */
-type DeliveredKind = Extract<LifecycleKind, "after_purchase" | PickKind>;
+type DeliveredKind = Extract<LifecycleKind, "after_purchase" | "cross_sell" | "replenish">;
 
 async function deliveredDue(storeId: string, which: DeliveredKind, enabledAt: string, delayDays: number, now: Date): Promise<Due[]> {
   const kind: string = which;
@@ -449,6 +452,8 @@ async function dueFor(storeId: string, kind: LifecycleKind, enabledAt: string, d
         and not exists (select 1 from commerce.automation_sends x where x.store_id = m.store_id and x.key = 'welcome:' || m.id)
       order by ${moment} limit ${AUTOMATION_BATCH}
     `);
+  } else if (kind === "browse") {
+    return browseDue(storeId, enabledAt, delayDays, now);
   } else if (kind === "after_purchase" || isPickKind(kind)) {
     return deliveredDue(storeId, kind, enabledAt, delayDays, now);
   } else {
@@ -469,6 +474,35 @@ async function dueFor(storeId: string, kind: LifecycleKind, enabledAt: string, d
       limit ${AUTOMATION_BATCH}
     `);
   }
+  return rows.map(fromDueRow);
+}
+
+/**
+ * Browse abandonment's due people (D691): a subscriber whose latest product view (`customer_product_views`, kept only for a signed-in
+ * subscriber who allowed marketing cookies) falls in the window, with no paid order since that view and no browse email in the last
+ * `PRODUCT_VIEW_DAYS` days. Its key is `browse:{subscriber}:{day of the latest view}`; the products are chosen at sending (`picksFor()`).
+ */
+async function browseDue(storeId: string, enabledAt: string, delayDays: number, now: Date): Promise<Due[]> {
+  const rows = await typedRows(
+    DUE_ROW,
+    sql`
+      select ${SUBSCRIBER_COLUMNS}, null::uuid as order_id, 'browse:' || m.id || ':' || to_char(v.last_at at time zone 'UTC', 'YYYY-MM-DD') as key
+      from (
+        select cv.customer_id, max(cv.viewed_at) as last_at from commerce.customer_product_views cv where cv.store_id = ${storeId}::uuid group by cv.customer_id
+      ) v
+      join commerce.customers c on c.store_id = ${storeId}::uuid and c.id = v.customer_id
+      join commerce.marketing_subscribers m on m.store_id = c.store_id and lower(m.email) = lower(c.email) and m.status = 'subscribed'
+      where ${inWindow(sql`v.last_at`, enabledAt, delayDays, now)}
+        and not exists (
+          select 1 from commerce.orders o where o.store_id = c.store_id and lower(o.email) = lower(c.email) and o.restricted_at is null and o.placed_at > v.last_at and ${SOLD}
+        )
+        and not exists (
+          select 1 from commerce.automation_sends x where x.store_id = m.store_id and x.kind = 'browse' and x.subscriber_id = m.id
+            and x.created_at > ${now.toISOString()}::timestamptz - make_interval(days => ${PRODUCT_VIEW_DAYS})
+        )
+      order by v.last_at limit ${AUTOMATION_BATCH}
+    `,
+  );
   return rows.map(fromDueRow);
 }
 
@@ -518,8 +552,28 @@ const PICK_ROW = z.object({ id: col.uuid, handle: z.string() });
  * Cross-sell: what other paid orders of the last year had with the order's products, most often first, never what the address has bought.
  * Restock: the order's own products that customers buy again (`rebought`).
  */
-export async function picksFor(storeId: string, kind: PickKind, orderId: string, email: string): Promise<ProductPick[]> {
+export async function picksFor(storeId: string, kind: PickKind, orderId: string | null, email: string): Promise<ProductPick[]> {
   const sellable = sql`p.status = 'active' and ${OFFERED} and ${inStockNow()}`;
+  // Browse (D691): the products the reader looked at, newest first, that they have not bought since.
+  if (kind === "browse") {
+    return typedRows(
+      PICK_ROW,
+      sql`
+        select p.id, p.handle from commerce.customer_product_views cv
+        join commerce.customers c on c.store_id = cv.store_id and c.id = cv.customer_id and lower(c.email) = lower(${email})
+        join commerce.products p on p.store_id = cv.store_id and p.id = cv.product_id
+        where cv.store_id = ${storeId}::uuid and ${sellable}
+          and not exists (
+            select 1 from commerce.orders o join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
+            join commerce.product_variants v on v.id = l.variant_id
+            where o.store_id = cv.store_id and lower(o.email) = lower(c.email) and o.restricted_at is null and v.product_id = p.id
+              and o.placed_at > cv.viewed_at - interval '1 day' and ${SOLD}
+          )
+        order by cv.viewed_at desc, p.id limit ${PICKS_SHOWN}
+      `,
+    );
+  }
+  if (!orderId) return [];
   const ordered = sql`(select v.product_id from commerce.order_lines l join commerce.product_variants v on v.id = l.variant_id
     where l.store_id = ${storeId}::uuid and l.order_id = ${orderId}::uuid and not l.gift)`;
   if (kind === "replenish") {
@@ -599,7 +653,7 @@ export async function runAutomations(options: { only?: string; deadline?: number
     // A cross-sell or restock email goes only with products for this reader (D653); without any, it never goes.
     let words = content;
     if (isPickKind(flow.kind)) {
-      const picks = due.orderId ? await picksFor(flow.storeId, flow.kind, due.orderId, due.email) : [];
+      const picks = due.orderId || flow.kind === "browse" ? await picksFor(flow.storeId, flow.kind, due.orderId, due.email) : [];
       if (picks.length === 0) {
         await outcomeOf(flow.storeId, key, "suppressed");
         result.skipped++;
@@ -655,10 +709,11 @@ export async function runAutomations(options: { only?: string; deadline?: number
   return result;
 }
 
-/** Daily: sends older than 90 days go (every key's window is long past). */
+/** Daily: sends older than 90 days go (every key's window is long past), and product views older than their days (D691). */
 export async function pruneAutomations(): Promise<number> {
   const rows = await db().execute<Row>(sql`
     delete from commerce.automation_sends where created_at < now() - make_interval(days => ${SENDS_KEEP_DAYS}) returning 1
   `);
-  return rows.length;
+  const { pruneProductViews } = await import("./product-views");
+  return rows.length + (await pruneProductViews());
 }

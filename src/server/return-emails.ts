@@ -265,6 +265,7 @@ export async function sendWithdrawalAcknowledgement(
         email: built.email,
         fromName: mail.ctx.store.name,
         replyTo: mail.ctx.store.details.contactEmail,
+        replyToDesk: true,
         idempotencyKey: key,
         orderId: mail.facts.orderId,
       });
@@ -354,6 +355,7 @@ async function returnMail(
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     idempotencyKey,
     orderId: mail.facts.orderId,
     ...(documents && documents.attachments.length > 0 ? { attachments: documents.attachments } : {}),

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
+
 import { formatCount, formatPercent } from "@/lib/analytics-core";
 import { fillWords } from "@/lib/admin-fill";
 import {
@@ -131,12 +133,15 @@ export function ReportsView({
   cut = false,
   picker,
   words: t = supportEn,
+  inboxHref,
 }: {
   report: SupportReport;
   periodLabel: string;
   cut?: boolean;
   picker?: ReactNode;
   words?: Words;
+  /** Where the conversations are answered, for the empty card's link (round 31, D704). */
+  inboxHref?: string;
 }) {
   const w = t.reports;
   const u = t.units;
@@ -145,16 +150,40 @@ export function ReportsView({
     0,
   );
   const handed = report.handover.count;
+  const p = t.reportsPhone;
+  // Round 31 (D704): a period with no conversation says so once, rather than a dozen cards of None yet.
+  if (report.conversations === 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        {picker}
+        <section aria-labelledby="support-empty" className="flex max-w-2xl flex-col gap-2 rounded-panel bg-card p-5">
+          <h2 id="support-empty" className="text-body-strong text-ink">
+            {fillWords(p.emptyTitle, { period: periodLabel.toLowerCase() })}
+          </h2>
+          <p className="text-sm text-ink-2">{p.emptyText}</p>
+          {inboxHref && (
+            <a href={inboxHref} className="self-start text-sm underline">
+              {p.openInbox}
+            </a>
+          )}
+        </section>
+      </div>
+    );
+  }
+  const row = { change: p.open, done: p.close, flat: true } as const;
   return (
     <div className="flex flex-col gap-6">
       {picker}
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted max-sm:hidden">
         {fillWords(w.intro, { period: periodLabel, min: MIN_SUPPORT_SAMPLE })}
       </p>
       {cut && (
         <p className="rounded-panel border border-line p-3 text-sm">{w.cut}</p>
       )}
 
+      {/* On a phone the four parts are rows, the first saying how many conversations there were. */}
+      <PhoneRows className="sm:gap-6">
+      <PhoneRow title={w.conversations} sub={fillWords(p.volumeSub, { n: formatCount(report.conversations), open: formatCount(report.open) })} {...row}>
       <section aria-labelledby="support-volume" className="flex flex-col gap-3">
         <h2 id="support-volume" className="text-title text-ink">
           {w.conversations}
@@ -209,7 +238,9 @@ export function ReportsView({
           />
         )}
       </section>
+      </PhoneRow>
 
+      <PhoneRow title={w.speed} {...row}>
       <section aria-labelledby="support-speed" className="flex flex-col gap-3">
         <h2 id="support-speed" className="text-title text-ink">
           {w.speed}
@@ -265,7 +296,9 @@ export function ReportsView({
           />
         </dl>
       </section>
+      </PhoneRow>
 
+      <PhoneRow title={w.quality} {...row}>
       <section
         aria-labelledby="support-quality"
         className="flex flex-col gap-3"
@@ -333,7 +366,9 @@ export function ReportsView({
           )}
         </div>
       </section>
+      </PhoneRow>
 
+      <PhoneRow title={w.requests} {...row}>
       <section
         aria-labelledby="support-requests"
         className="flex flex-col gap-3"
@@ -363,6 +398,8 @@ export function ReportsView({
           />
         </dl>
       </section>
+      </PhoneRow>
+      </PhoneRows>
 
       {report.anonymised > 0 && (
         <p className="text-sm text-muted">

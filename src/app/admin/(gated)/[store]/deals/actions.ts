@@ -202,7 +202,7 @@ const pipelineState = (w: Words, result: PipelineResult): FormState => {
 /** The stages a form sent, as JSON from the stage editor; anything else is no stages. */
 function stagesOf(form: FormData): StageInput[] {
   const parsed = z
-    .array(z.object({ id: z.uuid().nullable(), name: z.string(), probability: z.number().int().nullable(), quoteStage: z.boolean() }))
+    .array(z.object({ id: z.uuid().nullable(), name: z.string(), probability: z.number().int().nullable(), quoteStage: z.boolean(), contractStage: z.boolean().optional() }))
     .max(50)
     .safeParse((() => {
       try {

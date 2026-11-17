@@ -187,6 +187,23 @@ export const invoicesEn = {
     tryAgain: "Try again",
     sent: "Sent.",
   },
+  /** Round 30 (D703): Invoicing on a phone. */
+  phone: {
+    missing: { one: "Orders wait for their invoice: {n} thing is missing", many: "Orders wait for their invoice: {n} things are missing" },
+    andMore: "And {n} more",
+    lead: "An invoice for every paid order, a credit note for every refund.",
+    change: "Change",
+    done: "Done",
+    open: "Open",
+    close: "Close",
+    off: "Off",
+    none: "None",
+    everyOrder: "For every paid order",
+    withEmail: "sent with the confirmation",
+    first: "The first is {number}",
+    next: "The next is {number}",
+    notesSub: "EU rules, currencies, what is not built yet",
+  },
   settings: {
     title: "Invoicing",
     description:

@@ -49,6 +49,11 @@ vi.mock("./ai", async (importOriginal) => {
         if (results.length === 1) return call("read_doc", '{"page":"owners/getting-started/your-first-product"}');
         return { content: "Open Products and press Add product, give it a title, a price and a picture, then press Save.", toolCalls: [] };
       }
+      // Where visitors get stuck (D656): read the heatmaps, then repeat the figures, never what a page's address tells it to do.
+      if (said.startsWith("Look at the heatmaps")) {
+        if (results.length === 0) return call("page_behaviour");
+        return { content: "Visitors get stuck most on /p/canvas-tote: 8.4 % of its 320 page views had a dead or rage click.", toolCalls: [] };
+      }
       // A supplier's refused order (D621): list them, then tell the owner, taking nothing the supplier's reason says to do.
       if (said.startsWith("Which supplier orders need a look")) {
         if (results.length === 0) return call("list_supplier_orders");

@@ -92,7 +92,7 @@ import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
 import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
-import { LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
+import { AUTOMATION_KINDS, LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
 import {
   HIDE_REASONS,
   PUBLISH_MODES,
@@ -11152,6 +11152,93 @@ export const chatUsage = commerce.table(
 );
 
 /**
+ * A form as its own record (D705, `docs/forms.md`, written only by `src/server/forms-admin.ts`): a store's, or Kaizena Flow's with no
+ * store. A page's `form` component points at it by id and keeps only its look; what it asks (`questions`), its words per language
+ * (`words`), where a message goes (`delivery`: recipients, subject, inbox) and a sign-up's settings (`signup`) are here. Its kind never
+ * changes. An archived form shows nothing and takes nothing. Its responses are kept `keep_months`.
+ */
+export const forms = commerce.table(
+  "forms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `message` (an email form) or `signup` (a newsletter sign-up). */
+    kind: text("kind").notNull(),
+    /** The owner's name for it; never shown on the site. */
+    name: text("name").notNull(),
+    /** `active` or `archived`. */
+    status: text("status").notNull().default("active"),
+    /** `FormQuestion[]` (`src/lib/form-records.ts`): empty for a sign-up, whose email (and name) are its own. */
+    questions: jsonb("questions").notNull().default(sql`'[]'::jsonb`),
+    /** The button, the message after sending, the consent and a sign-up's hint, each `{ text, byLocale }`. */
+    words: jsonb("words").notNull().default(sql`'{}'::jsonb`),
+    /** `{ recipients, subject, inbox }`: never sent to the browser. */
+    delivery: jsonb("delivery").notNull().default(sql`'{}'::jsonb`),
+    /** A sign-up's `{ confirm, askName, incentive, tags }`; null for a message form. */
+    signup: jsonb("signup"),
+    /** Months its responses are kept (1 to 36). */
+    keepMonths: integer("keep_months").notNull().default(12),
+    /** What it was made from: `starter:{key}` (Kaizena Flow's starters, `FORM_STARTERS`), or null. Never a link that changes the form. */
+    madeFrom: text("made_from"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("forms_store_idx").on(t.storeId, t.name),
+    index("forms_created_by_idx").on(t.createdBy),
+    index("forms_updated_by_idx").on(t.updatedBy),
+    check("forms_kind", sql`${t.kind} in ('message', 'signup')`),
+    check("forms_name", sql`char_length(btrim(${t.name})) between 1 and 80`),
+    check("forms_status", sql`${t.status} in ('active', 'archived')`),
+    check("forms_questions", sql`jsonb_typeof(${t.questions}) = 'array' and jsonb_array_length(${t.questions}) <= 20`),
+    check("forms_words", sql`jsonb_typeof(${t.words}) = 'object'`),
+    check("forms_delivery", sql`jsonb_typeof(${t.delivery}) = 'object'`),
+    check("forms_signup", sql`(${t.kind} = 'signup') = (${t.signup} is not null) and (${t.signup} is null or jsonb_typeof(${t.signup}) = 'object')`),
+    check("forms_keep_months", sql`${t.keepMonths} between 1 and 36`),
+    check("forms_made_from", sql`${t.madeFrom} is null or char_length(${t.madeFrom}) between 1 and 80`),
+  ],
+);
+
+/**
+ * What a visitor sent with a form (D705): a message, or a confirmed sign-up, labelled in the owner's language as the email is. Kept for
+ * its form's `keep_months` (`pruneFormResponses()`), found by `contact_email` for the person's export and erasure (D162), never tied to a
+ * customer by it. Its store is its form's (set by the database); once written only `state` changes.
+ */
+export const formResponses = commerce.table(
+  "form_responses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    formId: uuid("form_id")
+      .notNull()
+      .references(() => forms.id, { onDelete: "cascade" }),
+    /** `[{ label, value }]`, in the form's order. */
+    answers: jsonb("answers").notNull(),
+    /** The first email answer (a sign-up's address), lower case. */
+    contactEmail: text("contact_email"),
+    /** The page it was sent from, a path on the site. */
+    path: text("path").notNull(),
+    locale: text("locale").notNull(),
+    /** `new`, `read` or `archived`. */
+    state: text("state").notNull().default("new"),
+    /** How it reached the owner: `sent`, `logged`, `failed` (the email), `inbox` (the support desk only). */
+    delivery: text("delivery").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("form_responses_form_idx").on(t.formId, t.createdAt),
+    index("form_responses_contact_idx").on(t.storeId, t.contactEmail),
+    index("form_responses_created_idx").on(t.createdAt),
+    check("form_responses_answers", sql`jsonb_typeof(${t.answers}) = 'array' and jsonb_array_length(${t.answers}) <= 40`),
+    check("form_responses_state", sql`${t.state} in ('new', 'read', 'archived')`),
+    check("form_responses_delivery", sql`${t.delivery} in ('sent', 'logged', 'failed', 'inbox')`),
+    check("form_responses_contact", sql`${t.contactEmail} is null or (char_length(${t.contactEmail}) <= 254 and ${t.contactEmail} = lower(${t.contactEmail}))`),
+  ],
+);
+
+/**
  * What visitors send with a page's forms (D93): an email form's message or
  * a newsletter sign-up, found by the form's block id in the owner's
  * published pages (a store's, or Kaizen's with a null store). A message
@@ -16734,9 +16821,6 @@ export const broadcastLinkClicks = commerce.table(
  * was last switched on: only what happens after it starts an email. `content` is the email per language (a broadcast's shape), null exactly for
  * back in stock, whose words are Kaizena Flow's. The store's own settings and words (`NOT_PERSONAL`). Written only by `src/server/automations.ts`.
  */
-/** The lifecycle kinds the database takes, ahead of the code (D691: `browse` goes in first, alone, and the code follows). */
-const LIFECYCLE_KINDS_STORED = [...LIFECYCLE_KINDS, "browse"] as const;
-
 export const automations = commerce.table(
   "automations",
   {
@@ -16752,7 +16836,7 @@ export const automations = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.kind] }),
-    check("automations_kind", sql`${t.kind} in (${sqlList([...LIFECYCLE_KINDS_STORED, "back_in_stock"])})`),
+    check("automations_kind", sql`${t.kind} in (${sqlList(AUTOMATION_KINDS)})`),
     check("automations_enabled_at", sql`not ${t.enabled} or ${t.enabledAt} is not null`),
     check("automations_content", sql`(${t.kind} = 'back_in_stock') = (${t.content} is null)`),
     check(
@@ -16784,7 +16868,7 @@ export const automationSteps = commerce.table(
     primaryKey({ columns: [t.storeId, t.kind, t.position] }),
     foreignKey({ name: "automation_steps_automation_fk", columns: [t.storeId, t.kind], foreignColumns: [automations.storeId, automations.kind] }).onDelete("cascade"),
     index("automation_steps_updated_by_idx").on(t.updatedBy),
-    check("automation_steps_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS_STORED)})`),
+    check("automation_steps_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
     check("automation_steps_position", sql`${t.position} between 2 and 3`),
     check("automation_steps_delay", sql`${t.delayDays} between 1 and 60`),
   ],
@@ -16823,7 +16907,7 @@ export const automationSends = commerce.table(
     index("automation_sends_report_idx").on(t.storeId, t.kind, t.createdAt),
     index("automation_sends_subscriber_idx").on(t.storeId, t.subscriberId),
     index("automation_sends_order_idx").on(t.storeId, t.orderId),
-    check("automation_sends_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS_STORED)})`),
+    check("automation_sends_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
     check("automation_sends_step", sql`${t.step} between 1 and 3`),
     check("automation_sends_outcome", sql`${t.outcome} is null or ${t.outcome} in (${sqlList(SEND_OUTCOMES)})`),
   ],
@@ -19198,7 +19282,8 @@ export const contracts = commerce.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId().references(() => stores.id),
-    dealId: uuid("deal_id").notNull(),
+    /** The deal; set null only when a signed contract outlives its deal (kept under bookkeeping law, D695 step 3). */
+    dealId: uuid("deal_id"),
     templateId: uuid("template_id"),
     templateVersion: integer("template_version"),
     /** Who the contract is with, from the deal when it is made; erasure and deletion set them null. */
@@ -19216,6 +19301,9 @@ export const contracts = commerce.table(
     pdfSha256: text("pdf_sha256"),
     signedPdfPath: text("signed_pdf_path"),
     signedPdfSha256: text("signed_pdf_sha256"),
+    /** Tries at making the signed PDF (the five-minute job), and the last one's time. */
+    signedPdfAttempts: integer("signed_pdf_attempts").notNull().default(0),
+    signedPdfTriedAt: timestamp("signed_pdf_tried_at", { withTimezone: true }),
     signingLevel: text("signing_level").notNull().default("email"),
     reminderDays: integer("reminder_days"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
@@ -19259,6 +19347,7 @@ export const contracts = commerce.table(
     check("contracts_pdf", sql`(${t.pdfPath} is null) = (${t.pdfSha256} is null) and (${t.pdfPath} is null or ${t.sentAt} is not null)`),
     check("contracts_signed_pdf", sql`(${t.signedPdfPath} is null) = (${t.signedPdfSha256} is null) and (${t.signedPdfPath} is null or ${t.status} = 'signed')`),
     check("contracts_sha", sql`(${t.pdfSha256} is null or ${t.pdfSha256} ~ '^[0-9a-f]{64}$') and (${t.signedPdfSha256} is null or ${t.signedPdfSha256} ~ '^[0-9a-f]{64}$')`),
+    check("contracts_deal", sql`${t.dealId} is not null or ${t.status} = 'signed'`),
     check("contracts_not_itself", sql`${t.replacesId} is null or ${t.replacesId} <> ${t.id}`),
   ],
 );
@@ -19292,6 +19381,9 @@ export const contractSigners = commerce.table(
     userAgent: text("user_agent"),
     declinedAt: timestamp("declined_at", { withTimezone: true }),
     declineReason: text("decline_reason"),
+    /** When the signer was last asked: the first email, then each reminder. */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    reminders: integer("reminders").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [
@@ -19315,6 +19407,50 @@ export const contractSigners = commerce.table(
     check("contract_signers_reason", sql`${t.declineReason} is null or (${t.declinedAt} is not null and char_length(${t.declineReason}) between 1 and 500)`),
     check("contract_signers_agent", sql`(${t.ip} is null or char_length(${t.ip}) <= 64) and (${t.userAgent} is null or char_length(${t.userAgent}) <= 500)`),
   ],
+);
+
+/**
+ * The six-digit codes a signer proves their email with before signing (D695 step 3): kept as a hash, ten minutes, five tries, used once.
+ * Deleted with the signer; the job deletes used and lapsed ones after a day.
+ */
+export const contractCodes = commerce.table(
+  "contract_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    signerId: uuid("signer_id")
+      .notNull()
+      .references(() => contractSigners.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("contract_codes_signer_idx").on(t.signerId, t.createdAt),
+    index("contract_codes_store_idx").on(t.storeId),
+    check("contract_codes_hash", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
+    check("contract_codes_attempts", sql`${t.attempts} between 0 and 5`),
+  ],
+);
+
+/**
+ * Kaizena Flow's own seal for signed contracts (D695 step 3): a self-made certificate and its private key, the key encrypted with
+ * `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`). One row, made on first use; a PDF reader shows a sealed file unchanged since, and
+ * its signer as not on its trusted list. A trusted provider's certificate replaces it with BankID (step 5).
+ */
+export const contractSeals = commerce.table(
+  "contract_seals",
+  {
+    id: smallint("id").primaryKey().default(1),
+    certificatePem: text("certificate_pem").notNull(),
+    keyEncrypted: text("key_encrypted").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [check("contract_seals_one", sql`${t.id} = 1`), check("contract_seals_fingerprint", sql`${t.fingerprint} ~ '^[0-9a-f]{64}$'`)],
 );
 
 /** What happened to a contract, for its audit page: written once, never changed (deleted only with the contract). */

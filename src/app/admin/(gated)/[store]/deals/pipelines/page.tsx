@@ -49,7 +49,7 @@ export default async function PipelinesPage({ params }: PageProps<"/admin/[store
                 <SubmitButton variant="secondary">{p.rename}</SubmitButton>
               </ActionForm>
               <ActionForm action={saveStagesAction.bind(null, store.slug, pipeline.id)} className="flex flex-col gap-4" successMessage={p.saved}>
-                <StagesEditor initial={pipeline.stages.map((s) => ({ id: s.id, name: s.name, probability: s.probability, quoteStage: s.quoteStage }))} words={p} />
+                <StagesEditor initial={pipeline.stages.map((s) => ({ id: s.id, name: s.name, probability: s.probability, quoteStage: s.quoteStage, contractStage: s.contractStage }))} words={p} />
                 <SubmitButton>{p.save}</SubmitButton>
               </ActionForm>
               {pipelines.length > 1 && (

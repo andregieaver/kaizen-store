@@ -187,9 +187,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("signup_incentives", "shopper", via("email", "email"), ["email"], "marketing", "delete", "Welcome codes sign-up forms gave a person (D304 J3), by their address: exported with the marketing data and deleted on erasure."),
   entry("customer_notes", "shopper", via("email", "email"), ["email", "body"], "marketing", "delete", "Staff's notes on a person (D366), by their address: exported with the marketing data (the words and when) and deleted on erasure."),
   entry("deals", "shopper", via("customer", "customer_id"), ["customer_id", "title", "close_reason"], "marketing", "delete", "Staff's deals with a person (D464): what they may buy, its stage and value, and why it was lost; exported with the person's notes, deleted when they are erased (a company's deal keeps the company and loses the person)."),
-  entry("contracts", "shopper", via("customer", "customer_id"), ["customer_id", "title", "blocks", "snapshot"], "marketing", "delete", "Contracts sent to a person for signing (D695): what they said, filled in with the person's name and details; exported with the person's deals and deleted when they are erased (a signed contract's keeping under bookkeeping law comes with signing, D695 step 3)."),
-  entry("contract_signers", "shopper", via("none"), ["name", "email", "signed_name", "ip", "user_agent", "evidence", "decline_reason"], "marketing", "delete", "Who was asked to sign a contract (D695) and how they signed or why they declined, linked to the person through the contract: exported and deleted with it."),
-  entry("contract_events", "shopper", via("none"), ["ip", "user_agent"], "marketing", "delete", "A contract's audit trail (D695): when it was sent, viewed, signed or declined, from which address and browser, linked through the contract: exported and deleted with it."),
+  entry("contracts", "shopper", via("customer", "customer_id"), ["customer_id", "title", "blocks", "snapshot"], "marketing", "restrict", "Contracts sent to a person for signing (D695): what they said, filled in with the person's name and details; exported with the person's deals. One not signed is deleted when they are erased; a signed one is a contract the law keeps (Bokføringsloven § 13(2)): kept, cut loose from the account, and deleted with its files when its period ends.", { until: "contracts" }),
+  entry("contract_signers", "shopper", via("none"), ["name", "email", "signed_name", "ip", "user_agent", "evidence", "decline_reason"], "marketing", "restrict", "Who was asked to sign a contract (D695) and how they signed or why they declined, linked to the person through the contract: exported with it, deleted with an unsigned one, and kept with a signed one for its period as its evidence.", { until: "contracts" }),
+  entry("contract_events", "shopper", via("none"), ["ip", "user_agent"], "marketing", "restrict", "A contract's audit trail (D695): when it was sent, viewed, signed or declined, from which address and browser, linked through the contract: exported with it, deleted with an unsigned one, and kept with a signed one for its period as its evidence.", { until: "contracts" }),
   entry("activities", "shopper", via("customer", "customer_id"), ["customer_id", "title", "note"], "marketing", "delete", "Staff's calls, meetings and tasks about a person (D468): what and when, and what was written about it; exported with the person's notes, deleted when they are erased (one about a company or a deal keeps that and loses the person)."),
   entry("customer_tags", "shopper", via("email", "email"), ["email", "label"], "marketing", "delete", "Staff's tags on a person (D296), by their address: exported with the marketing data and deleted on erasure."),
   entry("broadcast_recipients", "shopper", via("email", "email"), ["email"], "marketing", "delete", "The addresses a broadcast went to (D297), frozen when its send started: listed in the marketing export, deleted on erasure and 90 days after the send ended (its figures kept)."),
@@ -206,6 +206,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("sms_messages", "shopper", via("customer", "subscriber_id"), ["subscriber_id"], "marketing", "delete", "Which marketing texts (D565) went to a number, when, and what they cost: listed in the marketing export with the words of each, deleted with the number on erasure."),
   entry("email_opt_outs", "shopper", via("email", "email"), ["email"], "consents", "keep", "A suppression record: kept so the store does not email the person again (their own wish); erasing it would undo it."),
   entry("blog_comments", "shopper", via("email", "email"), ["name", "email", "body"], "comments", "delete", "A comment the person wrote on an article (D341): the name they chose, the email they gave (never shown) and their words, found by their proven addresses; exported, and deleted on erasure. Refused and spam comments are deleted 30 days after they were posted.", { until: "blog_comments" }),
+  entry("form_responses", "shopper", via("email", "contact_email"), ["answers", "contact_email", "path"], "forms", "delete", "What the person sent with a store's form (D705): its answers as labelled for the owner, found by the email address they gave (never tied to a customer by it); exported and deleted on erasure, and deleted after the form's own months (1 to 36).", { until: "form_responses" }),
   entry("form_submissions", "shopper", via("email", "email", "visitor"), ["email", "visitor", "payload"], "forms", "delete", "Sign-ups and messages sent by this address are deleted.", { also: ["consents"], until: "form_submissions" }),
   entry("consents", "pseudonymous", via("visitor", "visitor"), ["visitor", "choices"], null, "none", "Cookie consent is kept under a random browser id and cannot be tied to a person; said in the file's notIncluded.", { until: "consents" }),
   entry("visits", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO, { until: "visits" }),
@@ -327,6 +328,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   workflows: "A store's workflows (D356): the owner's own words (a name, conditions, a staff email's text, a question) and who saved them; no customer.",
   checkout_rules: "A store's checkout rules (D357): the owner's conditions on a basket (countries, amounts, ids of products, terms and groups) and an effect with the owner's words; no customer.",
   checkout_rule_skips: "How often a checkout rule was left out and why (D357): a rule id, a reason and counts; no customer.",
+  forms: "A store's or Kaizena Flow's form (D705): the owner's questions and words, and the staff addresses its messages are emailed to; what visitors send is in form_responses.",
   checkout_fields: "The questions a store asks at checkout (D357): the owner's words; the answers are on carts and orders.",
   site_stagings: "A store's sets of changes made ready together (D358): a name, a theme install, menus as staged and the outcome of publishing; staff accounts only by id.",
   custom_apps: "An owner's own app for the AI manager (D363): an encrypted endpoint and token, its tools and counts; staff only by id.",
@@ -499,6 +501,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   deal_links: "What a deal is linked to (D464): the ids of an order, a draft order or a Work assignment of the store, and who linked it; the person is the deal's and the order's own.",
   deal_pipelines: "A store's sales pipelines (D464): their names are the store's own words, no person's.",
   deal_stages: "A pipeline's stages (D464): names, order and probabilities, the store's own words.",
+  contract_codes: "The codes a contract's signer proves their email with (D695): a hash, its tries and its expiry, tied to the signer; no person's data of its own.",
+  contract_seals: "Kaizena Flow's own seal for signed contracts (D695): a certificate and its encrypted key; no person's data.",
   contract_templates: "A store's contract templates (D695): its own words, fields and signature boxes, written by staff; no person's data.",
   deal_moves: "A deal's history (D464): the stage and status it moved to, when and by which staff account; the person is the deal's own.",
   plan_moves: "How a store's plan with Kaizena Flow moved (D470): when, the plan, the mode, the currency and what it paid a month before and after; no person.",
@@ -539,6 +543,10 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // To the shopper
   "order.confirmation": "shopper",
   "draft.pay_link": "shopper",
+  /** Contracts for signing (D695): the link to sign, a reminder, and the signed contract with its PDF, to the signer. */
+  "contract.to_sign": "shopper",
+  "contract.reminder": "shopper",
+  "contract.signed": "shopper",
   /** A request for a quote (D431): its receipt to the address the shopper typed, and the store's reply when it declines. */
   "quote.received": "shopper",
   "quote.declined": "shopper",
@@ -613,10 +621,15 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "account.code": "security",
   "account.reset": "security",
   "company.invite": "security",
+  /** The code a contract's signer proves their email with (D695): never kept in the log's copy. */
+  "contract.code": "security",
   // Evidence (kept with the order)
   "return.acknowledgement": "evidence",
   // To the store's people or the owners
   "booking.staff": "staff",
+  /** A contract waiting for the store's signature, and one a customer declined (D695). */
+  "contract.store_turn": "staff",
+  "contract.declined": "staff",
   "form.message": "staff",
   "form.subscription": "staff",
   "return.overdue": "staff",

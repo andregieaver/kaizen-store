@@ -180,6 +180,41 @@ export const AUTOMATION_STARTERS: Record<LifecycleKind, Record<"nb" | "sv" | "da
       url: "/",
     },
   },
+  // The products the reader looked at are chosen by code and shown under the words (D691): the words never name them.
+  browse: {
+    en: {
+      subject: "Still thinking about it?",
+      preview: "The products you looked at are still here.",
+      heading: "Still thinking about it?",
+      text: "You looked at these the other day. They are still here if you want another look.",
+      button: "Visit the store",
+      url: "/",
+    },
+    nb: {
+      subject: "Fortsatt interessert?",
+      preview: "Produktene du så på, er her fortsatt.",
+      heading: "Fortsatt interessert?",
+      text: "Du så på disse her om dagen. De er her fortsatt hvis du vil ta en ny titt.",
+      button: "Besøk butikken",
+      url: "/",
+    },
+    sv: {
+      subject: "Fortfarande intresserad?",
+      preview: "Produkterna du tittade på finns kvar.",
+      heading: "Fortfarande intresserad?",
+      text: "Du tittade på de här häromdagen. De finns kvar om du vill ta en titt till.",
+      button: "Besök butiken",
+      url: "/",
+    },
+    da: {
+      subject: "Stadig interesseret?",
+      preview: "Produkterne, du kiggede på, er her stadig.",
+      heading: "Stadig interesseret?",
+      text: "Du kiggede på disse forleden. De er her stadig, hvis du vil tage et kig mere.",
+      button: "Besøg butikken",
+      url: "/",
+    },
+  },
 };
 
 function asContent(s: Starter): LanguageContent {

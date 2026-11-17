@@ -330,6 +330,14 @@ describe("support waiting (D216, step 14)", () => {
     expect(items.map((i) => `${i.text} -> ${i.href}`)).toEqual(["Kaffe: Support: 3 waiting for a person. -> /admin/kaffe/support"]);
     expect(items[0].urgent).toBe(true);
     expect(attentionFor([store({ supportWaiting: 0 })])).toEqual([]);
+  });
+
+  it("counts the chat assistant's requests waiting for a decision (ecosystem plan E1.7)", () => {
+    const items = attentionFor([store({ supportRequests: 2 })]);
+    expect(items.map((i) => `${i.text} -> ${i.href}`)).toEqual(["Kaffe: Support: 2 requests from the chat assistant are waiting for your decision. -> /admin/kaffe/support/requests"]);
+    expect(items[0].urgent).toBeFalsy();
+    expect(attentionFor([store({ supportRequests: 1 })])[0].text).toBe("Kaffe: Support: 1 request from the chat assistant is waiting for your decision.");
+    expect(attentionFor([store({ supportRequests: 0 })])).toEqual([]);
     expect(attentionFor([store()])).toEqual([]);
   });
 });

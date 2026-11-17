@@ -3,6 +3,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { renderEmail } from "@/lib/email-layout";
@@ -18,6 +19,8 @@ import { audit } from "./auth";
 import type { DataDeps } from "./data-job-store";
 import { removePersonalExports, type ExportScope } from "./data-jobs";
 import { sendEmail } from "./email";
+import { documentStorage, type DocumentStorage } from "./invoice-storage";
+import { col, typedRows } from "./typed-rows";
 import { log } from "./log";
 import { removeAvatarFiles } from "./media";
 import { notifyOwners } from "./privacy-notices";
@@ -131,6 +134,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            and e.kind <> all(${textList(EVIDENCE_EMAIL_KINDS)}))::int as email_messages,
         (select count(*) from commerce.email_opt_outs where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as email_opt_outs,
         (select count(*) from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as form_submissions,
+        (select count(*) from commerce.form_responses where store_id = ${sid}::uuid and contact_email = any(${addresses}))::int as form_responses,
         (select count(*) from commerce.blog_comments where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as blog_comments,
         (select count(*) from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid))::int as marketing_subscribers,
         (select count(*) from commerce.marketing_consent_events e join commerce.marketing_subscribers m on m.store_id = e.store_id and m.id = e.subscriber_id
@@ -210,6 +214,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       email_messages: n(c.email_messages),
       email_opt_outs: n(c.email_opt_outs),
       form_submissions: n(c.form_submissions),
+      form_responses: n(c.form_responses),
       blog_comments: n(c.blog_comments),
       marketing_subscribers: n(c.marketing_subscribers),
       marketing_consent_events: n(c.marketing_consent_events),
@@ -484,7 +489,13 @@ export async function eraseSubject(
   storeId: string,
   ref: SubjectRef,
   by: EraseBy,
-  deps: { avatarRemover?: (paths: string[]) => Promise<void>; dataStorage?: DataDeps["storage"]; reviewPictures?: ReviewPictureStorage | null } = {},
+  deps: {
+    avatarRemover?: (paths: string[]) => Promise<void>;
+    dataStorage?: DataDeps["storage"];
+    reviewPictures?: ReviewPictureStorage | null;
+    /** Where contracts' PDFs are kept (D695): the `documents` bucket unless a test gives another. */
+    contractFiles?: Pick<DocumentStorage, "remove"> | null;
+  } = {},
 ): Promise<EraseResult> {
   const now = by.now ?? new Date();
   const store = await privacyStore(storeId);
@@ -541,6 +552,7 @@ export async function eraseSubject(
   let counts: EraseCounts;
   let avatar: string | null = null;
   let pictures: StoredPicture[] = [];
+  let contractPaths: string[] = [];
   try {
     const done = await db().transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`privacy_erase:${storeId}:${subject.customerId ?? subject.email}`}, 0))`);
@@ -551,6 +563,7 @@ export async function eraseSubject(
     counts = done.counts;
     avatar = done.avatar;
     pictures = done.pictures;
+    contractPaths = done.contractPaths;
   } catch (error) {
     log("error", "privacy.erasure_database_failed", { requestId: request.id }, error);
     await markStep(request.id, { database: "failed" });
@@ -582,6 +595,13 @@ export async function eraseSubject(
 
   // 3a. The files of the person's reviews' pictures (D301 G4); whatever is left is swept daily.
   await removePictureFiles(storeId, pictures, deps.reviewPictures === undefined ? reviewPictureStorage() : deps.reviewPictures);
+
+  // 3a'. The PDFs of the person's contracts (D695), whose rows went above: never stops the erasure, a failure is logged.
+  if (contractPaths.length > 0) {
+    const files = deps.contractFiles === undefined ? documentStorage() : deps.contractFiles;
+    const removed = files ? await files.remove(contractPaths).catch(() => false) : false;
+    if (!removed) log("error", "privacy.contract_files_left", { requestId: request.id, files: contractPaths.length });
+  }
 
   // 3b. The store's customer and order files that can hold this person (D165, `storage:exports`): they hold their data among others', so they are
   // deleted and the owner exports again; files that cannot (made before the person was in the store, or an order file for someone with no order) are
@@ -691,7 +711,7 @@ async function blankAssistantTraces(tx: Tx, s: PrivacySubject): Promise<number> 
 
 /**
  * The deliveries to the owner's endpoints and services about the person (D440 review): of their account, their orders and subscriptions,
- * their draft orders and their reviews, the payloads that name them. Each loses its payload and is marked erased; one still waiting is not
+ * their draft orders, their reviews and their contracts, the payloads that name them. Each loses its payload and is marked erased; one still waiting is not
  * sent (`failed`, not retried), and none is sent again (`resendDelivery()`). `customer.erased` itself is queued after, carrying ids only.
  */
 async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
@@ -704,6 +724,9 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
       union all select unnest(${uuidList(s.subscriptionIds)})
       union all select id from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
       union all select id from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, s.addresses))})
+      -- Their contracts (D695 step 4): a payload names its signers. A signed contract itself is kept; the copies sent out are not.
+      union all select c.id from commerce.contracts c where c.store_id = ${sid}::uuid and (c.customer_id = ${cid}::uuid
+        or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${textList(s.addresses)})))
     )
     update commerce.integration_deliveries d set
       payload = null,
@@ -728,8 +751,9 @@ async function blankApplications(tx: Tx, s: PrivacySubject): Promise<void> {
   `);
 }
 
-async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null; pictures: StoredPicture[] }> {
+async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null; pictures: StoredPicture[]; contractPaths: string[] }> {
   const sid = s.storeId;
+  const contractPaths: string[] = [];
   const cid = s.customerId;
   const addresses = textList(s.addresses);
   const orderIds = uuidList(s.orderIds);
@@ -799,6 +823,18 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   }
 
   // Standing lists, wishlists, sign-in records, company invitations and sign-ups by the address: deleted.
+  // Contracts sent to the person or naming one of their addresses as a signer (D695), with their signers and events, unless signed: a signed
+  // contract is kept under bookkeeping law (the `contracts` retention kind) and loses the account when it goes. Before the deals: deleting a
+  // deal takes its unsigned contracts, and their files' paths are read here.
+  await tx.execute(sql`select set_config('commerce.contract_erasure', 'on', true)`);
+  const contractFiles = await typedRows(z.object({ pdf_path: col.textOrNull, signed_pdf_path: col.textOrNull }), sql`
+    delete from commerce.contracts c where c.store_id = ${sid}::uuid and c.status <> 'signed'
+      and (c.customer_id = ${cid}::uuid
+        or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${addresses})))
+    returning c.pdf_path, c.signed_pdf_path
+  `, tx);
+  await tx.execute(sql`select set_config('commerce.contract_erasure', '', true)`);
+  contractPaths.push(...contractFiles.flatMap((f) => [f.pdf_path, f.signed_pdf_path]).filter((p): p is string => typeof p === "string" && p.startsWith(`${sid}/contracts/`)));
   if (cid) {
     await tx.execute(sql`
       delete from commerce.standing_deliveries where store_id = ${sid}::uuid and standing_order_id in
@@ -824,15 +860,6 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     await tx.execute(sql`delete from commerce.activities where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and company_id is null and deal_id is null`);
     await tx.execute(sql`update commerce.activities set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   }
-  // Contracts sent to the person or naming one of their addresses as a signer (D695), with their signers and events: none is signed before
-  // signing is built (D695 step 3), which keeps a signed one under bookkeeping law instead.
-  await tx.execute(sql`select set_config('commerce.contract_erasure', 'on', true)`);
-  await tx.execute(sql`
-    delete from commerce.contracts c where c.store_id = ${sid}::uuid
-      and (c.customer_id = ${cid}::uuid
-        or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${addresses})))
-  `);
-  await tx.execute(sql`select set_config('commerce.contract_erasure', '', true)`);
   await tx.execute(sql`delete from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   await tx.execute(sql`delete from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${addresses})`);
   await tx.execute(sql`delete from commerce.filed_emails where store_id = ${sid}::uuid and (addresses && ${addresses}::text[] or customer_ids @> array[${cid}::uuid])`);
@@ -842,6 +869,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   // Where the person bought for their company (D321 C.2).
   await tx.execute(sql`delete from commerce.company_location_buyers where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
+  // What the person sent with the store's forms (D705), by the address they gave.
+  await tx.execute(sql`delete from commerce.form_responses where store_id = ${sid}::uuid and contact_email = any(${addresses})`);
   // Staff's tags on the person (D296).
   await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);
   // Staff's notes on the person (D366).
@@ -945,7 +974,7 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     }
   }
   void store;
-  return { counts, avatar, pictures };
+  return { counts, avatar, pictures, contractPaths };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { assembleLegalFacts, type LegalFacts } from "@/lib/legal-facts";
@@ -11,6 +12,7 @@ import { chatWidgetFor } from "./chat-agent";
 import { getReturnSettings } from "./return-settings";
 import { listCarriers } from "./shipping-carriers";
 import type { Store } from "./stores";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -33,7 +35,7 @@ export async function taxFactsOf(storeId: string): Promise<{ vatNumber: string |
  * null there and becomes a visible `[[Add: …]]` placeholder in the text, never an invented sentence.
  */
 export async function legalFacts(store: Store): Promise<LegalFacts> {
-  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow, recipients] = await Promise.all([
+  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow, recipients, browse] = await Promise.all([
     db().execute<Row>(sql`
       select market_code, currency, amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${store.id}::uuid
     `),
@@ -64,6 +66,8 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
       select (select coalesce(array_agg(name order by lower(name)), '{}') from commerce.suppliers where store_id = ${store.id}::uuid and drop_ships) as suppliers,
              (select coalesce(array_agg(channel order by channel), '{}') from commerce.marketplace_connections where store_id = ${store.id}::uuid and state = 'connected') as marketplaces
     `),
+    // The browse email (D691): the privacy starter says what a signed-in subscriber's product views are kept for, while it is on.
+    typedRows(z.object({ on: col.bool }), sql`select true as on from commerce.automations where store_id = ${store.id}::uuid and kind = 'browse' and enabled limit 1`),
   ]);
   const main = store.markets[0];
   const offered = new Set(store.markets.map((m) => m.code.toUpperCase()));
@@ -121,6 +125,7 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     // An AI-first desk answers in the chat and by email before a person reads (F7 of `docs/100-day-challenge.md`): said in the notice too.
     supportAi: { ...(chat?.aiUse ?? { tone: false, summaries: false }), answers: chat !== null && chat.ai && chat.mode === "ai_first" },
     noShowFee: noShow.length > 0,
+    browseEmails: browse.length > 0,
     // Where the site's own pages are, in the store's main market: the withdrawal function (D153) and the cookies page.
     links: main ? { withdraw: marketPath(store.slug, main.slug, "/withdraw"), cookies: marketPath(store.slug, main.slug, "/cookies") } : {},
   });

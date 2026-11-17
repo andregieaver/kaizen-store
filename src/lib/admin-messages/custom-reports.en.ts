@@ -165,6 +165,8 @@ export const customReportsEn = {
     notAllowed: "Not with the figures chosen",
   },
   result: {
+    /** Round 34 (D708): on a phone the totals under the chart, the table one row, the form one row above. */
+    phone: { table: "The figures in a table", rows: { one: "{n} row", many: "{n} rows" }, show: "Show", hide: "Hide", change: "Change", done: "Done" },
     total: "Total",
     previous: "Before",
     change: "Change",

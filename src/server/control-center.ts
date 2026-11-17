@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -15,6 +16,7 @@ import { can, type PermissionKey } from "@/lib/permissions";
 import { limitsReachedCount } from "./usage";
 import { usageRows } from "./ai-usage";
 import type { Account } from "./auth";
+import { col, typedRows } from "./typed-rows";
 import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
 import { invoiceAttention } from "./invoices";
 import { privacyAttention } from "./privacy-attention";
@@ -97,7 +99,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows, requestRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -256,6 +258,18 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       from commerce.ledger_books b
       where b.store_id in (${idList(ownerIds)}) and b.closed_on is null
     `),
+    // What the chat assistant passed to the team and waits for a decision (ecosystem plan E1.7): the Support → Requests page.
+    supportIds.length === 0
+      ? Promise.resolve([] as { store_id: string; requests: number }[])
+      : typedRows(
+          z.object({ store_id: col.uuid, requests: col.int }),
+          sql`
+            select a.store_id, count(*)::int as requests
+            from commerce.support_actions a
+            where a.store_id in (${idList(supportIds)}) and a.confirmer = 'staff' and a.status = 'proposed'
+            group by a.store_id
+          `,
+        ),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -272,6 +286,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
   const owedEditsBy = new Map(owedEditRows.map((r) => [String(r.store_id), Number(r.n)]));
   const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
+  const requestsBy = new Map(requestRows.filter((r) => r.requests > 0).map((r) => [r.store_id, r.requests]));
   const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
   const reviewsBy = new Map(reviewRows.filter((r) => Number(r.waiting) > 0).map((r) => [String(r.store_id), Number(r.waiting)]));
   const termsBy = new Map(termsRows.filter((r) => Number(r.overdue) > 0).map((r) => [String(r.store_id), Number(r.overdue)]));
@@ -347,6 +362,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         : {}),
       ...(partlyBy.has(id) ? { partlySent: { orders: Number(partlyBy.get(id)!.n), oldestFirstParcelAt: partlyBy.get(id)!.oldest ? new Date(String(partlyBy.get(id)!.oldest)).toISOString() : null } } : {}),
       ...(supportBy.has(id) ? { supportWaiting: supportBy.get(id) } : {}),
+      ...(requestsBy.has(id) ? { supportRequests: requestsBy.get(id) } : {}),
       ...(handBy.has(id) && !website
         ? { handOver: { pickup: Number(handBy.get(id)!.pickup), oldestPickupAt: handBy.get(id)!.oldest_pickup ? new Date(String(handBy.get(id)!.oldest_pickup)).toISOString() : null, local: Number(handBy.get(id)!.local) } }
         : {}),

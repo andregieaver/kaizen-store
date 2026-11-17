@@ -6,6 +6,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ReportBuilder } from "@/components/admin/reports/report-builder";
 import { ReportView } from "@/components/admin/reports/report-view";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { analyticsWords } from "@/lib/analytics-words";
@@ -89,15 +90,20 @@ export default async function ReportViewPage({ params, searchParams }: PageProps
           </p>
         )}
 
-        <Card title={w.builder.title}>
-          <ReportBuilder
-            path={path}
-            id={saved?.id ?? null}
-            initial={spec}
-            words={{ builder: w.builder, catalogue: w.catalogue, problems: w.problems }}
-            periodWords={{ presets: aw.period.presets, compare: aw.compare.modes }}
-          />
-        </Card>
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          {/* Round 34 (D708): on a phone the form is one row under the sentence that says what the report shows. */}
+          <PhoneRow flat last defaultOpen={!description} title={w.builder.title} change={w.result.phone.change} done={w.result.phone.done}>
+            <Card title={w.builder.title}>
+              <ReportBuilder
+                path={path}
+                id={saved?.id ?? null}
+                initial={spec}
+                words={{ builder: w.builder, catalogue: w.catalogue, problems: w.problems }}
+                periodWords={{ presets: aw.period.presets, compare: aw.compare.modes }}
+              />
+            </Card>
+          </PhoneRow>
+        </div>
 
         <Card title={title}>
           {outcome === null ? (

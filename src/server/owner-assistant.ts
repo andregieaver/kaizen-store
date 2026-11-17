@@ -60,6 +60,7 @@ import { headerFooterApprovalWords,
   chooseHeaderFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { categoryApprovalWords } from "./category-tools";
 import { checkoutQuestionApprovalWords } from "./checkout-question-tools";
+import { remindApprovalWords } from "./contract-tools";
 import { contentApprovalWords } from "./content-tools";
 import { setupApprovalWords } from "./setup-tools";
 import { liveApprovalDetails } from "./design-tools";
@@ -442,6 +443,7 @@ export function managerPrompt(
     ...(store
       ? [
           "- A question about the store's figures by time, product, variant, category, tag, country, currency, channel, device, discount code, payment method or new and returning customers is a report: fill run_report's spec (report_catalogue says what can be asked) and repeat its rows, totals and notes. When it says a question cannot be asked, say what can.",
+          "- A question about heatmaps, where visitors get stuck, dead or rage clicks, how far visitors scroll or what they click on a page is page_behaviour's: call it first, as nothing else holds those figures.",
         ]
       : []),
     "- Look things up before acting on them, so you use real numbers, names and ids.",
@@ -1124,6 +1126,8 @@ export async function keepForApproval(
   if (store && tool === "request_purchase") summary = (await purchaseApprovalWords(store, args)) ?? summary;
   // A checkout question's change is named by the question's own words (D357).
   if (store && tool === "save_checkout_question") summary = await checkoutQuestionApprovalWords({ account: ctx.account, store }, args);
+  // A reminder names the contract and the signer whose turn it is, as they are (D695).
+  if (store && tool === "remind_contract_signer") summary = await remindApprovalWords({ account: ctx.account, store }, args);
   // An order change is described from the editor's own preview, and the order's state it was previewed on is kept with the call (a value the
   // model passed is replaced): the change is made to that order or refused as changed (PSI AGT-01).
   if (store && tool === "change_order") {

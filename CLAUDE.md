@@ -155,6 +155,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Free trials and their end (D420, `src/server/store-trial.ts`)
 - Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
 - Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
+- Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F3 built, F4 and F5 planned)
 - Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…
 - The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`, `AiManagerLauncher`)
 - The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
@@ -163,6 +164,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The AI manager's Work tools (PSI AGT-01, D318, `src/server/work-tools.ts`)
 - The AI manager's tools for the newer screens (PSI AGT-01, `src/server/screen-tools.ts`)
 - The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)
+- The AI manager's contract tools (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`)
 - The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
 - The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)
 - The AI manager's notices and saved skills (wave 8 unit F, D350)
@@ -456,7 +458,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
 - A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
-- Working plans: `docs/audits/psi-followups.md` (Open section), `docs/audits/code-review-2026-11.md` and
- `docs/audits/bloat-review-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.
+- Working plans in `docs/audits/`: `psi-followups.md` (Open), `code-review-2026-11.md`, `bloat-review-2026-11.md` and
+ `ecosystem-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.
 - Claim a decision's number with `node scripts/claim-decision.mjs "title"` before citing it, never from the file.
 - Searches skip dated reports, evidence folders and `supabase/archive`: name the path to search one.

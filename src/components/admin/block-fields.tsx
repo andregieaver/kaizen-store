@@ -61,11 +61,13 @@ import {
   FORM_TEXT_MAX,
   LABELLED_KINDS,
   NEWSLETTER_LAYOUTS,
+  type FormBlock,
   type EmailFormBlock,
   type FormButton,
   type FormField,
   type FormFieldKind,
   type NewsletterBlock,
+  type NewsletterLayout,
   type InstagramBlock,
   type CountdownBlock,
   type StatsBlock,
@@ -179,6 +181,7 @@ import {
 } from "@/lib/page-content";
 
 import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
+import type { BuilderForms } from "@/lib/form-records";
 import { fillWords } from "@/lib/admin-fill";
 
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -310,6 +313,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: NewsletterFields,
     Style: FormStyleFields,
+  },
+  form: {
+    title: "Form",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: FormPickFields,
+    Style: FormBlockStyleFields,
   },
   dualButton: {
     title: "Dual button",
@@ -2782,22 +2791,104 @@ function OptionsField({ value, onChange }: { value: string[]; onChange: (options
 }
 
 /** A form's button (D93). */
+/** The owner's forms (D705), from the page editor; null where an editor has none. */
+export const FormsContext = createContext<BuilderForms | null>(null);
+
+/** A form component (D705): which of the owner's forms it shows, and where to make or change one. */
+function FormPickFields({ block, onChange }: BlockEditorProps<FormBlock>) {
+  const forms = useContext(FormsContext);
+  const w = useAdminText("blocks").form;
+  const picked = forms?.list.find((f) => f.id === block.formId);
+  if (!forms) return null;
+  const link = "text-sm font-medium text-accent underline underline-offset-2";
+  return (
+    <>
+      {forms.list.length === 0 ? (
+        <p className="text-sm text-muted">{w.noForms}</p>
+      ) : (
+        <label className="block text-sm">
+          <span className="text-ink-2">{w.pick}</span>
+          <select
+            className="mt-1 w-full rounded-lg border border-edge bg-card px-3 py-2"
+            value={block.formId ?? ""}
+            onChange={(event) => onChange({ formId: event.target.value || null })}
+            data-form-pick
+          >
+            <option value="">{w.pickNone}</option>
+            {forms.list.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name} ({w.kinds[f.kind]})
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-muted">{w.pickHint}</span>
+        </label>
+      )}
+      {block.formId && !picked && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning-text">{w.gone}</p>}
+      {picked?.status === "archived" && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning-text">{w.archived}</p>}
+      {picked && picked.status === "active" && !picked.takesAnswers && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning-text">{w.cannotDeliver}</p>}
+      <div className="flex flex-wrap gap-4">
+        {picked ? (
+          <a className={link} href={`${forms.href}/${picked.id}`} target="_blank" rel="noopener">
+            {w.editForm}
+          </a>
+        ) : (
+          <a className={link} href={`${forms.href}/new`} target="_blank" rel="noopener">
+            {w.newForm}
+          </a>
+        )}
+        <a className={link} href={forms.href} target="_blank" rel="noopener">
+          {w.allForms}
+        </a>
+      </div>
+    </>
+  );
+}
+
+/** A form component's look (D705): a sign-up's layout when its form is one, and the button's look. */
+function FormBlockStyleFields({ block, onChange }: BlockEditorProps<FormBlock>) {
+  const forms = useContext(FormsContext);
+  const signup = forms?.list.find((f) => f.id === block.formId)?.kind === "signup";
+  return <FormLookFields signup={signup} layout={block.layout} look={block.button ?? {}} onChange={onChange} />;
+}
+
 function FormStyleFields({ block, onChange }: BlockEditorProps<EmailFormBlock> | BlockEditorProps<NewsletterBlock>) {
-  const look = block.button ?? {};
+  return (
+    <FormLookFields
+      signup={block.type === "newsletter"}
+      layout={block.type === "newsletter" ? block.layout : undefined}
+      look={block.button ?? {}}
+      onChange={onChange as (patch: { button?: FormButton; layout?: NewsletterLayout }) => void}
+    />
+  );
+}
+
+/** A form's look: a sign-up's field and button side by side or stacked, and the button's look and width. */
+function FormLookFields({
+  signup,
+  layout,
+  look,
+  onChange,
+}: {
+  signup: boolean;
+  layout: NewsletterLayout | undefined;
+  look: FormButton;
+  onChange: (patch: { button?: FormButton; layout?: NewsletterLayout }) => void;
+}) {
   const set = (patch: Partial<FormButton>) => {
     const next = { ...look, ...patch };
     const kept = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as FormButton;
-    (onChange as (patch: { button?: FormButton }) => void)({ button: Object.keys(kept).length ? kept : undefined });
+    onChange({ button: Object.keys(kept).length ? kept : undefined });
   };
   const all = useAdminText("blocks");
   return (
     <>
-      {block.type === "newsletter" && (
+      {signup && (
         <Choices
           legend={all.form.layout}
           options={optionsOf(NEWSLETTER_LAYOUTS, all.lists.newsletterLayouts)}
-          value={block.layout ?? "inline"}
-          onChange={(layout) => (onChange as (patch: Partial<NewsletterBlock>) => void)({ layout: layout === "inline" ? undefined : layout })}
+          value={layout ?? "inline"}
+          onChange={(next) => onChange({ layout: next === "inline" ? undefined : next })}
         />
       )}
       <ButtonLookFields look={look} onChange={set} />

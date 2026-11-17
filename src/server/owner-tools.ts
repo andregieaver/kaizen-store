@@ -86,6 +86,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool, speedReportTool } from "./analytics-tools";
+import { pageBehaviourTool, versionBehaviourTool } from "./heat-tools";
 import { profitOverviewTool } from "./profit-tools";
 import { reportCatalogueTool, runReportTool, saveReportTool } from "./report-tools";
 import { issueWorkInvoiceTool, listWorkAssignmentsTool, listWorkClientsTool, logTimeTool, preflightIssueWorkInvoice, workOverviewTool } from "./work-tools";
@@ -135,6 +136,7 @@ import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
 import { declineQuoteTool, preflightDeclineQuote, preflightPriceDisplay, priceDisplayTool, setDraftPricesTool, setPriceDisplayTool, setQuoteRequestsTool } from "./quote-tools";
+import { draftContractTool, listContractsTool, preflightRemindSigner, remindContractSignerTool } from "./contract-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
 import { checkoutQuestionsTool, preflightCheckoutQuestion, saveCheckoutQuestionTool } from "./checkout-question-tools";
@@ -198,7 +200,7 @@ import {
   overviewRows as affiliateOverviewRows,
   rulesSummary as affiliateRulesSummary,
 } from "@/lib/affiliate-admin";
-import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool } from "./ad-budget-tools";
+import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool, copyAdTool, preflightCopyAd } from "./ad-budget-tools";
 import { cancelPurchaseTool, listPurchasesTool, preflightRequestPurchase, requestPurchaseTool, walletStatusTool } from "./purchase-tools";
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
 import { cookiesTag } from "./site-cookies";
@@ -2214,6 +2216,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     }
     return preflightPriceDisplay(ctx, input.input as OwnerToolInput<"set_price_display">);
   }
+  // A contract not out for signing, with no signer waiting, or a signer asked within the day is refused now, never kept for a yes (D695).
+  if (name === "remind_contract_signer") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    await preflightRemindSigner(ctx, input.input as OwnerToolInput<"remind_contract_signer">);
+    return;
+  }
   // A draft that could not be sent (not open, a problem that blocks it, payments off, a closed store) is refused now, never kept for a yes (D173).
   if (name === "send_draft_order") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2285,6 +2294,7 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     issue_work_invoice: preflightIssueWorkInvoice,
     // An ad budget change Meta would refuse, or that changes nothing, is refused now (D585).
     set_ad_budget: preflightSetAdBudget,
+    copy_ad: preflightCopyAd,
     // A purchase the wallet could not make a card for (not connected, paused, no limit, over it) is refused now (D599).
     request_purchase: preflightRequestPurchase,
     // An automation's days outside its range, and a text message that reaches no one or passes the cap (D4).
@@ -2426,6 +2436,10 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   price_display: (ctx: OwnerToolContext) => priceDisplayTool(ctx),
   set_price_display: setPriceDisplayTool,
   set_quote_requests: setQuoteRequestsTool,
+  // Contracts for deals (D695 step 4).
+  list_contracts: listContractsTool,
+  draft_contract: draftContractTool,
+  remind_contract_signer: remindContractSignerTool,
   checkout_questions: checkoutQuestionsTool,
   save_checkout_question: saveCheckoutQuestionTool,
   list_returns: listReturnsTool,
@@ -2519,6 +2533,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   block_affiliate: blockAffiliateTool,
   list_ad_budgets: listAdBudgetsTool,
   set_ad_budget: setAdBudgetTool,
+  copy_ad: copyAdTool,
   wallet_status: walletStatusTool,
   request_purchase: requestPurchaseTool,
   list_purchases: listPurchasesTool,
@@ -2537,6 +2552,8 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_targets: listTargetsTool,
   set_target: setTargetTool,
   speed_report: speedReportTool,
+  page_behaviour: pageBehaviourTool,
+  version_behaviour: versionBehaviourTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
   work_overview: workOverviewTool,

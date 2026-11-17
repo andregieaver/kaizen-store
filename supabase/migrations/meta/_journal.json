@@ -428,6 +428,62 @@
       "when": 1794856614993,
       "tag": "20261116191654_contracts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794875418580,
+      "tag": "20261117003018_contract_signing",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794875425677,
+      "tag": "20261117003025_contract_signing_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794877664605,
+      "tag": "20261117010744_contract_signers_asked",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1794882904915,
+      "tag": "20261117023504_forms",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794882912943,
+      "tag": "20261117023512_forms_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794902429755,
+      "tag": "20261117080029_forms_lifted",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794908460404,
+      "tag": "20261117094100_contract_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794908468498,
+      "tag": "20261117094108_contract_events_rules",
+      "breakpoints": true
     }
   ]
 }

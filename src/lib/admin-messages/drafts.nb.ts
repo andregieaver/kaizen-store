@@ -41,6 +41,7 @@ export const draftsNb: DraftsMessages = {
     unchecked: " (ikke kontrollert av en person ennå)",
   },
   pages: {
+    fromDeal: "Avtale ({status}):",
     orders: "Bestillinger",
     listTitle: "Utkast til bestillinger",
     listDescription:

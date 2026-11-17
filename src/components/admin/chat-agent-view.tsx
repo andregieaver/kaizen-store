@@ -12,6 +12,7 @@ import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { AdminTextScope } from "./admin-text";
+import { PhoneRow } from "./phone-row";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 import { ChatAgentForm, type SaveChatAgent } from "./chat-agent-form";
@@ -62,6 +63,8 @@ export async function ChatAgentView({
     greeting: t(language.locale.split("-")[0]).chat.greeting(agent?.name || "Ingrid"),
   }));
   const ready = Boolean(connection?.textModel);
+  const on = Boolean(agent?.enabled && ready);
+  const p = w.phone;
   const aiLink = (text: string) => (aiPage ? <Link href={aiPage} className="underline">{text}</Link> : text);
 
   return (
@@ -69,9 +72,24 @@ export async function ChatAgentView({
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={<>{agent?.enabled ? (ready ? fillWords(w.onReady, { name: agent.name, site: siteName }) : w.onHidden) : w.off}</>}
+        description={<span className="max-sm:hidden">{agent?.enabled ? (ready ? fillWords(w.onReady, { name: agent.name, site: siteName }) : w.onHidden) : w.off}</span>}
       />
 
+      {/* Round 32 (D706): a phone says first whether the chat is on and what it needs, then the parts as rows. */}
+      <section aria-label={w.title} className={`flex flex-col gap-2.5 rounded-panel p-4 sm:hidden ${on ? "bg-card" : "bg-warning-soft"}`}>
+        <p className="text-body-strong text-ink">{on ? p.onTitle : p.offTitle}</p>
+        <p className={`text-caption ${on ? "text-ink-2" : "text-warning-text"}`}>
+          {on ? fillWords(w.onReady, { name: agent!.name, site: siteName }) : !ready ? p.needsAi : p.switchOn}
+        </p>
+        {!ready && aiPage ? (
+          <Link href={aiPage} className="inline-flex min-h-11 items-center self-start rounded-pill bg-ink px-4 text-sm font-medium text-inverse-ink">
+            {p.chooseModel}
+          </Link>
+        ) : null}
+      </section>
+
+      <div className="max-sm:order-last max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.how} change={p.read} done={p.close}>
       <section aria-labelledby="about" className={card}>
         <h2 id="about" className="mb-1 text-title text-ink">{w.how}</h2>
         <p className="text-sm">{fillWords(w.howText, { store: storeId ? w.howStore : "", site: siteName })}</p>
@@ -83,9 +101,11 @@ export async function ChatAgentView({
           </p>
         )}
       </section>
+      </PhoneRow>
+      </div>
 
-      <section aria-labelledby="agent" className={card}>
-        <h2 id="agent" className="mb-4 text-title text-ink">{w.agent}</h2>
+      <section aria-labelledby="agent" className={`${card} max-sm:border-0 max-sm:bg-transparent max-sm:p-0`}>
+        <h2 id="agent" className="mb-4 text-title text-ink max-sm:sr-only">{w.agent}</h2>
         <ChatAgentForm
           agent={
             agent
@@ -109,6 +129,8 @@ export async function ChatAgentView({
         />
       </section>
 
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.knowledge} sub={fillWords(p.knowledgeSub, { documents: countWords(documents.length, w.document) })} change={p.open} done={p.close}>
       <section aria-labelledby="knowledge" className={card}>
         <h2 id="knowledge" className="mb-1 text-title text-ink">{w.knowledge}</h2>
         <p className="mb-4 text-sm text-muted">
@@ -167,6 +189,8 @@ export async function ChatAgentView({
           <p className="text-sm">{fillWords(w.full, { n: DOCUMENTS_MAX })}</p>
         )}
       </section>
+      </PhoneRow>
+      </div>
     </div>
     </AdminTextScope>
   );

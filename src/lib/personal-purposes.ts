@@ -264,6 +264,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   sms_consent_events: "consent_records",
   email_opt_outs: "consent_records",
   blog_comments: "contributions",
+  form_responses: "support",
   form_submissions: "support",
   consents: "consent_records",
   visits: "analytics",

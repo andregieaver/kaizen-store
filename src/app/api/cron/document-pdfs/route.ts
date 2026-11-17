@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
+import { contractJob } from "@/server/contract-jobs";
 import { cronAuthorised } from "@/server/cron-auth";
-import { pdfJob } from "@/server/invoice-pdf";
+import { pdfJob, renderPdf } from "@/server/invoice-pdf";
 
 /** Up to ten PDFs are made in one run, each in a Chromium that takes a while to start on a cold function. */
 export const maxDuration = 120;
@@ -16,7 +17,9 @@ async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
   const pdfs = await pdfJob();
-  return Response.json({ pdfs }, { headers: { "Cache-Control": "no-store" } });
+  // Contracts (D695 step 3): their signed PDFs with this route's Chromium, expiries, reminders, codes and retention.
+  const contracts = await contractJob({ render: renderPdf });
+  return Response.json({ pdfs, contracts }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export const GET = run;

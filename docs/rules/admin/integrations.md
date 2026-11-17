@@ -112,7 +112,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   a return moves only through the returns page's steps; notes and tags through `addOrderNote()` and `changeOrderTags()`. The orders' topics are
   queued by triggers where they happen (`order.created` on insert, `order.updated` on `edited_at`, `fulfilment.*` on shipments and
   `shipment_tracking`, `refund.created` for money or store credit that went through, `return.updated` on a status, `quote.requested` and
-  `draft.sent` on `draft_orders`), copied history never. Customers and marketing (C3, `admin-api-customers.ts`): a customer changes only through
+  `draft.sent` on `draft_orders`, `contract.sent`, `contract.signed` and `contract.declined` on a contract's status, D695 step 4), copied
+  history never. A contract's payload (`contractData()`) names its signers and their role and dates, never an email, a reason for declining
+  or the words; erasure blanks every delivery about the person's contracts, a signed one's too (`eraseDeliveries()`). Customers and marketing (C3, `admin-api-customers.ts`): a customer changes only through
   `createCustomer()`/`updateCustomer()` (the form's whole state from `staffFormValues()` with the change laid over it), a discount code only
   through `saveDiscount()` with its stored form (what it reaches and who may use it stay the admin's), a gift card only through
   `issueGiftCard()` and `deactivateGiftCard()` with the power `gift_cards:write`, a subscription only through `changeSubscription()` as staff

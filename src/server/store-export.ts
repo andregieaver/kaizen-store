@@ -30,6 +30,8 @@ export const STORE_EXPORT_TABLES = [
   "page_roles",
   "page_redirects",
   "menus",
+  // The store's forms (D705); what visitors sent is people's data, never in the file.
+  "forms",
   "terms",
   "blogs",
   "blog_authors",

@@ -19,6 +19,7 @@ import { formatPriceInput } from "@/lib/product-input";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { activitiesOf } from "@/server/activities";
+import { contractsOfDeal, listTemplates } from "@/server/contracts";
 import { filedEmailsOf, filingAddressOf } from "@/server/email-filing";
 import { FiledEmailsCard } from "@/components/admin/deals/filed-emails-card";
 import { getDeal, linkCandidates, mayLink, pipelinesOf, type DealLink, type DealMove } from "@/server/deals";
@@ -26,6 +27,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 
 import { activityActions } from "../activity-actions-of";
+import { newContractAction } from "../contract-actions";
 import { deleteDealAction, linkThingAction, placeDealAction, saveDealFieldsAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
 
 export const metadata: Metadata = { title: "Deal" };
@@ -58,6 +60,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   ]);
   // The mail filed on the deal (S5, D476), and where to send more.
   const [emails, filing] = await Promise.all([filedEmailsOf(store.id, { dealId: deal.id }), canChange ? filingAddressOf(store.id) : Promise.resolve(null)]);
+  // The deal's contracts (D695): made from the store's template, filled in from the deal.
+  const [contracts, templates] = await Promise.all([contractsOfDeal(member, deal.id), canChange ? listTemplates(store.id) : Promise.resolve([])]);
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
   const team = staff.filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > new Date().toISOString())).map((s) => ({ id: s.accountId, name: s.name || s.email }));
@@ -88,6 +92,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
             ? w.deal.byPlatform
             : move.via === "quote"
               ? w.deal.byQuote
+            : move.via === "contract"
+              ? w.deal.byContract
             : move.by
               ? fillWords(w.deal.by, { name: move.by })
               : null;
@@ -101,6 +107,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           ? w.deal.wonByInvoice
           : deal.closedVia === "platform"
             ? w.deal.wonByPlan
+            : deal.closedVia === "contract"
+              ? w.deal.wonByContract
             : fillWords(w.deal.wonOn, { date: when(deal.closedAt ?? deal.createdAt) })
       : deal.status === "lost"
         ? fillWords(w.deal.lostOn, { date: when(deal.closedAt ?? deal.createdAt) })
@@ -224,6 +232,44 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
               </ActionForm>
             )}
           </div>
+        )}
+      </Card>
+
+      <Card title={w.contracts.title} compact>
+        {contracts.length === 0 ? (
+          <p className="text-sm text-muted">{w.contracts.none}</p>
+        ) : (
+          <List label={w.contracts.title}>
+            {contracts.map((c) => (
+              <ListRow key={c.id} href={`${base}/deals/${deal.id}/contracts/${c.id}`}>
+                <div className="flex w-full flex-wrap items-center justify-between gap-3 text-sm">
+                  <span className="font-medium text-ink">{c.title}</span>
+                  <span className="flex items-center gap-2 text-ink-2">
+                    {c.sentAt ? fillWords(w.contracts.sentOn, { date: when(c.sentAt) }) : null}
+                    <Chip signal={c.status === "signed" ? "positive" : c.status === "draft" || c.status === "sent" ? "neutral" : "danger"}>{w.contracts.statuses[c.status]}</Chip>
+                  </span>
+                </div>
+              </ListRow>
+            ))}
+          </List>
+        )}
+        {canChange && deal.status === "open" && (
+          <ActionForm action={newContractAction.bind(null, store.slug, deal.id)} className="mt-4 flex flex-wrap items-end gap-3">
+            {/* With one template (Homer's) there is nothing to choose; Lisa's several are offered here. */}
+            {templates.length > 1 && (
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                {w.templates.choose}
+                <select name="template" defaultValue={templates[0].id} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <SubmitButton variant="secondary">{w.contracts.new}</SubmitButton>
+          </ActionForm>
         )}
       </Card>
 

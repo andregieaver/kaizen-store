@@ -38,6 +38,7 @@ export default async function KaizenSupportReportsPage({
         />
         {notice && <p className="text-sm">{notice}</p>}
         <ReportsView
+          inboxHref={"/admin/platform/support"}
           words={t}
           report={report}
           periodLabel={period.label}

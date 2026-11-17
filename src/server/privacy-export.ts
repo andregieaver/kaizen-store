@@ -109,6 +109,7 @@ async function countRows(s: PrivacySubject): Promise<number> {
       (select count(*) from commerce.bonus_entries where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.email_messages where store_id = ${store}::uuid and lower(to_address) = any(${addresses})) +
       (select count(*) from commerce.form_submissions where store_id = ${store}::uuid and lower(email) = any(${addresses})) +
+      (select count(*) from commerce.form_responses where store_id = ${store}::uuid and contact_email = any(${addresses})) +
       (select count(*) from commerce.carts where store_id = ${store}::uuid and id = any(${carts})) +
       (select count(*) from commerce.draft_orders where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.support_conversations where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid and anonymised_at is null) +
@@ -823,7 +824,24 @@ async function loadForms(s: PrivacySubject): Promise<FormRow[]> {
     select kind, created_at, status from commerce.form_submissions
     where store_id = ${s.storeId}::uuid and lower(email) = any(${textList(s.addresses)}) order by created_at, id
   `);
-  return rows.map((r) => ({ kind: strs(r.kind), createdAt: iso(r.created_at), status: strs(r.status) }));
+  // What the person sent with a form, kept with its answers (D705).
+  const responses = await typedRows(
+    z.object({
+      name: col.text,
+      kind: col.text,
+      created_at: col.timestamp,
+      state: col.text,
+      answers: z.array(z.object({ label: z.string(), value: z.string() })).catch([]),
+    }),
+    sql`
+      select f.name, f.kind, r.created_at, r.state, r.answers from commerce.form_responses r join commerce.forms f on f.id = r.form_id
+      where r.store_id = ${s.storeId}::uuid and r.contact_email = any(${textList(s.addresses)}) order by r.created_at, r.id
+    `,
+  );
+  return [
+    ...rows.map((r) => ({ kind: strs(r.kind), createdAt: iso(r.created_at), status: strs(r.status) })),
+    ...responses.map((r) => ({ kind: `response.${r.kind}`, createdAt: r.created_at, status: r.state, form: r.name, answers: r.answers })),
+  ];
 }
 
 async function loadCompany(s: PrivacySubject): Promise<CompanySource> {

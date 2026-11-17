@@ -114,3 +114,17 @@ purchases in the books (the receipt matched to the charge), Revolut behind the s
 
 Every six hours each connected account's spend per campaign and day of the last seven days is written into the books' marketing spend
 (`syncAdSpend()`, channel `paid_social`, the store's main currency), so contribution profit and ROAS count what the ads cost.
+
+## 7. Campaign results and copies (D694, D1 of `docs/100-day-challenge.md`)
+
+The first part of D1. `adResults()` reads each campaign's results for a period (Meta's presets `last_7d`, `last_30d`, `this_month`, in the
+account's time zone): spend, impressions, clicks, purchases and their value as Meta attributes them (`campaignResults()`: a purchase counted
+once, under the first of `PURCHASE_ACTIONS` Meta's answer holds, never their sum; a figure that cannot be read is no result, never a guess),
+and the return on spend worked out in code. `copyAd()` makes a paused copy (`status_option=PAUSED`, `deep_copy`) of one of the account's
+campaigns or ad sets, checked against the account's own lists first, and audits it (`marketing.ad_copied`). The AI manager's `list_ad_budgets`
+with `results` (read) and `copy_ad` (gate `spend`, area money, owner only): a paused copy spends nothing, so the money is still moved only by
+`set_ad_budget` under the owner's limit. The Ads page shows the last 7 days per campaign, folded under the budgets.
+
+**Not yet (D1's rest):** catalogue campaigns made from the product feed (they need the owner's catalogue in Commerce Manager, a page and a
+pixel connected to the account first), audiences from consented segments, creatives from the store's pictures, and Google Ads.
+

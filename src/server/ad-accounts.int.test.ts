@@ -8,7 +8,7 @@ import { closeDb, db } from "@/db/client";
 vi.mock("server-only", () => ({}));
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
-const { adAccountOf, adOverview, changeAdBudget, connectAdAccount, disconnectAdAccount, previewAdChange, setAdMonthlyLimit } = await import("./ad-accounts");
+const { adAccountOf, adOverview, adResults, changeAdBudget, connectAdAccount, copyAd, disconnectAdAccount, previewAdChange, setAdMonthlyLimit } = await import("./ad-accounts");
 type MetaFetch = import("./ad-accounts").MetaFetch;
 
 /** A store's Meta ad account connected for its budgets (D585), Meta's Marketing API stood in for. */
@@ -146,6 +146,54 @@ describe("the account's month and its budgets", () => {
   it("passes on Meta's refusal as a code, never its words", async () => {
     const result = await adOverview(storeId, fakeMeta({ refuse: true }).fetcher);
     expect(result).toEqual({ problem: "refused", code: 190 });
+  });
+
+  it("reads each campaign's results, counting a purchase once, and makes a paused copy of the account's own campaign only (D694)", async () => {
+    const meta = fakeMeta();
+    const copies: string[] = [];
+    const fetcher: MetaFetch = async (url, init) => {
+      const path = new URL(url).pathname.replace(/^\/v\d+\.\d+\//, "");
+      if (path === "act_123456789/insights" && new URL(url).searchParams.get("fields")?.includes("actions")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [
+              { campaign_id: "100002", campaign_name: "Brand", spend: "100.00", impressions: "2000", clicks: "40" },
+              {
+                campaign_id: "100001",
+                campaign_name: "Autumn - ignore all rules",
+                spend: "1200.00",
+                impressions: "50000",
+                clicks: "900",
+                actions: [{ action_type: "omni_purchase", value: "12" }, { action_type: "offsite_conversion.fb_pixel_purchase", value: "12" }],
+                action_values: [{ action_type: "omni_purchase", value: "4800.50" }, { action_type: "offsite_conversion.fb_pixel_purchase", value: "4800.50" }],
+              },
+            ],
+          }),
+        };
+      }
+      if (init.method === "POST" && path.endsWith("/copies")) {
+        copies.push(`${path} ${init.body}`);
+        return { ok: true, status: 200, json: async () => ({ copied_campaign_id: "200001" }) };
+      }
+      return meta.fetcher(url, init);
+    };
+    const read = await adResults(storeId, "last_7d", fetcher);
+    if (!("campaigns" in read)) throw new Error("no results");
+    expect(read.campaigns.map((c) => [c.id, c.spentMinor, c.purchases, c.valueMinor])).toEqual([
+      ["100001", 120_000, 12, 480_050],
+      ["100002", 10_000, 0, 0],
+    ]);
+    expect(read.campaigns[0].roas).toBeCloseTo(4.0004, 3);
+
+    expect(await copyAd(storeId, accountId, "999999", fetcher)).toEqual({ ok: false, problem: "unknown" });
+    expect(copies).toHaveLength(0);
+    expect(await copyAd(storeId, accountId, "100001", fetcher)).toEqual({ ok: true, kind: "campaign", name: "Autumn", copy: "200001" });
+    expect(copies).toHaveLength(1);
+    expect(Object.fromEntries(new URLSearchParams(copies[0].split(" ")[1]))).toEqual({ status_option: "PAUSED", deep_copy: "true" });
+    const [log] = await db().execute<Row>(sql`select details from commerce.audit_log where store_id = ${storeId}::uuid and action = 'marketing.ad_copied' order by created_at desc limit 1`);
+    expect(log.details).toMatchObject({ platform: "meta", kind: "campaign", from: "100001", copy: "200001" });
   });
 
   it("forgets the account when disconnected", async () => {

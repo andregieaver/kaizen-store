@@ -2,6 +2,7 @@ import { BarChart, LineChart, type Format } from "@/components/admin/analytics/c
 import { change, formatChange, formatNumber, formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { PhoneRow } from "@/components/admin/phone-row";
 import type { CustomReportsMessages } from "@/lib/admin-messages/custom-reports.en";
 import { METRICS, type MetricKey } from "@/lib/report-catalogue";
 import type { ReportResult, ReportValues } from "@/server/report-query";
@@ -71,12 +72,7 @@ export function ReportView({
   }
   if (spec.metrics.includes("gross_profit") && report.totals.values.gross_profit === null) notes.push(w.noProfitHelp);
 
-  return (
-    <div className="flex flex-col gap-4" data-report-result>
-      {chart}
-      {report.rows.length === 0 && spec.dimensions.length > 0 ? (
-        <p className="text-sm text-muted">{w.noRows}</p>
-      ) : (
+  const table = (
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-report-table>
             <thead>
@@ -116,6 +112,34 @@ export function ReportView({
             </tfoot>
           </table>
         </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-4" data-report-result>
+      {chart}
+      {/* Round 34 (D708): on a phone the totals under the chart, and the table one row that opens to it. */}
+      {chart ? (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:hidden">
+          {spec.metrics.map((m) => (
+            <div key={m} className="flex flex-col">
+              <dt className="text-caption text-ink-2">{words.catalogue.metrics[m]}</dt>
+              <dd className="text-title text-ink tabular-nums">{show(m, report.totals.values[m])}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {report.rows.length === 0 && spec.dimensions.length > 0 ? (
+        <p className="text-sm text-muted">{w.noRows}</p>
+      ) : (
+        chart ? (
+          <div className="max-sm:border-y max-sm:border-line">
+            <PhoneRow inset last title={w.phone.table} sub={countWords(report.rows.length, w.phone.rows)} change={w.phone.show} done={w.phone.hide}>
+              {table}
+            </PhoneRow>
+          </div>
+        ) : (
+          table
+        )
       )}
       {notes.length > 0 && (
         <ul className="flex flex-col gap-1 text-caption text-muted">

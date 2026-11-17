@@ -98,6 +98,8 @@ const PREFIXES: Record<string, AuditArea> = {
   // Deals and pipelines (D464): ids, a stage and a kind of link, never a title, a reason or an amount.
   "deal.": "customers",
   "pipeline.": "customers",
+  // Contracts for deals (D695): ids and counts, never a title, a clause or a signer's name.
+  "contract.": "customers",
   // Activities (D468): ids and a kind, never a title or a note.
   "activity.": "customers",
   "lead.": "customers",
@@ -124,6 +126,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "marketing.ad_account_": "marketing",
   "marketing.ad_limit_": "marketing",
   "marketing.ad_budget_": "marketing",
+  "marketing.ad_copied": "marketing",
   "marketing.feed_": "marketing",
   // Creators (D386): the programme's settings, a decision, a creator's own rate and a payout recorded; ids and amounts, never a name.
   "creator.": "marketing",
@@ -157,6 +160,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "store.preview_link_": "website",
   "store.saved_theme_": "website",
   "store.menu_": "website",
+  "store.form_": "website",
   "store.media_": "website",
   "store.css_": "website",
   "store.template_": "website",

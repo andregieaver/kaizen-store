@@ -2,7 +2,8 @@ import type { Messages } from "./i18n";
 
 /** The texts the form functions read: only `form`, which the browser has too (`browserText()`, D212). */
 type FormTexts = Pick<Messages, "form">;
-import type { EmailFormBlock, FormField, FormFieldKind, NewsletterBlock } from "./page-content";
+import type { EmailFormBlock, FormField, FormFieldKind, NewsletterBlock, ShowWhen } from "./page-content";
+import { OPTION_FIELD_KINDS, dateAnswer, numberAnswer } from "./questions";
 import type { FormRequest } from "./forms-schema";
 import { normaliseEmail } from "./email-address";
 
@@ -73,11 +74,56 @@ const EMAIL = /^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za
 export const isEmail = (value: string) => value.length <= 254 && EMAIL.test(value);
 export const isPhone = (value: string) => /^\+?[0-9 ()./-]{5,30}$/.test(value) && (value.match(/[0-9]/g)?.length ?? 0) >= 5;
 
+/** The option places a choice's answer names: one place for a dropdown or radio buttons, any for a tick list (`0,2`). */
+export function chosenPlaces(field: Pick<FormField, "kind" | "options">, raw: string | boolean | undefined): number[] {
+  if (typeof raw !== "string" || raw === "") return [];
+  const count = field.options?.length ?? 0;
+  const places = raw.split(",").map((p) => (/^\d{1,2}$/.test(p) ? Number(p) : -1));
+  if (places.some((p) => p < 0 || p >= count)) return [];
+  const unique = [...new Set(places)].sort((a, b) => a - b);
+  return field.kind === "checklist" ? unique : unique.slice(0, 1);
+}
+
+/** Whether one question's answer holds a condition (`showWhen`, D705 F3). */
+function holds(target: FormField, raw: string | boolean | undefined, c: ShowWhen): boolean {
+  const chosen = OPTION_FIELD_KINDS.includes(target.kind) ? chosenPlaces(target, raw) : [];
+  switch (c.op) {
+    case "answered":
+      return typeof raw === "string" ? raw.trim() !== "" : raw === true;
+    case "ticked":
+      return target.kind === "checklist" ? chosen.length > 0 : raw === true;
+    case "is":
+    case "any_of":
+      return chosen.some((p) => (c.values ?? []).includes(p));
+    case "is_not":
+      return !chosen.some((p) => (c.values ?? []).includes(p));
+  }
+}
+
+/**
+ * The questions asked, given the answers so far: one with conditions only while every one holds, each against a question above it that is
+ * itself asked (a hidden question counts as unanswered). The browser shows these and the server checks only these, so they agree.
+ */
+export function shownQuestions(fields: readonly FormField[], values: FormRequest["values"]): FormField[] {
+  const asked = new Map<string, FormField>();
+  for (const field of fields) {
+    const ok = (field.showWhen ?? []).every((c) => {
+      const target = asked.get(c.question);
+      return target !== undefined && holds(target, values[target.id], c);
+    });
+    if (ok) asked.set(field.id, field);
+  }
+  return [...asked.values()];
+}
+
 /**
  * A message checked against the form's questions. Errors are in the
  * visitor's language (`visitor`), by question id (and `consent`);
  * the answers are labelled in the owner's (`owner`), as the form was
- * written, choices by their place in the list.
+ * written, choices by their place in the list. A question not asked
+ * (its conditions do not hold, D705 F3) is neither checked nor sent. A
+ * date's earliest and latest day count from `today` (the owner's on the
+ * server, the visitor's in the browser).
  */
 export function checkMessage(
   block: Pick<EmailFormBlock, "fields" | "consent">,
@@ -85,17 +131,28 @@ export function checkMessage(
   consent: boolean,
   visitor: FormTexts,
   owner: FormTexts,
+  today?: string,
 ): CheckedMessage {
   const errors: FormErrors = {};
   const answers: Answer[] = [];
   let replyTo: string | null = null;
-  for (const field of block.fields) {
+  for (const field of shownQuestions(block.fields, values)) {
     const raw = values[field.id];
     const label = fieldLabel(field, owner);
     if (field.kind === "checkbox") {
       const ticked = raw === true;
       if (field.required && !ticked) errors[field.id] = visitor.form.consentNeeded;
       answers.push({ label, value: ticked ? owner.form.yes : owner.form.no });
+      continue;
+    }
+    if (OPTION_FIELD_KINDS.includes(field.kind)) {
+      // The browser sends the choices' places: their words may be in another language.
+      const chosen = chosenPlaces(field, raw);
+      if (chosen.length === 0) {
+        if (field.required || (typeof raw === "string" && raw !== "")) errors[field.id] = field.kind === "checklist" ? visitor.form.chooseSome : visitor.form.required;
+        continue;
+      }
+      answers.push({ label, value: chosen.map((p) => field.options![p]).join(", ") });
       continue;
     }
     const text = typeof raw === "string" ? (field.kind === "textarea" ? paragraph(raw) : line(raw)) : "";
@@ -118,14 +175,22 @@ export function checkMessage(
       errors[field.id] = visitor.form.invalidPhone;
       continue;
     }
-    if (field.kind === "select") {
-      // The browser sends the choice's place: its words may be in another language.
-      const option = /^\d{1,2}$/.test(text) ? field.options?.[Number(text)] : undefined;
-      if (option === undefined) {
-        errors[field.id] = visitor.form.required;
+    if (field.kind === "number") {
+      const n = numberAnswer(text, { min: field.min, max: field.max });
+      if (n === null) {
+        errors[field.id] = visitor.form.invalidNumber;
         continue;
       }
-      answers.push({ label, value: option });
+      answers.push({ label, value: n });
+      continue;
+    }
+    if (field.kind === "date") {
+      const day = dateAnswer(text, { min: field.min, max: field.max }, today);
+      if (day === null) {
+        errors[field.id] = visitor.form.invalidDate;
+        continue;
+      }
+      answers.push({ label, value: day });
       continue;
     }
     answers.push({ label, value: text });

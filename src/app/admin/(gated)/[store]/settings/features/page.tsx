@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AfterSaleNote } from "@/components/admin/after-sale-gate";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { FeaturesView } from "@/components/admin/features-view";
 import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -32,6 +33,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
   const all = adminText(lang, "settings");
   const words = { s: all.features, c: adminText(lang, "common").features };
   const w = all.features.times;
+  const reminderText = (hours: number, option = false) =>
+    hours === 0 ? (option ? w.sendNone : all.features.phone.noReminder) : hours < 48 ? countWords(hours, { one: w.hoursBefore, many: w.hoursBefore }) : countWords(hours / 24, { one: w.daysBefore, many: w.daysBefore });
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const [facts, offer] = await Promise.all([featureFacts(store.id), featureOffer(store.id)]);
   const rows = featureRows(store, facts, (minor, currency) => formatMoney(minor, currency, locale), words);
@@ -52,6 +55,9 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
         onSwitch={switchFeatureAction.bind(null, store.slug)}
       />
 
+      {/* Round 34 (D708): on a phone the time zone and the reminder are one row saying what is set. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.title} sub={`${store.timeZone.replace("_", " ")} · ${reminderText(store.bookingReminderHours)}`} change={all.features.phone.change} done={all.features.phone.done}>
       <section aria-labelledby="times-heading" className="rounded-panel bg-sunken p-4">
         <h2 id="times-heading" className="mb-1 text-title text-ink">
           {w.title}
@@ -73,7 +79,7 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
             <select name="reminderHours" defaultValue={store.bookingReminderHours} disabled={!owner} className={control}>
               {REMINDER_HOURS.map((hours) => (
                 <option key={hours} value={hours}>
-                  {hours === 0 ? w.sendNone : hours < 48 ? countWords(hours, { one: w.hoursBefore, many: w.hoursBefore }) : countWords(hours / 24, { one: w.daysBefore, many: w.daysBefore })}
+                  {reminderText(hours, true)}
                 </option>
               ))}
             </select>
@@ -88,6 +94,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
           )}
         </ActionForm>
       </section>
+      </PhoneRow>
+      </div>
     </div>
     </AdminTextScope>
   );

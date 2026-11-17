@@ -7,6 +7,8 @@ import { isAuditArea } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { activityActions, activityPeople, activityWeek, listActivity, readableAreas } from "@/server/activity";
 import Link from "next/link";
+
+import { SelectNav } from "@/components/admin/select-nav";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { holderOf } from "@/server/auth";
@@ -61,11 +63,31 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
                 ? w.leadNone
                 : fillWords(w.leadWeek, { entries: countWords(week.entries, w.entriesN), people: countWords(week.people, w.peopleN) })}
             </span>
-            {w.leadRest} {owner ? w.ownerSees : w.othersSee}
+            {/* Round 32 (D706): on a phone the week alone; what is kept and who sees what goes under the list. */}
+            <span className="max-sm:hidden">
+              {w.leadRest} {owner ? w.ownerSees : w.othersSee}
+            </span>
           </span>,
         ]}
       />
-      <nav aria-label={w.person} className={CHIP_STRIP}>
+      {/* Round 29 (D702): on a phone who and where are one choice each; the chips from the small breakpoint up. */}
+      <div className="grid grid-cols-2 gap-2 sm:hidden">
+        <SelectNav
+          label={w.person}
+          options={[
+            { label: w.everyone, href: chip({ person: "" }), current: !values.person },
+            ...chosenFirst(people.filter((p) => p.current), (p) => values.person === p.accountId).map((p) => ({ label: p.label, href: chip({ person: p.accountId }), current: values.person === p.accountId })),
+          ]}
+        />
+        <SelectNav
+          label={w.area}
+          options={[
+            { label: w.allAreas, href: chip({ area: "" }), current: !values.area },
+            ...areas.map((a) => ({ label: words.areas[a], href: chip({ area: a }), current: values.area === a })),
+          ]}
+        />
+      </div>
+      <nav aria-label={w.person} className={`${CHIP_STRIP} max-sm:hidden`}>
         <Link href={chip({ person: "" })} aria-current={!values.person ? "page" : undefined} className={chipClass(!values.person)}>
           {w.everyone}
         </Link>
@@ -76,7 +98,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
             </Link>
           ))}
       </nav>
-      <nav aria-label={w.area} className={CHIP_STRIP}>
+      <nav aria-label={w.area} className={`${CHIP_STRIP} max-sm:hidden`}>
         <Link href={chip({ area: "" })} aria-current={!values.area ? "page" : undefined} className={chipClass(!values.area)}>
           {w.allAreas}
         </Link>
@@ -91,7 +113,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
           {problem}
         </p>
       )}
-      <details className={`px-5 py-3 ${CARD_CLASS}`} open={Boolean(values.action || values.from || values.to)}>
+      <details className={`px-5 py-3 max-sm:order-last ${CARD_CLASS}`} open={Boolean(values.action || values.from || values.to)}>
         <summary className="flex min-h-10 cursor-pointer items-center text-body text-ink">{w.moreFilters}</summary>
         <div className="pt-3">
       <ActivityFilters
@@ -106,6 +128,9 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
       />
         </div>
       </details>
+      <p className="order-last -mt-3 text-caption text-ink-2 sm:hidden">
+        {w.leadRest.trim()} {owner ? w.ownerSees : w.othersSee}
+      </p>
       <ActivityList
         now={drawnAt.getTime()}
         entries={page.entries}

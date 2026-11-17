@@ -73,6 +73,7 @@ import type { EditablePage, PageState } from "@/server/pages";
 import { CssPanel } from "./css-panel";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { PhoneRow, PhoneRows } from "./phone-row";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
@@ -80,7 +81,7 @@ import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureEditorProvider, PictureMakerProvider } from "./picture-maker";
-import { SignupCodesContext } from "./block-fields";
+import { FormsContext, SignupCodesContext } from "./block-fields";
 import { HeaderStageFields } from "./header-stage-fields";
 import { newId, PageBuilder, type DualBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
@@ -201,6 +202,9 @@ export function PageEditor({
   const { actions, origin, defaultDescription, upload, reserved, adminBase, siteBase } = context;
   const w = useAdminText("builder");
   const ew = w.editor;
+  // Round 27 (D700): the page's settings as rows on a phone.
+  const pw = w.phone;
+  const prow = { change: pw.change, done: pw.done, flat: true } as const;
   const dateLocale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const [terms, setTerms] = useState(initialTerms);
   // The address a title makes, kept under the page's parent; the platform's reserved addresses are only for the top level.
@@ -713,6 +717,7 @@ export function PageEditor({
     {/* And take a picture's background away with the site's AI (D413), where it has a model that edits pictures. */}
     <PictureEditorProvider editor={context.pictureEdit}>
     <SignupCodesContext value={context.signupCodes ?? null}>
+    <FormsContext value={context.forms ?? null}>
     {/* The store's saved colours and gradients (D183), kept on its theme; none on Kaizen's own pages. */}
     <ColourLibraryProvider
       initial={context.theme?.settings?.library}
@@ -808,7 +813,7 @@ export function PageEditor({
                 onShow={setLocale}
               />
             )}
-            <section aria-label={layout ? ew.name : ew.titleAndAddress} className={card}>
+            <section aria-label={layout ? ew.name : ew.titleAndAddress} className={`${card} max-sm:-order-1`}>
               <label className={label}>
                 {template ? w.dual.templateName : layout ? ew.nameOf[noun] : translating ? fillWords(ew.titleIn, { lang: language.name }) : ew.title}
                 <input
@@ -904,9 +909,14 @@ export function PageEditor({
                 manageHref={`${adminBase.replace(/\/headers$/, "/pages")}/categories`}
               />
             )}
+            {/* Round 27 (D700): on a phone the page's settings are rows under the page, each saying what is chosen. */}
+            <div className="flex flex-col gap-6 max-sm:order-2 max-sm:gap-3">
+            <h2 className="px-0.5 text-sm text-muted sm:hidden">{pw.pageSettings}</h2>
+            <PhoneRows>
             {!translating && !layout && (
             <>
             {context.type === "article" && (
+              <PhoneRow title={ew.author} sub={content.author || undefined} {...prow}>
               <section aria-labelledby="author-heading" className={card}>
                 <h2 id="author-heading" className="text-title text-ink">
                   {ew.author}
@@ -929,8 +939,14 @@ export function PageEditor({
                   </span>
                 </div>
               </section>
+              </PhoneRow>
             )}
             {!context.place && (
+              <PhoneRow
+                title={ew.terms}
+                sub={(content.categories?.length ?? 0) + (content.tags?.length ?? 0) > 0 ? countWords((content.categories?.length ?? 0) + (content.tags?.length ?? 0), pw.termsCount) : pw.noTerms}
+                {...prow}
+              >
               <section aria-labelledby="terms-heading" className={card}>
                 <h2 id="terms-heading" className="text-title text-ink">
                   {ew.terms}
@@ -944,6 +960,7 @@ export function PageEditor({
                   manageHref={`${adminBase}/categories`}
                 />
               </section>
+              </PhoneRow>
             )}
             <EntityFields
               groups={fieldGroups}
@@ -961,11 +978,14 @@ export function PageEditor({
               lookups={context.fields?.lookups ?? EMPTY_LOOKUPS}
               locale={locale}
             />
+            <PhoneRow title={ew.picture} sub={content.thumbnail ? pw.pictureSet : pw.noPicture} {...prow}>
             <ThumbnailField
               value={content.thumbnail}
               upload={upload}
               onChange={(thumbnail) => change({ thumbnail })}
             />
+            </PhoneRow>
+            <PhoneRow title={ew.whoMayRead} sub={content.searchEngines && content.aiAssistants && !content.markets ? pw.everyone : pw.someOff} {...prow}>
             <section aria-labelledby="visibility-heading" className={card}>
               <h2 id="visibility-heading" className="text-title text-ink">
                 {ew.whoMayRead}
@@ -986,9 +1006,11 @@ export function PageEditor({
                 <CountriesField countries={context.countries} value={content.markets} onChange={(markets) => change({ markets })} />
               )}
             </section>
+            </PhoneRow>
             </>
             )}
             {translating && view.thumbnail && (
+              <PhoneRow title={ew.picture} sub={view.thumbnail.alt || undefined} {...prow}>
               <section aria-labelledby="thumbnail-alt-heading" className={card}>
                 <h2 id="thumbnail-alt-heading" className="text-title text-ink">
                   {ew.picture}
@@ -1005,8 +1027,10 @@ export function PageEditor({
                   <span className={hint}>{fillWords(ew.inMainAlt, { main: main.name, alt: content.thumbnail?.alt || ew.noDescription })}</span>
                 </label>
               </section>
+              </PhoneRow>
             )}
             {!layout && (
+            <PhoneRow title={ew.excerpt} sub={view.excerpt ? pw.excerptSet : pw.noExcerpt} {...prow}>
             <section aria-labelledby="excerpt-heading" className={card}>
               <h2 id="excerpt-heading" className="text-title text-ink">
                 {ew.excerpt}
@@ -1023,8 +1047,10 @@ export function PageEditor({
                 <span className={hint}>{ew.excerptHint}</span>
               </label>
             </section>
+            </PhoneRow>
             )}
             {!layout && (
+            <PhoneRow title={ew.searchSharing} sub={view.seo?.title || view.seo?.description ? pw.ownWords : pw.fromText} {...prow}>
             <section aria-labelledby="search-heading" className={card}>
               <h2 id="search-heading" className="text-title text-ink">
                 {ew.searchSharing}
@@ -1041,7 +1067,10 @@ export function PageEditor({
               />
               <p className={hint}>{ew.searchHint}</p>
             </section>
+            </PhoneRow>
             )}
+            </PhoneRows>
+            </div>
           </>
         }
       />
@@ -1394,6 +1423,7 @@ export function PageEditor({
       )}
     </div>
     </ColourLibraryProvider>
+    </FormsContext>
     </SignupCodesContext>
     </PictureEditorProvider>
     </PictureMakerProvider>

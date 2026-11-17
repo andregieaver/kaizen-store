@@ -5,6 +5,7 @@ import { fillWords } from "@/lib/admin-fill";
 import type { HeatmapsMessages } from "@/lib/admin-messages/heatmaps.en";
 import { formatCount, formatNumber, formatPercent } from "@/lib/analytics-core";
 import { foldPercent, frustrationRank, projectCells, reachedShares, reachLines, attentionSeconds, type MapLayout } from "@/lib/heat-read";
+import { partLabel, partTotals } from "@/lib/heat-tools";
 import { BANDS, MIN_MAP_VIEWS, type HeatDevice } from "@/lib/page-heat";
 import type { HeatPageRow, PageHeat } from "@/server/page-heat-read";
 
@@ -155,18 +156,6 @@ export type PageMapViewProps = {
   versions?: { tag: string; label: string }[];
 };
 
-/** A part's words: a landmark, a product card, or where on the page it sits. */
-export function partLabel(anchor: string, layout: MapLayout | null, words: HeatmapsMessages): string {
-  const p = words.map.parts;
-  if (anchor === "@header") return p.header;
-  if (anchor === "@footer") return p.footer;
-  if (anchor === "@main" || anchor === "@body") return p.elsewhere;
-  const card = /(?:\/c|@card:\d:)(\d+)$/.exec(anchor);
-  if (card) return fillWords(p.card, { n: Number(card[1]) + 1 });
-  const box = layout?.anchors[anchor];
-  return fillWords(p.part, { p: box && layout && layout.h > 0 ? Math.round((box[1] / layout.h) * 100) : "?" });
-}
-
 export function PageMapView(props: PageMapViewProps) {
   const { base, page, view, device, days, devices, heat, shot, period, words, locale } = props;
   const w = words.map;
@@ -191,12 +180,7 @@ export function PageMapView(props: PageMapViewProps) {
   const missing = layout ? projectCells(heat.cells, layout).missing : 0;
 
   // The tables behind the map.
-  const byPart = new Map<string, { clicks: number; dead: number; rage: number }>();
-  for (const c of heat.cells) {
-    const t = byPart.get(c.anchor) ?? { clicks: 0, dead: 0, rage: 0 };
-    byPart.set(c.anchor, { clicks: t.clicks + c.clicks, dead: t.dead + c.dead, rage: t.rage + c.rage });
-  }
-  const parts = [...byPart.entries()].map(([anchor, t]) => ({ anchor, ...t })).sort((a, b) => b.clicks - a.clicks).slice(0, 15);
+  const parts = partTotals(heat.cells, 15);
   const depthRows = [25, 50, 75, 100].map((p) => ({ p, share: shares[p / 5] ?? 0 }));
   const lookRows = seconds
     .map((s, i) => ({ i, s }))
@@ -349,3 +333,5 @@ export function PageMapView(props: PageMapViewProps) {
     </div>
   );
 }
+
+export { partLabel };

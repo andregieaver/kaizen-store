@@ -20,6 +20,10 @@ export const TIMELINE_KIND_OF = {
   deal_opened: "deal",
   deal_won: "deal",
   deal_lost: "deal",
+  // Contracts on a deal (D695 step 4): shown with the deals.
+  contract_sent: "deal",
+  contract_signed: "deal",
+  contract_declined: "deal",
   activity_done: "activity",
   conversation_started: "conversation",
   email_sent: "email",

@@ -244,6 +244,10 @@ export const homeNb: HomeMessages = {
       many: "{store}: bekreftelsene på {n} angringer ble ikke sendt.",
     },
     supportWaiting: "{store}: Kundestøtte: {n} venter på en person.",
+    supportRequests: {
+      one: "{store}: Kundestøtte: {n} forespørsel fra chatassistenten venter på avgjørelsen din.",
+      many: "{store}: Kundestøtte: {n} forespørsler fra chatassistenten venter på avgjørelsen din.",
+    },
     limitsReached: { one: "{store} har brukt opp en grense i abonnementet.", many: "{store} har brukt opp {n} grenser i abonnementet." },
     returnRequests: {
       one: "{store}: {n} returforespørsel venter på svar.",

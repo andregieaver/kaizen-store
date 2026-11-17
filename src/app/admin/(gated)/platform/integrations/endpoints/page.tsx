@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { AddEndpoint, EndpointCard, type EndpointActions, type EndpointView } from "@/components/admin/webhook-endpoints";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -91,12 +92,17 @@ export default async function PlatformEndpointsPage() {
         ) : (
           views.map((endpoint) => <EndpointCard key={endpoint.id} endpoint={endpoint} topics={topics} owner={owner} actions={actions} />)
         )}
-        <Card title={w.verifyTitle} compact>
-          <div className="flex flex-col gap-2 text-sm text-ink-2">
-            <p>{fillWords(w.verify, { id: ID_HEADER, timestamp: TIMESTAMP_HEADER, signature: SIGNATURE_HEADER })}</p>
-            <p>{own.endpointsPayload}</p>
-          </div>
-        </Card>
+        {/* Round 33 (D707): as the store's, a row at the end on a phone. */}
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow flat last title={w.verifyTitle} sub={w.phone.verifySub} change={w.phone.read} done={w.phone.close}>
+            <Card title={w.verifyTitle} compact>
+              <div className="flex flex-col gap-2 text-sm text-ink-2">
+                <p>{fillWords(w.verify, { id: ID_HEADER, timestamp: TIMESTAMP_HEADER, signature: SIGNATURE_HEADER })}</p>
+                <p>{own.endpointsPayload}</p>
+              </div>
+            </Card>
+          </PhoneRow>
+        </div>
       </div>
     </AdminTextScope>
   );

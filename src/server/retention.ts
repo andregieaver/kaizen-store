@@ -139,6 +139,7 @@ export const RETENTION_STEPS = [
   "content_report_senders",
   "carrier_labels",
   "sandboxes",
+  "form_responses",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -443,6 +444,14 @@ const STEPS: Record<RetentionStep, StepFn> = {
   // (its library's files, then its store's rows); the five-minute job does the same as each one's own time runs out.
   async sandboxes(ctx) {
     return { count: await retireIdleSandboxes(cutoffInstant(await period(ctx, "sandboxes"), ctx.now).toISOString()) };
+  },
+
+  // Forms' responses (D705): after their form's own months, never later than the rule's.
+  async form_responses(ctx) {
+    const rule = await period(ctx, "form_responses");
+    const months = rule.periodUnit === "months" ? rule.periodValue : Math.max(1, Math.ceil(rule.periodValue / 30));
+    const { pruneFormResponses } = await import("./forms-admin");
+    return { count: await pruneFormResponses(ctx.now, months, ctx.batch) };
   },
 
   // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D458, D459): the PDF holds a name and address and is

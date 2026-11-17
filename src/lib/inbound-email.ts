@@ -36,6 +36,16 @@ export const filingAddress = (key: string, domain: string) => `bcc-${key}@${doma
 /** A store's books address (D504): receipts and invoices sent or forwarded to it wait in the books' inbox for their bank lines. */
 export const booksAddress = (key: string, domain: string) => `books-${key}@${domain}`;
 
+/**
+ * Whether customers' replies to the store's own emails about an order (its confirmation and updates, returns, exchanges, bookings and
+ * box deliveries) go to the support desk instead of the store's contact address (ecosystem plan E1.4, `docs/audits/ecosystem-2026-11.md`):
+ * only while the desk is on, its owner chose that customers' messages come to the inbox only, and the desk has its email address. Never
+ * to both, so the desk's AI and the owner's own mailbox do not answer the same reply twice.
+ */
+export function deskTakesReplies(desk: { mode: string; formMessages: string | null; emailKey: string | null }): boolean {
+  return desk.mode !== "off" && desk.formMessages === "inbox" && desk.emailKey !== null && ADDRESS_KEY.test(desk.emailKey);
+}
+
 /** The receiving domain as set (lower case, no `@`), or null when receiving is not set up. */
 export function inboundDomain(raw: string | undefined): string | null {
   const domain = raw?.trim().toLowerCase().replace(/^@/, "");

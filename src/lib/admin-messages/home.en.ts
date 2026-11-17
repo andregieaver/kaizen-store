@@ -255,6 +255,10 @@ export const homeEn = {
       many: "{store}: the acknowledgement of {n} withdrawals was not sent.",
     },
     supportWaiting: "{store}: Support: {n} waiting for a person.",
+    supportRequests: {
+      one: "{store}: Support: {n} request from the chat assistant is waiting for your decision.",
+      many: "{store}: Support: {n} requests from the chat assistant are waiting for your decision.",
+    },
     limitsReached: { one: "{store} has used up a limit of its plan.", many: "{store} has used up {n} limits of its plan." },
     returnRequests: {
       one: "{store}: {n} return request is waiting for an answer.",

@@ -24,6 +24,8 @@ const tokenForm = (page: Page) => page.locator("form").filter({ has: page.getByR
 async function makeToken(page: Page, name: string, scopes: string[], powers: string[] = []): Promise<string> {
   await page.goto(`/admin/${E2E_STORE}/settings/api`);
   await tokenForm(page).getByLabel("Name", { exact: true }).fill(name);
+  // Round 27 (D700): the form starts from ready kinds; Choose yourself shows every scope.
+  if (scopes.length > 0 || powers.length > 0) await tokenForm(page).getByRole("radio", { name: /Choose yourself/ }).check();
   for (const scope of scopes) await scopeBox(page, scope).check();
   if (powers.length > 0) {
     await page.getByText(POWERS, { exact: true }).click();
@@ -50,7 +52,10 @@ async function revoke(page: Page, name: string) {
 
 test("the powers wait under Customise; a read token reads its area only; a power ticked there is held; Revoke ends both", async ({ page, request }) => {
   await page.goto(`/admin/${E2E_STORE}/settings/api`);
-  // Homer's view: the everyday scopes in the open, the powers folded away.
+  // Homer's view (D700): a ready kind of token, Warehouse, chosen; every scope behind Choose yourself, the powers folded further.
+  await expect(tokenForm(page).getByRole("radio", { name: /Warehouse/ })).toBeChecked();
+  await expect(scopeBox(page, "orders:read")).toBeHidden();
+  await tokenForm(page).getByRole("radio", { name: /Choose yourself/ }).check();
   await expect(scopeBox(page, "orders:read")).toBeVisible();
   await expect(scopeBox(page, "customers:email")).toBeHidden();
   await expect(scopeBox(page, "orders:refund")).toBeHidden();
@@ -71,6 +76,13 @@ test("the powers wait under Customise; a read token reads its area only; a power
   expect((await request.get("/api/admin/v1/customers?limit=1", auth(emailsToken))).status()).toBe(200);
   await page.goto(`/admin/${E2E_STORE}/settings/api`);
   await expect(page.getByRole("listitem").filter({ hasText: emails })).toContainText("customers:email");
+
+  // A Warehouse token reads stock and orders, and is refused customers.
+  const warehouse = `E2E warehouse ${run}`;
+  const warehouseToken = await makeToken(page, warehouse, []);
+  expect((await request.get("/api/admin/v1/inventory/levels?limit=1", auth(warehouseToken))).status()).toBe(200);
+  expect((await request.get("/api/admin/v1/customers?limit=1", auth(warehouseToken))).status()).toBe(403);
+  await revoke(page, warehouse);
 
   await revoke(page, reader);
   await revoke(page, emails);

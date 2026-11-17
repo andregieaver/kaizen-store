@@ -31,6 +31,7 @@ import { useAdminText } from "./admin-text";
 import type { LookVersionActions } from "@/lib/look-versions";
 
 import { LookVersionsDialog } from "./look-versions-dialog";
+import { PhoneRow, PhoneRows } from "./phone-row";
 import { FontPicker, type InstallFont } from "./font-picker";
 
 type Result<T> = { ok: true } & T;
@@ -97,12 +98,27 @@ function Choice<T extends string>({
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** A part of the editor; on a phone a row naming what is chosen (`sub`), opened with Change (round 26, D699). */
+function Section({ title, sub, last, children }: { title: string; sub?: ReactNode; last?: boolean; children: ReactNode }) {
+  const p = useAdminText("design").phone;
   return (
-    <section className={card} aria-label={title}>
-      <h2 className="font-medium">{title}</h2>
-      {children}
-    </section>
+    <PhoneRow title={title} sub={sub} change={p.change} done={p.done} last={last}>
+      <section className={`${card} max-sm:border-0 max-sm:bg-transparent max-sm:p-0`} aria-label={title}>
+        <h2 className="font-medium max-sm:sr-only">{title}</h2>
+        {children}
+      </section>
+    </PhoneRow>
+  );
+}
+
+/** A palette's four main colours as small squares, for a row's line. */
+function Swatches({ palette }: { palette: Palette }) {
+  return (
+    <span className="inline-flex gap-1 align-middle" aria-hidden>
+      {[palette.background, palette.surface, palette.text, palette.accent].map((color, i) => (
+        <span key={i} className="size-3.5 rounded-[3px] border border-line" style={{ backgroundColor: color }} />
+      ))}
+    </span>
   );
 }
 
@@ -427,7 +443,7 @@ export function ThemeEditor({
   checkout?: boolean;
 }) {
   const all = useAdminText("design");
-  const { common: c, editor: w } = all;
+  const { common: c, editor: w, phone: p } = all;
   const o = w.options;
   const [editingBefore, editingAfter = ""] = w.editingName.split("{name}");
   const words = installed
@@ -569,9 +585,26 @@ export function ThemeEditor({
     );
   };
 
+  // Round 26 (D699): what each part has chosen, for its row on a phone.
+  const subs = {
+    colours: (
+      <span className="inline-flex items-center gap-2">
+        <Swatches palette={settings.light} />
+        {settings.mode === "light" && !settings.visitorSwitch ? null : <Swatches palette={settings.dark} />}
+        <span>{settings.mode === "auto" || settings.visitorSwitch ? p.colours : o.colorModes[settings.mode]}</span>
+      </span>
+    ),
+    fonts: `${settings.fonts.heading || settings.fonts.body || w.systemFont} · ${o.headingWeights[settings.headings.weight as keyof typeof o.headingWeights] ?? ""}`,
+    buttons: `${o.buttonStyles[settings.buttons.style as keyof typeof o.buttonStyles]}, ${o.buttonCorners[settings.buttons.corners as keyof typeof o.buttonCorners]}`,
+    layout: `${o.contentWidths[settings.layout.width as keyof typeof o.contentWidths]} · ${o.headerAligns[settings.layout.headerAlign as keyof typeof o.headerAligns]}`,
+    sizes: fillWords(p.sizes, { md: breakpointsOf(settings).md, lg: breakpointsOf(settings).lg }),
+    cards: `${o.cardImages[settings.productCards.image as keyof typeof o.cardImages]} · ${o.cardStyles[settings.productCards.style as keyof typeof o.cardStyles]}`,
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      <Section title={w.themes}>
+      <PhoneRows className="max-sm:order-last">
+      <Section title={w.themes} sub={fillWords(p.startingPoint, { name: sourceName })} last>
         <p className="text-sm text-muted">
           {words.intro}
         </p>
@@ -596,10 +629,11 @@ export function ThemeEditor({
           )}
         </ul>
       </Section>
+      </PhoneRows>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="flex flex-col gap-6">
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-sm">
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-sm max-sm:static">
             <p className="mr-auto text-sm" aria-live="polite">
               {editingBefore}
               <strong>{sourceName}</strong>
@@ -681,7 +715,8 @@ export function ThemeEditor({
             </div>
           )}
 
-          <Section title={w.colours}>
+          <PhoneRows>
+          <Section title={w.colours} sub={subs.colours}>
             <Choice legend={w.lightAndDark} options={o.colorModes} value={settings.mode} onChange={(mode) => {
               set({ mode });
               if (mode !== "auto") setPreviewMode(mode);
@@ -717,7 +752,7 @@ export function ThemeEditor({
             )}
           </Section>
 
-          <Section title={w.fonts}>
+          <Section title={w.fonts} sub={subs.fonts}>
             <p className="text-sm text-muted">{w.fontsHint}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <FontPicker
@@ -744,14 +779,14 @@ export function ThemeEditor({
             <Choice legend={w.headingLetters} options={o.headingCases as Record<ThemeSettings["headings"]["case"], string>} value={settings.headings.case} onChange={(c) => set({ headings: { ...settings.headings, case: c } })} />
           </Section>
 
-          <Section title={w.buttonsAndCorners}>
+          <Section title={w.buttonsAndCorners} sub={subs.buttons}>
             <Choice legend={w.buttons} options={o.buttonStyles as Record<ThemeSettings["buttons"]["style"], string>} value={settings.buttons.style} onChange={(style) => set({ buttons: { ...settings.buttons, style } })} />
             <Choice legend={w.buttonCorners} options={o.buttonCorners as Record<ThemeSettings["buttons"]["corners"], string>} value={settings.buttons.corners} onChange={(corners) => set({ buttons: { ...settings.buttons, corners } })} />
             <Choice legend={w.cardsAndPictures} options={o.cardCorners as Record<ThemeSettings["corners"]["cards"], string>} value={settings.corners.cards} onChange={(cards) => set({ corners: { ...settings.corners, cards } })} />
             <Choice legend={w.fieldsAndMenus} options={o.fieldCorners as Record<ThemeSettings["corners"]["fields"], string>} value={settings.corners.fields} onChange={(fields) => set({ corners: { ...settings.corners, fields } })} />
           </Section>
 
-          <Section title={w.layout}>
+          <Section title={w.layout} sub={subs.layout}>
             <Choice legend={w.pageWidth} options={o.contentWidths as Record<ThemeSettings["layout"]["width"], string>} value={settings.layout.width} onChange={(width) => set({ layout: { ...settings.layout, width } })} />
             {settings.layout.maxWidth !== undefined && (
               <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -779,24 +814,27 @@ export function ThemeEditor({
             />
           </Section>
 
-          <Section title={w.screenSizes}>
+          <Section title={w.screenSizes} sub={subs.sizes}>
             <BreakpointFields value={breakpointsOf(settings)} onChange={(breakpoints) => set({ breakpoints })} />
           </Section>
 
-          <Section title={w.productCards}>
+          <Section title={w.productCards} sub={subs.cards} last={!checkout}>
             <Choice legend={w.picture} options={o.cardImages as Record<ThemeSettings["productCards"]["image"], string>} value={settings.productCards.image} onChange={(image) => set({ productCards: { ...settings.productCards, image } })} />
             <Choice legend={w.card} options={o.cardStyles as Record<ThemeSettings["productCards"]["style"], string>} value={settings.productCards.style} onChange={(style) => set({ productCards: { ...settings.productCards, style } })} />
             <Choice legend={w.text} options={o.cardAligns as Record<ThemeSettings["productCards"]["align"], string>} value={settings.productCards.align} onChange={(align) => set({ productCards: { ...settings.productCards, align } })} />
           </Section>
 
           {checkout && (
-            <Section title={w.checkout.title}>
+            <Section title={w.checkout.title} sub={p.checkoutSub} last>
               <CheckoutLookFields settings={settings} hasLogo={logos.logo} onChange={(look) => set({ checkout: look })} />
             </Section>
           )}
+          </PhoneRows>
         </div>
 
-        <aside className="flex flex-col gap-3 lg:sticky lg:top-4" aria-label={w.previewHeading}>
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-4 max-sm:overflow-hidden max-sm:rounded-panel" aria-label={w.previewHeading}>
+          <PhoneRow title={w.previewHeading} change={p.change} done={p.done} last>
+          <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-medium">{w.previewHeading}</h2>
             {(settings.mode === "auto" || settings.visitorSwitch) && (
@@ -816,6 +854,8 @@ export function ThemeEditor({
             )}
           </div>
           <Preview settings={settings} storeName={storeName} checkout={checkout} mode={settings.mode === "auto" || settings.visitorSwitch ? previewMode : settings.mode} />
+          </div>
+          </PhoneRow>
         </aside>
       </div>
     </div>

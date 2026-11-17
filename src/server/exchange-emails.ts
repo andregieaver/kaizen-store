@@ -73,7 +73,7 @@ async function send(storeId: string, kind: string, key: string, x: ExchangeView,
       ...(fixed.button ? [{ type: "button" as const, text: fixed.button.text, url: fixed.button.url }] : []),
     ],
   });
-  return sendEmail({ storeId, kind, to, email, fromName: store.name, replyTo: store.details.contactEmail, idempotencyKey: key, orderId: x.orderId });
+  return sendEmail({ storeId, kind, to, email, fromName: store.name, replyTo: store.details.contactEmail, replyToDesk: true, idempotencyKey: key, orderId: x.orderId });
 }
 
 const dayOf = (x: ExchangeView, facts: OrderFacts, locale: string) => (x.expiresAt ? formatStoreDay(lastDayOf(new Date(x.expiresAt), facts.timeZone), locale) : null);
@@ -264,6 +264,7 @@ export async function sendLabelReady(storeId: string, returnId: string): Promise
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
+    replyToDesk: true,
     idempotencyKey: `return.${returnId}.label${r.label_test ? ".test" : ""}`,
     orderId: facts.orderId,
   });

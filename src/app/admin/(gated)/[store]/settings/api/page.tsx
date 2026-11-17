@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
 import { buttonClass, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { API_POWERS, API_SCOPES, isApiPower } from "@/lib/admin-api";
 import { API_ROUTES } from "@/lib/admin-api-routes";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -60,13 +61,25 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const routeWords = adminText(lang, "screens").storefrontRoutes;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
   const base = `${siteUrl()}/api/admin/v1`;
+  // Round 27 (D700): on a phone what reaches the store is rows first, then making a token, then the rest as rows.
+  const row = { change: w.phoneOpen, done: w.phoneClose, flat: true } as const;
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={<>{w.description}</>} />
+        <PageHeader
+          title={w.title}
+          description={
+            <>
+              <span className="max-sm:hidden">{w.description}</span>
+              <span className="sm:hidden">{w.phoneLead}</span>
+            </>
+          }
+        />
+        <PhoneRows>
         {/* Apps for many stores installed on this store (D441): each works as the person who installed it; Remove ends it at once. */}
         {installed.length > 0 && (
+          <PhoneRow title={ow.store.apps.title} sub={countWords(installed.length, w.installedSub)} {...row}>
           <Card title={ow.store.apps.title} description={ow.store.apps.description}>
             <List label={ow.store.apps.title}>
               {installed.map((grant) => (
@@ -115,8 +128,10 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
               ))}
             </List>
           </Card>
+          </PhoneRow>
         )}
         {/* AI assistants and apps connected through Kaizena Flow's authorization server (D439): every grant that reaches the store. */}
+        <PhoneRow title={ow.store.title} sub={grants.length > 0 ? countWords(grants.length, w.reachingSub) : w.noneReaching} {...row}>
         <Card title={ow.store.title} description={ow.store.description}>
           {grants.length === 0 ? (
             <p className="text-sm text-muted">{ow.store.none}</p>
@@ -146,8 +161,10 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
             </List>
           )}
         </Card>
+        </PhoneRow>
         {/* What an owner cut off stays cut off, whoever connects it again, until an owner lets it in again (D439 review). */}
         {cutoffs.length > 0 && (
+          <PhoneRow title={ow.store.cutTitle} sub={countWords(cutoffs.length, w.cutSub)} {...row}>
           <Card title={ow.store.cutTitle} description={ow.store.cutDescription}>
             <List label={ow.store.cutTitle}>
               {cutoffs.map((cut) => (
@@ -171,11 +188,9 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
               ))}
             </List>
           </Card>
+          </PhoneRow>
         )}
-        <Card title={w.make} description={w.makeHint}>
-          <p className="mb-4 text-sm text-muted">{w.actsAs}</p>
-          <MakeApiToken scopes={API_SCOPES.filter((scope) => !isApiPower(scope))} powers={[...API_POWERS]} make={makeApiTokenAction.bind(null, store.slug)} />
-        </Card>
+        <PhoneRow title={w.inUse} sub={tokens.length > 0 ? countWords(tokens.length, w.tokensSub) : w.noneShort} {...row}>
         <Card title={w.inUse}>
           {tokens.length === 0 ? (
             <p className="text-sm text-muted">{w.none}</p>
@@ -200,6 +215,14 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
             </List>
           )}
         </Card>
+        </PhoneRow>
+        </PhoneRows>
+        <Card title={w.make} description={w.makeHint}>
+          <MakeApiToken kinds scopes={API_SCOPES.filter((scope) => !isApiPower(scope))} powers={[...API_POWERS]} make={makeApiTokenAction.bind(null, store.slug)} />
+          <p className="mt-4 text-xs text-muted">{w.actsAs}</p>
+        </Card>
+        <PhoneRows>
+        <PhoneRow title={sw.title} sub={storefrontTokens.length > 0 ? countWords(storefrontTokens.length, w.tokensSub) : w.storefrontSub} {...row}>
         <Card title={sw.title} description={sw.description}>
           <div className="flex flex-col gap-4">
             <MakeStorefrontToken markets={store.markets.map((m) => ({ slug: m.slug, name: m.name }))} make={makeStorefrontTokenAction.bind(null, store.slug)} />
@@ -239,6 +262,8 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
             </a>
           </div>
         </Card>
+        </PhoneRow>
+        <PhoneRow title={aw.title} sub={apps.length > 0 ? String(apps.length) : w.appsSub} {...row}>
         <Card title={aw.title} description={aw.description}>
           <div className="flex flex-col gap-5">
             <p className="text-sm text-muted">{aw.note}</p>
@@ -260,6 +285,8 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
             <AddCustomApp add={addCustomAppAction.bind(null, store.slug)} />
           </div>
         </Card>
+        </PhoneRow>
+        <PhoneRow title={w.referenceTitle} sub={w.referenceSub} {...row}>
         <Card title={w.howTitle} compact>
           <div className="flex flex-col gap-3 text-sm text-ink-2">
             <p>{fillWords(w.how, { base })}</p>
@@ -276,6 +303,8 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
             </a>
           </div>
         </Card>
+        </PhoneRow>
+        </PhoneRows>
       </div>
     </AdminTextScope>
   );

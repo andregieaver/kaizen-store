@@ -18,6 +18,24 @@ export const reportsEn = {
     marketing: { title: "Marketing", description: "What it costs to win a customer, which channels pay back, and how much of your business depends on discounts." },
   },
   customers: {
+    /** Round 28 (D701): the page on a phone. */
+    phone: {
+      open: "Open",
+      close: "Close",
+      allNew: "customers, all new",
+      returning: "customers, {n} returning",
+      ordersAYear: "orders each a year",
+      spentEach: "spent each so far",
+      nvrSub: "{new} new · {returning} returning",
+      repeatSub: "{rate} within {days} days",
+      tooSoon: "Too soon: nobody has been here {days} days",
+      worthSub: "{money} over {years} years, predicted",
+      notYet: "Not enough orders yet",
+      groupsSub: "{n} groups",
+      groupsFew: "From {min} customers · {have} so far",
+      cohortsSub: { one: "{n} month of customers so far", many: "{n} months of customers" },
+      allTop: { one: "All {n} customer", many: "All {n} customers" },
+    },
     segments: {
       VIP: { name: "VIP", meaning: "Bought recently, buy often and have spent the most.", action: "Thank them. Give them early access to new products or a small gift; there is no need to discount for them." },
       Loyal: { name: "Loyal", meaning: "Buy often and have ordered lately.", action: "Keep them happy: ask for a review, or reward them with bonus credit." },
@@ -352,6 +370,16 @@ export const reportsEn = {
     noneYetText: "Counting is on, but no visit has arrived yet. Visits appear here from the first day they are counted. ",
     noneInPeriodText: "Visits have been counted since {day}, and none fall in this period. ",
     turnOn: "Turn on visit counting",
+    /** Round 26 (D699): the one card that stands in for the sections visit counting would fill. */
+    offCardTitle: "See where visitors come from",
+    offCardText: "Turn on visit counting to see the way to a purchase, devices, landing pages and the conversion rate. No cookies, no consent banner; it counts from the day you switch it on.",
+    offCardMore: "Until then, the funnel, devices and landing pages wait for it. ",
+    fromOrders: "From your orders",
+    phoneOpen: "Open",
+    phoneClose: "Close",
+    paidSub: { one: "{n} paid order", many: "{n} paid orders" },
+    searchesSub: { one: "{n} search", many: "{n} searches" },
+    fromOrdersRows: { countries: "Countries that buy", when: "When customers buy", search: "What shoppers search for", refunds: "Refunds and returns" },
     help: {
       visits: "A visit is one visitor on one day. Coming back the same day is not counted twice, and visitors who opted out are not counted.",
       conversion: "Conversion rate: paid orders divided by visits. 2 % means 2 of every 100 visits ended in a purchase.",
@@ -544,6 +572,27 @@ export const reportsEn = {
   } as Record<string, string>,
   /** The Marketing page above the spend form (`MarketingView`). */
   marketing: {
+    /** Round 29 (D702): the page on a phone. */
+    phone: {
+      open: "Open",
+      close: "Close",
+      costsSub: "CAC, ROAS and more",
+      waitsForSpend: "CAC, ROAS and more · waits for ad spend",
+      channelsSub: "What each channel earned",
+      waitsForCounting: "Waits for visit counting",
+      needsTitle: "What a customer costs needs two things",
+      spendNone: "Your ad spend · none entered",
+      spendIn: "Your ad spend · entered",
+      addSpend: "Add spend",
+      countingOff: "Visit counting · off",
+      countingOn: "Visit counting · on",
+      turnOn: "Turn on",
+      campaignsSub: "Make a campaign link",
+      spendTitle: "Ad spend",
+      spendEntries: { one: "{n} entry", many: "{n} entries" },
+      spendNoneSub: "None entered · add or import",
+      discountsSub: "{n} of {all} orders had a discount",
+    },
     adUnits: { NOK: "krone", DKK: "krone", SEK: "krona", EUR: "euro", GBP: "pound", USD: "dollar", CHF: "franc", PLN: "zloty", ISK: "krona", CZK: "koruna" } as Record<string, string>,
     merWords: "every sale divided by every ad {unit}",
     countingOff: "Visit counting is off, so orders cannot be matched to the channel they came from.",
@@ -879,6 +928,8 @@ export const reportsEn = {
     changeAgainst: " Change is against {from} to {to}.",
   },
   inventory: {
+    /** Round 34 (D708): a variant's line on a phone. */
+    phone: { onHand: "{n} on hand" },
     n: {
       unit: {
         one: "unit",

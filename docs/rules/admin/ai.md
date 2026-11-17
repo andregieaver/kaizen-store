@@ -168,6 +168,22 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   eval was recorded again on production and its recording committed (D391).
 
 
+## The AI manager's contract tools (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`)
+
+- **The AI manager's contract tools (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`)**: behind the Deals
+  feature (`sales`) and the deals pages' permissions. A deal is named by its id, its whole title or a part only one deal's title has
+  (several are named back). `list_contracts` (`customers:read`) reads contracts with their deal, status, dates and signers in order
+  (role, name, whose turn, asked, reminded, opened) and the templates (`listTemplates()`, so a read never makes one); never a
+  signer's email, a reason a signer gave for declining or the contract's words: the signer's own text stays on the contract's page, so
+  none reaches the model. `draft_contract` (`customers:write`, no gate: nothing is sent) goes through `createContract()` on an open
+  deal only and answers what `previewContract()` says still stops sending. Sending for signing is never a tool: it draws the PDF with
+  Chromium, which only the contract's page route carries (`outputFileTracingIncludes`), so the manager gives the page and the owner
+  presses Send for signing there. `remind_contract_signer` (`customers:write`, gate `send`, autonomy area messages) goes through
+  `notifyNext()` with `reminder`, checked first by `preflightRemindSigner()` (out for signing, a signer waiting, not asked in the last
+  24 hours); its card names the contract and the signer as they are (`remindApprovalWords()`). New tools change `toolsVersion()`: the
+  agents' eval is recorded again on production and its recording committed (D391).
+
+
 ## The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
 
 - **The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)**:
