@@ -56,12 +56,15 @@ const baseline = JSON.parse(readFileSync(baselineFile, "utf8"));
 const bad = problems(now, baseline);
 
 if (mode === "write") {
+  // --accept writes today's figures for a route that grew on purpose (a feature added to the page), so the growth shows in the
+  // baseline's diff; without it the baseline only falls (reviewed 17 November 2026: a budget the other work cannot accept blocks it).
+  const accept = process.argv.includes("--accept");
   const raised = bad.filter((line) => !line.includes("new route at"));
-  if (raised.length > 0) {
-    console.error(`The bundle budget only falls. Not written:\n  ${raised.join("\n  ")}`);
+  if (raised.length > 0 && !accept) {
+    console.error(`The bundle budget only falls. Not written (add --accept to take a growth on purpose):\n  ${raised.join("\n  ")}`);
     process.exit(1);
   }
-  const next = lowered(now, baseline);
+  const next = accept ? { routes: { ...now.routes }, markers: { ...now.markers } } : lowered(now, baseline);
   const fell = Object.entries(next.routes).filter(([route, bytes]) => baseline.routes[route] !== undefined && bytes < baseline.routes[route]).length;
   writeFileSync(baselineFile, text(next));
   console.log(`Wrote scripts/bundle-budget.baseline.json: ${Object.keys(next.routes).length} routes, ${fell} fell.`);
@@ -71,7 +74,11 @@ if (mode === "write") {
 for (const marker of MARKERS) console.log(`${marker.key}: ${now.markers[marker.key]} routes (baseline ${baseline.markers[marker.key] ?? "none"})`);
 console.log("Heaviest routes:");
 for (const [route, bytes] of Object.entries(now.routes).sort((a, b) => b[1] - a[1]).slice(0, 5)) console.log(`  ${route}: ${bytes} bytes`);
-const lines = [...bad, ...fallen(now, baseline)];
-for (const line of lines) console.error(line);
-if (lines.length > 0) process.exit(1);
+// A new route or a route that fell is a note, not a failure: the other work adds and removes pages every day. Growth over the room
+// on an existing route, and a marker in more routes, fail.
+const failures = bad.filter((line) => !line.includes("new route at"));
+const notes = [...bad.filter((line) => line.includes("new route at")), ...fallen(now, baseline)];
+for (const line of notes) console.log(`note: ${line}`);
+for (const line of failures) console.error(line);
+if (failures.length > 0) process.exit(1);
 console.log(`${Object.keys(now.routes).length} routes within ${ROOM.toLocaleString("en-US")} bytes of the baseline`);

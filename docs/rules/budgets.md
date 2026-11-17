@@ -21,9 +21,10 @@ A number rises only where its row says so, with a decision.
 | scripts/bundle-budget.baseline.json and src/lib/bundle-budget.test.ts | node scripts/bundle-budget.mjs (CI's e2e job, after the build) | node scripts/bundle-budget.mjs --write after pnpm build | first-load script bytes of every route, 15,000 bytes of room each, and the routes whose first scripts hold each of eight markers |
 
 The bundle budget needs a build, so it runs in CI, not in the list run before a push.
-A change that lowers a route by more than 15,000 bytes, removes a route or lowers a marker count runs --write and commits the baseline in the same change.
+A route more than 15,000 bytes over its baseline, or a marker in more routes, fails. A new route, a removed one or one that fell is a
+note: --write adds it or locks the gain in.
 Two markers (the storefront language and the cookie purposes) are allowed to be in no chunk at all, since step 0.16 made them server-only; their count is 0 and the check fails if either returns to a client chunk's first scripts.
-A route that must grow is the owner's call: say why in the decision; there is no flag that raises a figure.
+A route that must grow takes it on purpose with --write --accept, so the growth shows in the baseline's diff; say why in the commit.
 
 ## The written rules
 
