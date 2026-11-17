@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { DealBoard, type BoardColumnView } from "@/components/admin/deals/deal-board";
 import { requireFeature } from "@/components/admin/feature-off";
@@ -18,9 +19,6 @@ import { ensurePipeline, listDeals } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { placeDealAction } from "./actions";
-import { dismissLeadAction, makeLeadDealAction } from "./lead-actions";
-import { LeadsList } from "@/components/admin/deals/leads-list";
-import { leadsOf } from "@/server/leads";
 import { filingAddressOf } from "@/server/email-filing";
 
 export const metadata: Metadata = { title: "Deals" };
@@ -38,6 +36,8 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   if (off) return off;
   const { store } = member;
   const query = await searchParams;
+  // The leads inbox was a tab here; it is a page of its own under Customers now (ecosystem plan E2.8, D713), and an old link finds it.
+  if (query.view === "leads") redirect(`/admin/${store.slug}/leads`);
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "deals");
   const locale = ADMIN_LANG_FACTS[lang].locale;
@@ -98,13 +98,8 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   const canChange = memberCan(member, "customers:write");
   const openDeals = deals.filter((d) => d.status === "open");
   const openWorth = openDeals.reduce((sum, d) => sum + (d.value.minor ?? 0), 0);
-  // The leads inbox (S4, D475) beside the board: people who asked for something and are not customers yet.
-  const leads = await leadsOf(store.id);
-  const showLeads = query.view === "leads";
   // The store's filing address (S5, D476), for those who may change customers: made the first time it is shown.
   const filing = canChange ? await filingAddressOf(store.id) : null;
-  const viewTab = (leadsView: boolean) =>
-    `rounded-full border px-3 py-1.5 text-sm ${leadsView === showLeads ? "border-ink bg-ink text-inverse-ink" : "border-line bg-card text-ink"}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,28 +132,6 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
           </div>
         }
       />
-      <nav aria-label={w.leads.tab} className="flex flex-wrap gap-2">
-        <Link href={`${base}?pipeline=${pipeline.id}`} aria-current={showLeads ? undefined : "page"} className={viewTab(false)}>
-          {w.leads.board}
-        </Link>
-        <Link href={`${base}?view=leads`} aria-current={showLeads ? "page" : undefined} className={viewTab(true)}>
-          {w.leads.tab}
-          {leads.length > 0 && ` (${leads.length})`}
-        </Link>
-      </nav>
-      {showLeads ? (
-        <LeadsList
-          leads={leads}
-          words={w.leads}
-          when={(iso) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: store.timeZone })}
-          actions={
-            canChange
-              ? { make: (email) => makeLeadDealAction.bind(null, store.slug, email), dismiss: (email) => dismissLeadAction.bind(null, store.slug, email) }
-              : null
-          }
-        />
-      ) : (
-        <>
       {pipelines.length > 1 && (
         <nav aria-label={w.pipeline} className="flex flex-wrap gap-2">
           {pipelines.map((p) => (
@@ -197,8 +170,6 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
         </>
       )}
       {filing && <p className="text-sm text-muted">{fillWords(w.filing, { address: filing })}</p>}
-        </>
-      )}
     </div>
   );
 }

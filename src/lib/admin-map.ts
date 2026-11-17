@@ -590,6 +590,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a deal for a customer or company", "Move a deal to the next stage", "Mark a deal won or lost"],
     feature: "sales",
   }),
+  store("leads", "/leads", "Leads", "Sales", "The leads inbox: people who asked for something in the last 90 days (a quote, a question or a form's message, a chat, a subscription) and are not customers yet, one row a person, each request opening where it is kept. Make a deal of a lead, or dismiss it until they ask again.", {
+    keywords: ["leads", "prospects", "enquiries", "inquiries", "follow up", "potential customers"],
+    tasks: ["Make a deal of a lead", "Dismiss a lead", "Open what a lead asked for"],
+    feature: "sales",
+  }),
   store("deal.new", "/deals/new", "New deal", "Sales", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { feature: "sales" }),
   store("deal", "/deals/[dealId]", "Deal", "Sales", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", {
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
@@ -1564,9 +1569,10 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * Pages kept out of the AI manager's prompt for one deploy (`docs/ci-migrations.md`, D391): they arrived on main in the same push as a
  * migration, which deploys only once the agents' eval replay passes, and the replay can only be recorded again on production running the
  * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
- * recorded again on Platform → AI. Empty but for that.
+ * recorded again on Platform → AI. Empty but for that, and for a page that came without a new recording of the eval: Leads (ecosystem plan
+ * E2.8, D713) joins the prompt with the CRM tools of E2.5, which record the eval again.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>(["store:leads"]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {

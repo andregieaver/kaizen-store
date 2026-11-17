@@ -352,13 +352,20 @@ export const dealsEn = {
   /** Email on the timeline (S5, D476): the store's filing address. */
   filing: "Copy or forward emails to {address} and they are kept on the timeline of the customers, companies and deals they are about.",
 
-  /** The leads inbox (S4, D475), beside the board. */
+  /** The leads inbox (S4, D475), a page of its own under Customers (ecosystem plan E2.8, D713). */
   leads: {
-    board: "Board",
-    tab: "Leads",
-    intro: "People who asked for something but are not customers yet. Make a deal of those worth following up, and dismiss the rest.",
+    title: "Leads",
+    count: { one: "{n} person asked for something and is not a customer yet.", many: "{n} people asked for something and are not customers yet." },
+    countRest: " Make a deal of those worth following up, and dismiss the rest.",
     none: "No new leads. People who ask for a quote or a question, chat with you or subscribe show up here.",
     kinds: { quote: "Quote request", question: "Question", chat: "Chat", subscriber: "Subscribed" },
+    /** Each kind's link, to where it is kept, as a screen reader says it. */
+    openKinds: {
+      quote: "Open the quote request from {name}",
+      question: "Open the question from {name}",
+      chat: "Open the chat with {name}",
+      subscriber: "Open {name} among the subscribers",
+    },
     dealKinds: { quote: "quote request", question: "question", chat: "chat", subscriber: "new subscriber" },
     makeDeal: "Make a deal",
     dismiss: "Dismiss",
