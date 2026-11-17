@@ -55,6 +55,7 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   inventory: "stock",
   refund: "payments",
   erasure: "customers",
+  contract: "customers",
   experiment: "marketing",
   installation: "apps",
 };
