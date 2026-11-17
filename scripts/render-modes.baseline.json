@@ -1,0 +1,129 @@
+{
+  "routes": {
+    "/": {
+      "compute": "static",
+      "holes": 3,
+      "platformTags": [
+        "platform-navigation",
+        "platform-pages",
+        "platform-seo",
+        "referrals",
+        "site-from-store",
+        "template-store"
+      ],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/docs": {
+      "compute": "static",
+      "holes": 0,
+      "platformTags": [
+        "platform-navigation"
+      ],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/docs/owners/getting-started/create-your-store": {
+      "compute": "static",
+      "holes": 0,
+      "platformTags": [
+        "platform-navigation"
+      ],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/themes": {
+      "compute": "resuming",
+      "holes": 4,
+      "platformTags": [
+        "design-presets",
+        "platform-navigation",
+        "platform-pages",
+        "platform-seo",
+        "referrals",
+        "site-from-store",
+        "store-starters"
+      ],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/s/demo/no": {
+      "compute": "resuming",
+      "holes": 3,
+      "platformTags": [
+        "catalog"
+      ],
+      "revalidate": 900,
+      "titleInHead": true
+    },
+    "/s/demo/no/om-oss": {
+      "compute": "resuming",
+      "holes": 3,
+      "platformTags": [],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/s/demo/no/blog/nye-produkter": {
+      "compute": "resuming",
+      "holes": 3,
+      "platformTags": [],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/s/demo/no/products": {
+      "compute": "resuming",
+      "holes": 4,
+      "platformTags": [
+        "catalog"
+      ],
+      "revalidate": 900,
+      "titleInHead": true
+    },
+    "/s/demo/no/category/belysning": {
+      "compute": "resuming",
+      "holes": 4,
+      "platformTags": [
+        "catalog"
+      ],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/s/demo/no/p/demo-keramikkopp": {
+      "compute": "resuming",
+      "holes": 4,
+      "platformTags": [
+        "catalog"
+      ],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/s/demo/no/search": {
+      "compute": "resuming",
+      "holes": 4,
+      "platformTags": [],
+      "revalidate": 3600,
+      "titleInHead": true
+    },
+    "/s/demo/no/cart": {
+      "compute": "resuming",
+      "holes": 3,
+      "platformTags": [],
+      "revalidate": 3600,
+      "titleInHead": true
+    }
+  },
+  "meta": {
+    "entries": 267,
+    "withList": 9,
+    "withBothTags": 0,
+    "medianBytes": 12300
+  },
+  "totals": {
+    "routesByCompute": {
+      "static": 558,
+      "resuming": 267,
+      "blocking": 2
+    },
+    "dynamicPatternsWithoutFallback": 139
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "home": {
+    "statements": 0,
+    "max": 2
+  },
+  "product": {
+    "statements": 12,
+    "max": 14
+  },
+  "all products": {
+    "statements": 1,
+    "max": 3
+  },
+  "category": {
+    "statements": 1,
+    "max": 3
+  },
+  "search": {
+    "statements": 6,
+    "max": 8
+  },
+  "home with a cart cookie": {
+    "statements": 1,
+    "max": 3
+  },
+  "cart with three lines": {
+    "statements": 32,
+    "max": 34,
+    "bar": 12
+  },
+  "checkout at its first step": {
+    "statements": 2,
+    "max": 4
+  },
+  "large store home": {
+    "statements": 0,
+    "max": 2
+  },
+  "large store product": {
+    "statements": 12,
+    "max": 14
+  },
+  "large store home, cold": {
+    "statements": 1,
+    "max": 3
+  },
+  "large store product, cold": {
+    "statements": 15,
+    "max": 17
+  }
+}

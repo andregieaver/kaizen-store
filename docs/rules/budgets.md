@@ -12,6 +12,9 @@ A number rises only where its row says so, with a decision.
 | Baseline file | Test that holds it | How to lower it | What it counts |
 |---|---|---|---|
 | src/server/ratchet.baseline.json | src/server/ratchet.scan.test.ts | node scripts/ratchet.mjs | unchecked reads, casts through unknown, switched-off any rules, writes by id without the store |
+| src/server/ratchet.baseline.json, key adminRepeats | src/server/ratchet.scan.test.ts | node scripts/ratchet.mjs (--first accepts a rise, shown in the diff) | the admin's action files off the wrapper, tables, native selects, literal Europe/Oslo and confirm( calls |
+| src/lib/copies.baseline.json | src/lib/copies.scan.test.ts | node scripts/copies.mjs lowers; --write --reason "…" accepts a copy made on purpose | exact copies across and inside files, near copies, twin pairs (each with its reason), helpers identical in three files |
+| src/lib/surface-budget.baseline.json | src/lib/surface-budget.scan.test.ts and the new-store case in src/db/commerce.test.ts | node scripts/surface-budget.mjs lowers; --raise D<n> raises, and only when decision D<n> has an 'Idle cost:' line | 14 surface counts, the hot tables' indexes and triggers, a new store's rows, the twins kept on purpose |
 | src/lib/admin-strings.baseline.json | src/lib/admin-strings.scan.test.ts | UPDATE_ADMIN_STRINGS=1 pnpm exec vitest run src/lib/admin-strings.scan.test.ts | English written into admin markup, per file |
 | src/lib/permissions.baseline.json | src/lib/permissions.scan.test.ts and src/lib/permissions.matrix.test.ts | never rewritten (the oracle from before roles; scripts/permission-baseline.mjs made it once) | what each admin entry point asked for before roles |
 | src/lib/docs-budget.baseline.json | src/lib/docs-budget.scan.test.ts | node scripts/docs-ratchet.mjs | the written rules (see The written rules below) |
@@ -26,6 +29,11 @@ note: --write adds it or locks the gain in.
 Two markers (the storefront language and the cookie purposes) are allowed to be in no chunk at all, since step 0.16 made them server-only; their count is 0 and the check fails if either returns to a client chunk's first scripts.
 A route that must grow takes it on purpose with --write --accept, so the growth shows in the baseline's diff; say why in the commit.
 | src/server/admin-statements.baseline.json | src/server/admin-statements.int.test.ts | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts (it writes today's counts, so a rise is accepted deliberately, shown in the diff, with the reason in the commit message) | statements the admin's five screens send (store shell, store Home, orders list, products list, platform Home), counted by src/db/statement-count.ts |
+| src/server/ratchet.baseline.json, key queryBudget | src/server/query-budget.int.test.ts (alone, on the fresh database: CI's integration shard 1, first) | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts (with FIRST=1 a rise is accepted, shown in the diff) | statements and rows read of each idle dispatcher job, the minute and daily routes and two cold frames, with 1 and 20 stores, and their growth |
+| src/server/ratchet.baseline.json, key orderWrites | src/server/order-writes.int.test.ts | UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/order-writes.int.test.ts (with FIRST=1 a rise or a new table is accepted, shown in the diff) | statements, rows inserted and updated, and the tables written by one guest order of three lines and by one counted visit |
+| scripts/render-modes.baseline.json | node scripts/render-modes.mjs (CI's e2e job, after the build) | node scripts/render-modes.mjs --write after pnpm build | compute, holes, platform-wide tags and revalidate of twelve routes, and the demo store's resume data |
+| src/server/use-cache.baseline.json | src/server/use-cache.scan.test.ts | WRITE_CACHED_READS=1 pnpm exec vitest run src/server/use-cache.scan.test.ts | each cached read's cacheLife and cacheTag arguments (a change fails; a new read is a note) |
+| scripts/server-budget.json | node scripts/server-budget.mjs (CI's e2e job, after Playwright) | node scripts/server-budget.mjs --write after a change that cut statements (it never raises one) | statements of eight store pages, the cart with three lines and the checkout, warm and cold, today's count + 2 |
 
 The server's measure 7, refreshes and store draws, is held by Platform, Usage and limits (`#cache`, `docs/capacity.md`) and `src/server/cache-events.int.test.ts`, which fails when 11 job refreshes of one subject in a day are not flagged, when 10 are, or when a platform tag is.
 
@@ -102,6 +110,12 @@ aside. A file this large is read by window; split it, or move code out of it, an
 What a session really loads is measured from its own transcript: `node scripts/session-load.mjs --step <id>` writes one file of paths,
 bytes and counts under docs/audits/bloat-review-2026-11/session-load/ (src/lib/session-load.test.ts); `--summary` prints the medians
 of the first 20 'before' and the first 20 'after' files. The rules area's measure 8 holds always loaded plus rules and docs read at 25,000 bytes.
+
+### The storefront's server side (step 1.11)
+
+src/server/use-cache.scan.test.ts lists every cached read's `cacheLife()` and `cacheTag()` in src/server/use-cache.baseline.json (a changed life or tag
+fails, and the rewrite's diff shows it in review; a new or removed read is only noted), asks each to have both unless NO_LIFE or NO_TAG names it with a reason, and holds that no file under
+src/app/admin/(gated)/[store] refreshes a tag that names no store but the five in PLATFORM_TAG_FROM_STORE. The three lists only shrink.
 
 ## Searches
 

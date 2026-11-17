@@ -2,7 +2,7 @@ import { AREAS } from "./permission-keys";
 
 /**
  * How many tools one turn of the AI manager may send (D333). OpenAI-compatible APIs refuse more than 128 tools in a request, and an owner
- * with most features on is offered about 190 store tools and the manager's own 24, so a turn sends at most `TOOLS_PER_TURN`: the
+ * with every feature on is offered 294 store tools and the manager's own 26 (held in `src/lib/surface-budget.baseline.json`), so a turn sends at most `TOOLS_PER_TURN`: the
  * manager's own, a few that answer most questions, the tools used earlier in the conversation, the areas the model asked for with
  * `load_tools`, the area of the page the person is on, and then the other areas in a fixed order. The rest stay one `load_tools` call
  * away, named by area in its description. Pure: which tools a role may use is decided before (`offeredTools()`), never here.

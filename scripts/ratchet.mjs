@@ -10,6 +10,8 @@
 //
 // And the source files over 100 KB and over 2,000 lines (bloat review step 1.24): read by window, so the counts only fall.
 //
+// And five counts of the admin's hand-made repeats (bloat review step 1.17): action files off storeAction()/platformAction(), tables, native selects, literal Europe/Oslo and confirm( calls.
+//
 // It refuses to raise a number: a file with more unchecked reads than its baseline, a file that had none, or a total that
 // went up is said and nothing is written. Make the new read typed (`typedRows()`) or the cast unneeded instead.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -35,16 +37,22 @@ if (before && !process.argv.includes("--first")) {
   if (now.anySuppressed > before.anySuppressed) raised.push(`suppressed any: ${before.anySuppressed} → ${now.anySuppressed}`);
   if (now.filesOver100Kb > (before.filesOver100Kb ?? now.filesOver100Kb)) raised.push(`source files over 100 KB: ${before.filesOver100Kb} → ${now.filesOver100Kb}; split the file or move code out`);
   if (now.filesOver2000Lines > (before.filesOver2000Lines ?? now.filesOver2000Lines)) raised.push(`source files over 2,000 lines: ${before.filesOver2000Lines} → ${now.filesOver2000Lines}; split the file or move code out`);
+  for (const [key, n] of Object.entries(now.adminRepeats)) {
+    const was = before.adminRepeats?.[key];
+    if (was !== undefined && n > was) raised.push(`admin ${key}: ${was} → ${n}; use the shared part (see src/server/ratchet.scan.test.ts), or accept it on purpose with node scripts/ratchet.mjs --first`);
+  }
   if (raised.length > 0) {
     console.error(`The ratchet only falls. Not written:\n  ${raised.join("\n  ")}`);
     process.exit(1);
   }
 }
-writeFileSync(out, `${JSON.stringify(now, null, 2)}\n`);
+// Keys another writer keeps in the same file (the query budget of step 1.10, written by its integration test) are carried over as they were.
+writeFileSync(out, `${JSON.stringify({ ...(before ?? {}), ...now }, null, 2)}\n`);
 const sum = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 console.log(
   `Wrote ${path.relative(root, out)}: ${sum(now.untypedReads)} unchecked reads in ${Object.keys(now.untypedReads).length} files, ` +
     `${sum(now.byIdWrites)} writes by id without the store in ${Object.keys(now.byIdWrites).length} files, ${now.unknownCasts} as unknown as, ` +
     `${now.anySuppressed} suppressed any, ${now.filesOver100Kb} files over 100 KB, ${now.filesOver2000Lines} over 2,000 lines, ` +
-    `${sum(now.notDistinctStore)} store_id is not distinct from in ${Object.keys(now.notDistinctStore).length} files.`,
+    `${sum(now.notDistinctStore)} store_id is not distinct from in ${Object.keys(now.notDistinctStore).length} files; ` +
+    `admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
 );

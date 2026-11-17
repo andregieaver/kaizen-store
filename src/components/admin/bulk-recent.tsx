@@ -1,4 +1,4 @@
-import { momentText } from "@/lib/data-admin";
+import { momentShort, momentText } from "@/lib/data-admin";
 import { batchSummary, listBatches, type UndoResult } from "@/server/bulk-edit";
 
 import { RecentBatches } from "./bulk-result";
@@ -22,7 +22,7 @@ export async function BulkRecent({
   locale?: string;
 }) {
   const batches = await listBatches(storeId, 10);
-  const summaries = (await Promise.all(batches.map((b) => batchSummary(storeId, b.id)))).flatMap((s, i) => (s ? [{ summary: s, when: momentText(batches[i].createdAt, timeZone, locale) }] : []));
+  const summaries = (await Promise.all(batches.map((b) => batchSummary(storeId, b.id)))).flatMap((s, i) => (s ? [{ summary: s, when: momentText(batches[i].createdAt, timeZone, locale), short: momentShort(batches[i].createdAt, timeZone, locale) }] : []));
   return (
     <section aria-labelledby="recent-bulk" className="flex flex-col gap-2">
       <h2 id="recent-bulk" className="text-title text-ink">

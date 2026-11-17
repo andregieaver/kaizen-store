@@ -169,6 +169,8 @@ function questionFrom(given: FormQuestionArgs, before: FormQuestion[], taken: Fo
     ...(given.required ? { required: true } : {}),
     ...(given.choices ? { options: given.choices.map((c, i) => keep(same?.options?.[i], c)!) } : {}),
     ...(given.help ? { help: keep(same?.help, given.help) } : {}),
+    // A hidden question (D738 F6a) reads a part of the address: the one given, else the one it read, else the campaign.
+    ...(given.kind === "hidden" ? { param: given.param ?? same?.param ?? "utm_campaign" } : {}),
   };
 }
 

@@ -83,6 +83,12 @@ A push to `main` takes one of two paths, chosen by reading production's ledger (
   environment `production`. A failed check
   or migration deploys nothing, so new code never meets the old schema.
 
+The `integration` job runs the integration files in three shards, each on a database of its own seeded fresh; shard 1 first runs
+`src/server/query-budget.int.test.ts` alone, which counts statements and rows read per scheduled job with 1 and with 20 stores, and the
+sharded run leaves it out (bloat review step 1.10).
+In the `e2e` job the build is followed by `scripts/render-modes.mjs` (which routes are static, how many holes each has), and Playwright by
+`scripts/server-budget.mjs` (statements per store page): both fail the job, so a push with a migration waits for them (bloat review step 1.11).
+
 Either way the job then waits for production to run the commit (D389, `scripts/await-deploy.mjs`): it reads `/api/health` until the
 `commit` there is this one, or a later one that includes it, and fails, saying what production reports, after twenty minutes. Set the
 repository variable `PRODUCTION_URL` when the site's address is not `https://kaizenaflow.com`. It then requests the pages of `SMOKE_PAGES` (a repository variable; by default Kaizena Flow's home and the template store's Norwegian front page), one after the other and each twice: the job, not a visitor, pays the first cold draw, the log shows each page's status, bytes and cache headers, and a page that does not answer 200 fails the job (bloat review step 0.3).
@@ -181,6 +187,9 @@ and set `DEPLOY_VIA_CI` to anything but `true`.
   tool, so `DROP` statements, triggers and multi-statement files run as written.
 - Advisors (RLS, search path, indexes) are still checked by hand after a migration that adds tables
   or functions; record the result in `docs/decisions.md` as before.
+- A migration that adds a table, or an index or trigger on a hot table, raises the surface budget
+  (`src/lib/surface-budget.scan.test.ts`); the scan runs with the full checks, so for a push without a migration it reports
+  beside the deploy and does not hold it back.
 - If a migration fails, the job is red, nothing from that file is applied and later files wait; fix it
   with a new file (or, when it never ran, edit it: only a file that is not in the ledger may change).
 - Never change an AI prompt in the same push as a migration. The agents' eval replay (D391) fails until the eval is recorded

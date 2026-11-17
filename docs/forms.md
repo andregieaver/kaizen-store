@@ -387,3 +387,12 @@ manager's tools and its words for *New form* with one eval run by the owner.
   its erasure and its months); the whole-store file leaves it out as a record.
 - **Not covered end to end**: the e2e builds have no Stripe, so the page's note and the way to the checkout are proved by
   `src/server/form-payments.int.test.ts` (the cart cookie, the cart's line, the link, *Paid* with the order); the editor's card by the e2e test.
+
+### 15.4 The AI manager (17 November 2026)
+
+- `change_form` asks the new kinds too: `hidden` (with `param`, the part of the address; asked again without it, a hidden question keeps
+  the one it read) and `file`. Before this a form's hidden question could not be named, so a change of questions by the AI manager left it
+  out (the owner's yes card showed the questions it would ask).
+- The admin map's *New form* says templates (Kaizena Flow's, the store's own, the marketplace's, or a blank form) and what a form can do
+  now. Both change what the model is offered (the tools' version), so they reach `main` together with a new recording of the eval, run on
+  Platform → AI; the payment is chosen in the editor, not by the AI manager.

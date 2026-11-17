@@ -129,7 +129,9 @@ describe("a bulk result", () => {
     expect(out).toContain("<caption");
     expect(out).toContain("Change price");
     expect(out).toContain("Undo</button>");
-    expect(out.match(/Undo<\/button>/g)).toHaveLength(1);
+    // One Undo in the table and one in the phone's lines (round 45, D743), for the one change still inside the seven days.
+    expect(out.match(/Undo<\/button>/g)).toHaveLength(2);
+    expect(out).toContain("Change price · ");
     expect(html(createElement(RecentBatches, { batches: [], undo: async () => ({ ok: false as const, problem: "x" }) }))).toContain("No bulk changes yet.");
   });
 });

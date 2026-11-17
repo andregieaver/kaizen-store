@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
  */
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 const DISPATCHER = "src/app/api/cron/cart-reminders/route.ts";
+// The job list itself moved to its own module (bloat review step 1.10); the hourly prunes stay in the route.
+const JOBS = "src/server/dispatcher-jobs.ts";
 const DAILY = "src/app/api/cron/subscription-reminders/route.ts";
 const DISPATCHER_JOBS = 78; // 78 when the step was written, 84 when it was carried out, minus the nine prunes; 78 with the domain watch (E4.2) and the autopilot's tests (E4.1).
 
@@ -26,12 +28,12 @@ const NINE = [
 
 describe("prunes run daily or hourly, not in the busy runs", () => {
   it(`the dispatcher holds ${DISPATCHER_JOBS} jobs and none of the nine prunes`, () => {
-    const source = read(DISPATCHER);
-    const start = source.indexOf('await runJobs("dispatcher", EVERY, {');
+    const source = read(JOBS);
+    const start = source.indexOf("export const DISPATCHER_JOBS = {");
     expect(start).toBeGreaterThan(-1);
-    const end = source.indexOf("\n  });\n", start);
+    const end = source.indexOf("\n}", start);
     const block = source.slice(start, end);
-    expect(block.split("\n").filter((line) => /^ {4}[A-Za-z0-9]+: /.test(line))).toHaveLength(DISPATCHER_JOBS);
+    expect(block.split("\n").filter((line) => /^ {2}[A-Za-z0-9]+: /.test(line))).toHaveLength(DISPATCHER_JOBS);
     for (const name of NINE) expect(block, name).not.toContain(name);
   });
 

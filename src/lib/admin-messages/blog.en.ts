@@ -52,6 +52,7 @@ export const blogEn = {
     remove: "Delete the blog",
     removed: "The blog is deleted.",
     cancel: "Cancel",
+    phone: { lead: "Each with its own address, articles and comments.", open: "Open", close: "Close", form: "A name, an address and its comments", otherNames: "Names in other languages" },
     problems: {
       handle_missing: "Give the blog an address.",
       handle_format: "An address is lowercase letters and digits, with single hyphens between words.",

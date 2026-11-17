@@ -120,8 +120,11 @@ jobs:
         run: pnpm db:check
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
+      - name: Query budget on the fresh database (src/server/query-budget.int.test.ts)
+        if: matrix.shard == 1
+        run: pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts
       - name: Integration tests against the database
-        run: pnpm test:int --shard=${{ matrix.shard }}/3
+        run: pnpm test:int --shard=${{ matrix.shard }}/3 --exclude src/server/query-budget.int.test.ts
 
   e2e:
     if: github.event_name != 'workflow_dispatch'
@@ -167,11 +170,20 @@ jobs:
       # fine behind another route (the Mollie webhook, 12 November 2026). A server that has answered other requests hides that.
       - name: Every built route loads on its own
         run: node scripts/cold-load-routes.mjs
+      # Which routes are static, how many holes each has and what the demo store's resume data keeps (bloat review step 1.11): a hard
+      # gate, so a new cookies() or headers() read in a shared part fails here and not in a visitor's first load.
+      - name: What is static
+        run: node scripts/render-modes.mjs >> "$GITHUB_STEP_SUMMARY"
       # WebKit too: the shopper's pages also run in Safari's engine (playwright.config.ts, the webkit project; PSI UX-12).
       # The image has both browsers, so this finds them and does nothing; were the pinned version ever ahead of the
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).
       - run: pnpm exec playwright install chromium webkit
       - run: pnpm test:e2e
+      # The statements each store page sends, counted from the app's own statement log (bloat review step 1.11): after Playwright, so
+      # nothing else sends statements, and `success()` so a red Playwright run is not hidden behind it. A hard gate.
+      - name: Statements per store page
+        if: success()
+        run: node scripts/server-budget.mjs >> "$GITHUB_STEP_SUMMARY"
       # After the end-to-end run, so a budget failure never hides its results; `!cancelled()` so it still reports when a test failed.
       - name: Every route's first scripts against the baseline (scripts/bundle-budget.mjs)
         if: ${{ !cancelled() }}

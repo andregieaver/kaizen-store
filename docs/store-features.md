@@ -5,6 +5,15 @@ subscription boxes and three currencies. Store features let an owner switch on w
 rest out of the way: a master switch for the online shop (off: the store is a website) and a switch per feature.
 This document is the contract; it is built in six steps (section 7).
 
+## Switches are not for cost
+
+A feature switch decides what an owner sees and can use; it is never added to save cost. 63 of 115 store links and 155 of 294 AI
+tools stand behind no switch on purpose (counted 17 November 2026). Where a feature costs a store that does not use it (a read on
+every basket, a statement on every scheduled run, a tool definition in every AI round), the fix is at the read: do no work when
+the feature has no rows. A new feature states that cost in its decision, in a line that starts `Idle cost:` (per request, per
+scheduled run, per cold start; "none" where none), and `src/lib/surface-budget.scan.test.ts` refuses a new job, table, trigger,
+link or tool until the line is there.
+
 ## 1. The features
 
 | Id | Label | Group | Needs | Today (before D178) |

@@ -47,6 +47,19 @@ export function formatBytes(bytes: number): string {
 export const wholeNumber = (n: number, locale = "en-GB"): string => Math.round(n).toLocaleString(locale);
 
 /** A moment as `5 Oct 2026, 14:22` in a time zone (the store's), the same on the server and in the browser; `locale` is the admin's (D312), en-GB unless given. */
+/** The moment without its year, for a phone's line (round 45, D743): "15 Nov, 22:18". */
+export function momentShort(iso: string | null | undefined, timeZone: string, locale = "en-GB"): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const shape = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" } as const;
+  try {
+    return new Intl.DateTimeFormat(locale, { ...shape, timeZone }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat(locale, { ...shape, timeZone: "UTC" }).format(date);
+  }
+}
+
 export function momentText(iso: string | null | undefined, timeZone: string, locale = "en-GB"): string {
   if (!iso) return "";
   const date = new Date(iso);

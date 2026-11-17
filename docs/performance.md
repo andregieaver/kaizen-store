@@ -365,6 +365,64 @@ A change that adds a read to the shell or to a home screen raises its number in 
 counts); one that removes a read lowers it. Waves are not held: they move with how many of the pool's five connections are free.
 To count anything else, wrap it in `countStatements()`. Production's figure is the `admin.render` log line: `statements` and `ms`, nothing else.
 
+### Scheduled work (bloat review step 1.10)
+
+`src/server/query-budget.int.test.ts` runs each of the dispatcher's 78 jobs idle, the nine minute routes, the two daily routes and two
+cold frames, on the freshly seeded database (the demo store and Kaizena Flow's) and again with 20 stores of 200 products and 30 pages
+that have every per-store feature a job looks at switched on, and holds statements and rows read in the key `queryBudget` of
+`src/server/ratchet.baseline.json` (17 November 2026, local Postgres 16):
+
+| | Statements, 1 store | Rows read, 1 store | Statements, 20 stores | Rows read, 20 stores |
+|---|---|---|---|---|
+| The idle tick (78 jobs, one by one) | 143 | 387 | 595 | 54,235 |
+| The minute and daily routes (11) | 286 | 2,877 | 526 | 13,870 |
+| A store's cold frame (the demo store) | 5 | 54 | 5 | 444 |
+| Kaizena Flow's cold frame | 17 | 47 | 17 | 329 |
+
+What 20 stores add is held too (growth, which only falls; 0 once a job reads every store's work in one statement): one statement or more
+per store in auto-archive (+20), the autopilot's budget alerts (+20), Tripletex and Fiken (+80 each, ten stores each), the knowledge base
+(+160), the ledger (+50), repeating Work invoices (+40), the broadcasts route (+100) and the daily route (+140). The frames send no more
+statements with 20 stores, but read more rows. Two rows-read figures are written down but not held: the VAT labels' check, which
+follows the database's own clock (29 rows, 257 in the minutes around a country's midnight), and the broadcasts route's with 20 stores,
+which moves by a few rows between runs; their statements are held.
+
+## What one order writes (bloat review step 1.12)
+
+`src/server/order-writes.int.test.ts` places one guest order of three lines in a store with only the shop on, and counts one visit, and
+holds what they send and write in the key `orderWrites` of `src/server/ratchet.baseline.json` (17 November 2026):
+
+| | Statements | Rows inserted | Rows updated | Tables written |
+|---|---|---|---|---|
+| One guest order of three lines (`placeOrder()`) | 46 | 9 | 1 | document_series, events, inventory_reservations, order_events, order_lines, orders |
+| One counted visit (`recordVisit()`) | 5 | 3 | 0 | chat_usage, visits |
+
+A trigger that writes a row, or a write to a table not in the list, fails the test with the table's name. The time each trigger of
+`commerce.orders` took on one insert of an order row (one run, `explain (analyze, buffers)` inside a transaction rolled back, on a local
+seeded database; written once, not held):
+
+| Trigger | Time (ms) | Calls |
+|---|---|---|
+| integration_order_events | 3.211 | 1 |
+| orders_store_open | 1.069 | 1 |
+| orders_ad_consent | 0.815 | 1 |
+| constraint orders_market_fk | 0.431 | 1 |
+| constraint orders_held_by_accounts_id_fk | 0.353 | 1 |
+| orders_exchange_rules | 0.277 | 1 |
+| constraint orders_cart_fk | 0.264 | 1 |
+| orders_delivered_source | 0.169 | 1 |
+| constraint orders_customer_fk | 0.169 | 1 |
+| store_event_order_paid | 0.129 | 1 |
+| constraint orders_discount_code_fk | 0.105 | 1 |
+| constraint orders_vat_check_fk | 0.075 | 1 |
+| constraint orders_host_fk | 0.074 | 1 |
+| constraint orders_subscription_fk | 0.069 | 1 |
+| orders_copied_is_history | 0.043 | 1 |
+| constraint orders_replaces_fk | 0.010 | 1 |
+| constraint orders_exchange_fk | 0.007 | 1 |
+| constraint orders_made_by_accounts_id_fk | 0.004 | 1 |
+
+The insert took 9.2 ms in all, of which the triggers 7.3 ms.
+
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
 The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the
@@ -437,3 +495,53 @@ and none in the next 2 s. At each Next upgrade read `optimistic-routes.js` for t
 
 `partialPrefetching` is false as a recorded choice: unset, Next treats it as false and prints a warning on every build and start,
 and the next major release turns it on for everyone. Step 2.8 of the bloat review decides adoption by trial.
+
+## What is static (bloat review step 1.11)
+
+`scripts/render-modes.mjs` reads the build (`.next`, no server) and holds, in `scripts/render-modes.baseline.json`, the compute mode, the
+holes, the platform-wide tags and the revalidate time of twelve routes, and what the demo store's resume data keeps. CI runs it after
+the build in the e2e job and fails on a regression or on a gain not yet written down (`node scripts/render-modes.mjs --write`).
+
+<!-- render-modes:start -->
+| / | static | 3 | 3600 | platform-navigation, platform-pages, platform-seo, referrals, site-from-store, template-store | yes |
+| /docs | static | 0 | 3600 | platform-navigation | yes |
+| /docs/owners/getting-started/create-your-store | static | 0 | 3600 | platform-navigation | yes |
+| /themes | resuming | 4 | 3600 | design-presets, platform-navigation, platform-pages, platform-seo, referrals, site-from-store, store-starters | yes |
+| /s/demo/no | resuming | 3 | 900 | catalog | yes |
+| /s/demo/no/om-oss | resuming | 3 | 3600 | none | yes |
+| /s/demo/no/blog/nye-produkter | resuming | 3 | 3600 | none | yes |
+| /s/demo/no/products | resuming | 4 | 900 | catalog | yes |
+| /s/demo/no/category/belysning | resuming | 4 | 3600 | catalog | yes |
+| /s/demo/no/p/demo-keramikkopp | resuming | 4 | 3600 | catalog | yes |
+| /s/demo/no/search | resuming | 4 | 3600 | none | yes |
+| /s/demo/no/cart | resuming | 3 | 3600 | none | yes |
+<!-- render-modes:end -->
+
+A hole is a boundary that is not in the prerendered file (it streams at request time). What makes a page per-request: the cart cookie,
+the country header, `searchParams`, stock, sign-in. The rule in one sentence: a new `cookies()`, `headers()` or `connection()` in a layout
+or a shared part moves every page under it to per-request, and `scripts/render-modes.mjs` says so in CI.
+
+## Server budgets (bloat review step 1.11)
+
+`scripts/server-budget.mjs` is the one home of a store page's statement count: on the built app it counts the statements of the demo
+store's pages, a large store's two pages (500 products, cold and warm) and the cart and checkout of a guest with three lines, from the
+server's own statement log (`STATEMENT_LOG=1`, `src/db/statement-log.ts`; CI's Postgres image does not load `pg_stat_statements`). A page is requested once unmeasured, then twice more with the smaller count kept (a cached read whose lifetime ends repeats its statement on one request); the cache-event flush and the house store's lookup are left out as noise. Each
+budget is today's count plus 2 in `scripts/server-budget.json`; CI runs it after Playwright and fails the e2e job for a page over its max.
+To lower a budget after a change that cut statements, run `node scripts/server-budget.mjs --write` (it never raises one).
+
+<!-- server-budget:start -->
+| Page | Statements | Max | Bar |
+|---|---|---|---|
+| home | 0 | 2 |  |
+| product | 12 | 14 |  |
+| all products | 1 | 3 |  |
+| category | 1 | 3 |  |
+| search | 6 | 8 |  |
+| home with a cart cookie | 1 | 3 |  |
+| cart with three lines | 32 | 34 | 12 or fewer |
+| checkout at its first step | 2 | 4 |  |
+| large store home | 0 | 2 |  |
+| large store product | 12 | 14 |  |
+| large store home, cold | 1 | 3 |  |
+| large store product, cold | 15 | 17 |  |
+<!-- server-budget:end -->

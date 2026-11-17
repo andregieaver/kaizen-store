@@ -9,6 +9,8 @@ import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
 import { templateContentSchema } from "@/lib/form-records-schema";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
+import surfaceBudget from "@/lib/surface-budget.baseline.json";
+
 import { createTestDatabase } from "./testing";
 
 let db: PGlite;
@@ -8646,5 +8648,50 @@ describe("a page's own forms become forms, and copies take them (D705 F2)", () =
       await db.query("rollback");
     }
     await db.query("delete from commerce.forms where id in ($1, $2)", [formId, platformForm]);
+  });
+});
+
+describe("what the database writes for a new store (surface budget)", () => {
+  /** A store as createStore() makes it, without markets, and the rows every table of the commerce schema holds for it. */
+  async function newStoreRows(): Promise<{ sum: number; byTable: Record<string, number> }> {
+    const { id } = await one<{ id: string }>("insert into commerce.stores (slug, name) values ($1, $1) returning id", [`surface-${Math.random().toString(36).slice(2, 10)}`]);
+    const { rows: tables } = await db.query<{ table_name: string }>(
+      `select table_name from information_schema.columns
+       where table_schema = 'commerce' and column_name = 'store_id'
+         and table_name in (select table_name from information_schema.tables where table_schema = 'commerce' and table_type = 'BASE TABLE')`,
+    );
+    const byTable: Record<string, number> = {};
+    let sum = 0;
+    for (const { table_name: name } of tables) {
+      const { n } = await one<{ n: number }>(`select count(*)::int as n from commerce."${name}" where store_id = $1`, [id]);
+      if (n > 0) {
+        byTable[name] = n;
+        sum += n;
+      }
+    }
+    return { sum, byTable };
+  }
+
+  it("is the number the surface budget holds", async () => {
+    const { sum, byTable } = await newStoreRows();
+    expect(
+      sum,
+      `A new store now gets ${sum} rows (${JSON.stringify(byTable)}). A row every store gets for a feature that is off is idle cost: write the decision with an Idle cost: line and run node scripts/surface-budget.mjs --raise D<number>, or make the row when the feature is switched on.`,
+    ).toBeLessThanOrEqual(surfaceBudget.newStoreRows);
+    if (sum < surfaceBudget.newStoreRows) console.info(`surface: a new store gets ${sum} rows, baseline ${surfaceBudget.newStoreRows}; lower it with node scripts/surface-budget.mjs`);
+  });
+
+  it("would see a ninth row: a trigger that writes one more is counted", async () => {
+    const before = (await newStoreRows()).sum;
+    await db.exec(
+      "create function commerce.surface_trial() returns trigger language plpgsql as $$ begin insert into commerce.blogs (store_id, handle) values (new.id, 'surface-trial'); return null; end $$",
+    );
+    try {
+      await db.exec("create trigger surface_trial after insert on commerce.stores for each row execute function commerce.surface_trial()");
+      expect((await newStoreRows()).sum).toBe(before + 1);
+    } finally {
+      await db.exec("drop trigger if exists surface_trial on commerce.stores");
+      await db.exec("drop function if exists commerce.surface_trial()");
+    }
   });
 });

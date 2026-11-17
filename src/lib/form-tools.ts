@@ -24,14 +24,24 @@ export const makeFormInput = z.object({
 });
 export type MakeFormInput = z.output<typeof makeFormInput>;
 
-const QUESTION_KINDS = ["name", "email", "phone", "text", "textarea", "select", "radio", "checkbox", "checklist", "number", "date"] as const;
+const QUESTION_KINDS = ["name", "email", "phone", "text", "textarea", "select", "radio", "checkbox", "checklist", "number", "date", "hidden", "file"] as const;
 
 export const formQuestionInput = z.object({
-  kind: z.enum(QUESTION_KINDS).describe("name, email, phone, text (one line), textarea (a message), select (a dropdown), radio (one choice), checkbox (one tick), checklist (any of the choices), number or date."),
+  kind: z
+    .enum(QUESTION_KINDS)
+    .describe(
+      "name, email, phone, text (one line), textarea (a message), select (a dropdown), radio (one choice), checkbox (one tick), checklist (any of the choices), number, date, hidden (never asked: keeps a part of the page's address, such as a campaign) or file (one picture or PDF the visitor attaches).",
+    ),
   label: z.string().trim().max(200).default("").describe("The question, in the site's main language. Left empty for name, email, phone and textarea: the usual words in the visitor's language."),
   required: z.boolean().default(false),
   choices: z.array(z.string().trim().min(1).max(200)).max(20).optional().describe("The choices of a select, radio or checklist question, in order."),
   help: z.string().trim().max(200).optional().describe("A line of help under the question."),
+  param: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9_.-]{1,64}$/)
+    .optional()
+    .describe("A hidden question's part of the address, such as utm_campaign (the default) or code. Only for hidden; its label names it in the responses."),
 });
 
 export type FormQuestionArgs = z.output<typeof formQuestionInput>;

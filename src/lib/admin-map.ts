@@ -931,7 +931,7 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("forms.form", "/forms/[formId]", "A form", "Store", "One form: its questions, who it emails, how long it keeps responses, and its responses."),
   store("forms.responses", "/forms/responses/[formId]", "Form responses", "Store", "What visitors sent with one of the store's forms: open, archive, delete or reply to a response, and export them as CSV. Needs the right to read customers."),
-  store("forms.new", "/forms/new", "New form", "Store", "Start a form from a ready-made one: contact, quote request, booking enquiry, call me back, feedback, event registration or newsletter."),
+  store("forms.new", "/forms/new", "New form", "Store", "Start a form from a template: Kaizena Flow's (contact, quote request, booking enquiry, call me back, feedback, event registration, newsletter), the store's own or the marketplace's, or a blank one. A form can keep a campaign from the page's address, take a picture or PDF, and ask for a payment for one of the store's products."),
   store("menus", "/menus", "Menus", "Store", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
     keywords: ["navigation", "links"],
   }),
@@ -1331,7 +1331,7 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("forms.form", "/forms/[formId]", "A form", "Kaizena Flow site", "One of Kaizena Flow's forms and its responses."),
   platform("forms.responses", "/forms/responses/[formId]", "Form responses", "Kaizena Flow site", "What visitors sent with one of Kaizena Flow's forms, and their export."),
-  platform("forms.new", "/forms/new", "New form", "Kaizena Flow site", "Start one of Kaizena Flow's forms from a ready-made one."),
+  platform("forms.new", "/forms/new", "New form", "Kaizena Flow site", "Start one of Kaizena Flow's forms from a template, or a blank one."),
   platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
   platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
   platform("site_themes", "/site-design", "Design", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {

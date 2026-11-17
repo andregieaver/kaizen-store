@@ -855,7 +855,8 @@ export function PageEditor({
               {template ? (
                 <p className={hint}>{w.dual.templateHint}</p>
               ) : layout ? (
-                <p className={hint}>
+                // Round 45 (D743): a header's or footer's note on who sees it is left out on a phone.
+                <p className={`${hint} ${context.type === "header" || context.type === "footer" ? "max-sm:hidden" : ""}`}>
                   {context.type === "product_layout"
                     ? ew.layoutHint
                     : context.type === "variant"
@@ -893,7 +894,10 @@ export function PageEditor({
             </section>
             {/* How the page performs (E2.3, D713): the server's strip, in the main language only. */}
             {!translating && insight}
+            {/* Round 45 (D743): on a phone reveal on scroll is a row saying On or Off. */}
             {!translating && context.type === "footer" && (
+              <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+              <PhoneRow flat last title={ew.reveal} sub={content.footerReveal ? pw.revealOn : pw.revealOff} change={pw.change} done={pw.done}>
               <section className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
                 <h2 className="text-title text-ink">{ew.reveal}</h2>
                 <label className="flex items-start gap-2 text-sm">
@@ -909,6 +913,8 @@ export function PageEditor({
                   </span>
                 </label>
               </section>
+              </PhoneRow>
+              </div>
             )}
             {!translating && context.type === "header" && (
               <HeaderOverlayFields

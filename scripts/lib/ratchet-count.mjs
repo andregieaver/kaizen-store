@@ -76,10 +76,37 @@ export function unscopedWrites(text, tables) {
   return n;
 }
 
+/** The admin's hand-made repeats (bloat review step 1.17, FM-8): five patterns, counted by `adminRepeats()`. */
+export const USE_SERVER_FIRST = /^(?:\s*(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/))*\s*(["'])use server\1/;
+export const WRAPPED_ACTION = /\b(?:storeAction|platformAction)\(/;
+export const TABLE_TAG = /<table\b/g;
+export const SELECT_TAG = /<select\b/g;
+export const OSLO_ZONE = "Europe/Oslo";
+export const CONFIRM_CALL = /\bconfirm\(/;
+
+/** Counts the admin's action files off the shared wrapper, `<table>`s, native `<select>`s, files with a literal Oslo zone and files calling `confirm(`. */
+export function adminRepeats(root) {
+  /** @type {Record<string, number>} */
+  const out = { unwrappedActionFiles: 0, tables: 0, nativeSelects: 0, osloFiles: 0, confirmFiles: 0 };
+  for (const file of [...sources(root, "src/app/admin"), ...sources(root, "src/components/admin")]) {
+    const text = readFileSync(path.join(root, file), "utf8");
+    if (USE_SERVER_FIRST.test(text) && !WRAPPED_ACTION.test(text)) out.unwrappedActionFiles++;
+    if (!file.endsWith(".tsx")) continue;
+    out.tables += count(text, TABLE_TAG);
+    out.nativeSelects += count(text, SELECT_TAG);
+    if (text.includes(OSLO_ZONE)) out.osloFiles++;
+    if (CONFIRM_CALL.test(text)) out.confirmFiles++;
+  }
+  return out;
+}
+
 /** The counts as they stand: untyped reads, writes by id alone and `store_id is not distinct from` uses, by file (only files that have one), and the totals. */
 export function ratchetCounts(root) {
+  /** @type {Record<string, number>} */
   const untypedReads = {};
+  /** @type {Record<string, number>} */
   const byIdWrites = {};
+  /** @type {Record<string, number>} */
   const notDistinctStore = {};
   const tables = storeTables(root);
   let unknownCasts = 0;
@@ -99,5 +126,5 @@ export function ratchetCounts(root) {
     unknownCasts += count(text, UNKNOWN_CAST);
     anySuppressed += count(text, ANY_SUPPRESSED);
   }
-  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore };
+  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, adminRepeats: adminRepeats(root) };
 }

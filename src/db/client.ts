@@ -11,6 +11,7 @@ import { Pool, type PoolConfig } from "pg";
 import { serverEnv } from "@/lib/env";
 
 import { noteStatement } from "./statement-count";
+import { logStatement } from "./statement-log";
 
 /** The clients whose `query` the statement counter has wrapped. */
 const counted = new WeakSet<object>();
@@ -99,6 +100,7 @@ function create(url: string = serverEnv().DATABASE_URL) {
       const text = typeof first === "string" ? first : typeof first?.text === "string" ? first.text : "";
       const values: unknown[] =
         first && typeof first === "object" && Array.isArray(first.values) ? first.values : Array.isArray(args[1]) ? args[1] : [];
+      logStatement(text);
       const done = noteStatement(text, values);
       if (!done) return original.apply(this, args);
       if (first && typeof first === "object" && typeof first.submit === "function") {
