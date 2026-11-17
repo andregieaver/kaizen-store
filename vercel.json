@@ -5,8 +5,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/subscription-reminders",
-      "schedule": "0 7 * * *"
+      "path": "/api/cron/watchdog",
+      "schedule": "*/15 * * * *"
     }
   ],
   "git": {
