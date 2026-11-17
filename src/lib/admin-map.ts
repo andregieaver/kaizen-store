@@ -1566,7 +1566,7 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
  * recorded again on Platform → AI. Empty but for that.
  */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([]);
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {
