@@ -111,6 +111,20 @@ export const legalNb: LegalMessages = {
     noTickTerms: "Avkrysningsboksen gjelder salgsbetingelsene, og ingen side er valgt: kassen viser ingen avkrysningsboks.",
   },
   a11y: {
+    phone: {
+      draftLead: "Lag et utkast til erklæring fra det som er lagret og det nettstedet vet. Det publiseres aldri for deg.",
+      colours: "Fargene holder",
+      coloursLow: { one: "{n} fargepar for svakt", many: "{n} fargepar for svake" },
+      alt: { one: "{n} bilde uten alternativ tekst", many: "{n} bilder uten alternativ tekst" },
+      noIssues: "Ingen kjente mangler",
+      issues: { one: "{n} kjent mangel", many: "{n} kjente mangler" },
+      storeEmail: "tilbakemelding til butikkens e-post",
+      feedback: "tilbakemelding til {email}",
+      change: "Endre",
+      open: "Åpne",
+      done: "Ferdig",
+      note: "En automatisk sjekk finner bare en del av problemene. Utkastet er ikke sjekket av en advokat.",
+    },
     title: "Universell utforming",
     description:
       "Nettbutikker som selger til forbrukere i EU, skal kunne brukes av personer med funksjonsnedsettelse, og si hvordan de oppfyller kravene. Registrer hva som er vurdert, og lag et utkast til tilgjengelighetserklæring.",

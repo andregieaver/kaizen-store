@@ -21,6 +21,7 @@ import {
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
+import { PhoneRow } from "./phone-row";
 
 type Save = (input: CampaignInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type Market = { code: string; name: string; currency: string };
@@ -200,6 +201,19 @@ export function CampaignEditor({
     </div>
   );
   const setTier = (i: number, patch: Partial<CampaignDraft["tiers"][number]>) => set("tiers", d.tiers.map((tier, j) => (j === i ? { ...tier, ...patch } : tier)));
+  // Round 35 (D714): on a phone the kind is one choice, and how it combines, what it applies to, when, where and who are rows saying what is chosen.
+  const p = w.phone;
+  const row = { change: p.change, done: p.done };
+  const day = (local: string) => local.slice(0, 10);
+  const offersSub = [d.combinesWithCodes ? p.withCodes : p.noCodes, ...(STACKING.includes(d.kind) ? [d.stacks ? p.onTop : p.notOnTop] : [])].join(" · ");
+  const appliesSub = d.scope === "all" ? f.everything : countWords(d.productIds.length + d.termIds.length, p.some);
+  const whenSub = [
+    d.active ? (d.startsAt ? fillWords(p.from, { date: day(d.startsAt) }) : p.onNow) : p.off,
+    d.endsAt ? fillWords(p.until, { date: day(d.endsAt) }) : p.noEnd,
+    d.usageLimit || d.perCustomerLimit ? p.limits : p.noLimits,
+  ].join(" · ");
+  const whereSub = d.markets.length === 0 ? p.everyCountry : countWords(d.markets.length, p.countries);
+  const whoSub = who === "segment" ? p.segment : who === "groups" ? countWords(d.tierIds.length, p.groups) : p.everyone;
 
   return (
     <form
@@ -239,7 +253,18 @@ export function CampaignEditor({
             {orders > 0 && countWords(orders, w.ordersHint)}
           </span>
         </label>
-        <fieldset className="flex flex-col gap-2">
+        <label className={`${label} sm:hidden`}>
+          {f.whatItGives}
+          <select value={d.kind} onChange={(event) => set("kind", event.target.value as CampaignKind)} className={input}>
+            {KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {w.kinds[kind].title}
+              </option>
+            ))}
+          </select>
+          <span className={hint}>{w.kinds[d.kind].text}</span>
+        </label>
+        <fieldset className="flex flex-col gap-2 max-sm:hidden">
           <legend className="mb-1 text-sm font-medium">{f.whatItGives}</legend>
           {KINDS.map((kind) => (
             <label key={kind} className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand">
@@ -424,6 +449,9 @@ export function CampaignEditor({
             <p className={hint}>{w.bxgyHint}</p>
           </div>
         )}
+        <div className="max-sm:-mx-5 max-sm:border-y max-sm:border-line max-sm:px-5">
+        <PhoneRow inset last title={p.offers} sub={offersSub} {...row}>
+        <div className="flex flex-col gap-4">
         {STACKING.includes(d.kind) && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={d.stacks} onChange={(event) => set("stacks", event.target.checked)} className="mt-0.5 size-4" />
@@ -440,6 +468,9 @@ export function CampaignEditor({
             <span className={`block ${hint}`}>{w.withCodesHint}</span>
           </span>
         </label>
+        </div>
+        </PhoneRow>
+        </div>
 
         {d.kind === "multi_buy" && (
           <div className="flex flex-col gap-2">
@@ -502,6 +533,8 @@ export function CampaignEditor({
         )}
       </section>
 
+      <div className="flex flex-col gap-6 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat title={scopeWord} sub={appliesSub} {...row}>
       <section aria-labelledby="applies-heading" className={card}>
         <h2 id="applies-heading" className="text-title text-ink">
           {scopeWord}
@@ -555,6 +588,8 @@ export function CampaignEditor({
         )}
       </section>
 
+      </PhoneRow>
+      <PhoneRow flat title={w.when} sub={whenSub} {...row}>
       <section aria-labelledby="when-heading" className={card}>
         <h2 id="when-heading" className="text-title text-ink">
           {w.when}
@@ -586,7 +621,10 @@ export function CampaignEditor({
         </label>
       </section>
 
+      </PhoneRow>
+
       {markets.length > 1 && (
+        <PhoneRow flat title={w.where} sub={whereSub} {...row}>
         <section aria-labelledby="where-heading" className={card}>
           <h2 id="where-heading" className="text-title text-ink">
             {w.where}
@@ -616,8 +654,10 @@ export function CampaignEditor({
           )}
           <p className={hint}>{w.whereHint}</p>
         </section>
+        </PhoneRow>
       )}
 
+      <PhoneRow flat last title={w.who} sub={whoSub} {...row}>
       <section aria-labelledby="who-heading" className={card}>
         <h2 id="who-heading" className="text-title text-ink">
           {w.who}
@@ -685,8 +725,10 @@ export function CampaignEditor({
           </>
         )}
       </section>
+      </PhoneRow>
+      </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
         <button type="submit" disabled={saving} className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50">
           {saving ? f.saving : w.save}
         </button>

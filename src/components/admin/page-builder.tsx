@@ -5641,9 +5641,13 @@ function SwitchedOffStandIn({ block }: { block: PageBlock }) {
   const name =
     block.type === "storePart" ? partCopy.part(block.part).name : block.type === "site" ? w.siteParts[block.part] : block.type === "product" ? w.productParts[block.part] : sw.thisPart;
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
-      <p className="text-sm font-medium">{fillWords(sw.switchedOff, { name })}</p>
-      <p className="text-xs text-muted">
+    // Round 35 (D714): on a phone one dashed line; why and when it comes back from the small breakpoint up, and in the part's title.
+    <div
+      className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4 max-sm:px-3 max-sm:py-2"
+      title={`${feature ? fillWords(sw.featureOff, { feature: requirementLabel(feature) }) : sw.leftOut} ${sw.comesBack}`}
+    >
+      <p className="text-sm font-medium max-sm:text-xs max-sm:font-normal max-sm:text-muted">{fillWords(sw.switchedOff, { name })}</p>
+      <p className="text-xs text-muted max-sm:hidden">
         {feature ? fillWords(sw.featureOff, { feature: requirementLabel(feature) }) : sw.leftOut} {sw.comesBack}
       </p>
     </div>

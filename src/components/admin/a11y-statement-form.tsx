@@ -5,6 +5,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
 import { A11Y_STATUSES, type A11yFacts, type A11ySettings, type EnforcementBody } from "@/lib/a11y-statement";
 import { Card, CARD_CLASS } from "@/components/admin/ui";
+import { PhoneRow } from "@/components/admin/phone-row";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
@@ -57,13 +58,26 @@ export function AccessibilityForm({
   words?: LegalMessages;
 }) {
   const w = words.a11y;
+  const p = w.phone;
+  // Round 35 (D714): on a phone where the owner stands and the draft come first; the rest are rows saying what is set.
+  const knows = [
+    facts.themeWarnings === 0 ? p.colours : countWords(facts.themeWarnings, p.coloursLow),
+    facts.mediaWithoutAlt && facts.mediaWithoutAlt.missing > 0 ? countWords(facts.mediaWithoutAlt.missing, p.alt) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const issues = settings.knownIssues.split("\n").filter((line) => line.trim()).length;
+  const statementSub = `${issues === 0 ? p.noIssues : countWords(issues, p.issues)} · ${settings.contactEmail ? fillWords(p.feedback, { email: settings.contactEmail }) : p.storeEmail}`;
+  const row = { change: p.change, done: p.done };
   return (
-    <div className="flex flex-col gap-8">
-      <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
+    <div className="flex flex-col gap-8 max-sm:gap-4">
+      <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm max-sm:hidden">
         <strong className="font-medium">{w.noteLead}</strong>
         {w.note}
       </p>
 
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.knowsTitle} sub={knows} change={p.open} done={p.done}>
       <Card title={w.knowsTitle} compact>
         <ul className="list-disc pl-5 text-sm">
           {factLines(facts, words).map((line) => (
@@ -72,8 +86,12 @@ export function AccessibilityForm({
         </ul>
         <p className="mt-3 text-sm text-muted">{w.knowsNote}</p>
       </Card>
+      </PhoneRow>
+      </div>
 
-      <ActionForm action={actions.save} className="flex flex-col gap-6">
+      <ActionForm action={actions.save} className="flex flex-col gap-6 max-sm:gap-4">
+        <div className="flex flex-col gap-6 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow flat title={w.assessment} sub={w.statuses[settings.status].name} {...row}>
         <fieldset className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">{w.assessment}</legend>
           {A11Y_STATUSES.map((status) => (
@@ -104,7 +122,9 @@ export function AccessibilityForm({
             </label>
           </div>
         </fieldset>
+        </PhoneRow>
 
+        <PhoneRow flat last title={w.statement} sub={statementSub} {...row}>
         <fieldset className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">{w.statement}</legend>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -142,13 +162,18 @@ export function AccessibilityForm({
             </p>
           )}
         </fieldset>
-        <div>
+        </PhoneRow>
+        </div>
+        <div className="max-sm:*:w-full">
           <SubmitButton>{w.save}</SubmitButton>
         </div>
       </ActionForm>
 
+      <div className="max-sm:order-first">
       <Card title={w.draftTitle} compact>
-        <p className="mb-3 text-sm text-muted">
+        <p className="mb-3 text-sm font-medium text-ink sm:hidden">{w.statuses[settings.status].name}</p>
+        <p className="mb-3 text-sm text-muted sm:hidden">{p.draftLead}</p>
+        <p className="mb-3 text-sm text-muted max-sm:hidden">
           {w.draftText}
           <Link href={legalHref} className="underline">
             {w.draftLink}
@@ -159,6 +184,8 @@ export function AccessibilityForm({
           <SubmitButton variant="secondary">{w.draftButton}</SubmitButton>
         </ActionForm>
       </Card>
+      </div>
+      <p className="text-xs text-muted sm:hidden">{p.note}</p>
     </div>
   );
 }
