@@ -1,15 +1,26 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { convertMinor } from "@/lib/currency";
-import { harmedVersion, splitCheckP, verdictOf, type VariantFigures, type Verdict } from "@/lib/experiment-results";
+import { splitCheckP, verdictOf, type VariantFigures, type Verdict } from "@/lib/experiment-results";
+import {
+  checkGuardrail,
+  guardrailStop,
+  RETURNS_DAYS,
+  returnsStillComing,
+  SLOW_LCP_MS,
+  type GuardrailCheck,
+  type StoppingGuardrail,
+} from "@/lib/experiment-guardrails";
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { GOAL_WORDS } from "@/lib/experiments";
 import { mainCurrency } from "@/lib/markets";
 
 import type { ExperimentInfo } from "./experiment-admin";
+import { col, typedRows } from "./typed-rows";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -29,7 +40,7 @@ export type ExperimentResults = {
   /** What was compared, for the primary goal. */
   figures: VariantFigures[];
   /** The funnel for every version, whatever the primary goal: exposed, added to cart, started checkout, ordered. */
-  funnel: Record<string, { visitors: number; carts: number; checkouts: number; buyers: number; clicks: number; forms: number }>;
+  funnel: Record<string, { visitors: number; carts: number; checkouts: number; buyers: number; clicks: number; forms: number; signups: number }>;
   /** Revenue without VAT per version in the store's main currency (winsorised for the comparison), and the plain sum. */
   revenue: Record<string, { sum: number; plain: number }>;
   currency: string;
@@ -41,8 +52,11 @@ export type ExperimentResults = {
   splitP: number;
   days: number;
   verdict: Verdict;
-  /** A version that clearly lowers orders: the guardrail's stop. */
+  /** The version a guardrail stops the test for (D148 phase 19: fewer orders, failed payments at checkout or slower pages), and which. */
   harmed: string | null;
+  harmedBy: StoppingGuardrail | null;
+  /** Every guardrail's state, in the order orders, speed, checkout, returns. */
+  guardrails: GuardrailCheck[];
 };
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -58,7 +72,7 @@ function percentile(sorted: number[], share: number): number {
 
 /** `say` writes the verdict in the account's words (D312 A7); without it the verdict is English, as the AI manager's tools read it. */
 export async function experimentResults(
-  store: Pick<Store, "id" | "markets" | "localization">,
+  store: Pick<Store, "id" | "markets" | "localization" | "visitCounting">,
   test: ExperimentInfo,
   now = new Date(),
   say?: { words: ExperimentsMessages; numberLocale: string },
@@ -105,7 +119,7 @@ export async function experimentResults(
   const values = [...perVisitor.values()].map((v) => v.net).sort((a, b) => a - b);
   const cap = values.length >= 2 ? percentile(values, 0.99) : (values[0] ?? 0);
 
-  const funnel: ExperimentResults["funnel"] = Object.fromEntries(keys.map((k) => [k, { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 }]));
+  const funnel: ExperimentResults["funnel"] = Object.fromEntries(keys.map((k) => [k, { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0 }]));
   for (const r of exposures) if (funnel[String(r.variant)]) funnel[String(r.variant)].visitors = Number(r.visitors);
   for (const r of events) {
     const f = funnel[String(r.variant)];
@@ -115,6 +129,7 @@ export async function experimentResults(
     else if (r.goal === "checkout") f.checkouts = n;
     else if (r.goal === "click") f.clicks = n;
     else if (r.goal === "form") f.forms = n;
+    else if (r.goal === "signup") f.signups = n;
   }
   const revenue: ExperimentResults["revenue"] = Object.fromEntries(keys.map((k) => [k, { sum: 0, plain: 0 }]));
   const sumSq: Record<string, number> = Object.fromEntries(keys.map((k) => [k, 0]));
@@ -128,7 +143,7 @@ export async function experimentResults(
   }
 
   const goal = test.goal;
-  const conversions = (k: string) => (goal === "orders" ? funnel[k].buyers : goal === "cart" ? funnel[k].carts : goal === "checkout" ? funnel[k].checkouts : goal === "click" ? funnel[k].clicks : goal === "form" ? funnel[k].forms : 0);
+  const conversions = (k: string) => (goal === "orders" ? funnel[k].buyers : goal === "cart" ? funnel[k].carts : goal === "checkout" ? funnel[k].checkouts : goal === "click" ? funnel[k].clicks : goal === "form" ? funnel[k].forms : goal === "signup" ? funnel[k].signups : 0);
   const figures: VariantFigures[] = test.variants.map((v) => ({
     key: v.key,
     name: v.name,
@@ -148,8 +163,8 @@ export async function experimentResults(
   };
   for (const r of daysRows) if (keys.includes(String(r.variant))) touch(String(r.day), String(r.variant)).visitors += Number(r.n);
   if (goal === "orders") for (const v of perVisitor.values()) if (keys.includes(v.variant)) touch(day(v.at), v.variant).conversions += 1;
-  // Cart, checkout, click and form days come from the events.
-  if (goal === "cart" || goal === "checkout" || goal === "click" || goal === "form") {
+  // Cart, checkout, click, form and sign-up days come from the events.
+  if (goal === "cart" || goal === "checkout" || goal === "click" || goal === "form" || goal === "signup") {
     const rows = await db().execute<Row>(sql`
       select to_char(occurred_at at time zone 'utc', 'YYYY-MM-DD') as day, variant, count(distinct visitor)::int as n
       from commerce.experiment_events where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid and goal = ${goal} group by 1, 2
@@ -182,9 +197,101 @@ export async function experimentResults(
     locale: store.markets[0]?.locale ?? "en",
     ...(say && { words: say.words, numberLocale: say.numberLocale }),
   });
-  const harmed = harmedVersion(
-    figures,
-    Object.fromEntries(keys.map((k) => [k, funnel[k].buyers])),
-  );
-  return { figures, funnel, revenue, currency, unconverted, daily, weekly, splitP, days, verdict, harmed };
+  const watched = await guardrailCounts(store, test, now);
+  const count = (pick: (k: string) => { n: number; bad: number }) => keys.map((key) => ({ key, ...pick(key) }));
+  const guardrails = [
+    checkGuardrail("orders", count((k) => ({ n: funnel[k].visitors, bad: funnel[k].buyers }))),
+    checkGuardrail("speed", count((k) => watched.speed.get(k) ?? { n: 0, bad: 0 }), { off: !store.visitCounting }),
+    checkGuardrail("checkout", count((k) => ({ n: funnel[k].checkouts, bad: watched.failed.get(k) ?? 0 }))),
+    checkGuardrail("returns", count((k) => watched.returns.get(k) ?? { n: 0, bad: 0 }), {
+      stillComing: returnsStillComing(test.stoppedAt ? new Date(test.stoppedAt) : null, now),
+    }),
+  ];
+  const stop = guardrailStop(guardrails);
+  return { figures, funnel, revenue, currency, unconverted, daily, weekly, splitP, days, verdict, harmed: stop?.version ?? null, harmedBy: stop?.kind ?? null, guardrails };
+}
+
+/**
+ * What the guardrails count beyond the funnel (D148 phase 19), per version:
+ * - **speed**: the page loads whose A/B cookie confirmed this version (`speed_samples.ab`, kept only while the store counts visits), and
+ *   those slower than `SLOW_LCP_MS` to show their main content;
+ * - **failed**: visitors who started checkout and whose order, placed after they first saw the version and while the test ran, has a failed
+ *   payment, and who never got a paid order in that time;
+ * - **returns**: visitors with a paid order in the test (one cancelled after it was paid included) and those of them with a return asked for
+ *   or a refund made within `RETURNS_DAYS` of the order (a refund of an order change or an exchange is neither).
+ * Copied orders and hosts' orders never count, as in the funnel.
+ */
+async function guardrailCounts(store: { id: string }, test: ExperimentInfo, now: Date) {
+  const startedDay = (test.startedAt ? new Date(test.startedAt) : now).toISOString().slice(0, 10);
+  const until = (test.stoppedAt ? new Date(test.stoppedAt) : now).toISOString();
+  const [speedRows, failedRows, returnRows] = await Promise.all([
+    typedRows(
+      z.object({ tag: col.text, loads: col.int, slow: col.int }),
+      sql`
+        select t.tag, count(*)::int as loads, count(*) filter (where s.lcp_ms > ${SLOW_LCP_MS})::int as slow
+        from commerce.speed_samples s cross join unnest(s.ab) as t(tag)
+        where s.store_id = ${store.id}::uuid and s.day >= ${startedDay}::date - 1 and s.lcp_ms is not null and t.tag like ${`${test.id}:%`}
+        group by t.tag
+      `,
+    ),
+    typedRows(
+      z.object({ variant: col.text, n: col.int }),
+      sql`
+        select x.variant, count(distinct x.visitor)::int as n
+        from commerce.experiment_exposures x
+        join commerce.experiment_carts c on c.store_id = x.store_id and c.visitor = x.visitor
+        join commerce.orders o on o.store_id = c.store_id and o.cart_id = c.cart_id and o.copied_from is null and o.host_id is null
+          and o.placed_at >= x.first_seen and o.placed_at <= ${until}::timestamptz
+        where x.experiment_id = ${test.id}::uuid and x.store_id = ${store.id}::uuid
+          and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'failed')
+          and not exists (
+            select 1 from commerce.experiment_carts c2
+            join commerce.orders o2 on o2.store_id = c2.store_id and o2.cart_id = c2.cart_id and o2.status in ${PAID}
+              and o2.copied_from is null and o2.host_id is null and o2.placed_at >= x.first_seen and o2.placed_at <= ${until}::timestamptz
+            where c2.store_id = x.store_id and c2.visitor = x.visitor
+          )
+        group by x.variant
+      `,
+    ),
+    typedRows(
+      z.object({ variant: col.text, buyers: col.int, returned: col.int }),
+      sql`
+        select variant, count(*)::int as buyers, count(*) filter (where returned)::int as returned
+        from (
+          select x.variant, x.visitor, bool_or(
+            exists (
+              select 1 from commerce.returns r
+              where r.store_id = o.store_id and r.order_id = o.id and r.status <> 'cancelled'
+                and r.created_at <= o.placed_at + make_interval(days => ${RETURNS_DAYS})
+            )
+            or exists (
+              select 1 from commerce.refunds f join commerce.payments p on p.store_id = f.store_id and p.id = f.payment_id
+              where p.store_id = o.store_id and p.order_id = o.id and f.status = 'succeeded' and f.kind in ('money', 'store_credit')
+                and f.order_edit_id is null and f.exchange_id is null and f.created_at <= o.placed_at + make_interval(days => ${RETURNS_DAYS})
+            )
+          ) as returned
+          from commerce.experiment_exposures x
+          join commerce.experiment_carts c on c.store_id = x.store_id and c.visitor = x.visitor
+          join commerce.orders o on o.store_id = c.store_id and o.cart_id = c.cart_id and o.copied_from is null and o.host_id is null
+            and o.placed_at >= x.first_seen and o.placed_at <= ${until}::timestamptz
+            and (o.status in ${PAID} or (o.status = 'cancelled'
+              and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured')))
+          where x.experiment_id = ${test.id}::uuid and x.store_id = ${store.id}::uuid
+          group by x.variant, x.visitor
+        ) per_visitor
+        group by variant
+      `,
+    ),
+  ]);
+  const speed = new Map<string, { n: number; bad: number }>();
+  for (const r of speedRows) {
+    const key = r.tag.slice(test.id.length + 1);
+    const had = speed.get(key) ?? { n: 0, bad: 0 };
+    speed.set(key, { n: had.n + r.loads, bad: had.bad + r.slow });
+  }
+  return {
+    speed,
+    failed: new Map(failedRows.map((r) => [r.variant, r.n])),
+    returns: new Map(returnRows.map((r) => [r.variant, { n: r.buyers, bad: r.returned }])),
+  };
 }

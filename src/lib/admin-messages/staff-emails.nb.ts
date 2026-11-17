@@ -64,6 +64,22 @@ export const staffEmailsNb: StaffEmailsMessages = {
       "Åpne resultatene for å lese dem. Du kan forkaste testen, eller ta i bruk en av de andre versjonene hvis du fortsatt vil bruke den. Kaizena Flow tar ikke i bruk noe av seg selv.",
     button: "Se resultatene",
     partOn: "{part} på {page}",
+    speed: {
+      subject: "A/B-testen «{test}» ble stoppet: tregere sider i versjon {letter}",
+      preview: "Versjon {letter} lastet tydelig tregere enn originalen, så Kaizena Flow stoppet testen. Alle ser originalen igjen.",
+      stopped:
+        "Testen «{test}» av {target} i {store} hadde gått i {days} da versjon {letter} ({version}) tydelig lastet tregere enn originalen. Trege sider mister besøkende, så Kaizena Flow stoppet testen for å beskytte salget ditt.",
+      figures:
+        "{vBad} av {vN} visninger av versjon {letter} brukte mer enn 2,5 sekunder på å vise hovedinnholdet ({vRate}), mot {oBad} av {oN} av originalen ({oRate}).",
+    },
+    checkout: {
+      subject: "A/B-testen «{test}» ble stoppet: flere mislykkede betalinger i versjon {letter}",
+      preview: "Flere betalinger mislyktes i kassen i versjon {letter} enn i originalen, så Kaizena Flow stoppet testen. Alle ser originalen igjen.",
+      stopped:
+        "Testen «{test}» av {target} i {store} hadde gått i {days} da tydelig flere av de besøkende som så versjon {letter} ({version}), fikk en mislykket betaling i kassen enn av dem som så originalen. Kaizena Flow stoppet testen for å beskytte salget ditt.",
+      figures:
+        "{vBad} av {vN} besøkende som startet i kassen i versjon {letter}, fikk en mislykket betaling ({vRate}), mot {oBad} av {oN} i originalen ({oRate}).",
+    },
   },
   alerts: {
     more: "…og {n} til.",

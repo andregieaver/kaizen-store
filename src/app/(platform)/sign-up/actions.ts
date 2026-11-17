@@ -15,6 +15,7 @@ import { houseStoreId } from "@/server/house-customers";
 import { createAccessRequest } from "@/server/platform";
 import { signupFirstTouch } from "@/server/platform-channels";
 import { addressOf } from "@/server/analytics-visits";
+import { recordSignup } from "@/server/experiments";
 import { confirmSelfSignup, selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
 import { platformText, type PlatformMessages } from "@/lib/platform-text";
@@ -79,15 +80,15 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       adSignals,
     };
     // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
-    if (await selfServeOn()) {
-      await startSelfSignup(input, addressOf(await headers()) || null);
-      return { status: "ok", messages: [w.selfServe.received] };
-    }
-    await createAccessRequest(input);
+    const selfServe = await selfServeOn();
+    if (selfServe) await startSelfSignup(input, addressOf(await headers()) || null);
+    else await createAccessRequest(input);
+    // A sign-up as an A/B test's goal on Kaizena Flow's own store (D148 phase 19): only a visitor in a test, counted once; never in the way.
+    if (house) await recordSignup(house);
+    return { status: "ok", messages: [selfServe ? w.selfServe.received : w.received] };
   } catch {
     return { status: "error", messages: [w.failed] };
   }
-  return { status: "ok", messages: [w.received] };
 }
 
 /** The press on the confirmation page (D359): makes the store, or says why not, in the page's language. */

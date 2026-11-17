@@ -8,6 +8,7 @@ import { applyChanges, offeredBlocks, partOf } from "@/lib/experiment-tools";
 import { builderEn } from "@/lib/admin-messages/builder.en";
 import { experimentCard, type CardState } from "@/lib/experiment-card";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
+import { GUARDRAIL_HARM, GUARDRAIL_WATCHES, guardrailStopReason } from "@/lib/experiment-guardrails";
 import { differenceLine } from "@/lib/version-difference-words";
 import { GOAL_WORDS, MAX_RUN_DAYS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
 import { COUNTED_GOALS, eligiblePerDay, goalEstimate } from "@/lib/experiment-traffic";
@@ -152,7 +153,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       hypothesis: test.hypothesis || undefined,
       started: when(test.startedAt),
       stopped: when(test.stoppedAt),
-      stop_reason: test.stopReason === "guardrail" ? "Kaizena Flow stopped it because a version was clearly selling less." : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
+      stop_reason: test.stopReason === "guardrail" ? guardrailStopReason(test.stopGuardrail) : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
       winner: test.status === "applied" ? (test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "the original") : undefined,
       learned: test.learning ? `In the owner's words: ${test.learning}` : undefined,
     },
@@ -241,12 +242,27 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       : undefined,
     versions,
     what_visitors_did: test.variants.map((v) => {
-      const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 };
-      return { version: v.name, saw_it: f.visitors, added_to_cart: f.carts, started_checkout: f.checkouts, ordered: f.buyers, clicked: test.goal === "click" ? f.clicks : undefined, sent_the_form: test.goal === "form" ? f.forms : undefined };
+      const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0, signups: 0 };
+      return { version: v.name, saw_it: f.visitors, added_to_cart: f.carts, started_checkout: f.checkouts, ordered: f.buyers, clicked: test.goal === "click" ? f.clicks : undefined, sent_the_form: test.goal === "form" ? f.forms : undefined, signed_up: test.goal === "signup" ? f.signups : undefined };
     }),
     revenue_without_vat: test.variants.map((v) => ({ version: v.name, revenue: formatMoney(Math.round(r.revenue[v.key]?.plain ?? 0), r.currency, locale) })),
     split_between_versions: r.splitP < 0.001 ? "Wrong: the versions did not get the share of visitors they should." : "As promised.",
-    guardrail: r.harmed ? `${name(r.harmed)} is clearly selling less than the original.` : undefined,
+    guardrail: r.harmed ? `${name(r.harmed)} ${GUARDRAIL_HARM[r.harmedBy ?? "orders"]}: the hourly check stops the test.` : undefined,
+    // What is watched whatever the goal (D148 phase 19): safety, never the test's answer.
+    guardrails: r.guardrails.map((g) => ({
+      watches: GUARDRAIL_WATCHES[g.kind].watches,
+      state:
+        g.state === "off"
+          ? "Off: speed is measured only while the store counts visits."
+          : g.state === "watching"
+            ? `Watching: each version needs ${g.min} ${GUARDRAIL_WATCHES[g.kind].counted} before anything is said.`
+            : g.state === "fine"
+              ? "Fine: no version is clearly worse."
+              : `${name(g.worst ?? "")} is clearly worse than the original.`,
+      still_coming_in: g.stillComing ? "Orders of the test are still within their 30 days, so more refunds and returns may come." : undefined,
+      versions: g.state === "off" ? undefined : g.versions.map((v) => ({ version: name(v.key), counted: v.n, of_them: v.bad })),
+    })),
+    guardrails_note: "The guardrails are for safety, not the test's goal: never read the answer from them.",
     how_it_is_counted:
       "Only visitors who accepted statistics cookies, each counted once in the version they first saw. An order counts when it is paid, from a basket started after first seeing the version. Revenue is without VAT, in the store's main currency, with one very large order capped.",
     what_next: next,

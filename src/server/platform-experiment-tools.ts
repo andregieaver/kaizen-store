@@ -131,6 +131,7 @@ export async function explainAbTest(account: Account, { test }: PlatformToolInpu
           status: info.status,
           verdict,
           guardrail: info.stopReason === "guardrail",
+          guardrailKind: info.stopGuardrail,
           version: best,
           frustrated: info.status === "running" ? frustratedVersion(await versionBehaviour(store.id, info.id), FLAG_VERSION_VIEWS) : null,
         }),

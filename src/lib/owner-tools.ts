@@ -8,7 +8,7 @@ import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_M
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
-import { GOALS } from "./experiments";
+import { TOOL_GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
 import { contentApprovalSummary } from "./content-tools";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
@@ -1803,7 +1803,7 @@ export const OWNER_TOOLS = [
     "Makes a DRAFT A/B test: a copy of a page, the header, the footer or a product layout as version B, with the words you give put into its headings, buttons or texts. Nothing is shown to visitors until it is started (start_experiment, which needs the owner's approval). Give the new words for blocks listed by suggest_experiments (block ids); one changed block makes a test of that block only, several a test of the whole page; no changes makes an unchanged copy the owner edits in the page builder. Write words the store can stand behind: no prices, stock, urgency, 'best' or green claims; they are checked. Choose one thing to improve.",
     z.object({
       target: z.string().trim().min(1).max(200).describe("What to test: a page's address (slug) or id, `header`, `footer`, or a product layout's title, as listed by suggest_experiments."),
-      goal: z.enum(GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`) or form (a form sent, named in `form`)."),
+      goal: z.enum(TOOL_GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`) or form (a form sent, named in `form`)."),
       button: z.string().trim().max(100).optional().describe("For the goal click: the text of the button whose clicks count (as it is now)."),
       form: z.string().trim().max(100).optional().describe("For the goal form: the text on the send button of the email form or newsletter sign-up whose answers count (as it is now); left out when the page has only one."),
       changes: z

@@ -27,9 +27,11 @@ import type { ExperimentInfo } from "@/server/experiment-admin";
 
 import { experimentCard } from "@/lib/experiment-card";
 import { verdictOf } from "@/lib/experiment-results";
+import { checkGuardrail } from "@/lib/experiment-guardrails";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 import { DraftActions, DraftPanel, LearningCard, TestActions } from "./experiment-controls";
-import { ExperimentResultsView, type BehaviourProps } from "./experiment-results-view";
+import { ExperimentResultsView, GuardrailsSection, ReturnsLine, type BehaviourProps } from "./experiment-results-view";
 import { ExperimentForm } from "./experiment-form";
 
 /** What a person reads before any script runs. */
@@ -54,6 +56,7 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
   startedAt: null,
   stoppedAt: null,
   stopReason: null,
+  stopGuardrail: null,
   appliedVariant: null,
   answeredAt: null,
   learning: null,
@@ -109,6 +112,18 @@ describe("making a test on one screen (D660)", () => {
     expect(out).toContain("14 days: the shortest run");
     expect(out).toContain("Customise");
     expect(out).toContain("Make version B");
+  });
+
+  it("offers Kaizena Flow's own store sign-ups first and chosen, and no other store sign-ups at all (D148 phase 19)", () => {
+    const house = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/kaizenaflow/experiments", traffic, house: true }));
+    expect(house).toContain('data-goal="signup"');
+    expect(house).toMatch(/data-goal="signup"><input type="radio" class="sr-only" name="goal" checked=""/);
+    expect(house).not.toContain('data-goal="orders"');
+    expect(house).not.toContain("More goals");
+    expect(house).toContain("How long a test of sign-ups takes depends on how many of a page's visitors sign up today");
+    const shop = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic }));
+    expect(shop).not.toContain('data-goal="signup"');
+    expect(shop).not.toContain("sign-ups to Kaizena Flow");
   });
 
   it("says why there is no estimate, and asks for nothing before the main button", () => {
@@ -215,12 +230,12 @@ describe("what a started test found (D659)", () => {
   const rate = (key: string, visitors: number, conversions: number) => ({ key, name: key, visitors, conversions, money: null });
   const results = (figures: ReturnType<typeof rate>[], days: number) => {
     const verdict = verdictOf({ goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
-    const funnel = Object.fromEntries(figures.map((f) => [f.key, { visitors: f.visitors, carts: f.conversions, checkouts: Math.round(f.conversions / 2), buyers: 0, clicks: 0, forms: 0 }]));
+    const funnel = Object.fromEntries(figures.map((f) => [f.key, { visitors: f.visitors, carts: f.conversions, checkouts: Math.round(f.conversions / 2), buyers: 0, clicks: 0, forms: 0, signups: 0 }]));
     const daily = Array.from({ length: days }, (_, i) => ({
       day: `2026-11-${String(i + 1).padStart(2, "0")}`,
       variants: Object.fromEntries(figures.map((f) => [f.key, { visitors: Math.round(f.visitors / days), conversions: Math.round(f.conversions / days) }])),
     }));
-    return { figures, funnel, revenue: { a: { sum: 0, plain: 0 }, b: { sum: 0, plain: 0 } }, currency: "NOK", unconverted: 0, daily, weekly: [], splitP: 0.6, days, verdict, harmed: null };
+    return { figures, funnel, revenue: { a: { sum: 0, plain: 0 }, b: { sum: 0, plain: 0 } }, currency: "NOK", unconverted: 0, daily, weekly: [], splitP: 0.6, days, verdict, harmed: null, harmedBy: null, guardrails: [] };
   };
   const view = (figures: ReturnType<typeof rate>[], days: number, behaviour: BehaviourProps | null = null) => {
     const r = results(figures, days);
@@ -307,6 +322,40 @@ describe("what a started test found (D659)", () => {
     const out = html(createElement(LearningCard, { store: "demo", test: test({ status: "applied", appliedVariant: "b", learning: "Short headings win" }) }));
     expect(out).toContain("What did this test teach?");
     expect(out).toContain('value="Short headings win"');
+  });
+});
+
+describe("what keeps a test safe (D148 phase 19)", () => {
+  const t = test({ status: "running", goal: "cart", startedAt: "2026-11-01T10:00:00.000Z" });
+  const guardrails = [
+    checkGuardrail("orders", [{ key: "a", n: 400, bad: 20 }, { key: "b", n: 400, bad: 18 }]),
+    checkGuardrail("speed", [{ key: "a", n: 2000, bad: 200 }, { key: "b", n: 2000, bad: 400 }]),
+    checkGuardrail("checkout", [{ key: "a", n: 50, bad: 1 }, { key: "b", n: 50, bad: 2 }], { off: false }),
+    checkGuardrail("returns", [{ key: "a", n: 400, bad: 20 }, { key: "b", n: 400, bad: 60 }], { stillComing: true }),
+  ];
+
+  it("lists every guardrail with its state and what it counted per version", () => {
+    const out = html(createElement(GuardrailsSection, { test: t, guardrails, words: experimentsEn, numberLocale: "en-GB" }));
+    expect(out).toContain("What keeps it safe");
+    expect(out).toContain("Watching until each version has 1,000 visitors");
+    expect(out).toContain("Clearly worse in Version B");
+    expect(out).toContain("400 of 2,000");
+    expect(out).toContain("More in Version B");
+    expect(out).toContain("Still coming in: an order counts for 30 days after it was placed.");
+    expect(out).toMatch(/data-guardrail="speed" data-state="worse"/);
+  });
+
+  it("says when speed is not measured, without figures", () => {
+    const off = [checkGuardrail("speed", [{ key: "a", n: 2000, bad: 200 }, { key: "b", n: 2000, bad: 400 }], { off: true })];
+    const out = html(createElement(GuardrailsSection, { test: t, guardrails: off, words: experimentsEn, numberLocale: "en-GB" }));
+    expect(out).toContain("Off: measured while the shop counts visits");
+    expect(out).not.toContain("400 of 2,000");
+  });
+
+  it("warns, never stops, when more of a version's buyers sent something back", () => {
+    const out = html(createElement(ReturnsLine, { test: t, guardrails, words: experimentsEn, numberLocale: "en-GB" }));
+    expect(out).toContain("More of Version B's buyers sent something back or got a refund: 15 % against 5 % with the original.");
+    expect(out).toContain("never stops the test");
   });
 });
 

@@ -7,6 +7,7 @@ import { revalidateTag, updateTag } from "next/cache";
 import { db } from "@/db/client";
 import { isPartOnlyPlace, targetKindOf, TESTED_PLACES, type TargetKind } from "@/lib/ab-site";
 import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
+import { isStoppingGuardrail, type StoppingGuardrail } from "@/lib/experiment-guardrails";
 import { isLegalRole } from "@/lib/legal-roles";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
@@ -16,6 +17,7 @@ import {
   evenSplit,
   GOAL_WORDS,
   isGoal,
+  isHouseGoal,
   MAX_RUNNING_PER_STORE,
   MAX_VARIANTS,
   MIN_DAYS,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/experiments";
 
 import { audit, type Account } from "./auth";
+import { houseStoreId } from "./house-customers";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
 import { ownerLanguages, pagesTag, savePage } from "./pages";
@@ -89,6 +92,8 @@ export type ExperimentInfo = {
   startedAt: string | null;
   stoppedAt: string | null;
   stopReason: string | null;
+  /** Which guardrail stopped it (D148 phase 19); null for any other stop, and for guardrail stops made before phase 19 (which were all orders). */
+  stopGuardrail: StoppingGuardrail | null;
   appliedVariant: string | null;
   /** When the test first had an answer and its owners were told (D662). */
   answeredAt: string | null;
@@ -139,6 +144,7 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   startedAt: iso(row.started_at),
   stoppedAt: iso(row.stopped_at),
   stopReason: row.stop_reason ? String(row.stop_reason) : null,
+  stopGuardrail: isStoppingGuardrail(row.stop_guardrail) ? row.stop_guardrail : null,
   appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
   answeredAt: row.answered_at ? new Date(String(row.answered_at)).toISOString() : null,
   learning: row.learning ? String(row.learning) : null,
@@ -390,11 +396,15 @@ async function makeVersionPage(account: Account, storeId: string, original: Page
   return savePage(account, storeId, null, { ...original, slug, title }, { publish: true, type: "variant", variantOf: of });
 }
 
+/** Said when a store other than Kaizena Flow's own asks for a sign-up goal (D148 phase 19); the words are `problems.houseGoal`. */
+const HOUSE_GOAL_PROBLEM = "Only Kaizena Flow's own store can test sign-ups to Kaizena Flow.";
+
 /** Makes a test as a draft: the original and a first version, a copy of the page to change. */
 export async function createExperiment(account: Account, storeId: string, input: NewExperiment): Promise<Outcome<{ id: string }>> {
   const name = input.name.trim();
   if (name === "" || name.length > 120) return { ok: false, problems: ["Give the test a name of up to 120 characters."] };
   if (!isGoal(input.goal)) return { ok: false, problems: ["Choose what the test should improve."] };
+  if (isHouseGoal(input.goal) && (await houseStoreId()) !== storeId) return { ok: false, problems: [HOUSE_GOAL_PROBLEM] };
   if (GOAL_WORDS[input.goal].needsBlock && !input.goalBlock) return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[input.goal].block ?? "button"].problem] };
   const traffic = input.trafficShare ?? 1;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
@@ -505,6 +515,7 @@ export async function updateDraft(account: Account, storeId: string, id: string,
   if (test.status !== "draft") return { ok: false, problems: ["A test that has started cannot be changed, so its results mean what was started. Make a new test instead."] };
   const goal = changes.goal ?? test.goal;
   if (!isGoal(goal)) return { ok: false, problems: ["Choose what the test should improve."] };
+  if (isHouseGoal(goal) && (await houseStoreId()) !== storeId) return { ok: false, problems: [HOUSE_GOAL_PROBLEM] };
   const block = GOAL_WORDS[goal].needsBlock ? (changes.goalBlock !== undefined ? changes.goalBlock : test.goalBlock) : null;
   if (GOAL_WORDS[goal].needsBlock && !block) return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[goal].block ?? "button"].problem] };
   // A block chosen for another goal (a button for a form) or taken out of the page since is not one this goal can count.
@@ -652,17 +663,25 @@ export async function unscheduleExperiment(account: Account | null, storeId: str
 }
 
 /** Stops a running test: no new visitors are enrolled, and what was counted stays. */
-export async function stopExperiment(account: Account | null, storeId: string, id: string, reason: "person" | "guardrail" | "planned_end" = "person"): Promise<Outcome> {
+/** `guardrail` names which guardrail stopped it (D148 phase 19), only with the reason `guardrail`. */
+export async function stopExperiment(
+  account: Account | null,
+  storeId: string,
+  id: string,
+  reason: "person" | "guardrail" | "planned_end" = "person",
+  guardrail: StoppingGuardrail | null = null,
+): Promise<Outcome> {
   const test = await getExperiment(storeId, id);
   if (!test) return { ok: false, problems: ["This test no longer exists."] };
   if (test.status !== "running") return { ok: false, problems: ["This test is not running."] };
   await db().execute(sql`
-    update commerce.experiments set status = 'stopped', stop_reason = ${reason}, updated_by = ${account?.id ?? null}::uuid, updated_at = now()
+    update commerce.experiments set status = 'stopped', stop_reason = ${reason}, stop_guardrail = ${reason === "guardrail" ? guardrail : null},
+      updated_by = ${account?.id ?? null}::uuid, updated_at = now()
     where id = ${id}::uuid and store_id = ${storeId}::uuid and status = 'running'
   `);
   forgetRunning(storeId);
   refreshTag(experimentsTag(storeId));
-  await audit(account?.id ?? null, storeId, "experiment.stopped", { experiment: id, reason });
+  await audit(account?.id ?? null, storeId, "experiment.stopped", { experiment: id, reason, ...(reason === "guardrail" && guardrail && { guardrail }) });
   return { ok: true };
 }
 

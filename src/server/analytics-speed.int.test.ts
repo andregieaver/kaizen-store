@@ -12,6 +12,10 @@ process.env.SETTINGS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
+// One running A/B test, so a load's versions can be checked against the visitor's cookie (D148 phase 19).
+const EXP = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
+const OTHER = "8a7b6c5d-4e3f-4a2b-9c1d-0e9f8a7b6c5d";
+vi.mock("./experiments", () => ({ runningExperiments: async () => [{ id: EXP }] }));
 
 const { recordSpeed, speedReport, pruneSpeedSamples } = await import("./analytics-speed");
 const { MIN_SPEED_SAMPLES, SPEED_KEEP_DAYS } = await import("@/lib/speed");
@@ -62,7 +66,19 @@ describe("a page load's figures", () => {
     const [row] = await samples();
     expect(row).toMatchObject({ kind: "product", screen: "phone", lcp_ms: 1800, inp_ms: 90, cls_milli: 20, ttfb_ms: 300 });
     expect(String(row.day).slice(0, 10)).toBe("2026-10-27");
-    expect(Object.keys(row).sort()).toEqual(["cls_milli", "created_at", "day", "id", "inp_ms", "kind", "lcp_ms", "screen", "store_id", "ttfb_ms"]);
+    expect(Object.keys(row).sort()).toEqual(["ab", "cls_milli", "created_at", "day", "id", "inp_ms", "kind", "lcp_ms", "screen", "store_id", "ttfb_ms"]);
+    expect(row.ab).toEqual([]);
+  });
+
+  it("keeps the A/B versions the load showed only where the visitor's own cookie holds them for a running test (D148 phase 19)", async () => {
+    const visitor = "22222222-2222-4222-8222-222222222222";
+    const cookie = `kaizen_ab_${storeId}=${encodeURIComponent(`1.${visitor}.${EXP}=b,${OTHER}=a`)}`;
+    const ab = [[EXP, "b"], [OTHER, "a"], [EXP, "c"]];
+    expect(await recordSpeed({ headers: asRequest({ cookie }), body: { ...load(page()), ab }, now: NOW })).toEqual({ recorded: true });
+    // Without the cookie, or claiming a version the cookie does not give, nothing is tagged; the load is still kept.
+    await recordSpeed({ headers: asRequest(), body: { ...load(page()), ab: [[EXP, "b"]] }, now: NOW });
+    expect((await samples()).map((r) => r.ab)).toEqual([[`${EXP}:b`], []]);
+    expect(await recordSpeed({ headers: asRequest({ cookie }), body: { ...load(page()), ab: "b" }, now: NOW })).toEqual({ recorded: false, reason: "invalid" });
   });
 
   it("drops robots, Global Privacy Control, Do Not Track, other sites and a store that does not count visits", async () => {

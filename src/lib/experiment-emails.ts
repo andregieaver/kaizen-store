@@ -22,6 +22,11 @@ export type GuardrailFacts = {
   original: { visitors: number; buyers: number };
   /** Whole days the test ran. */
   days: number;
+  /**
+   * Which guardrail stopped it (D148 phase 19), with what it counted per version (page loads and the slow ones, checkouts and the failed
+   * payments); without it, orders, as `version` and `original` say.
+   */
+  guardrail?: { kind: "speed" | "checkout"; version: { n: number; bad: number }; original: { n: number; bad: number } };
   /** The test's results page in the admin. */
   url: string;
 };
@@ -49,25 +54,36 @@ export function guardrailEmail(
   const w = words.guardrail;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const letter = version.key.toUpperCase();
-  const figures = fillWords(w.figures, {
-    vBuyers: number(version.buyers, locale),
-    vVisitors: number(version.visitors, locale),
-    letter,
-    vRate: orderRate(version.buyers, version.visitors, locale),
-    oBuyers: number(original.buyers, locale),
-    oVisitors: number(original.visitors, locale),
-    oRate: orderRate(original.buyers, original.visitors, locale),
-  });
+  const other = facts.guardrail ? { ...w[facts.guardrail.kind], counted: facts.guardrail } : null;
+  const figures = other
+    ? fillWords(other.figures, {
+        vBad: number(other.counted.version.bad, locale),
+        vN: number(other.counted.version.n, locale),
+        letter,
+        vRate: orderRate(other.counted.version.bad, other.counted.version.n, locale),
+        oBad: number(other.counted.original.bad, locale),
+        oN: number(other.counted.original.n, locale),
+        oRate: orderRate(other.counted.original.bad, other.counted.original.n, locale),
+      })
+    : fillWords(w.figures, {
+        vBuyers: number(version.buyers, locale),
+        vVisitors: number(version.visitors, locale),
+        letter,
+        vRate: orderRate(version.buyers, version.visitors, locale),
+        oBuyers: number(original.buyers, locale),
+        oVisitors: number(original.visitors, locale),
+        oRate: orderRate(original.buyers, original.visitors, locale),
+      });
   return {
-    subject: fillWords(w.subject, { test: facts.testName, letter }),
-    preview: fillWords(w.preview, { letter }),
+    subject: fillWords((other ?? w).subject, { test: facts.testName, letter }),
+    preview: fillWords((other ?? w).preview, { letter }),
     lang: ADMIN_LANG_FACTS[lang].tag,
     footer: [facts.storeName, words.footer],
     blocks: [
       { type: "heading", text: w.heading },
       {
         type: "paragraph",
-        text: fillWords(w.stopped, {
+        text: fillWords((other ?? w).stopped, {
           test: facts.testName,
           target: facts.target,
           store: facts.storeName,

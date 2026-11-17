@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 16 built, 17 to 23 planned** (see "What is next") (16: the original and a version side by side, D684) (15: the list, ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it taught, D662)
+its place. Status: **phases 1 to 16 and 19 built, the sign-up goal of 22 built, the rest of 17 to 23 planned** (see "What is next") (19: the guardrails as designed, and a sign-up goal for Kaizena Flow's store, D712) (16: the original and a version side by side, D684) (15: the list, ideas, the webhook, the Admin API and CSV, D677, D678, D680) (14: news when a test has an answer, what it would mean, and what it taught, D662)
 (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659,
 [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9:
 modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and
@@ -535,6 +535,55 @@ scheduled, running or stopped test; a decided test has none, as the original is 
 A version's changes saved in the builder and not published (D686) are said as such: the checklist and the main button ask for them to be
 published, and the start waits until they are, as visitors are shown a version's published copy.
 
+## What phase 19 built: the guardrails as designed, and a sign-up goal (D712)
+
+![An A/B test's guardrails, checked every hour](ab-guardrails.svg)
+
+Migration `20261117101550_brown_harpoon` (a nullable column on `experiments`, one on `speed_samples` with an empty default, and two goal
+checks widened). Code: `src/lib/experiment-guardrails.ts` (pure: the rules), `guardrailCounts()` in `src/server/experiment-results.ts` (the
+counts), the hourly check in `runExperimentJobs()`.
+
+- **Four guardrails, whatever the goal** (`GUARDRAIL_RULES`). Each waits until every version has its minimum, then compares each version
+  with the original on a share; the three that stop a test use the strict interval the orders guardrail has had since phase 1 (z 3.29):
+  - **Orders**: visitors who ordered, at least 1,000 a version; fewer than the original's stops the test (`harmedVersion()`, unchanged).
+  - **Speed**: page loads slower than 2.5 s to show their main content (LCP, `SLOW_LCP_MS`), at least 400 a version; more than the original's
+    by the interval *and* by five loads in a hundred stops it. The speed beacon (D336) now says which versions the page showed
+    (`shownVersions()`, as heatmaps do, D656), and `recordSpeed()` keeps a version in `speed_samples.ab` only where the visitor's own A/B
+    cookie holds it for a running test (`verifiedTags()`); no visitor id is kept. Speed is counted only while the store counts visits
+    (D152), so for a store that does not, this guardrail is *Off* and says why.
+  - **Payments at checkout**: of the visitors who started checkout, those whose order (after they first saw the version, while the test
+    ran) has a failed payment and who got no paid order; at least 200 a version; more than the original's by the interval and by two in a
+    hundred stops it. "Checkout errors" in the design are these: the shop records failed payments, not other errors at checkout.
+  - **Refunds and returns**: of the buyers (a paid order in the test, one cancelled after it was paid included), those with a return asked
+    for (not cancelled) or a refund made (money or store credit, never an order change's or an exchange's) within 30 days of the order; at
+    least 100 a version, the usual 95 % interval. It never stops a test: they come in late, so the page says *Still coming in* until 30
+    days after the stop, and a line above the details warns when a version's share is clearly higher.
+- **One stop, with its reason.** The hourly check stops a test for the first stopping guardrail that found a version worse (orders,
+  checkout, speed) and keeps which in `experiments.stop_guardrail` (`orders`, `speed` or `checkout`; a stop before phase 19 has none and was
+  for orders). The guardrail email says which, with that guardrail's figures (*slower pages in version B*, *more failed payments in
+  version B*, in English and Norwegian); the test's page, the AI manager's `explain_results` (`stop_reason`, `guardrail`, and every
+  guardrail's state and counts in `guardrails`), the platform's flags and the platform assistant's advice name it too.
+- **On the test's page**: the verdict card says which guardrail found a version worse; *What keeps it safe* (`#ab-guardrails`, inside
+  *How we worked this out*) lists the four with what each watches, its state and what it counted per version. The counts are safety, not
+  the test's answer, so they are shown at any stage; the verdict alone answers the goal.
+- **A sign-up to Kaizena Flow as a goal** (phase 22's first part). The goal `signup` (*More sign-ups to Kaizena Flow*) is offered only on
+  Kaizena Flow's own store (`HOUSE_GOALS`; `createExperiment()` and `updateDraft()` refuse it elsewhere), first and chosen there, with
+  clicks and forms; the store sells plans, not goods, so there is nothing behind *More goals*. It is counted by the sign-up form
+  (`requestAccess()`) once the request is accepted, both with and without self-serve sign-up: `recordSignup()` reads the house store's
+  A/B cookie, which `/sign-up` on kaizenaflow.com receives while the site is served from the store (D484), and keeps one event per
+  visitor exposed to a running sign-up test, only with `statistics`. The request is never tied to the visitor. The plan named the ad
+  conversions (D523) as the source; they need marketing consent and keep a request, where a test needs statistics and keeps a version,
+  so the count is the test's own. How long such a test takes is the owner's own figures, as for a click or a form.
+- **Kept apart for the AI manager.** Its tools offer `TOOL_GOALS` (every goal but `signup`), so the tools' schema and the agents' eval
+  recording are unchanged; `explain_results` reads any test, sign-up tests included (`signed_up`). The Admin API's and the
+  `experiment.answered` webhook's `goal` can be `signup`: contract 1.36.
+- Tested: the rules (`experiment-guardrails.test.ts`), the email in both languages, the page's section and line, the database's checks
+  (`commerce.test.ts`), a speed sample's tags (`analytics-speed.int.test.ts`) and, against a database, a checkout stop by the hourly check
+  with its email, a speed comparison on and off, refunds and returns within and past 30 days, and the sign-up goal refused elsewhere and
+  counted once (`experiments.int.test.ts`), and in the browser a test's page naming the payments guardrail with every guardrail under the
+  details, and the new-test form of Kaizena Flow's own store with sign-ups first (`e2e/signed-in/ab-guardrails.spec.ts`).
+- **Not done here**: running the plans-page test (the owner's, phase 22); a speed guardrail for a store that does not count visits.
+
 ## What is next: phases 17 to 23 (plan, 17 November 2026)
 
 Phases 1 to 16 built what this file designed, and [`ab-testing-usability.md`](ab-testing-usability.md) is built to its last step.
@@ -565,7 +614,7 @@ since phase 1, so the numbers can now come from production rather than a preview
 - Done when: the note is written; with the path built, an e2e test signs one customer in on two browsers and both see the same
   version, and a customer in a country that needs consent who has not given it sees the original.
 
-**Phase 19: the guardrails as designed.** Today one guardrail stops a test: orders per visitor clearly worse (`harmedVersion()`,
+**Phase 19: the guardrails as designed (built, D712: see "What phase 19 built" above).** Before it, one guardrail stopped a test: orders per visitor clearly worse (`harmedVersion()`,
 1,000 visitors a version, z 3.29). "Goals" above names four more:
 
 - **Speed:** a version's LCP against the original's, from the speed reports (D336) tagged by version as the heatmaps' totals are
@@ -601,8 +650,9 @@ has the row "A/B tests of pages" in no plan, and no code reads it. This settles 
 
 - **Phase 3's "Platform runs the plans-page test".** Since kaizenaflow.com is served from Kaizena Flow's own store (D484), its pages
   are tested in that store's Marketing → A/B tests (`docs/platform-parity.md` lists the row there). Sign-up is a platform route, not a
-  store page, so the plans page cannot count a sign-up yet. Add a goal of a completed sign-up for the house store, read from the
-  sign-ups the platform already counts as ad conversions (D523). Then run the plans-page test, and record its result here.
+  store page, so the plans page could not count a sign-up. The goal is built (D712, "What phase 19 built": counted by the sign-up form
+  from the store's A/B cookie, not from the ad conversions this plan first named). What is left is the owner's: run the plans-page test
+  and record its result here.
 - **Phase 2's moderated check**, on today's screens (phases 12 to 16): two owners who have never seen the tool each make a test
   while someone watches. Write down where they stopped, and fix those places the way `ab-testing-usability.md` fixed its findings.
 - Done when: the plans-page test has an answer, and both owners made a test in a few minutes.
@@ -671,11 +721,12 @@ A goal is one of a fixed set, each with a defined way of counting, so no one wri
 | Reached checkout | Share who started checkout | |
 | Clicked this | Share who clicked a chosen button or link in the variant | For a part: picked by clicking it in the builder; tracked by a data attribute, never by owner script |
 | Viewed another page | Share who then opened a chosen page | For landing pages and article tests |
-| Signed up | Share who submitted a chosen form, or signed up for the newsletter | Kaizen's own sign-up page uses this |
+| Sent a form | Share who submitted a chosen form, or signed up for the newsletter | Phase 11 |
+| Signed up to Kaizena Flow | Share who sent Kaizena Flow's sign-up form | Kaizena Flow's own store only (phase 19, D712) |
 
-Guardrails are always on, whatever the goal: refund and return rate (read late, 30 days), order count and revenue per
-visitor if the goal is something else, page speed (LCP of the variant against the original, from the browser's report)
-and checkout errors. A guardrail that turns clearly bad stops the test (below).
+Guardrails are always on, whatever the goal (built in phase 19, D712): orders, page speed (the share of a version's page loads slower
+than 2.5 s to show their main content, from the browser's report) and failed payments at checkout stop a test when clearly worse;
+refunds and returns (read late, 30 days) are said, never a stop.
 
 ## Not testable (version 1)
 
@@ -951,10 +1002,10 @@ reports (D106, D145).
 | **12 to 16** (built) | A/B tests made plain (`ab-testing-usability.md`): the test's page as a record, the shop's own traffic, news and learnings, the list and ideas, side by side | Every step of that plan built (D659, D660, D662, D677, D678, D680, D684) |
 | **17** | Measure in production what the spike could not: speed with and without the cookie, the proxy's region | The figures and the region are in this file; phase 0's row says built |
 | **18** | The legal note, then signed-in customers assigned from their account where it allows | The note is written; one customer sees the same version on two browsers |
-| **19** | The guardrails as designed: speed and checkout errors stop a test, refunds and returns are read late | Each guardrail tested on its own kind of trouble, never firing on a person's stop |
+| **19** (built, D712) | The guardrails as designed: speed and failed payments at checkout stop a test, refunds and returns are read late; and the sign-up goal of 22 | Each guardrail tested on its own kind of trouble, never firing on a person's stop |
 | **20** | Viewed another page, a form outside the part, new or returning visitors, a preview link to share | A browser test per goal; the preview link counts no exposure |
 | **21** | The paid-plan feature read in code, once the owner chooses on/off or a limit per plan | Each kind of plan tested; a downgrade keeps its running tests |
-| **22** | Kaizena Flow's plans-page test (with a sign-up goal for the house store), and the moderated check with two owners | The plans-page test has an answer; two owners made a test in a few minutes |
+| **22** (the sign-up goal built, D712) | Kaizena Flow's plans-page test (with a sign-up goal for the house store), and the moderated check with two owners | The plans-page test has an answer; two owners made a test in a few minutes |
 | **23** | A line on consent skew; the daily rollup when its measured trigger fires | The consent line tested; the rollup built or its trigger logged |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the

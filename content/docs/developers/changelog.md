@@ -9,14 +9,14 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D713]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D712, D713]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
-## 1.37 — 2026-11-17
+## 1.38 — 2026-11-17
 
 Additions to the owner MCP's catalogue for the store's deals, leads and activities (D713). The deal, lead and activity tools are offered
 while Deals is on; `customer_timeline` is every store's.
@@ -33,6 +33,13 @@ while Deals is on; `customer_timeline` is every store's.
 - `move_deal` (new, `deal` with a `stage` or an `outcome`, optional `reason`), `make_deal_from_lead` (new, `email`) and `log_activity`
   (new, `kind`, `title`, `due_on`, a `deal` or a `customer`, optional `due_time`, `duration_minutes`, `note`): change only the store's
   own records. Need `customers:write`.
+
+## 1.37 — 2026-11-17
+
+One addition to A/B tests (D712).
+
+- `GET /experiments`, `GET /experiments/{id}` and the `experiment.answered` webhook: `goal` can also be `signup`, a sign-up to Kaizena
+  Flow. Only Kaizena Flow's own store can choose it, so no other store's tests carry it.
 
 ## 1.36 — 2026-11-17
 

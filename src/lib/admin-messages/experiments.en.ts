@@ -55,6 +55,7 @@ export const experimentsEn = {
     checkout: { label: "More people reaching checkout", asks: "get more visitors to start checkout", per: "started checkout" },
     click: { label: "More clicks on a button or link", asks: "get more visitors to click a chosen button or link", per: "clicked it" },
     form: { label: "More people sending a form", asks: "get more visitors to send a chosen form or sign up to a newsletter", per: "sent the form" },
+    signup: { label: "More sign-ups to Kaizena Flow", asks: "get more visitors to sign up to Kaizena Flow", per: "signed up" },
   },
   blockChoice: {
     button: { problem: "Choose the button or link whose clicks you want more of.", gone: "That button is not on the page." },
@@ -176,6 +177,8 @@ export const experimentsEn = {
     answerAt: { one: "About {n} week: the answer", many: "About {n} weeks: the answer" },
     sixWeeks: "6 weeks",
     around: " The answer is likely around {date}.",
+    dependsSignup:
+      "How long a test of sign-ups takes depends on how many of a page's visitors sign up today, which Kaizena Flow does not count per page. Give your own figures under Customise.",
     depends: "How long a test of a button or a form takes depends on how often it is used today, which Kaizena Flow does not count. Give your own figures under Customise.",
     notCounting: "Kaizena Flow is not counting visits for this shop, so it cannot say how long a test takes. Give your own figures under Customise, or turn on visit counting in the analytics settings.",
     noConsent: "Too few cookie choices are recorded to say how many visitors would take part. Give your own figures under Customise.",
@@ -301,6 +304,33 @@ export const experimentsEn = {
   },
   results: {
     harmed: "Version {key} is clearly selling less than the original.",
+    /** The other guardrails that stop a test (D148 phase 19). */
+    harmedBy: {
+      speed: "Version {key} loads clearly slower than the original.",
+      checkout: "Clearly more payments fail at checkout in version {key} than in the original.",
+    },
+    guardrails: {
+      title: "What keeps it safe",
+      lead: "Watched whatever the goal. Fewer orders, slower pages or more failed payments stop the test by themselves; refunds and returns come in late, so they are only said.",
+      name: { orders: "Orders", speed: "Speed", checkout: "Payments at checkout", returns: "Refunds and returns" },
+      what: {
+        orders: "Visitors who ordered",
+        speed: "Page loads slower than 2.5 s",
+        checkout: "Checkouts with a failed payment",
+        returns: "Buyers who sent something back or got a refund within 30 days",
+      },
+      unit: { orders: "visitors", speed: "page loads", checkout: "checkouts", returns: "buyers" },
+      state: {
+        watching: "Watching until each version has {min} {unit}",
+        fine: "Fine",
+        worse: "Clearly worse in {name}",
+        worseReturns: "More in {name}",
+        off: "Off: measured while the shop counts visits",
+      },
+      coming: "Still coming in: an order counts for 30 days after it was placed.",
+      returnsLine:
+        "More of {name}'s buyers sent something back or got a refund: {version} against {original} with the original. It never stops the test, as returns come in late; weigh it before you choose.",
+    },
     behaviour: {
       title: "How visitors behaved",
       lead: "From heatmaps: what visitors who allow statistics did on the pages of each version.",
@@ -336,6 +366,7 @@ export const experimentsEn = {
     revenue: "Revenue (no VAT)",
     clicks: "Clicks on the button: {list}.",
     forms: "Visitors who sent the form (each counted once): {list}.",
+    signups: "Visitors who signed up to Kaizena Flow (each counted once): {list}.",
     trend: "How it developed",
     trendLabel: "How each version's rate developed over the days",
     trendRange: "Up to {max} · from {from} to {to}",
@@ -435,6 +466,10 @@ export const experimentsEn = {
       applied: "{name} is now your page.",
       discarded: "The original was kept.",
       guardrail: "Kaizena Flow stopped it because a version was clearly selling less.",
+      guardrailBy: {
+        speed: "Kaizena Flow stopped it because a version loaded clearly slower than the original.",
+        checkout: "Kaizena Flow stopped it because clearly more payments failed at checkout in a version.",
+      },
       plannedStop: "It stopped itself at its planned end.",
     },
     sure: {
@@ -517,6 +552,7 @@ export const experimentsEn = {
     chooseTarget: "Choose one of the store's pages, its header or footer, or one of its product layouts.",
     chooseVersion: "Choose one of the versions, not the original.",
     chooseGoal: "Choose what the test should improve.",
+    houseGoal: "Only Kaizena Flow's own store can test sign-ups to Kaizena Flow.",
     nameLength: "Give the test a name of up to 120 characters.",
     onlyDraft: "Only a draft can be deleted: a test that has run is kept with its results.",
     publishFirst: "Publish the page before testing it: a test shows it to real visitors.",

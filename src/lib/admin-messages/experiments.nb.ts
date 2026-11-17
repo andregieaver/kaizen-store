@@ -50,6 +50,7 @@ export const experimentsNb: ExperimentsMessages = {
     checkout: { label: "Flere som kommer til kassen", asks: "få flere besøkende til å gå til kassen", per: "gikk til kassen" },
     click: { label: "Flere klikk på en knapp eller lenke", asks: "få flere besøkende til å klikke på en valgt knapp eller lenke", per: "klikket på den" },
     form: { label: "Flere som sender et skjema", asks: "få flere besøkende til å sende et valgt skjema eller melde seg på et nyhetsbrev", per: "sendte skjemaet" },
+    signup: { label: "Flere som registrerer seg hos Kaizena Flow", asks: "få flere besøkende til å registrere seg hos Kaizena Flow", per: "registrerte seg" },
   },
   blockChoice: {
     button: { problem: "Velg knappen eller lenken du vil ha flere klikk på.", gone: "Den knappen er ikke på siden." },
@@ -169,6 +170,8 @@ export const experimentsNb: ExperimentsMessages = {
     answerAt: { one: "Omtrent {n} uke: svaret", many: "Omtrent {n} uker: svaret" },
     sixWeeks: "6 uker",
     around: " Svaret kommer trolig rundt {date}.",
+    dependsSignup:
+      "Hvor lang tid en test av registreringer tar, avhenger av hvor mange av en sides besøkende som registrerer seg i dag, og det teller ikke Kaizena Flow per side. Oppgi dine egne tall under Tilpass.",
     depends: "Hvor lang tid en test av en knapp eller et skjema tar, avhenger av hvor ofte den brukes i dag, og det teller ikke Kaizena Flow. Oppgi dine egne tall under Tilpass.",
     notCounting: "Kaizena Flow teller ikke besøk for denne butikken, så den kan ikke si hvor lang tid en test tar. Oppgi dine egne tall under Tilpass, eller slå på telling av besøk i analyseinnstillingene.",
     noConsent: "For få valg om informasjonskapsler er registrert til å si hvor mange besøkende som ville vært med. Oppgi dine egne tall under Tilpass.",
@@ -292,6 +295,32 @@ export const experimentsNb: ExperimentsMessages = {
   },
   results: {
     harmed: "Versjon {key} selger tydelig mindre enn originalen.",
+    harmedBy: {
+      speed: "Versjon {key} laster tydelig tregere enn originalen.",
+      checkout: "Tydelig flere betalinger mislykkes i kassen i versjon {key} enn i originalen.",
+    },
+    guardrails: {
+      title: "Det som holder testen trygg",
+      lead: "Følges uansett mål. Færre bestillinger, tregere sider eller flere mislykkede betalinger stopper testen av seg selv; refusjoner og returer kommer sent, så de blir bare nevnt.",
+      name: { orders: "Bestillinger", speed: "Hastighet", checkout: "Betalinger i kassen", returns: "Refusjoner og returer" },
+      what: {
+        orders: "Besøkende som bestilte",
+        speed: "Visninger tregere enn 2,5 s",
+        checkout: "Kassebesøk med mislykket betaling",
+        returns: "Kjøpere som sendte noe tilbake eller fikk refusjon innen 30 dager",
+      },
+      unit: { orders: "besøkende", speed: "visninger", checkout: "kassebesøk", returns: "kjøpere" },
+      state: {
+        watching: "Følges til hver versjon har {min} {unit}",
+        fine: "I orden",
+        worse: "Tydelig verre i {name}",
+        worseReturns: "Flere i {name}",
+        off: "Av: måles mens butikken teller besøk",
+      },
+      coming: "Kommer fortsatt inn: en bestilling telles i 30 dager etter at den ble lagt inn.",
+      returnsLine:
+        "Flere av kjøperne i {name} sendte noe tilbake eller fikk refusjon: {version} mot {original} med originalen. Det stopper aldri testen, siden returer kommer sent; ta det med i vurderingen før du velger.",
+    },
     behaviour: {
       title: "Slik oppførte besøkende seg",
       lead: "Fra varmekart: hva besøkende som tillater statistikk gjorde på sidene i hver versjon.",
@@ -327,6 +356,7 @@ export const experimentsNb: ExperimentsMessages = {
     revenue: "Omsetning (ekskl. mva.)",
     clicks: "Klikk på knappen: {list}.",
     forms: "Besøkende som sendte skjemaet (hver telt én gang): {list}.",
+    signups: "Besøkende som registrerte seg hos Kaizena Flow (hver telt én gang): {list}.",
     trend: "Hvordan det utviklet seg",
     trendLabel: "Hvordan hver versjons andel utviklet seg over dagene",
     trendRange: "Opptil {max} · fra {from} til {to}",
@@ -395,6 +425,10 @@ export const experimentsNb: ExperimentsMessages = {
       applied: "{name} er nå siden din.",
       discarded: "Originalen ble beholdt.",
       guardrail: "Kaizena Flow stoppet den fordi en versjon tydelig solgte mindre.",
+      guardrailBy: {
+        speed: "Kaizena Flow stoppet den fordi en versjon lastet tydelig tregere enn originalen.",
+        checkout: "Kaizena Flow stoppet den fordi tydelig flere betalinger mislyktes i kassen i en versjon.",
+      },
       plannedStop: "Den stoppet av seg selv ved planlagt slutt.",
     },
     sure: {
@@ -504,6 +538,7 @@ export const experimentsNb: ExperimentsMessages = {
     chooseTarget: "Velg en av butikkens sider, toppen eller bunnen, eller en av produktmalene.",
     chooseVersion: "Velg en av versjonene, ikke originalen.",
     chooseGoal: "Velg hva testen skal forbedre.",
+    houseGoal: "Bare Kaizena Flows egen butikk kan teste registreringer hos Kaizena Flow.",
     nameLength: "Gi testen et navn på opptil 120 tegn.",
     onlyDraft: "Bare et utkast kan slettes: en test som har kjørt, beholdes med resultatene.",
     publishFirst: "Publiser siden før du tester den: en test viser den til ekte besøkende.",

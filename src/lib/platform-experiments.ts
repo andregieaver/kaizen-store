@@ -1,3 +1,4 @@
+import { GUARDRAIL_HARM, guardrailStopReason, type StoppingGuardrail } from "./experiment-guardrails";
 import { AFTER_PLANNED_END_DAYS, MAX_RUN_DAYS, type ExperimentStatus } from "./experiments";
 
 /**
@@ -20,8 +21,9 @@ export type TestLine = {
   exposed: number;
   /** The verdict's kind, for a running test whose results were read. */
   verdict: string | null;
-  /** The version that clearly lowers orders, for a running test whose results were read. */
+  /** The version a guardrail stops the test for, for a running test whose results were read, and which guardrail (D148 phase 19). */
   harmed: string | null;
+  harmedBy?: StoppingGuardrail | null;
   /** The version that clearly meets more rage or dead clicks (`frustratedVersion()`, D656 step 12), for a running test. */
   frustrated?: string | null;
 };
@@ -40,7 +42,7 @@ export function flagsOf(test: TestLine, now: Date): Flag[] {
   const flags: Flag[] = [];
   if (test.status === "running" && test.startedAt) {
     const age = daysBetween(test.startedAt, now);
-    if (test.harmed) flags.push({ kind: "harmed", words: `Version ${test.harmed.toUpperCase()} clearly lowers orders: the hourly check stops the test.` });
+    if (test.harmed) flags.push({ kind: "harmed", words: `Version ${test.harmed.toUpperCase()} ${GUARDRAIL_HARM[test.harmedBy ?? "orders"]}: the hourly check stops the test.` });
     if (test.frustrated) flags.push({ kind: "frustrated", words: `Version ${test.frustrated.toUpperCase()} gets clearly more rage or dead clicks.` });
     if (test.verdict === "broken") flags.push(brokenFlag);
     if (test.exposed === 0 && age >= QUIET_AFTER_DAYS) flags.push({ kind: "quiet", words: `Nobody has seen it in ${dayWord(age)}.` });
@@ -62,7 +64,15 @@ export function flagsOf(test: TestLine, now: Date): Flag[] {
  * What a platform admin can usefully do about a test, in words, from its status and what it said: never to change it (the store's owner
  * does that), only to know when to say something to the owner. Used by the platform assistant (phase 8).
  */
-export function adviceFor(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; version?: string | null; frustrated?: string | null }): string[] {
+export function adviceFor(input: {
+  status: ExperimentStatus;
+  verdict: string | null;
+  guardrail: boolean;
+  /** Which guardrail stopped it (D148 phase 19); null for a stop before then, which was always orders. */
+  guardrailKind?: StoppingGuardrail | null;
+  version?: string | null;
+  frustrated?: string | null;
+}): string[] {
   const { status } = input;
   const frustrated = input.frustrated && status === "running"
     ? [`Version ${input.frustrated.toUpperCase()} gets clearly more rage or dead clicks than the original. The owner sees this on the test and in its recordings; nothing stops the test for it.`]
@@ -70,14 +80,14 @@ export function adviceFor(input: { status: ExperimentStatus; verdict: string | n
   return [...frustrated, ...adviceOf(input)];
 }
 
-function adviceOf(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; version?: string | null }): string[] {
+function adviceOf(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; guardrailKind?: StoppingGuardrail | null; version?: string | null }): string[] {
   const { status, verdict } = input;
   const owner = "You cannot change a store's test: tell the owner, who can in the store's admin.";
   if (status === "draft" || status === "scheduled") return ["Not started: nothing to say about results. The owner starts it."];
   if (status === "applied" || status === "discarded") return ["Decided: nothing to do."];
   if (status === "stopped") {
     return input.guardrail
-      ? ["The guardrail stopped it because a version was clearly selling less, and the store's owners were emailed. It waits for the owner to discard it or choose a version.", owner]
+      ? [`${guardrailStopReason(input.guardrailKind ?? null)} The store's owners were emailed. It waits for the owner to discard it or choose a version.`, owner]
       : ["It is stopped and waits for the owner to choose a version or keep the original.", owner];
   }
   if (verdict === "broken") return ["The visitors are not divided as promised, so the figures cannot be trusted: the owner should stop it and start a new one.", owner];

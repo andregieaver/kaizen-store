@@ -329,6 +329,29 @@ export async function recordFormSent(storeId: string, block: string): Promise<vo
 }
 
 /**
+ * A sign-up to Kaizena Flow by an enrolled visitor of its own store (D148 phase 19): called by the sign-up form once the request is accepted
+ * (a robot's and an invalid one never get here), for every running test of that store whose goal is a sign-up and that the visitor was
+ * exposed to. Read from the store's own A/B cookie, which the sign-up page on kaizenaflow.com receives while the site is served from the
+ * store (D484); the request itself is never tied to the visitor. Once per visitor; never fails what it rides on.
+ */
+export async function recordSignup(storeId: string): Promise<void> {
+  try {
+    const mine = await readAssignments(storeId);
+    if (!mine) return;
+    if (!(await acceptedStatistics(storeId))) return;
+    await db().execute(sql`
+      insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref)
+      select x.store_id, x.experiment_id, x.visitor, x.variant, 'signup', ''
+      from commerce.experiment_exposures x join commerce.experiments e on e.id = x.experiment_id and e.status = 'running'
+      where x.store_id = ${storeId}::uuid and x.visitor = ${mine.visitor} and e.primary_goal = 'signup'
+      on conflict do nothing
+    `);
+  } catch (error) {
+    log("error", "experiments.signup_record_failed", {}, error);
+  }
+}
+
+/**
  * A cart or a checkout of an enrolled visitor (D148): the cart is tied to the visitor so a paid order can be traced
  * back, and a cart or checkout event is kept for every running test the visitor was exposed to. Never fails what it
  * rides on: it is called after the cart or the checkout has done its work, and says nothing when there is no cookie.

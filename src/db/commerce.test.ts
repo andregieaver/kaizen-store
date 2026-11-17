@@ -351,6 +351,9 @@ describe("A/B tests of pages (D148)", () => {
     // Forms sent is a goal (phase 11).
     await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, goal_params) values ($1, 'forms', $2, 'form', '{\"block\": \"news-1\"}')", [t.store, t.target]);
     await db.query("delete from commerce.experiments where store_id = $1 and name = 'forms'", [t.store]);
+    // A sign-up to Kaizena Flow is a goal (phase 19; the code offers it only on Kaizena Flow's own store).
+    await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'signups', $2, 'signup')", [t.store, t.target]);
+    await db.query("delete from commerce.experiments where store_id = $1 and name = 'signups'", [t.store]);
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, traffic_share) values ($1, 'x', $2, 'orders', 1.5)", [t.store, t.target])).rejects.toThrow(/experiments_traffic/);
     // Another store's page cannot be tested.
     const other = await made();
@@ -488,6 +491,12 @@ describe("A/B tests of pages (D148)", () => {
     expect(stopped.stopped_at).not.toBeNull();
     expect(stopped.stop_reason).toBe("person");
     await expect(start(t.experiment)).rejects.toThrow(/cannot go from stopped to running/);
+    // Which guardrail stopped a test is kept only for a guardrail's stop (phase 19).
+    await expect(set(t.experiment, "stop_guardrail = 'speed'")).rejects.toThrow(/experiments_stop_guardrail/);
+    const guarded = await ready();
+    await start(guarded.experiment);
+    await expect(set(guarded.experiment, "status = 'stopped', stop_reason = 'guardrail', stop_guardrail = 'refunds'")).rejects.toThrow(/experiments_stop_guardrail/);
+    await set(guarded.experiment, "status = 'stopped', stop_reason = 'guardrail', stop_guardrail = 'speed'");
     await expect(set(t.experiment, "status = 'applied'")).rejects.toThrow(/experiments_applied|experiments\.applied/);
     await expect(set(t.experiment, "status = 'applied', applied_variant = 'a'")).rejects.toThrow(/choose one of the variants/);
     await set(t.experiment, "status = 'applied', applied_variant = 'b'");
