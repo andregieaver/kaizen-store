@@ -147,6 +147,7 @@ export const staffEmailsEn = {
       subjectBriefingWeek: "{store}: your weekly briefing for {from} to {to}",
       before: "{now} (before: {before})",
       found: "What the analytics found:",
+      attention: "Waiting for you:",
       checkup: "From the store checkup:",
       targets: "Your targets:",
       targetLine: "{actual} of {target}",

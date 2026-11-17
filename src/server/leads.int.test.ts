@@ -59,6 +59,9 @@ describe("the leads inbox", () => {
     expect(list.map((l) => l.email)).toEqual([kari]);
     expect(list[0]).toMatchObject({ name: "Kari Nordmann" });
     expect(list[0].items.map((i) => i.kind).sort()).toEqual(["question", "subscriber"]);
+    // Home counts the same people (ecosystem plan E2.1), for any number of stores in one query.
+    expect(await leads.leadCounts([store.storeId])).toEqual(new Map([[store.storeId, 1]]));
+    expect(await leads.leadCounts([])).toEqual(new Map());
   });
 
   it("makes a deal of a lead: the person a customer, the deal in the first stage, owned by who made it, and out of the inbox", async () => {
@@ -83,8 +86,10 @@ describe("the leads inbox", () => {
     await db().execute(sql`update commerce.form_submissions set created_at = now() - interval '1 hour' where store_id = ${store.storeId}::uuid`);
     expect(await leads.dismissLead(owner, per)).toEqual({ ok: true, dealId: null });
     expect(await leads.leadsOf(store.storeId)).toEqual([]);
+    expect((await leads.leadCounts([store.storeId])).has(store.storeId)).toBe(false);
     await question(store.storeId, per, "One more thing");
     expect((await leads.leadsOf(store.storeId)).map((l) => l.items.length)).toEqual([1]);
+    expect((await leads.leadCounts([store.storeId])).get(store.storeId)).toBe(1);
 
     const reader = { ...owner, role: "admin" as const, permissions: ["customers:read"] as never };
     expect(await leads.dismissLead(reader, per)).toEqual({ ok: false, problem: "forbidden" });

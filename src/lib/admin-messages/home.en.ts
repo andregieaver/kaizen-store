@@ -272,6 +272,28 @@ export const homeEn = {
       one: "{store}: {n} review is waiting to be checked.",
       many: "{store}: {n} reviews are waiting to be checked.",
     },
+    disputes: {
+      one: "{store}: a customer's bank disputed a payment, and it needs your answer{due}.",
+      many: "{store}: customers' banks disputed {n} payments, and they need your answer{due}.",
+    },
+    disputeDue: { one: " within {n} day", many: " within {n} days" },
+    disputesFirstDue: { one: ", the first within {n} day", many: ", the first within {n} days" },
+    aiDecisions: {
+      one: "{store}: the AI manager is waiting for your decision on {n} thing.",
+      many: "{store}: the AI manager is waiting for your decisions on {n} things.",
+    },
+    leads: {
+      one: "{store}: {n} new lead is waiting for you to make a deal or dismiss it.",
+      many: "{store}: {n} new leads are waiting for you to make a deal or dismiss them.",
+    },
+    activitiesOverdue: { one: "{store}: {n} of your calls, meetings and tasks is overdue.", many: "{store}: {n} of your calls, meetings and tasks are overdue." },
+    activitiesToday: { one: "{store}: {n} of your calls, meetings and tasks is due today.", many: "{store}: {n} of your calls, meetings and tasks are due today." },
+    teamActivitiesOverdue: { one: "{store}: {n} of the team's calls, meetings and tasks is overdue.", many: "{store}: {n} of the team's calls, meetings and tasks are overdue." },
+    teamActivitiesToday: { one: "{store}: {n} of the team's calls, meetings and tasks is due today.", many: "{store}: {n} of the team's calls, meetings and tasks are due today." },
+    blogComments: {
+      one: "{store}: {n} comment on your articles is waiting to be checked.",
+      many: "{store}: {n} comments on your articles are waiting to be checked.",
+    },
     booksDiffer: { one: "{store}: {n} document in the books differs from Tripletex.", many: "{store}: {n} documents in the books differ from Tripletex." },
     booksWaiting: { one: "{store}: {n} document has waited more than a week to be posted to the books.", many: "{store}: {n} documents have waited more than a week to be posted to the books." },
     billsOverdue: { one: "{store}: {n} bill is past its due date.", many: "{store}: {n} bills are past their due date." },
@@ -352,6 +374,9 @@ export const homeEn = {
       openVatReport: "Open VAT report",
       openProducts: "Open products",
       openInventory: "Open inventory",
+      decide: "Decide",
+      openLeads: "Open leads",
+      seeToday: "See today",
     },
   },
   card: {
