@@ -10,6 +10,7 @@ import {
   cleanDomain,
   cleanFromLocal,
   FROM_LOCAL_DEFAULT,
+  hostForForm,
   keptRecords,
   readResendDomain,
   senderAddress,
@@ -94,6 +95,22 @@ async function readRow(storeId: string | null): Promise<Row | null> {
 export async function getSendingDomain(storeId: string | null): Promise<SendingDomain | null> {
   const r = await readRow(storeId);
   return r ? toDomain(r) : null;
+}
+
+/**
+ * The sending domain as the admin's card shows it: each record's name worked out here, as a DNS provider's form asks for it, so the card
+ * (a client component) needs no DNS code. Never Resend's id.
+ */
+export function sendingDomainView(d: SendingDomain) {
+  return {
+    domain: d.domain,
+    fromLocal: d.fromLocal,
+    from: d.from,
+    status: d.status,
+    recordsWritten: d.recordsWritten,
+    checkedAt: d.checkedAt,
+    records: d.records.map((r) => ({ type: r.type, name: hostForForm(r.host, d.domain), value: r.value, ...(r.priority !== undefined && { priority: r.priority }), seen: r.status === "verified" })),
+  };
 }
 
 /** The address a store's emails go from, when its own domain is verified; null to use the shared address. Never throws. */

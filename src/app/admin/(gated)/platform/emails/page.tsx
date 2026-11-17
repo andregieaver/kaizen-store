@@ -5,7 +5,7 @@ import { EmailLog } from "@/components/admin/email-log";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
 import { platformCan, requirePlatformReader } from "@/server/auth";
-import { getSendingDomain } from "@/server/sending-domains";
+import { getSendingDomain, sendingDomainView } from "@/server/sending-domains";
 import { pausedStores } from "@/server/sending-guard";
 import { SendingDomainCard } from "@/components/admin/sending-domain-card";
 
@@ -104,7 +104,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
       {settings && (
         // Kaizena Flow's own sending domain (D727), as a store's: the shared address is the platform's own until another is verified.
         <SendingDomainCard
-          domain={sending && { domain: sending.domain, fromLocal: sending.fromLocal, from: sending.from, status: sending.status, records: sending.records, recordsWritten: sending.recordsWritten, checkedAt: sending.checkedAt }}
+          domain={sending && sendingDomainView(sending)}
           suggested="kaizenaflow.com"
           words={adminText(lang, "notifications").sendingDomain}
           action={platformCan(account, "settings") ? platformSendingDomainAction : null}
