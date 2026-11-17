@@ -106,6 +106,8 @@ const exclusionItems = (f: LegalFacts) => [...EXCLUSIONS, ...(f.bookingsOn ? SER
 
 /** One line for each market's shipping rate, shared by the terms and the shipping policy. */
 function rateItems(f: LegalFacts, h: Helpers) {
+  // A store that sends no parcels (a website, or downloads and services only) has no rate to list.
+  if (f.shipsGoods === false) return [];
   return f.shipping.map((s) => {
     const country = h.country(s.code);
     // The store's own methods price the market (D237): the flat rate is only their fallback, so the owner writes the prices checkout charges.
@@ -147,7 +149,13 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
       return [
         { topic: "seller", blocks: [p("terms.seller.1", { store, name, org }), vat, p("terms.seller.2", { address, email, phone })] },
         { topic: "products_prices", blocks: [p("terms.products.1"), p("terms.products.2", { currencies: f.markets.length > 0 ? h.list([...new Set(f.markets.map((m) => m.currency))]) : h.add("currency") })] },
-        { topic: "vat_shipping_costs", blocks: [p("terms.costs.1"), rates.length > 0 ? ul(...rates) : p("terms.costs.none", { check: h.add("shippingPrice") })] },
+        {
+          topic: "vat_shipping_costs",
+          blocks:
+            f.shipsGoods === false
+              ? [p("terms.costs.digital")]
+              : [p("terms.costs.1"), rates.length > 0 ? ul(...rates) : p("terms.costs.none", { check: h.add("shippingPrice") })],
+        },
         { topic: "order_contract", blocks: [p("terms.order.1"), p("terms.order.2", { check: h.check("contractFormation") }), p("terms.order.3"), p("terms.order.age")] },
         { topic: "payment", blocks: [p("terms.payment.1")] },
         { topic: "delivery", blocks: [p("terms.delivery.1", { markets: marketNames }), p("terms.delivery.2", { check: h.add("deliveryTime") }), carriers] },
@@ -246,8 +254,9 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
         {
           topic: "rates",
           blocks: [
-            p("shipping.rates.1"),
-            rates.length > 0 ? ul(...rates) : p("shipping.rates.none", { check: h.add("shippingPrice") }),
+            ...(f.shipsGoods === false
+              ? [p("shipping.rates.digital")]
+              : [p("shipping.rates.1"), rates.length > 0 ? ul(...rates) : p("shipping.rates.none", { check: h.add("shippingPrice") })]),
             // Collecting and the store's own delivery (D237), from the store's active pickup places and areas.
             ...(f.pickup.length > 0
               ? [

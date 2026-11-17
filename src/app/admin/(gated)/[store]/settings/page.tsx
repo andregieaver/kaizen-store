@@ -54,6 +54,7 @@ export default async function StoreSettingsPage({ params }: PageProps<"/admin/[s
       case "/settings/payments":
         return !progress.paymentsOn ? { tone: "warning", text: s.paymentsOff } : store.paymentsTest ? { tone: "neutral", text: s.paymentsTest } : { tone: "positive", text: s.paymentsLive };
       case "/settings/shipping":
+        if (!progress.shipsGoods) return undefined;
         return progress.shipping ? { tone: "positive", text: s.shippingSet } : { tone: "warning", text: s.shippingMissing };
       case "/billing":
         return store.house ? undefined : progress.plan ? { tone: "positive", text: s.onPlan } : { tone: "warning", text: s.noPlan };

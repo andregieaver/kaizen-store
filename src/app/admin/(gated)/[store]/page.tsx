@@ -80,7 +80,8 @@ export default async function AdminOverview({ params, searchParams }: Props) {
     { key: "countries" as const, done: progress.countries, label: selling ? h.steps.countriesSold : h.steps.countries, step: "countries" },
     ...(selling
       ? [
-          { key: "shipping" as const, done: progress.shipping, label: h.steps.shipping, href: "settings/shipping" },
+          // A shop of digital products or services only sends no parcels: no shipping step.
+          ...(progress.shipsGoods ? [{ key: "shipping" as const, done: progress.shipping, label: h.steps.shipping, href: "settings/shipping" }] : []),
           { key: "checkout" as const, done: progress.paymentsOn, label: h.steps.checkout, href: "settings/payments" },
           // Real payments only once Kaizen itself is live; test payments need no setup.
           ...(platformModes().includes("live")

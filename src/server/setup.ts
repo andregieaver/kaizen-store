@@ -10,6 +10,7 @@ import { audit, type Membership } from "./auth";
 import { isDemoProduct } from "./demo-content";
 import { openToEveryone } from "./private-mode";
 import { refreshTag } from "./refresh";
+import { shipsGoods } from "./ships-goods";
 import { setFeatures, type SetFeaturesResult } from "./store-features";
 import { getPaymentSettings, type SaveResult } from "./settings";
 import type { Store, StoreDetails } from "./stores";
@@ -36,8 +37,10 @@ export type SetupProgress = {
   bookings: boolean;
   /** Stripe switched on, so shoppers can pay. */
   paymentsOn: boolean;
-  /** Every country the store sells to has a shipping price. */
+  /** Every country the store sells to has a shipping price, or the store sends no parcels (`shipsGoods`). */
   shipping: boolean;
+  /** The store sends parcels (`shipsGoods()`): its shop is on and sells something physical, or has no products yet. */
+  shipsGoods: boolean;
   products: boolean;
   /** The store is on a plan with Kaizen. */
   plan: boolean;
@@ -53,7 +56,7 @@ export type SetupProgress = {
  * the checklist stays right whichever page a change was made on.
  */
 export async function getSetupProgress(store: Store): Promise<SetupProgress> {
-  const [[counts], payments, [shippingRow], [planRow], [facts]] = await Promise.all([
+  const [[counts], payments, [shippingRow], [planRow], [facts], sendsParcels] = await Promise.all([
     db().execute<Row>(sql`
       select
         count(*) filter (where ${isDemoProduct(sql`p`)} and p.status = 'active')::int as demo,
@@ -76,6 +79,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
         (select count(*)::int from commerce.booking_resources r where r.store_id = ${store.id}::uuid and r.kind = 'staff' and r.active) as staff,
         (select count(*)::int from commerce.booking_resources r where r.store_id = ${store.id}::uuid and r.kind in ('unit', 'item') and r.active) as units
     `),
+    shipsGoods(store),
   ]);
   const d = store.details;
   const details = Boolean(d.legalName && d.contactEmail && d.postalAddress && d.country);
@@ -92,7 +96,9 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     // Test payments need no setup (D20): this is the store's real, live account.
     payments: payments.accounts.live?.cardPayments === "active",
     paymentsOn: payments.stripe.enabled,
-    shipping: Number(shippingRow?.priced ?? 0) >= store.keptMarkets.length && store.keptMarkets.length > 0,
+    // A store that sends no parcels (a website, or downloads and services only) has nothing to price.
+    shipping: !sendsParcels || (Number(shippingRow?.priced ?? 0) >= store.keptMarkets.length && store.keptMarkets.length > 0),
+    shipsGoods: sendsParcels,
     products: ownProducts > 0 || demoProducts === 0,
     // Kaizena Flow's own store needs no plan (D466): its Billing says so.
     plan: store.house || Boolean(planRow?.on_plan),

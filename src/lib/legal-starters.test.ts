@@ -78,6 +78,8 @@ const VARIANTS: Record<string, LegalFacts> = {
   noShow: assembleLegalFacts(input({ noShowFee: true })),
   // The browse email is on (D691).
   browse: assembleLegalFacts(input({ browseEmails: true })),
+  // A website, or a shop of downloads or services only: no parcels, so no delivery costs.
+  noParcels: assembleLegalFacts(input({ shipsGoods: false })),
   empty: assembleLegalFacts(
     input({
       store: { name: "", legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: null, audience: "consumers", visitCounting: false, modules: [], tracking: {} },
@@ -539,6 +541,16 @@ describe("the facts", () => {
     expect(missingFacts(assembleLegalFacts(input({ shippingRates: [] })))).toContain("a shipping price for every country");
     // A website without a shop, or a shop of downloads only, sends no parcels: no shipping price is asked for.
     expect(missingFacts(assembleLegalFacts(input({ shippingRates: [], shipsGoods: false })))).not.toContain("a shipping price for every country");
+  });
+
+  it("say there are no delivery costs, with no shipping price to add, for a store that sends no parcels", () => {
+    const digital = assembleLegalFacts(input({ shippingRates: [], shipsGoods: false }));
+    for (const role of ["terms", "shipping_policy"] as const) {
+      const text = JSON.stringify(legalStarterSections(role, "en", digital));
+      expect(text).not.toContain("[[Add: shipping price]]");
+      expect(text).toContain("there are no delivery costs");
+    }
+    expect(JSON.stringify(legalStarterSections("terms", "en", assembleLegalFacts(input({ shippingRates: [] }))))).toContain("[[Add: shipping price]]");
   });
 });
 
