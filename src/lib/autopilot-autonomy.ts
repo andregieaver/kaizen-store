@@ -43,6 +43,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_page_place: "website",
   save_menu: "website",
   unpublish_page: "website",
+  // A live form's questions and settings (D705 F5), as a published page's.
+  change_form: "website",
   add_redirect: "website",
   save_search_synonym: "website",
   save_search_rule: "website",

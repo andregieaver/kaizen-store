@@ -18,10 +18,12 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.41 — 2026-11-17
 
-The owner MCP's tools (D713, D718).
+The owner MCP's tools (D705, D713, D718).
 
 - Eight new tools for deals, leads and activities: `list_deals`, `get_deal`, `move_deal`, `list_leads`, `make_deal_from_lead`, `crm_today`,
   `log_activity` and `customer_timeline`, each under the permission its admin page asks.
+- Five for forms: `list_forms`, `make_form` (from a template), `change_form` (the owner's yes first), `place_form` (on a page's draft) and
+  `form_responses` (with the right to read customers).
 - `count_segment` and `save_segment` take the segment conditions the editor offers: what people bought (products or categories), deals,
   support, reviews, subscription boxes and the texts list.
 - `draft_workflow` takes `at_least` and `is_one_of`, a paid order's facts, `customer.segment` and a `hold_order` action after `order.paid`.

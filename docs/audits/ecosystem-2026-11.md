@@ -47,7 +47,7 @@ behaviour joins pages, never people.
 | E2.6 | *Make a quote* on a deal; a draft starts from a customer | S | Done, 17 Nov 2026 | `createDraft({ customerId })`, `drafts/new?customer=&deal=`; *Make a draft order* in the customer page's More menu |
 | E2.7 | Carry a support request out from the conversation | L | Done, 17 Nov 2026 | `src/server/support-carry-out.ts`: cancel, address and refund through the order page's own functions, a two-minute claim, then the request done; a person's own Done or Decline waits for a running carry-out. Left: *Make a deal* from the conversation (needs a deal for a customer who is not a lead), a return (a customer's own action) |
 | E2.8 | Leads in the menu, each request linked to where it is kept | S | Done, 17 Nov 2026 | `/leads` under Customers; a form's message read from its responses (D705), so form leads are counted at last. Left: an owner for a lead (needs a column) |
-| E2.5r | Release the CRM tools, their eval case and Leads in the AI's map; API contract 1.38; record the eval | S | Open | In a push with no migration, once the deploy before it is live |
+| E2.5r | Release the CRM tools, their eval case and Leads in the AI's map; API contract 1.41; record the eval | S | Done, 17 Nov 2026, with F5's form tools (D705), E3.7 and the tools' segment and workflow powers; the eval to be recorded on Platform → AI |
 
 ## Phase 3: one nervous system
 
@@ -59,7 +59,7 @@ behaviour joins pages, never people.
 | E3.4 | Workflows gain customer actions: marketing email, SMS, start an automation, wait | L | Moved to M2.3 of `email-marketing-2026-11.md` (D720) |
 | E3.5 | One contact policy across email and SMS: a cap per person, spacing, quiet hours, priority | M | Moved to M1.5 of `email-marketing-2026-11.md` (D720) |
 | E3.6 | Segments on products bought, deals, support, reviews and engagement, usable by every engine | M | Done, 17 Nov 2026 (924999e4). Left: email engagement |
-| E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Built (a2d5989b), released with E2.5r: it changes the AI manager's prompt |
+| E3.7 | One word per thing (Requests, Subscriptions, Activities, Reports, Notices, Follow-ups), Discounts as one page, automations in one home, and a scan test for menu names | M | Done, 17 Nov 2026 (a2d5989b), released with E2.5r |
 
 ## Phase 4: closed loops
 
