@@ -148,7 +148,7 @@ commit as the fix.
 | 1.21 | Give the production build room with the free switches, and fail a run before it runs out | GAP-build-2, GAP-build-s3 | S | review | 1.20 | Open | |
 | 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | Open | |
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | Open | |
-| 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | In progress | 17 Nov, local: commit 1 holds 17 files over 100 KB and 12 over 2,000 lines (brief said 15 and 11; main has moved). Commit 2 pending. |
+| 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | In progress | 17 Nov, local: 17 files over 100 KB, 12 over 2,000 lines (brief: 15, 11); 1 of 20 session files. |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Open | |
 | 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
