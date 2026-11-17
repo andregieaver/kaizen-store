@@ -392,6 +392,7 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [TEXT, role("name", "Network names", marked("name"))];
     case "emailForm":
     case "newsletter":
+    case "form":
       return FORM_ROLES;
     case "themeStore":
       // The theme store's parts (D285): their headings, and the rest (the themes' names, words and buttons) as the part's text.
@@ -498,6 +499,8 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
     consent: "label",
   },
   newsletter: { placeholder: "input", submitLabel: "button", successMessage: "message", consent: "label" },
+  // A form component (D705) draws its form's words, which live in the form, in the same kinds of text as a page's own form.
+  form: { label: "label", placeholder: "input", submitLabel: "button", successMessage: "message", consent: "label" },
   themeStore: { heading: "title", text: "text" },
   domainSearch: { heading: "title", placeholder: "input", buttonLabel: "button", ctaLabel: "button", "names": "name", "prices": "price" },
   plans: { buttonLabel: "button", "plan names": "name", "prices": "price", "what each includes": "meta", "fees and descriptions": "text" },

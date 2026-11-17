@@ -160,6 +160,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "store.preview_link_": "website",
   "store.saved_theme_": "website",
   "store.menu_": "website",
+  "store.form_": "website",
   "store.media_": "website",
   "store.css_": "website",
   "store.template_": "website",

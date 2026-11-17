@@ -317,6 +317,7 @@ export const privacyEn = {
       sandboxes: "The page builder's sandboxes",
       recordings: "Recordings of visits",
       contracts: "Signed contracts",
+      form_responses: "Form responses",
     },
     bases: {
       read: "Read at the source",

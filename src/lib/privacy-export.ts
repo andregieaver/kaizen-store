@@ -290,7 +290,8 @@ export type DraftExportRow = {
   lines: { sku: string | null; title: string; quantity: number; unitPriceMinor: number }[];
 };
 export type AbandonedRow = { capturedAt: Ts; remindersSent: number; clickedAt: Ts; recoveredAt: Ts; optedOutAt: Ts };
-export type FormRow = { kind: string; createdAt: Ts; status: string };
+/** A form sent: the D93 record of a send (kind, status), or a kept response (D705) with its form's name and its answers. */
+export type FormRow = { kind: string; createdAt: Ts; status: string; form?: string; answers?: { label: string; value: string }[] };
 export type CompanySource = {
   company: { name: string; role: string | null; locations?: { name: string; role: string }[] } | null;
   invites: { status: string; createdAt: Ts; expiresAt: Ts; acceptedAt: Ts }[];
@@ -841,7 +842,7 @@ export function shapeExport(input: ExportInput): ExportFile {
         lines: d.lines.map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity), unitPrice: money(l.unitPriceMinor, d.currency) })),
       })),
     },
-    forms: input.forms.map((f) => ({ kind: f.kind, createdAt: iso(f.createdAt), status: f.status })),
+    forms: input.forms.map((f) => ({ kind: f.kind, createdAt: iso(f.createdAt), status: f.status, ...(f.answers ? { form: f.form ?? "", answers: f.answers } : {}) })),
     company: {
       company: input.company.company
         ? {

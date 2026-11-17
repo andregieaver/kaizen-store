@@ -2,7 +2,8 @@
 
 Written 17 November 2026. The plan for a forms editor: forms an owner creates, edits and deletes in one place and picks in the
 page builder's form component, with the answers kept, the newsletter sign-up as one kind of form, and form templates the owner can
-make and share. Nothing in this file is built yet; each step below says what it builds and what holds it.
+make and share. Step F1 is built (17 November 2026, section 9 says how it differs from this plan); each step below says what it builds and
+what holds it.
 
 The owner's choices, 17 November 2026:
 
@@ -171,9 +172,40 @@ export is in the audit log (an export with its count only, as D295's).
 
 | Step | Builds | Held by |
 |---|---|---|
-| **F1** | `forms`, `form_responses`, `form_templates` tables and rules; `src/lib/questions.ts` taken out of the checkout; the `form` component and `/api/forms` by form id; responses kept, with their personal data rules from the start (the `PERSONAL_DATA` register, export, erasure, the retention job); Website → Forms list, editor and responses, store and platform; Kaizena Flow's first templates (Contact, Quote request, Booking enquiry, Callback, Feedback, Event registration, Newsletter). | `src/db/commerce.test.ts`, `forms.test.ts`, `forms-admin.int.test.ts`, `checkout-rules.test.ts` unchanged, an e2e of make, place, send and read. |
+| **F1** (built) | `forms` and `form_responses` tables and rules; the `form` component and `/api/forms` by form id; responses kept, with their personal data rules from the start (the `PERSONAL_DATA` register, export, erasure, the retention job); Website → Forms list, editor and responses, store and platform; Kaizena Flow's first templates (Contact, Quote request, Booking enquiry, Callback, Feedback, Event registration, Newsletter). | `src/db/commerce.test.ts`, `forms.test.ts`, `forms-admin.int.test.ts`, `checkout-rules.test.ts` unchanged, an e2e of make, place, send and read. |
 | **F2** | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
-| **F3** | `showWhen` conditions, every question kind, words per language in the editor. | `questions.test.ts`; the browser and server checks agree. |
-| **F4** | The owner's own templates: *Save as template*, the library, sharing and the platform's hiding. | `form-templates.int.test.ts`. |
+| **F3** | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
+| **F4** | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
 | **F5** | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
+
+## 9. F1 as built (17 November 2026)
+
+- **Tables.** `commerce.forms` and `commerce.form_responses` (migrations `*_forms` and `*_forms_rules`): a form keeps its store and kind,
+  a response takes its form's store from the database and only its `state` changes. `form_templates` waits for F4, the step that first
+  uses it, and `form_submissions` needs no `form_id`: a `form` component's form id is what the limits count by (`block_id`).
+- **One path for both.** `formAsBlock()` (`src/lib/form-records.ts`) turns a form into the shape of the page's own email form or sign-up,
+  in one language, with the form's id as its id, so `/api/forms`, `checkMessage()`, the emails, the support inbox (D382), the confirmation
+  link and the limits of D93 serve saved forms unchanged. `findForm()` finds a saved form by id (`getForm()`), takes answers only while it
+  is active, can deliver and a published page carries it at any depth (`formIsPublished()`), and checks in the owner's main words; the
+  answers are kept with `keepResponse()` (a message, also when its email failed; a sign-up when it needs no confirmation or on its
+  confirmation).
+- **The component.** `FormBlock` (`type: "form"`, `formId`, `button`, `layout`) replaces *Email form* and *Newsletter* in the palette (the
+  old ones stay editable until F2 moves them). The site reads the form through `siteForm()`, cached under `forms:{storeId}` (or
+  `forms:platform`), refreshed by every write. The builder gets the owner's forms in the editor's context (`builderForms()`, drawn without
+  their recipients); the settings pick one with links to make or change it, the canvas draws it with the component's look and says when it
+  is archived or cannot deliver. A template or copied page's component loses its form (`formId: null`).
+- **Starters in code.** Kaizena Flow's seven starters are `FORM_STARTERS` (en, nb, sv, da; English for any other language); a new form is
+  made in the store's main language with its other languages' words, sending to the store's contact address (else the owner's), so it is
+  ready to place. Editing the main words keeps the other languages' until F3 edits those.
+- **Screens.** Website → Forms (`/admin/{store}/forms`, `/admin/platform/forms`): the list (kind, pages, responses, new ones, a form that
+  cannot deliver), *New form* (the starters and a blank form), one form (questions, who it emails, the words after sending, the preview,
+  where it shows; subject, consent, a sign-up's code and tags and the months kept under Settings; archive and delete), and its responses
+  on a page of their own (`/forms/responses/{formId}`: open, read, archive, delete, reply by email, CSV). Changing a form needs
+  `website:write`; the responses page is in the customers area (an `AREA_OVERRIDES` entry in `src/lib/permissions.ts`, as the books are), so
+  reading them needs `customers:read` and changing them `customers:write`; the platform's all need its website area. The actions refresh
+  the page themselves (`refresh()`).
+- **Personal data.** `form_responses` is in the register (found by `contact_email`, exported with its answers under `forms`, deleted on
+  erasure), never copied with a store, and pruned daily after its form's months, never later than the `form_responses` rule (36 months).
+- **Not yet.** The A/B tests' form goal (D148) counts a `form` component by its form's id, which no test names yet; copies of a store
+  (D129) leave a copied page's form components showing nothing (their form is the original's) until F2.
 

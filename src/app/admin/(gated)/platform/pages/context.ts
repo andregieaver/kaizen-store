@@ -56,6 +56,7 @@ import { getPublicPlans } from "@/server/public-plans";
 import { planMotionAction } from "./motion-action";
 import { deletePlatformTextStyleAction, savePlatformTextStyleAction } from "./text-style-actions";
 import { listTextStyles } from "@/server/text-styles";
+import { builderForms } from "@/server/forms-admin";
 
 /** The page editor's context for Kaizen's own pages (D42, D53) or articles (D57); `author` starts a new article. */
 export async function platformPageContext(type: PageType = "page", author = ""): Promise<PageOwnerContext> {
@@ -84,6 +85,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     pictureEdit: (await canEditPictures(null)) ? { endpoint: "/admin/platform/media/edit" } : null,
     aiChange: (type === "page" || type === "article") && (await canChangePages(null)) ? { endpoint: "/admin/platform/pages/change" } : null,
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
+    // Kaizena Flow's own forms (D705), for a form component.
+    forms: await builderForms(null, "en", "/admin/platform/forms"),
     gridStores,
     fonts: { site: fonts, style: siteFontStyle(fonts) },
     menus,

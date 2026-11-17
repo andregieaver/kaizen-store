@@ -374,7 +374,7 @@ function RowMarkup({
               ) : block.type === "storePart" ? (
                 // Only on the working page it belongs to, which hands in what draws it (`RolePage`); anywhere else nothing.
                 StorePart && <StorePart block={block} place={place} />
-              ) : block.type === "emailForm" || block.type === "newsletter" ? (
+              ) : block.type === "emailForm" || block.type === "newsletter" || block.type === "form" ? (
                 <FormSection block={block} place={place} />
               ) : block.type === "instagram" ? (
                 // The owner's kept posts (D560), read with the page's cache; the rest of the page does not wait.

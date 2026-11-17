@@ -54,7 +54,7 @@ import { AnimationFields, MotionFields } from "./motion-fields";
 import { ShopPartIcon } from "./shop-part-icons";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import { menuHoverStyle } from "@/lib/menu-hover";
-import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType, type MenuDrawer, MENU_TYPES, MENU_SIDES } from "@/lib/page-content";
+import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type FormBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType, type MenuDrawer, MENU_TYPES, MENU_SIDES } from "@/lib/page-content";
 import { DRAWER_PARTS, isDrawerPart, menuLook, ownDrawer, type DrawerPart } from "@/lib/menu-drawer";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { hasMotion, type EnterMotion } from "@/lib/motion";
@@ -83,7 +83,7 @@ import { partFromRows, partRows } from "@/lib/saved-part-canvas";
 import { type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
-import { BindBadge, BindEntitiesContext, BindFields, Check, Choices, ColorField, editorFor, FieldGroupsContext, FieldsSettingsFields, FieldsStandIn, LoopSettingsFields, LoopStandIn, TextAlignFields } from "./block-fields";
+import { BindBadge, BindEntitiesContext, BindFields, Check, Choices, ColorField, editorFor, FieldGroupsContext, FormsContext, FieldsSettingsFields, FieldsStandIn, LoopSettingsFields, LoopStandIn, TextAlignFields } from "./block-fields";
 import { type InstallFont } from "./font-picker";
 import { TypographyFields } from "./typography-fields";
 import { ImageSizeFields } from "./image-size-fields";
@@ -253,14 +253,14 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 }
 
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "instagram", "countdown", "stats", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "form", "instagram", "countdown", "stats", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 
 /**
  * Components that get what they lack in their settings: the canvas says what each lacks (`emptyBlock`) and then, once for all
  * of them, how to open the settings (`emptyHow`), so the sentence is in the words once (the admin's first scripts carry them).
  */
 const OPENED_TO_FILL: ReadonlySet<BlockType> = new Set<BlockType>([
-  "beforeAfter", "animation", "timeline", "button", "dualButton", "accordion", "tabs", "faq", "testimonials", "socialLinks", "iconList", "brands", "gallery", "table", "emailForm", "newsletter",
+  "beforeAfter", "animation", "timeline", "button", "dualButton", "accordion", "tabs", "faq", "testimonials", "socialLinks", "iconList", "brands", "gallery", "table", "emailForm", "newsletter", "form",
 ]);
 /** What the canvas shows for a component with nothing to show yet. */
 const emptyWords = (w: { emptyBlock: Record<BlockType, string>; emptyHow: string }, type: BlockType): string =>
@@ -3352,6 +3352,8 @@ function BlockItem({
             )}
             <SiteForm form={publicForm(block)} store={null} lang={actions.lang} preview />
           </div>
+        ) : block.type === "form" ? (
+          <FormStandIn block={block} lang={actions.lang} empty={emptyWords(w, block.type)} />
         ) : block.type === "testimonials" && block.source === "google" ? (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">
             {w.canvas.googleReviews}
@@ -5653,6 +5655,22 @@ function StorePartStandIn({ block }: { block: StorePartBlock }) {
 }
 
 /** A menu component on the canvas: its links' texts as the site shows them; links under a link side by side are shown in a list under it on the site. */
+/** A form component on the canvas (D705): the owner's form it shows, in the page's main language with the component's look. */
+function FormStandIn({ block, lang, empty }: { block: FormBlock; lang: string | undefined; empty: string }) {
+  const forms = useContext(FormsContext);
+  const w = useAdminText("blocks").form;
+  const picked = block.formId ? forms?.list.find((f) => f.id === block.formId) : undefined;
+  if (!picked) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{block.formId ? w.gone : empty}</p>;
+  const note = picked.status === "archived" ? w.archived : picked.takesAnswers ? null : w.cannotDeliver;
+  const look = picked.preview.type === "newsletter" ? { ...picked.preview, layout: block.layout, button: block.button } : { ...picked.preview, button: block.button };
+  return (
+    <div className="flex flex-col gap-2" data-form-standin={picked.id}>
+      {note && <p className="rounded-md bg-surface p-3 text-sm text-muted">{note}</p>}
+      <SiteForm form={look} store={null} lang={lang} preview />
+    </div>
+  );
+}
+
 function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] }) {
   const menu = menus.find((m) => m.id === block.menuId);
   const column = block.direction === "column";

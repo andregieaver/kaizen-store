@@ -1,6 +1,6 @@
 {
-  "id": "3592661e-df00-49d3-9fe8-0902b042dc8e",
-  "prevId": "dfb4076f-a871-43ad-bd1b-9ee04b5771d0",
+  "id": "3c80f2b8-01a9-4dff-8739-b81217ec2057",
+  "prevId": "b5db8e7b-8cf8-4dd3-9aa6-6a24e5cec4fe",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -34849,6 +34849,186 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.form_responses": {
+      "name": "form_responses",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "form_id": {
+          "name": "form_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_email": {
+          "name": "contact_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'new'"
+        },
+        "delivery": {
+          "name": "delivery",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "form_responses_form_idx": {
+          "name": "form_responses_form_idx",
+          "columns": [
+            {
+              "expression": "form_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "form_responses_contact_idx": {
+          "name": "form_responses_contact_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "form_responses_created_idx": {
+          "name": "form_responses_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "form_responses_store_id_stores_id_fk": {
+          "name": "form_responses_store_id_stores_id_fk",
+          "tableFrom": "form_responses",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "form_responses_form_id_forms_id_fk": {
+          "name": "form_responses_form_id_forms_id_fk",
+          "tableFrom": "form_responses",
+          "columnsFrom": [
+            "form_id"
+          ],
+          "tableTo": "forms",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "form_responses_answers": {
+          "name": "form_responses_answers",
+          "value": "jsonb_typeof(\"commerce\".\"form_responses\".\"answers\") = 'array' and jsonb_array_length(\"commerce\".\"form_responses\".\"answers\") <= 40"
+        },
+        "form_responses_state": {
+          "name": "form_responses_state",
+          "value": "\"commerce\".\"form_responses\".\"state\" in ('new', 'read', 'archived')"
+        },
+        "form_responses_delivery": {
+          "name": "form_responses_delivery",
+          "value": "\"commerce\".\"form_responses\".\"delivery\" in ('sent', 'logged', 'failed', 'inbox')"
+        },
+        "form_responses_contact": {
+          "name": "form_responses_contact",
+          "value": "\"commerce\".\"form_responses\".\"contact_email\" is null or (char_length(\"commerce\".\"form_responses\".\"contact_email\") <= 254 and \"commerce\".\"form_responses\".\"contact_email\" = lower(\"commerce\".\"form_responses\".\"contact_email\"))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.form_submissions": {
       "name": "form_submissions",
       "schema": "commerce",
@@ -35049,6 +35229,249 @@
         "form_submissions_path": {
           "name": "form_submissions_path",
           "value": "left(\"commerce\".\"form_submissions\".\"path\", 1) = '/' and length(\"commerce\".\"form_submissions\".\"path\") <= 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.forms": {
+      "name": "forms",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "questions": {
+          "name": "questions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "words": {
+          "name": "words",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "delivery": {
+          "name": "delivery",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "signup": {
+          "name": "signup",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keep_months": {
+          "name": "keep_months",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 12
+        },
+        "made_from": {
+          "name": "made_from",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "forms_store_idx": {
+          "name": "forms_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "forms_created_by_idx": {
+          "name": "forms_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "forms_updated_by_idx": {
+          "name": "forms_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "forms_store_id_stores_id_fk": {
+          "name": "forms_store_id_stores_id_fk",
+          "tableFrom": "forms",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "forms_created_by_accounts_id_fk": {
+          "name": "forms_created_by_accounts_id_fk",
+          "tableFrom": "forms",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        },
+        "forms_updated_by_accounts_id_fk": {
+          "name": "forms_updated_by_accounts_id_fk",
+          "tableFrom": "forms",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "forms_kind": {
+          "name": "forms_kind",
+          "value": "\"commerce\".\"forms\".\"kind\" in ('message', 'signup')"
+        },
+        "forms_name": {
+          "name": "forms_name",
+          "value": "char_length(btrim(\"commerce\".\"forms\".\"name\")) between 1 and 80"
+        },
+        "forms_status": {
+          "name": "forms_status",
+          "value": "\"commerce\".\"forms\".\"status\" in ('active', 'archived')"
+        },
+        "forms_questions": {
+          "name": "forms_questions",
+          "value": "jsonb_typeof(\"commerce\".\"forms\".\"questions\") = 'array' and jsonb_array_length(\"commerce\".\"forms\".\"questions\") <= 20"
+        },
+        "forms_words": {
+          "name": "forms_words",
+          "value": "jsonb_typeof(\"commerce\".\"forms\".\"words\") = 'object'"
+        },
+        "forms_delivery": {
+          "name": "forms_delivery",
+          "value": "jsonb_typeof(\"commerce\".\"forms\".\"delivery\") = 'object'"
+        },
+        "forms_signup": {
+          "name": "forms_signup",
+          "value": "(\"commerce\".\"forms\".\"kind\" = 'signup') = (\"commerce\".\"forms\".\"signup\" is not null) and (\"commerce\".\"forms\".\"signup\" is null or jsonb_typeof(\"commerce\".\"forms\".\"signup\") = 'object')"
+        },
+        "forms_keep_months": {
+          "name": "forms_keep_months",
+          "value": "\"commerce\".\"forms\".\"keep_months\" between 1 and 36"
+        },
+        "forms_made_from": {
+          "name": "forms_made_from",
+          "value": "\"commerce\".\"forms\".\"made_from\" is null or char_length(\"commerce\".\"forms\".\"made_from\") between 1 and 80"
         }
       },
       "isRLSEnabled": false
@@ -67831,7 +68254,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings', 'contracts', 'form_responses')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",

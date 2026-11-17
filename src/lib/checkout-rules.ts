@@ -1,5 +1,10 @@
 import { e164Phone } from "./phone";
 import type { DeliveryOffer, OfferedDelivery } from "./shipping-methods";
+import type { Words } from "./words";
+import { wordsIn } from "./words";
+
+/** The words type and its reader moved to `words.ts` (D705), shared with forms; kept here for the checkout's importers. */
+export { wordsIn, type Words };
 
 /**
  * Checkout rules and fields (wave 9 unit D, D357, `docs/wave-9-platform.md` section 3, D): the pure parts, free of zod so the cart (a pay route)
@@ -35,7 +40,6 @@ export type RuleCondition =
 export const CONDITION_KINDS = ["country", "total", "weight", "product", "category", "tag", "group"] as const;
 
 /** Words per language over the main ones: `{ "nb-NO": "…" }`; the main words stand where a language has none. */
-export type Words = { text: string; byLocale: Record<string, string> };
 
 export type RuleEffect =
   | { kind: "hide_shipping"; options: string[] }
@@ -107,15 +111,6 @@ export const NO_RULES: RuleOutcome = { hidden: new Set(), renamed: new Map(), hi
 
 /** A shipping option's key, as rules name it: `flat`, `method:{id}`, `pickup:{id}` or `local:{id}`. */
 export const optionKey = (d: Pick<OfferedDelivery, "kind" | "id">): string => (d.kind === "flat" ? "flat" : `${d.kind}:${d.id}`);
-
-/** The words in a language: its own, else its language's first match (`nb` for `nb-NO`), else the main ones. */
-export function wordsIn(words: Words, locale: string): string {
-  const own = words.byLocale[locale];
-  if (own) return own;
-  const lang = locale.split("-")[0];
-  const near = Object.entries(words.byLocale).find(([l]) => l.split("-")[0] === lang)?.[1];
-  return near || words.text;
-}
 
 const ALWAYS_PAID_BY = "card";
 

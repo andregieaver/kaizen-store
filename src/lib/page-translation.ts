@@ -219,6 +219,9 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     // Hashtags are the owner's keys to their posts, never translated (D560).
     case "instagram":
       return b;
+    // A form's words are the form's own, written per language in the form (D705).
+    case "form":
+      return b;
     case "newsletter":
       return {
         ...b,

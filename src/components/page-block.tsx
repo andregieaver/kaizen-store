@@ -155,6 +155,7 @@ export function PageBlockView({
       return <GalleryView block={block} />;
     case "emailForm":
     case "newsletter":
+    case "form":
       // Sent from the site (`SiteForm`, drawn by the page's rows with the site's owner, D93); the editor shows it itself.
       return null;
     case "testimonials":

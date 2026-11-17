@@ -73,6 +73,7 @@ export function BlockIcon({ type }: { type: BlockType }) {
     case "gallery":
       return <GalleryIcon />;
     case "emailForm":
+    case "form":
       return <FormIcon />;
     case "newsletter":
       return <NewsletterIcon />;

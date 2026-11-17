@@ -187,6 +187,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "En oppføring om reservasjon mot e-post: beholdes så butikken ikke sender personen e-post igjen (personens eget ønske); å slette den ville oppheve reservasjonen.",
   blog_comments:
     "En kommentar personen skrev til en artikkel (D341): navnet de valgte, e-posten de oppga (vises aldri) og ordene deres, funnet via de bekreftede adressene deres; eksporteres, og slettes når personens opplysninger slettes. Avviste kommentarer og søppelkommentarer slettes 30 dager etter at de ble sendt inn.",
+  form_responses:
+    "Det personen sendte med et skjema i butikken (D705): svarene slik de er merket for eieren, funnet via e-postadressen de oppga (aldri knyttet til en kunde gjennom den); eksporteres og slettes når personens opplysninger slettes, og slettes etter skjemaets egne måneder (1 til 36).",
   form_submissions: "Påmeldinger og meldinger sendt fra denne adressen slettes.",
   consents: "Samtykke til informasjonskapsler lagres under en tilfeldig nettleser-ID og kan ikke knyttes til en person; dette står i filens notIncluded.",
   visits: PSEUDO,

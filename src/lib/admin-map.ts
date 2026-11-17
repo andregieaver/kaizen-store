@@ -913,6 +913,13 @@ const PAGES: readonly AdminPage[] = [
   store("seo", "/settings/seo", "SEO & Reach", "Store", "How search engines, social sharing and AI crawlers see the store, per country.", {
     keywords: ["google", "meta description", "crawlers"],
   }),
+  store("forms", "/forms", "Forms", "Store", "The store's forms (D705): contact forms and newsletter sign-ups, each made once from a ready-made start and placed on any page with the Form component. Change what a form asks and who it emails, read and export what visitors sent, archive or delete a form. Needs the right to change the website; the responses need the right to read customers.", {
+    tasks: ["Make a contact form", "Make a newsletter sign-up", "Read form responses", "Export form responses", "Change who a form emails", "Archive a form"],
+    keywords: ["form", "contact form", "skjema", "kontaktskjema", "newsletter", "sign-up", "responses", "submissions", "quote request", "booking enquiry"],
+  }),
+  store("forms.form", "/forms/[formId]", "A form", "Store", "One form: its questions, who it emails, how long it keeps responses, and its responses."),
+  store("forms.responses", "/forms/responses/[formId]", "Form responses", "Store", "What visitors sent with one of the store's forms: open, archive, delete or reply to a response, and export them as CSV. Needs the right to read customers."),
+  store("forms.new", "/forms/new", "New form", "Store", "Start a form from a ready-made one: contact, quote request, booking enquiry, call me back, feedback, event registration or newsletter."),
   store("menus", "/menus", "Menus", "Store", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
     keywords: ["navigation", "links"],
   }),
@@ -1303,6 +1310,12 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["marketplace", "saved parts", "moderation"],
   }),
   platform("menus", "/menus", "Menus", "Kaizena Flow site", "Kaizena Flow's menus."),
+  platform("forms", "/forms", "Forms", "Kaizena Flow site", "Kaizena Flow's own forms (D705): contact forms and newsletter sign-ups for its pages, and what visitors sent with them.", {
+    keywords: ["form", "contact form", "newsletter", "responses"],
+  }),
+  platform("forms.form", "/forms/[formId]", "A form", "Kaizena Flow site", "One of Kaizena Flow's forms and its responses."),
+  platform("forms.responses", "/forms/responses/[formId]", "Form responses", "Kaizena Flow site", "What visitors sent with one of Kaizena Flow's forms, and their export."),
+  platform("forms.new", "/forms/new", "New form", "Kaizena Flow site", "Start one of Kaizena Flow's forms from a ready-made one."),
   platform("navigation", "/navigation", "Header and footer", "Kaizena Flow site", "Kaizena Flow's logos, icon, business details and menus."),
   platform("fonts", "/fonts", "Fonts", "Kaizena Flow site", "Kaizena Flow's self-hosted fonts."),
   platform("site_themes", "/site-design", "Design", "Kaizena Flow site", "The themes installed on Kaizena Flow's own site, one live: add a published theme without going live, switch the site to an installed one (only the look changes: colours, fonts, header, footer and CSS) and remove one that is not live.", {

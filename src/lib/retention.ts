@@ -42,6 +42,7 @@ export const RETENTION_KINDS = [
   "sandboxes",
   "recordings",
   "contracts",
+  "form_responses",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -219,6 +220,8 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
     note: "A signed contract, its signers, its events and its two PDFs, counted from the day it was signed: 54 months covers the law's 42 after the end of the year it was signed in (signed on 1 January, that is 53); for an accountant to review.",
     checkedOn: "2026-11-17",
   }),
+  // Forms' responses (D705): each form keeps its own for 1 to 36 months (forms.keep_months, 12 unless chosen); this rule is the longest any may.
+  seed({ kind: "form_responses", country: null, periodValue: 36, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: form_responses", note: "What visitors sent with a form, counted from when it was sent: deleted after the form's own months (1 to 36, 12 unless the owner chose), never later than this rule. FORM_KEEP_MONTHS_MAX, a test holds them equal.", checkedOn: "2026-11-17" }),
   seed({ kind: "recordings", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "pruneRecordings() (RECORDING_KEEP_DAYS)", note: "Recordings of visits and their files, counted from the recording's start; the visitor's browser can erase its own at once. RECORDING_KEEP_DAYS, a test holds them equal.", checkedOn: "2026-11-16" }),
 ];
 

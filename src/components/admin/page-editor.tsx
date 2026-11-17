@@ -81,7 +81,7 @@ import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureEditorProvider, PictureMakerProvider } from "./picture-maker";
-import { SignupCodesContext } from "./block-fields";
+import { FormsContext, SignupCodesContext } from "./block-fields";
 import { HeaderStageFields } from "./header-stage-fields";
 import { newId, PageBuilder, type DualBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
@@ -717,6 +717,7 @@ export function PageEditor({
     {/* And take a picture's background away with the site's AI (D413), where it has a model that edits pictures. */}
     <PictureEditorProvider editor={context.pictureEdit}>
     <SignupCodesContext value={context.signupCodes ?? null}>
+    <FormsContext value={context.forms ?? null}>
     {/* The store's saved colours and gradients (D183), kept on its theme; none on Kaizen's own pages. */}
     <ColourLibraryProvider
       initial={context.theme?.settings?.library}
@@ -1422,6 +1423,7 @@ export function PageEditor({
       )}
     </div>
     </ColourLibraryProvider>
+    </FormsContext>
     </SignupCodesContext>
     </PictureEditorProvider>
     </PictureMakerProvider>

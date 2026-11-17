@@ -134,6 +134,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            and e.kind <> all(${textList(EVIDENCE_EMAIL_KINDS)}))::int as email_messages,
         (select count(*) from commerce.email_opt_outs where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as email_opt_outs,
         (select count(*) from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as form_submissions,
+        (select count(*) from commerce.form_responses where store_id = ${sid}::uuid and contact_email = any(${addresses}))::int as form_responses,
         (select count(*) from commerce.blog_comments where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as blog_comments,
         (select count(*) from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid))::int as marketing_subscribers,
         (select count(*) from commerce.marketing_consent_events e join commerce.marketing_subscribers m on m.store_id = e.store_id and m.id = e.subscriber_id
@@ -213,6 +214,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       email_messages: n(c.email_messages),
       email_opt_outs: n(c.email_opt_outs),
       form_submissions: n(c.form_submissions),
+      form_responses: n(c.form_responses),
       blog_comments: n(c.blog_comments),
       marketing_subscribers: n(c.marketing_subscribers),
       marketing_consent_events: n(c.marketing_consent_events),
@@ -864,6 +866,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   // Where the person bought for their company (D321 C.2).
   await tx.execute(sql`delete from commerce.company_location_buyers where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
+  // What the person sent with the store's forms (D705), by the address they gave.
+  await tx.execute(sql`delete from commerce.form_responses where store_id = ${sid}::uuid and contact_email = any(${addresses})`);
   // Staff's tags on the person (D296).
   await tx.execute(sql`delete from commerce.customer_tags where store_id = ${sid}::uuid and email = any(${addresses})`);
   // Staff's notes on the person (D366).

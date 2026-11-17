@@ -27,6 +27,7 @@ import type { StoreTheme, ThemeSettings } from "@/lib/theme";
 import type { GridStore } from "@/server/content-grid";
 import type { ItemLinkTargets } from "@/server/link-targets";
 import type { PlanChoice } from "@/lib/plan-offer";
+import type { BuilderForms } from "@/lib/form-records";
 import type { MenuPreview } from "@/server/menus";
 import type { EditablePage } from "@/server/pages";
 import type { DeleteStyleResult, TextStyleResult } from "@/server/text-styles";
@@ -144,6 +145,8 @@ export type PageOwnerContext = {
   aiChange?: { endpoint: string } | null;
   /** The store's discounts with single-use codes, for a newsletter form's welcome code (D304 J3); absent on Kaizena Flow's own pages. */
   signupCodes?: { id: string; code: string }[];
+  /** The owner's forms (D705), for a `form` component, and where they are made; absent where an editor has none (a theme's workspace). */
+  forms?: BuilderForms | null;
   /** Starts a row's background video upload from the browser; null where uploads are not set up. */
   startVideo: StartVideo | null;
   /** Stores whose products a content grid can show; empty on a store's pages, which show their own. */

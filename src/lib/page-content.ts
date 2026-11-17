@@ -1896,6 +1896,21 @@ export type NewsletterBlock = PartBase & {
     tags?: string[];
   };
 
+/**
+ * A form (D705, `docs/forms.md`): one of the owner's forms (`commerce.forms`, a message form or a newsletter sign-up), picked by id; what
+ * it asks and where it sends are the form's, so only its look is here. Shows nothing until a form is picked, or while its form is archived,
+ * gone or cannot deliver.
+ */
+export type FormBlock = PartBase & {
+  id: string;
+  type: "form";
+  formId: string | null;
+  /** The button's look (D49). */
+  button?: FormButton;
+  /** A sign-up's email field and button side by side (the default) or one under another. */
+  layout?: NewsletterLayout;
+};
+
 /** Tags a sign-up form puts on an address (D304 J3). */
 export const SIGNUP_TAGS_MAX = 5;
 
@@ -1938,6 +1953,7 @@ export type PageBlock =
   | GalleryBlock
   | EmailFormBlock
   | NewsletterBlock
+  | FormBlock
   | InstagramBlock
   | CountdownBlock
   | StatsBlock
@@ -2166,6 +2182,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "emailForm":
     case "newsletter":
       return formShows(block);
+    // The form is read when the page is shown (D705): one is picked.
+    case "form":
+      return block.formId !== null;
     // The owner's posts are known only when the page is shown (D560).
     case "instagram":
       return true;
@@ -2254,6 +2273,7 @@ export function blockText(block: PageBlock): string {
     // A form's words are questions, not what the page says.
     case "emailForm":
     case "newsletter":
+    case "form":
     // Its words are in its own frame, not the page's.
     case "html":
     // The posts' captions are Instagram's, not the page's (D560).
@@ -3718,6 +3738,15 @@ const emailFormBlock = z.object({
   ...partBase,
 });
 
+const formBlock = z.object({
+  id: itemId,
+  type: z.literal("form"),
+  formId: z.uuid("Choose one of your forms.").nullable().default(null),
+  button: formButton,
+  layout: z.enum(Object.keys(NEWSLETTER_LAYOUTS) as [NewsletterLayout, ...NewsletterLayout[]]).optional(),
+  ...partBase,
+});
+
 const instagramBlock = z.object({
   id: itemId,
   type: z.literal("instagram"),
@@ -3821,6 +3850,7 @@ const BLOCK_KINDS = [
   galleryBlock,
   emailFormBlock,
   newsletterBlock,
+  formBlock,
   instagramBlock,
   countdownBlock,
   statsBlock,

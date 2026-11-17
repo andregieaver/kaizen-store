@@ -350,6 +350,7 @@ export const privacyNb: PrivacyMessages = {
       sandboxes: "Sandkassene i sidebyggeren",
       recordings: "Opptak av besøk",
       contracts: "Signerte kontrakter",
+      form_responses: "Skjemasvar",
     },
     bases: {
       read: "Lest i kilden",

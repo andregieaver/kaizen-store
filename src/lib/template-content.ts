@@ -65,6 +65,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   gallery: "gallery",
   emailForm: "email form",
   newsletter: "newsletter",
+  form: "form",
   instagram: "Instagram feed",
   countdown: "countdown",
   stats: "stats",
@@ -263,6 +264,9 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
       } as PageBlock;
     case "emailForm":
       return { ...block, recipients: [] };
+    // Another owner's form means nothing here (D705): the copy picks its own.
+    case "form":
+      return { ...block, formId: null };
     case "newsletter":
       // Another store's discount and tags mean nothing here (D304 J3).
       return { ...without(block, ["incentive", "tags"]), recipients: [] } as PageBlock;

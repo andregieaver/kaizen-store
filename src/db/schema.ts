@@ -11152,6 +11152,93 @@ export const chatUsage = commerce.table(
 );
 
 /**
+ * A form as its own record (D705, `docs/forms.md`, written only by `src/server/forms-admin.ts`): a store's, or Kaizena Flow's with no
+ * store. A page's `form` component points at it by id and keeps only its look; what it asks (`questions`), its words per language
+ * (`words`), where a message goes (`delivery`: recipients, subject, inbox) and a sign-up's settings (`signup`) are here. Its kind never
+ * changes. An archived form shows nothing and takes nothing. Its responses are kept `keep_months`.
+ */
+export const forms = commerce.table(
+  "forms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `message` (an email form) or `signup` (a newsletter sign-up). */
+    kind: text("kind").notNull(),
+    /** The owner's name for it; never shown on the site. */
+    name: text("name").notNull(),
+    /** `active` or `archived`. */
+    status: text("status").notNull().default("active"),
+    /** `FormQuestion[]` (`src/lib/form-records.ts`): empty for a sign-up, whose email (and name) are its own. */
+    questions: jsonb("questions").notNull().default(sql`'[]'::jsonb`),
+    /** The button, the message after sending, the consent and a sign-up's hint, each `{ text, byLocale }`. */
+    words: jsonb("words").notNull().default(sql`'{}'::jsonb`),
+    /** `{ recipients, subject, inbox }`: never sent to the browser. */
+    delivery: jsonb("delivery").notNull().default(sql`'{}'::jsonb`),
+    /** A sign-up's `{ confirm, askName, incentive, tags }`; null for a message form. */
+    signup: jsonb("signup"),
+    /** Months its responses are kept (1 to 36). */
+    keepMonths: integer("keep_months").notNull().default(12),
+    /** What it was made from: `starter:{key}` (Kaizena Flow's starters, `FORM_STARTERS`), or null. Never a link that changes the form. */
+    madeFrom: text("made_from"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("forms_store_idx").on(t.storeId, t.name),
+    index("forms_created_by_idx").on(t.createdBy),
+    index("forms_updated_by_idx").on(t.updatedBy),
+    check("forms_kind", sql`${t.kind} in ('message', 'signup')`),
+    check("forms_name", sql`char_length(btrim(${t.name})) between 1 and 80`),
+    check("forms_status", sql`${t.status} in ('active', 'archived')`),
+    check("forms_questions", sql`jsonb_typeof(${t.questions}) = 'array' and jsonb_array_length(${t.questions}) <= 20`),
+    check("forms_words", sql`jsonb_typeof(${t.words}) = 'object'`),
+    check("forms_delivery", sql`jsonb_typeof(${t.delivery}) = 'object'`),
+    check("forms_signup", sql`(${t.kind} = 'signup') = (${t.signup} is not null) and (${t.signup} is null or jsonb_typeof(${t.signup}) = 'object')`),
+    check("forms_keep_months", sql`${t.keepMonths} between 1 and 36`),
+    check("forms_made_from", sql`${t.madeFrom} is null or char_length(${t.madeFrom}) between 1 and 80`),
+  ],
+);
+
+/**
+ * What a visitor sent with a form (D705): a message, or a confirmed sign-up, labelled in the owner's language as the email is. Kept for
+ * its form's `keep_months` (`pruneFormResponses()`), found by `contact_email` for the person's export and erasure (D162), never tied to a
+ * customer by it. Its store is its form's (set by the database); once written only `state` changes.
+ */
+export const formResponses = commerce.table(
+  "form_responses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    formId: uuid("form_id")
+      .notNull()
+      .references(() => forms.id, { onDelete: "cascade" }),
+    /** `[{ label, value }]`, in the form's order. */
+    answers: jsonb("answers").notNull(),
+    /** The first email answer (a sign-up's address), lower case. */
+    contactEmail: text("contact_email"),
+    /** The page it was sent from, a path on the site. */
+    path: text("path").notNull(),
+    locale: text("locale").notNull(),
+    /** `new`, `read` or `archived`. */
+    state: text("state").notNull().default("new"),
+    /** How it reached the owner: `sent`, `logged`, `failed` (the email), `inbox` (the support desk only). */
+    delivery: text("delivery").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("form_responses_form_idx").on(t.formId, t.createdAt),
+    index("form_responses_contact_idx").on(t.storeId, t.contactEmail),
+    index("form_responses_created_idx").on(t.createdAt),
+    check("form_responses_answers", sql`jsonb_typeof(${t.answers}) = 'array' and jsonb_array_length(${t.answers}) <= 40`),
+    check("form_responses_state", sql`${t.state} in ('new', 'read', 'archived')`),
+    check("form_responses_delivery", sql`${t.delivery} in ('sent', 'logged', 'failed', 'inbox')`),
+    check("form_responses_contact", sql`${t.contactEmail} is null or (char_length(${t.contactEmail}) <= 254 and ${t.contactEmail} = lower(${t.contactEmail}))`),
+  ],
+);
+
+/**
  * What visitors send with a page's forms (D93): an email form's message or
  * a newsletter sign-up, found by the form's block id in the owner's
  * published pages (a store's, or Kaizen's with a null store). A message

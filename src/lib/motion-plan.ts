@@ -125,6 +125,7 @@ const ENTER_BLOCKS: ReadonlySet<BlockType> = new Set<BlockType>([
   "socialLinks",
   "emailForm",
   "newsletter",
+  "form",
 ]);
 const TEXT_BLOCKS: ReadonlySet<BlockType> = new Set<BlockType>(["heading", "richText"]);
 /** Components a scroll effect suits (not tools, forms or things people read closely). */

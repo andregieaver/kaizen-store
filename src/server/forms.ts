@@ -23,6 +23,8 @@ import { joinList } from "./marketing-subscribers";
 import { tagFromForm } from "./segments";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { formToInbox } from "./support-forms";
+import { formIsPublished, getForm, keepResponse } from "./forms-admin";
+import { formAsBlock, formTakesAnswers } from "@/lib/form-records";
 import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
@@ -44,7 +46,10 @@ export const FORM_DAILY = 200;
 const CONFIRM_DAYS = 7;
 
 type FormOwner = { storeId: string | null; store: EmailStore | null; name: string; origin: string; lang: string; timeZone: string };
-type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; owner: FormOwner };
+/** A form found: a page's own email form or sign-up (D93), or a form record (D705) as one, with its id in `formId` (its responses are kept). */
+type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; owner: FormOwner; formId: string | null };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A daily hash of the visitor's address: enough to count their sends, not to know them. */
 export function formVisitor(address: string): string {
@@ -73,6 +78,16 @@ async function formOwner(storeId: string | null): Promise<FormOwner | null> {
 
 /** The form with this id on one of the owner's published pages (headers and footers too), as published. */
 export async function findForm(storeId: string | null, blockId: string): Promise<FoundForm | null> {
+  // A form record (D705), placed by a page's `form` component: active, able to deliver, and on one of the owner's published pages.
+  if (UUID.test(blockId)) {
+    const form = await getForm(storeId, blockId);
+    if (form) {
+      if (!formTakesAnswers(form) || !(await formIsPublished(storeId, form.id))) return null;
+      const owner = await formOwner(storeId);
+      // The questions in the owner's main words: the answers are labelled in them, as a page's own form labels them (D93).
+      return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id };
+    }
+  }
   const rows = await db().execute<Row>(sql`
     select published from commerce.pages
     where ${owned(storeId)} and published is not null
@@ -88,7 +103,7 @@ export async function findForm(storeId: string | null, blockId: string): Promise
   const block = parsed?.success ? parsed.data : null;
   if (!block || (block.type !== "emailForm" && block.type !== "newsletter") || block.recipients.length === 0) return null;
   const owner = await formOwner(storeId);
-  return owner && { block, pageTitle: page!.title, owner };
+  return owner && { block, pageTitle: page!.title, owner, formId: null };
 }
 
 /** Whether the visitor, or the form, has sent all they may for now. */
@@ -177,8 +192,11 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
       answers,
       { email: checked.replyTo, name: typeof typedName === "string" ? typedName : null },
     );
+    const keep = (delivery: "sent" | "logged" | "failed" | "inbox") =>
+      found.formId ? keepResponse({ formId: found.formId, answers, contactEmail: checked.replyTo, path: request.path, locale: request.lang, delivery }) : Promise.resolve();
     if (inbox.kept && !inbox.emailToo) {
       await db().execute(sql`update commerce.form_submissions set status = 'sent' where id = ${String(row.id)}::uuid and ${owned(owner.storeId)}`);
+      await keep("inbox");
       return { status: 200, body: { ok: true, outcome: "sent" } };
     }
     const status = await relay(
@@ -194,6 +212,8 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
       `form:${String(row.id)}`,
     );
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${String(row.id)}::uuid and ${owned(owner.storeId)}`);
+    // Kept even when the email failed: the owner finds it under the form's responses (D705).
+    await keep(status);
     return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: { ok: true, outcome: "sent" } };
   }
 
@@ -232,6 +252,9 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
     if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed");
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid and ${owned(owner.storeId)}`);
+    if (found.formId) {
+      await keepResponse({ formId: found.formId, answers: signupAnswers(found, checked.email, payload, null), contactEmail: checked.email, path: request.path, locale: request.lang, delivery: status });
+    }
     return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: done };
   }
 
@@ -327,19 +350,26 @@ async function welcomeSignup(found: FoundForm, email: string, lang: string, id: 
   }
 }
 
-/** The sign-up emailed to the recipients: who, the words they agreed to, and when. */
-function relaySignup(found: FoundForm, email: string, payload: SignupPayload, confirmedAt: Date | null, path: string, id: string) {
+/** A sign-up as answers in the owner's language: who, the words they agreed to, and when. */
+function signupAnswers(found: FoundForm, email: string, payload: SignupPayload, confirmedAt: Date | null): Answer[] {
   const { owner } = found;
   const o = t(owner.lang);
   const when = (iso: string | Date) =>
     `${new Intl.DateTimeFormat(owner.lang, { dateStyle: "long", timeStyle: "short", timeZone: owner.timeZone }).format(new Date(iso))} (${owner.timeZone})`;
-  const answers: Answer[] = [
+  return [
     { label: o.form.email, value: email },
     ...(payload.name ? [{ label: o.form.name, value: payload.name }] : []),
     { label: o.form.consent, value: payload.consent },
     { label: o.form.consentedAt, value: when(payload.consentedAt) },
     ...(confirmedAt ? [{ label: o.form.confirmedAt, value: when(confirmedAt) }] : []),
   ];
+}
+
+/** The sign-up emailed to the recipients: who, the words they agreed to, and when. */
+function relaySignup(found: FoundForm, email: string, payload: SignupPayload, confirmedAt: Date | null, path: string, id: string) {
+  const { owner } = found;
+  const o = t(owner.lang);
+  const answers = signupAnswers(found, email, payload, confirmedAt);
   return relay(
     found,
     "form.subscription",
@@ -381,8 +411,13 @@ export async function confirmSignup(token: string): Promise<{ location: string }
   const list = storeId ?? (await houseStoreId());
   if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
   if (storeId && found.block.type === "newsletter") await welcomeSignup(found, String(row.email), String(row.locale), String(row.id));
-  const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, new Date(String(row.confirmed_at)), path, String(row.id));
+  const confirmedAt = new Date(String(row.confirmed_at));
+  const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, confirmedAt, path, String(row.id));
   await db().execute(sql`update commerce.form_submissions set status = ${status}, payload = null where id = ${String(row.id)}::uuid and ${owned(storeId)}`);
+  if (found.formId) {
+    const answers = signupAnswers(found, String(row.email), row.payload as SignupPayload, confirmedAt);
+    await keepResponse({ formId: found.formId, answers, contactEmail: String(row.email), path, locale: String(row.locale), delivery: status });
+  }
   return back("confirmed");
 }
 
