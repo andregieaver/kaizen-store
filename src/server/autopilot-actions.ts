@@ -113,6 +113,7 @@ export function saveSettings(p: Principal, form: FormData): Promise<FormState> {
         plansPerWeek: Number(text(form, "plans_per_week") || 3),
         reacts: text(form, "reacts") === "on",
         waitMinutes: Number(text(form, "wait_minutes") || 15),
+        testsPageChanges: text(form, "tests_changes") === "on",
       },
     });
     return ok;

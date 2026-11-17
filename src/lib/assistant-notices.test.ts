@@ -22,5 +22,10 @@ describe("the AI manager's notices (D350)", () => {
     expect(noticeWordKey("page_built", { problem: "No model" })).toBe("page_failed");
     expect(noticeWordKey("follow_up", { task: "x", outcome: "failed" })).toBe("follow_up_failed");
     expect(noticeWordKey("follow_up", { task: "x", outcome: "done" })).toBe("follow_up");
+    // An autopilot test of its change (E4.1): live, or the page kept as it was.
+    expect(noticeWordKey("test_decided", { page: "About", outcome: "live" })).toBe("test_decided");
+    expect(noticeWordKey("test_decided", { page: "About", outcome: "kept" })).toBe("test_kept");
+    expect(assistantEn.notices.kinds.test_kept).toBeTruthy();
+    expect(assistantNb.notices.kinds.test_kept).toBeTruthy();
   });
 });

@@ -80,6 +80,7 @@ import { sendPlatformBriefing } from "@/server/platform-briefing";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { watchAutopilotChanges } from "@/server/autopilot-watch";
+import { decideAutopilotTests } from "@/server/autopilot-test-decider";
 import { watchChallengeVersions } from "@/server/challenge-pin";
 import { sendChallengeStallAlerts } from "@/server/challenge-watch";
 import { syncAllAdSpend } from "@/server/ad-accounts";
@@ -229,6 +230,8 @@ async function dispatch() {
     autopilotEffects: () => measureAutopilotEffects(),
     // Watch and roll back (docs/100-day-challenge.md F4): the autopilot's recent changes judged hourly, a clear fall undone.
     autopilotWatch: () => watchAutopilotChanges(),
+    // The autopilot's tests of its own page changes (E4.1, D729): decided hourly by their verdicts, the change live only when it does better.
+    autopilotTests: () => decideAutopilotTests(),
     // The autopilot's own AI budget (PSI AST-07): owners told once a month when it nears 80 % and again when it is spent.
     autopilotBudgets: () => sendAutopilotBudgetAlerts(),
     // The 100-day challenge's stall watch (docs/100-day-challenge.md A6): what holds a challenge store up, to the platform team at once.

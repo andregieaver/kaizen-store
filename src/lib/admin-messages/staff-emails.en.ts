@@ -334,6 +334,16 @@ export const staffEmailsEn = {
     goalLine: "{met} of {all} targets met",
     stepsWeek: "Steps done this week",
     legal: "Legal pages by the AI: {published} published, {drafted} drafts, {failed} not written.",
+    /** Its tests of its own page changes (E4.1, D729), in its own voice. */
+    tests: "Tested before going live",
+    testing: {
+      one: "Testing my change to {page} against the current page: about 1 day left",
+      many: "Testing my change to {page} against the current page: about {n} days left",
+    },
+    testWaiting: "My change to {page} did better in its A/B test: it waits for your yes to go live.",
+    testLive: "My change to {page} is live: its A/B test answered for it.",
+    testKept: "{page} stays as it was: my change did not do better in its A/B test.",
+    testDecided: "You decided the A/B test of my change to {page}.",
     note: "What it sees",
     monthlySubject: "What the AI did{where} in {month}",
     monthlyPreview: "The changes it made and what they moved.",

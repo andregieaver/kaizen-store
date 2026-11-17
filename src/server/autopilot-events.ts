@@ -125,6 +125,8 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     join reacting r on r.store_id = e.store_id
     where e.status = 'stopped' and e.stop_reason in ('guardrail', 'planned_end')
       and e.stopped_at > ${now.toISOString()}::timestamptz - make_interval(days => ${TEST_ENDED_DAYS})
+      -- The autopilot's own tests of its changes are decided by the store, by code (E4.1, D729), never by an event's turn.
+      and not exists (select 1 from commerce.autopilot_tests t where t.store_id = e.store_id and t.experiment_id = e.id)
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
@@ -138,6 +140,7 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     join reacting r on r.store_id = e.store_id
     where e.status = 'running' and e.answered_at is not null
       and e.answered_at > ${now.toISOString()}::timestamptz - make_interval(days => ${TEST_ENDED_DAYS})
+      and not exists (select 1 from commerce.autopilot_tests t where t.store_id = e.store_id and t.experiment_id = e.id)
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);

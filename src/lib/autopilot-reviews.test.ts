@@ -9,8 +9,10 @@ import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 
 describe("planning settings", () => {
   it("are off and ask first unless set, and an unreadable value falls back to that", () => {
-    expect(readAutonomy({}).planning).toEqual({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 });
-    expect(readAutonomy({ planning: { continues: true, starts: "auto" } }).planning).toEqual({ continues: true, starts: "auto", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 });
+    // Testing its page changes first (E4.1) is on unless switched off.
+    expect(readAutonomy({}).planning).toEqual({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15, testsPageChanges: true });
+    expect(readAutonomy({ planning: { continues: true, starts: "auto" } }).planning).toEqual({ continues: true, starts: "auto", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15, testsPageChanges: true });
+    expect(readAutonomy({ planning: { testsPageChanges: false } }).planning.testsPageChanges).toBe(false);
     expect(readAutonomy({ planning: { reviewDays: 0 } }).planning.continues).toBe(false);
   });
 });

@@ -3,7 +3,8 @@
  * and the account's page share the kinds and their words' keys.
  */
 
-export const NOTICE_KINDS = ["page_built", "follow_up", "plan_question", "plan_done", "approval_waiting", "report_ready", "life_handoff", "test_answered"] as const;
+/** `test_decided` (E4.1, D729): the store decided an autopilot test of its own change, at *Do it and tell me* (`{page}`, outcome `live` or `kept`). */
+export const NOTICE_KINDS = ["page_built", "follow_up", "plan_question", "plan_done", "approval_waiting", "report_ready", "life_handoff", "test_answered", "test_decided"] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
 /** How long a notice is kept, read or not. */
@@ -24,5 +25,7 @@ export function noticeWordKey(kind: NoticeKind, facts: Record<string, string>): 
   // A task handed to Kaizen Life (docs/assistants-together.md): what it came to.
   if (kind === "life_handoff" && facts.outcome === "waiting") return "life_handoff_waiting";
   if (kind === "life_handoff" && facts.outcome === "failed") return "life_handoff_failed";
+  // An autopilot test of its change that kept the page as it was (E4.1).
+  if (kind === "test_decided" && facts.outcome === "kept") return "test_kept";
   return kind;
 }

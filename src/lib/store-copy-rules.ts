@@ -266,6 +266,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   autopilot_events: never("What the autopilot reacted to is that store's history (D331): a copy starts with none."),
   autopilot_event_checks: never("When the store's alerts were last looked at for events (D331): a copy looks for itself."),
   autopilot_reviews: never("The autopilot's reviews of a goal are that store's history (D328): a copy's goals start unreviewed."),
+  autopilot_tests: never("Which tests the autopilot started for its own changes go with the original's tests (E4.1, D729): a copy starts with none."),
   search_settings: never("A web search key is a secret (D329)."),
   research_sources: never("What a store's AI read on the web is that store's research (D329)."),
   research_notes: never("A store's research notes are its own (D329): a copy researches for itself."),

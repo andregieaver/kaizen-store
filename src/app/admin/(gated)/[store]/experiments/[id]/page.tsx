@@ -182,9 +182,11 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           title={<>{test.name}</>}
           meta={[target, part && fillWords(w.page.testing, { part }), goal.label]}
           description={
-            (test.hypothesis || ended) && (
+            (test.hypothesis || ended || test.byAutopilot) && (
               <>
                 {test.hypothesis && <span className="block">&ldquo;{test.hypothesis}&rdquo;</span>}
+                {/* The autopilot's own test of its change (E4.1, D729): how the store decides it. */}
+                {test.byAutopilot && <span className="block">{w.autopilot.about}</span>}
                 {ended && <span className="block text-ink">{ended}</span>}
               </>
             )

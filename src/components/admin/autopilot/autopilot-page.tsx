@@ -9,6 +9,7 @@ import { adminText } from "@/lib/admin-text";
 import { formatUsd } from "@/lib/ai-cost";
 import { AUTONOMY_AREAS, AUTONOMY_LEVELS, levelOf } from "@/lib/autopilot-autonomy";
 import { FINISHED_STEPS, RETRY_OPTIONS } from "@/lib/autopilot-plans";
+import { testLine } from "@/lib/autopilot-tests";
 import type { AutopilotOverview } from "@/server/autopilot-overview";
 import type { Plan, PlanStep } from "@/server/autopilot-plans";
 
@@ -46,8 +47,8 @@ export function AutopilotPage({
   tab: AutopilotTab;
   lang: AdminLang;
   actions: AutopilotActions;
-  /** Where the owner-only things are done (the store's settings pages). */
-  links: { payments?: string; plan?: string };
+  /** Where the owner-only things are done (the store's settings pages), and the store's A/B tests (its autopilot tests, E4.1). */
+  links: { payments?: string; plan?: string; tests?: string };
   /** The AI wallet (D599), shown under the settings: the store's page passes its own card. */
   wallet?: React.ReactNode;
 }) {
@@ -79,6 +80,7 @@ export function AutopilotPage({
         </p>
       )}
       {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} locale={ADMIN_LANG_FACTS[lang].locale} />}
+      {tab === "decisions" && overview.tests && overview.tests.length > 0 && links.tests && <Tests tests={overview.tests} words={a} base={links.tests} />}
       {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
       {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
@@ -294,6 +296,23 @@ function Told({ label, items }: { label: string; items: readonly string[] }) {
   );
 }
 
+/** Its tests of its own page changes (E4.1, D729), in its own voice, each opening the test on the A/B tests screens. */
+function Tests({ tests, words: a, base }: { tests: NonNullable<AutopilotOverview["tests"]>; words: Words; base: string }) {
+  const t = a.tests;
+  return (
+    <Card title={t.title} compact>
+      <List label={t.title}>
+        {tests.map((test) => (
+          <ListRow key={test.experimentId} href={`${base}/${test.experimentId}`}>
+            <RowLead title={testLine(test, t)} />
+            <RowFact className="text-brand-text">{t.open}</RowFact>
+          </ListRow>
+        ))}
+      </List>
+    </Card>
+  );
+}
+
 function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["events"]>; words: Words }) {
   const e = a.events;
   return (
@@ -436,6 +455,18 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
               </select>
             </label>
           ))}
+          {/* Its page changes tested first (E4.1, D729): a store's, whose pages A/B tests cover; Kaizena Flow's own site is its house store's. */}
+          {overview.tests !== null ? (
+            <label className="flex items-start gap-3">
+              <input type="checkbox" name="tests_changes" defaultChecked={settings.planning.testsPageChanges} className="mt-1" />
+              <span className="flex flex-col">
+                <span className="text-body-strong text-ink">{s.testsChanges}</span>
+                <span className="text-caption text-muted">{s.testsChangesHelp}</span>
+              </span>
+            </label>
+          ) : (
+            settings.planning.testsPageChanges && <input type="hidden" name="tests_changes" value="on" />
+          )}
           <p className="text-caption text-muted">{s.never}</p>
         </fieldset>
         <fieldset className="flex flex-col gap-3">

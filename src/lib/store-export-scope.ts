@@ -39,6 +39,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   assistant_conversations: "record",
   audit_log: "record",
   autopilot_event_checks: "record",
+  // Which A/B tests the autopilot started for its own changes and how the store decided them (E4.1, D729); the tests are in the file.
+  autopilot_tests: "record",
   booking_seasons: "catalogue",
   broadcast_link_clicks: "record",
   broadcasts: "record",

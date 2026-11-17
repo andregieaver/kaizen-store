@@ -369,6 +369,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `EVENT_KINDS` (and the table's check), its finder in `detectEvents()`, its tools and lines, its facts in `eventMessage()`, its
   still-open check in `stillOpen()` and words in the `assistant` catalogues' `events`.
 
+- **Testing its page changes first (ecosystem plan E4.1, D729, `docs/ai-autopilot.md` 17)**: `publish_page` of a store's live page run as the
+  autopilot itself (never on a person's yes, never the AI manager in a person's conversation) starts an A/B test instead where
+  `testInsteadOfPublishing()` (`src/server/autopilot-tests.ts`) finds the page testable as a whole, room for a test and an answer within
+  `AUTOPILOT_TEST_MAX_DAYS` (21) at the page's own traffic (`chooseTest()`, `experimentTraffic()`), with `planning.testsPageChanges` on (the
+  default); otherwise the page is published as before and the watch guards it. Version B is the change, the page's draft goes back to what is live,
+  and `commerce.autopilot_tests` (written only by that module and `src/server/autopilot-test-decider.ts`) records the test; the database holds one
+  undecided autopilot test per page. Its test is decided only by `decideAutopilotTests()` from the verdict (`testAction()`): better goes live through
+  `apply_winner` within `autopilotDecision()` (kept for a yes otherwise, never while paused), worse, harmed, broken or out of time keeps the page as it
+  was, a person's stop or decision is theirs. The autopilot's model never stops or decides its own test (`asTheStoresDecision()` alone lets those
+  calls run as the autopilot), its events leave these tests out, and a publish of a page under its test is refused.
+
 - **Pausing and budgets platform-wide (PSI AST-07)**: Platform → AI's *AI acting on its own* (`setAiAutonomyPaused()`, `src/server/ai-pause.ts`, a platform
   admin's, audited `platform.ai_autonomy_paused`) pauses every AI that acts without a person at once: `runAutopilot()`, `runEvents()`,
   `runGoalReviews()`, `runFollowUps()` and `advanceDreamRuns()` each return at the top of their run while it is on (`skipWhilePaused()`), and go
@@ -443,7 +454,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 - **The AI manager's website tools (D308, `docs/ai-autopilot.md` 4.1, `src/lib/site-tools.ts` pure, `src/server/site-tools.ts`)**:
   pages, places, menus and the standard header and footer, for a store (`OWNER_TOOLS`) and Kaizena Flow's own site
   (`PLATFORM_TOOLS`) with the same handlers. A page is saved only by `savePage()`, as a draft unless `publish_page` (gated, never
-  past a blocking accessibility issue or in a running test); changes go through the builder's own functions (`mapTexts()`,
+  past a blocking accessibility issue or in a running test; run as the autopilot on a store's live page with enough traffic, an A/B test of the
+  change instead, E4.1); changes go through the builder's own functions (`mapTexts()`,
   `replaceInPage()`, the row edits), tried first by `dryRunEdits()`, never inside a global part (`sharedTextKeys()`); sections are
   the page studio's (`sectionForPage()`, `buildDraft()`). A build and every picture run after the answer as rows of
   `commerce.page_ai_jobs` (`runPageJobs()`: `after()` and `/api/cron/page-jobs`), in the name of who asked, who must still be
@@ -648,5 +660,6 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `visits.error_at`, which only `recordPageError()` writes, from the store's error page through `/api/visit/error`; or since D669
   a clear rise in server errors per request, at least `MIN_SERVER_ERRORS_AFTER`, from `store_traffic_hourly`, which only
   `addTrafficHours()` writes from Vercel's log drain), the undo only from what the change itself left in the audit log, never over
-  something changed since, and each verdict is one `ai.change_watched` entry. A new tool the watch undoes is a kind in
+  something changed since, and each verdict is one `ai.change_watched` entry. A `publish_page` that became an A/B test of the change (E4.1, D729)
+  published nothing: it is recorded *not watched*, its test's guardrails watch it. A new tool the watch undoes is a kind in
   `REVERTIBLE_TOOLS` and a case in `undo()` that reads what its tool audited before it.
