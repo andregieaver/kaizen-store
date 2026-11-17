@@ -9,6 +9,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerForm, CustomerNotes, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
 import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
+import { CustomerMarketing } from "@/components/admin/customer-marketing";
 import { CustomerTimeline } from "@/components/admin/customer-timeline";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
@@ -29,8 +30,13 @@ import { listDeals } from "@/server/deals";
 import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
 import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_SIGNAL } from "@/lib/order-status";
+import { canOpenPath } from "@/lib/permissions";
 import { featureOn } from "@/lib/store-features";
 import { customerAffiliate } from "@/server/affiliates";
+import { holderOf } from "@/server/auth";
+import { personSubscription } from "@/server/marketing-subscribers";
+import { segmentsOfPerson } from "@/server/segment-membership";
+import { personSms } from "@/server/sms";
 import { customerReturns } from "@/server/dispute-evidence";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
@@ -86,7 +92,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, timeline, groups, privacy, tags, notes, formValues, returns] = await Promise.all([
+  // The store's marketing to them (ecosystem plan E2.4, D713): the list facts for staff who may read marketing, the segments for all.
+  const mayMarketing = memberCan(member, "marketing:read");
+  const [customer, timeline, groups, privacy, tags, notes, formValues, returns, subscription, sms, segments] = await Promise.all([
     getCustomerDetail(store.id, ref),
     // What happened with them, newest first, as this viewer may see it (D462); the emails they got are part of it.
     readTimeline(member, { kind: "person", email: ref.email, customerId: ref.customerId }, { show, full }),
@@ -99,6 +107,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
     ref.customerId ? staffFormValues(store.id, ref.customerId) : Promise.resolve(null),
     // Whether they return a lot (D417): a chip under the name, the same as on their orders.
     customerReturns(store.id, ref),
+    mayMarketing ? personSubscription(store.id, ref.email, ref.customerId) : Promise.resolve(null),
+    mayMarketing ? personSms(store.id, ref.email, ref.customerId) : Promise.resolve(null),
+    segmentsOfPerson(store, ref.email),
   ]);
   const mayTag = memberCan(member, "customers:write");
   if (!customer) notFound();
@@ -442,6 +453,14 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               </form>
             )}
           </section>
+          <CustomerMarketing
+            lists={sms ? { subscription, sms } : null}
+            segments={segments}
+            segmentLinks={canOpenPath(holderOf(member), "/segments/[segmentId]")}
+            base={base}
+            words={words.marketing}
+            date={date}
+          />
           {salesOn && (
             <DealsCard
               deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, mainCurrency(store), locale, { decimals: "hide_whole" }) }))}

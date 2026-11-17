@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { matches, segmentRulesSchema } from "@/lib/segments";
 
-import { segmentPeople } from "./segments";
+import { listSegments, segmentPeople, type SegmentStore } from "./segments";
 import { currentStore } from "./stores";
 import { normaliseEmail } from "@/lib/email-address";
 
@@ -51,4 +51,21 @@ export async function segmentsOfBuyer(
   if (!person) return held;
   for (const r of rules) if (matches(r.rules, person, now)) held.add(r.id);
   return held;
+}
+
+/**
+ * The store's saved segments a person is in now (ecosystem plan E2.4, D713), for their customer page: their facts read once through the
+ * segments' one reader (`segmentPeople()` for that address alone) and every segment's rules matched against them, by name; never a query a
+ * segment. The customer types (RFM) are read only when a segment asks for one. A segment whose rules no longer read holds nobody. `saved` is
+ * how many segments the store has, so a page can say *in none* only where there is one to be in.
+ */
+export async function segmentsOfPerson(store: SegmentStore, email: string, now = new Date()): Promise<{ saved: number; in: { id: string; name: string }[] }> {
+  const address = normaliseEmail(email);
+  const saved = await listSegments(store.id);
+  const segments = saved.flatMap((s) => (s.rules ? [{ id: s.id, name: s.name, rules: s.rules }] : []));
+  if (!address || segments.length === 0) return { saved: saved.length, in: [] };
+  const rfm = segments.some((s) => s.rules.conditions.some((c) => c.kind === "rfm"));
+  const { people } = await segmentPeople(store, now, { emails: [address], rfm });
+  const person = people.find((p) => p.email === address);
+  return { saved: saved.length, in: person ? segments.filter((s) => matches(s.rules, person, now)).map(({ id, name }) => ({ id, name })) : [] };
 }

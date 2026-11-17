@@ -11,6 +11,7 @@ import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 import {
   SMS_PARTS_MAX,
+  SMS_SUBSCRIBER_STATUSES,
   SMS_TOKEN_PATTERN,
   campaignEstimate,
   isStopReply,
@@ -424,6 +425,33 @@ export async function recordDelivery(key: string, providerId: string, status: st
 }
 
 // ---------------------------------------------------------------------------------------------------------------- the list, for staff
+
+/** A person's texts, for their customer page: whether the store texts at all, and their number's consent (masked) since when it is so. */
+export type PersonSms = { offered: boolean; number: { status: SmsSubscriberStatus; phone: string; since: string } | null };
+
+/**
+ * A person's SMS consent (ecosystem plan E2.4, D713), for their customer page: the number of their account or address that may be texted,
+ * else the one waiting for its order, else the latest; with whether the store has an account connected, in one query. Staff with
+ * `marketing:read` only.
+ */
+export async function personSms(storeId: string, email: string, customerId: string | null): Promise<PersonSms> {
+  const row = await typedRow(
+    z.object({ offered: col.bool, status: z.enum(SMS_SUBSCRIBER_STATUSES).nullable(), phone: col.textOrNull, since: col.timestampOrNull }),
+    sql`
+      select exists (select 1 from commerce.sms_settings where store_id = ${storeId}::uuid) as offered, s.status, s.phone, s.since
+      from (select 1) one
+      left join lateral (
+        select status, phone, case when status = 'unsubscribed' then coalesce(unsubscribed_at, updated_at) else consented_at end as since
+        from commerce.sms_subscribers
+        where store_id = ${storeId}::uuid and (email = ${normaliseEmail(email)} or customer_id = ${customerId}::uuid)
+        order by (status = 'subscribed') desc, (status = 'pending') desc, updated_at desc
+        limit 1
+      ) s on true
+    `,
+  );
+  const number = row?.status && row.phone && row.since ? { status: row.status, phone: maskedPhone(row.phone), since: row.since } : null;
+  return { offered: Boolean(row?.offered), number };
+}
 
 export type SmsSubscriberRow = { id: string; phone: string; country: string; status: SmsSubscriberStatus; source: string; consentedAt: string; email: string | null };
 export type SmsCounts = Record<SmsSubscriberStatus, number>;

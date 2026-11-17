@@ -145,6 +145,26 @@ export const customersEn = {
     cartReminders: "Cart reminders",
     saidNo: "Said no",
     allowed: "Allowed",
+    /** The store's marketing to them (ecosystem plan E2.4, D713): the email list, texts and the segments they are in now. */
+    marketing: {
+      title: "Marketing",
+      email: "Emails",
+      emailStatus: {
+        subscribed: "Gets your emails, since {date}",
+        pending: "Asked for your emails {date}, has not confirmed yet",
+        unsubscribed: "Unsubscribed {date}",
+      },
+      emailNone: "Not on your list",
+      texts: "Texts",
+      textsStatus: {
+        subscribed: "Gets your texts at {phone}, since {date}",
+        pending: "Said yes to texts at {phone} {date}, once the order is paid",
+        unsubscribed: "Stopped your texts {date}",
+      },
+      textsNone: "Not signed up",
+      segments: "Segments",
+      segmentsNone: "In none of your segments now",
+    },
   },
   /** A person's or a company's timeline (D462): what happened with them, newest first. `{label}` is the thing's own number or name. */
   timeline: {

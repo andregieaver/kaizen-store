@@ -77,6 +77,8 @@ export async function segmentPeople(
       ) rf on rf.order_id = o.id
       where o.store_id = ${id}::uuid and ${PAID} and o.restricted_at is null and o.anonymised_at is null
         and coalesce(c.email, o.email) <> ''
+        -- Asked for some people (a buyer at checkout, D380; one person's page, ecosystem plan E2.4, D713): only their orders are summed.
+        and (${only}::jsonb is null or lower(coalesce(c.email, o.email)) in (select jsonb_array_elements_text(${only}::jsonb)))
     ),
     buyers as (
       select email, count(*)::int as orders, min(placed_at) as first_at, max(placed_at) as last_at,
@@ -94,14 +96,17 @@ export async function segmentPeople(
         coalesce(c.tier_id, cc.tier_id) as tier_id, c.company_id is not null as company
       from commerce.customers c
       left join commerce.customer_companies cc on cc.store_id = c.store_id and cc.id = c.company_id
-      where c.store_id = ${id}::uuid
+      where c.store_id = ${id}::uuid and (${only}::jsonb is null or lower(c.email) in (select jsonb_array_elements_text(${only}::jsonb)))
     ),
     subs as (
       select lower(email) as email, status, locale, market_code, nullif(name, '') as name
-      from commerce.marketing_subscribers where store_id = ${id}::uuid
+      from commerce.marketing_subscribers
+      where store_id = ${id}::uuid and (${only}::jsonb is null or lower(email) in (select jsonb_array_elements_text(${only}::jsonb)))
     ),
     tags as (
-      select email, array_agg(key order by key) as tags from commerce.customer_tags where store_id = ${id}::uuid group by email
+      select email, array_agg(key order by key) as tags from commerce.customer_tags
+      where store_id = ${id}::uuid and (${only}::jsonb is null or email in (select jsonb_array_elements_text(${only}::jsonb)))
+      group by email
     ),
     keys as (
       select email from (select email from accounts union select email from buyers union select email from subs) k

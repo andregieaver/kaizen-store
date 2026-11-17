@@ -140,6 +140,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `segmentsOfBuyer()` (`src/server/segment-membership.ts`) in `findUsableDiscount()` and `runningCampaigns()`; a new discount that targets
   people asks it too, with a euro scenario. Bulk tags are only `tagMany()`; a segment's people are paged by `evaluateSegment(…, page)` and
   exported only by `segmentCsv()` (the owner's).
+  One view of a person (ecosystem plan E2.4, D713): a customer's page shows the saved segments they are in now through `segmentsOfPerson()`
+  (`segmentPeople()` for their address alone, which filters every part of its query by the addresses asked, and every segment's rules matched
+  in code; never a query a segment), to `customers:read`, each linked to its page where the viewer may open it; their place on the email list
+  (`personSubscription()`) and their number's SMS consent, masked (`personSms()`), only to `marketing:read` (`CustomerMarketing`).
 
 ## Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)
 
