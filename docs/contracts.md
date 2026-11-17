@@ -153,6 +153,13 @@ and `e2e/signed-in/contracts.spec.ts` (the store signs in the admin, the custome
 there, as the e2e server keeps no files). *Found while building:* the signers' guard refused keeping when a signer was asked, so
 reminders could not be counted (fixed by `20261117010744`).
 
+*Step 4, first part (17 November 2026):* the pipelines page marks the stage sent contracts go to (*Sent contracts go here*, a tick box,
+at most one a pipeline, none by default, as the quote stage's rule in `saveStages()`); a contract sent moves its deal there and a signed one
+wins it, as step 1's rules said. A person's and a company's timeline shows each contract sent, signed or declined, with the deals (kind
+`deal`, linked to the contract's page). *Left for step 4's second part:* `contract.*` events to an owner's endpoints and workflows (a
+migration for the workflows' trigger list and a new API contract version), and the AI manager's contract tools (a prompt change: the
+agents' eval is recorded again on Platform → AI once it is live).
+
 ## 8. The owner's answers (16 November 2026)
 
 - **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.

@@ -44,7 +44,7 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 const WRITE = "customers:write" as const;
 
-export type Stage = { id: string; name: string; position: number; probability: number | null; quoteStage: boolean };
+export type Stage = { id: string; name: string; position: number; probability: number | null; quoteStage: boolean; contractStage: boolean };
 export type Pipeline = { id: string; name: string; stages: Stage[] };
 
 export type DealLink = {
@@ -106,6 +106,7 @@ const pipelineRow = z.object({
   position: col.int.nullable(),
   probability: col.int.nullable(),
   quote_stage: col.bool.nullable(),
+  contract_stage: col.bool.nullable(),
 });
 
 /** The store's pipelines in their order, each with its stages in theirs. */
@@ -113,7 +114,7 @@ export async function pipelinesOf(storeId: string, runner: Pick<Db, "execute"> =
   const rows = await typedRows(
     pipelineRow,
     sql`
-      select p.id, p.name, s.id as stage_id, s.name as stage_name, s.position, s.probability, s.quote_stage
+      select p.id, p.name, s.id as stage_id, s.name as stage_name, s.position, s.probability, s.quote_stage, s.contract_stage
       from commerce.deal_pipelines p
       left join commerce.deal_stages s on s.store_id = p.store_id and s.pipeline_id = p.id
       where p.store_id = ${storeId}::uuid
@@ -128,7 +129,7 @@ export async function pipelinesOf(storeId: string, runner: Pick<Db, "execute"> =
       p = { id: r.id, name: r.name, stages: [] };
       out.push(p);
     }
-    if (r.stage_id) p.stages.push({ id: r.stage_id, name: r.stage_name ?? "", position: r.position ?? 0, probability: r.probability, quoteStage: r.quote_stage === true });
+    if (r.stage_id) p.stages.push({ id: r.stage_id, name: r.stage_name ?? "", position: r.position ?? 0, probability: r.probability, quoteStage: r.quote_stage === true, contractStage: r.contract_stage === true });
   }
   return out;
 }
@@ -165,7 +166,8 @@ const cleanName = (raw: unknown, max: number): string | null => {
 };
 
 /** What a stage list must be: one to twelve named stages, a probability of 0 to 100 or none, at most one where sent quotes go. */
-export type StageInput = { id: string | null; name: string; probability: number | null; quoteStage: boolean };
+/** A stage as the editor sends it; `contractStage` (D695 step 4): sent contracts move their deal here, at most one a pipeline, none by default. */
+export type StageInput = { id: string | null; name: string; probability: number | null; quoteStage: boolean; contractStage?: boolean };
 
 function cleanStages(raw: readonly StageInput[]): StageInput[] | null {
   if (raw.length < 1 || raw.length > MAX_STAGES) return null;
@@ -174,9 +176,9 @@ function cleanStages(raw: readonly StageInput[]): StageInput[] | null {
     const name = cleanName(s.name, STAGE_NAME_MAX);
     if (!name) return null;
     if (s.probability !== null && !(Number.isInteger(s.probability) && s.probability >= 0 && s.probability <= 100)) return null;
-    out.push({ id: s.id, name, probability: s.probability, quoteStage: s.quoteStage === true });
+    out.push({ id: s.id, name, probability: s.probability, quoteStage: s.quoteStage === true, contractStage: s.contractStage === true });
   }
-  if (out.filter((s) => s.quoteStage).length > 1) return null;
+  if (out.filter((s) => s.quoteStage).length > 1 || out.filter((s) => s.contractStage).length > 1) return null;
   const ids = out.flatMap((s) => (s.id ? [s.id] : []));
   return new Set(ids).size === ids.length ? out : null;
 }
@@ -291,11 +293,13 @@ async function writeStages(tx: Tx, storeId: string, pipelineId: string, stages: 
   if (stages.some((s) => s.id !== null && !known.has(s.id))) throw new Refused("stages");
   // At most one stage holds sent quotes: every mark comes off before the new one goes on.
   await tx.execute(sql`update commerce.deal_stages set quote_stage = false where store_id = ${storeId}::uuid and pipeline_id = ${pipelineId}::uuid and quote_stage`);
+  // And the one sent contracts go to (D695 step 4).
+  await tx.execute(sql`update commerce.deal_stages set contract_stage = false where store_id = ${storeId}::uuid and pipeline_id = ${pipelineId}::uuid and contract_stage`);
   const ids: string[] = [];
   for (const [position, stage] of stages.entries()) {
     if (stage.id) {
       await tx.execute(sql`
-        update commerce.deal_stages set name = ${stage.name}, position = ${position}, probability = ${stage.probability}, quote_stage = ${stage.quoteStage}, updated_at = now()
+        update commerce.deal_stages set name = ${stage.name}, position = ${position}, probability = ${stage.probability}, quote_stage = ${stage.quoteStage}, contract_stage = ${stage.contractStage === true}, updated_at = now()
         where store_id = ${storeId}::uuid and id = ${stage.id}::uuid
       `);
       ids.push(stage.id);
@@ -303,8 +307,8 @@ async function writeStages(tx: Tx, storeId: string, pipelineId: string, stages: 
       const made = await typedRow(
         z.object({ id: col.uuid }),
         sql`
-          insert into commerce.deal_stages (store_id, pipeline_id, name, position, probability, quote_stage)
-          values (${storeId}::uuid, ${pipelineId}::uuid, ${stage.name}, ${position}, ${stage.probability}, ${stage.quoteStage}) returning id
+          insert into commerce.deal_stages (store_id, pipeline_id, name, position, probability, quote_stage, contract_stage)
+          values (${storeId}::uuid, ${pipelineId}::uuid, ${stage.name}, ${position}, ${stage.probability}, ${stage.quoteStage}, ${stage.contractStage === true}) returning id
         `,
         tx,
       );

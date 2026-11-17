@@ -277,6 +277,7 @@ export const dealsEn = {
     probability: "Chance in %",
     probabilityHint: "How likely a deal in this stage is to be won. The board weighs its value by it; leave it empty to count the whole value.",
     quoteStage: "Sent quotes go here",
+    contractStage: "Sent contracts go here",
     addStage: "Add a stage",
     removeStage: "Remove",
     up: "Move up",

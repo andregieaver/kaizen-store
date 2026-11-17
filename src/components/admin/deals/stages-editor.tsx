@@ -5,8 +5,8 @@ import { useId, useState } from "react";
 import { Button } from "@/components/admin/ui";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 
-type Row = { key: string; id: string | null; name: string; probability: string; quoteStage: boolean };
-export type StageRow = { id: string | null; name: string; probability: number | null; quoteStage: boolean };
+type Row = { key: string; id: string | null; name: string; probability: string; quoteStage: boolean; contractStage: boolean };
+export type StageRow = { id: string | null; name: string; probability: number | null; quoteStage: boolean; contractStage?: boolean };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
@@ -19,7 +19,7 @@ export function StagesEditor({ initial, words }: { initial: StageRow[]; words: D
   let next = 0;
   const keyOf = () => `${group}-${next++}`;
   const [rows, setRows] = useState<Row[]>(() =>
-    initial.map((s) => ({ key: s.id ?? keyOf(), id: s.id, name: s.name, probability: s.probability === null ? "" : String(s.probability), quoteStage: s.quoteStage })),
+    initial.map((s) => ({ key: s.id ?? keyOf(), id: s.id, name: s.name, probability: s.probability === null ? "" : String(s.probability), quoteStage: s.quoteStage, contractStage: s.contractStage === true })),
   );
   const [added, setAdded] = useState(0);
   const set = (index: number, patch: Partial<Row>) => setRows((all) => all.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -31,7 +31,7 @@ export function StagesEditor({ initial, words }: { initial: StageRow[]; words: D
       return copy;
     });
   const value = JSON.stringify(
-    rows.map((r) => ({ id: r.id, name: r.name, probability: r.probability.trim() === "" ? null : Math.round(Number(r.probability)), quoteStage: r.quoteStage })),
+    rows.map((r) => ({ id: r.id, name: r.name, probability: r.probability.trim() === "" ? null : Math.round(Number(r.probability)), quoteStage: r.quoteStage, contractStage: r.contractStage })),
   );
 
   return (
@@ -58,6 +58,15 @@ export function StagesEditor({ initial, words }: { initial: StageRow[]; words: D
               />
               {words.quoteStage}
             </label>
+            {/* Sent contracts (D695 step 4): optional, so a tick box that takes the mark off any other stage. */}
+            <label className="flex min-h-10 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={row.contractStage}
+                onChange={(e) => setRows((all) => all.map((r, i) => ({ ...r, contractStage: e.target.checked && i === index })))}
+              />
+              {words.contractStage}
+            </label>
             <div className="flex gap-1">
               <Button kind="quiet" size="dense" disabled={index === 0} onClick={() => swap(index, index - 1)} aria-label={`${words.up}: ${row.name}`}>
                 ↑
@@ -80,7 +89,7 @@ export function StagesEditor({ initial, words }: { initial: StageRow[]; words: D
         disabled={rows.length >= 12}
         onClick={() => {
           setAdded((n) => n + 1);
-          setRows((all) => [...all, { key: `${group}-new-${added}`, id: null, name: "", probability: "", quoteStage: false }]);
+          setRows((all) => [...all, { key: `${group}-new-${added}`, id: null, name: "", probability: "", quoteStage: false, contractStage: false }]);
         }}
       >
         {words.addStage}

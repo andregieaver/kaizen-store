@@ -17,6 +17,7 @@ const { eraseSubject } = await import("./privacy-erasure");
 const { newStore } = await import("./inventory-test-support");
 const { storeOf } = await import("./product-data");
 const jobs = await import("./contract-jobs");
+const { readTimeline } = await import("./customer-timeline");
 const { PDFDocument } = await import("pdf-lib");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
@@ -227,4 +228,45 @@ describe("the job", () => {
     expect(left.n).toBe(0);
     expect(old.storage.files.has(`${store.storeId}/contracts/${old.contractId}.pdf`)).toBe(false);
   }, 60_000);
+});
+
+describe("the deal and the timeline (step 4)", () => {
+  it("keeps the contract stage Lisa marks, moves the deal there when sent, and shows the contract on the person's timeline", async () => {
+    const fresh = await newStore("signing-stage");
+    await db().execute(sql`update commerce.stores set legal_name = 'Butikken AS', organisation_number = '999 888 777' where id = ${fresh.storeId}::uuid`);
+    const s = await storeOf(fresh.storeId);
+    if (s) fresh.member.store = s;
+    const [pipeline] = await deals.ensurePipeline(fresh.storeId, { name: "Sales", stages: [{ name: "New" }, { name: "Talking" }, { name: "Quote sent", quoteStage: true }] });
+    const stages = pipeline.stages.map((st) => ({ id: st.id, name: st.name, probability: null, quoteStage: st.quoteStage, contractStage: false }));
+    // Two marked: refused; one: kept.
+    expect(await deals.saveStages(fresh.member, pipeline.id, stages.map((st) => ({ ...st, contractStage: true })))).toMatchObject({ ok: false });
+    const saved = await deals.saveStages(fresh.member, pipeline.id, [...stages, { id: null, name: "Contract sent", probability: 80, quoteStage: false, contractStage: true }]);
+    expect(saved).toMatchObject({ ok: true });
+    const [again] = await deals.pipelinesOf(fresh.storeId);
+    const contractStage = again.stages.find((st) => st.contractStage);
+    expect(contractStage?.name).toBe("Contract sent");
+
+    const customer = await staff.createCustomer(fresh.member, { email: "kari.stage@example.com", name: "Kari Nordmann" });
+    if (!customer.ok) throw new Error("customer");
+    const deal = await deals.createDeal(fresh.member, { title: "Butikk", customerId: customer.id, pipelineId: again.id, stageId: again.stages[0].id });
+    if (!deal.ok) throw new Error("deal");
+    const made = await contracts.createContract(fresh.member, deal.id);
+    if (!made.ok) throw new Error(made.problem);
+    const box = mailbox();
+    expect(await signing.sendForSigning(fresh.member, made.id, { render, storage: memoryStorage(), mail: box.mail })).toEqual({ ok: true, id: made.id });
+    const [moved] = await db().execute<Row>(sql`select stage_id from commerce.deals where id = ${deal.id}::uuid`);
+    expect(moved.stage_id).toBe(contractStage?.id);
+
+    const selling = { ...fresh.member, store: { ...fresh.member.store, features: [...fresh.member.store.features, "sales" as const] } };
+    const who = { kind: "person" as const, email: "kari.stage@example.com", customerId: customer.id };
+    expect((await readTimeline(selling, who)).events.find((e) => e.what === "contract_sent")).toMatchObject({
+      label: "Butikk",
+      href: `/admin/${fresh.slug}/deals/${deal.id}/contracts/${made.id}`,
+    });
+    await signing.signAsStore(fresh.member, made.id, { name: "Eva Eier", agree: true }, at, { mail: box.mail });
+    const [signer] = await db().execute<Row>(sql`select token from commerce.contract_signers where contract_id = ${made.id}::uuid and role = 'customer'`);
+    await signing.requestCode(String(signer.token), at, { mail: box.mail, code: () => "778899" });
+    await signing.signWithCode(String(signer.token), { code: "778899", name: "Kari Nordmann", agree: true }, at);
+    expect((await readTimeline(selling, who)).events.map((e) => e.what)).toEqual(expect.arrayContaining(["contract_sent", "contract_signed", "deal_won"]));
+  });
 });

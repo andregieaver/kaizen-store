@@ -269,6 +269,7 @@ export const dealsNb: DealsMessages = {
     probability: "Sjanse i %",
     probabilityHint: "Hvor sannsynlig det er at en avtale i dette trinnet blir vunnet. Tavlen vekter verdien med den; la feltet stå tomt for å telle hele verdien.",
     quoteStage: "Sendte tilbud havner her",
+    contractStage: "Sendte kontrakter havner her",
     addStage: "Legg til et trinn",
     removeStage: "Fjern",
     up: "Flytt opp",
