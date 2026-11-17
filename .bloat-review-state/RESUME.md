@@ -249,3 +249,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - cache events: build prerenders no longer counted (e6dd7843); today's cache_events_daily row inflated (~2,000 build draws), not deleted.
 - Running: 1.10→1.12 (Opus, kz-c), 1.11 (Sonnet, kz-b).
 - Owner open: CRON_SECRET; 68 unread admin texts; growth policy; invoices drill; >1600px upload; unwired.md; VAT twice.
+
+## 17 Nov 23:35 UTC
+- 1.10 D746, 1.11 D747 written up and Done (95a20f4ab). Progress rows: WHOLE row <=300 chars.
+- 1.17 c1-2 + 1.18 c1-3 + review fix pushed as 27f215e7e; CI watched (bash bygkkqlwn). Then write up 1.18 (Idle cost: none line required in D-row). 1.17 stays In progress.
+- kz-c executor ad71c22b5537655ce (Sonnet): 1.17 commit 3 (decisions in run/kz-c-1173-13.md) then 1.3.
+- kz-b executor a0af61e90e526b47e (Opus): 1.12 commit 2.
+- ee708312 CI failure = other session (api-contract D438, eval replay D391), not ours.
