@@ -163,6 +163,8 @@ export const legalNb: LegalMessages = {
     phone: {
       change: "Endre",
       done: "Ferdig",
+      open: "Åpne",
+      close: "Lukk",
       nowTitle: "Det de besøkende ser nå",
       noBanner: "Ingen informasjonskapselbanner",
       noBannerText: "Nettstedet bruker bare nødvendige informasjonskapsler. Et banner vises av seg selv når et verktøy under er på.",

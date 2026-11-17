@@ -165,6 +165,8 @@ export const legalEn = {
     phone: {
       change: "Change",
       done: "Done",
+      open: "Open",
+      close: "Close",
       nowTitle: "What visitors see now",
       noBanner: "No cookie banner",
       noBannerText: "The site uses only necessary cookies. A banner appears by itself once a tool below is on.",

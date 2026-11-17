@@ -38,6 +38,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
   // Round 30 (D703): on a phone what visitors see now comes first, then each part a row with its state.
   const p = w.phone;
   const row = { change: p.change, done: p.done, flat: true } as const;
+  const look = { change: p.open, done: p.close, flat: true } as const;
   const asked = toolCategories(store.tracking);
   const toolsOn = Object.values(store.tracking ?? {}).filter((v) => typeof v === "string" && v.trim() !== "").length;
   const codeOn = Object.values(store.customCode ?? {}).filter((snippet) => snippet && snippet.code.trim() !== "").length;
@@ -82,7 +83,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
         words={words}
       />
       </PhoneRow>
-      <PhoneRow title={p.scan} sub={lastDone?.finishedAt ? fillWords(p.scannedOn, { day: new Date(lastDone.finishedAt).toLocaleDateString(locale, { dateStyle: "medium" }) }) : p.notScanned} {...row}>
+      <PhoneRow title={p.scan} sub={lastDone?.finishedAt ? fillWords(p.scannedOn, { day: new Date(lastDone.finishedAt).toLocaleDateString(locale, { dateStyle: "medium" }) }) : p.notScanned} {...look}>
       <CookieScanPanel
         scans={scans}
         lastDone={lastDone}
@@ -94,7 +95,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
         purposeLang={lang}
       />
       </PhoneRow>
-      <PhoneRow title={p.consents} sub={consents.length > 0 ? countWords(consents.length, p.consentsN, { n: String(consents.length) }) : p.noConsents} {...row}>
+      <PhoneRow title={p.consents} sub={consents.length > 0 ? countWords(consents.length, p.consentsN, { n: String(consents.length) }) : p.noConsents} {...look}>
         <ConsentLog consents={consents} words={words} locale={locale} />
       </PhoneRow>
       </PhoneRows>
