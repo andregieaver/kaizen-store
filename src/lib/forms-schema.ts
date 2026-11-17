@@ -26,6 +26,8 @@ export const formRequest = z.object({
     .string()
     .max(500)
     .refine((path) => path.startsWith("/") && !path.startsWith("//") && !/[\\\s]/.test(path), "The page's address could not be read."),
+  /** The page's market (its address or a country's code), where a form's payment is put in the cart (D738 F6c); the store's first if none. */
+  market: z.string().regex(/^[A-Za-z0-9-]{1,40}$/).optional(),
   /** Milliseconds from showing the form to sending it: people take a few seconds. */
   elapsed: z.number().int().min(0).max(1e10).default(0),
 });

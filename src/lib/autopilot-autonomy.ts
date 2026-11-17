@@ -43,6 +43,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_page_place: "website",
   save_menu: "website",
   unpublish_page: "website",
+  // A live form's questions and settings (D705 F5), as a published page's.
+  change_form: "website",
   add_redirect: "website",
   save_search_synonym: "website",
   save_search_rule: "website",
@@ -250,8 +252,13 @@ export const autonomySettingsSchema = z.object({
       reacts: z.boolean().default(false),
       /** Minutes a customer waits for a person before the autopilot looks (D331). */
       waitMinutes: z.number().int().min(5).max(240).default(15),
+      /**
+       * *Test my page changes first when there is enough traffic* (ecosystem plan E4.1, D729, `src/lib/autopilot-tests.ts`): a change it would
+       * publish itself to a live page becomes an A/B test where the page's visitors would answer one within three weeks. On unless switched off.
+       */
+      testsPageChanges: z.boolean().default(true),
     })
-    .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 }),
+    .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15, testsPageChanges: true }),
   /**
    * Challenge mode while it is on (`src/lib/autopilot-challenge.ts`): set by the server from `autopilot_settings.challenge` (`withChallenge()`),
    * never saved from here, so an owner's form cannot switch it.

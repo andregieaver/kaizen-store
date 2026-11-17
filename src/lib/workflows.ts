@@ -49,6 +49,9 @@ export function subjectOf(
   | "work_client"
   | "work_invoice"
   | "form_response"
+  | "email"
+  | "broadcast"
+  | "sending_pause"
   | "schedule" {
   if (trigger === "schedule") return "schedule";
   // Ecosystem plan E3.2 (D718).
@@ -71,6 +74,10 @@ export function subjectOf(
   if (trigger === "experiment.answered") return "experiment";
   if (trigger.startsWith("contract.")) return "contract";
   if (trigger === "form.response") return "form_response";
+  // Email plan M1.2 (D732).
+  if (trigger.startsWith("email.")) return "email";
+  if (trigger === "broadcast.sent") return "broadcast";
+  if (trigger === "marketing.paused") return "sending_pause";
   if (trigger.startsWith("order.")) return "order";
   if (trigger.startsWith("subscription.")) return "subscription";
   if (trigger.startsWith("product.")) return "product";
@@ -214,6 +221,15 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "form_response.locale", kind: "text" },
     { key: "form_response.path", kind: "text" },
   ],
+  email: [
+    { key: "email.kind", kind: "text" },
+    { key: "email.reason", kind: "text" },
+  ],
+  broadcast: [
+    { key: "broadcast.recipients", kind: "number" },
+    { key: "broadcast.failed", kind: "number" },
+  ],
+  sending_pause: [{ key: "sending_pause.reason", kind: "text", choices: ["bounces", "complaints"] }],
   draft: [
     { key: "draft.source", kind: "text" },
     { key: "draft.currency", kind: "text" },
@@ -328,7 +344,7 @@ export const STORE_WORKFLOWS: WorkflowKit = {
 const tag = z.string().trim().min(1).max(40);
 const text = (max: number) => z.string().trim().min(1).max(max);
 
-/** The actions as the AI manager's `draft_workflow` knows them (`draftWorkflowInputSchema`). */
+/** Every action but the hold, which only `order.paid` takes (`actionsFor()`). */
 const DRAFT_ACTIONS = [
   z.object({ kind: z.literal("tag_order"), tag }),
   z.object({ kind: z.literal("note_order"), text: text(1000) }),
@@ -367,17 +383,6 @@ export const workflowSchemaFor = (
 
 export const workflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS);
 
-/**
- * The AI manager's `draft_workflow` input, frozen as it was before the order rules' fold (ecosystem plan E3.3, D718): the five operators, a
- * value of 200 characters and no `hold_order`, so the tool's schema, and with it the recorded agents' eval, stays as it is. The release step
- * opens it (the tool's schema and description name the new operators, the paid order's fields and the hold, with a new run of the eval
- * recorded). Until then a workflow the AI drafts is checked again by `workflowInputSchema` on save, like any other.
- */
-export const draftWorkflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS, {
-  actions: z.discriminatedUnion("kind", [...DRAFT_ACTIONS]),
-  operators: ["is", "is_not", "contains", "more_than", "less_than"],
-  valueMax: 200,
-});
 
 /** What is wrong with a workflow beyond its shape: a field the trigger does not have, an action it cannot take, a schedule where none belongs. */
 export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STORE_WORKFLOWS): string[] {

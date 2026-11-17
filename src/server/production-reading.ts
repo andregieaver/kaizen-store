@@ -10,8 +10,8 @@ import { col, typedRows } from "./typed-rows";
 
 /**
  * Production's own statistics, read once a day (bloat review step 0.2): the only writer of `commerce.platform_readings`. One row per
- * commerce table, one per schema and the app's role's costliest and most-called statements (Postgres has already replaced their values),
- * kept `READING_KEEP_DAYS`. No person, store or account.
+ * commerce table, one per schema, one per index of a hot table, one per scheduled job and the app's role's costliest and most-called
+ * statements (Postgres has already replaced their values), kept `READING_KEEP_DAYS`. No person, store or account.
  */
 
 export const READING_KEEP_DAYS = 90;
@@ -20,7 +20,7 @@ export const READING_STATEMENTS = 40;
 const utcDay = (now: Date) => now.toISOString().slice(0, 10);
 
 /** Writes the day's reading; a day already read is left as it is. Table and schema rows come first, the statements only where the view can be read. */
-export async function recordProductionReading(now: Date = new Date()): Promise<{ tables: number; schemas: number; statements: number }> {
+export async function recordProductionReading(now: Date = new Date()): Promise<{ tables: number; schemas: number; indexes: number; jobs: number; statements: number }> {
   const day = utcDay(now);
   return db().transaction(async (tx) => {
     const tables = await tx.execute(sql`
@@ -38,6 +38,23 @@ export async function recordProductionReading(now: Date = new Date()): Promise<{
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where c.relkind in ('r', 'm') and n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg_toast%'
       group by n.nspname
+      on conflict (day, kind, name) do nothing
+      returning 1
+    `);
+    const indexes = await tx.execute(sql`
+      insert into commerce.platform_readings (day, kind, name, figures)
+      select ${day}::date, 'index', i.relname || '.' || i.indexrelname, jsonb_build_object(
+        'scans', i.idx_scan, 'backs_constraint', exists (select 1 from pg_constraint c where c.conindid = i.indexrelid))
+      from pg_stat_user_indexes i
+      where i.schemaname = 'commerce' and i.relname in ('orders', 'order_lines', 'visits', 'products', 'product_variants', 'customers', 'carts', 'cart_lines')
+      on conflict (day, kind, name) do nothing
+      returning 1
+    `);
+    // `worked` stays null until step 3.3 adds the column to commerce.cron_jobs and changes this line.
+    const jobs = await tx.execute(sql`
+      insert into commerce.platform_readings (day, kind, name, figures)
+      select ${day}::date, 'job', j.job, jsonb_build_object('runs', j.runs, 'worked', null)
+      from commerce.cron_jobs j
       on conflict (day, kind, name) do nothing
       returning 1
     `);
@@ -76,7 +93,7 @@ export async function recordProductionReading(now: Date = new Date()): Promise<{
       log("warn", "production_reading.statements_failed", {}, error);
       statements = 0;
     }
-    return { tables: tables.length, schemas: schemas.length, statements };
+    return { tables: tables.length, schemas: schemas.length, indexes: indexes.length, jobs: jobs.length, statements };
   });
 }
 

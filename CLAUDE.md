@@ -155,7 +155,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Free trials and their end (D420, `src/server/store-trial.ts`)
 - Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
 - Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
-- Forms as their own records, kept responses and form templates (D705, `docs/forms.md`; F1 to F4 built, F5 planned)
+- Forms as their own records, kept responses and form templates (D705, D738, `docs/forms.md`; F1 to F6 built, its AI tools live)
 - Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…
 - The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`, `AiManagerLauncher`)
 - The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
@@ -242,6 +242,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
 - Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)
 - SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
+- A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)
+- The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
 - Marketing email from the store's own facts (wave 8 unit H, D352, `src/server/broadcast-facts.ts`)
 - Email automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6, `src/lib/automations.ts`, `src/server/automations.ts`,…
 - Discounts in depth (wave 5 unit E, D299, `docs/wave-5-marketing.md` 7, `src/lib/discounts.ts`, `src/server/discounts.ts`)

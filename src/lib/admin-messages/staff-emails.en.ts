@@ -51,6 +51,19 @@ export const staffEmailsEn = {
     days: { one: "{n} day", many: "{n} days" },
     button: "Open the test",
   },
+  /** The sending guard paused a store's marketing email (D730): the counts are code's, the words only say them. */
+  sendingPaused: {
+    subject: "Marketing email from {store} is paused",
+    preview: "Too many of your recent emails {what}, so Kaizena Flow held the rest to protect your sending.",
+    whatBounces: "bounced back",
+    whatComplaints: "were marked as spam",
+    heading: "Kaizena Flow paused your marketing email",
+    bounces: "{bounced} of the {sent} marketing emails {store} sent since {since} bounced back ({rate}). Addresses that bounce usually come from an old or bought list.",
+    complaints: "{complained} of the {sent} marketing emails {store} sent since {since} were marked as spam ({rate}). Above about 0.3 %, mail services start sending everything from a sender to spam.",
+    held: "Newsletters and email automations are held until you resume them. Order emails, receipts and tracking go on as before.",
+    advice: "Before you resume, remove addresses you are not sure want your emails, and send only to people who signed up themselves.",
+    button: "See it and resume",
+  },
   guardrail: {
     days: { one: "{n} day", many: "{n} days" },
     figures:
@@ -97,7 +110,7 @@ export const staffEmailsEn = {
       business: "Business buyer",
       host: "Host's listing: {host}",
       gift: "Gift",
-      held: "On hold by a rule",
+      held: "On hold by a workflow",
       answers: "Checkout questions answered: {n} (on the order)",
       subject: "New order {number}: {total}",
       preview: "{store} has a new paid order, {number}, of {total}.",
@@ -334,6 +347,16 @@ export const staffEmailsEn = {
     goalLine: "{met} of {all} targets met",
     stepsWeek: "Steps done this week",
     legal: "Legal pages by the AI: {published} published, {drafted} drafts, {failed} not written.",
+    /** Its tests of its own page changes (E4.1, D729), in its own voice. */
+    tests: "Tested before going live",
+    testing: {
+      one: "Testing my change to {page} against the current page: about 1 day left",
+      many: "Testing my change to {page} against the current page: about {n} days left",
+    },
+    testWaiting: "My change to {page} did better in its A/B test: it waits for your yes to go live.",
+    testLive: "My change to {page} is live: its A/B test answered for it.",
+    testKept: "{page} stays as it was: my change did not do better in its A/B test.",
+    testDecided: "You decided the A/B test of my change to {page}.",
     note: "What it sees",
     monthlySubject: "What the AI did{where} in {month}",
     monthlyPreview: "The changes it made and what they moved.",

@@ -116,9 +116,9 @@ export const invoicesEn = {
     pageOf: "Page {page} of {pages} · {count}",
     csvTitle: "CSV for your accountant",
     csvInvoices:
-      "One row for each invoice issued in the period: number, dates, order, the buyer's name, country and VAT number, amounts, the VAT for each rate, the VAT in the seller's currency where the document has it, and the VAT treatment. It holds personal data, so keep it safe; each download is written to the activity log.",
+      "One row for each invoice issued in the period: number, dates, order, the buyer's name, country and VAT number, amounts, the VAT for each rate, the VAT in the seller's currency where the document has it, and the VAT treatment. It holds personal data, so keep it safe; each download is written to the change log.",
     csvCreditNotes:
-      "One row for each credit note issued in the period: number, dates, order, the buyer's name, country and VAT number, amounts, the VAT for each rate, the VAT in the seller's currency where the document has it, and the VAT treatment. It holds personal data, so keep it safe; each download is written to the activity log.",
+      "One row for each credit note issued in the period: number, dates, order, the buyer's name, country and VAT number, amounts, the VAT for each rate, the VAT in the seller's currency where the document has it, and the VAT treatment. It holds personal data, so keep it safe; each download is written to the change log.",
     downloadLabel: "Download a CSV",
     download: "Download CSV",
     csvNoAccess: "The CSV for the accountant is for members who may change orders.",

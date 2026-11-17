@@ -36,8 +36,15 @@ describe("the tools a turn sends", () => {
     const marketing = ALL.filter((t) => t.area === "marketing").map((t) => t.name);
     const website = ALL.filter((t) => t.area === "website").map((t) => t.name);
     const asked = chooseTools(ALL, ALWAYS, { wanted: ["marketing"], pageArea: "website", used: ["change_plan"] });
-    for (const name of [...marketing, ...website, "change_plan"]) expect(asked.names).toContain(name);
+    for (const name of [...marketing, "change_plan"]) expect(asked.names).toContain(name);
     expect(asked.heldBack.marketing).toBeUndefined();
+    // The page's area comes next, as far as the turn has room (marketing and the website together outgrew it with the form tools, D705 F5):
+    // what does not fit is held back for load_tools, and no other area is sent before it is whole.
+    const sent = website.filter((name) => asked.names.includes(name)).length;
+    expect(sent + (asked.heldBack.website?.held ?? 0)).toBe(website.length);
+    expect(sent).toBeGreaterThan(website.length / 2);
+    if (asked.heldBack.website) for (const t of ALL) if (asked.names.includes(t.name)) expect(["marketing", "website"].includes(t.area) || (CORE_TOOLS as readonly string[]).includes(t.name) || t.name === "change_plan", t.name).toBe(true);
+    expect(asked.names.length + ALWAYS).toBeLessThanOrEqual(TOOLS_PER_TURN);
   });
 
   it("describes what is held back, and reads only known areas", () => {

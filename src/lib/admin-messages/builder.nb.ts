@@ -1357,8 +1357,8 @@ export const builderNb: BuilderMessages = {
       "Tekst over et bilde kontrolleres mot bildets mørkeste og lyseste under fargelaget, siden bildets egne farger ikke er kjent. En kontroll som denne finner bare en del av problemene: den erstatter ikke å gå gjennom siden med tastatur og skjermleser.",
     hasProblems: { one: "Denne siden har et problem å se på", many: "Denne siden har {n} problemer å se på" },
     fixOrPublish: {
-      one: "Rett det først, eller publiser likevel. Å publisere likevel blir skrevet ned i aktivitetsloggen.",
-      many: "Rett dem først, eller publiser likevel. Å publisere likevel blir skrevet ned i aktivitetsloggen.",
+      one: "Rett det først, eller publiser likevel. Å publisere likevel blir skrevet ned i endringsloggen.",
+      many: "Rett dem først, eller publiser likevel. Å publisere likevel blir skrevet ned i endringsloggen.",
     },
     places: "{n} steder",
     fixFirst: "Rett først",

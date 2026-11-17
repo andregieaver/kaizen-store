@@ -211,6 +211,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   The scheduler is watched from outside by `/api/cron/watchdog` (Vercel's one cron, every 15 minutes: it emails the platform's admins when
   the dispatcher's ledger row is over 15 minutes old), and the status page's jobs check fails on a late watcher or a late daily job
   (`jobsCheck()`, `src/lib/cron-health.ts`); pg_cron's SQL jobs are kept as `pgcron.*` (`src/server/pg-cron-jobs.ts`).
+  The screen also shows the day's difference of the stored daily reading of production and eight flags (`src/lib/platform-flags.ts`, read
+  from the stored rows by `src/server/platform-flags.ts`, never from a statistics view); the two written exception lists live in that
+  file with a reason per entry, at most five and three; and a flag is also a line in the platform's morning briefing (`database_flag`).
 
 ## The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)
 

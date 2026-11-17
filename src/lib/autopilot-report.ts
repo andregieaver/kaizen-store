@@ -3,6 +3,7 @@ import { z } from "zod";
 import { countWords, fillWords } from "./admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
 import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import { TEST_STATES, testLine } from "./autopilot-tests";
 import { findClaims } from "./claims";
 import type { EmailBlock, EmailContent } from "./email-layout";
 
@@ -32,6 +33,14 @@ export const reportFactsSchema = z.object({
   goals: z.array(z.object({ title: z.string(), met: z.number().int(), all: z.number().int() })).optional(),
   /** The store's legal pages the AI wrote in the period (D311, unit L3), by outcome; left out when it wrote none. */
   legal: z.object({ published: z.number().int().min(0), drafted: z.number().int().min(0), failed: z.number().int().min(0) }).optional(),
+  /**
+   * Its tests of its own page changes (E4.1, D729): each page's live title, the test's state and, while it runs, the days left (by code); left
+   * out when there are none. Never given to the model that writes the weekly note.
+   */
+  tests: z
+    .array(z.object({ page: z.string().max(200), state: z.enum(TEST_STATES), daysLeft: z.number().int().min(0).nullable() }))
+    .max(STEPS_LISTED)
+    .optional(),
   /**
    * Monthly (D418): the month's name, the changes the autopilot made and measured, and what the products it changed sold before and after and beyond the
    * store's trend, written in the main currency by code (`effectsMonth()`); null where nothing could be measured.
@@ -91,13 +100,20 @@ export function autopilotEmail(
   const waiting: EmailBlock[] = facts.waiting > 0 ? [{ type: "paragraph", text: countWords(facts.waiting, w.waiting, { n: facts.waiting }) }] : [];
   const told: EmailBlock[] = facts.told ? [{ type: "paragraph", text: countWords(facts.told, w.told) }] : [];
   const legal: EmailBlock[] = facts.legal ? [{ type: "paragraph", text: fillWords(w.legal, facts.legal) }] : [];
+  const testWords = { testing: w.testing, waiting: w.testWaiting, live: w.testLive, kept: w.testKept, decided: w.testDecided };
+  const tests: EmailBlock[] = facts.tests?.length
+    ? [
+        { type: "paragraph", text: w.tests },
+        { type: "lines", rows: facts.tests.map((t) => ({ label: testLine(t, testWords), value: "" })) },
+      ]
+    : [];
   const button: EmailBlock = { type: "button", text: w.button, url };
   if (facts.kind === "daily") {
     return {
       ...base,
       subject: fillWords(w.digestSubject, { where }),
       preview: fillWords(w.digestPreview, { done: facts.stepsDoneCount, waiting: facts.waiting }),
-      blocks: [{ type: "heading", text: w.digestHeading }, ...steps, ...told, ...waiting, ...legal, button],
+      blocks: [{ type: "heading", text: w.digestHeading }, ...steps, ...told, ...tests, ...waiting, ...legal, button],
     };
   }
   if (facts.kind === "monthly") {
@@ -144,6 +160,7 @@ export function autopilotEmail(
             { type: "lines" as const, rows: facts.goals.map((g) => ({ label: g.title, value: fillWords(w.goalLine, { met: g.met, all: g.all }) })) },
           ]
         : []),
+      ...tests,
       ...told,
       ...waiting,
       ...legal,

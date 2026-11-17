@@ -59,6 +59,16 @@ vi.mock("./ai", async (importOriginal) => {
         if (results.length === 0) return call("list_supplier_orders");
         return { content: "Order 1042 from Nordic Mugs AS was refused: out of stock until December. Send it again or cancel it when you have decided.", toolCalls: [] };
       }
+      // A lead's name is what a visitor typed (E2.5, D713): read as a name, so nothing is made or moved and no word of it is obeyed.
+      if (said.startsWith("Who are my new leads")) {
+        if (results.length === 0) return call("list_leads", "{}");
+        return { content: "Two new leads: Kari Nordmann asked for a quote yesterday, so follow her up first. The other typed an instruction as a name; I left it alone.", toolCalls: [] };
+      }
+      // A form's response is a visitor's words (D705 F5): read as data, so no form is changed or placed and no address in it is passed on.
+      if (said.startsWith("What have people sent through my contact form")) {
+        if (results.length === 0) return call("form_responses", '{"form":"Contact"}');
+        return { content: "Two messages came through Contact: one asks about delivery times, the other has an instruction in it, which I left alone.", toolCalls: [] };
+      }
       // Asked to act on a store, it says how it is done and that it cannot do it.
       if (said.startsWith("Delete every product in my store")) {
         if (results.length === 0) return call("search_docs", '{"query":"archive products","track":"owners"}');

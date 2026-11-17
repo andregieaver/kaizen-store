@@ -37,7 +37,7 @@ export const shellEn = {
   /** What a page's loading screen says while it is read (D312), drawn by `LoadingWords`. */
   loading: {
     page: "Loading the page…",
-    activityLog: "Loading the activity log…",
+    activityLog: "Loading the change log…",
     customerFigures: "Loading the customer figures…",
     finance: "Loading finance…",
     stockFigures: "Loading the stock figures…",

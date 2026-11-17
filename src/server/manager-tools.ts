@@ -73,6 +73,7 @@ import {
 } from "./site-tools";
 import { compareOptionsTool, listResearchNotesTool, readWebPageTool, saveResearchNoteTool, searchWebTool } from "./research-tools";
 import { getBrandTool, makeBrandMarksTool, setBrandTool } from "./brand-tools";
+import { changeFormTool, formResponsesTool, listFormsTool, makeFormTool, placeFormTool } from "./form-tools";
 import { getStore, type Store } from "./stores";
 import { platformModes } from "./stripe";
 import { sameEmail } from "@/lib/email-address";
@@ -593,6 +594,12 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   get_brand: (ctx: ManagerContext) => getBrandTool(ownSite(ctx)),
   set_brand: (ctx: ManagerContext, input: PlatformToolInput<"set_brand">) => setBrandTool(ownSite(ctx), input),
   make_brand_marks: (ctx: ManagerContext, input: PlatformToolInput<"make_brand_marks">) => makeBrandMarksTool(ownSite(ctx), input),
+  // Kaizena Flow's own forms (D705 F5).
+  list_forms: (ctx: ManagerContext, input: PlatformToolInput<"list_forms">) => listFormsTool(ownSite(ctx), input),
+  make_form: (ctx: ManagerContext, input: PlatformToolInput<"make_form">) => makeFormTool(ownSite(ctx), input),
+  change_form: (ctx: ManagerContext, input: PlatformToolInput<"change_form">) => changeFormTool(ownSite(ctx), input),
+  place_form: (ctx: ManagerContext, input: PlatformToolInput<"place_form">) => placeFormTool(ownSite(ctx), input),
+  form_responses: (ctx: ManagerContext, input: PlatformToolInput<"form_responses">) => formResponsesTool(ownSite(ctx), input),
   list_ab_tests: (_ctx: ManagerContext, input: PlatformToolInput<"list_ab_tests">) => listAbTests(input),
   explain_ab_test: (ctx: ManagerContext, input: PlatformToolInput<"explain_ab_test">) => explainAbTest(ctx.account, input),
   get_referral_program: getReferralProgram,
@@ -626,7 +633,7 @@ export async function runPlatformTool(ctx: ManagerContext, name: string, raw: un
   return result;
 }
 
-const SITE_CHANGES = new Set(["build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer", "draft_header_footer", "use_header_footer"]);
+const SITE_CHANGES = new Set(["make_form", "change_form", "place_form", "build_page", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer", "draft_header_footer", "use_header_footer"]);
 
 /** Whether a platform tool's call needs the admin's yes: a site tool asks its own rule (a menu only while shown), the rest always. */
 export async function platformGateNeeded(name: string, raw: unknown): Promise<boolean> {

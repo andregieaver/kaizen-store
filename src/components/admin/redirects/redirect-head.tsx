@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { redirectsEn, type RedirectsMessages } from "@/lib/admin-messages/redirects.en";
 import { redirectPaths, redirectTabs, type RedirectTab } from "@/lib/redirect-admin";
 import { PageHeader } from "@/components/admin/ui";
+import { SelectNav } from "@/components/admin/select-nav";
 
 /**
  * The head of every redirect page (wave 2, D168, `docs/wave-2-redirects.md` 2.2, 2.3): the title, what the page is for and the five tabs (the redirects, the
@@ -34,7 +35,14 @@ export function RedirectsHead({
         </Link>
       )}
       <PageHeader title={<>{title}</>} description={<>{intro}</>} />
-      <nav aria-label={words.tabs.label} className="flex flex-wrap gap-1 border-b border-line text-sm">
+      {/* On a phone (round 41, D737) the five tabs are one choice. */}
+      <SelectNav
+        label={words.tabs.label}
+        hideLabel
+        className="sm:hidden"
+        options={redirectTabs(words).map((tab) => ({ label: tab.label, href: paths[tab.id], current: active === tab.id }))}
+      />
+      <nav aria-label={words.tabs.label} className="flex flex-wrap gap-1 border-b border-line text-sm max-sm:hidden">
         {redirectTabs(words).map((tab) => (
           <Link
             key={tab.id}

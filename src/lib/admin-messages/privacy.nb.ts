@@ -242,6 +242,7 @@ export const privacyNb: PrivacyMessages = {
       blog_comments: "Bloggkommentarer",
       support_conversations: "Kundeservicesamtaler",
       support_messages: "Kundeservicemeldinger",
+      unanswered_questions: "Spørsmål lagret for chatassistenten",
       field_values: "Egne felt",
       vat_checks: "Kontroller av MVA-nummer (VIES)",
     },
@@ -333,7 +334,7 @@ export const privacyNb: PrivacyMessages = {
       privacy_requests: "Loggen over personvernforespørsler",
       search_queries: "Søkelogg",
       visits: "Besøkstall",
-      audit_log: "Aktivitetslogg",
+      audit_log: "Endringslogg",
       form_submissions: "Skjemainnsendinger",
       integration_deliveries: "Leveranser til integrasjoner",
       abandoned_checkouts: "Forlatte kasser",
@@ -351,6 +352,7 @@ export const privacyNb: PrivacyMessages = {
       recordings: "Opptak av besøk",
       contracts: "Signerte kontrakter",
       form_responses: "Skjemasvar",
+      unanswered_questions: "Spørsmål chatassistenten ikke kunne svare på",
     },
     bases: {
       read: "Lest i kilden",
@@ -386,7 +388,7 @@ export const privacyNb: PrivacyMessages = {
     review: "Gjennomgang",
     changeTitle: "Endre en periode",
     changeText:
-      "En endring avslutter perioden som gjelder og starter en ny fra datoen du oppgir, og skrives i aktivitetsloggen. Perioder merket «Satt i koden» håndheves av programmets egne konstanter: en ny rad registrerer avgjørelsen, men endrer ikke hva som fjernes.",
+      "En endring avslutter perioden som gjelder og starter en ny fra datoen du oppgir, og skrives i endringsloggen. Perioder merket «Satt i koden» håndheves av programmets egne konstanter: en ny rad registrerer avgjørelsen, men endrer ikke hva som fjernes.",
     registerTitle: "Registeret over personopplysninger",
     registerText:
       "Hver tabell som har en kundes opplysninger, står i registeret, med hva sletting gjør med den. En test feiler når en tabell med personopplysninger legges til uten å være klassifisert.",

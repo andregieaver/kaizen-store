@@ -54,6 +54,10 @@ export function AreaForm({
   const w = useAdminText("shipping").local.form;
   const [marketCode, setMarketCode] = useState(area?.marketCode ?? markets[0]?.code ?? "");
   const [kind, setKind] = useState<"postal" | "radius">(area?.kind ?? "postal");
+  /** On a phone (round 41, D737) the name, the area and the price show; the other choices wait behind one row. */
+  const [more, setMore] = useState(false);
+  const later = more ? "" : "max-sm:hidden";
+  const p = w.phone;
   const currency = area?.currency ?? markets.find((m) => m.code === marketCode)?.currency ?? "";
   const radiusOk = radiusCountries.includes(marketCode);
   const placesHere = places.filter((p) => p.country === marketCode);
@@ -68,7 +72,7 @@ export function AreaForm({
         {area ? (
           <input type="hidden" name="market" value={area.marketCode} />
         ) : (
-          <label className="flex flex-col gap-1 text-sm">
+          <label className={`flex flex-col gap-1 text-sm ${later}`}>
             {w.country}
             <select name="market" value={marketCode} onChange={(e) => setMarketCode(e.target.value)} className={control} disabled={!canWrite}>
               {markets.map((m) => (
@@ -80,7 +84,7 @@ export function AreaForm({
           </label>
         )}
       </div>
-      <fieldset className="flex flex-col gap-2 text-sm" disabled={!canWrite}>
+      <fieldset className={`flex flex-col gap-2 text-sm ${later}`} disabled={!canWrite}>
         <legend className="mb-1">{w.area}</legend>
         <label className="flex items-center gap-2">
           <input type="radio" name="kind" value="postal" checked={kind === "postal"} onChange={() => setKind("postal")} />
@@ -96,7 +100,7 @@ export function AreaForm({
         <label className="flex flex-col gap-1 text-sm">
           {w.patterns}
           <textarea name="patterns" required rows={3} defaultValue={area?.patterns.join(", ") ?? ""} placeholder="0150, 0151, 02*" className={`${control} py-2 font-mono`} disabled={!canWrite} />
-          <span className="text-muted">{w.patternsNote}</span>
+          <span className={`text-muted ${later}`}>{w.patternsNote}</span>
         </label>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -125,21 +129,35 @@ export function AreaForm({
           {fillWords(w.price, { currency })}
           <input name="amount" inputMode="decimal" defaultValue={money(area?.amountMinor)} placeholder={w.free} className={control} disabled={!canWrite} />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className={`flex flex-col gap-1 text-sm ${later}`}>
           {fillWords(w.minimum, { currency })}
           <input name="minBasket" inputMode="decimal" defaultValue={money(area?.minBasketMinor)} placeholder={w.none} className={control} disabled={!canWrite} />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className={`flex flex-col gap-1 text-sm ${later}`}>
           {fillWords(w.freeAbove, { currency })}
           <input name="freeOver" inputMode="decimal" defaultValue={money(area?.freeOverMinor)} placeholder={w.neverFree} className={control} disabled={!canWrite} />
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-sm">
+      <button
+        type="button"
+        aria-expanded={more}
+        onClick={() => setMore((open) => !open)}
+        className="flex min-h-14 items-center justify-between gap-3 border-t border-line py-2 text-left sm:hidden"
+      >
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-body text-ink">{p.more}</span>
+          <span className="text-caption text-ink-2">
+            {[markets.find((m) => m.code === marketCode)?.name, kind === "postal" ? w.postal : w.radius, (area?.active ?? true) ? p.offered : p.notOffered].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+        <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{more ? p.done : p.change}</span>
+      </button>
+      <label className={`flex flex-col gap-1 text-sm ${later}`}>
         {w.info}
         <textarea name="info" rows={2} maxLength={INFO_MAX} defaultValue={area?.info ?? ""} placeholder={w.infoPlaceholder} className={`${control} py-2`} disabled={!canWrite} />
         <span className="text-muted">{w.infoNote}</span>
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className={`flex items-center gap-2 text-sm ${later}`}>
         <input type="checkbox" name="active" defaultChecked={area?.active ?? true} disabled={!canWrite} />
         {w.offered}
       </label>

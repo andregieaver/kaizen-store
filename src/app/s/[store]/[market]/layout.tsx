@@ -113,6 +113,9 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
     notFound();
   }
   const { store, market, ab } = shop;
+  // No `after()` here (bloat review step 1.25, 17 November 2026): one in this layout kept a miss's 404 from being drawn again in the background, so a
+  // redirect added behind the application's back was never followed (`e2e/redirects.spec.ts`, failed in CI runs 1552 to 1555). A store's draws are counted
+  // elsewhere, or not at all.
   const m = t(market.lang);
   // A website (D178 step 5: the online shop off) keeps the withdrawal link, and the checkout's legal pages, while an order can still be
   // withdrawn from or returned (asked only of a website, cached for an hour).

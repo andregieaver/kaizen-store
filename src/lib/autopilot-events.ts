@@ -3,7 +3,8 @@ import { REVIEW_PLAN_TOOLS, REVIEW_READ_TOOLS } from "./autopilot-reviews";
 /**
  * The autopilot reacts to what happens (D331, `docs/ai-autopilot.md` 15): a customer waiting for a person, an A/B test that ended by
  * itself and an urgent analytics alert each bring one headless turn with only the tools that event needs. Pure: the kinds, the limits, the
- * tools, the turn's lines and its message; what is found is read in SQL (`src/server/autopilot-events.ts`).
+ * tools, the turn's lines and its message; what is found is read in SQL (`src/server/autopilot-events.ts`), from the event log where the
+ * kind's fact is a logged event (`LOGGED_EVENT_KINDS`, E4.2) and by a scan where it is time passing.
  */
 
 export const EVENT_KINDS = [
@@ -76,6 +77,47 @@ export const STOCKOUT_PER_CHECK = 5;
 
 /** The alerts that bring a turn: urgent and warning, never info or good news. */
 export const EVENT_ALERT_SEVERITIES = ["urgent", "warning"] as const;
+
+/**
+ * The event log's reader for the autopilot (ecosystem plan E4.2, D729): one cursor in `commerce.event_cursors`, made at now the first time
+ * it reads (`readEventsAfter()`'s default), so the autopilot never answers what happened before it read the log. Every store's events pass
+ * it; a store's are kept only while that store reacts, so a store that switches *React to what happens* on starts from then.
+ */
+export const AUTOPILOT_READER = "autopilot";
+
+/**
+ * The kinds whose fact is an event the database logs (`commerce.events`), by the event: the reader keeps one row per event as the scans did
+ * (the same reference, so nothing is answered twice), reading what the event is about where it lives. Every other kind is still a scan in
+ * `detectEvents()`, because what makes it is time passing or a sum, not an event: an order unsent for `ORDER_UNSENT_HOURS`, a supplier late,
+ * failed payments over a window, a stock-out the forecast sees, the daily alert check; or because the log does not carry its event yet (a test
+ * that ended by itself, an order held, a dispute opened, a customer's request to staff, an exchange confirmed).
+ */
+export const LOGGED_EVENT_KINDS = {
+  // Queued by the desk's waiting alert (`sendWaitingAlerts()`) once a conversation has waited the desk's minutes for a person; the autopilot
+  // still looks only after its own `waitMinutes` (`runEvents()` holds the row until then).
+  "support.waiting": "support_waiting",
+  // Queued with the answer's mark (`markAnswered()`, D662).
+  "experiment.answered": "test_answered",
+  // Queued when a parcel's tracking moves on (`integration_tracking_events()`): kept when its phase is one of `DELIVERY_PROBLEM_PHASES`.
+  "fulfilment.updated": "delivery_problem",
+} as const satisfies Readonly<Record<string, EventKind>>;
+export type LoggedEventName = keyof typeof LOGGED_EVENT_KINDS;
+export const LOGGED_EVENTS = Object.keys(LOGGED_EVENT_KINDS) as LoggedEventName[];
+
+/** Events the reader takes in one batch, and the most batches one run reads before it leaves the rest for the next minute. */
+export const LOG_BATCH = 200;
+export const LOG_ROUNDS = 5;
+
+/** The logged events of a batch by the kind they make, each kind's events in the log's order; events it does not react to are left out. */
+export function eventsByKind<E extends { event: string }>(events: readonly E[]): Map<EventKind, E[]> {
+  const out = new Map<EventKind, E[]>();
+  for (const e of events) {
+    if (!Object.hasOwn(LOGGED_EVENT_KINDS, e.event)) continue;
+    const kind = LOGGED_EVENT_KINDS[e.event as LoggedEventName];
+    out.set(kind, [...(out.get(kind) ?? []), e]);
+  }
+  return out;
+}
 
 /**
  * The tools each kind of event's turn has (the person's role and the store's features still decide which of them are offered). None lets the
@@ -171,7 +213,7 @@ export const EVENT_LINES: Readonly<Record<EventKind, string>> = {
     "- Leave one note on the order with add_order_note: what you found and did. End with one plain sentence on it, without the customer's name or contact details: the owner reads it.",
   ].join("\n"),
   order_held: [
-    "You are working on your own now, as the store's autopilot: an order is held, by a rule or a person, often for its payment's risk. Nobody is reading along.",
+    "You are working on your own now, as the store's autopilot: an order is held, by a workflow or a person, often for its payment's risk. Nobody is reading along.",
     "- Read it with get_order: the payment's risk and the order's facts. A held order is released by a person, never by you.",
     "- Leave one note on the order with add_order_note for the person who decides: what you checked and found, plainly. Never judge the customer.",
     "- End with one plain sentence on it, without the customer's name or contact details: the owner reads it.",

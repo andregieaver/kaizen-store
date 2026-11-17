@@ -13,6 +13,7 @@ import { renderEmail } from "@/lib/email-layout";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
+import { PhoneRow } from "@/components/admin/phone-row";
 
 type Save = (input: ReminderStepInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type SendTest = (locale: string) => Promise<{ ok: boolean; message: string }>;
@@ -76,6 +77,8 @@ export function ReminderEditor({
   const [content, setContent] = useState(initial.content);
   const [locale, setLocale] = useState(languages[0]?.locale ?? "");
   const [problems, setProblems] = useState<string[]>([]);
+  /** On a phone (round 38, D728) one language's fields are open at a time; the others are rows. */
+  const [editing, setEditing] = useState(false);
   const [testMessage, setTestMessage] = useState<{ ok: boolean; message: string } | null>(null);
   const [saving, startSaving] = useTransition();
   const [testing, startTesting] = useTransition();
@@ -127,6 +130,8 @@ export function ReminderEditor({
           event.preventDefault();
           submit();
         }}
+        // A field the browser finds empty opens the phone's fields, so its message can point at it.
+        onInvalidCapture={() => setEditing(true)}
         className="flex flex-col gap-6"
       >
         {problems.length > 0 && (
@@ -163,7 +168,7 @@ export function ReminderEditor({
                 <option value="days">{w.days}</option>
               </select>
             </div>
-            <p className={hint}>
+            <p className={`${hint} max-sm:hidden`}>
               {purpose === "plan"
                 ? w.planWhen
                 : w.cartWhen}
@@ -175,6 +180,7 @@ export function ReminderEditor({
           </label>
         </section>
 
+        <PhoneRow flat title={w.code} sub={code ?? w.none} change={w.phone.change} done={w.phone.done}>
         <section aria-labelledby={`${id}-code`} className={card}>
           <h2 id={`${id}-code`} className="text-title text-ink">
             {w.code}
@@ -196,13 +202,45 @@ export function ReminderEditor({
               : w.cartCode}
           </p>
         </section>
+        </PhoneRow>
 
         <section aria-labelledby={`${id}-text`} className={card}>
           <h2 id={`${id}-text`} className="text-title text-ink">
             {w.email}
           </h2>
+          {/* On a phone each language is a row with its subject; Edit opens its fields (round 38, D728). */}
+          <ul className={`flex flex-col sm:hidden ${editing ? "hidden" : ""}`}>
+            {languages.map((l) => (
+              <li key={l.locale} className="flex min-h-14 items-center justify-between gap-3 border-b border-line last:border-b-0">
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-body text-ink">{l.label}</span>
+                  <span className="truncate text-caption text-ink-2">{content[l.locale]?.subject || "—"}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocale(l.locale);
+                    setEditing(true);
+                  }}
+                  className="shrink-0 text-sm font-medium text-ink underline underline-offset-2"
+                >
+                  {w.phone.edit}
+                  <span className="sr-only"> {l.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {editing && (
+            <div className="flex items-center justify-between gap-3 sm:hidden">
+              <span className="text-body font-medium text-ink">{language?.label}</span>
+              <button type="button" onClick={() => setEditing(false)} className="text-sm font-medium text-ink underline underline-offset-2">
+                {w.phone.done}
+              </button>
+            </div>
+          )}
+          <div className={`flex flex-col gap-4 ${editing ? "" : "max-sm:hidden"}`}>
           {languages.length > 1 && (
-            <div role="group" aria-label={w.language} className="flex flex-wrap gap-1 rounded-full bg-sunken p-1">
+            <div role="group" aria-label={w.language} className="flex flex-wrap gap-1 rounded-full bg-sunken p-1 max-sm:hidden">
               {languages.map((l) => (
                 <button
                   key={l.locale}
@@ -243,6 +281,7 @@ export function ReminderEditor({
             {w.placeholders}
             {purpose === "plan" ? w.planAdded : w.cartAdded}
           </p>
+          </div>
         </section>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -259,6 +298,12 @@ export function ReminderEditor({
         </div>
       </form>
 
+      <PhoneRow
+        title={w.preview}
+        sub={languages.length > 1 && language ? fillWords(w.phone.previewSub, { language: language.label }) : w.phone.previewOne}
+        change={w.phone.open}
+        done={w.phone.done}
+      >
       <section aria-labelledby={`${id}-preview`} className="flex flex-col gap-3 lg:sticky lg:top-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id={`${id}-preview`} className="text-title text-ink">
@@ -290,6 +335,7 @@ export function ReminderEditor({
           </div>
         )}
       </section>
+      </PhoneRow>
     </div>
   );
 }

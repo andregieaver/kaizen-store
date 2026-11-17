@@ -168,6 +168,7 @@ export const experimentsNb: ExperimentsMessages = {
     pickButton: "Du velger knappen på siden",
     pickForm: "Du velger skjemaet på siden",
     noRate: "Butikken har ikke noe tall for dette ennå",
+    phone: { page: "Side å teste", unknown: "Ikke kjent ennå", open: "Åpne", close: "Lukk" },
     whereTitle: "Hvor?",
     whereSub: "Besøkende om dagen som ville vært med, fra de siste 30 dagene",
     whereBasis: "Telt fra besøkene som startet på hver side, så en side ser minst så mange.",
@@ -610,4 +611,10 @@ export const experimentsNb: ExperimentsMessages = {
     formGone: "Det skjemaet er ikke på siden.",
   },
   words: { button: "Den knappen", form: "Det skjemaet", partUnderTest: "delen som testes" },
+  autopilot: {
+    name: "Autopilotens endring av {page}",
+    mark: "Av autopiloten",
+    about:
+      "Autopiloten startet denne testen for å prøve endringen sin av siden mot siden slik den er. Butikken avgjør den ut fra resultatene: endringen publiseres bare hvis den gjør det bedre, så langt eieren lar autopiloten handle; ellers forblir siden som den er.",
+  },
 };

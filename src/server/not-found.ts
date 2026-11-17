@@ -235,7 +235,7 @@ export async function ignoreAddress(member: Membership, path: string): Promise<{
     });
   } catch (error) {
     log("error", "not_found.ignore_failed", {}, error);
-    return refuse("The activity log could not be written, so nothing was changed. Try again.");
+    return refuse("The change log could not be written, so nothing was changed. Try again.");
   }
 }
 
@@ -252,7 +252,7 @@ export async function restoreAddress(member: Membership, path: string): Promise<
     });
   } catch (error) {
     log("error", "not_found.restore_failed", {}, error);
-    return refuse("The activity log could not be written, so nothing was changed. Try again.");
+    return refuse("The change log could not be written, so nothing was changed. Try again.");
   }
 }
 

@@ -31,6 +31,16 @@ export const formsNb: FormsMessages = {
 
   tabs: { form: "Skjema", responses: "Svar", settings: "Innstillinger" },
   editor: {
+    payment: "Betaling",
+    paymentHint: "Besøkende betaler for et av produktene dine etter at de har sendt, i kassen din: pris, mva og vilkår som for enhver bestilling. Svaret viser bestillingen når den er betalt.",
+    paymentFind: "Finn et produkt",
+    paymentSearch: "Søk",
+    paymentNone: "Ingen produkter som selges én gang med pris, har de ordene.",
+    paymentRemove: "Ingen betaling",
+    param: "Del av adressen",
+    paramHint: "Besøkende ser aldri dette feltet. Det tar vare på verdien av denne delen av sidens adresse sammen med svaret: med utm_campaign tar en adresse som slutter på ?utm_campaign=vinter vare på «vinter».",
+    hiddenName: "Navn i svarene",
+    hiddenNamePlaceholder: "Kampanje",
     name: "Navn",
     nameHint: "Bare du ser det.",
     sendTo: "Send svar på e-post til",
@@ -110,6 +120,10 @@ export const formsNb: FormsMessages = {
     noAccess: "Du kan se dette skjemaet, men ikke endre det.",
   },
   responses: {
+    paid: "Betalt · bestilling {number}",
+    unpaid: "Ikke betalt ennå",
+    openOrder: "Åpne bestilling {number}",
+    files: "Filer sendt med",
     none: "Ingen svar ennå. De vises her når besøkende sender skjemaet.",
     noneArchived: "Ingen arkiverte svar.",
     showArchived: "Arkiverte",

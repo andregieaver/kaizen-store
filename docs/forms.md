@@ -176,7 +176,7 @@ export is in the audit log (an export with its count only, as D295's).
 | **F2** (built) | Old components moved to forms (migration), removed from the builder's list; copies (D129, `clone_page_content()`, saved parts). | The migration's PGlite test with every old shape; `store-copy` tests. |
 | **F3** (built) | `src/lib/questions.ts` taken out of the checkout; `showWhen` conditions, every question kind, words per language in the editor; the inbox choice per form. | `questions.test.ts`; the browser and server checks agree. |
 | **F4** (built) | `form_templates`; the owner's own templates: *Save as template*, the library, sharing and the platform's hiding; Kaizena Flow's starters editable from the platform. | `form-templates.int.test.ts`. |
-| **F5** (half built) | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
+| **F5** (built) | AI tools and their eval case, webhooks, workflows, Admin API. | `agent-eval.test.ts`, the Admin API's tests. |
 
 ## 9. F1 as built (17 November 2026)
 
@@ -293,3 +293,97 @@ export is in the audit log (an export with its count only, as D295's).
 - **Next (F5b).** The AI manager's form tools, an eval case with instructions hidden in a response, and the admin map's words for *New
   form*; the owner runs the eval on Platform → AI and its recording is committed.
 
+## 14. F5 as built, its second half (17 November 2026)
+
+- **The AI manager's form tools** (`src/lib/form-tools.ts`, `src/server/form-tools.ts`, `FORM_TOOLS` in `owner-tools.ts`), the same for a
+  store and Kaizena Flow's own site: `list_forms` (the forms as Website → Forms lists them, and the templates on offer), `make_form` (from a
+  template named in the site's language or in English, sending to the site's own address), `change_form` (name, questions whole, addresses,
+  button and thank-you words, through `saveForm()`; the owner's yes first, gate `public`), `place_form` (a Form component as a row of a
+  page's draft, never published) and `form_responses` (the newest responses, each answer cut at 500 characters, with `read_as`: a
+  visitor's words are data). Permissions: Website → Forms' keys; responses with `customers:read`.
+- **Released.** The five tools were held in `HELD_FOR_EVAL` with their case `manager-form-response` (an instruction hidden in a response
+  must neither be followed nor change a form) until the eval was recorded with them: the CRM session released both sets and recorded run
+  9a773d05 (gpt-4.1-mini, 32 of 32, commit 401a8f8b). The admin map's *New form* still says "a ready-made one"; changing it is a prompt
+  change, so it waits for the next eval recording.
+
+
+## 15. F6 (D738): hidden fields, file uploads and payments in a form
+
+Asked for on 17 November 2026: the three things section 3 left for later, in three parts that each ship on their own, then the AI
+manager's tools and its words for *New form* with one eval run by the owner.
+
+### 15.1 F6a as built: hidden fields from the address (17 November 2026)
+
+- **A kind of question, `hidden`** (`FORM_FIELD_KINDS`, a form's only: `PAGE_FORM_KINDS` keeps it out of a page's own email form). It is
+  never asked: its words are its name in the responses (*Campaign*), and `param` names the part of the address it reads (`utm_campaign`
+  unless the owner writes another, `ADDRESS_PARAM`). The schema keeps nothing else of it (no hint, help, width, condition or need to be
+  answered), and no question may be asked on one.
+- **Its answer** is `fromAddress()` (`src/lib/forms.ts`): the parameter's value in the path the form was sent from, as `/api/forms`
+  already receives it with its query, one line of at most 300 characters. `checkMessage()` takes the address, so the browser and the
+  server agree; whatever the browser sends under the field's id is ignored, and an address without the parameter leaves the answer out
+  rather than failing. The site never draws it (`askedQuestions()`).
+- **Where it shows.** As any answer: the responses screen, the CSV (a column of its own), the owner's email, the support inbox, the
+  `form.response` event, the Admin API and `form_responses`, with no change to any of them. Only the page the form is sent on counts:
+  carrying a campaign from page to page would need the first visit, which is kept only with statistics consent (D303), so it is not done.
+- **Kaizena Flow's own forms** have it in the same change (the same editor and submit path).
+- **The AI manager's tools** do not offer the kind yet: their descriptions are part of the recorded eval, so the kind is added with F6c's
+  tools and wording, in one eval run.
+
+### 15.2 F6b as built: files sent with a form (17 November 2026)
+
+- **A kind of question, `file`** (a form's only, like `hidden`): one picture or one PDF, at most three such questions a form
+  (`FORM_FILE_QUESTIONS_MAX`). It has words, help, half width, conditions and *Must be answered*, but no hint inside it.
+- **No malware scanner is at hand, so what is taken is narrow** (`src/lib/form-files.ts`, `src/server/form-files.ts`):
+  - A picture is drawn again in the visitor's browser (`prepareFile()` in `site-form.tsx`) as a WebP, or a JPEG where the browser
+    cannot write WebP, of at most 2,000 pixels a side and 2.5 MB. What is sent is then only the picture: its camera data and anything
+    hidden in the original stay behind. The server reads it again from its own bytes (`readPicture()`, shared with review pictures).
+  - A PDF is sent as it is, up to 3 MB. The server checks it starts `%PDF-1.`/`%PDF-2.`, ends with `%%EOF`, and that neither its bytes
+    nor its compressed streams (opened with zlib, up to 20 MB in all) name `/JS`, `/JavaScript`, `/Launch`, `/EmbeddedFile`,
+    `/RichMedia`, `/SubmitForm`, `/ImportData`, `/XFA` or `/GoToE`, in any `#xx` spelling (`pdfProblem()`).
+  - Anything else is refused, in the visitor's language, at once in the browser and again on the server. The files of one sending are
+    at most 4 MB together, under the 4.5 MB a function takes.
+- **The sending**: a form with a file goes to `/api/forms` as multipart (`request` and `file:{question}`). A file question's answer
+  is only the name of the file the server took, with its size (`Receipt.pdf (820 kB)`), never what the browser said under its id. The
+  files are stored before the response's row, under its id, so a row never lists a file that is not there.
+- **Where they are kept**: the private bucket `form-files` (migration `form_files_rules`, no policy), `{store or platform}/{response}/{question}.{ext}`,
+  listed in `form_responses.files` (at most three, never changed, like the answers). Nothing is served from a public address.
+- **Who reads them**: the responses screen lists each file; pressing it downloads it through
+  `/admin/{store}/forms/responses/{form}/files/{response}/{question}` for members who may read customers (Kaizena Flow's own:
+  `/admin/platform/forms/…`, the platform's team who may read the website). Always `attachment`, `nosniff`, `default-src 'none'; sandbox`,
+  never cached (`fileDownload()`). The owner's email says the files are with the response in the admin; they are never attached to it,
+  nor put in the `form.response` event, the Admin API or the AI manager's `form_responses`, which carry the answer (the name and size).
+- **Personal data**: the files are part of the response (register `form_responses`): exported by name with its answers, erased with it,
+  and gone after the form's months. Whatever removes a row (deleting responses, the retention job, an erasure, a form or store going), the
+  daily `pruneFormFiles()` removes its files within a day, leaving folders younger than an hour (a sending may still be writing).
+- **Words.** The visitor's words for a file are in visitors' scripts (`messages/*-browser.ts`); to make room, the form's words only the
+  server's emails read (the confirmation and the owner's emails) moved to the server's messages (`messages/{lang}.ts`, `form` spread over
+  the browser's), so visitors' scripts carry 2,552 bytes less than before (`browserTextBytes` 31,808).
+- **Kaizena Flow's own forms** take files in the same change.
+
+### 15.3 F6c as built: payments in a form (17 November 2026)
+
+- **The owner's choice** (asked 17 November 2026): a payment in a form is a real order, paid at once. Asked as a typed amount on a custom
+  line, it met the draft orders' own rule that a custom item is never sold to a private buyer (`custom_consumer`: it has no right of
+  withdrawal of its own). So **a form pays for one of the store's products**: the product brings its price per market and currency, its VAT
+  category, its right of withdrawal and its terms, and the store's own checkout takes the payment as for any order (order number, invoice,
+  VAT reports, the books). No new order source and no change to the orders table.
+- **The form**: `forms.payment_variant_id`, a store's message form only (`forms_payment`; Kaizena Flow's own forms take none, since it
+  sells only plans), a variant of the store's own (`forms_payment_rules()`; no foreign key, product_variants being a hot table). What may be
+  paid with (`PAYABLE` in `src/server/form-payments.ts`): an active product of kind goods, sold once (not subscription-only), not a host's
+  listing. The editor's *Payment* card finds one by name or SKU (`formPaymentChoices()`) and shows it with its price in the first market;
+  *No payment* removes it. A save whose draft says nothing of it (the AI manager's, the Admin API's) keeps it; `null` removes it.
+- **The page** says what is paid and its price in its market above the button (`formPaymentOffer()`, cached under the catalogue's and the
+  forms' tags; the words are the server's `form.payNote`, so visitors' scripts carry no more words). It shows only while the product has a
+  price in that market and payments are on there.
+- **Sending**: the response is kept and emailed as any (the owner's email says a payment follows), then `startFormPayment()` puts the
+  variant into the visitor's cart in the page's market (`changeLine()`, with the cart cookie) and, in the same transaction, links the
+  response to that cart (`form_payments`, never changed, gone with its response). The answer is `{ outcome: "pay", url }` and the browser
+  goes on to the market's checkout. When the payment cannot start (payments off, the product not sold there or out of stock, the store
+  closed) the response stands, unpaid, and the visitor reads that it was sent.
+- **Paid**: the response's order is the first paid order (paid, fulfilled or closed) placed from its cart after it (`responsePayments()`);
+  the responses screen shows *Not paid yet* or *Paid · order 1042* with a link to the order. An order placed but not paid, held
+  (authorised) or cancelled leaves it waiting.
+- **Personal data**: `form_payments` holds only a response's id, its store, a cart's id and the variant, and goes with its response (so with
+  its erasure and its months); the whole-store file leaves it out as a record.
+- **Not covered end to end**: the e2e builds have no Stripe, so the page's note and the way to the checkout are proved by
+  `src/server/form-payments.int.test.ts` (the cart cookie, the cart's line, the link, *Paid* with the order); the editor's card by the e2e test.

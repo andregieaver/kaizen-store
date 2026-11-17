@@ -62,6 +62,7 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
   appliedVariant: null,
   answeredAt: null,
   learning: null,
+  byAutopilot: false,
   createdAt: "2026-10-01T10:00:00.000Z",
   scheduledStart: null,
   scheduleProblem: null,

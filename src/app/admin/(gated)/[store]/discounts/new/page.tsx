@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { DiscountForm } from "../discount-form";
 
-export const metadata: Metadata = { title: "New coupon" };
+export const metadata: Metadata = { title: "New discount code" };
 
 export default async function NewDiscountPage({ params, searchParams }: PageProps<"/admin/[store]/discounts/new">) {
   const gated = await requirePermission((await params).store, "marketing:read");

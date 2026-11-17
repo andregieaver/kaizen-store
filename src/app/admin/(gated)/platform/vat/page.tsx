@@ -14,7 +14,7 @@ import { adminText } from "@/lib/admin-text";
 
 import { addVatCategoryAction, setShippingVatRuleAction, setVatCategoryActiveAction, setVatRateAction, verifyVatRateAction } from "./actions";
 
-export const metadata: Metadata = { title: "VAT" };
+export const metadata: Metadata = { title: "VAT rates" };
 
 /**
  * VAT for every store (D157, `docs/wave-1a-tax.md` 2.3): the categories owners choose from, each country's rate per category with its

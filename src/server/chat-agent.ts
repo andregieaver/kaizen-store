@@ -265,8 +265,11 @@ function card(
 
 const json = (value: unknown) => JSON.stringify(value).slice(0, 6000);
 
-/** A site tool's answer: JSON for the model, and what the widget draws from it (a page opened, product cards, link chips, D583). */
-type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[]; chips?: SupportChip[] };
+/**
+ * A site tool's answer: JSON for the model, and what the widget draws from it (a page opened, product cards, link chips, D583). A search of
+ * the knowledge with words to look for says how many passages it found (`knowledge`), for the gap list (ecosystem plan E4.3).
+ */
+type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[]; chips?: SupportChip[]; knowledge?: { found: number } };
 
 /**
  * The visitor behind a chat turn, for the search's ceiling on the AI (bloat review step 0.21): the same key the store's search page
@@ -374,12 +377,14 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
       };
     }
     case "search_content": {
-      const passages = await searchKnowledge(store.id, text("query"), market.locale);
+      const query = text("query");
+      const passages = await searchKnowledge(store.id, query, market.locale);
       return {
         result: json({
           passages: passages.map((p) => ({ title: p.title, page: p.path, text: p.body })),
           ...(passages.length === 0 ? { note: "Nothing found in the store's pages or knowledge base." } : {}),
         }),
+        ...(query ? { knowledge: { found: passages.length } } : {}),
       };
     }
     case "store_info": {
@@ -474,19 +479,22 @@ async function embedTool(site: ChatSite, name: string, args: Record<string, unkn
   if (name !== "search_content" || !site.embed) return { result: json({ error: `No tool called ${name}.` }) };
   const storeId = site.kind === "store" ? site.store.id : null;
   const locale = site.kind === "store" ? site.market.locale : "en-GB";
-  const passages = await searchKnowledge(storeId, typeof args.query === "string" ? args.query.slice(0, 200) : "", locale, 5, { widget: site.embed.id });
+  const query = typeof args.query === "string" ? args.query.trim().slice(0, 200) : "";
+  const passages = await searchKnowledge(storeId, query, locale, 5, { widget: site.embed.id });
   const chips = [...new Map(passages.filter((p) => p.url).map((p) => [p.url!, { kind: "page" as const, label: p.title.slice(0, 80), href: p.url! }])).values()].slice(0, PAGE_CHIPS);
   return {
     result: json({ passages: passages.map((p) => ({ title: p.title, text: p.body, ...(p.url ? { page: p.url } : {}) })) }),
     ...(chips.length > 0 ? { chips } : {}),
+    ...(query ? { knowledge: { found: passages.length } } : {}),
   };
 }
 
 async function kaizenTool(name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
   switch (name) {
     case "search_content": {
-      const passages = await searchKnowledge(null, typeof args.query === "string" ? args.query.slice(0, 200) : "", "en-GB");
-      return { result: json({ passages: passages.map((p) => ({ title: p.title, page: p.path, text: p.body })) }) };
+      const query = typeof args.query === "string" ? args.query.trim().slice(0, 200) : "";
+      const passages = await searchKnowledge(null, query, "en-GB");
+      return { result: json({ passages: passages.map((p) => ({ title: p.title, page: p.path, text: p.body })) }), ...(query ? { knowledge: { found: passages.length } } : {}) };
     }
     case "site_info": {
       const chrome = await getPlatformChrome();
@@ -597,11 +605,14 @@ export async function runChat(
   const chips = new Map<string, SupportChip>();
   let card: SupportCard | undefined;
   let kept: string | undefined;
+  // What the answer stood on (ecosystem plan E4.3): the knowledge searches with words, the passages they found, and any other tool used.
+  const knowledge = { searched: 0, found: 0, otherTools: 0 };
   const extras = () => ({
     ...(handoff ? { handoff, ...(escalation ? { escalation } : {}) } : {}),
     ...(chips.size > 0 ? { chips: [...chips.values()].slice(0, CHIPS_MAX) } : {}),
     ...(card ? { card } : {}),
     ...(kept ? { action: kept } : {}),
+    ...(knowledge.searched > 0 && knowledge.found === 0 && knowledge.otherTools === 0 ? { foundNothing: true as const } : {}),
   });
   let action: ChatAction | null = null;
   const products = new Map<string, ChatProduct>();
@@ -639,6 +650,7 @@ export async function runChat(
       siteAnswers.set(call.id, answer);
     }
     for (const { call, args } of asked) {
+      if (!(call.function.name === "search_content" && siteAnswers.has(call.id))) knowledge.otherTools++;
       if (options.handoff && call.function.name === HANDOFF.name) {
         const parsed = HANDOFF.input.safeParse(args);
         handoff = parsed.success ? (parsed.data as { reason: string }).reason : "The customer asked for a person.";
@@ -663,6 +675,13 @@ export async function runChat(
         continue;
       }
       const outcome = await siteAnswers.get(call.id)!;
+      if (outcome.knowledge) {
+        knowledge.searched++;
+        knowledge.found += outcome.knowledge.found;
+      } else if (call.function.name === "search_content") {
+        // A search without words, or one that failed: it found nothing, but nothing was looked for either.
+        knowledge.otherTools++;
+      }
       if (outcome.action) action = outcome.action;
       for (const product of outcome.products ?? []) products.set(product.handle, product);
       for (const chip of outcome.chips ?? []) chips.set(chip.href, chip);

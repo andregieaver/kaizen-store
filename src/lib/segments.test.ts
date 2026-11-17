@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { z } from "zod";
-
 import { marketingEn } from "./admin-messages/marketing.en";
 import { marketingNb } from "./admin-messages/marketing.nb";
+import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 import {
   CONDITION_GROUPS,
   CONDITION_KIND_WORDS,
@@ -20,7 +19,6 @@ import {
   segmentInput,
   segmentNeeds,
   segmentRulesSchema,
-  toolSegmentRulesSchema,
   type Condition,
   type ConditionKind,
   type Person,
@@ -296,14 +294,12 @@ describe("the rule builder's list of conditions (E3.6)", () => {
 });
 
 describe("the AI manager's segment tools (E3.6)", () => {
-  it("still take only the first twelve conditions, so their schema and recorded eval stay as they were", () => {
-    expect(toolSegmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 2 }, { kind: "lastOrder", op: "never" }] }).success).toBe(true);
+  it("take every condition the editor offers, as the editor's own rules", () => {
+    const input = OWNER_TOOLS_BY_NAME.count_segment.input;
     for (const kind of NEW_KINDS) {
       const c = newCondition(kind);
-      expect([kind, toolSegmentRulesSchema.safeParse({ match: "all", conditions: [c.kind === "bought" ? { ...c, products: [MUG] } : c] }).success]).toEqual([kind, false]);
+      expect([kind, input.safeParse({ rules: { match: "all", conditions: [c.kind === "bought" ? { ...c, products: [MUG] } : c.kind === "boughtCategory" ? { ...c, categories: [MUG] } : c] } }).success]).toEqual([kind, true]);
     }
-    const kinds = JSON.stringify(z.toJSONSchema(toolSegmentRulesSchema, { io: "input" })).match(/"const":"(\w+)"/g) ?? [];
-    expect(kinds).toHaveLength(12);
-    expect(toolSegmentRulesSchema.safeParse({ match: "all", conditions: [{ kind: "lastOrder", op: "within" }] }).success).toBe(false);
+    expect(input.safeParse({ rules: { match: "all", conditions: [{ kind: "lastOrder", op: "within" }] } }).success).toBe(false);
   });
 });

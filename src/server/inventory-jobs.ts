@@ -293,7 +293,7 @@ export const inventoryDryCountsOf = (job: Pick<DataJob, "counts">): InventoryDry
 };
 
 /**
- * Starts the apply of a checked import: the same file (its SHA-256 is checked again when the run begins). The start is written to the activity log first
+ * Starts the apply of a checked import: the same file (its SHA-256 is checked again when the run begins). The start is written to the change log first
  * (`products.inventory_import_started`: counts and the job, never a SKU), and an import whose entry cannot be written does not start.
  */
 export async function applyInventoryImport(member: Membership, jobId: string, run: (id: string) => Promise<unknown>, deps: DataDeps = {}): Promise<StepResult> {
@@ -307,7 +307,7 @@ export async function applyInventoryImport(member: Membership, jobId: string, ru
     await audit(member.account.id, member.store.id, "products.inventory_import_started", { job: job.id, rows: job.rowsTotal, toUpdate: dry.toUpdate, conflicts: dry.conflicts }, { area: "products", target: { type: "data_job", id: job.id } });
   } catch (error) {
     log("error", "inventory_jobs.start_audit_failed", {}, error);
-    return { ok: false, problem: "The activity log could not be written, so the import was not started. Try again." };
+    return { ok: false, problem: "The change log could not be written, so the import was not started. Try again." };
   }
   const files = Number((job.cursor as { files?: unknown }).files ?? 0);
   const rows = await db().execute<Row>(sql`

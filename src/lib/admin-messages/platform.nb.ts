@@ -389,6 +389,7 @@ export const platformNb: PlatformMessages = {
       mrr_down: "Gjentakende inntekter falt med {amount} de siste 7 dagene.",
       target_behind: "{metric} ligger bak målet denne måneden ({pct} %).",
       trials_ending: { one: "1 prøveperiode slutter de neste 3 dagene.", many: "{n} prøveperioder slutter de neste 3 dagene." },
+      database_flag: { one: "1 ting å se på under Bruk og grenser.", many: "{n} ting å se på under Bruk og grenser." },
       admin_slow: "Adminpanelet er tregt: {kind} på {screen}, {metric} {value} ved 75-persentilen over 28 dager.",
     },
     asked: { one: "1 ba om en butikk", many: "{n} ba om en butikk" },
@@ -606,7 +607,7 @@ export const platformNb: PlatformMessages = {
     },
   },
   reports: {
-    title: "Meldinger om ulovlig innhold",
+    title: "Meldinger om innhold",
     description: "Meldinger folk har sendt om innhold i butikker. Avgjør hver i tide, med begrunnelse: avsenderen får beskjed, og butikken også når du begrenser noe.",
     waiting: "Venter på avgjørelse",
     decided: "Avgjort",
@@ -893,6 +894,13 @@ export const platformNb: PlatformMessages = {
     since: "Siden {date}",
   },
   emails: {
+    paused: {
+      title: "Markedsførings-e-post på pause",
+      lead: "Utsendelsesvakten holdt tilbake nyhetsbrev og automatiseringer for disse butikkene fordi for mange av e-postene deres kom i retur eller ble merket som søppelpost. Eierne har fått beskjed og starter dem igjen selv.",
+      bounces: "returer",
+      complaints: "søppelpostmerkinger",
+      since: "siden {date}",
+    },
     leadNotSetUp: { one: "E-post er ikke satt opp: {n} e-post ble tatt vare på, ingen sendt.", many: "E-post er ikke satt opp: {n} e-poster ble tatt vare på, ingen sendt." },
     leadNotSetUpRest: "Hver er tatt vare på her, så du kan lese hva som ville ha gått.",
     leadWeek: "{sent} sendt og {failed} feilet de siste sju dagene.",
@@ -936,7 +944,7 @@ export const platformNb: PlatformMessages = {
     ownFee: "eget gebyr",
   },
   activity: {
-    title: "Aktivitetslogg",
+    title: "Endringslogg",
     description:
       "Det plattformadministratorer og plattformen gjorde, som ikke hører til én butikk: hendelser i totrinnsinnloggingen, gjenopprettingskoder som er brukt, tilbakestillinger og godkjenninger. En butikks egne endringer står i loggen til den butikken. Oppføringene beholdes i 24 måneder og kan ikke endres.",
   },
@@ -963,7 +971,7 @@ export const platformNb: PlatformMessages = {
     hours: "{n} timer",
     minutes: "{n} minutter",
   },
-  loadingActivity: "Laster aktivitetsloggen …",
+  loadingActivity: "Laster endringsloggen …",
   actions: {
     unknownRequest: "Ukjent forespørsel.",
     declinedTheRequestIsIn:
@@ -1027,7 +1035,7 @@ export const platformNb: PlatformMessages = {
     planCode:
       "Vises i e-posten og brukes på abonnementet når eieren følger lenken. Lag koder under Rabatter; en kode som er slått av, blir utelatt.",
     cartCode:
-      "Vises i e-posten og legges i handlekurven når kunden følger lenken. Lag koder under Rabattkoder; en kode som er slått av, blir utelatt.",
+      "Vises i e-posten og legges i handlekurven når kunden følger lenken. Lag koder under Rabatter; en kode som er slått av, blir utelatt.",
     email: "E-posten",
     language: "Språk",
     subject: "Emne",
@@ -1051,6 +1059,14 @@ export const platformNb: PlatformMessages = {
     testCart: "Testen sender den lagrede versjonen, med en eksempelhandlekurv.",
     subjectLabel: "Emne:",
     previewTitle: "Forhåndsvisning av e-posten",
+    phone: {
+      open: "Åpne",
+      change: "Endre",
+      edit: "Rediger",
+      done: "Ferdig",
+      previewSub: "Slik den sendes: {language}",
+      previewOne: "Slik kundene ser den",
+    },
   },
   planReminderStep: {
     back: "Abonnementspåminnelser",

@@ -33,6 +33,7 @@ export const formRow = z.object({
   signup: z.unknown(),
   keep_months: col.int,
   made_from: col.textOrNull,
+  payment_variant_id: col.textOrNull,
 });
 
 /** A row as a form; parts that no longer read (an older shape) become empty rather than failing the page. */
@@ -54,10 +55,11 @@ export function asForm(row: z.output<typeof formRow>): FormRecord {
     signup: row.kind === "signup" ? part(formRowShape.signup, row.signup, { confirm: true, askName: false }) : null,
     keepMonths: row.keep_months,
     madeFrom: row.made_from,
+    paymentVariantId: row.payment_variant_id,
   };
 }
 
-export const FORM_COLUMNS = sql`id, store_id, kind, name, status, questions, words, delivery, signup, keep_months, made_from`;
+export const FORM_COLUMNS = sql`id, store_id, kind, name, status, questions, words, delivery, signup, keep_months, made_from, payment_variant_id`;
 
 
 /** A form as the site reads it: cached under the owner's forms tag, refreshed by every change here. */

@@ -429,6 +429,8 @@ export const domainsNb: DomainsMessages = {
   healthTitle: "Status",
   healthChecking: "Sjekkes når du åpner siden.",
   health: {
+    points_away: "{domain} når ikke butikken din lenger: da det ble sjekket {date}, svarte det med en annen side eller ikke i det hele tatt. Sjekk hvor DNS-en peker.",
+    certificate_failing: "https-sertifikatet til {domain} sviktet da det ble sjekket {date}, så besøkende ser en advarsel i stedet for butikken din.",
     not_pointed: "{domain} når ikke butikken din ennå: DNS-en peker ikke hit.",
     proof_missing: "Posten som viser at {domain} er ditt, er ikke på plass ennå.",
     check_problem: "Den siste sjekken ble ikke ferdig: {problem}",

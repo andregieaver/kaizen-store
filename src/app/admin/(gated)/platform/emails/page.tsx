@@ -4,7 +4,12 @@ import { connection } from "next/server";
 import { EmailLog } from "@/components/admin/email-log";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
-import { requirePlatformReader } from "@/server/auth";
+import { platformCan, requirePlatformReader } from "@/server/auth";
+import { getSendingDomain, sendingDomainView } from "@/server/sending-domains";
+import { pausedStores } from "@/server/sending-guard";
+import { SendingDomainCard } from "@/components/admin/sending-domain-card";
+
+import { platformSendingDomainAction } from "./actions";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { EMAIL_SHOWS, emailCounts, emailsShown, emailWeek, isEmailShow } from "@/lib/email-log";
@@ -22,7 +27,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
   const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").emails;
-  const [emails, settings] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings())]);
+  const [emails, settings, sending, paused] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings()), getSendingDomain(null), pausedStores()]);
   const webhook = emailEventsSetup() === "ok";
   // Round 16 (D650): a sentence of what went, the setup a fold, chips for what to show, and the emails by day.
   const asked = (await searchParams).show;
@@ -73,6 +78,38 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
           </summary>
           <div className="px-6 pb-5">{steps}</div>
         </details>
+      )}
+      {paused.length > 0 && (
+        // The sending guard (D730): which stores' marketing email is held now, each opening its Marketing page.
+        <Card title={w.paused.title} description={w.paused.lead} compact>
+          <ul className="flex flex-col gap-2 text-sm">
+            {paused.map((p) => (
+              <li key={p.storeId ?? "kaizena"} className="flex flex-wrap justify-between gap-2">
+                {p.slug ? (
+                  <Link href={`/admin/${p.slug}/marketing`} className="font-medium underline underline-offset-2">
+                    {p.name}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{p.name}</span>
+                )}
+                <span className="text-muted">
+                  {p.reason === "bounces" ? w.paused.bounces : w.paused.complaints},{" "}
+                  {fillWords(w.paused.since, { date: new Date(p.pausedAt).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium" }) })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      {settings && (
+        // Kaizena Flow's own sending domain (D727), as a store's: the shared address is the platform's own until another is verified.
+        <SendingDomainCard
+          domain={sending && sendingDomainView(sending)}
+          suggested="kaizenaflow.com"
+          words={adminText(lang, "notifications").sendingDomain}
+          action={platformCan(account, "settings") ? platformSendingDomainAction : null}
+          display={ADMIN_LANG_FACTS[lang].tag}
+        />
       )}
       <nav aria-label={w.showsLabel} className={CHIP_STRIP}>
         {EMAIL_SHOWS.map((key) => (

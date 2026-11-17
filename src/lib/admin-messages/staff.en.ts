@@ -1,7 +1,7 @@
 import type { Widen } from "./common.en";
 
 /**
- * The words of a store's team, its roles and permissions, collaborators and the activity log (D312 A8; D158). `{name}`-style placeholders
+ * The words of a store's team, its roles and permissions, collaborators and the change log (D312 A8; D158). `{name}`-style placeholders
  * are filled by `fillWords()`; a count is a `{ one, many }` pair read by `countWords()`, with `{n}` the number. The built-in roles' names
  * and the areas are kept in English in `src/lib/permissions.ts` for the AI and the tests, and shown from here by key; a role an owner named
  * is shown as typed (`roleNameIn()`).
@@ -33,7 +33,7 @@ export const staffEn = {
   templates: {
     orders: { name: "Orders", description: "Handles orders and returns, and can look up customers and products." },
     products: { name: "Products", description: "Keeps the catalogue: products, prices, stock and layouts." },
-    marketing: { name: "Marketing", description: "Runs campaigns, coupons, tests and emails, and reads the figures." },
+    marketing: { name: "Marketing", description: "Runs discounts, tests and emails, and reads the figures." },
     content: { name: "Content", description: "Writes and designs the site: pages, blog, menus, pictures and translations." },
     analytics: { name: "Analytics", description: "Reads the figures and what lies behind them." },
     support: { name: "Support agent", description: "Answers customers in the support inbox, and can look up their orders, accounts and products." },
@@ -51,7 +51,7 @@ export const staffEn = {
     description:
       "People listed here can sign in with a link sent to their email, or with their password. Owners manage the team and the plan; everyone else works in the parts of the admin their role gives them.",
     roles: "Roles",
-    activity: "Activity log",
+    activity: "Change log",
     members: "Members",
     /** Kaizena Flow's own store (D466): its team is the platform admins. */
     houseTitle: "This is Kaizena Flow's own store",
@@ -103,6 +103,12 @@ export const staffEn = {
     description:
       "A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no role of their own can do everything except the team and the plan, and reads the books without changing them. Changing a role changes what everyone who holds it can do, at once.",
     nobody: "Nobody holds it",
+    phone: {
+      lead: "What each role can see and change.",
+      makeSub: "Choose what it can see and change",
+      make: "Make",
+      close: "Close",
+    },
     holds: { one: "{n} person holds it", many: "{n} people hold it" },
     heldBy: "Held by {emails}.",
     save: "Save role",
@@ -156,7 +162,7 @@ export const staffEn = {
     moreFilters: "More filters and download",
     today: "Today",
     yesterday: "Yesterday",
-    title: "Activity log",
+    title: "Change log",
     description:
       "What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.",
     ownerSees: "You see every entry.",
@@ -198,7 +204,7 @@ export const staffEn = {
     no: "no",
     it: "it",
     problems: {
-      owner: "Only an owner can download the activity log.",
+      owner: "Only an owner can download the change log.",
       days: "Choose the first and last day to download.",
       order: "The first day must not be after the last day.",
       tooMany: "That period has {total} entries and a download holds at most {max}. Choose a shorter period.",
@@ -254,7 +260,7 @@ export const staffEn = {
       "account.two_step_reset": "A platform admin reset two-step sign-in for {label}",
       "account.recovery_codes_generated": "{label} made new recovery codes",
       "account.recovery_code_used": "{label} used a recovery code",
-      "activity.exported": "Downloaded the activity log",
+      "activity.exported": "Downloaded the change log",
     } as Record<string, string>,
   },
 };

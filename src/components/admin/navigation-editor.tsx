@@ -7,6 +7,7 @@ import type { BusinessDetails, Favicon, Logo } from "@/lib/navigation";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 type Upload = (data: FormData) => Promise<{ ok: true; url: string; thumbnailUrl?: string } | { ok: false; problem: string }>;
 type Navigation = {
@@ -81,8 +82,13 @@ export function NavigationEditor({
       if (outcome.ok) setDirty(false);
     });
 
+  const p = w.phone;
+  const menuName = (id: string | null) => menus.find((m) => m.id === id)?.name ?? w.none;
+  // Round 42 (D739): on a phone the logo, the logo on dark, the icon and the menus are rows saying what is chosen, each opening its card.
   return (
     <div className="flex flex-col gap-6 pb-24">
+      <PhoneRows>
+      <PhoneRow flat title={w.logo} sub={logo ? p.logoSet : p.logoNone} change={logo ? p.change : p.add} done={p.done}>
       <LogoField
         title={w.logo}
         help={copy.logo}
@@ -94,6 +100,8 @@ export function NavigationEditor({
           setResult(null);
         }}
       />
+      </PhoneRow>
+      <PhoneRow flat title={w.logoDark} sub={logoDark ? p.darkSet : p.darkNone} change={logoDark ? p.change : p.add} done={p.done}>
       <LogoField
         title={w.logoDark}
         help={copy.logoDark}
@@ -106,6 +114,8 @@ export function NavigationEditor({
           setResult(null);
         }}
       />
+      </PhoneRow>
+      <PhoneRow flat title={w.icon} sub={favicon ? p.iconSet : p.iconNone} change={favicon ? p.change : p.add} done={p.done}>
       <FaviconField
         favicon={favicon}
         upload={upload}
@@ -115,6 +125,8 @@ export function NavigationEditor({
           setResult(null);
         }}
       />
+      </PhoneRow>
+      <PhoneRow flat last title={w.menus} sub={`${menuName(standard.headerMenuId)} · ${menuName(standard.footerMenuId)}`} change={p.change} done={p.done}>
       <section aria-labelledby="standard-menus-heading" className={card}>
         <div>
           <h2 id="standard-menus-heading" className="text-title text-ink">
@@ -158,6 +170,8 @@ export function NavigationEditor({
           ))}
         </div>
       </section>
+      </PhoneRow>
+      </PhoneRows>
       {details && (
         <BusinessFields
           value={details}

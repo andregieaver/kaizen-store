@@ -560,6 +560,21 @@ export const bookingsEn = {
     },
   },
   search: {
+    /** Round 37 (D725): on a phone the figures share one card, and synonyms, rules and the most searched are rows. */
+    phone: {
+      noSynonyms: "No synonyms yet",
+      synonyms: { one: "{n} synonym", many: "{n} synonyms" },
+      languages: { one: "{n} language", many: "{n} languages" },
+      noRules: "No rules yet",
+      rules: { one: "{n} rule", many: "{n} rules" },
+      of: "{n} of {max}",
+      noTop: "No searches yet",
+      top: { one: "{n} search", many: "{n} searches" },
+      meaningOff: "Off",
+      add: "Add",
+      open: "Open",
+      done: "Done",
+    },
     title: "Search",
     description: "What shoppers searched for in the last {days} days. Searches are kept {kept} days, as they can contain personal details.",
     searches: "Searches",
@@ -725,6 +740,26 @@ export const bookingsEn = {
     privacyText: "Say that when a shopper types their email at checkout and does not finish, you may email reminders about the cart; that they can say no at checkout or in any reminder; and that the email and cart are erased after 60 days.",
   },
   recommendations: {
+    /** Round 36 (D724): on a phone on or off first, then the parts as rows saying what is set. */
+    phone: {
+      offTitle: "Recommendations are off",
+      onTitle: "Recommendations are on",
+      offText: "Switch them on, then place them with a product grid's \u201cRecommend products for each shopper\u201d.",
+      onText: "Shoppers are shown products that suit what they look at.",
+      switchOn: "Switch on",
+      on: "On",
+      off: "Off",
+      aiRanks: "AI re-ranks",
+      plain: "plain ranking",
+      upsell: "upsell up to {n} %",
+      rules: { one: "{n} rule", many: "{n} rules" },
+      noRules: "No rules yet",
+      replaySub: "The last {n} paid orders",
+      resultsSub: "The last {n} days",
+      change: "Change",
+      open: "Open",
+      done: "Done",
+    },
     kinds: {
       goes_with: "goes with",
       never_with: "is never shown with",
@@ -845,7 +880,7 @@ export const bookingsEn = {
       sectionText: "Erase your account and the data Kaizena Flow keeps about you. Your stores keep what was done in them, without your name.",
       open: "Delete your account …",
       title: "Delete your account",
-      description: "Your account is erased: your sign-in, name, email and picture, your access to every store, and the AI manager's conversations, memories, notices and saved skills. What you did in a store stays there without your name; the activity log keeps it under an id that names no one. This cannot be undone.",
+      description: "Your account is erased: your sign-in, name, email and picture, your access to every store, and the AI manager's conversations, memories, notices and saved skills. What you did in a store stays there without your name; the change log keeps it under an id that names no one. This cannot be undone.",
       back: "Your account",
       refusals: {
         not_found: "This account could not be found.",
@@ -990,6 +1025,15 @@ export const bookingsEn = {
     exportOrders: "Export orders",
     customers: "One row per customer: everyone with an account and every guest with a paid order, once per email address.",
     exportCustomers: "Export customers",
+    phone: {
+      paid: "Paid orders",
+      all: "All orders",
+      accounting: "Accounting: no contact details",
+      full: "Full: with email and addresses",
+      someByNumber: "Or some orders by their numbers",
+      change: "Change",
+      done: "Done",
+    },
   },
   findings: {
     outcome: {

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { AsyncResource } from "node:async_hooks";
+
 import { attachDatabasePool } from "@vercel/functions";
 import { sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -7,6 +9,11 @@ import type { PgTransactionConfig } from "drizzle-orm/pg-core";
 import { Pool, type PoolConfig } from "pg";
 
 import { serverEnv } from "@/lib/env";
+
+import { noteStatement } from "./statement-count";
+
+/** The clients whose `query` the statement counter has wrapped. */
+const counted = new WeakSet<object>();
 
 /** Seconds an unused connection stays open. */
 const IDLE_SECONDS = 5;
@@ -69,6 +76,51 @@ function create(url: string = serverEnv().DATABASE_URL) {
   });
   // A connection the pooler closes while idle must not take the function down.
   pool.on("error", () => {});
+  // The statement counter (step 1.9, `statement-count.ts`): each client's `query` is wrapped once, so a statement inside a transaction is
+  // counted too (pool.query calls client.query). Off unless a test or a render asked: the wrapper then passes the call straight through.
+  // pool.query waits for a free connection and then calls client.query from whoever released it, which would count the statement in
+  // that statement's context, not its caller's: the callback is bound to the caller's context, so the count is the caller's own.
+  const pooled: { connect: (...args: unknown[]) => unknown } = pool;
+  const connect = pooled.connect;
+  pooled.connect = function (this: unknown, ...args: unknown[]) {
+    const last = args[args.length - 1];
+    if (typeof last === "function") args[args.length - 1] = AsyncResource.bind(last as (...a: unknown[]) => unknown);
+    return connect.apply(this, args);
+  };
+  pool.on("connect", (client) => {
+    if (counted.has(client)) return;
+    counted.add(client);
+    const target: { query: (...args: unknown[]) => unknown } = client;
+    target.query = function (this: unknown, ...args: unknown[]) {
+      // The class's own query, looked up on each call (not kept at connect), so a test's spy on pg.Client.prototype.query still sees
+      // every statement (chat, knowledge, embeddings and invoice tests count them that way).
+      const original = (Object.getPrototypeOf(this) as { query: (...a: unknown[]) => unknown }).query;
+      const first = args[0] as { text?: unknown; values?: unknown; submit?: unknown } | string | undefined;
+      const text = typeof first === "string" ? first : typeof first?.text === "string" ? first.text : "";
+      const values: unknown[] =
+        first && typeof first === "object" && Array.isArray(first.values) ? first.values : Array.isArray(args[1]) ? args[1] : [];
+      const done = noteStatement(text, values);
+      if (!done) return original.apply(this, args);
+      if (first && typeof first === "object" && typeof first.submit === "function") {
+        done(null);
+        return original.apply(this, args);
+      }
+      const last = args[args.length - 1];
+      if (typeof last === "function") {
+        const cb = last as (err: unknown, res?: { rowCount?: number | null; rows?: unknown[] }) => unknown;
+        const wrapped = (err: unknown, res?: { rowCount?: number | null; rows?: unknown[] }) => {
+          done(err ? null : (res?.rowCount ?? res?.rows?.length ?? null));
+          return cb(err, res);
+        };
+        return original.apply(this, [...args.slice(0, -1), wrapped]);
+      }
+      const result = original.apply(this, args) as { then?: (a: (r: { rowCount?: number | null; rows?: unknown[] }) => void, b: () => void) => unknown };
+      if (result && typeof result.then === "function") {
+        result.then((r) => done(r?.rowCount ?? r?.rows?.length ?? null), () => done(null));
+      }
+      return result;
+    };
+  });
   // Vercel freezes an instance between requests; frozen with connections
   // open, it would wake up to dead ones. This keeps the instance running
   // after each query until its idle connections have closed.

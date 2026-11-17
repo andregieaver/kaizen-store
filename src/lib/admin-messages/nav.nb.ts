@@ -73,11 +73,9 @@ export const NAV_NB: Record<string, string> = {
   // Store: Marketing
   Marketing: "Markedsføring",
   "Ways to get people to buy, and to come back.": "Måter å få folk til å kjøpe, og til å komme tilbake.",
-  Campaigns: "Kampanjer",
-  "Offers without a code, for a time: a percentage off, buy N pay for M, a free product.":
-    "Tilbud uten kode, for en periode: prosent avslag, kjøp N betal for M, et gratis produkt.",
-  Coupons: "Rabattkoder",
-  "Discount codes customers type at checkout.": "Rabattkoder kundene skriver inn i kassen.",
+  // Discounts as one page (ecosystem plan E3.7, D718): the codes and the automatic offers are its tabs.
+  "Money off for shoppers: codes they type at checkout, and automatic offers for a time, such as 3 for 2 or a free product.":
+    "Rabatt for kundene: koder de skriver inn i kassen, og automatiske tilbud for en periode, som 3 for 2 eller et gratis produkt.",
   Recommendations: "Anbefalinger",
   "What the store suggests to each shopper, and how well it works.": "Det butikken foreslår for hver kunde, og hvor godt det virker.",
   "A/B tests": "A/B-tester",
@@ -93,8 +91,8 @@ export const NAV_NB: Record<string, string> = {
   "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.":
     "E-poster med nyheter og tilbud til alle som vil ha dem, eller til et segment, med hva som skjedde etterpå.",
   Segments: "Segmenter",
-  "Groups of customers and subscribers by what they did, counted as you open them.":
-    "Grupper av kunder og abonnenter etter hva de har gjort, telt opp når du åpner dem.",
+  "Who gets an email or a text message, chosen by rules on what people did and counted again as you open them.":
+    "Hvem som får en e-post eller en SMS, valgt etter regler for hva folk har gjort og telt på nytt når du åpner dem.",
   Subscribers: "Abonnenter",
   "People who asked for your emails with news and offers, with what they agreed to and when.":
     "Personer som har bedt om e-poster med nyheter og tilbud, med hva de samtykket til og når.",
@@ -104,7 +102,7 @@ export const NAV_NB: Record<string, string> = {
   "Emails to people who left items in their cart.": "E-poster til folk som har lagt igjen varer i handlekurven.",
   "Bonus credits": "Bonuspoeng",
   "Credits customers earn on what they pay and use as a price reduction.": "Kreditt kundene tjener på det de betaler, og bruker som prisavslag.",
-  "Referral program": "Vervekampanje",
+  "Refer a friend": "Tips en venn",
   "Customers who refer their friends, and what both get.": "Kunder som verver vennene sine, og hva begge får.",
   Creators: "Skapere",
   "People with a channel who sell your goods with a code of their own, and the commission they earn.": "Personer med en egen kanal som selger varene dine med en egen kode, og provisjonen de tjener.",
@@ -133,6 +131,12 @@ export const NAV_NB: Record<string, string> = {
   "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.":
     "Kanaler, annonsekostnader, hva det koster å vinne en kunde, avkastning på annonser, rabatter og rabattkoder.",
   "Monthly recurring revenue, how it moves, churn and failed renewals.": "Faste månedlige inntekter, hvordan de endrer seg, frafall og fornyelser som feilet.",
+  // Named apart from the pages they are about (ecosystem plan E3.7, D718), as the pages' own titles are.
+  "Subscription analytics": "Abonnementsanalyse",
+  "Customer analytics": "Kundeanalyse",
+  "Product analytics": "Produktanalyse",
+  "Inventory analytics": "Lageranalyse",
+  "Marketing analytics": "Markedsføringsanalyse",
   Traffic: "Trafikk",
   "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours.":
     "Besøk, veien fra besøk til kjøp, enheter, land, søk og de travleste timene.",
@@ -220,6 +224,7 @@ export const NAV_NB: Record<string, string> = {
   "What the chat assistant passed to your team (a refund, cancelling an order, a new address, an exception): decide each, and the customer is told.":
     "Det chatassistenten har sendt videre til teamet ditt (en tilbakebetaling, kansellering av en bestilling, en ny adresse, et unntak): avgjør hver, så får kunden beskjed.",
   Reports: "Rapporter",
+  "Support reports": "Rapporter for kundestøtte",
   "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.":
     "Hvordan butikkens samtaler gikk: hvor mange, hvor mange KI-en tok alene, hvor lenge kundene ventet, vurderinger, tone og emner.",
   "Saved replies": "Lagrede svar",
@@ -233,6 +238,7 @@ export const NAV_NB: Record<string, string> = {
   "Chat assistant": "Chatassistent",
   "The store's chat assistant for shoppers, and the knowledge it answers from.": "Butikkens chatassistent for kunder, og kunnskapen den svarer ut fra.",
   Settings: "Innstillinger",
+  "Support settings": "Innstillinger for kundestøtte",
   "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.":
     "Hvem som svarer butikkens kunder (bare assistenten, KI først eller bare mennesker), åpningstider, oppfølging på e-post og hvor lenge samtaler lagres.",
 
@@ -276,6 +282,9 @@ export const NAV_NB: Record<string, string> = {
   Shipping: "Frakt",
   "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.":
     "Faste priser, fraktmetoder med soner og profiler, henting på stedene dine, lokal levering og fraktselskaper.",
+  "Order settings": "Innstillinger for bestillinger",
+  "Product settings": "Innstillinger for produkter",
+  "Return settings": "Innstillinger for retur",
   "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.":
     "Gavehilsener i kassen, automatisk arkivering, hvor lenge betalingslenken til et utkast varer og hvem som kan registrere en betaling tatt utenfor Kaizena Flow.",
   Notifications: "Varsler",
@@ -345,7 +354,7 @@ export const NAV_NB: Record<string, string> = {
   Team: "Team",
   "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in.":
     "Hvem som kan arbeide i butikkens administrasjon, rollene deres, samarbeidspartnere med sluttdato og totrinnsinnlogging.",
-  "Activity log": "Aktivitetslogg",
+  "Change log": "Endringslogg",
   "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.":
     "Hvem som endret hva og når: produkter, priser, sider, rabatter, frakt, ansatte og betalingsinnstillinger.",
 
@@ -381,6 +390,11 @@ export const NAV_NB: Record<string, string> = {
   "The AI guide that answers readers in the docs from the docs alone: on or off, its name, picture, greeting and daily limit.":
     "KI-veilederen som svarer lesere i dokumentasjonen bare ut fra dokumentasjonen: av eller på, navn, bilde, hilsen og daglig grense.",
   Editor: "Redigering",
+  "Plan features": "Funksjoner i planene",
+  "Plan analytics": "Abonnementsanalyse",
+  "Access requests": "Forespørsler om tilgang",
+  "Search test": "Søketest",
+  "VAT rates": "Mva-satser",
   "Kaizena Flow's plans, their prices and fees, synced to Stripe.": "Kaizena Flows abonnementer, prisene og gebyrene deres, synkronisert med Stripe.",
   "Every feature with a tick for each plan that includes it: the comparison stores see.":
     "Hver funksjon med en hake for hvert abonnement som har den: sammenligningen butikkene ser.",
@@ -438,7 +452,7 @@ export const NAV_NB: Record<string, string> = {
     "Hver butikk autopiloten driver alene i 100 dager: hva som holder den igjen, hva som venter på eieren, KI-kostnaden og de tre forholdstallene; å sette og avslutte en utfordring.",
   "Usage and limits": "Bruk og grenser",
   "Status page": "Statusside",
-  "Illegal content notices": "Meldinger om ulovlig innhold",
+  "Content notices": "Meldinger om innhold",
   "AI assistants and apps": "AI-assistenter og apper",
   "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.": "AI-assistentene og appene folk har koblet til gjennom Kaizena Flows innlogging, til å bekrefte eller blokkere.",
   "App listings": "Appoppføringer",

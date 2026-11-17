@@ -43,6 +43,16 @@ export const marketingEn = {
     tellLink: "Write an email",
     tools: "Every tool",
     toolsSub: "by name",
+    phone: {
+      after: "An email a week after they buy",
+      cart: "When a cart is left at checkout",
+      offer: "3 for 2 on {product}, two weeks",
+      offerNone: "3 for 2 on a product you choose",
+      listSee: "See",
+      tellWrite: "Write",
+      tellSub: "The AI writes a first draft",
+      more: "+{n}",
+    },
   },
   common: {
     on: "On",
@@ -62,7 +72,8 @@ export const marketingEn = {
   },
   segments: {
     /** The list drawn for Homer (round 8, D626): ready segments on the page, each with how many it holds now. */
-    lead: "Groups of your customers, kept up to date by themselves.",
+    // Who a message goes to, by rules, never a group with a discount (Customer groups): ecosystem plan E3.7, D718.
+    lead: "Who gets your emails and text messages, chosen by rules and kept up to date by themselves.",
     leadRest: " Start from one most shops use, or make your own.",
     yours: "Your segments",
     ready: "Ready to use",
@@ -71,7 +82,7 @@ export const marketingEn = {
     makeOwn: "Make your own",
     title: "Segments",
     description:
-      "Groups of your customers and subscribers by what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date.",
+      "Who gets a broadcast, a text message or an automation, chosen from your customers and subscribers by rules on what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date.",
     newSegment: "New segment",
     empty: "No segments yet. Make one to see, for example, your best customers or the ones who have not ordered for a while.",
     unreadable: "These rules can no longer be read: open it and save it again.",
@@ -687,21 +698,23 @@ export const marketingEn = {
         days: { one: "Sent {n} day after they last looked.", many: "Sent {n} days after they last looked." },
       },
     },
-    /** An automation's follow-ups (D653): up to two more emails, each its days after the one before. */
+    /**
+     * An automation's further emails (D653): up to two more, each its days after the one before. Called its second and third email, never
+     * follow-ups, which are the AI manager's (ecosystem plan E3.7, D718).
+     */
     followUps: {
-      title: "Follow-ups",
-      none: "Only one email goes. A follow-up goes some days later to those who have not ordered since.",
-      add: "Add a follow-up",
+      title: "More emails",
+      none: "Only one email goes. A second email can go some days later to those who have not ordered since.",
+      add: "Add the next email",
       edit: "Edit",
       second: "Second email",
       third: "Third email",
       after: { one: "{n} day after the email before.", many: "{n} days after the email before." },
       daysLabel: "Days after the email before",
-      stops: "A follow-up goes only to those still on your list who have not ordered since the first email.",
-      newTitle: "New follow-up",
+      stops: "A second or third email goes only to those still on your list who have not ordered since the first email.",
       newWords: "These are the first email's words to start from. Change them and save.",
       picks: "Each email shows up to three products chosen for the reader: you write the words around them.",
-      delete: { question: "Delete this follow-up? Those already sent it keep it.", deleting: "Deleting…", delete: "Delete this follow-up" },
+      delete: { question: "Delete this email? Those already sent it keep it.", deleting: "Deleting…", delete: "Delete this email" },
     },
     backInStock: {
       title: "Back in stock",
@@ -747,6 +760,13 @@ export const marketingEn = {
     stopWays: { reply: "Replied STOP", link: "Pressed the link", account: "My account", staff: "Staff", unreachable: "Could not be reached" },
     spent: "This month: {spent} of {cap} {currency}",
     settingsTitle: "Account and rules",
+    phone: {
+      lead: "Offers by text to the people who asked for them.",
+      rules: "{sender} · {from}:00 to {until}:00 · up to {cap} {currency}",
+      open: "Open",
+      change: "Change",
+      close: "Close",
+    },
     replyNumber: "Your 46elks number for replies",
     replyHint: "With a number from 46elks, texts come from it and a reply of STOP stops them at once. Empty: texts come from the sender name, and the link stops them.",
     hours: "Texts arrive between",
@@ -780,6 +800,19 @@ export const marketingEn = {
     cost: "Cost: {cost} {currency}",
     ownerOnly: "Only the store's owner connects the account and changes its rules.",
   },
+  /** The sending guard (D730): what the Marketing pages say while marketing email is held, or close to it. */
+  sendingGuard: {
+    pausedTitle: "Your marketing email is paused",
+    pausedBounces: "{bounced} of {sent} recent marketing emails bounced back ({rate}), so Kaizena Flow held your newsletters and automations on {date}. Order emails go on as before.",
+    pausedComplaints: "{complained} of {sent} recent marketing emails were marked as spam ({rate}), so Kaizena Flow held your newsletters and automations on {date}. Order emails go on as before.",
+    advice: "Before you resume, remove addresses you are not sure want your emails, and send only to people who signed up themselves. Counting starts again when you resume.",
+    resume: "Resume sending",
+    resumed: "Resumed. Your newsletters and automations go out again.",
+    ownerOnly: "Someone who may change marketing can resume it.",
+    warnTitle: "Watch your list",
+    warnBounces: "{bounced} of {sent} marketing emails in the last days bounced back ({rate}). At 5 % Kaizena Flow pauses your marketing email to protect your sending.",
+    warnComplaints: "{complained} of {sent} marketing emails in the last days were marked as spam ({rate}). At 0.3 % Kaizena Flow pauses your marketing email to protect your sending.",
+  },
   problems: {
     chooseSome: "Choose at least one.",
     noAccess: "You do not have access to this.",
@@ -807,6 +840,7 @@ export const marketingEn = {
     segmentRules: "Its segment's rules can no longer be read. Open the segment and save it again.",
     segmentCap: "The segment is read from at most {n} people, so it would not reach all of them.",
     sentAlready: "This broadcast was sent already.",
+    sendingPaused: "Your marketing email is paused because too many recent emails bounced or were marked as spam. Resume it on the Marketing page first.",
     nobodyInSegment: "Nobody in the segment wants your emails, so nobody would get it.",
     nobodyOnList: "Nobody on your list wants your emails yet, so nobody would get it.",
     fiveMinutes: "Choose a time at least five minutes from now.",
@@ -820,10 +854,10 @@ export const marketingEn = {
     daysRange: "The days must be a whole number from {min} to {max}.",
     isOn: "It is on, so it needs words it can send: {problem}",
     saveWords: "Save its words first.",
-    followUpFirst: "Save the first email before adding a follow-up.",
-    followUpMax: "An automation has at most three emails: the first and two follow-ups.",
-    followUpGone: "That follow-up no longer exists.",
-    followUpRace: "Someone else changed the follow-ups just now. Open the automation again.",
+    followUpFirst: "Save the first email before adding a second.",
+    followUpMax: "An automation has at most three emails.",
+    followUpGone: "That email no longer exists.",
+    followUpRace: "Someone else changed the emails just now. Open the automation again.",
     notInLibrary: "A picture is not in your media library. Upload it here.",
     pictureType: "Pictures in emails must be JPEG, PNG or GIF: some mail apps cannot show WebP or AVIF. Upload the picture here.",
     address: "Write a full address starting with https://, or a path of your store such as /products.",

@@ -102,7 +102,7 @@ produkt mot produktets salg, alt annet mot butikkens salg, de 14 dagene før og 
 dagene. Det er en sammenligning av før og etter, ikke bevis for at endringen var årsaken. Den første i hver måned får de som har
 planer som har kjørt, *Det KI gjorde i* måneden på e-post, når det er noe å fortelle.
 
-Hver endring autopiloten gjør, står i **Aktivitetslogg** under planens person, merket *gjennom autopiloten*.
+Hver endring autopiloten gjør, står i **Endringslogg** under planens person, merket *gjennom autopiloten*.
 
 ## Flere valg
 

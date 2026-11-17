@@ -3025,8 +3025,10 @@ export const ownSpeedSamples = commerce.table(
  * One day's reading of Postgres's own statistics (bloat review step 0.2): for kind table, name is a commerce table and figures hold rows,
  * bytes, seq_scan, seq_tup_read, idx_scan, inserted, updated, deleted; for kind schema, name is a schema and figures hold bytes and tables;
  * for kind statement, name is the statement's queryid and figures hold calls, total_ms, mean_ms, rows and top (time, calls or both), with the
- * statement's text, values already stripped by Postgres, cut at 2,000 characters. No person, store or account. Written only by
- * src/server/production-reading.ts, deleted after 90 days.
+ * statement's text, values already stripped by Postgres, cut at 2,000 characters; for kind index, name is '<table>.<index>' and figures hold
+ * scans and backs_constraint; for kind job, name is the ledger's job key and figures hold runs and worked (null until step 3.3); for kind ai,
+ * name is '<feature>.<figure>' and figures hold value, bar and days_over (written from step 1.19's follow-up on). No person, store or
+ * account. Written only by src/server/production-reading.ts, deleted after 90 days.
  */
 export const platformReadings = commerce.table(
   "platform_readings",
@@ -3041,7 +3043,7 @@ export const platformReadings = commerce.table(
   },
   (t) => [
     uniqueIndex("platform_readings_day_kind_name_key").on(t.day, t.kind, t.name),
-    check("platform_readings_kind", sql`${t.kind} in ('statement', 'table', 'schema')`),
+    check("platform_readings_kind", sql`${t.kind} in ('statement', 'table', 'schema', 'index', 'job', 'ai')`),
   ],
 );
 
@@ -5344,6 +5346,78 @@ export const emailMessages = commerce.table(
     index("email_messages_order_idx").on(t.storeId, t.orderId),
     index("email_messages_subscription_idx").on(t.storeId, t.subscriptionId),
     index("email_messages_provider_idx").on(t.providerReference),
+  ],
+);
+
+/**
+ * A store's marketing email held by the sending guard (D730, step M1.6 of `docs/audits/email-marketing-2026-11.md`), written only by
+ * `src/server/sending-guard.ts`: one row a store (Kaizena Flow's own with no store), paused while `resumed_at` is null. The guard pauses when
+ * the store's marketing emails since the later of seven days ago and the last resume bounce or are marked as spam past the line
+ * (`src/lib/sending-guard.ts`); broadcasts and email automations hold, order emails go on. An owner resumes; a later pause writes over it.
+ */
+export const sendingPauses = commerce.table(
+  "sending_pauses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `bounces` or `complaints`: the line that was passed. */
+    reason: text("reason").notNull(),
+    /** What was counted when it paused: `{ sent, bounced, complained }`. */
+    counts: jsonb("counts").notNull(),
+    pausedAt: timestamp("paused_at", { withTimezone: true }).notNull().defaultNow(),
+    resumedAt: timestamp("resumed_at", { withTimezone: true }),
+    resumedBy: uuid("resumed_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    unique("sending_pauses_store_key").on(t.storeId).nullsNotDistinct(),
+    index("sending_pauses_resumed_by_idx").on(t.resumedBy),
+    check("sending_pauses_reason", sql`${t.reason} in ('bounces', 'complaints')`),
+    check("sending_pauses_counts", sql`jsonb_typeof(${t.counts}) = 'object'`),
+    check("sending_pauses_resumed", sql`${t.resumedAt} is null or ${t.resumedAt} >= ${t.pausedAt}`),
+  ],
+);
+
+/**
+ * A store's own sending domain (D727, step M1.1 of `docs/audits/email-marketing-2026-11.md`; Kaizena Flow's own when `store_id` is null),
+ * written only by `src/server/sending-domains.ts`. The domain is added to Resend in its EU region; its DNS records (DKIM on
+ * `resend._domainkey`, SPF and the return path on `send.`) are written into the zone when Kaizena Flow keeps it, else shown to copy. While
+ * `status` is `verified` the store's emails go from `{from_local}@{domain}`; otherwise from Kaizena Flow's shared address, as before.
+ */
+export const sendingDomains = commerce.table(
+  "sending_domains",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizena Flow's own. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** The registrable domain or a subdomain of it, lower case, without a trailing dot. */
+    domain: text("domain").notNull(),
+    /** The part before the @ (`news`, `hello`, `butikk`, …). */
+    fromLocal: text("from_local").notNull().default("news"),
+    /** Resend's id for the domain; null until Resend has it. */
+    providerId: text("provider_id"),
+    /** `pending` (records not seen yet), `verified`, `failed` (Resend gave up; check again after fixing the records). */
+    status: text("status").notNull().default("pending"),
+    /** `SendingRecord[]` (`src/lib/sending-domains.ts`): the records Resend asks for, with each one's own status. */
+    records: jsonb("records").notNull().default(sql`'[]'::jsonb`),
+    /** Whether Kaizena Flow wrote the records into a zone it keeps. */
+    recordsWritten: boolean("records_written").notNull().default(false),
+    /** Why the last step failed, in the staff's words; null when it did not. */
+    problem: text("problem"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("sending_domains_store_key").on(t.storeId).nullsNotDistinct(),
+    index("sending_domains_created_by_idx").on(t.createdBy),
+    check("sending_domains_domain", sql`${t.domain} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$' and char_length(${t.domain}) <= 253`),
+    check("sending_domains_from_local", sql`${t.fromLocal} ~ '^[a-z0-9]([a-z0-9._-]{0,38}[a-z0-9])?$'`),
+    check("sending_domains_status", sql`${t.status} in ('pending', 'verified', 'failed')`),
+    check("sending_domains_records", sql`jsonb_typeof(${t.records}) = 'array' and jsonb_array_length(${t.records}) <= 10`),
+    check("sending_domains_verified_at", sql`${t.status} <> 'verified' or ${t.verifiedAt} is not null`),
+    check("sending_domains_problem", sql`${t.problem} is null or char_length(${t.problem}) between 1 and 500`),
   ],
 );
 
@@ -11017,6 +11091,57 @@ export const knowledgeSources = commerce.table(
 );
 
 /**
+ * Questions a site's chat assistant could not answer (ecosystem plan E4.3, D729; `src/lib/unanswered-questions.ts`,
+ * `src/server/unanswered-questions.ts`): the AI handed the conversation to a person because it could not help, or every tool it used was
+ * the knowledge search and none found a passage. One row per site, language and wording (`key`, the kept words in lower case, letters and
+ * digits only), counted each time a conversation asks it; the words of the newest asker are kept, cut and masked (`question`), with the
+ * newest conversations it came from. The owner answers one (a knowledge document, `document_id`, saved through `saveDocument()`) or says it
+ * is not a question for the assistant (kept dismissed). `store_id` null is Kaizena Flow's own chat. A visitor's words: personal data, kept
+ * at most 90 days after last asked (`unanswered_questions` retention), deleted with an erased person's conversations, never copied.
+ */
+export const unansweredQuestions = commerce.table(
+  "unanswered_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** The conversation's language (`nb`, `en`, …). */
+    lang: text("lang").notNull(),
+    /** What repeats are grouped by (`questionKey()`): fixed once the row is made. */
+    key: text("key").notNull(),
+    /** The newest asker's words as kept (`questionText()`): cut, with secrets, email addresses, long numbers and links taken out. */
+    question: text("question").notNull(),
+    /** How many conversations asked it. */
+    asked: integer("asked").notNull().default(1),
+    /** Of those, how many the AI handed to a person because it could not help (the rest: the knowledge had nothing). */
+    handedOver: integer("handed_over").notNull().default(0),
+    /** The newest conversations it came from, at most five, the newest first (no foreign key: a conversation goes on its own schedule). */
+    conversations: uuid("conversations").array().notNull(),
+    status: text("status").notNull().default("open"),
+    /** The knowledge document the owner's answer is, while it exists. */
+    documentId: uuid("document_id").references(() => knowledgeDocuments.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    firstAt: timestamp("first_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("unanswered_questions_key").on(t.storeId, t.lang, t.key).nullsNotDistinct(),
+    index("unanswered_questions_store_idx").on(t.storeId, t.status, t.asked),
+    index("unanswered_questions_last_idx").on(t.lastAt),
+    index("unanswered_questions_document_idx").on(t.documentId),
+    index("unanswered_questions_decided_by_idx").on(t.decidedBy),
+    check("unanswered_questions_lang", sql`${t.lang} ~ '^[a-z]{2,3}$'`),
+    check("unanswered_questions_key_length", sql`char_length(${t.key}) between 1 and 300`),
+    check("unanswered_questions_question", sql`char_length(${t.question}) between 1 and 300`),
+    check("unanswered_questions_asked", sql`${t.asked} >= 1 and ${t.handedOver} between 0 and ${t.asked}`),
+    check("unanswered_questions_conversations", sql`cardinality(${t.conversations}) between 1 and 5`),
+    check("unanswered_questions_status", sql`${t.status} in ('open', 'answered', 'dismissed')`),
+    check("unanswered_questions_decided", sql`(${t.status} = 'open') = (${t.decidedAt} is null)`),
+    check("unanswered_questions_seen", sql`${t.lastAt} >= ${t.firstAt}`),
+  ],
+);
+
+/**
  * What a store used, per UTC day and metric (D314, `docs/capacity.md` 3): gauges as measured that day, counters summed over it
  * (`USAGE_METRICS` in `src/lib/usage-metrics.ts`). `store_id` null is Kaizena Flow's own site. Written only by
  * `src/server/usage-meter.ts` and the traffic drain (`src/server/usage-traffic.ts`); kept 25 months. Counts and bytes only: no person,
@@ -11039,6 +11164,30 @@ export const storeUsageDaily = commerce.table(
     index("store_usage_daily_day_idx").on(t.day),
     check("store_usage_daily_value", sql`${t.value} >= 0`),
     check("store_usage_daily_metric", sql`${t.metric} in (${sqlList(USAGE_METRIC_IDS)})`),
+  ],
+);
+
+/**
+ * Refreshes of cache tags and draws of store layouts per UTC day (bloat review step 1.25): the tag's family, what it names (a store's id or
+ * slug, empty for the platform's own tags), and who called. Counts only; kept 90 days. Written by src/server/cache-events.ts.
+ */
+export const cacheEventsDaily = commerce.table(
+  "cache_events_daily",
+  {
+    day: date("day").notNull(),
+    kind: text("kind").notNull(),
+    family: text("family").notNull(),
+    subject: text("subject").notNull().default(""),
+    source: text("source").notNull(),
+    count: integer("count").notNull().default(0),
+    statements: bigint("statements", { mode: "number" }).notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.kind, t.family, t.subject, t.source] }),
+    check("cache_events_daily_kind", sql`${t.kind} in ('refresh', 'draw')`),
+    check("cache_events_daily_source", sql`${t.source} in ('action', 'job', 'route', 'render')`),
+    check("cache_events_daily_count", sql`${t.count} >= 0`),
   ],
 );
 
@@ -11187,6 +11336,11 @@ export const forms = commerce.table(
     keepMonths: integer("keep_months").notNull().default(12),
     /** What it was made from: `starter:{key}` (Kaizena Flow's starters), `template:{id}` (a form template, F4), or null. Never a link that changes the form. */
     madeFrom: text("made_from"),
+    /**
+     * The product variant a message form's visitors pay for after sending (D738 F6c), at its price in the page's market, through the store's own
+     * checkout; null: no payment. A store's forms only. No foreign key (product_variants is a hot table): the rules trigger checks it is the store's.
+     */
+    paymentVariantId: uuid("payment_variant_id"),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
@@ -11205,6 +11359,7 @@ export const forms = commerce.table(
     check("forms_signup", sql`(${t.kind} = 'signup') = (${t.signup} is not null) and (${t.signup} is null or jsonb_typeof(${t.signup}) = 'object')`),
     check("forms_keep_months", sql`${t.keepMonths} between 1 and 36`),
     check("forms_made_from", sql`${t.madeFrom} is null or char_length(${t.madeFrom}) between 1 and 80`),
+    check("forms_payment", sql`${t.paymentVariantId} is null or (${t.storeId} is not null and ${t.kind} = 'message')`),
   ],
 );
 
@@ -11288,9 +11443,12 @@ export const formResponses = commerce.table(
     state: text("state").notNull().default("new"),
     /** How it reached the owner: `sent`, `logged`, `failed` (the email), `inbox` (the support desk only). */
     delivery: text("delivery").notNull(),
+    /** Files sent with it (D738 F6b): `[{ question, name, type, bytes, path }]`, kept in the private `form-files` bucket. */
+    files: jsonb("files").notNull().default(sql`'[]'::jsonb`),
     createdAt: createdAt(),
   },
   (t) => [
+    check("form_responses_files", sql`jsonb_typeof(${t.files}) = 'array' and jsonb_array_length(${t.files}) <= 3`),
     index("form_responses_form_idx").on(t.formId, t.createdAt),
     index("form_responses_contact_idx").on(t.storeId, t.contactEmail),
     index("form_responses_created_idx").on(t.createdAt),
@@ -11299,6 +11457,26 @@ export const formResponses = commerce.table(
     check("form_responses_delivery", sql`${t.delivery} in ('sent', 'logged', 'failed', 'inbox')`),
     check("form_responses_contact", sql`${t.contactEmail} is null or (char_length(${t.contactEmail}) <= 254 and ${t.contactEmail} = lower(${t.contactEmail}))`),
   ],
+);
+
+/**
+ * A response that went on to pay (D738 F6c): the cart its form's product was put in, so the order placed from that cart is the response's
+ * order. Written in the same transaction as the cart's line; gone with its response. No foreign keys to carts (a hot table).
+ */
+export const formPayments = commerce.table(
+  "form_payments",
+  {
+    responseId: uuid("response_id")
+      .primaryKey()
+      .references(() => formResponses.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    cartId: uuid("cart_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("form_payments_cart_idx").on(t.storeId, t.cartId)],
 );
 
 /**
@@ -17802,7 +17980,7 @@ export const assistantNotices = commerce.table(
     index("assistant_notices_created_idx").on(t.createdAt),
     check(
       "assistant_notices_kind",
-      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered')`,
+      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered', 'test_decided')`,
     ),
     check("assistant_notices_ref", sql`length(${t.ref}) between 1 and 200`),
     check("assistant_notices_href", sql`${t.href} like '/admin/%' and length(${t.href}) <= 300`),
@@ -18154,6 +18332,48 @@ export const autopilotEventChecks = commerce.table("autopilot_event_checks", {
     .references(() => stores.id, { onDelete: "cascade" }),
   alertsAt: timestamp("alerts_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * The A/B tests the autopilot started instead of publishing its change to a live page (ecosystem plan E4.1, D729, `src/lib/autopilot-tests.ts`):
+ * the test (an ordinary one on the A/B tests screens), the page, in whose name, the goal and days it was sized for, and how the store decided
+ * it by code. Written only by `src/server/autopilot-tests.ts` (the start) and `src/server/autopilot-test-decider.ts` (the decision).
+ */
+export const autopilotTests = commerce.table(
+  "autopilot_tests",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    experimentId: uuid("experiment_id").notNull(),
+    /** The page the change is to: the test's original. */
+    pageId: uuid("page_id").notNull(),
+    /** In whose name the autopilot made the change and the store decides the test: the plan's maker, read again before each decision. */
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** The counted goal (`orders`, `cart`, `checkout`) and the days the test was sized for at the store's traffic, at most 21 (`AUTOPILOT_TEST_MAX_DAYS`). */
+    goal: text("goal").notNull(),
+    days: integer("days").notNull(),
+    /** Null while undecided; `applied` (the change went live), `asked` (kept for the owner's yes), `kept` (the page stays as it was), `left` (a person decides). */
+    outcome: text("outcome"),
+    /** The owner's yes it waits for, when `asked`, and the conversation that keeps it. */
+    approvalId: uuid("approval_id").references(() => assistantApprovals.id, { onDelete: "set null" }),
+    conversationId: uuid("conversation_id").references(() => assistantConversations.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.experimentId] }),
+    foreignKey({ name: "autopilot_tests_experiment_fk", columns: [t.storeId, t.experimentId], foreignColumns: [experiments.storeId, experiments.id] }).onDelete("cascade"),
+    foreignKey({ name: "autopilot_tests_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
+    index("autopilot_tests_open_idx").on(t.createdAt).where(sql`${t.outcome} is null`),
+    index("autopilot_tests_store_idx").on(t.storeId, t.createdAt),
+    index("autopilot_tests_page_idx").on(t.storeId, t.pageId),
+    index("autopilot_tests_account_idx").on(t.accountId),
+    index("autopilot_tests_approval_idx").on(t.approvalId),
+    index("autopilot_tests_conversation_idx").on(t.conversationId),
+    check("autopilot_tests_goal", sql`${t.goal} in ('orders', 'cart', 'checkout')`),
+    check("autopilot_tests_days", sql`${t.days} between 1 and 90`),
+    check("autopilot_tests_outcome", sql`${t.outcome} is null or ${t.outcome} in ('applied', 'asked', 'kept', 'left')`),
+    check("autopilot_tests_decided", sql`(${t.outcome} is null) = (${t.decidedAt} is null)`),
+  ],
+);
 
 // ---------------------------------------------------------------------------
 // Web research (D329, `docs/ai-autopilot.md` 13)

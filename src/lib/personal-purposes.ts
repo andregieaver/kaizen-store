@@ -283,6 +283,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   support_inbound_emails: "support",
   support_messages: "support",
   support_actions: "support",
+  unanswered_questions: "support",
   docs_guide_conversations: "support",
   docs_guide_messages: "support",
   field_values: "orders",

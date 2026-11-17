@@ -51,7 +51,7 @@ export const COUPONS_LISTED = 50;
 export type DiscountKind = "campaign" | "group" | "referral" | "credit" | "staff" | "code";
 
 export const DISCOUNT_KIND_LABELS: Record<DiscountKind, string> = {
-  campaign: "Campaigns",
+  campaign: "Automatic discounts",
   group: "Customer groups",
   referral: "Welcome discounts (referral)",
   credit: "Bonus credits",

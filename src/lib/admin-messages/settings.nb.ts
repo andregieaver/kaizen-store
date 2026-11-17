@@ -81,7 +81,7 @@ export const settingsNb: SettingsMessages = {
       referrals: {
         words: "Kundene deler en lenke; en venn får en velkomstrabatt og kunden tjener bonuspoeng. Trenger bonusprogrammet.",
         offWords:
-          "Vervelenker slutter å gi rabatt, nye bestillinger gir ingen belønning, og Vervekampanje forsvinner fra administrasjonen. Bestillinger som allerede er lagt inn, belønnes fortsatt; ververe og historikken deres beholdes.",
+          "Vervelenker slutter å gi rabatt, nye bestillinger gir ingen belønning, og Tips en venn forsvinner fra administrasjonen. Bestillinger som allerede er lagt inn, belønnes fortsatt; ververe og historikken deres beholdes.",
       },
       reviews: {
         words: "Kundene gir omtale av det de har kjøpt og mottatt; du sjekker omtalene før de vises, og produktsiden viser stjernene.",
@@ -396,6 +396,17 @@ export const settingsNb: SettingsMessages = {
     } as Record<string, string>,
   },
   producer: {
+    phone: {
+      lead: "Registreringene dine for emballasje, batterier og mer.",
+      nothingTitle: "Ingenting holdes tilbake",
+      nothingSub: "Ingen registreringer ennå · alle ordningene produktene trenger er dekket",
+      more: "Mer",
+      shown: "nummeret vises",
+      notShown: "nummeret vises ikke",
+      noEnd: "ingen sluttdato",
+      change: "Endre",
+      done: "Ferdig",
+    },
     title: "Produsentansvar",
     description:
       "Registreringene dine for emballasje, elektriske og elektroniske produkter, batterier og de andre ordningene, land for land. Et produkt du krysser av for en ordning i produktredigeringen, selges i et land bare mens en registrering for ordningen der gjelder, fra første til siste dag, eller når du har skrevet hvorfor ingen trengs.",
@@ -955,6 +966,7 @@ export const settingsNb: SettingsMessages = {
     languagesHint: "Et språk uten egne ord bruker dem på {main}.",
     ownWords: "Egne ord på {language} (tomt for ingen)",
     noOtherLanguages: "Butikken din har ett språk.",
+    phone: { lead: "Hvordan kundene ser prisene og velger antall.", change: "Endre", done: "Ferdig", none: "Ingen" },
     saved: "Lagret. Butikken viser prisene slik nå.",
     problems: {
       long: "{place} på {language}: høyst {max} tegn.",

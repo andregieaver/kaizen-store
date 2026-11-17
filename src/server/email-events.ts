@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 
 import { unsubscribeAddress } from "./marketing-subscribers";
+import { guardStore, MARKETING_KINDS } from "./sending-guard";
 
 /**
  * What happens to an email after Resend accepts it (D32): delivered,
@@ -53,6 +54,12 @@ async function leaveList(rows: Row[], source: "bounce" | "complaint") {
   }
 }
 
+/** A bounce or spam report on a store's marketing email: the sending guard looks at that store (D730). */
+async function guardAfter(rows: Row[]) {
+  const stores = new Set(rows.filter((r) => r.store_id && (MARKETING_KINDS as readonly string[]).includes(String(r.kind))).map((r) => String(r.store_id)));
+  for (const storeId of stores) await guardStore(storeId);
+}
+
 type EmailEvent = {
   type?: string;
   data?: { email_id?: string; bounce?: { message?: string; type?: string }; failed?: { reason?: string } };
@@ -75,22 +82,37 @@ export async function applyEmailEvent(event: EmailEvent): Promise<boolean> {
     case "email.bounced": {
       const bounce = event.data?.bounce;
       const error = [bounce?.type, bounce?.message].filter(Boolean).join(": ").slice(0, 500) || "Bounced";
+      // A store's email that comes back is an event (email plan M1.2, D732): once, as it first turns bounced; Kaizena Flow's own send none.
       rows = await db().execute<Row>(sql`
-        update commerce.email_messages set status = 'bounced', error = ${error}
-        where provider_reference = ${reference} and status <> 'complained'
-        returning id, store_id, to_address
+        with u as (
+          update commerce.email_messages m set status = 'bounced', error = ${error}
+          from (select id, status as before from commerce.email_messages where provider_reference = ${reference} and status <> 'complained') b
+          where m.id = b.id
+          returning m.id, m.store_id, m.to_address, m.kind, b.before
+        )
+        select u.id, u.store_id, u.to_address, u.kind,
+          case when u.store_id is not null and u.before <> 'bounced' then commerce.queue_integration_event(u.store_id, 'email.bounced', u.id) end
+        from u
       `);
       // Only a hard bounce: a full mailbox or a busy server is tried again another day.
       if (bounce?.type === "Permanent") await leaveList(rows as Row[], "bounce");
+      await guardAfter(rows as Row[]);
       break;
     }
     case "email.complained":
       rows = await db().execute<Row>(sql`
-        update commerce.email_messages set status = 'complained'
-        where provider_reference = ${reference}
-        returning id, store_id, to_address
+        with u as (
+          update commerce.email_messages m set status = 'complained'
+          from (select id, status as before from commerce.email_messages where provider_reference = ${reference}) b
+          where m.id = b.id
+          returning m.id, m.store_id, m.to_address, m.kind, b.before
+        )
+        select u.id, u.store_id, u.to_address, u.kind,
+          case when u.store_id is not null and u.before <> 'complained' then commerce.queue_integration_event(u.store_id, 'email.complained', u.id) end
+        from u
       `);
       await leaveList(rows as Row[], "complaint");
+      await guardAfter(rows as Row[]);
       break;
     case "email.failed":
       rows = await db().execute(sql`

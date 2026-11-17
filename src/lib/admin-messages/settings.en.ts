@@ -88,7 +88,7 @@ export const settingsEn = {
       referrals: {
         words: "Customers share a link; a friend gets a welcome discount and the customer earns bonus credits. Needs the bonus program.",
         offWords:
-          "Referral links stop giving discounts and new orders earn no rewards, and Referral program leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
+          "Referral links stop giving discounts and new orders earn no rewards, and Refer a friend leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
       },
       reviews: {
         words: "Customers review what they bought and received; you check them before they show, and the product page shows the stars.",
@@ -403,6 +403,17 @@ export const settingsEn = {
   },
   /** Producer responsibility (D342): registrations per scheme and country, and what is not sold for want of one. */
   producer: {
+    phone: {
+      lead: "Your registrations for packaging, batteries and more.",
+      nothingTitle: "Nothing held back",
+      nothingSub: "No registrations yet · every scheme your products need is covered",
+      more: "More",
+      shown: "number shown",
+      notShown: "number not shown",
+      noEnd: "no end date",
+      change: "Change",
+      done: "Done",
+    },
     title: "Producer responsibility",
     description:
       "Your registrations for packaging, electrical equipment, batteries and the other schemes, country by country. A product you tick for a scheme in its editor is sold in a country only while a registration for that scheme there is valid, from its first day through its last, or you have recorded why none is needed.",
@@ -968,6 +979,7 @@ export const settingsEn = {
     languagesHint: "A language without words of its own uses those in {main}.",
     ownWords: "Own words in {language} (empty for none)",
     noOtherLanguages: "Your store has one language.",
+    phone: { lead: "How shoppers see prices and choose how many.", change: "Change", done: "Done", none: "None" },
     saved: "Saved. Your shop shows prices this way now.",
     problems: {
       long: "{place} in {language}: at most {max} characters.",

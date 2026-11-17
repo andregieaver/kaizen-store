@@ -31,7 +31,7 @@ export default async function StoreAutopilotPage({ params, searchParams }: PageP
         siteName={member.store.name}
         tab={(AUTOPILOT_TABS as readonly string[]).includes(String(tab)) ? (tab as AutopilotTab) : "decisions"}
         lang={lang}
-        links={{ payments: `/admin/${slug}/settings/payments`, plan: `/admin/${slug}/billing` }}
+        links={{ payments: `/admin/${slug}/settings/payments`, plan: `/admin/${slug}/billing`, tests: `/admin/${slug}/experiments` }}
         wallet={
           <Suspense fallback={null}>
             <WalletCard store={member.store} lang={lang} outcome={typeof wallet === "string" ? wallet : undefined} />

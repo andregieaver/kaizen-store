@@ -1831,3 +1831,33 @@ and once only, and anonymising clears the email fields.
   so the conversation took it as sent. Now each try at a support email is a kept email of its own (`emailTry()`: the first key, then
   `…:retry{n}` once the last failure is `EMAIL_RETRY_MINUTES` (10) old, `EMAIL_TRIES` (4) in all). An answer is told only when one was
   sent or logged; a waiting alert's conversation is marked only once each person was told or given up.
+
+**Ecosystem plan E4.3 (17 November 2026, D729): questions the assistant could not answer.**
+
+- **The signal is code's, never the model's words.** A turn counts when the AI handed over with `could_not_help` (only with the AI
+  first: `handoff_to_human` is offered there alone; a hand-over without a category is `could_not_help` by the tool's default), or when
+  every tool it used was `search_content` and none found a passage (`ChatReply.foundNothing`). The meaning search returns the nearest
+  passages whatever their distance, so with an embedding model the second fires only where the site's knowledge is empty in that
+  language; on a desk with support off (no hand-over) and an embedding model, few questions are kept. A relevance floor for the meaning
+  search, or the visitor's *Did we help? No*, would add a signal; neither is built.
+- **Kept in `runSupportTurn()`, the one place every AI answer passes** (the site's chat, its chats on other websites, email, and
+  owners asking Kaizena Flow from the admin), after the answer is stored; a failure is a log line with ids, never in the way.
+- **The platform's inbox opens a conversation from `?c=`**, as a store's does, so the questions' conversations link there.
+- **What is kept** (`src/lib/unanswered-questions.ts` pure, `src/server/unanswered-questions.ts` the only reader and writer of
+  `commerce.unanswered_questions`): the customer's last message cut to `QUESTION_MAX` (300) with secrets, email addresses, numbers of six
+  digits or more and links masked (`questionText()`), one row per site, language and wording (`questionKey()`: lower case, letters and
+  digits; no model call per question, so other wordings are other rows), counted once a conversation, the newest words and up to five
+  conversations kept, at most `QUESTIONS_KEPT_MAX` (500) rows a site. Shown as text, never sent to a model, emailed or logged; the gap
+  list's audits carry ids and counts (the document an owner saves is audited as any is, under its title). The database fixes a row's site, language, wording and first day, and takes as its answer only a
+  knowledge document of the same site (`src/db/unanswered-questions.test.ts`).
+- **The owner's page** is the chat assistant's *Questions* (`/admin/{store}/chat/questions`, `support:read` to read, `support:write` to
+  answer; Kaizena Flow's `/admin/platform/chat/questions`, the support area), linked from a line at the top of the chat assistant's
+  page: the most asked first; *Write the answer* saves a knowledge document through `saveDocument()` (titled by the question unless
+  changed under *Customise*; a question answered before changes its own document), *Not a question for the assistant* sets it aside
+  and keeps it so; *Details* has the language, why it counted and its conversations (those whose transcript is still kept), and the
+  tabs *Answered* and *Not for the assistant* (with *Put it back*). An answered question asked again by another conversation comes back
+  open with its document. Home's attention counts the open ones (`heldCounts()` in `attention.ts`, one statement with the held blog
+  comments, kind `unanswered_questions`); the Support tab's number stays what customers wait on.
+- **Personal data**: in the register (`unanswered_questions`, purpose `support`); exported with the conversation whose words are kept
+  (`questionsKept`), deleted with an erased person's conversations before they are anonymised (`forgetQuestionsOf()`), and by the
+  retention run 90 days after last asked (rule `unanswered_questions`, `QUESTION_KEEP_DAYS`); never copied with a store.

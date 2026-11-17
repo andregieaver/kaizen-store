@@ -61,6 +61,7 @@ export function FormEditor({
   inboxChoice = false,
   placedOn,
   templates,
+  payment,
   listHref,
   save,
   setStatus,
@@ -79,6 +80,11 @@ export function FormEditor({
   placedOn: PlacedOn[];
   /** Save as template (F4), drawn under where the form shows. */
   templates?: ReactNode;
+  /**
+   * A store's message form may ask for a payment (D738 F6c): the product chosen now (its name and price in the first market), and the search
+   * of the store's products. Left out on Kaizena Flow's own forms, which take no payments.
+   */
+  payment?: { chosen: PaymentChoice | null; search: (query: string) => Promise<PaymentChoice[]> };
   listHref: string;
   save: (draft: FormDraft) => Promise<SaveFormOutcome>;
   setStatus: (status: FormStatus) => Promise<boolean>;
@@ -172,7 +178,7 @@ export function FormEditor({
                   <li key={q.id} className="rounded-panel border border-line p-3">
                     <QuestionFields
                       question={q}
-                      earlier={draft.questions.slice(0, i)}
+                      earlier={draft.questions.slice(0, i).filter((x) => x.kind !== "hidden")}
                       first={i === 0}
                       last={i === draft.questions.length - 1}
                       onChange={(patch) => setQuestion(i, patch)}
@@ -224,6 +230,10 @@ export function FormEditor({
               <WordsField label={e.thanks} value={draft.words.success} hint={e.usual} multiline onChange={(t) => setWords("success", t)} />
             </div>
           </Card>
+
+          {draft.kind === "message" && payment && (
+            <PaymentCard chosen={payment.chosen} search={payment.search} disabled={!canEdit} onChange={(paymentVariantId) => change({ paymentVariantId })} />
+          )}
 
           <details className={`${CARD_CLASS} p-5`} data-form-settings>
             <summary className="cursor-pointer text-body-strong text-ink">{w.tabs.settings}</summary>
@@ -500,8 +510,9 @@ function QuestionFields({
   const kinds = useAdminText("blocks").lists.formFieldKinds as Record<FormFieldKind, string>;
   const usual = useAdminText("blocks").form.labelHints as Partial<Record<FormFieldKind, string>>;
   const labelled = LABELLED_KINDS.includes(q.kind);
+  const hidden = q.kind === "hidden";
   const hasOptions = OPTION_FIELD_KINDS.includes(q.kind);
-  const typed = !hasOptions && q.kind !== "checkbox" && q.kind !== "date";
+  const typed = !hasOptions && q.kind !== "checkbox" && q.kind !== "date" && q.kind !== "file";
   const [optionsText, setOptionsText] = useState((q.options ?? []).map((o) => o.text).join("\n"));
   const bound = (which: "min" | "max", value: string) => {
     const n = value === "" ? undefined : Math.trunc(Number(value));
@@ -520,7 +531,12 @@ function QuestionFields({
             value={q.kind}
             onChange={(ev) => {
               const kind = ev.target.value as FormFieldKind;
-              onChange({ kind, ...(OPTION_FIELD_KINDS.includes(kind) && !q.options?.length ? { options: [plainWords("")] } : {}) });
+              onChange({
+                kind,
+                ...(OPTION_FIELD_KINDS.includes(kind) && !q.options?.length ? { options: [plainWords("")] } : {}),
+                // A hidden field (D738 F6a) reads the campaign of the address unless the owner names another part.
+                ...(kind === "hidden" && !q.param ? { param: "utm_campaign" } : {}),
+              });
             }}
           >
             {(Object.keys(FORM_FIELD_KINDS) as FormFieldKind[]).map((k) => (
@@ -531,11 +547,11 @@ function QuestionFields({
           </select>
         </label>
         <label className={`${label} min-w-48 flex-1`}>
-          <span className={labelText}>{e.question}</span>
+          <span className={labelText}>{hidden ? e.hiddenName : e.question}</span>
           <input
             className={input}
             value={q.label.text}
-            placeholder={labelled ? "" : (usual[q.kind] ?? "")}
+            placeholder={hidden ? e.hiddenNamePlaceholder : labelled ? "" : (usual[q.kind] ?? "")}
             maxLength={200}
             onChange={(ev) => onChange({ label: withText(q.label, ev.target.value) })}
           />
@@ -556,14 +572,31 @@ function QuestionFields({
           <span className={hint}>{fillWords(e.choicesHint, { max: FORM_OPTIONS_MAX })}</span>
         </label>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tick label={q.kind === "checkbox" ? e.requiredTick : e.required} checked={Boolean(q.required)} onChange={(required) => onChange({ required: required || undefined })} />
+      {hidden && (
+        <label className={label}>
+          <span className={labelText}>{e.param}</span>
+          <input
+            className={`${input} font-mono`}
+            value={q.param ?? ""}
+            maxLength={64}
+            spellCheck={false}
+            onChange={(ev) => onChange({ param: ev.target.value.trim() || undefined })}
+            data-param
+          />
+          <span className={hint}>{e.paramHint}</span>
+        </label>
+      )}
+      <div className={`flex flex-wrap items-center gap-3 ${hidden ? "justify-end" : "justify-between"}`}>
+        {!hidden && (
+          <Tick label={q.kind === "checkbox" ? e.requiredTick : e.required} checked={Boolean(q.required)} onChange={(required) => onChange({ required: required || undefined })} />
+        )}
         <div className="flex gap-1">
           <Button kind="icon" aria-label={e.up} disabled={first} onClick={() => onMove(-1)} icon={<ArrowUp aria-hidden className="size-4" />} />
           <Button kind="icon" aria-label={e.down} disabled={last} onClick={() => onMove(1)} icon={<ArrowDown aria-hidden className="size-4" />} />
           <Button kind="icon" aria-label={e.remove} onClick={onRemove} icon={<Trash2 aria-hidden className="size-4" />} />
         </div>
       </div>
+      {!hidden && (
       <details className="rounded-panel bg-sunken px-3 py-2" open={Boolean(q.help || q.width || q.bounds || conditions.length) || undefined} data-question-more>
         <summary className="cursor-pointer text-sm text-ink-2">{e.more}</summary>
         <div className="mt-3 flex flex-col gap-3">
@@ -619,7 +652,86 @@ function QuestionFields({
           )}
         </div>
       </details>
+      )}
     </div>
+  );
+}
+
+export type PaymentChoice = { variantId: string; title: string; price: string };
+
+/**
+ * The form's payment (F6c): none, or one of the store's products, found by its name or SKU. The visitor pays for it at the store's checkout
+ * after sending, at its price, VAT and terms as any order; the card says so.
+ */
+function PaymentCard({
+  chosen: initial,
+  search,
+  disabled,
+  onChange,
+}: {
+  chosen: PaymentChoice | null;
+  search: (query: string) => Promise<PaymentChoice[]>;
+  disabled: boolean;
+  onChange: (variantId: string | null) => void;
+}) {
+  const e = useAdminText("forms").editor;
+  const [chosen, setChosen] = useState(initial);
+  const [query, setQuery] = useState("");
+  const [found, setFound] = useState<PaymentChoice[] | null>(null);
+  const [looking, look] = useTransition();
+  const choose = (choice: PaymentChoice | null) => {
+    setChosen(choice);
+    setFound(null);
+    setQuery("");
+    onChange(choice?.variantId ?? null);
+  };
+  return (
+    <Card title={e.payment}>
+      <div className="flex flex-col gap-3" data-form-payment>
+        <p className={hint}>{e.paymentHint}</p>
+        {chosen ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel bg-sunken px-3 py-2" data-payment-chosen>
+            <span className="text-body text-ink">
+              {chosen.title} · <span className="tabular-nums">{chosen.price}</span>
+            </span>
+            <Button kind="quiet" size="dense" disabled={disabled} onClick={() => choose(null)}>
+              {e.paymentRemove}
+            </Button>
+          </div>
+        ) : (
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              look(async () => setFound(await search(query)));
+            }}
+          >
+            <label className={`${label} min-w-48 flex-1`}>
+              <span className={labelText}>{e.paymentFind}</span>
+              <input className={input} value={query} disabled={disabled} maxLength={80} onChange={(ev) => setQuery(ev.target.value)} data-payment-query />
+            </label>
+            <Button type="submit" disabled={disabled || looking || query.trim().length < 2}>
+              {e.paymentSearch}
+            </Button>
+          </form>
+        )}
+        {found && !chosen && (
+          found.length === 0 ? (
+            <p className={hint}>{e.paymentNone}</p>
+          ) : (
+            <ul className="flex flex-col gap-1" data-payment-results>
+              {found.map((f) => (
+                <li key={f.variantId}>
+                  <button type="button" className="w-full rounded-panel px-3 py-2 text-left text-body hover:bg-sunken" onClick={() => choose(f)}>
+                    {f.title} · <span className="tabular-nums text-ink-2">{f.price}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </div>
+    </Card>
   );
 }
 

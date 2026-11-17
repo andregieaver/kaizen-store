@@ -1,13 +1,14 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
-import { checkMessage, checkSignup, looksAutomated, returnPath, type Answer, type FormResponse } from "@/lib/forms";
+import { fileSize } from "@/lib/form-files";
+import { checkMessage, checkSignup, looksAutomated, returnPath, shownQuestions, type Answer, type FormResponse } from "@/lib/forms";
 import { type FormRequest } from "@/lib/forms-schema";
 import { t, type Messages } from "@/lib/i18n";
 import { pageBlockSchema, withChildren, type EmailFormBlock, type NewsletterBlock, type PageContent } from "@/lib/page-content";
@@ -15,6 +16,8 @@ import { storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type SendOutcome } from "./email";
+import { storeFiles, takeFile, type SentFile, type TakenFile } from "./form-files";
+import { startFormPayment } from "./form-payments";
 import { recordFormSent } from "./experiments";
 import { issueSignupCode } from "./discounts";
 import { houseStoreId } from "./house-customers";
@@ -48,7 +51,15 @@ const CONFIRM_DAYS = 7;
 
 type FormOwner = { storeId: string | null; store: EmailStore | null; name: string; origin: string; lang: string; timeZone: string };
 /** A form found: a page's own email form or sign-up (D93), or a form record (D705) as one, with its id in `formId` (its responses are kept). */
-type FoundForm = { block: EmailFormBlock | NewsletterBlock; pageTitle: string; owner: FormOwner; formId: string | null; inbox?: FormInboxChoice };
+type FoundForm = {
+  block: EmailFormBlock | NewsletterBlock;
+  pageTitle: string;
+  owner: FormOwner;
+  formId: string | null;
+  inbox?: FormInboxChoice;
+  /** The product its visitors go on to pay for (D738 F6c): a store's message form only. */
+  paymentVariantId?: string | null;
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -96,7 +107,7 @@ export async function findForm(storeId: string | null, blockId: string): Promise
     if (!formTakesAnswers(form) || !(await formIsPublished(storeId, form.id))) return null;
     const owner = await formOwner(storeId);
     // The questions in the owner's main words: the answers are labelled in them, as a page's own form labels them (D93).
-    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id, inbox: form.delivery.inbox };
+    return owner && { block: formAsBlock(form, null), pageTitle: form.name, owner, formId: form.id, inbox: form.delivery.inbox, paymentVariantId: form.paymentVariantId };
   };
   if (UUID.test(blockId)) {
     const found = await saved(blockId);
@@ -179,7 +190,7 @@ const answerBlocks = (answers: Answer[]): EmailBlock[] => answers.map((answer) =
 const pageLine = (m: Messages, owner: FormOwner, path: string): EmailBlock => ({ type: "paragraph", text: `${m.form.page}: ${owner.origin}${path}` });
 
 /** A visitor's message or sign-up: checked, counted, and emailed (or, for a sign-up, sent for the visitor to confirm). */
-export async function submitForm(request: FormRequest, visitor: string): Promise<{ status: number; body: FormResponse }> {
+export async function submitForm(request: FormRequest, visitor: string, files: Record<string, SentFile> = {}): Promise<{ status: number; body: FormResponse }> {
   const v = t(request.lang);
   const found = await findForm(request.store, request.block);
   if (!found) return { status: 404, body: { ok: false, error: v.form.failed } };
@@ -187,12 +198,36 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
   const o = t(owner.lang);
 
   if (block.type === "emailForm") {
-    // A date's earliest and latest day count from the owner's today (D705 F3).
-    const checked = checkMessage(block, request.values, request.consent, v, o, todayInZone(owner.timeZone));
-    if (!checked.ok) return { status: 422, body: { ok: false, errors: checked.errors } };
+    // A date's earliest and latest day count from the owner's today (D705 F3); a hidden field reads the address it was sent on (D738).
+    // A file question (D738 F6b) is answered only by a file the server took and checked, named as it keeps it with its size; whatever the
+    // browser says under its id is not taken. A page's own form has no file questions, so only a form record (with an id) takes files.
+    const values: FormRequest["values"] = { ...request.values };
+    const fileErrors: Record<string, string> = {};
+    const taken: TakenFile[] = [];
+    for (const field of block.fields.filter((f) => f.kind === "file")) {
+      const sent = found.formId ? files[field.id] : undefined;
+      values[field.id] = "";
+      if (!sent) continue;
+      const file = takeFile(field.id, sent);
+      if (typeof file === "string") {
+        fileErrors[field.id] = file === "too_big" ? v.form.fileTooBig : v.form.fileNotAllowed;
+        continue;
+      }
+      taken.push(file);
+      values[field.id] = `${file.name} (${fileSize(file.bytes.byteLength)})`;
+    }
+    const checked = checkMessage(block, values, request.consent, v, o, todayInZone(owner.timeZone), request.path);
+    if (!checked.ok || Object.keys(fileErrors).length > 0) {
+      return { status: 422, body: { ok: false, errors: { ...(checked.ok ? {} : checked.errors), ...fileErrors } } };
+    }
     // A robot is told it worked, and nothing is sent.
     if (looksAutomated(request)) return { status: 200, body: { ok: true, outcome: "sent" } };
     if (await overLimit(owner.storeId, block.id, visitor)) return { status: 429, body: { ok: false, error: v.form.busy } };
+    // Only files of questions asked are kept; they are stored before the response's row, under its id.
+    const asked = new Set(shownQuestions(block.fields, values).map((f) => f.id));
+    const responseId = randomUUID();
+    const stored = await storeFiles(owner.storeId, responseId, taken.filter((f) => asked.has(f.question)));
+    if (stored === null) return { status: 502, body: { ok: false, error: v.form.failed } };
     const [row] = await db().execute<Row>(sql`
       insert into commerce.form_submissions (store_id, block_id, kind, visitor, status, path, locale)
       values (${owner.storeId}::uuid, ${block.id}, 'message', ${visitor}, 'pending', ${request.path}, ${request.lang})
@@ -212,11 +247,19 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
       { email: checked.replyTo, name: typeof typedName === "string" ? typedName : null },
     );
     const keep = (delivery: "sent" | "logged" | "failed" | "inbox") =>
-      found.formId ? keepResponse({ formId: found.formId, answers, contactEmail: checked.replyTo, path: request.path, locale: request.lang, delivery }) : Promise.resolve();
+      found.formId
+        ? keepResponse({ id: responseId, formId: found.formId, answers, contactEmail: checked.replyTo, path: request.path, locale: request.lang, delivery, files: stored })
+        : Promise.resolve();
+    // A form with a payment (D738 F6c): once the response is kept, its product goes into the visitor's cart and they go on to the checkout.
+    // When the payment cannot start (payments off, the product not sold there), the response stands unpaid and the visitor is told it was sent.
+    const sent = async (): Promise<{ status: number; body: FormResponse }> => {
+      const url = owner.storeId && found.formId && found.paymentVariantId ? await startFormPayment(owner.storeId, found.paymentVariantId, request.market, responseId) : null;
+      return { status: 200, body: url ? { ok: true, outcome: "pay", url } : { ok: true, outcome: "sent" } };
+    };
     if (inbox.kept && !inbox.emailToo) {
       await db().execute(sql`update commerce.form_submissions set status = 'sent' where id = ${String(row.id)}::uuid and ${owned(owner.storeId)}`);
       await keep("inbox");
-      return { status: 200, body: { ok: true, outcome: "sent" } };
+      return sent();
     }
     const status = await relay(
       found,
@@ -225,7 +268,14 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
         subject,
         heading: o.form.messageHeading,
         intro: checked.replyTo ? o.form.replyHint : "",
-        blocks: [{ type: "divider" }, ...answerBlocks(answers), { type: "divider" }, pageLine(o, owner, request.path)],
+        blocks: [
+          { type: "divider" },
+          ...answerBlocks(answers),
+          { type: "divider" },
+          pageLine(o, owner, request.path),
+          ...(stored.length > 0 ? [{ type: "paragraph" as const, text: o.form.filesInAdmin }] : []),
+          ...(found.paymentVariantId && owner.storeId ? [{ type: "paragraph" as const, text: o.form.paymentNext }] : []),
+        ],
       },
       checked.replyTo,
       `form:${String(row.id)}`,
@@ -233,7 +283,7 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${String(row.id)}::uuid and ${owned(owner.storeId)}`);
     // Kept even when the email failed: the owner finds it under the form's responses (D705).
     await keep(status);
-    return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: { ok: true, outcome: "sent" } };
+    return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : sent();
   }
 
   const checked = checkSignup(block, request.values, request.consent, v);

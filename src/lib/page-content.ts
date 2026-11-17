@@ -1760,6 +1760,10 @@ export const FORM_FIELD_KINDS = {
   checklist: "Tick list",
   number: "Number",
   date: "Date",
+  // A form's own (D738 F6): not asked, its answer read from the address the form is sent on, such as a campaign code.
+  hidden: "From the address",
+  // A form's own (D738 F6b): one picture or PDF, kept privately for the owner.
+  file: "File",
 } as const;
 export type FormFieldKind = keyof typeof FORM_FIELD_KINDS;
 export const FORM_FIELDS_MAX = 20;
@@ -1769,7 +1773,11 @@ export const FORM_TEXT_MAX = 500;
 export const FORM_RECIPIENTS_MAX = 5;
 
 /** Kinds whose words must be written: the others have their usual name in the page's language. */
-export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox", "radio", "checklist", "number", "date"];
+export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox", "radio", "checklist", "number", "date", "hidden", "file"];
+/** A page's own email form asks these (D93): a hidden field from the address and a file are a form's only (D738). */
+export const PAGE_FORM_KINDS = (Object.keys(FORM_FIELD_KINDS) as FormFieldKind[]).filter((k) => k !== "hidden" && k !== "file");
+/** An address parameter a hidden field reads (D738), such as `utm_campaign` or `code`. */
+export const ADDRESS_PARAM = /^[A-Za-z0-9_.-]{1,64}$/;
 import { OPTION_FIELD_KINDS } from "./questions";
 export { OPTION_FIELD_KINDS };
 
@@ -1802,6 +1810,8 @@ export type FormField = {
   max?: number;
   /** Asked only when every one holds (D705 F3); always asked without. */
   showWhen?: ShowWhen[];
+  /** A hidden field's address parameter (D738): its answer is that parameter's value in the address the form is sent on. */
+  param?: string;
 };
 
 /** How a form's button looks: a button's look (D49). */
@@ -3735,7 +3745,7 @@ const emailFormBlock = z.object({
       z
         .object({
           id: itemId,
-          kind: z.enum(Object.keys(FORM_FIELD_KINDS) as [FormFieldKind, ...FormFieldKind[]], "A question is of an unknown kind."),
+          kind: z.enum(PAGE_FORM_KINDS as [FormFieldKind, ...FormFieldKind[]], "A question is of an unknown kind."),
           label: formText("a question", FORM_LABEL_MAX),
           required: z.boolean().optional(),
           placeholder: formText("a hint", FORM_LABEL_MAX).optional(),

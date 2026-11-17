@@ -25,6 +25,7 @@ export default async function StoreChatPage({ params }: PageProps<"/admin/[store
       upload={uploadsEnabled() ? uploadChatAvatarAction.bind(null, store.slug) : null}
       addDocument={addDocumentAction.bind(null, store.slug)}
       deleteDocument={deleteDocumentAction.bind(null, store.slug)}
+      questions={`/admin/${store.slug}/chat/questions`}
       lang={adminLangOf(account.adminLocale)}
     />
     </AdminAreas>

@@ -67,6 +67,10 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   checkout: "orders",
   work_client: "payments",
   work_invoice: "payments",
+  // Email plan M1.2 (D732).
+  email: "customers",
+  broadcast: "marketing",
+  sending_pause: "marketing",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];

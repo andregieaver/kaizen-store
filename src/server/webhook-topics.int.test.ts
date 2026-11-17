@@ -210,6 +210,29 @@ beforeAll(async () => {
     values (${String(form.id)}::uuid, '[{"label":"Message","value":"Hello"}]', 'kari@example.com', '/kontakt', 'nb', 'logged') returning id
   `);
   subjects.form_response = String(response.id);
+
+  // Email plan M1.2 (D732): an email that bounced, a broadcast that finished, the sending guard's pause.
+  const [email] = await db().execute<Row>(sql`
+    insert into commerce.email_messages (store_id, kind, to_address, subject, html, text, status, error, order_id, sent_at)
+    values (${store.storeId}::uuid, 'order.confirmation', 'Kari@Example.com', 'Your order', '<p>Secret words</p>', 'Secret words', 'bounced',
+      'Permanent: mailbox does not exist', ${order.orderId}::uuid, now())
+    returning id
+  `);
+  subjects.email = String(email.id);
+  // A broadcast moves only draft, sending, sent (its table's own rule).
+  const [broadcast] = await db().execute<Row>(sql`
+    insert into commerce.broadcasts (store_id, title, audience, content) values (${store.storeId}::uuid, 'Autumn news', 'everyone', '{}'::jsonb) returning id
+  `);
+  await db().execute(sql`
+    update commerce.broadcasts set status = 'sending', started_at = now(), audience_words = 'Everyone on the list', recipient_count = 3 where id = ${String(broadcast.id)}::uuid
+  `);
+  await db().execute(sql`update commerce.broadcasts set status = 'sent', finished_at = now() where id = ${String(broadcast.id)}::uuid`);
+  subjects.broadcast = String(broadcast.id);
+  const [pause] = await db().execute<Row>(sql`
+    insert into commerce.sending_pauses (store_id, reason, counts) values (${store.storeId}::uuid, 'bounces', '{"sent":200,"bounced":12,"complained":0}')
+    on conflict (store_id) do update set reason = excluded.reason returning id
+  `);
+  subjects.sending_pause = String(pause.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -258,6 +281,10 @@ describe("every webhook topic's payload (D438)", () => {
     const checkout = await text("checkout.abandoned", subjects.checkout!);
     expect(JSON.parse(checkout).checkout).toMatchObject({ subtotal: 398, lines: [{ sku: SKU, quantity: 2, unit_price: 199 }], recovered: false });
     expect(checkout).not.toContain(String(left.token));
+    const email = await text("email.bounced", subjects.email!);
+    expect(JSON.parse(email).email).toMatchObject({ kind: "order.confirmation", to: "kari@example.com", status: "bounced", reason: "Permanent: mailbox does not exist", order_id: subjects.order });
+    expect(email).not.toContain("Secret words");
+    expect(JSON.parse(await text("marketing.paused", subjects.sending_pause!)).sending_pause).toMatchObject({ reason: "bounces", sent: 200, bounced: 12 });
     const client = await text("work_client.created", subjects.work_client!);
     expect(client).not.toContain("faktura@fjord.example");
     const subscriber = JSON.parse(await text("subscriber.subscribed", subjects.subscriber!)).subscriber;

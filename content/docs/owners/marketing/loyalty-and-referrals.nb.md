@@ -77,7 +77,7 @@ Kundene deler en lenke. En venns første bestilling får velkomstrabatt, og kund
 bonusprogrammet er på.
 
 1. Åpne **Innstillinger**, velg [Funksjoner](/admin/{store}/settings/features) og slå på **Vervekampanje**.
-2. Åpne **Markedsføring** og velg [Vervekampanje](/admin/{store}/affiliates).
+2. Åpne **Markedsføring** og velg [Tips en venn](/admin/{store}/affiliates).
 3. Kryss av for **Vervekampanjen er på**, se over innstillingene, og trykk **Lagre**.
 
 Alle innloggede kunder får en lenke første gang de åpner **Tips en venn** under Min konto; ingen trenger å godkjennes. Vennen må være

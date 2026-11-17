@@ -31,6 +31,7 @@ import {
 } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Products page's body (D152): everything under the page's header, drawn from the one report object it is handed and nothing else
@@ -327,12 +328,14 @@ export function ProductsView({
   };
   if (noCostAtAll) {
     notes.push(
-      <Note key="nocosts" tone="warning" title={w.noCostsTitle}>
-        {w.noCosts}{" "}
-        <Link href={costsAction.href} className={linkClass}>
-          {costsAction.label}
-        </Link>
-      </Note>,
+      <div key="nocosts" className="max-sm:hidden">
+        <Note tone="warning" title={w.noCostsTitle}>
+          {w.noCosts}{" "}
+          <Link href={costsAction.href} className={linkClass}>
+            {costsAction.label}
+          </Link>
+        </Note>
+      </div>,
     );
   } else if (partlyKnown) {
     const named = withoutCost.slice(0, NAMED_WITHOUT_COST);
@@ -363,12 +366,14 @@ export function ProductsView({
   const viewsKnown = report.viewsFrom !== null;
   if (!viewsKnown) {
     notes.push(
-      <Note key="noviews" title={w.noViewsTitle}>
-        {w.noViews}{" "}
-        <Link href={settingsHref} className={linkClass}>
-          {w.switchOnVisits}
-        </Link>
-      </Note>,
+      <div key="noviews" className="max-sm:hidden">
+        <Note title={w.noViewsTitle}>
+          {w.noViews}{" "}
+          <Link href={settingsHref} className={linkClass}>
+            {w.switchOnVisits}
+          </Link>
+        </Note>
+      </div>,
     );
   } else if (report.viewsFrom! > report.period.from) {
     notes.push(
@@ -378,6 +383,18 @@ export function ProductsView({
       >
         {w.partViews}
       </Note>,
+    );
+  }
+  // Round 37 (D725): on a phone costs missing and visits not counted are one strip, with one press to the first that is missing.
+  const phoneMissing = noCostAtAll || !viewsKnown;
+  if (phoneMissing) {
+    notes.unshift(
+      <p key="phone-missing" className="flex items-center justify-between gap-3 rounded-panel bg-warning-soft px-4 py-3 text-caption text-warning-text sm:hidden">
+        <span>{noCostAtAll && !viewsKnown ? w.phone.both : noCostAtAll ? w.phone.costs : w.phone.views}</span>
+        <Link href={noCostAtAll ? costsAction.href : settingsHref} className="inline-flex min-h-9 shrink-0 items-center rounded-pill bg-ink px-3.5 text-caption font-medium text-inverse-ink">
+          {w.phone.fix}
+        </Link>
+      </p>,
     );
   }
   const noteBlock =
@@ -712,13 +729,14 @@ export function ProductsView({
     <div className="flex flex-col gap-8">
       {noteBlock}
 
+      {/* Round 37 (D725): on a phone the figures share one card; the sentence on how concentrated sales are spans it. */}
       <section
         aria-label={w.mainFigures}
-        className="grid grid-cols-1 gap-3 md:grid-cols-3"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-1 sm:gap-3 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent md:grid-cols-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2"
       >
-        <KpiCard {...revenueCard} />
-        <KpiCard {...profitCard} />
-        <KpiCard {...paretoCard} />
+        <KpiCard {...revenueCard} phoneCompact />
+        <KpiCard {...profitCard} phoneCompact />
+        <KpiCard {...paretoCard} phoneCompact />
       </section>
 
       <AnalyticsSection
@@ -743,6 +761,24 @@ export function ProductsView({
         description={`${fillWords(w.tableDescription, { currency: report.currency })}${report.compare ? ` ${changeHelp}` : ""}`}
         action={toggle}
       >
+        {/* Round 37 (D725): on a phone each product is one line with its revenue; the table from the small breakpoint up. */}
+        {shown.length > 0 ? (
+          <ul className={`divide-y divide-line px-4 sm:hidden ${CARD_CLASS}`}>
+            {shown.map((r) => (
+              <li key={r.productId} className="flex min-h-12 items-center justify-between gap-3 py-2">
+                {r.other ? (
+                  <span className="min-w-0 truncate text-body text-ink-2">{r.name}</span>
+                ) : (
+                  <Link href={productHref(r.productId)} className="min-w-0 truncate text-body text-ink">
+                    {r.name}
+                  </Link>
+                )}
+                <span className="shrink-0 text-body tabular-nums">{money(r.revenueMinor)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className={shown.length > 0 ? "max-sm:hidden" : undefined}>
         <DataTable<ProductReportRow>
           caption={w.tableCaption}
           columns={columns}
@@ -755,7 +791,8 @@ export function ProductsView({
           exportId="products.table"
           exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
         />
-        <dl className="grid gap-x-6 gap-y-1 text-xs text-muted sm:grid-cols-2">
+        </div>
+        <dl className="grid gap-x-6 gap-y-1 text-xs text-muted max-sm:hidden sm:grid-cols-2">
           <div>
             <dt className="inline font-medium">{w.marginTerm}</dt>
             <dd className="inline">

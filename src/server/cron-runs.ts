@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
 import { pooled } from "@/lib/job-pool";
 
+import { flushCacheEvents, inJob } from "./cache-events";
 import { cronAuthorised } from "./cron-auth";
 import { log } from "./log";
 import { textList } from "./sql-arrays";
@@ -63,12 +64,14 @@ async function record(job: string, everySeconds: number, started: Date, error: u
 export async function tracked<T>(job: string, everySeconds: number, run: () => Promise<T>): Promise<T | null> {
   const started = new Date();
   try {
-    const result = await run();
+    const result = await inJob(job, run);
     await record(job, everySeconds, started, null);
+    await flushCacheEvents();
     return result;
   } catch (error) {
     log("error", "cron.job_failed", { job, durationMs: Date.now() - started.getTime() }, error);
     await record(job, everySeconds, started, error);
+    await flushCacheEvents();
     return null;
   }
 }

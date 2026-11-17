@@ -137,6 +137,7 @@ export const shippingNb: ShippingMessages = {
     localTitle: "Lokal levering",
     localDescription:
       "Lever bestillinger selv til kunder i nærheten. Kundene oppgir postnummeret sitt i kassen og får tilbud om det billigste området som dekker det, med en beskjed til sjåføren. Merk en ordre Ute for levering for å sende dem e-post, og Levert når den er fremme.",
+    localLead: "Lever bestillinger selv til kunder i nærheten.",
     office: "Kontor",
   },
   methods: {
@@ -294,6 +295,13 @@ export const shippingNb: ShippingMessages = {
   },
   local: {
     checkTitle: "Sjekk et postnummer",
+    phone: {
+      checkSub: "Hvilke områder som dekker det",
+      check: "Sjekk",
+      noteTitle: "Slik måles avstander",
+      read: "Les",
+      close: "Lukk",
+    },
     checkDescription: "Hvilke områder som dekker et postnummer, før noe lagres.",
     country: "Land",
     postalCode: "Postnummer",
@@ -318,6 +326,13 @@ export const shippingNb: ShippingMessages = {
     fromBasket: ", fra en handlekurv på {amount}",
     freeFrom: ", gratis fra {amount}",
     form: {
+      phone: {
+        more: "Flere valg",
+        change: "Endre",
+        done: "Ferdig",
+        offered: "tilbys",
+        notOffered: "tilbys ikke",
+      },
       name: "Navn, slik kundene ser det",
       namePlaceholder: "Levering i byen",
       country: "Land",

@@ -34,6 +34,7 @@ import { sendEmail } from "./email";
 import { log } from "./log";
 import { ownSpeedReport } from "./own-speed";
 import { planAnalytics } from "./plan-analytics";
+import { currentFlags } from "./platform-flags";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -87,7 +88,7 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
   const month = monthOf(today);
   const lastMonth = monthOf(new Date(Date.parse(`${month}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10));
   const sameDayLastMonth = `${lastMonth.slice(0, 8)}${today.slice(8, 10)}`;
-  const [analytics, moved, sales, figures, targets, speed] = await Promise.all([
+  const [analytics, moved, sales, figures, targets, speed, flagged] = await Promise.all([
     planAnalytics(30),
     typedRows(
       z.object({ currency: col.currency, month_moved: col.minor, week_moved: col.minor }),
@@ -117,6 +118,7 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
     ),
     platformTargets(month),
     ownSpeedReport("admin", now),
+    currentFlags(now),
   ]);
   const live = analytics.live;
   const mrr = live.mrr.map((m) => {
@@ -148,6 +150,7 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
     requests: { waiting: figures?.waiting ?? 0, oldestHours: figures?.oldest_hours === null || figures?.oldest_hours === undefined ? null : Math.floor(figures.oldest_hours) },
     targets: targets.map((target) => ({ target, progress: targetProgress(target, actualOf(target), today) })),
     adminSpeed: speed.rows,
+    flags: (flagged?.flags ?? []).map((f) => ({ id: f.id, subject: f.subject })),
   };
 }
 
@@ -212,6 +215,7 @@ export function alertText(alert: PlatformAlert, lang: AdminLang): string {
       value: speedValueText(v.metric as SpeedMetric, Number(v.value), locale),
     });
   }
+  if (alert.id === "database_flag") return countWords(Number(v.n), w.database_flag);
   return countWords(Number(v.n), w.trials_ending);
 }
 

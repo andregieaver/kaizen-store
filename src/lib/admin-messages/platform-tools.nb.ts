@@ -367,7 +367,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     },
   },
   vat: {
-    title: "Merverdiavgift",
+    title: "Mva-satser",
     intro:
       "Satsene alle butikker bruker. Prisene er inkl. mva., og hvert salg får merverdiavgiften i landet det går til. Satsene her er lest fra offentlige kilder og starter som ikke verifisert: de brukes likevel, så gå gjennom listen med en regnskapsfører. Dette er ikke skatterådgivning.",
     countryIntro: "Satsene for merverdiavgift butikkene bruker på salg til {country}, og hvordan frakt avgiftsberegnes der.",

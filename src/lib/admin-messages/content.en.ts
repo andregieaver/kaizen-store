@@ -105,6 +105,7 @@ export const contentEn = {
     updated: "{label} updated.",
     confirmRemove: "Remove {label}? What was entered in it in every entry is taken away when you save.",
     untitled: "Untitled type",
+    phone: { change: "Change", done: "Done", noPages: "no page for each entry", form: "The form an entry gets", open: "Open" },
   },
   layout: {
     title: "Entry page",

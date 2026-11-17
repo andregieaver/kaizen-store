@@ -731,7 +731,8 @@ export const returnsEn = {
     subAuto: "Booked by themselves",
     subByHand: "Booked from a return",
     change: "Change",
-    title: "Returns",
+    // Named apart from the Returns page under Orders (ecosystem plan E3.7, D718).
+    title: "Return settings",
     description:
       "Customers in the EU can withdraw from most purchases within 14 days, without giving a reason. These are the store's rules around that: the days it offers on top, who pays to send goods back, and when the refund is made. The defaults are the law's. The texts customers read about their right are reviewed by a person: this is not legal advice.",
     saved: "Saved.",

@@ -216,7 +216,8 @@ export const paymentsEn = {
     subDraft: "Pay links last {days} days",
     subOwnerOnly: "Only the owner records it",
     change: "Change",
-    title: "Orders",
+    // Named apart from the Orders section (ecosystem plan E3.7, D718).
+    title: "Order settings",
     intro:
       "How the store handles orders after they are placed: whether shoppers can send a gift message, whether finished orders are archived for you, and how draft orders are paid.",
     saved: "Saved.",

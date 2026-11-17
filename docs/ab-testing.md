@@ -1035,6 +1035,14 @@ in code, a line in `TOOL_WORDS` and, where it changes the site, a `gate`:
 Costs are metered (`aiFor(storeId, { feature: "experiments" })`, a new entry in `AI_FEATURES`) and counted in the usage
 reports (D106, D145).
 
+**The autopilot's own tests (ecosystem plan E4.1, D729, `docs/ai-autopilot.md` 17).** The one place a test starts without a person's yes: a
+change the autopilot would publish itself to a live page becomes an ordinary test of the page, where the page's own visitors answer it within
+21 days (`experimentTraffic()`'s estimate, `chooseTest()`), the store has room for it and the owner left *Test my page changes first* on. The live
+page is the original, the change version B; the store's guardrails watch it as any test. It is listed *By the autopilot*
+(`ExperimentInfo.byAutopilot`, from `commerce.autopilot_tests`), and decided by code from its verdict (`decideAutopilotTests()`): the change
+goes live through `apply_winner` only when it is clearly better and the owner's levels let the autopilot act, else on their yes; it is kept out
+when it does worse, harms a guardrail or runs out of time. One undecided autopilot test per page; a person still decides it as any test.
+
 ## Platform and stores
 
 - **Store owners and staff** test their own stores; platform admins test Kaizen's pages (sign-up, plans, front page).

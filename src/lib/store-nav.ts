@@ -34,6 +34,9 @@ export type StoreItem = {
   /** A page that is not what its section's tab stands for (Custom fields under Products): the tab never opens on it, and a section with only
    * such pages left is not in the menu. */
   aside?: true;
+  /** Other addresses that are this page (an old address that leads to one of its tabs, and that tab's own pages): inside its section, and
+   * the item is marked on them. Discounts holds `/campaigns`, its Automatic tab (ecosystem plan E3.7, D718). */
+  also?: string[];
 };
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
@@ -141,8 +144,9 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Discounts",
         items: [
-          item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product.", { feature: "shop", icon: "badge-percent", basic: true }),
-          item("/discounts", "Coupons", "Discount codes customers type at checkout.", { feature: "shop", icon: "ticket", basic: true }),
+          // One page for one job (ecosystem plan E3.7, D718; code review step 2.4): codes and automatic offers are its two tabs. The automatic
+          // offers' list was Campaigns at `/campaigns`, which now leads to that tab; their editor keeps its address there.
+          item("/discounts", "Discounts", "Money off for shoppers: codes they type at checkout, and automatic offers for a time, such as 3 for 2 or a free product.", { feature: "shop", icon: "badge-percent", basic: true, also: ["/campaigns"] }),
         ],
       },
       {
@@ -153,7 +157,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/text-messages", "Text messages", "Offers by text message to the numbers that asked for them at checkout, in their daytime.", { icon: "message-text" }),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
           item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),
-          item("/segments", "Segments", "Groups of customers and subscribers by what they did, counted as you open them.", { icon: "chart-pie" }),
+          // Who a message goes to, not a group with a discount (Customer groups): ecosystem plan E3.7, D718.
+          item("/segments", "Segments", "Who gets an email or a text message, chosen by rules on what people did and counted again as you open them.", { icon: "chart-pie" }),
         ],
       },
       {
@@ -168,7 +173,8 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Loyalty",
         items: [
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus", icon: "coins", basic: true }),
-          item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals", icon: "share", basic: true }),
+          // Refer a friend, as its customers know it: Referrals is an owner's own link to Kaizena Flow (ecosystem plan E3.7, D718).
+          item("/affiliates", "Refer a friend", "Customers who refer their friends, and what both get.", { feature: "referrals", icon: "share", basic: true }),
         ],
       },
       {
@@ -202,16 +208,17 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop", icon: "wallet" }),
           item("/analytics/payouts", "Payouts", "What Stripe paid to your bank, what each payout settles and whether it adds up.", { feature: "shop", icon: "landmark", basic: true }),
           item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance.", { feature: "shop", icon: "percent" }),
-          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions", icon: "repeat" }),
+          item("/analytics/subscriptions", "Subscription analytics", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions", icon: "repeat" }),
         ],
       },
       {
         heading: "Customers and products",
         items: [
-          item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop", icon: "users" }),
-          item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop", icon: "tag" }),
-          item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop", icon: "warehouse" }),
-          item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop", icon: "megaphone" }),
+          // Named apart from the pages they are about (ecosystem plan E3.7, D718): Customers is the customer list, Customer analytics its figures.
+          item("/analytics/customers", "Customer analytics", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop", icon: "users" }),
+          item("/analytics/products", "Product analytics", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop", icon: "tag" }),
+          item("/analytics/inventory", "Inventory analytics", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop", icon: "warehouse" }),
+          item("/analytics/marketing", "Marketing analytics", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop", icon: "megaphone" }),
           item("/analytics/sales", "Sales", "Deals: what they may bring and when, how they move from stage to stage, who won and lost, and how long a deal takes to win.", { feature: "sales", icon: "handshake" }),
         ],
       },
@@ -303,11 +310,12 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said.", { icon: "inbox", basic: true }),
           item("/support/requests", "Requests", "What the chat assistant passed to your team (a refund, cancelling an order, a new address, an exception): decide each, and the customer is told.", { icon: "clipboard-check", basic: true }),
-          item("/support/reports", "Reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { icon: "chart-column" }),
+          // Support's own names (ecosystem plan E3.7, D718): Reports are Analytics', Settings the store's.
+          item("/support/reports", "Support reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { icon: "chart-column" }),
           item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.", { icon: "message-text" }),
           item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from.", { icon: "bot" }),
           item("/support/widgets", "Website chat", "The chat on your other websites: widgets with their own look, each with a tag to paste on one or several sites.", { icon: "globe", basic: true }),
-          item("/support/settings", "Settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { icon: "settings-2" }),
+          item("/support/settings", "Support settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { icon: "settings-2" }),
         ],
       },
     ],
@@ -338,8 +346,9 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop", icon: "credit-card", basic: true }),
           item("/settings/shipping", "Shipping", "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.", { feature: "shop", icon: "truck", basic: true }),
-          item("/settings/products", "Products", "What product tiles in your grids show: how many are left, and a quantity chooser with Add to cart.", { feature: "shop", icon: "package" }),
-          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.", { feature: "shop", icon: "clipboard-list" }),
+          // Named apart from the sections they set (ecosystem plan E3.7, D718).
+          item("/settings/products", "Product settings", "What product tiles in your grids show: how many are left, and a quantity chooser with Add to cart.", { feature: "shop", icon: "package" }),
+          item("/settings/orders", "Order settings", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.", { feature: "shop", icon: "clipboard-list" }),
           item("/settings/notifications", "Notifications", "The emails customers get about their orders and returns: which are sent, your own wording in each language, and who on the team is told of new orders.", { feature: "shop", icon: "bell" }),
           item("/settings/checkout", "Checkout rules", "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.", { feature: "shop", icon: "list-filter" }),
           item("/settings/prices", "Prices and quantity", "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.", { feature: "shop", icon: "calculator" }),
@@ -347,7 +356,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/automatic", "Automatic", "Everything that happens by itself in the store, and when it last did: what follows a paid order, workflows, emails, alerts and connections.", { icon: "clock", basic: true }),
           item("/settings/workflows", "Workflows", "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.", { icon: "workflow" }),
           item("/settings/automation", "Automation", "Rules that tag, hold or tell staff about paid orders that match conditions you choose, and the log of what they did.", { feature: "shop", icon: "zap" }),
-          item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop", icon: "undo" }),
+          item("/settings/returns", "Return settings", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop", icon: "undo" }),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms.", { icon: "scale", basic: true }),
           item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT.", { feature: "shop", icon: "percent", basic: true }),
           item("/settings/customs", "Duties and import VAT", "Who pays duties and import VAT in each country outside your customs area: your customer to the carrier on delivery, or with the order at checkout.", { feature: "shop", icon: "container" }),
@@ -379,7 +388,8 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/billing", "Billing", "The store's plan, what it costs and its invoices.", { icon: "receipt-text", basic: true, customer: true }),
           item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in.", { icon: "user-cog", basic: true }),
-          item("/activity", "Activity log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.", { icon: "file-clock" }),
+          // The audit log, named apart from a customer's Activities (D468): ecosystem plan E3.7, D718.
+          item("/activity", "Change log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.", { icon: "file-clock" }),
         ],
       },
     ],
@@ -415,7 +425,12 @@ export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSectio
 }
 
 /** Addresses inside a section, after the store's: its hub (if it has one) and every page in its sidebar. */
-export const sectionPaths = (section: StoreSection): string[] => [...(section.hub ? [section.start] : []), ...section.groups.flatMap((g) => g.items.map((i) => i.path))];
+export const sectionPaths = (section: StoreSection): string[] => [...(section.hub ? [section.start] : []), ...section.groups.flatMap((g) => g.items.flatMap(itemPaths))];
+
+/** A page's own address and the others that are it (`also`). */
+function itemPaths(item: Pick<StoreItem, "path" | "also">): string[] {
+  return [item.path, ...(item.also ?? [])];
+}
 
 /** The section a page after the store's address belongs to, by the longest address it is inside; undefined for Home's pages. */
 export function sectionOf(path: string): StoreSection | undefined {
@@ -434,7 +449,7 @@ export const HOME_PATHS = ["/setup", "/assistant"];
 /** Where the cards of a page of cards or the sidebar link to. */
 export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">) => ({ href: `${base}${item.path}`, ...(item.exact && { exact: true as const }) });
 
-type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: boolean };
+type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: boolean; also?: string[] };
 
 /** Whether a section's page is left out of the Basic view (D454): one not marked `basic`, unless it is where the section's tab leads. */
 export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<StoreItem, "path" | "basic">): boolean => !item.basic && item.path !== section.start;
@@ -451,7 +466,7 @@ function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<S
       // Settings sit at the foot of the rail (docs/admin-style.md 5.3); in the tabs and the menu they keep their place.
       ...(s.key === "settings" && { foot: true }),
       // The page of cards is the tab's own address; only the pages in the sidebar are inside it (Design is `/settings/design`, the Website's).
-      also: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
+      also: s.groups.flatMap((g) => g.items.flatMap((i) => itemPaths(i).map((p) => `${base}${p}`))),
     })),
   ];
 }
@@ -468,11 +483,17 @@ function areasOf(base: string, sections: StoreSection[]): { prefixes: string[]; 
   return [
     { prefixes: HOME_PATHS.map((p) => `${base}${p}`), exact: [base], groups: [] },
     ...sections.map((s) => ({
-      prefixes: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
+      prefixes: s.groups.flatMap((g) => g.items.flatMap((i) => itemPaths(i).map((p) => `${base}${p}`))),
       ...(s.hub && { exact: [`${base}${s.start}`] }),
       groups: s.groups.map((g) => ({
         heading: g.heading,
-        items: g.items.map((i) => ({ label: i.label, icon: i.icon, ...storeLink(base, i), ...(advancedIn(s, i) && { advanced: true }) })),
+        items: g.items.map((i) => ({
+          label: i.label,
+          icon: i.icon,
+          ...storeLink(base, i),
+          ...(i.also && { also: i.also.map((p) => `${base}${p}`) }),
+          ...(advancedIn(s, i) && { advanced: true }),
+        })),
       })),
     })),
   ];

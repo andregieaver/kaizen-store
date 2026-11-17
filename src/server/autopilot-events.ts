@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import {
   ALERT_CHECK_HOURS,
+  AUTOPILOT_READER,
   DELIVERY_PROBLEM_PHASES,
   EVENT_ALERT_SEVERITIES,
   EVENT_CLAIM_MINUTES,
@@ -17,9 +18,13 @@ import {
   EVENTS_PER_RUN,
   eventMessage,
   eventRef,
+  eventsByKind,
   FAILED_PAYMENTS_HOURS,
   FAILED_PAYMENTS_MIN,
   FAILED_PAYMENTS_SHARE,
+  LOG_BATCH,
+  LOG_ROUNDS,
+  LOGGED_EVENTS,
   ORDER_EVENT_DAYS,
   ORDER_UNSENT_HOURS,
   STOCKOUT_PER_CHECK,
@@ -38,6 +43,8 @@ import { alertsForStore } from "./analytics-insights";
 import { startPlanByAutopilot, stopPlanIn, type PlanActor } from "./autopilot-plans";
 import { principalOf } from "./autopilot-runner";
 import { aiBudgetSpent, autonomyFor } from "./autopilot-settings";
+import { tracked } from "./cron-runs";
+import { consumeEvents } from "./event-log";
 import { log } from "./log";
 import { restockSuggestions } from "./owner-insights";
 import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnInput } from "./owner-assistant";
@@ -50,7 +57,8 @@ import { skipWhilePaused } from "./ai-pause";
  * The autopilot reacts to what happens (D331, `docs/ai-autopilot.md` 15), the only writer of `commerce.autopilot_events` and
  * `autopilot_event_checks`: from `/api/cron/autopilot`, after the reviews, `detectEvents()` finds a customer waiting for a person, an A/B test
  * that ended by itself and an urgent analytics alert in stores that react, and `runEvents()` answers each once with a headless turn that has
- * only the event's tools, within the owner's levels and budgets.
+ * only the event's tools, within the owner's levels and budgets. Since E4.2 (D729) what the event log carries (`LOGGED_EVENT_KINDS`) is read
+ * from it with the autopilot's own cursor, inside `tracked("autopilot.event-log")`; the scans left are for what time passing makes.
  */
 
 /** The longest an event's turn may take. */
@@ -100,22 +108,15 @@ const REACTING = sql`
     and commerce.store_is_active(a.store_id)
 `;
 
-/** Finds the events of every store that reacts and keeps each once; returns how many were new. */
+/**
+ * Finds the events of every store that reacts and keeps each once; returns how many were new. What the event log carries is read from it
+ * (`readLoggedEvents()`, E4.2); the scans below are only for what time passing makes (a test's end is the one exception: the log has no
+ * event for it yet).
+ */
 export async function detectEvents(deps: EventDeps = {}): Promise<number> {
   const now = deps.now ?? new Date();
-  const waiting = await db().execute(sql`
-    with reacting as (${REACTING})
-    insert into commerce.autopilot_events (store_id, kind, ref, facts)
-    select c.store_id, 'support_waiting', c.id::text,
-      jsonb_build_object('kind', 'support_waiting', 'conversation', c.id, 'handoffReason', c.handoff_reason,
-        'waitedMinutes', floor(extract(epoch from (${now.toISOString()}::timestamptz - c.queued_at)) / 60)::int)
-    from commerce.support_conversations c
-    join reacting r on r.store_id = c.store_id
-    where c.status = 'open' and c.handler = 'queue' and c.anonymised_at is null and c.queued_at is not null
-      and c.queued_at < ${now.toISOString()}::timestamptz - make_interval(mins => r.wait_minutes)
-    on conflict (store_id, kind, ref) do nothing
-    returning id
-  `);
+  const logged = await readLog(now);
+  // Not an event of the log yet: a test stopped by its guardrail or its planned end (`stopExperiment()`) is found by its row.
   const tests = await db().execute(sql`
     with reacting as (${REACTING})
     insert into commerce.autopilot_events (store_id, kind, ref, facts)
@@ -125,23 +126,95 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     join reacting r on r.store_id = e.store_id
     where e.status = 'stopped' and e.stop_reason in ('guardrail', 'planned_end')
       and e.stopped_at > ${now.toISOString()}::timestamptz - make_interval(days => ${TEST_ENDED_DAYS})
+      -- The autopilot's own tests of its changes are decided by the store, by code (E4.1, D729), never by an event's turn.
+      and not exists (select 1 from commerce.autopilot_tests t where t.store_id = e.store_id and t.experiment_id = e.id)
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
-  // A running test's first answer (D670), kept once per test, within the days a stopped test is still an event.
-  const answered = await db().execute(sql`
-    with reacting as (${REACTING})
-    insert into commerce.autopilot_events (store_id, kind, ref, facts)
-    select e.store_id, 'test_answered', e.id::text,
-      jsonb_build_object('kind', 'test_answered', 'experiment', e.id, 'name', e.name, 'answeredAt', e.answered_at)
-    from commerce.experiments e
-    join reacting r on r.store_id = e.store_id
-    where e.status = 'running' and e.answered_at is not null
-      and e.answered_at > ${now.toISOString()}::timestamptz - make_interval(days => ${TEST_ENDED_DAYS})
-    on conflict (store_id, kind, ref) do nothing
-    returning id
-  `);
-  return waiting.length + tests.length + answered.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps)) + (await detectStockoutRisks(now, deps));
+  return logged + tests.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps)) + (await detectStockoutRisks(now, deps));
+}
+
+/** The log's reader as a job of its own (`autopilot.event-log` in `commerce.cron_jobs`): a failure is kept and shown, the rest goes on. */
+const readLog = async (now: Date): Promise<number> => (await tracked("autopilot.event-log", 60, () => readLoggedEvents(now))) ?? 0;
+
+/**
+ * The kinds the event log carries (`LOGGED_EVENT_KINDS`), read with the autopilot's own cursor: a few batches a run, each kind's rows
+ * written in one statement from what its events are about, as the scans wrote them (the same reference, `on conflict do nothing`). Only a
+ * store that reacts now and is open for jobs (`REACTING`: never a template, a sandbox or a closed store) keeps its events, and only those
+ * younger than `EVENT_STALE_HOURS`; the platform's own events (no store) are never the store autopilot's. A batch that fails is read again.
+ */
+async function readLoggedEvents(now: Date): Promise<number> {
+  let found = 0;
+  for (let round = 0; round < LOG_ROUNDS; round++) {
+    const read = await consumeEvents(AUTOPILOT_READER, { events: LOGGED_EVENTS, limit: LOG_BATCH, claimSeconds: 120 }, async (events) => {
+      for (const [kind, of] of eventsByKind(events)) found += await keepLogged(kind, of.map((e) => e.id), now);
+    });
+    if (read.busy || read.handled < LOG_BATCH) break;
+  }
+  return found;
+}
+
+/** One kind's logged events as autopilot events: what each is about, read where it lives, kept when it still asks for a look. */
+async function keepLogged(kind: EventKind, ids: readonly number[], now: Date): Promise<number> {
+  if (ids.length === 0) return 0;
+  const at = now.toISOString();
+  const logged = sql`
+    select e.store_id, e.subject_id from commerce.events e
+    where e.id = any(${`{${ids.map((id) => Math.trunc(id)).join(",")}}`}::bigint[]) and e.store_id is not null and e.subject_id is not null
+      and e.at > ${at}::timestamptz - make_interval(hours => ${EVENT_STALE_HOURS})
+  `;
+  const query =
+    kind === "support_waiting"
+      ? // The desk's waiting alert (`support.waiting`): the conversation still waits for a person. `runEvents()` holds the row until the
+        // store's own minutes have passed.
+        sql`
+          with reacting as (${REACTING}), logged as (${logged})
+          insert into commerce.autopilot_events (store_id, kind, ref, facts)
+          select distinct on (c.id) c.store_id, 'support_waiting', c.id::text,
+            jsonb_build_object('kind', 'support_waiting', 'conversation', c.id, 'handoffReason', c.handoff_reason,
+              'waitedMinutes', floor(extract(epoch from (${at}::timestamptz - c.queued_at)) / 60)::int)
+          from logged l
+          join reacting r on r.store_id = l.store_id
+          join commerce.support_conversations c on c.store_id = l.store_id and c.id = l.subject_id
+          where c.status = 'open' and c.handler = 'queue' and c.anonymised_at is null and c.queued_at is not null
+          on conflict (store_id, kind, ref) do nothing
+          returning id
+        `
+      : kind === "test_answered"
+        ? // A running test's first answer (D670, `experiment.answered`), kept once per test.
+          sql`
+            with reacting as (${REACTING}), logged as (${logged})
+            insert into commerce.autopilot_events (store_id, kind, ref, facts)
+            select distinct on (e.id) e.store_id, 'test_answered', e.id::text,
+              jsonb_build_object('kind', 'test_answered', 'experiment', e.id, 'name', e.name, 'answeredAt', e.answered_at)
+            from logged l
+            join reacting r on r.store_id = l.store_id
+            join commerce.experiments e on e.store_id = l.store_id and e.id = l.subject_id
+            where e.status = 'running' and e.answered_at is not null
+              -- The autopilot's own tests of its changes are decided by the store, by code (E4.1, D729), never by an event's turn.
+              and not exists (select 1 from commerce.autopilot_tests t where t.store_id = e.store_id and t.experiment_id = e.id)
+            on conflict (store_id, kind, ref) do nothing
+            returning id
+          `
+        : kind === "delivery_problem"
+          ? // A parcel whose tracking moved on (`fulfilment.updated`) into trouble: its phase now, so one that moved on again is let go.
+            sql`
+              with reacting as (${REACTING}), logged as (${logged})
+              insert into commerce.autopilot_events (store_id, kind, ref, facts)
+              select distinct on (t.shipment_id) t.store_id, 'delivery_problem', t.shipment_id::text || ':' || t.phase,
+                jsonb_build_object('kind', 'delivery_problem', 'order', o.number, 'orderId', o.id, 'shipment', t.shipment_id, 'phase', t.phase)
+              from logged l
+              join reacting r on r.store_id = l.store_id
+              join commerce.shipment_tracking t on t.store_id = l.store_id and t.shipment_id = l.subject_id
+              join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id
+              join commerce.shipments sh on sh.store_id = t.store_id and sh.id = t.shipment_id and sh.undone_at is null
+              where t.phase in ('problem', 'attempted', 'returned_to_sender') and o.copied_from is null
+              on conflict (store_id, kind, ref) do nothing
+              returning id
+            `
+          : null;
+  if (!query) return 0;
+  return (await db().execute(query)).length;
 }
 
 /** The window failed payments are counted in, as its reference: the day and the hour it began (`FAILED_PAYMENTS_HOURS` long). */
@@ -152,8 +225,10 @@ export const paymentsWindow = (now: Date): string => {
 
 /**
  * Orders that need a look (`docs/100-day-challenge.md` C5), each kept once: a paid order with goods to send and no parcel after
- * `ORDER_UNSENT_HOURS`; a parcel whose tracking is in trouble; a drop-ship supplier's order refused or late; an order held; a dispute that waits
- * for an answer; and failed payments piling up in a window. Recent ones only (`ORDER_EVENT_DAYS`); copied orders never.
+ * `ORDER_UNSENT_HOURS`; a drop-ship supplier's order refused or late; an order held; a dispute that waits for an answer; failed payments
+ * piling up in a window; a customer's request code may carry out; an exchange confirmed. Recent ones only (`ORDER_EVENT_DAYS`); copied orders
+ * never. A parcel in trouble is read from the event log since E4.2 (`fulfilment.updated`, `readLoggedEvents()`). What stays here is time
+ * passing (unsent, late, a window of payments) or has no event in the log yet (a supplier's refusal, a hold, a dispute, a request, an exchange).
  */
 async function detectOrderEvents(now: Date): Promise<number> {
   const at = now.toISOString();
@@ -170,19 +245,6 @@ async function detectOrderEvents(now: Date): Promise<number> {
         and o.placed_at < ${at}::timestamptz - make_interval(hours => ${ORDER_UNSENT_HOURS}) and o.placed_at > ${since}
         and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical')
         and not exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null)
-      on conflict (store_id, kind, ref) do nothing
-      returning id
-    `,
-    sql`
-      with reacting as (${REACTING})
-      insert into commerce.autopilot_events (store_id, kind, ref, facts)
-      select t.store_id, 'delivery_problem', t.shipment_id::text || ':' || t.phase,
-        jsonb_build_object('kind', 'delivery_problem', 'order', o.number, 'orderId', o.id, 'shipment', t.shipment_id, 'phase', t.phase)
-      from commerce.shipment_tracking t
-      join reacting r on r.store_id = t.store_id
-      join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id
-      join commerce.shipments sh on sh.store_id = t.store_id and sh.id = t.shipment_id and sh.undone_at is null
-      where t.phase in ('problem', 'attempted', 'returned_to_sender') and t.checked_at > ${since} and o.copied_from is null
       on conflict (store_id, kind, ref) do nothing
       returning id
     `,
@@ -397,9 +459,13 @@ type Pending = z.output<typeof PENDING>;
 /** Finds new events, then answers a few: at most one per store a run, within the store's events a day. */
 export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
   const result: EventRun = { found: 0, done: 0, planned: 0, started: 0, skipped: 0, failed: 0 };
-  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
-  if (await skipWhilePaused("events")) return result;
   const now = deps.now ?? new Date();
+  // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07). Reading the log is not acting: the reader keeps
+  // up (so its job is not late), and what it keeps waits as pending, answered once the pause is lifted or let go as stale.
+  if (await skipWhilePaused("events")) {
+    await readLog(now);
+    return result;
+  }
   result.found = await detectEvents(deps);
   // A run that died with an event in hand: it failed. An event nobody got to in time is no longer worth a turn.
   await db().execute(sql`
@@ -418,6 +484,13 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
       join commerce.stores s on s.id = e.store_id
       left join commerce.autopilot_settings a on a.store_id = e.store_id
       where e.status = 'pending'
+        -- A waiting customer comes from the desk's alert (the desk's minutes): the autopilot looks once the owner's own minutes have passed
+        -- too, or once the customer no longer waits (then stillOpen() lets it go). Time passing, so held here, not in the log.
+        and (e.kind <> 'support_waiting' or not exists (
+          select 1 from commerce.support_conversations c
+          where c.store_id = e.store_id and c.id::text = e.ref and c.status = 'open' and c.handler = 'queue'
+            and c.queued_at > ${now.toISOString()}::timestamptz - make_interval(mins => coalesce((a.planning ->> 'waitMinutes')::int, 15))
+        ))
         and (
           select count(*) from commerce.autopilot_events d
           where d.store_id = e.store_id and d.kind = e.kind and d.status in ('running', 'done', 'failed') and d.created_at > now() - interval '1 day'
@@ -544,6 +617,15 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
   return null;
 }
 
+/** How long a conversation has waited for a person by now, in whole minutes; what the event said when it cannot be read. */
+async function waitedMinutes(storeId: string, conversationId: string, fallback: number): Promise<number> {
+  const row = await typedRow(
+    z.object({ minutes: col.int.nullable() }),
+    sql`select floor(extract(epoch from (now() - queued_at)) / 60)::int as minutes from commerce.support_conversations where id = ${conversationId}::uuid and store_id = ${storeId}::uuid`,
+  );
+  return row?.minutes ?? fallback;
+}
+
 type Outcome = Exclude<keyof EventRun, "found">;
 
 async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof autonomyFor>>, deps: EventDeps): Promise<Outcome> {
@@ -575,6 +657,9 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
 
   const conversationId = await eventConversation(p);
   const goals = facts.kind === "alert" ? await activeGoals(event.store_id) : [];
+  // A waiting customer's event is kept when the desk's alert is logged and answered once the owner's minutes passed (E4.2): the turn is told
+  // how long they have waited by now.
+  const turnFacts: EventFacts = facts.kind === "support_waiting" ? { ...facts, waitedMinutes: await waitedMinutes(event.store_id, facts.conversation, facts.waitedMinutes) } : facts;
   const startedAt = await typedRow(z.object({ at: col.timestamp }), sql`select now() as at`);
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(event.store_id, { feature: "autopilot", accountId: p.account.id });
   const seen: { error: string | null; answer: string } = { error: null, answer: "" };
@@ -583,7 +668,7 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
     (deps.turn ?? runTurn)({
       member: p,
       conversationId,
-      message: eventMessage(facts, goals),
+      message: eventMessage(turnFacts, goals),
       emit: (e) => {
         if (e.type === "error") seen.error = e.message;
         if (e.type === "done") seen.answer = e.message.content;

@@ -1,5 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Card, Chip } from "@/components/admin/ui";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
 import { formatMoney } from "@/lib/money";
@@ -61,7 +62,10 @@ export function LocalView({
   const marketName = (code: string) => markets.find((m) => m.code === code)?.name ?? code;
   return (
     <div className="flex flex-col gap-6">
+      {/* On a phone (round 41, D737) checking a code and the note on distances are rows after the areas. */}
       {check && (
+      <PhoneRows className="max-sm:order-1">
+      <PhoneRow flat last title={w.checkTitle} sub={w.phone.checkSub} change={w.phone.check} done={w.phone.close}>
       <Card title={w.checkTitle} description={w.checkDescription}>
         <ActionForm action={check} className="flex flex-wrap items-end gap-3">
           {markets.length > 1 ? (
@@ -85,12 +89,17 @@ export function LocalView({
           <SubmitButton variant="secondary">{w.check}</SubmitButton>
         </ActionForm>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
       )}
 
       {areas.length === 0 ? (
-        <Card title={w.noAreas}>
-          <p className="text-sm text-ink-2">{w.noAreasText}</p>
-        </Card>
+        // The form under it says the same on a phone: the first area is added there.
+        <div className="max-sm:hidden">
+          <Card title={w.noAreas}>
+            <p className="text-sm text-ink-2">{w.noAreasText}</p>
+          </Card>
+        </div>
       ) : (
         areas.map((area) => (
           <Card
@@ -128,9 +137,13 @@ export function LocalView({
         ))}
 
       {radiusCountries.length > 0 && (
-        <p className="text-sm text-muted">
-          {w.radiusNote} {w.attribution}.
-        </p>
+        <PhoneRows className="max-sm:order-2">
+          <PhoneRow last title={w.phone.noteTitle} change={w.phone.read} done={w.phone.close}>
+            <p className="text-sm text-muted">
+              {w.radiusNote} {w.attribution}.
+            </p>
+          </PhoneRow>
+        </PhoneRows>
       )}
     </div>
   );

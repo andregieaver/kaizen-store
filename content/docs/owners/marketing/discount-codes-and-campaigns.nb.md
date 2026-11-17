@@ -25,7 +25,7 @@ prisen de siste 30 dagene (se [Priser](/docs/owners/products/prices)).
 
 ## Lag en rabattkode
 
-1. Åpne **Markedsføring** i menyen og velg [Rabattkoder](/admin/{store}/discounts). Trykk **Ny rabattkode**.
+1. Åpne **Markedsføring** i menyen og velg [Rabatter](/admin/{store}/discounts): kodene er fanen **Koder**. Trykk **Lag din egen**.
 2. Skriv inn **Koden kundene skriver**: 3 til 40 bokstaver, sifre, - eller _. Kundene kan skrive den med store eller små bokstaver.
 3. Under **Hva den gir** velger du **En prosent i rabatt**, **Et beløp i rabatt** eller **Gratis frakt**. Et beløp oppgis i hvert lands
    valuta; lar du et land stå tomt, virker ikke koden der. En kode trekker aldri fra mer enn varene koster.
@@ -74,7 +74,7 @@ Hver engangskode virker for én bestilling. **Bruk i alt (valgfritt)** og **Én 
 
 ## Start en kampanje
 
-1. Åpne **Markedsføring** og velg [Kampanjer](/admin/{store}/campaigns). Trykk **Ny kampanje**.
+1. Åpne **Markedsføring**, velg [Rabatter](/admin/{store}/campaigns) og fanen **Automatiske**. Trykk **Lag din egen**.
 2. Gi den et **Navn**. Kundene ser det i handlekurven, i kassen og på bestillingen sin, så skriv det for dem: «Sommersalg».
 3. Velg **Hva den gir** (se tabellen nedenfor), og så hva den gjelder: hele butikken, eller utvalgte produkter, kategorier eller
    stikkord.

@@ -1418,8 +1418,8 @@ export const builderEn = {
       "Text over a picture is checked against the picture's darkest and lightest under its overlay, as the picture's own colours are not known. A check like this finds only part of the problems: it does not replace looking at the page with a keyboard and a screen reader.",
     hasProblems: { one: "This page has a problem to look at", many: "This page has {n} problems to look at" },
     fixOrPublish: {
-      one: "Fix it first, or publish anyway. Publishing anyway is written down in the activity log.",
-      many: "Fix them first, or publish anyway. Publishing anyway is written down in the activity log.",
+      one: "Fix it first, or publish anyway. Publishing anyway is written down in the change log.",
+      many: "Fix them first, or publish anyway. Publishing anyway is written down in the change log.",
     },
     places: "{n} places",
     fixFirst: "Fix first",

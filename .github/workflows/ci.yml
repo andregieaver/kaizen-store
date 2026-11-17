@@ -33,7 +33,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 
-# The type check and the build need more than Node's default heap once the admin's catalogues are typed (D312).
+# The type check of the whole program and the build need more than Node's default heap (D312); the catalogues alone take about 125 MB.
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -172,6 +172,10 @@ jobs:
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).
       - run: pnpm exec playwright install chromium webkit
       - run: pnpm test:e2e
+      # After the end-to-end run, so a budget failure never hides its results; `!cancelled()` so it still reports when a test failed.
+      - name: Every route's first scripts against the baseline (scripts/bundle-budget.mjs)
+        if: ${{ !cancelled() }}
+        run: node scripts/bundle-budget.mjs
       # What failed, kept for a week: each failed test's page snapshot and its retry's trace (playwright.config.ts), read with
       # `pnpm exec playwright show-trace`. Without them a failure that does not come back locally cannot be read.
       - if: failure()
@@ -296,6 +300,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    # D741: the fallback reads newer CI runs.
+    permissions:
+      contents: read
+      actions: read
     outputs:
       pending: ${{ steps.status.outputs.pending }}
     env:
@@ -374,6 +382,24 @@ jobs:
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
+      # D741: a run that left its deploy to a newer run (D710), or to the head's release because the head has a migration, makes sure it happens. It waits while newer runs go on; when they have all
+      # finished and production still lacks this commit (run 1545 failed after 1544 left it the deploy, 17 November 2026), it deploys
+      # THIS commit through Vercel's API (the hook would build the failing head), or fails here saying so when VERCEL_TOKEN is not set.
+      - name: A newer run was to deploy, so make sure production gets this commit
+        id: fallback
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.changed.outputs.deploy != 'false' && (steps.head.outputs.pending == 'true' || steps.newer.outputs.newer == 'true')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          FALLBACK_WAIT_SECONDS: "2400"
+        run: node scripts/deploy-fallback.mjs
+      - name: Wait until production runs the commit this run deployed
+        if: steps.fallback.outputs.deployed == 'true'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
+        run: node scripts/await-deploy.mjs
 
   # Migrations were pending (or AUTO_MIGRATE is off): after every check, apply the files, then deploy, in one
   # job. A failed check, a failed migration or a status that could not be read deploys nothing. Re-running a
@@ -393,6 +419,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
+    # D741: the fallback reads newer CI runs.
+    permissions:
+      contents: read
+      actions: read
     env:
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
       MIGRATE_EXPECT: ybsozesfuxuitoacntfo
@@ -445,6 +475,22 @@ jobs:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
+        run: node scripts/await-deploy.mjs
+      # D741, as in `pending` (run 1551 applied its migrations and left the deploy to the head's release): this commit's migrations are applied, so its code may go out on its own.
+      - name: A newer run was to deploy, so make sure production gets this commit
+        id: fallback
+        if: vars.DEPLOY_VIA_CI == 'true' && needs.pending.outputs.pending == 'true' && (steps.head.outputs.pending == 'true' || steps.newer.outputs.newer == 'true')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          FALLBACK_WAIT_SECONDS: "1800"
+        run: node scripts/deploy-fallback.mjs
+      - name: Wait until production runs the commit this run deployed
+        if: steps.fallback.outputs.deployed == 'true'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         run: node scripts/await-deploy.mjs
 
   # Manual: deploy again (to test the hook, or after a failed deploy) without running anything else.

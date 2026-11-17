@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ChatAgentView } from "@/components/admin/chat-agent-view";
-import { requirePlatformReader } from "@/server/auth";
+import { platformCan, requirePlatformReader } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { adminLangOf } from "@/lib/admin-lang";
 import { AdminAreas } from "@/components/admin/admin-areas";
@@ -25,6 +25,7 @@ export default async function PlatformChatPage() {
       upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       addDocument={addPlatformDocumentAction}
       deleteDocument={deletePlatformDocumentAction}
+      questions={platformCan(account, "support", "read") ? "/admin/platform/chat/questions" : null}
       lang={adminLangOf(account.adminLocale)}
     />
     </AdminAreas>

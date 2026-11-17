@@ -15,6 +15,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { exportProblemWords } from "@/lib/data-admin";
 import { EXPORT_KEEP_DAYS } from "@/lib/data-limits";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 export const metadata: Metadata = { title: "Export orders" };
 
@@ -43,12 +44,27 @@ export default async function OrderExportPage({ params, searchParams }: Props) {
         backHref={`/admin/${store.slug}/orders`}
         backLabel={w.back}
         title={w.title}
-        intro={fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale) })}
+        intro={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale) })}</span>
+          </>
+        }
       />
-      <Notice title={w.personalData} tone="warning">
-        <p>{fillWords(notes.personalData, { days: EXPORT_KEEP_DAYS })}</p>
+      {/* On a phone (round 39, D731) personal data is one line, its full words under More. */}
+      <details role="note" className="rounded-panel bg-sunken px-4 py-3 text-sm text-ink-2 sm:hidden">
+        <summary className="cursor-pointer list-none">
+          {fillWords(w.phone.personal, { days: EXPORT_KEEP_DAYS })} <span className="text-ink underline underline-offset-2">{w.phone.more}</span>
+        </summary>
+        <p className="mt-2">{fillWords(notes.personalData, { days: EXPORT_KEEP_DAYS })}</p>
         <p className="mt-1">{notes.neverEmailed}</p>
-      </Notice>
+      </details>
+      <div className="max-sm:hidden">
+        <Notice title={w.personalData} tone="warning">
+          <p>{fillWords(notes.personalData, { days: EXPORT_KEEP_DAYS })}</p>
+          <p className="mt-1">{notes.neverEmailed}</p>
+        </Notice>
+      </div>
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -71,6 +87,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     <>
       <ProblemAlert text={problem} />
       <OrderExportForm slug={member.store.slug} defaultNumbers={numbers} today={todayIn(member.store.timeZone)} words={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      <PhoneRows>
+      <PhoneRow flat last title={w.amounts} sub={w.phone.amountsSub} change={w.phone.read} done={w.phone.close}>
       <Notice title={w.amounts}>
         <p>{adminText(exportLang, "screens").exportNotes.mainCurrency}</p>
         <p className="mt-1">{adminText(exportLang, "screens").exportNotes.testPayment}</p>
@@ -79,6 +97,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           <Link className="underline underline-offset-2" href={`/admin/${member.store.slug}/analytics/tax`}>{w.reports}</Link>.
         </p>
       </Notice>
+      </PhoneRow>
+      </PhoneRows>
       <ExportSection member={member} kind="order_export" jobId={first(query.job)} base={`/admin/${member.store.slug}/orders/export`} now={new Date()} />
       <p className="text-sm">
         {history.moving}{" "}

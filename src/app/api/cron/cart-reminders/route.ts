@@ -53,6 +53,7 @@ import { refreshVatLabelsAtMidnight } from "@/server/vat-admin";
 import { runStatusChecks, STATUS_TAG } from "@/server/status";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
 import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";
+import { watchDomains } from "@/server/domain-watch";
 import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
@@ -80,6 +81,7 @@ import { sendPlatformBriefing } from "@/server/platform-briefing";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { watchAutopilotChanges } from "@/server/autopilot-watch";
+import { decideAutopilotTests } from "@/server/autopilot-test-decider";
 import { watchChallengeVersions } from "@/server/challenge-pin";
 import { sendChallengeStallAlerts } from "@/server/challenge-watch";
 import { syncAllAdSpend } from "@/server/ad-accounts";
@@ -229,6 +231,8 @@ async function dispatch() {
     autopilotEffects: () => measureAutopilotEffects(),
     // Watch and roll back (docs/100-day-challenge.md F4): the autopilot's recent changes judged hourly, a clear fall undone.
     autopilotWatch: () => watchAutopilotChanges(),
+    // The autopilot's tests of its own page changes (E4.1, D729): decided hourly by their verdicts, the change live only when it does better.
+    autopilotTests: () => decideAutopilotTests(),
     // The autopilot's own AI budget (PSI AST-07): owners told once a month when it nears 80 % and again when it is spent.
     autopilotBudgets: () => sendAutopilotBudgetAlerts(),
     // The 100-day challenge's stall watch (docs/100-day-challenge.md A6): what holds a challenge store up, to the platform team at once.
@@ -250,6 +254,9 @@ async function dispatch() {
     schedules: () => runSchedules(),
     // The status page's checks (D360): each part measured, admins emailed once when one fails twice in a row.
     status: () => runStatusChecks(),
+    // The domain watch (E4.2): a few active domains not asked for a day asked whether they still serve their store, and when one registered
+    // elsewhere expires, for the Domains page's health and the domain alert.
+    domainWatch: () => watchDomains(),
     // A rotation of the settings key (PSI SEC-06): while a previous key is set, a batch of secrets written again under the current one.
     secretRotation: () => reencryptSecrets(),
     // The AI manager's calls nobody answered in seven days (PSI AGT-03): ended, never run.

@@ -58,7 +58,7 @@ KI-assistenter og apper du har latt arbeide med butikkene dine, beholder tilgang
    bedt om det, logger du inn på nytt med en lenke på e-post først.
 2. **Koble til appene igjen.** Et nytt passord kobler fra alle KI-assistenter og apper du har koblet til, så de spør på nytt.
 3. **Slå på totrinnsinnlogging**, hvis det ikke er på ennå.
-4. **Se i [Aktivitetslogg](/admin/{store}/activity)** etter endringer du ikke har gjort.
+4. **Se i [Endringslogg](/admin/{store}/activity)** etter endringer du ikke har gjort.
 5. **Var det passordet til noen i teamet?** Trykk **Fjern tilgang** for dem på **Team** til det er byttet, eller krev totrinnsinnlogging
    av alle.
 

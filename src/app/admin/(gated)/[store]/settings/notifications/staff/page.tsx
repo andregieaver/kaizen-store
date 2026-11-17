@@ -28,7 +28,7 @@ export default async function StaffAlertsPage({ params }: PageProps<"/admin/[sto
   return (
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/settings/notifications`, label: w.back }} title={w.title} description={<>{w.description}</>} />
+      <PageHeader back={{ href: `/admin/${store.slug}/settings/notifications`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       <StaffAlertsForm view={view} save={saveStaffAlertsAction.bind(null, store.slug)} test={sendStaffTestAction.bind(null, store.slug)} />
     </div>
     </AdminTextScope>

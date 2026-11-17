@@ -1,0 +1,17 @@
+{
+  "storeShell": {
+    "statements": 4
+  },
+  "storeHome": {
+    "statements": 33
+  },
+  "ordersList": {
+    "statements": 6
+  },
+  "productsList": {
+    "statements": 5
+  },
+  "platformHome": {
+    "statements": 23
+  }
+}

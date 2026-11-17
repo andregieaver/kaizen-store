@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -8,10 +10,12 @@ import { FORMS_MAX, formAsBlock, formTakesAnswers, type BuilderForms, type FormD
 import { publicForm } from "@/lib/forms";
 import { formDraftSchema } from "@/lib/form-records-schema";
 import { writeCsv } from "@/lib/csv";
+import type { FormFile } from "@/lib/form-files";
 import { normaliseEmail } from "@/lib/email-address";
 
 import { audit } from "./auth";
 import { getDiscount } from "./discounts";
+import { responsePayments, type ResponsePayment } from "./form-payments";
 import { log } from "./log";
 import { FORM_COLUMNS, asForm, formRow, formsTag } from "./form-site";
 import { owned } from "./owned";
@@ -140,6 +144,12 @@ export type SaveFormOutcome = { ok: true; id: string } | { ok: false; problems: 
 
 /** The sign-up's own checks against the owner: a discount of the store's own with codes to give (D304 J3); Kaizena Flow's forms give none. */
 async function signupProblems(owner: Owner, draft: FormDraft): Promise<string[]> {
+  // A payment (D738 F6c) is a product of the store's own, sold through its checkout: Kaizena Flow sells only plans, so its forms take none.
+  if (draft.paymentVariantId) {
+    if (owner === null) return ["Kaizena Flow's own forms take no payments."];
+    const [variant] = await db().execute(sql`select 1 from commerce.product_variants where id = ${draft.paymentVariantId}::uuid and store_id = ${owner}::uuid`);
+    if (!variant) return ["Choose one of your products to be paid for."];
+  }
   if (!draft.signup) return [];
   if (owner === null && (draft.signup.incentive || draft.signup.tags?.length)) return ["Kaizena Flow's own sign-ups give no codes or tags."];
   if (owner && draft.signup.incentive) {
@@ -169,7 +179,8 @@ export async function saveForm(actor: FormActor, id: string | null, raw: unknown
     if (before.kind !== draft.kind) return { ok: false, problems: ["A form keeps its kind. Make a new form instead."] };
     await db().execute(sql`
       update commerce.forms set name = ${draft.name}, questions = ${json(draft.questions)}::jsonb, words = ${json(draft.words)}::jsonb,
-        delivery = ${json(draft.delivery)}::jsonb, signup = ${signup}::jsonb, keep_months = ${draft.keepMonths}, updated_by = ${actor.accountId}::uuid
+        delivery = ${json(draft.delivery)}::jsonb, signup = ${signup}::jsonb, keep_months = ${draft.keepMonths},
+        payment_variant_id = ${draft.paymentVariantId === undefined ? sql`payment_variant_id` : sql`${draft.paymentVariantId}::uuid`}, updated_by = ${actor.accountId}::uuid
       where id = ${id}::uuid and ${owned(owner)}
     `);
     saved = id;
@@ -177,9 +188,9 @@ export async function saveForm(actor: FormActor, id: string | null, raw: unknown
     const [count] = await db().execute(sql`select count(*)::int as n from commerce.forms where ${owned(owner)}`);
     if (Number(count?.n ?? 0) >= FORMS_MAX) return { ok: false, problems: [`A site has at most ${FORMS_MAX} forms. Delete one you no longer use.`] };
     const [row] = await db().execute(sql`
-      insert into commerce.forms (store_id, kind, name, questions, words, delivery, signup, keep_months, made_from, created_by, updated_by)
+      insert into commerce.forms (store_id, kind, name, questions, words, delivery, signup, keep_months, made_from, payment_variant_id, created_by, updated_by)
       values (${owner}::uuid, ${draft.kind}, ${draft.name}, ${json(draft.questions)}::jsonb, ${json(draft.words)}::jsonb, ${json(draft.delivery)}::jsonb,
-        ${signup}::jsonb, ${draft.keepMonths}, ${madeFrom}, ${actor.accountId}::uuid, ${actor.accountId}::uuid)
+        ${signup}::jsonb, ${draft.keepMonths}, ${madeFrom}, ${draft.paymentVariantId ?? null}::uuid, ${actor.accountId}::uuid, ${actor.accountId}::uuid)
       returning id
     `);
     saved = String(row.id);
@@ -189,6 +200,7 @@ export async function saveForm(actor: FormActor, id: string | null, raw: unknown
     questions: draft.questions.length,
     recipients: draft.delivery.recipients.length,
     keepMonths: draft.keepMonths,
+    payment: Boolean(draft.paymentVariantId),
     ...(madeFrom && { madeFrom }),
   }, { target: { type: "form", id: saved } });
   refreshTag(formsTag(owner));
@@ -237,6 +249,10 @@ export type FormResponseRow = {
   state: "new" | "read" | "archived";
   delivery: "sent" | "logged" | "failed" | "inbox";
   createdAt: string;
+  /** Files sent with it (D738 F6b): downloaded by question through the admin, never by their stored path. */
+  files: { question: string; name: string; bytes: number }[];
+  /** Where its payment stands (D738 F6c): null when its form asked none, or it did not go on to pay. */
+  payment?: ResponsePayment | null;
 };
 
 const responseRow = z.object({
@@ -248,6 +264,7 @@ const responseRow = z.object({
   state: z.enum(["new", "read", "archived"]),
   delivery: z.enum(["sent", "logged", "failed", "inbox"]),
   created_at: col.timestamp,
+  files: z.array(z.object({ question: z.string(), name: z.string(), bytes: z.number() })).default([]).catch([]),
 });
 const asResponse = (r: z.output<typeof responseRow>): FormResponseRow => ({
   id: r.id,
@@ -258,6 +275,7 @@ const asResponse = (r: z.output<typeof responseRow>): FormResponseRow => ({
   state: r.state,
   delivery: r.delivery,
   createdAt: r.created_at,
+  files: r.files.map((f) => ({ question: f.question, name: f.name, bytes: f.bytes })),
 });
 
 export const RESPONSES_PAGE = 50;
@@ -271,12 +289,15 @@ export async function listResponses(owner: Owner, formId: string, { archived = f
   const rows = await typedRows(
     responseRow,
     sql`
-      select id, answers, contact_email, path, locale, state, delivery, created_at from commerce.form_responses
+      select id, answers, contact_email, path, locale, state, delivery, created_at, files from commerce.form_responses
       where ${owned(owner)} and form_id = ${formId}::uuid and ${archived ? sql`state = 'archived'` : sql`state <> 'archived'`}
       order by created_at desc, id limit ${RESPONSES_PAGE + 1} offset ${offset}
     `,
   );
-  return { responses: rows.slice(0, RESPONSES_PAGE).map(asResponse), more: rows.length > RESPONSES_PAGE };
+  const responses = rows.slice(0, RESPONSES_PAGE).map(asResponse);
+  // A store's responses that went on to pay (F6c): paid with its order, or waiting.
+  const payments = owner ? await responsePayments(owner, responses.map((r) => r.id)) : new Map<string, ResponsePayment>();
+  return { responses: responses.map((r) => ({ ...r, payment: payments.get(r.id) ?? null })), more: rows.length > RESPONSES_PAGE };
 }
 
 /** Marks responses read, archived or new again. */
@@ -338,12 +359,15 @@ export async function keepResponse(input: {
   path: string;
   locale: string;
   delivery: FormResponseRow["delivery"];
+  /** The response's id when its files were stored under it first (D738 F6b), and those files. */
+  id?: string;
+  files?: FormFile[];
 }): Promise<void> {
   try {
     await db().execute(sql`
-      insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery)
-      values (${input.formId}::uuid, ${JSON.stringify(input.answers.slice(0, 40))}::jsonb, ${input.contactEmail ? normaliseEmail(input.contactEmail).slice(0, 254) : null},
-        ${input.path.slice(0, 500)}, ${input.locale}, ${input.delivery})
+      insert into commerce.form_responses (id, form_id, answers, contact_email, path, locale, delivery, files)
+      values (${input.id ?? randomUUID()}::uuid, ${input.formId}::uuid, ${JSON.stringify(input.answers.slice(0, 40))}::jsonb, ${input.contactEmail ? normaliseEmail(input.contactEmail).slice(0, 254) : null},
+        ${input.path.slice(0, 500)}, ${input.locale}, ${input.delivery}, ${JSON.stringify(input.files ?? [])}::jsonb)
     `);
   } catch (error) {
     log("error", "forms.response_keep_failed", { formId: input.formId }, error);

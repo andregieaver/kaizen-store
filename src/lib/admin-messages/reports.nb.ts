@@ -3,13 +3,13 @@ import type { ReportsMessages } from "./reports.en";
 /** Norwegian (bokmål), written by hand (D312 A9); financial terms only from the glossary (`src/lib/i18n-glossary.ts`). */
 export const reportsNb: ReportsMessages = {
   pages: {
-    customers: { title: "Kunder", description: "Kommer kundene tilbake, hva er en kunde verdt, og hvem er de beste? Perioden velger kundene som bestilte i den; gjenkjøp, livstidsverdi, grupper og kohorter ser alltid på hele historikken." },
-    products: { title: "Produkter", description: "Hva som selger, hva som tjener og hva som sendes tilbake. Bestselgerne kommer først, deretter hvert produkt med omsetning, margin, refusjoner og andel av salget." },
-    inventory: { title: "Lager", description: "Hva som er på lager og hva det er verdt, hvilke produkter som snart er utsolgt, og hvilke som ikke selger. Tallene gjelder nå, ikke en periode." },
-    subscriptions: { title: "Abonnementer", description: "Hvor mye løpende omsetning butikken har, om den vokser, og hvor mye som forsvinner eller står i fare. Den første blokken gjelder i dag; resten følger perioden." },
+    customers: { title: "Kundeanalyse", description: "Kommer kundene tilbake, hva er en kunde verdt, og hvem er de beste? Perioden velger kundene som bestilte i den; gjenkjøp, livstidsverdi, grupper og kohorter ser alltid på hele historikken." },
+    products: { title: "Produktanalyse", description: "Hva som selger, hva som tjener og hva som sendes tilbake. Bestselgerne kommer først, deretter hvert produkt med omsetning, margin, refusjoner og andel av salget." },
+    inventory: { title: "Lageranalyse", description: "Hva som er på lager og hva det er verdt, hvilke produkter som snart er utsolgt, og hvilke som ikke selger. Tallene gjelder nå, ikke en periode." },
+    subscriptions: { title: "Abonnementsanalyse", description: "Hvor mye løpende omsetning butikken har, om den vokser, og hvor mye som forsvinner eller står i fare. Den første blokken gjelder i dag; resten følger perioden." },
     sales: { title: "Salg", description: "Hva avtalene kan gi og når, hvordan de går fra trinn til trinn, hva hver person vant og tapte, og hvor lang tid det tar å vinne en avtale. Prognosen gjelder alle åpne avtaler nå; resten følger perioden." },
     traffic: { title: "Trafikk", description: "Hvor besøkende faller fra på vei til et kjøp, hvilke enheter og land som selger, hva kundene søker etter og når butikken selger, med refusjoner og returer nederst." },
-    marketing: { title: "Markedsføring", description: "Hva det koster å vinne en kunde, hvilke kanaler som lønner seg, og hvor mye av virksomheten som avhenger av rabatter." },
+    marketing: { title: "Markedsføringsanalyse", description: "Hva det koster å vinne en kunde, hvilke kanaler som lønner seg, og hvor mye av virksomheten som avhenger av rabatter." },
   },
   customers: {
     phone: {
@@ -703,7 +703,7 @@ export const reportsNb: ReportsMessages = {
     basketLarger: "{pct} større enn en handlekurv til full pris.",
     codeKinds: { percent: "Prosent avslag", fixed: "Fast beløp avslag", free_shipping: "Gratis frakt" },
     kindLabels: {
-      campaign: "Kampanjer",
+      campaign: "Automatiske rabatter",
       group: "Kundegrupper",
       referral: "Velkomstrabatter (vervekampanje)",
       credit: "Bonuspoeng",
@@ -811,6 +811,12 @@ export const reportsNb: ReportsMessages = {
     alreadyGone: "Den oppføringen var allerede borte.",
   },
   products: {
+    phone: {
+      costs: "Produktkostnader er ikke lagt inn: fortjenesten viser en strek",
+      views: "Besøk telles ikke: visninger viser en strek",
+      both: "Ingen kostnader og ingen besøkstall ennå: fortjeneste og visninger viser en strek",
+      fix: "Fiks",
+    },
     n: {
       orderOrRefund: {
         one: "bestilling eller refusjon",
@@ -913,7 +919,7 @@ export const reportsNb: ReportsMessages = {
     changeAgainst: " Endringen er mot {from} til {to}.",
   },
   inventory: {
-    phone: { onHand: "{n} på lager" },
+    phone: { onHand: "{n} på lager", lead: "Hva som er på lager, hva som går tomt, hva som blir liggende.", costs: "{units} har ingen kostnad, så lagerverdien mangler", fix: "Fiks", sold: "{n} solgt på 30 dager" },
     n: {
       unit: {
         one: "enhet",

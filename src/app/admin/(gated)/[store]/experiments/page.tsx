@@ -114,6 +114,8 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
                       <>
                         {targetLabelText(t.page.kind, t.page.slug, t.page.title, t.page.role, w)} · {t.part ? `${partLabelText(t.part.label, w)} · ` : ""}
                         {w.goals[t.goal].label}
+                        {/* The autopilot's own test of its change (E4.1, D729). */}
+                        {t.byAutopilot ? ` · ${w.autopilot.mark}` : ""}
                       </>
                     }
                   />

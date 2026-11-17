@@ -223,8 +223,11 @@ describe("the admin's pages", () => {
     const made = await save({ name: "Sida", kind: "gift", giftVariantId: notebook.variant, thresholds: { NO: "300" }, scope: "some", productIds: [mug.product] });
     if (!made.ok || !made.id) throw new Error("not saved");
     const params = Promise.resolve({ store: slug, campaignId: made.id });
-    const list = (await import("../app/admin/(gated)/[store]/campaigns/page")).default;
-    expect(await list({ params } as never)).toBeTruthy();
+    // The list is the Discounts page's Automatic tab (ecosystem plan E3.7, D718); the old address leads there.
+    const old = (await import("../app/admin/(gated)/[store]/campaigns/page")).default;
+    await expect(old({ params } as never)).rejects.toThrow("NEXT_REDIRECT");
+    const list = (await import("../app/admin/(gated)/[store]/discounts/page")).default;
+    expect(await list({ params, searchParams: Promise.resolve({ tab: "automatic" }) } as never)).toBeTruthy();
     const detail = (await import("../app/admin/(gated)/[store]/campaigns/[campaignId]/page")).default;
     expect(await detail({ params } as never)).toBeTruthy();
     const fresh = (await import("../app/admin/(gated)/[store]/campaigns/new/page")).default;

@@ -12,7 +12,7 @@ import {
   type FormRecord,
 } from "./form-records";
 import { formDraftSchema } from "./form-records-schema";
-import { checkMessage, shownQuestions } from "./forms";
+import { askedQuestions, checkMessage, fromAddress, shownQuestions } from "./forms";
 import { t } from "./i18n";
 import { pageBlockSchema } from "./page-content";
 import { ruleFor } from "./retention";
@@ -187,5 +187,51 @@ describe("F3: more kinds of question, and questions asked on earlier answers (D7
     const block = formAsBlock(form, "nb");
     if (block.type !== "emailForm") throw new Error("a message form");
     expect(block.fields[0]).toEqual({ id: "n", kind: "number", label: "Guests", help: "Opptil 8", width: "half", min: 1, max: 8 });
+  });
+});
+
+describe("F6a: hidden fields from the address (D738)", () => {
+  const hidden = { id: "c", kind: "hidden", label: { text: "Campaign", byLocale: {} }, param: "utm_campaign" };
+  const draft = (questions: unknown[]) => formDraftSchema.safeParse({ ...blankDraft("message", "F", []), questions });
+
+  it("keeps only a hidden field's name and the part of the address it reads", () => {
+    const parsed = draft([{ ...hidden, required: true, width: "half", help: { text: "x", byLocale: {} }, placeholder: { text: "y", byLocale: {} } }]);
+    expect(parsed.success && parsed.data.questions[0]).toEqual(hidden);
+    const text = draft([{ id: "t", kind: "text", label: { text: "T", byLocale: {} }, param: "utm_campaign" }]);
+    expect(text.success && text.data.questions[0].param).toBeUndefined();
+  });
+
+  it("refuses a hidden field without its words or its part of the address, and a question asked on one", () => {
+    expect(draft([{ ...hidden, param: undefined }]).success).toBe(false);
+    expect(draft([{ ...hidden, param: "utm campaign" }]).success).toBe(false);
+    expect(draft([{ ...hidden, label: { text: "", byLocale: {} } }]).success).toBe(false);
+    expect(draft([hidden, { id: "t", kind: "text", label: { text: "T", byLocale: {} }, showWhen: [{ question: "c", op: "answered" }] }]).success).toBe(false);
+  });
+
+  it("answers a hidden field from the address it was sent on, and never asks it", () => {
+    const form = { ...contact, questions: [...contact.questions, hidden as FormRecord["questions"][number]] };
+    const block = formAsBlock(form, null);
+    if (block.type !== "emailForm") throw new Error("a message form");
+    expect(block.fields.at(-1)).toEqual({ id: "c", kind: "hidden", label: "Campaign", param: "utm_campaign" });
+    const values = { q1: "Kari", q2: "kari@example.com", q3: "0" };
+    const sent = (address: string) => checkMessage(block, values, false, t("en"), t("en"), undefined, address);
+    expect(sent("/kampanje?utm_source=x&utm_campaign=vinter%20sale#form")).toMatchObject({ ok: true, answers: expect.arrayContaining([{ label: "Campaign", value: "vinter sale" }]) });
+    const without = sent("/kampanje");
+    expect(without.ok && without.answers.some((a) => a.label === "Campaign")).toBe(false);
+    expect(shownQuestions(block.fields, values).some((f) => f.kind === "hidden")).toBe(true);
+    expect(askedQuestions(block.fields, values).some((f) => f.kind === "hidden")).toBe(false);
+  });
+
+  it("reads one line of the parameter, cut to 300 characters", () => {
+    expect(fromAddress("/p?code=A%0AB", "code")).toBe("A B");
+    expect(fromAddress(`/p?code=${"x".repeat(400)}`, "code")).toHaveLength(300);
+    expect(fromAddress("/p?code=", "code")).toBeNull();
+    expect(fromAddress("/p?other=1", "code")).toBeNull();
+    expect(fromAddress("/p?code=1", undefined)).toBeNull();
+  });
+
+  it("is not a kind a page's own email form asks", () => {
+    const own = { id: "f1", type: "emailForm", recipients: ["a@example.com"], subject: "", fields: [{ id: "c", kind: "hidden", label: "Campaign" }], submitLabel: "", successMessage: "" };
+    expect(pageBlockSchema.safeParse(own).success).toBe(false);
   });
 });

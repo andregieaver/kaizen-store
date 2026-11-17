@@ -16,6 +16,7 @@ import { latestReport } from "./autopilot-reports";
 import { latestEvents, type ReactedEvent } from "./autopilot-events";
 import { latestReviews, type GoalReview } from "./autopilot-reviews";
 import { autonomyFor, autopilotCostThisMonth } from "./autopilot-settings";
+import { autopilotTestsOf, type AutopilotTest } from "./autopilot-tests";
 import { waitingFollowUps, type WaitingFollowUp } from "./follow-ups";
 import { getSetupProgress } from "./setup";
 import type { Store } from "./stores";
@@ -55,6 +56,11 @@ export type AutopilotOverview = {
   followUps: WaitingFollowUp[];
   /** What the autopilot's changes moved (D418): this month and last, and the latest changes measured; a store's only. */
   effects: { thisMonth: EffectsMonth; lastMonth: EffectsMonth; recent: MeasuredEffect[]; locale: string } | null;
+  /**
+   * Its tests of its own page changes (E4.1, D729): running, waiting for a yes, or decided lately; a store's only (Kaizena Flow's site is its
+   * house store's, D484). An owner sees the store's; anyone else those made in their name.
+   */
+  tests: AutopilotTest[] | null;
 };
 
 const CALL = z.object({
@@ -74,7 +80,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
   const whose = ownerOfStore
     ? sql`(ap.account_id = ${a.account.id}::uuid or exists (select 1 from commerce.assistant_conversations c where c.id = ap.conversation_id and c.source = 'autopilot'))`
     : sql`ap.account_id = ${a.account.id}::uuid`;
-  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events, followUps, effects] = await Promise.all([
+  const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events, followUps, effects, tests] = await Promise.all([
     typedRows(
       CALL,
       sql`
@@ -97,6 +103,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     a.store ? latestEvents(a.store.id) : Promise.resolve(null),
     waitingFollowUps(a),
     a.store ? effectsFor(a.store) : Promise.resolve(null),
+    a.store ? autopilotTestsOf(a.store.id, ownerOfStore ? {} : { accountId: a.account.id }) : Promise.resolve(null),
   ]);
   const owner = !a.store || !a.holder || can(a.holder, "owner");
   const mine = plansAll.filter((p) => owner || p.accountId === a.account.id);
@@ -129,6 +136,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
     report,
     followUps,
     effects,
+    tests,
   };
 }
 

@@ -212,6 +212,38 @@ export const WEBHOOK_SUBJECTS = {
     created_at: when,
     admin_url: adminUrl,
   }),
+  // Email plan M1.2 (D732).
+  email: z.object({
+    id,
+    kind: z.string().describe("What the email was: `order.confirmation`, `marketing.broadcast`, `marketing.automation`, … as the store's email log names it."),
+    to: z.string().describe("The address it was sent to, lower case."),
+    status: z.enum(["bounced", "complained"]).describe("It came back, or the reader marked it as spam."),
+    reason: z.string().nullable().describe("What the mail server said for a bounce (`Permanent: …` when the address does not exist); null for spam."),
+    order_id: id.nullable().describe("The order it was about, if any."),
+    sent_at: when.nullable(),
+    admin_url: adminUrl,
+  }),
+  broadcast: z.object({
+    id,
+    title: z.string().describe("The staff's own name for it; never shown to subscribers."),
+    audience: z.string().nullable().describe("Who it went to, in words, as it was when the send started."),
+    recipients: z.int().describe("The addresses it was to go to."),
+    sent: z.int(),
+    skipped: z.int().describe("Addresses that unsubscribed after the send started."),
+    failed: z.int(),
+    started_at: when.nullable(),
+    finished_at: when.nullable(),
+    admin_url: adminUrl,
+  }),
+  sending_pause: z.object({
+    id,
+    reason: z.enum(["bounces", "complaints"]).describe("The line passed: 5 % bounces or 0.3 % spam reports."),
+    sent: z.int().describe("Marketing emails counted."),
+    bounced: z.int(),
+    complained: z.int(),
+    paused_at: when,
+    admin_url: adminUrl,
+  }),
   erasure: z.object({
     customer_id: id.describe("The account that was erased. Nothing else about the person is sent, now or later."),
   }),
@@ -448,6 +480,10 @@ const SUBJECT_OF: Record<IntegrationEvent | AppEvent, WebhookSubjectName> = {
   "work_invoice.paid": "work_invoice",
   "work_invoice.credited": "work_invoice",
   "form.response": "form_response",
+  "email.bounced": "email",
+  "email.complained": "email",
+  "broadcast.sent": "broadcast",
+  "marketing.paused": "sending_pause",
   "app.uninstalled": "installation",
   "store.erase_requested": "installation",
 };
@@ -481,6 +517,10 @@ export const SUBJECT_READ_AREA: Partial<Record<WebhookSubjectName, string>> = {
   subscriber: "marketing",
   conversation: "support",
   checkout: "orders",
+  // Email plan M1.2 (D732): an email names its reader, so it is read with customers.
+  email: "customers",
+  broadcast: "marketing",
+  sending_pause: "marketing",
 };
 
 /**

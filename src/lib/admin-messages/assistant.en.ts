@@ -35,6 +35,8 @@ export const assistantEn = {
       life_handoff_waiting: "Kaizen Life waits for your yes: {task}",
       life_handoff_failed: "Kaizen Life could not finish: {task}",
       test_answered: "Your A/B test {test} has an answer",
+      test_decided: "The autopilot's change to {page} is live: its A/B test answered for it",
+      test_kept: "{page} stays as it was: the autopilot's change did not do better in its A/B test",
     },
     menu: "AI manager notices",
     pageTitle: "AI manager notices",
@@ -236,6 +238,19 @@ export const assistantEn = {
       /** Above the changes a step made at *Do it and tell me* (D309 7.4). */
       told: "Done, as you asked to be told:",
     },
+    /** The autopilot's tests of its own page changes (E4.1, D729), in its own voice. */
+    tests: {
+      title: "Testing first",
+      testing: {
+        one: "Testing my change to {page} against the current page: about 1 day left",
+        many: "Testing my change to {page} against the current page: about {n} days left",
+      },
+      waiting: "My change to {page} did better in its A/B test: it waits for your yes to go live.",
+      live: "My change to {page} is live: its A/B test answered for it.",
+      kept: "{page} stays as it was: my change did not do better in its A/B test.",
+      decided: "You decided the A/B test of my change to {page}.",
+      open: "Open the test",
+    },
     goals: {
       empty: "No goals yet. Tell the AI manager what you want to achieve: it keeps the goal and measures it from your store's own figures.",
       met: "Met",
@@ -287,6 +302,9 @@ export const assistantEn = {
       reacts: "React to what happens",
       reactsHelp: "When a customer waits for a person, an A/B test ends by itself or an urgent alert fires, the autopilot looks at once: it leaves a note for whoever answers, chooses a test's winner as your levels allow, or plans what to do.",
       waitMinutes: "Minutes a customer waits before it looks",
+      testsChanges: "Test my page changes first when there is enough traffic",
+      testsChangesHelp:
+        "When the autopilot would publish a change to a live page itself and enough visitors see the page, it runs an A/B test first: the page as it is against its change, for two or three weeks. The change goes live only if the test answers for it, as far as your levels allow; otherwise the page stays as it is. With too few visitors it publishes as before and watches the change.",
       save: "Save",
       saved: "Saved.",
     },

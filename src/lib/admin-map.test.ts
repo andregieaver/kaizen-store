@@ -109,6 +109,19 @@ describe("the admin map (D103)", () => {
     expect(pagesFor("store", { canOpen: () => false })).toEqual([]);
   });
 
+  it("finds each page by its one name and the words it had before (ecosystem plan E3.7, D718)", () => {
+    expect(findPages("store", "coupon")[0]?.id).toBe("discounts");
+    expect(findPages("store", "discount code")[0]?.id).toBe("discounts");
+    expect(findPages("store", "set up 3 for 2")[0]?.id).toBe("campaigns");
+    expect(ADMIN_PAGES.find((p) => p.area === "store" && p.id === "campaigns")).toMatchObject({ title: "Automatic discounts", group: "Marketing" });
+    expect(matchPath("/admin/kaffe/campaigns/abc")?.page.id).toBe("campaign");
+    expect(findPages("store", "change log", { owner: true })[0]?.id).toBe("activity");
+    expect(findPages("store", "activity log", { owner: true })[0]?.id).toBe("activity");
+    expect(findPages("platform", "access requests")[0]?.id).toBe("requests");
+    expect(findPages("platform", "illegal content notices")[0]?.id).toBe("reports");
+    expect(findPages("store", "refer a friend", { features: ["shop", "bonus", "referrals"] })[0]?.id).toBe("affiliates");
+  });
+
   it("knows the team's roles, the activity log, the legal pages and the accessibility page", () => {
     expect(matchPath("/admin/kaffe/staff/roles")?.page.id).toBe("staff.roles");
     expect(matchPath("/admin/kaffe/activity")?.page.id).toBe("activity");
@@ -145,13 +158,13 @@ describe("the admin map (D103)", () => {
     expect(pagesFor("platform").some((p) => p.area === "store")).toBe(false);
   });
 
-  it("finds Leads by its words, and keeps it out of the AI's map until the eval is recorded with it (ecosystem plan E2.8, D713)", () => {
+  it("finds Leads by its words, and names it in the AI's map with the CRM tools (ecosystem plan E2.8 and E2.5r, D713)", () => {
     const selling: SiteFlags = { owner: true, features: ["shop", "sales"] };
     expect(findPages("store", "leads", selling)[0]?.id).toBe("leads");
     expect(matchPath("/admin/kaffe/leads")?.page.id).toBe("leads");
     const text = adminMapText("store", selling);
     expect(text).toContain("Deals [deals]");
-    expect(text).not.toContain("[leads]");
+    expect(text).toContain("[leads]");
   });
 
   it("has pages behind store features (D178) and Work, offered only when they are on", () => {

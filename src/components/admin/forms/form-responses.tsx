@@ -7,6 +7,9 @@ import type { FormResponseRow } from "@/server/forms-admin";
 
 import { useAdminLang, useAdminText } from "../admin-text";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { fileSize } from "@/lib/form-files";
+import { AdminLink } from "../ui/link";
 import { Button, ButtonLink, Card, Chip } from "../ui";
 
 /**
@@ -82,6 +85,12 @@ export function FormResponses({
                       {w.fresh}
                     </Chip>
                   )}
+                  {r.payment?.state === "paid" && (
+                    <Chip signal="positive" data-response-paid>
+                      {fillWords(w.paid, { number: r.payment.number })}
+                    </Chip>
+                  )}
+                  {r.payment?.state === "waiting" && <Chip data-response-unpaid>{w.unpaid}</Chip>}
                   {r.delivery === "failed" && <Chip signal="warning">{w.emailFailed}</Chip>}
                   <span className="shrink-0 text-caption text-muted tabular-nums">{when.format(new Date(r.createdAt))}</span>
                 </button>
@@ -97,7 +106,31 @@ export function FormResponses({
                       <dt className="text-caption text-muted">{w.page}</dt>
                       <dd className="break-all text-body text-ink-2">{r.path}</dd>
                     </dl>
+                    {r.files.length > 0 && (
+                      <ul className="flex flex-wrap gap-2" aria-label={w.files} data-response-files>
+                        {r.files.map((f) => (
+                          <li key={f.question}>
+                            {/* A download only: the file is a visitor's, never shown on an admin page (D738 F6b). */}
+                            <a
+                              href={`${base}/files/${r.id}/${f.question}`}
+                              download
+                              className="inline-flex min-h-11 items-center gap-2 rounded-panel border border-line px-3 text-body text-ink hover:bg-sunken"
+                            >
+                              <Download aria-hidden className="size-4" />
+                              <span className="max-w-64 truncate">{f.name}</span>
+                              <span className="text-caption text-muted">{fileSize(f.bytes)}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     {r.delivery === "inbox" && <p className="text-caption text-muted">{w.inbox}</p>}
+                    {r.payment?.state === "paid" && (
+                      // The order is the store's own (F6c): its payment, invoice and VAT are there.
+                      <AdminLink href={`${base.split("/forms/")[0]}/orders/${r.payment.orderId}`} className="text-body text-ink underline" data-response-order>
+                        {fillWords(w.openOrder, { number: r.payment.number })}
+                      </AdminLink>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       {r.contactEmail && (
                         <ButtonLink href={`mailto:${r.contactEmail}`} icon={<Mail aria-hidden className="size-4" />}>

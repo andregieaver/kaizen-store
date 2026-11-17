@@ -27,7 +27,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   ties a visit to a cart made that day (`carts.visit_id`) so orders know their channel and device; any new claim about it must
   stay true to that. Alerts, the forecast and the diagnosis are code (`alertsFor()`, `forecastMonth()`, `explainChange()`), with
   minimum volumes; the AI manager's `analytics_overview`, `explain_change` and `analytics_alerts` repeat them and never make a
-  number.
+  number. A rule's input is read in `alertSnapshotFor()` and nowhere else, so the Overview, Home, the alert emails, the briefing and
+  the autopilot's alert events read one list; since E4.2 (D729) that includes the heat totals (`pageFrustrationRows()`), the speed
+  samples' 75th percentiles (`speedWindowRows()`) and the domains' health over what is kept (`domainAlertRows()`, never a lookup on
+  read: the domain watch asks the world once a day, `src/server/domain-watch.ts`).
 
 
 ## Heatmaps and recordings: the owner's screens (D656, `docs/heatmaps-and-recordings.md`, `src/server/page-heat-read.ts`, `src/server/recordings-read.ts`, `src/lib/replay-sanitize.ts`)
@@ -158,6 +161,31 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`applyEmailEvent()`). Links go through `/api/marketing/c/…`, which redirects only to the content's own links and counts a press
   with no person (`broadcast_link_clicks`); never add an open pixel. AI words are suggestions only, through `findClaims()`
   (feature `marketing_email`). Recipients are personal data (export, erasure, pruned 90 days after a send with its figures kept).
+
+## A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)
+
+- **A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)**: a store (or
+  Kaizena Flow, with no store) has at most one sending domain, written only by `src/server/sending-domains.ts`: added to Resend in
+  `eu-west-1` (`SENDING_REGION`), its records (DKIM on `resend._domainkey`, SPF and the return path on `send.`; never Resend's
+  tracking record, as we count clicks ourselves) written into the zone through `applyDnsChange()` when Kaizena Flow keeps it, else
+  shown to copy. Only a `verified` domain sends: `senderFor()` gives `{from_local}@{domain}` to `sendEmail()` and `runBroadcasts()`,
+  and an email Resend refuses with it (403 or 422) is sent again from the shared `EMAIL_FROM` (`deliver()`). The daily job
+  `daily.sending-domains` asks Resend again about pending and failed domains, and about verified ones each week, so one that breaks goes
+  back to the shared address. The card sits on Settings, Notifications (`settings:write`) and on Platform, Emails (`settings`). Adding a
+  domain needs Resend's key to have full access; a sending-only key is refused in plain words.
+
+## The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
+
+- **The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)**: a store's marketing email
+  (`MARKETING_KINDS`: broadcasts and email automations, never an order's emails) is held when, since the later of seven days ago and its
+  last resume, at least 100 were sent and 5 % bounced or 0.3 % were marked as spam (`guardVerdict()`). The check runs when a bounce or a
+  spam report on a marketing email arrives (`applyEmailEvent()` calls `guardStore()` for that store), never as a scan of every store.
+  While `commerce.sending_pauses` holds the store (`resumed_at` null), `startBroadcast()` refuses, `runBroadcasts()` claims none of its
+  recipients (they wait, queued) and `runAutomations()` skips it; its owners get one email in their admin language. The Marketing,
+  Broadcasts and Email automations pages show the pause, or a warning at 2 % bounces or 0.1 % spam reports, and an owner with
+  `marketing:write` resumes it; counting then starts again from the resume. Platform, Emails lists the stores held now.
+  Email reaches the event log (D732): `email.bounced`, `email.complained`, `broadcast.sent` and `marketing.paused` are queued through
+  `queue_integration_event()` in the statement that makes them, so they are workflow triggers and webhook topics; a new email event does the same.
 
 ## SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
 

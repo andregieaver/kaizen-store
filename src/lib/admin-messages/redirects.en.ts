@@ -119,6 +119,11 @@ export const redirectsEn = {
     title: "Pages not found",
     intro: "The addresses shoppers and search engines asked for that this store did not have. Fix the ones that matter with a redirect to the page they were looking for.",
     period: "Period",
+    phone: {
+      lead: "Addresses people asked for that this store does not have.",
+      read: "Read",
+      close: "Close",
+    },
     window: "Last {n} days",
     showCovered: "Show the addresses that have a redirect",
     hideCovered: "Hide the addresses that have a redirect",
@@ -148,6 +153,7 @@ export const redirectsEn = {
     byRobots: ", {n} by robots",
     suggestionKinds: { product: "Product", category: "Category", tag: "Tag", page: "Page", article: "Article" },
     table: {
+      more: "More",
       caption: "Addresses that were asked for and not found, most asked first",
       address: "Address",
       requests: "Requests",
@@ -318,7 +324,7 @@ export const redirectsEn = {
       already: "Already there",
       skipped: "Skipped",
       failed: "Not imported",
-      reference: "Reference for the activity log:",
+      reference: "Reference for the change log:",
       works: "The new redirects work at once.",
     },
     findings: {
@@ -406,7 +412,7 @@ export const redirectsEn = {
     unreadable: "The form could not be read. Reload the page and try again.",
     tooMany: "Choose at most {max} redirects at a time.",
     not_found: "This redirect no longer exists. It may have been deleted.",
-    not_logged: "The activity log could not be written, so nothing was changed. Try again.",
+    not_logged: "The change log could not be written, so nothing was changed. Try again.",
     nothing: "Choose at least one redirect.",
     taken: "Another redirect already goes from that address. Edit that one instead.",
     automatic: "This redirect is made by Kaizena Flow when an address changes. Delete it, or make a redirect of your own from the same address to replace it.",

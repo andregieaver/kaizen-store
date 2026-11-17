@@ -53,6 +53,21 @@ describe("the digest", () => {
     expect(text({ ...weekly, told: 3 })).toContain("It made 3 changes you asked to be told of");
     expect(text(daily)).not.toContain("asked to be told of");
   });
+
+  it("says what it is testing before it goes live (E4.1), in its own voice, without being reason enough to send", () => {
+    const tests: ReportFacts["tests"] = [
+      { page: "About us", state: "testing", daysLeft: 9 },
+      { page: "Offer", state: "live", daysLeft: null },
+    ];
+    expect(digestWorthSending({ stepsDoneCount: 0, waiting: 0 })).toBe(false);
+    const en = text({ ...daily, tests });
+    expect(en).toContain("Tested before going live");
+    expect(en).toContain("Testing my change to About us against the current page: about 9 days left");
+    expect(en).toContain("My change to Offer is live: its A/B test answered for it.");
+    expect(text({ ...weekly, tests })).toContain("about 9 days left");
+    expect(text({ ...daily, tests }, null, true)).toContain("Tester endringen min av About us mot siden slik den er nå: omtrent 9 dager igjen");
+    expect(text(daily)).not.toContain("Tested before going live");
+  });
 });
 
 describe("the weekly report", () => {

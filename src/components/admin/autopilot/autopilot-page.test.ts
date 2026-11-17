@@ -17,10 +17,10 @@ const html = (element: Parameters<typeof renderToString>[0]) =>
 const action = async () => ({ status: "ok" as const, messages: [] });
 const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action, cancelFollowUp: action };
 
-const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [], effects: null };
+const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [], effects: null, tests: [] };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
-  html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments" } }));
+  html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments", tests: "/admin/demo/experiments" } }));
 
 describe("follow-ups on the Autopilot page (PSI AGT-04)", () => {
   it("lists what the AI manager will come back to, when in the store's time, each with Cancel, and counts it as waiting", () => {
@@ -183,6 +183,34 @@ describe("What the autopilot reacted to (D331)", () => {
   });
 });
 
+
+describe("its tests of its own page changes (E4.1)", () => {
+  const tests = [
+    { experimentId: "e1", page: "About us", state: "testing" as const, daysLeft: 9, at: "2026-11-17T10:00:00.000Z" },
+    { experimentId: "e2", page: "Offer", state: "waiting" as const, daysLeft: null, at: "2026-11-01T10:00:00.000Z" },
+  ];
+
+  it("says what it is testing on the Decisions tab, each opening the test", () => {
+    const shown = page({ ...empty, tests });
+    expect(shown).toContain("Testing first");
+    expect(shown).toContain("Testing my change to About us against the current page: about 9 days left");
+    expect(shown).toContain("My change to Offer did better in its A/B test: it waits for your yes to go live.");
+    expect(shown).toContain('href="/admin/demo/experiments/e1"');
+    expect(page({ ...empty, tests }, "decisions", "nb")).toContain("Tester endringen min av About us mot siden slik den er nå: omtrent 9 dager igjen");
+    expect(page(empty)).not.toContain("Testing first");
+  });
+
+  it("is on by default, a switch on a store's settings, kept as it is on the platform's", () => {
+    const settings = page(empty, "settings");
+    expect(settings).toContain("Test my page changes first when there is enough traffic");
+    expect(settings).toMatch(/name="tests_changes" checked=""/);
+    const off = readAutonomy({ planning: { testsPageChanges: false } });
+    expect(page({ ...empty, settings: off }, "settings")).not.toMatch(/name="tests_changes" checked=""/);
+    const platform = page({ ...empty, tests: null }, "settings");
+    expect(platform).not.toContain("Test my page changes first");
+    expect(platform).toContain('type="hidden" name="tests_changes" value="on"');
+  });
+});
 
 describe("Results on the Autopilot page (D418)", () => {
   const month = (over: Record<string, unknown> = {}) => ({ month: "2026-11", actions: 5, measured: 2, products: 1, beforeMinor: 100_000, afterMinor: 150_000, liftMinor: 40_000, above: 1, below: 0, currency: "NOK", ...over });

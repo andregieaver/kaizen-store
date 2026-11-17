@@ -16,7 +16,7 @@ import { findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictur
 import { broadcastChoices } from "../../../../broadcasts/editor-props";
 import { deleteFollowUpAction, saveFollowUpAction, testFollowUpAction } from "../../../actions";
 
-export const metadata: Metadata = { title: "Follow-up email" };
+export const metadata: Metadata = { title: "Second or third email" };
 
 /**
  * One follow-up of a lifecycle automation (D653): its days after the email before and its words, a test to yourself and delete. `new` starts
@@ -41,7 +41,8 @@ export default async function FollowUpPage({ params }: PageProps<"/admin/[store]
   const choices = memberCan(member, "marketing:write") ? await broadcastChoices(store, lang) : null;
   if (!choices) notFound();
   const name = `${kind}:${at ?? "new"}`;
-  const title = followUp ? (followUp.position === 2 ? wf.second : wf.third) : wf.newTitle;
+  // A new one is the next: the second while there is none, else the third (ecosystem plan E3.7, D718: never a "follow-up").
+  const title = (followUp ? followUp.position : FOLLOW_UP_POSITIONS[automation.followUps.length]) === 2 ? wf.second : wf.third;
   return (
     <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="flex flex-col gap-6">

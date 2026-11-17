@@ -135,6 +135,12 @@ chunks (`route.mjs`) from 223,068 to 216,992.
   cookie purposes out, and holds the four browser-language files at today's total, which only falls. The byte budgets (step 1.3) and
   this list are two holds on the same thing: bytes cannot see a 5 to 20 KB part, names can.
 
+- `node scripts/bundle-budget.mjs`, after `pnpm build`, holds every route's first scripts
+  (`.next/diagnostics/route-bundle-stats.json`, raw bytes) within 15,000 bytes of `scripts/bundle-budget.baseline.json`, and the
+  number of routes whose first scripts hold each of eight marker sentences (Supabase's client, zod, the rich text editor, the
+  builder's English, sign-in's English, a storefront language, the cookie purposes, the admin's common English on store routes).
+  CI's e2e job runs it. The figures only fall.
+
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.
 
 ## Fonts found late (kaizenaflow.com, 5 November 2026)
@@ -200,6 +206,12 @@ again once a month of loads is in.
 (kind `category` on site `admin`; a product's editor stays `product`), so rows of `product` recorded before it mix editors and the builder
 and are not comparable with October's for 28 days. Read from Platform, Usage and limits; a kind with 100 loads or more that misses 2.5 s
 or 200 ms gets a step in the plan.
+
+**The admin's client modules are walked like the visitor's (step 1.4).** `src/components/admin/admin-bundle.scan.test.ts` walks every
+`"use client"` module of the admin through its static imports: the four gated layouts' client parts reach no zod, no Supabase client
+and no area's catalogue, and the modules that reach zod (ZOD_REACH, `admin-bundle.baseline.json`: 145 today) only shrink. A static
+walk does not follow `import()`, so a part loaded on a press may be large. Catalogue files hold text only
+(`src/lib/admin-messages/imports.scan.test.ts`, 36 value imports of code in 14 files at the start).
 
 28 days to <date>, after phase 0:
 
@@ -333,6 +345,25 @@ baseline (200 bytes of room) or an area no client part under it names (`src/comp
 `WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts`: it only lowers a site's bytes and shortens its
 `unnamed` list. Named is counted from source, by static import, not what a browser reads at load: `e2e/signed-in/admin-scripts.spec.ts` (step 1.5) is the
 browser's cross-check on five screens.
+
+## Statements per screen (bloat review step 1.9)
+
+The database client counts statements (`src/db/statement-count.ts`): off unless a test asks inside `countStatements()` or an admin render
+is running, when it adds one to the render's count. `src/server/admin-statements.int.test.ts` holds what five screens send, through the
+reads in `src/server/admin-screens.ts`, in `src/server/admin-statements.baseline.json` (17 November 2026, a store whose setup is done):
+
+| Screen | Statements |
+|---|---|
+| Store shell (the layout's reads) | 4 |
+| Store Home | 33 |
+| Orders list | 6 |
+| Products list | 5 |
+| Platform Home (its layout and page) | 22 |
+
+A change that adds a read to the shell or to a home screen raises its number in the baseline in the same commit and says why
+(`UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts` writes today's
+counts); one that removes a read lowers it. Waves are not held: they move with how many of the pool's five connections are free.
+To count anything else, wrap it in `countStatements()`. Production's figure is the `admin.render` log line: `statements` and `ms`, nothing else.
 
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 

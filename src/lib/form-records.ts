@@ -39,6 +39,8 @@ export type FormQuestion = {
   bounds?: AnswerBounds;
   /** Asked only when every one holds, each naming a question above it (F3). */
   showWhen?: ShowWhen[];
+  /** A hidden field's address parameter (D738 F6a), such as `utm_campaign`: its answer is read from the address, never asked. */
+  param?: string;
 };
 
 /** Conditions a question may have (F3). */
@@ -68,6 +70,11 @@ export type FormDraft = {
   delivery: FormDelivery;
   signup: FormSignup | null;
   keepMonths: number;
+  /**
+   * The product variant a message form's visitors pay for after sending (D738 F6c): its price in the page's market, through the store's own
+   * checkout, as any order. A store's forms only; left out or null: no payment.
+   */
+  paymentVariantId?: string | null;
 };
 
 export type FormRecord = FormDraft & { id: string; storeId: string | null; status: FormStatus; madeFrom: string | null };
@@ -120,6 +127,7 @@ export function formAsBlock(form: Pick<FormRecord, "id" | "kind" | "questions" |
         ...(q.bounds?.min !== undefined ? { min: q.bounds.min } : {}),
         ...(q.bounds?.max !== undefined ? { max: q.bounds.max } : {}),
         ...(q.showWhen?.length ? { showWhen: q.showWhen } : {}),
+        ...(q.param ? { param: q.param } : {}),
       }),
     ),
     submitLabel: at(form.words.submit),

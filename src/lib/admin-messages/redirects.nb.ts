@@ -115,6 +115,11 @@ export const redirectsNb: RedirectsMessages = {
     title: "Sider som ikke ble funnet",
     intro: "Adressene kunder og søkemotorer spurte etter som denne butikken ikke hadde. Rett opp de som betyr noe, med en omdirigering til siden de lette etter.",
     period: "Periode",
+    phone: {
+      lead: "Adresser folk spurte etter som denne butikken ikke har.",
+      read: "Les",
+      close: "Lukk",
+    },
     window: "Siste {n} dager",
     showCovered: "Vis adressene som har en omdirigering",
     hideCovered: "Skjul adressene som har en omdirigering",
@@ -144,6 +149,7 @@ export const redirectsNb: RedirectsMessages = {
     byRobots: ", {n} fra roboter",
     suggestionKinds: { product: "Produkt", category: "Kategori", tag: "Stikkord", page: "Side", article: "Artikkel" },
     table: {
+      more: "Mer",
       caption: "Adresser det ble spurt etter og som ikke ble funnet, de mest etterspurte først",
       address: "Adresse",
       requests: "Forespørsler",
@@ -314,7 +320,7 @@ export const redirectsNb: RedirectsMessages = {
       already: "Fantes allerede",
       skipped: "Hoppet over",
       failed: "Ikke importert",
-      reference: "Referanse for aktivitetsloggen:",
+      reference: "Referanse for endringsloggen:",
       works: "De nye omdirigeringene virker med en gang.",
     },
     findings: {
@@ -396,7 +402,7 @@ export const redirectsNb: RedirectsMessages = {
     unreadable: "Skjemaet kunne ikke leses. Last inn siden på nytt og prøv igjen.",
     tooMany: "Velg høyst {max} omdirigeringer om gangen.",
     not_found: "Denne omdirigeringen finnes ikke lenger. Den kan ha blitt slettet.",
-    not_logged: "Aktivitetsloggen kunne ikke skrives, så ingenting ble endret. Prøv igjen.",
+    not_logged: "Endringsloggen kunne ikke skrives, så ingenting ble endret. Prøv igjen.",
     nothing: "Velg minst én omdirigering.",
     taken: "En annen omdirigering går allerede fra den adressen. Rediger den i stedet.",
     automatic: "Denne omdirigeringen lages av Kaizena Flow når en adresse endres. Slett den, eller lag en egen omdirigering fra samme adresse for å erstatte den.",

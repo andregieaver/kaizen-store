@@ -22,7 +22,7 @@ test("a platform admin decides a notice of illegal content with its reason", asy
   }
 
   await page.goto("/admin/platform/reports");
-  await expect(page.getByRole("heading", { level: 1, name: "Illegal content notices" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Content notices" })).toBeVisible();
   const notice = page.getByRole("listitem").filter({ hasText: marker });
   await expect(notice).toContainText("Scam or misleading");
   await expect(notice).toContainText("Kari Nordmann");

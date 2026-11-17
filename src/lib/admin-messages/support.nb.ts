@@ -107,6 +107,7 @@ export const supportNb: SupportMessages = {
     },
   },
   email: {
+    phone: { read: "Les", close: "Lukk" },
     title: "Kundeservice på e-post",
     description:
       "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post. Alt om en bestilling går til en person, med mindre E-post om bestillinger er på under Avansert: da svarer den om avsenderens egne bestillinger, bare til avsenderens adresse.",
@@ -468,6 +469,14 @@ export const supportNb: SupportMessages = {
   },
   settings: {
     whoAnswers: "Hvem som svarer kundene dine",
+    phone: {
+      noEmail: "Ingen svar på e-post",
+      after: "teamet varsles etter {n} min",
+      hoursSet: "Vises for kundene",
+      hoursNone: "Vises ikke",
+      change: "Endre",
+      done: "Ferdig",
+    },
     modes: {
       off: {
         title: "Kundeservice av – chat-assistenten alene",
@@ -828,7 +837,62 @@ export const supportNb: SupportMessages = {
       people: "Bare folk",
     },
   },
+  questions: {
+    title: "Spørsmål assistenten ikke kunne svare på",
+    description:
+      "Det besøkende spurte om som chatassistenten ikke kunne svare på ut fra sidene og kunnskapsbasen deres, de mest spurte først. Skriv svaret én gang: det lagres i kunnskapsbasen, og assistenten bruker det neste gang.",
+    nav: "Spørsmål",
+    open: "Å svare på",
+    answered: "Besvart",
+    dismissed: "Ikke for assistenten",
+    noneOpen: "Ingen spørsmål venter. Når assistenten ikke kan svare på noe, kommer det hit.",
+    noneAnswered: "Ingen besvarte spørsmål ennå.",
+    noneDismissed: "Ingenting er lagt til side.",
+    asked: { one: "Spurt én gang", many: "Spurt {n} ganger" },
+    lastAsked: "sist {date}",
+    write: "Skriv svaret",
+    answerLabel: "Svaret ditt",
+    answerHint: "Skriv det assistenten kan fortelle alle som spør. Ingen personopplysninger.",
+    save: "Lagre svaret",
+    saved: "Lagret i kunnskapsbasen. Assistenten bruker det fra nå av.",
+    notForAssistant: "Ikke et spørsmål for assistenten",
+    dismissedDone: "Lagt til side. Det blir liggende her om noen spør igjen.",
+    putBack: "Legg det tilbake",
+    putBackDone: "Tilbake på listen.",
+    customise: "Tilpass",
+    titleLabel: "Tittel i kunnskapsbasen",
+    titleHint: "Spørsmålet slik den besøkende stilte det. Alle kan lese det, så endre det hvis det nevner noen.",
+    details: "Detaljer",
+    language: "Språk: {lang}",
+    handedOver: { one: "Gitt videre til en person én gang", many: "Gitt videre til en person {n} ganger" },
+    foundNothing: "Kunnskapsbasen hadde ingenting om det",
+    firstAsked: "Først spurt {date}",
+    conversations: "Samtalene det kom fra",
+    noConversations: "Disse samtalene lagres ikke lenger.",
+    openConversation: "Samtale fra {date}",
+    answeredBefore: "Du har svart på dette før, men assistenten kunne fortsatt ikke svare. Endre svaret, eller skriv det med andre ord.",
+    inKnowledge: "Åpne kunnskapsbasen",
+    gone: "Det spørsmålet er ikke her lenger.",
+    invalid: "Skriv svaret først (høyst 4 000 tegn), med en tittel på høyst 200.",
+    chatLine: {
+      one: "{n} spørsmål assistenten ikke kunne svare på, venter på svaret ditt.",
+      many: "{n} spørsmål assistenten ikke kunne svare på, venter på svaret ditt.",
+    },
+    chatLineNone: "Spørsmål assistenten ikke kunne svare på, kommer på en egen side, så du kan svare på dem én gang.",
+    chatLink: "Svar på dem",
+    chatLinkNone: "Se spørsmålene",
+    back: "Chatassistent",
+    kept: "Lagres i 90 dager etter at de sist ble spurt om.",
+  },
   pages: {
+    storeQuestions: {
+      title: "Spørsmål assistenten ikke kunne svare på",
+      description: "Det besøkende spurte om som chatassistenten ikke kunne svare på. Skriv svaret én gang, så kan den svare neste gang.",
+    },
+    platformQuestions: {
+      title: "Spørsmål Kaizena Flows assistent ikke kunne svare på",
+      description: "Det besøkende på Kaizena Flows nettsted og eiere som spør Kaizena Flow, spurte om som chatassistenten ikke kunne svare på. Skriv svaret én gang, så kan den svare neste gang.",
+    },
     storeSettings: {
       title: "Innstillinger for kundeservice",
       description:

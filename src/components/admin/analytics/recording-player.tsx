@@ -60,8 +60,9 @@ export function RecordingPlayer({ eventsUrl, words }: { eventsUrl: string; words
     (async () => {
       try {
         const answer = await fetch(eventsUrl, { cache: "no-store" });
-        if (!answer.ok) throw new Error(String(answer.status));
-        const events = (await answer.json()) as { type: number; timestamp: number }[];
+        if (!answer.ok || !answer.body) throw new Error(String(answer.status));
+        // The route sends the events as gzip bytes (application/gzip): unpacked here, as Next no longer passes its Content-Encoding.
+        const events = (await new Response(answer.body.pipeThrough(new DecompressionStream("gzip"))).json()) as { type: number; timestamp: number }[];
         if (!alive) return;
         if (events.length < 2 || !events.some((e) => e.type === 2)) {
           setState("none");

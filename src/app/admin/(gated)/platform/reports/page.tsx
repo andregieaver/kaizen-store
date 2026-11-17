@@ -14,7 +14,7 @@ import { listContentReports, type ContentReport } from "@/server/content-reports
 import { decideReportAction, saveScreeningAction } from "./actions";
 import { UseDraft } from "./use-draft";
 
-export const metadata: Metadata = { title: "Illegal content notices" };
+export const metadata: Metadata = { title: "Content notices" };
 
 const field = "flex flex-col gap-1 text-sm";
 const control = "min-h-10 rounded-md border border-line bg-card px-3";

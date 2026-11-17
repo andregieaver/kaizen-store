@@ -354,7 +354,17 @@ export function InventoryView({
     );
   }
   if (value.units > 0 && value.unitsWithoutCost > 0) {
+    // Round 44 (D742): on a phone what is missing is one strip with Fix; the note says it in full from 640 px.
     notes.push(
+      <p key="costs-phone" role="note" className="flex items-center justify-between gap-3 rounded-panel bg-warning-soft px-4 py-2.5 text-sm text-warning-text sm:hidden">
+        <span>{fillWords(w.phone.costs, { units: cnt(value.unitsWithoutCost, w.n.unit) })}</span>
+        <Link href={costsAction.href} className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-card">
+          {w.phone.fix}
+        </Link>
+      </p>,
+    );
+    notes.push(
+      <div key="costs" className="max-sm:hidden">
       <Note
         key="costs"
         tone={
@@ -370,7 +380,8 @@ export function InventoryView({
         <Link href={costsAction.href} className={linkClass}>
           {costsAction.label}
         </Link>
-      </Note>,
+      </Note>
+      </div>,
     );
   }
   const noteBlock =
@@ -391,7 +402,8 @@ export function InventoryView({
         >
           {alertText(a, w)}
         </Link>
-        <span className="block text-xs text-muted">{`${fillWords(w.alertSold, { n30: formatCount(a.row.sold30), n7: formatCount(a.row.sold7) })}${a.kind === "out" ? (onBackorder(a.row) ? w.alertBackorderNote : w.alertNothing) : fillWords(w.alertOnHand, { n: formatCount(a.row.onHand) })}`}</span>
+        <span className="block text-xs text-muted sm:hidden">{fillWords(w.phone.sold, { n: formatCount(a.row.sold30) })}</span>
+        <span className="block text-xs text-muted max-sm:hidden">{`${fillWords(w.alertSold, { n30: formatCount(a.row.sold30), n7: formatCount(a.row.sold7) })}${a.kind === "out" ? (onBackorder(a.row) ? w.alertBackorderNote : w.alertNothing) : fillWords(w.alertOnHand, { n: formatCount(a.row.onHand) })}`}</span>
       </span>
     </li>
   );
@@ -730,7 +742,7 @@ export function InventoryView({
       <AnalyticsSection
         id="inv-alerts"
         title={w.alertsTitle}
-        description={fillWords(w.alertsDescription, { days: String(STOCKOUT_ALERT_DAYS), min: String(MIN_SOLD_30D) })}
+        description={<span className="max-sm:hidden">{fillWords(w.alertsDescription, { days: String(STOCKOUT_ALERT_DAYS), min: String(MIN_SOLD_30D) })}</span>}
       >
         {report.alerts.length === 0 ? (
           <div className="rounded-panel border border-dashed border-line px-4 py-5 text-sm text-muted">
@@ -773,7 +785,7 @@ export function InventoryView({
       <AnalyticsSection
         id="variants"
         title={w.tableTitle}
-        description={fillWords(w.tableDescription, { currency: report.currency })}
+        description={<span className="max-sm:hidden">{fillWords(w.tableDescription, { currency: report.currency })}</span>}
         action={toggle}
       >
         <nav aria-label={w.filterLabel} className="flex flex-wrap gap-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap">

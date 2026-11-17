@@ -175,6 +175,8 @@ export const experimentsEn = {
     pickButton: "You pick the button on the page",
     pickForm: "You pick the form on the page",
     noRate: "Your shop has no figure for this yet",
+    /** Round 37 (D725): on a phone the page is one choice, and how long one row. */
+    phone: { page: "Page to test", unknown: "Not known yet", open: "Open", close: "Close" },
     whereTitle: "Where?",
     whereSub: "Visitors a day who would take part, from the last 30 days",
     whereBasis: "Counted from the visits that began on each page, so a page sees at least this many.",
@@ -624,6 +626,13 @@ export const experimentsEn = {
     formGone: "That form is not on the page.",
   },
   words: { button: "button", form: "form", partUnderTest: "the part under test" },
+  /** A test the autopilot started to try its own change to a page (E4.1, D729): its name, its mark in the list and its line on its page. */
+  autopilot: {
+    name: "The autopilot's change to {page}",
+    mark: "By the autopilot",
+    about:
+      "The autopilot started this test to try its change to the page against the page as it is. The store decides it by its results: the change goes live only if it does better, as far as the owner lets the autopilot act; otherwise the page stays as it is.",
+  },
 };
 
 export type ExperimentsMessages = Widen<typeof experimentsEn>;

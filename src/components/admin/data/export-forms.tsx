@@ -2,6 +2,8 @@ import { DIALECTS, DIALECT_IDS, type DialectId } from "@/lib/csv";
 import { ORDER_SELECTION_MAX } from "@/lib/data-limits";
 import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
 
+import { PhoneRow } from "@/components/admin/phone-row";
+
 import { OrderNumbersField } from "./order-numbers-field";
 import { card, field, hint, label, primary } from "./ui";
 
@@ -14,6 +16,12 @@ import { card, field, hint, label, primary } from "./ui";
 /** The forms' words; a page passes the account's language (D312 A11), English unless given. */
 export type ExportWords = AdminAreaMessages["bookings"]["exports"];
 const EN: ExportWords = adminText("en", "bookings").exports;
+
+/** A phone row's line for each file format, shown while it is the chosen one (round 39, D731); written out so Tailwind finds them. */
+const DIALECT_SHOWN: Record<DialectId, string> = {
+  standard: "hidden group-has-[option[value=standard]:checked]/format:inline",
+  excel_nordic: "hidden group-has-[option[value=excel_nordic]:checked]/format:inline",
+};
 
 export function DialectField({ defaultValue, id = "dialect", words: w = EN }: { defaultValue: DialectId; id?: string; words?: ExportWords }) {
   return (
@@ -92,10 +100,13 @@ export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: 
     d.setUTCDate(d.getUTCDate() - 30);
     return d.toISOString().slice(0, 10);
   })();
+  const p = w.phone;
+  // On a phone (round 39, D731) the choices with a default are rows; a row's line names what is chosen now, read from the form by CSS (`:has`), so
+  // it is right without a script and after a change.
   return (
-    <form method="post" action={`/admin/${slug}/orders/export/file`} className={`${card} flex flex-col gap-4`}>
+    <form method="post" action={`/admin/${slug}/orders/export/file`} className={`${card} group/orders flex flex-col gap-4 max-sm:gap-3`}>
       <fieldset className="flex flex-col gap-3">
-        <legend className={label}>{w.whichOrders}</legend>
+        <legend className={`${label} max-sm:sr-only`}>{w.whichOrders}</legend>
         <div className="flex flex-col gap-2 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" name="mode" value="range" defaultChecked={!startWithNumbers} /> {w.period}
@@ -110,19 +121,25 @@ export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: 
               <input type="date" name="to" defaultValue={today} className={field} />
             </label>
           </div>
-          <p className={`${hint} ml-6`}>{w.periodHint}</p>
+          <p className={`${hint} ml-6 max-sm:hidden`}>{w.periodHint}</p>
         </div>
         <div className="flex flex-col gap-2 text-sm">
           <label className="flex items-center gap-2">
-            <input type="radio" name="mode" value="numbers" defaultChecked={startWithNumbers} /> {w.byNumbers}
+            <input type="radio" name="mode" value="numbers" defaultChecked={startWithNumbers} />
+            <span className="max-sm:hidden">{w.byNumbers}</span>
+            <span className="sm:hidden">{p.someByNumber}</span>
           </label>
-          <div className="ml-6">
+          {/* On a phone the list of numbers shows once that choice is made. */}
+          <div className="ml-6 max-sm:hidden max-sm:group-has-[input[value=numbers]:checked]/orders:block">
             <OrderNumbersField slug={slug} defaultValue={defaultNumbers} max={ORDER_SELECTION_MAX} />
           </div>
         </div>
       </fieldset>
+      <div className="flex flex-col gap-4 max-sm:gap-0 max-sm:border-t max-sm:border-line">
+      <div className="group/which">
+      <PhoneRow inset title={w.whichOfThem} sub={<><span className="hidden group-has-[input[value=paid]:checked]/which:inline">{p.paid}</span><span className="hidden group-has-[input[value=all]:checked]/which:inline">{p.all}</span></>} change={p.change} done={p.done}>
       <fieldset className="flex flex-col gap-2">
-        <legend className={label}>{w.whichOfThem}</legend>
+        <legend className={`${label} max-sm:sr-only`}>{w.whichOfThem}</legend>
         <label className="flex items-center gap-2 text-sm">
           <input type="radio" name="which" value="paid" defaultChecked /> {w.paid}
         </label>
@@ -137,8 +154,12 @@ export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: 
           </span>
         </label>
       </fieldset>
+      </PhoneRow>
+      </div>
+      <div className="group/layout">
+      <PhoneRow inset title={w.layout} sub={<><span className="hidden group-has-[input[value=lines]:checked]/layout:inline">{w.perLine}</span><span className="hidden group-has-[input[value=orders]:checked]/layout:inline">{w.perOrder}</span></>} change={p.change} done={p.done}>
       <fieldset className="flex flex-col gap-2">
-        <legend className={label}>{w.layout}</legend>
+        <legend className={`${label} max-sm:sr-only`}>{w.layout}</legend>
         <label className="flex items-center gap-2 text-sm">
           <input type="radio" name="layout" value="lines" defaultChecked /> {w.perLine}
         </label>
@@ -146,8 +167,12 @@ export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: 
           <input type="radio" name="layout" value="orders" /> {w.perOrder}
         </label>
       </fieldset>
+      </PhoneRow>
+      </div>
+      <div className="group/buyer">
+      <PhoneRow inset title={w.buyer} sub={<><span className="hidden group-has-[input[value=accounting]:checked]/buyer:inline">{p.accounting}</span><span className="hidden group-has-[input[value=full]:checked]/buyer:inline">{p.full}</span></>} change={p.change} done={p.done}>
       <fieldset className="flex flex-col gap-2">
-        <legend className={label}>{w.buyer}</legend>
+        <legend className={`${label} max-sm:sr-only`}>{w.buyer}</legend>
         <label className="flex items-start gap-2 text-sm">
           <input type="radio" name="profile" value="accounting" defaultChecked className="mt-1" />
           <span>
@@ -163,7 +188,25 @@ export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: 
           </span>
         </label>
       </fieldset>
-      <DialectField defaultValue="excel_nordic" words={w} />
+      </PhoneRow>
+      </div>
+      <div className="group/format">
+      <PhoneRow
+        inset
+        last
+        title={w.format}
+        sub={DIALECT_IDS.map((d) => (
+          <span key={d} className={DIALECT_SHOWN[d]}>
+            {DIALECTS[d].label.replace(/:.*\)$/, ")")}
+          </span>
+        ))}
+        change={p.change}
+        done={p.done}
+      >
+        <DialectField defaultValue="excel_nordic" words={w} />
+      </PhoneRow>
+      </div>
+      </div>
       <div>
         <button type="submit" className={primary}>
           {w.exportOrders}

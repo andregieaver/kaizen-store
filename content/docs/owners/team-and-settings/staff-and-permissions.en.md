@@ -75,7 +75,7 @@ remove access earlier. When the time is up, the access ends by itself.
 
 ## See who changed what
 
-Open **Settings** and choose [Activity log](/admin/{store}/activity), under Account. It lists what people changed in the store, and
+Open **Settings** and choose [Change log](/admin/{store}/activity), under Account. It lists what people changed in the store, and
 when: products, prices, pages, coupons, shipping, the team and the payment settings. Changes the AI manager made for someone say so.
 
 - Filter by **Person**, **Area**, **Action** and the days **From** and **To**, then press **Filter**.

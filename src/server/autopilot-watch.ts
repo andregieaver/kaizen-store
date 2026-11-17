@@ -266,6 +266,12 @@ export async function watchAutopilotChanges(options: { now?: Date; everyRun?: bo
         const store = await currentStore(c.slug);
         if (!store) continue;
         const ended = now.getTime() - Date.parse(c.created_at) >= WATCH_UNTIL_HOURS * 3_600_000;
+        // A publish that became an A/B test of the change (E4.1, D729) published nothing: the test's own guardrails watch it.
+        if (tool === "publish_page" && (await entriesBefore(c, "experiment.started")).length > 0) {
+          await record(c, tool, { kind: "not_watched", why: "It became an A/B test: only part of the visitors see the change, and the test's guardrails watch it." }, []);
+          run.judged++;
+          continue;
+        }
         if (!store.visitCounting) {
           await record(c, tool, { kind: "not_watched", why: "Visit counting is off, so conversion and add-to-cart cannot be compared." }, []);
           run.judged++;

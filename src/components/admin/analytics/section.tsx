@@ -13,6 +13,7 @@ export function AnalyticsSection({
   description,
   action,
   level = 2,
+  phoneQuiet = false,
   children,
 }: {
   id: string;
@@ -20,6 +21,8 @@ export function AnalyticsSection({
   description?: ReactNode;
   action?: ReactNode;
   level?: 2 | 3;
+  /** On a phone (round 39, D731) the heading is read out but not shown and the description is left out: a row above already names the part. */
+  phoneQuiet?: boolean;
   children?: ReactNode;
 }) {
   const Heading = level === 3 ? "h3" : "h2";
@@ -27,10 +30,10 @@ export function AnalyticsSection({
     <section aria-labelledby={id} className="scroll-mt-20 space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <Heading id={id} className={level === 3 ? "text-base font-medium" : "text-lg font-medium"}>
+          <Heading id={id} className={`${level === 3 ? "text-base font-medium" : "text-lg font-medium"} ${phoneQuiet ? "max-sm:sr-only" : ""}`}>
             {title}
           </Heading>
-          {description ? <p className="mt-0.5 max-w-prose text-sm text-muted">{description}</p> : null}
+          {description ? <p className={`mt-0.5 max-w-prose text-sm text-muted ${phoneQuiet ? "max-sm:hidden" : ""}`}>{description}</p> : null}
         </div>
         {action ? <div className="max-w-full text-sm">{action}</div> : null}
       </div>

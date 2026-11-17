@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import { Mail, ShoppingCart, Tag } from "lucide-react";
 
 import { NavIcon } from "@/components/admin/nav-icons";
+import { PhoneMore } from "@/components/admin/phone-more";
+import { PHONE_MORE_HIDDEN } from "@/components/admin/phone-more-class";
 import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -21,7 +23,11 @@ import { customerCounts } from "@/server/customer-admin";
 import { listedTests } from "@/server/experiment-list";
 import { bestSellerByCount } from "@/server/marketing-home";
 import { subscriberCounts } from "@/server/marketing-subscribers";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
+import { sendingHealth } from "@/server/sending-guard";
+import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
+
+import { resumeSendingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Marketing" };
 
@@ -42,7 +48,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   const shop = featureOn(store, "shop");
   const currency = store.markets[0]?.currency ?? "EUR";
   const ex = adminText(lang, "experiments");
-  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests] = await Promise.all([
+  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests, health] = await Promise.all([
     getAutomations(store),
     automationStats(store.id),
     shop ? getCartReminderSettings(store.id) : Promise.resolve(null),
@@ -51,6 +57,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
     customerCounts(store.id, currency),
     shop ? bestSellerByCount(store.id) : Promise.resolve(null),
     listedTests(store, { words: ex, numberLocale: ADMIN_LANG_FACTS[lang].locale }),
+    sendingHealth(store.id),
   ]);
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
 
@@ -76,10 +83,10 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
 
   // The plays that are not running yet, each opening the page that sets it up.
   const plays = [
-    ...(!automations.after_purchase.enabled ? [{ key: "after", icon: Mail, tone: "bg-positive-soft text-positive-text", ...w.after, href: `${base}/automations/after_purchase` }] : []),
-    ...(shop && !cart?.enabled ? [{ key: "cart", icon: ShoppingCart, tone: "bg-warning-soft text-warning-text", ...w.cart, href: `${base}/cart-reminders` }] : []),
+    ...(!automations.after_purchase.enabled ? [{ key: "after", icon: Mail, tone: "bg-positive-soft text-positive-text", ...w.after, short: w.phone.after, href: `${base}/automations/after_purchase` }] : []),
+    ...(shop && !cart?.enabled ? [{ key: "cart", icon: ShoppingCart, tone: "bg-warning-soft text-warning-text", ...w.cart, short: w.phone.cart, href: `${base}/cart-reminders` }] : []),
     ...(shop && !campaigns.some((c) => c.active)
-      ? [{ key: "offer", icon: Tag, tone: "bg-insight-soft text-insight-text", ...w.offer, does: best ? fillWords(w.offer.does, { product: best.title }) : w.offer.doesNone, href: `${base}/campaigns/new` }]
+      ? [{ key: "offer", icon: Tag, tone: "bg-insight-soft text-insight-text", ...w.offer, does: best ? fillWords(w.offer.does, { product: best.title }) : w.offer.doesNone, short: best ? fillWords(w.phone.offer, { product: best.title }) : w.phone.offerNone, href: `${base}/campaigns/new` }]
       : []),
   ];
 
@@ -87,28 +94,41 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   const section = storeSections(store, (path) => canOpenPath(holder, path)).find((s) => s.key === "marketing") ?? STORE_SECTIONS.find((s) => s.key === "marketing")!;
   const tools = section.groups.flatMap((g) => g.items);
   const listed = subscribers.subscribed;
+  // On a phone (round 38, D728) the first six tools show, the rest behind +N.
+  const TOOLS_FIRST = 6;
 
   return (
     <div className="flex flex-col gap-7">
       <PageHeader title={w.title} meta={[lead]} />
+      <SendingGuardNotice
+        state={noticeState(health)}
+        words={adminText(lang, "marketing").sendingGuard}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+        timeZone={store.timeZone}
+        resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
+      />
 
       {plays.length > 0 && (
         <section aria-labelledby="plays" className="flex flex-col gap-3">
           <h2 id="plays" className="text-title text-ink">
-            {w.plays} <span className="text-caption font-normal text-muted">{w.playsSub}</span>
+            {w.plays} <span className="text-caption font-normal text-muted max-sm:hidden">{w.playsSub}</span>
           </h2>
-          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(17rem,100%),1fr))] gap-3">
+          {/* On a phone each play is a row of one card: its icon, name, a short line and Set it up (round 38, D728). */}
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(17rem,100%),1fr))] gap-3 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel max-sm:border max-sm:border-line max-sm:bg-card">
             {plays.map((play, i) => (
-              <li key={play.key} className={`flex flex-col gap-3 p-5.5 ${CARD_CLASS}`}>
-                <span aria-hidden className={`flex size-11 items-center justify-center rounded-card ${play.tone}`}>
-                  <play.icon className="size-5" />
+              <li key={play.key} className={`flex flex-col gap-3 p-5.5 ${CARD_CLASS} max-sm:flex-row max-sm:items-center max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:border-line max-sm:px-4 max-sm:py-3 max-sm:shadow-none max-sm:last:border-b-0`}>
+                <span aria-hidden className={`flex size-11 shrink-0 items-center justify-center rounded-card ${play.tone} max-sm:size-9`}>
+                  <play.icon className="size-5 max-sm:size-4" />
                 </span>
-                <h3 className="text-title text-ink">{play.title}</h3>
-                <p className="text-body text-ink-2">{play.does}</p>
-                <p className="text-caption text-muted">{play.note}</p>
+                <span className="flex min-w-0 flex-col gap-3 max-sm:flex-1 max-sm:gap-0.5">
+                  <h3 className="text-title text-ink max-sm:text-body">{play.title}</h3>
+                  <p className="text-body text-ink-2 max-sm:hidden">{play.does}</p>
+                  <p className="text-caption text-ink-2 sm:hidden">{play.short}</p>
+                  <p className="text-caption text-muted max-sm:hidden">{play.note}</p>
+                </span>
                 <AdminLink
                   href={play.href}
-                  className={`mt-auto inline-flex h-10 items-center self-start rounded-pill px-4.5 text-body ${i === 0 ? "bg-brand font-medium text-brand-ink" : "border border-edge bg-card text-ink hover:bg-sunken"}`}
+                  className={`mt-auto inline-flex h-10 shrink-0 items-center self-start rounded-pill px-4.5 text-body max-sm:mt-0 max-sm:self-center ${i === 0 ? "bg-brand font-medium text-brand-ink max-sm:px-3.5" : "border border-edge bg-card text-ink hover:bg-sunken max-sm:border-0 max-sm:px-1 max-sm:underline max-sm:underline-offset-2"}`}
                 >
                   {play.button}
                 </AdminLink>
@@ -118,7 +138,8 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
         </section>
       )}
 
-      <section aria-labelledby="running" className="flex flex-col gap-3">
+      {/* Nothing running says so in the lead; on a phone the empty card is left out (round 38, D728). */}
+      <section aria-labelledby="running" className={`flex flex-col gap-3 ${running.length + testing.length === 0 ? "max-sm:hidden" : ""}`}>
         <h2 id="running" className="text-title text-ink">
           {w.running}
         </h2>
@@ -160,26 +181,37 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
         )}
       </section>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-3">
-        <section aria-labelledby="list" className={`flex flex-col gap-2.5 px-5.5 py-5 ${CARD_CLASS}`}>
-          <h2 id="list" className="text-body-strong text-ink">
-            {w.list}
-          </h2>
-          <p className="text-[26px] tracking-tight">
-            {n(listed)} <span className="text-body tracking-normal text-muted">{listed === 1 ? w.listCount.one : w.listCount.many}</span>
-          </p>
-          <p className="text-body text-ink-2">{w.listText}</p>
-          <AdminLink href={`${base}/subscribers`} className="self-start text-body font-medium text-brand-text underline-offset-2 hover:underline">
-            {w.listLink}
+      {/* On a phone the list and a broadcast are two rows of one card (round 38, D728). */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-3 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel max-sm:border max-sm:border-line max-sm:bg-card">
+        <section aria-labelledby="list" className={`flex flex-col gap-2.5 px-5.5 py-5 ${CARD_CLASS} ${PHONE_ROW}`}>
+          <span className="flex min-w-0 flex-col gap-2.5 max-sm:gap-0.5">
+            <h2 id="list" className="text-body-strong text-ink max-sm:text-body max-sm:font-normal">
+              {w.list}
+            </h2>
+            <p className="text-[26px] tracking-tight max-sm:hidden">
+              {n(listed)} <span className="text-body tracking-normal text-muted">{listed === 1 ? w.listCount.one : w.listCount.many}</span>
+            </p>
+            <p className="text-caption text-ink-2 sm:hidden">
+              {n(listed)} {listed === 1 ? w.listCount.one : w.listCount.many}
+            </p>
+            <p className="text-body text-ink-2 max-sm:hidden">{w.listText}</p>
+          </span>
+          <AdminLink href={`${base}/subscribers`} className={`self-start text-body font-medium text-brand-text underline-offset-2 hover:underline ${PHONE_LINK}`}>
+            <span className="max-sm:hidden">{w.listLink}</span>
+            <span className="sm:hidden">{w.phone.listSee}</span>
           </AdminLink>
         </section>
-        <section aria-labelledby="tell" className={`flex flex-col gap-2.5 px-5.5 py-5 ${CARD_CLASS}`}>
-          <h2 id="tell" className="text-body-strong text-ink">
-            {w.tell}
-          </h2>
-          <p className="text-body text-ink-2">{w.tellText}</p>
-          <AdminLink href={`${base}/broadcasts/new`} className="self-start text-body font-medium text-brand-text underline-offset-2 hover:underline">
-            {w.tellLink}
+        <section aria-labelledby="tell" className={`flex flex-col gap-2.5 px-5.5 py-5 ${CARD_CLASS} ${PHONE_ROW}`}>
+          <span className="flex min-w-0 flex-col gap-2.5 max-sm:gap-0.5">
+            <h2 id="tell" className="text-body-strong text-ink max-sm:text-body max-sm:font-normal">
+              {w.tell}
+            </h2>
+            <p className="text-body text-ink-2 max-sm:hidden">{w.tellText}</p>
+            <p className="text-caption text-ink-2 sm:hidden">{w.phone.tellSub}</p>
+          </span>
+          <AdminLink href={`${base}/broadcasts/new`} className={`self-start text-body font-medium text-brand-text underline-offset-2 hover:underline ${PHONE_LINK}`}>
+            <span className="max-sm:hidden">{w.tellLink}</span>
+            <span className="sm:hidden">{w.phone.tellWrite}</span>
           </AdminLink>
         </section>
       </div>
@@ -188,9 +220,10 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
         <h2 id="tools" className="text-body-strong text-ink">
           {w.tools} <span className="text-caption font-normal text-muted">{w.toolsSub}</span>
         </h2>
-        <ul className="flex flex-wrap gap-2">
-          {tools.map((item) => (
-            <li key={item.path}>
+        <PhoneMore hidden={Math.max(0, tools.length - TOOLS_FIRST)} label={fillWords(w.phone.more, { n: tools.length - TOOLS_FIRST })} className="flex flex-wrap items-center gap-2">
+        <ul className="contents">
+          {tools.map((item, i) => (
+            <li key={item.path} className={i >= TOOLS_FIRST ? PHONE_MORE_HIDDEN : ""}>
               <AdminLink href={`${base}${item.path}`} className="inline-flex h-9 items-center gap-2 rounded-pill bg-sunken px-3.5 text-body text-ink hover:bg-line">
                 <NavIcon name={item.icon} className="size-3.5 text-ink-2" />
                 {say(item.label)}
@@ -198,7 +231,13 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
             </li>
           ))}
         </ul>
+        </PhoneMore>
       </section>
     </div>
   );
 }
+
+/** A card that is one row of a shared card on a phone (round 38, D728). */
+const PHONE_ROW = "max-sm:min-h-14 max-sm:flex-row max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:border-line max-sm:px-4 max-sm:py-2.5 max-sm:shadow-none max-sm:last:border-b-0";
+/** Its link on a phone: a short word at the right. */
+const PHONE_LINK = "max-sm:shrink-0 max-sm:self-center max-sm:text-ink max-sm:underline";

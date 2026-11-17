@@ -48,6 +48,7 @@ export const productNb: ProductMessages = {
     text: "Standardkategori, hvem som kjøper, ord rundt prisen, pris etter antall, abonnement, produktsikkerhet, avgift, retur og hvor den selges.",
   },
   terms: {
+    phone: { none: "Ingen valgt", chosen: { one: "{n} valgt", many: "{n} valgt" }, change: "Endre", done: "Ferdig" },
     title: "Kategorier og stikkord",
     intro: "Kundene finner produktet gjennom kategoriene og stikkordene, i menyer og i innholdsrutenett.",
     layout: "Sideoppsett",

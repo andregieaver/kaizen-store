@@ -136,6 +136,6 @@ En side som rollen til en person ikke kan åpne, er tatt ut av menyen deres, og 
 4. **Totrinns innlogging.** Når butikken krever det, blir den som ikke har det, sendt til å sette det opp før de kommer inn i butikken.
 5. **En stengt butikk.** Mens butikken er stengt eller suspendert, kan alle bare lese og ta seg av det som allerede har skjedd.
 
-[Aktivitetsloggen](/admin/{store}/activity) noterer hver gang noen ble nektet noe rollen ikke gir tilgang til.
+[Endringsloggen](/admin/{store}/activity) noterer hver gang noen ble nektet noe rollen ikke gir tilgang til.
 
 Mer: [ansatte og tilganger](/docs/owners/team-and-settings/staff-and-permissions), [sikkerhet](/docs/owners/team-and-settings/security).

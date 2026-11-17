@@ -960,7 +960,7 @@ describe("alertsFor, everything at once", () => {
   });
 
   it("has everything a rule counts as 1 each: the thresholds are published", () => {
-    expect(Object.keys(ALERT_RULES).sort()).toEqual(["abandonment", "bestDay", "cac", "conversion", "costs", "discounts", "refunds", "returningHigh", "stockout", "target", "weekdayRevenue"]);
+    expect(Object.keys(ALERT_RULES).sort()).toEqual(["abandonment", "bestDay", "cac", "conversion", "costs", "discounts", "domain", "frustration", "refunds", "returningHigh", "slowPage", "stockout", "target", "weekdayRevenue"]);
   });
 });
 

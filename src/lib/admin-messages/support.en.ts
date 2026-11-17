@@ -110,6 +110,7 @@ export const supportEn = {
     },
   },
   email: {
+    phone: { read: "Read", close: "Close" },
     title: "Support by email",
     description:
       "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email. Anything about an order goes to a person, unless Emails about orders is on under Advanced: then it answers about the sender's own orders, only to their address.",
@@ -448,6 +449,14 @@ export const supportEn = {
   },
   settings: {
     whoAnswers: "Who answers your customers",
+    phone: {
+      noEmail: "No email answers",
+      after: "team told after {n} min",
+      hoursSet: "Shown to customers",
+      hoursNone: "Not shown",
+      change: "Change",
+      done: "Done",
+    },
     modes: {
       off: {
         title: "Support off — the chat assistant alone",
@@ -796,7 +805,62 @@ export const supportEn = {
       people: "People only",
     },
   },
+  questions: {
+    title: "Questions your assistant couldn't answer",
+    description:
+      "What visitors asked that the chat assistant could not answer from your pages and knowledge base, the most asked first. Write the answer once: it is saved in the knowledge base, and the assistant uses it next time.",
+    nav: "Questions",
+    open: "To answer",
+    answered: "Answered",
+    dismissed: "Not for the assistant",
+    noneOpen: "No questions are waiting. When the assistant cannot answer something, it shows up here.",
+    noneAnswered: "No answered questions yet.",
+    noneDismissed: "Nothing is set aside.",
+    asked: { one: "Asked once", many: "Asked {n} times" },
+    lastAsked: "last on {date}",
+    write: "Write the answer",
+    answerLabel: "Your answer",
+    answerHint: "Write what the assistant may tell anyone who asks. No personal data.",
+    save: "Save the answer",
+    saved: "Saved in the knowledge base. The assistant uses it from now on.",
+    notForAssistant: "Not a question for the assistant",
+    dismissedDone: "Set aside. It stays here if someone asks it again.",
+    putBack: "Put it back",
+    putBackDone: "Back on the list.",
+    customise: "Customise",
+    titleLabel: "Title in the knowledge base",
+    titleHint: "The question as the visitor asked it. Anyone can read it, so change it if it names someone.",
+    details: "Details",
+    language: "Language: {lang}",
+    handedOver: { one: "Handed to a person once", many: "Handed to a person {n} times" },
+    foundNothing: "The knowledge base had nothing on it",
+    firstAsked: "First asked on {date}",
+    conversations: "The conversations it came from",
+    noConversations: "Those conversations are no longer kept.",
+    openConversation: "Conversation of {date}",
+    answeredBefore: "You answered this before, but the assistant still could not answer it. Change the answer, or write it in other words.",
+    inKnowledge: "Open the knowledge base",
+    gone: "That question is no longer here.",
+    invalid: "Write the answer first (at most 4,000 characters), with a title of at most 200.",
+    chatLine: {
+      one: "{n} question your assistant couldn't answer is waiting for your answer.",
+      many: "{n} questions your assistant couldn't answer are waiting for your answer.",
+    },
+    chatLineNone: "Questions your assistant couldn't answer show up on their own page, for you to answer once.",
+    chatLink: "Answer them",
+    chatLinkNone: "See the questions",
+    back: "Chat assistant",
+    kept: "Kept for 90 days after they were last asked.",
+  },
   pages: {
+    storeQuestions: {
+      title: "Questions your assistant couldn't answer",
+      description: "What visitors asked that the chat assistant could not answer. Write the answer once, and it can answer it next time.",
+    },
+    platformQuestions: {
+      title: "Questions Kaizena Flow's assistant couldn't answer",
+      description: "What visitors of Kaizena Flow's site and owners asking Kaizena Flow asked that the chat assistant could not answer. Write the answer once, and it can answer it next time.",
+    },
     storeSettings: {
       title: "Support settings",
       description:

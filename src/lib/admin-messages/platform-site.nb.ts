@@ -294,7 +294,7 @@ export const platformSiteNb: PlatformSiteMessages = {
     pubUnpublish: "Avpubliser tar den bort med en gang: utseender som vises på den, starter nye butikker fra standardbutikken, og temabutikken viser dem der.",
     pubArchive: "Arkiver holder den utenfor demobutikkene; Gjenopprett henter den tilbake, upublisert.",
     pubDeletable: "Ingenting har brukt den ennå, så den kan slettes.",
-    changedInStore: "Butikken er endret siden den sist ble publisert (fra aktivitetsloggen).",
+    changedInStore: "Butikken er endret siden den sist ble publisert (fra endringsloggen).",
     noCopy: "Publisert før kopier ble tatt vare på: nye butikker kopierer butikken slik den er nå. Publiser den igjen for å ta vare på en kopi.",
     openAdmin: "Åpne butikkens administrasjon",
     features: "Funksjoner",

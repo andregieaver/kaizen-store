@@ -2,6 +2,7 @@ import type { SupportMessages } from "@/lib/admin-messages/support.en";
 import type { SupportMode } from "@/lib/support-rules";
 
 import { Card } from "@/components/admin/ui";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 /**
  * The desk's address for email (D332, `docs/support.md` step 16): the owner forwards their support address here and each email
@@ -19,7 +20,10 @@ export function SupportEmailCard({
   keyRefused?: number;
   words: SupportMessages["email"];
 }) {
+  // On a phone (round 43, D740) the card is a row saying where to forward to, or that it is not set up.
   return (
+    <PhoneRows>
+    <PhoneRow flat last title={words.title} sub={address ? `${words.address} ${address}` : words.notSetUp} change={words.phone.read} done={words.phone.close}>
     <Card title={words.title} description={words.description}>
       {address ? (
         <div className="flex flex-col gap-2">
@@ -36,5 +40,7 @@ export function SupportEmailCard({
         <p className="text-body text-muted">{words.notSetUp}</p>
       )}
     </Card>
+    </PhoneRow>
+    </PhoneRows>
   );
 }

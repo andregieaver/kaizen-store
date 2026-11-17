@@ -73,7 +73,7 @@ with empty emails. Our lead is that the store's own data writes the first versio
 
 | Id | Step | Size | Status | Notes |
 |---|---|---|---|---|
-| M0.1 | The owner's four decisions: (a) one engine called Automations; (b) clicks kept per person with consent, still no open pixel; (c) personal fields such as a first name, each with a fallback; (d) prospecting for the platform first, for stores after a legal reading | S | Open | Recommended: yes to all four. (b) and (c) undo choices D297 made on purpose |
+| M0.1 | The owner's four decisions: (a) one engine called Automations; (b) clicks kept per person with consent, still no open pixel; (c) personal fields such as a first name, each with a fallback; (d) prospecting for the platform first, for stores after a legal reading | S | Done, 17 Nov 2026 | The owner said yes to all four. (b) and (c) replace choices D297 made on purpose |
 | M0.2 | The parity row `customers.email-marketing-broadcasts-and-lifecycle-automations` no longer says multi-email flows and browse abandonment are missing | S | Done, 17 Nov 2026 | Built by D653 and D691; the rating stays Full |
 | M0.3 | Ecosystem steps E3.4, E3.5, E4.4, E4.5 and E4.6 are planned here | S | Done, 17 Nov 2026 | Their rows in `ecosystem-2026-11.md` name the step here that takes each |
 
@@ -81,12 +81,12 @@ with empty emails. Our lead is that the store's own data writes the first versio
 
 | Id | Step | Size | Status | Notes |
 |---|---|---|---|---|
-| M1.1 | A sending domain per store (was E4.4) | M | Open | Resend's domains API in `eu-west-1`; the records written by our DNS tools for domains we host or registered (D315, Domain Connect), shown as records to copy otherwise; SPF, DKIM, DMARC and the return path checked daily by domain health. The store sends as `news@` its own domain once verified, from the shared address until then. The platform's own domain is the first |
-| M1.2 | Email events on the event log, both ways (needs E3.1) | M | Open | `email.sent`, `delivered`, `bounced`, `complained`, `clicked`, `subscriber.joined`, `subscriber.left`, `flow.entered`, `flow.goal`, `flow.finished`; on the customer timeline (D462), as workflow triggers, read by the autopilot |
+| M1.1 | A sending domain per store (was E4.4) | M | Done, 17 Nov 2026 (877f3bc6, D727) | Resend's domains API in `eu-west-1`; the records written by our DNS tools for domains we host or registered (D315, Domain Connect), shown as records to copy otherwise; SPF, DKIM, DMARC and the return path checked daily by domain health. The store sends as `news@` its own domain once verified, from the shared address until then. The platform's own domain is the first |
+| M1.2 | Email events on the event log, both ways (needs E3.1) | M | Done, 17 Nov 2026 (0da315e0, D732) | `email.sent`, `delivered`, `bounced`, `complained`, `clicked`, `subscriber.joined`, `subscriber.left`, `flow.entered`, `flow.goal`, `flow.finished`; on the customer timeline (D462), as workflow triggers, read by the autopilot |
 | M1.3 | Clicks kept per person (M0.1 b) | M | Open | One row per click (subscriber, message, link, time), kept 180 days, in the person's export and erased with them, said in the privacy notice. The counts per link stay. No open pixel: Apple Mail's privacy protection makes opens unreliable anyway |
 | M1.4 | Revenue per email by one rule | S | Open | The 7-day count of paid orders (`ORDER_AFTER_DAYS`, `src/lib/automations.ts`) moves to one pure function used by broadcasts, flows, texts and Analytics → Marketing; a broadcast's report shows its orders and revenue |
 | M1.5 | One contact policy across email and text (was E3.5) | M | Open | A cap per person per week across broadcasts, flows and texts, spacing, quiet hours in the reader's own time zone, priority (a cart reminder before a broadcast; order emails never counted); a skipped message is `suppressed` with its reason |
-| M1.6 | A guard on each store's sending | S | Open | Bounce and complaint rates per store over 7 days; above the line (Google asks bulk senders to stay under 0.1 % spam reports) broadcasts pause and the owner is told why. It protects every store's mail until M1.1 |
+| M1.6 | A guard on each store's sending | S | Done, 17 Nov 2026 (2c315c24, D730) | Bounce and complaint rates per store over 7 days; above the line (Google asks bulk senders to stay under 0.1 % spam reports) broadcasts pause and the owner is told why. It protects every store's mail until M1.1 |
 
 ## Phase 2: one flow engine
 

@@ -242,7 +242,7 @@ export const ROLE_TEMPLATES: Record<RoleTemplateKey, { name: string; description
   },
   marketing: {
     name: "Marketing",
-    description: "Runs campaigns, coupons, tests and emails, and reads the figures.",
+    description: "Runs discounts, tests and emails, and reads the figures.",
     permissions: normalisePermissions(["marketing:write", "analytics:read", "products:read", "customers:read"]),
   },
   content: {

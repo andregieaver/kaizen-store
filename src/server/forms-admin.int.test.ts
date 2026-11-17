@@ -13,6 +13,7 @@ delete process.env.RESEND_API_KEY;
 
 const admin = await import("./forms-admin");
 const { submitForm } = await import("./forms");
+const { fileForStaff, pruneFormFiles, standInFormFiles } = await import("./form-files");
 
 type Row = Record<string, unknown>;
 
@@ -129,6 +130,85 @@ describe("forms as their own records (D705)", () => {
     await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid and (id = ${pageId}::uuid or slug = ${`draft-${run}`})`);
     expect(await admin.deleteForm(actor(), made.id)).toEqual({ ok: true, responses: 1 });
     expect((await db().execute(sql`select 1 from commerce.form_responses where form_id = ${made.id}::uuid`)).length).toBe(0);
+  });
+
+  it("keeps a hidden field's value from the address the form was sent on (D738 F6a), in the response and its file", async () => {
+    const draft = contactDraft();
+    const made = await admin.saveForm(actor(), null, {
+      ...draft,
+      questions: [...draft.questions, { id: "camp", kind: "hidden", label: { text: "Campaign", byLocale: {} }, param: "utm_campaign" }],
+    });
+    if (!made.ok) throw new Error("made");
+    await placeOnPage(made.id, `kampanje-${run}`);
+    const values = { q1: "Ada", q2: `ada-${run}@example.com`, q3: "Hello", camp: "typed by a robot" };
+    const at = (address: string) => submitForm({ store: storeId, block: made.id, values, consent: false, website: "", lang: "en", path: address, elapsed: 5000 }, `visitor-${Math.random()}`);
+    expect((await at(`/kampanje-${run}?utm_campaign=winter-sale&utm_source=news`)).status).toBe(200);
+    expect((await at(`/kampanje-${run}`)).status).toBe(200);
+    const { responses } = await admin.listResponses(storeId, made.id);
+    const [plain, campaign] = responses;
+    expect(campaign.answers).toContainEqual({ label: "Campaign", value: "winter-sale" });
+    // Never what the browser sent for it, and left out when the address has none.
+    expect(JSON.stringify(responses)).not.toContain("typed by a robot");
+    expect(plain.answers.some((a) => a.label === "Campaign")).toBe(false);
+    const file = await admin.exportResponses(actor(), made.id, "Europe/Oslo");
+    expect(file?.csv.split("\r\n")[0]).toContain("Campaign");
+    expect(file?.csv).toContain("winter-sale");
+  });
+
+  it("keeps a file sent with a form privately, for staff to download, and refuses one that is not a picture or a clean PDF (D738 F6b)", async () => {
+    const kept = new Map<string, Uint8Array>();
+    standInFormFiles({
+      upload: async (p, bytes) => (kept.has(p) ? false : (kept.set(p, bytes), true)),
+      download: async (p) => kept.get(p) ?? null,
+      remove: async (paths) => (paths.forEach((p) => kept.delete(p)), true),
+      list: async (folder) => {
+        const depth = folder === "" ? 0 : folder.split("/").length;
+        const names = [...kept.keys()].filter((k) => folder === "" || k.startsWith(`${folder}/`)).map((k) => k.split("/")[depth]);
+        return [...new Set(names)].map((name) => ({ name, createdAt: "2026-01-01T00:00:00Z" }));
+      },
+    });
+    try {
+      const draft = contactDraft();
+      const made = await admin.saveForm(actor(), null, {
+        ...draft,
+        questions: [...draft.questions, { id: "receipt", kind: "file", label: { text: "Receipt", byLocale: {} }, required: true }],
+      });
+      if (!made.ok) throw new Error("made");
+      await placeOnPage(made.id, `kvittering-${run}`);
+      const values = { q1: "Ada", q2: `ada-${run}@example.com`, q3: "Here it is", receipt: "says the browser" };
+      const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
+      const withFile = (bytes: Uint8Array, name = "C:\\fakepath\\Kvittering.pdf") =>
+        submitForm({ store: storeId, block: made.id, values, consent: false, website: "", lang: "en", path, elapsed: 5000 }, `visitor-${Math.random()}`, { receipt: { name, bytes } });
+
+      // Without a file, a required file question is told so; a program, or a PDF that runs a script, is refused.
+      expect(await send(made.id, values)).toMatchObject({ status: 422, body: { errors: { receipt: expect.any(String) } } });
+      expect(await withFile(new TextEncoder().encode("MZ a program"), "x.exe")).toMatchObject({ status: 422, body: { errors: { receipt: expect.stringMatching(/picture or a PDF/) } } });
+      const script = new TextEncoder().encode("%PDF-1.7\n1 0 obj << /OpenAction << /S /JavaScript /JS (app.alert(1)) >> >> endobj\n%%EOF\n");
+      expect(await withFile(script)).toMatchObject({ status: 422 });
+      expect(kept.size).toBe(0);
+
+      expect(await withFile(pdf)).toMatchObject({ status: 200 });
+      const { responses } = await admin.listResponses(storeId, made.id);
+      expect(responses).toHaveLength(1);
+      const [response] = responses;
+      expect(response.files).toEqual([{ question: "receipt", name: "Kvittering.pdf", bytes: pdf.byteLength }]);
+      expect(response.answers).toContainEqual({ label: "Receipt", value: "Kvittering.pdf (1 kB)" });
+      expect(JSON.stringify(response.answers)).not.toContain("says the browser");
+
+      // Staff of the store download it; another store, or another response, finds nothing.
+      const file = await fileForStaff(storeId, made.id, response.id, "receipt");
+      expect(file).toMatchObject({ name: "Kvittering.pdf", type: "application/pdf" });
+      expect(file?.bytes).toEqual(pdf);
+      expect(await fileForStaff(otherStoreId, made.id, response.id, "receipt")).toBeNull();
+      expect(await fileForStaff(storeId, made.id, crypto.randomUUID(), "receipt")).toBeNull();
+
+      // Its response deleted, the sweep removes the file.
+      await admin.deleteResponses(actor(), made.id, [response.id]);
+      expect(await pruneFormFiles({ now: Date.now() })).toEqual({ removed: 1 });
+      expect(kept.size).toBe(0);
+    } finally {
+      standInFormFiles(undefined);
+    }
   });
 
   it("keeps a sign-up that needs no confirmation as a response", async () => {

@@ -78,7 +78,7 @@ Customers share a link. A friend's first order gets a welcome discount, and the 
 needs the bonus program on.
 
 1. Open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on **Referral program**.
-2. Open **Marketing** and choose [Referral program](/admin/{store}/affiliates).
+2. Open **Marketing** and choose [Refer a friend](/admin/{store}/affiliates).
 3. Tick **The referral program is on**, check the settings, and press **Save**.
 
 Every signed-in customer gets a link the first time they open **Refer a friend** in My account; nobody has to be approved. The friend

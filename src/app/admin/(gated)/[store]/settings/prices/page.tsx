@@ -34,7 +34,7 @@ export default async function PriceDisplayPage({ params }: PageProps<"/admin/[st
   return (
     <AdminTextScope texts={adminTexts(lang, ["settings"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={w.description} />
+        <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         <PriceDisplayForm
           display={display}
           places={{

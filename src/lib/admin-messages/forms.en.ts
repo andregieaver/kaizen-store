@@ -34,6 +34,16 @@ export const formsEn = {
 
   tabs: { form: "Form", responses: "Responses", settings: "Settings" },
   editor: {
+    payment: "Payment",
+    paymentHint: "Visitors pay for one of your products after sending, at your checkout: its price, VAT and terms as any order. The response shows the order once it is paid.",
+    paymentFind: "Find a product",
+    paymentSearch: "Search",
+    paymentNone: "No product sold once at a price has those words.",
+    paymentRemove: "No payment",
+    param: "Part of the address",
+    paramHint: "Visitors never see this field. It keeps the value of this part of the page's address with the response: with utm_campaign, an address ending ?utm_campaign=winter keeps \"winter\".",
+    hiddenName: "Name in the responses",
+    hiddenNamePlaceholder: "Campaign",
     name: "Name",
     nameHint: "Only you see it.",
     sendTo: "Email responses to",
@@ -113,6 +123,10 @@ export const formsEn = {
     noAccess: "You can see this form but not change it.",
   },
   responses: {
+    paid: "Paid · order {number}",
+    unpaid: "Not paid yet",
+    openOrder: "Open order {number}",
+    files: "Files sent with it",
     none: "No responses yet. They show here as visitors send the form.",
     noneArchived: "No archived responses.",
     showArchived: "Archived",

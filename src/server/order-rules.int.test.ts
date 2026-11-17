@@ -93,7 +93,7 @@ describe("a rule tags, notifies and holds a paid order, once (C3)", () => {
     expect(String(notes[0].text)).toContain("Check the stock before sending");
     // The new-order email says the order was held by a rule (rules run first).
     const [alert] = await db().execute<Row>(sql`select text from commerce.email_messages where store_id = ${store.storeId}::uuid and kind = 'staff.new_order' and order_id = ${order.orderId}::uuid`);
-    expect(String(alert.text)).toContain("On hold by a rule");
+    expect(String(alert.text)).toContain("On hold by a workflow");
 
     // Processing the same event again: no second run, tag, hold or email.
     await db().execute(sql`update commerce.store_events set rules_done_at = null, alerts_done_at = null where subject_id = ${order.orderId}::uuid`);

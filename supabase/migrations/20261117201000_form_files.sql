@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."form_responses" ADD COLUMN "files" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."form_responses" ADD CONSTRAINT "form_responses_files" CHECK (jsonb_typeof("commerce"."form_responses"."files") = 'array' and jsonb_array_length("commerce"."form_responses"."files") <= 3);

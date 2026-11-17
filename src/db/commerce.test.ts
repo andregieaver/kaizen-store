@@ -6925,6 +6925,16 @@ describe("usage and limits (D314)", () => {
     await expect(db.query("insert into commerce.store_usage_daily (store_id, day, metric, value) values ($1, '2026-10-02', 'requests', -1)", [store])).rejects.toThrow();
   });
 
+  it("keeps cache events per day, family, subject and caller, and refuses an unknown kind or caller", async () => {
+    const insert = "insert into commerce.cache_events_daily (day, kind, family, subject, source, count, statements) values ($1, $2, 'store', 'demo', $3, 1, 0)";
+    await db.query(insert, ["2026-11-12", "refresh", "job"]);
+    await expect(db.query(insert, ["2026-11-12", "refresh", "job"])).rejects.toThrow(/cache_events_daily_day_kind_family_subject_source_pk/);
+    await expect(db.query(insert, ["2026-11-12", "x", "job"])).rejects.toThrow(/cache_events_daily_kind/);
+    await expect(db.query(insert, ["2026-11-12", "refresh", "x"])).rejects.toThrow(/cache_events_daily_source/);
+    const row = await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.cache_events_daily'::regclass");
+    expect(row.on).toBe(true);
+  });
+
   it("keeps one limit per plan and key, a platform default once, and an override for exactly one store or owner", async () => {
     await db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'products', 500)");
     await expect(db.query("insert into commerce.plan_limits (plan_id, key, value) values (null, 'products', 600)")).rejects.toThrow();
@@ -8446,11 +8456,35 @@ describe("forms as their own records (D705)", () => {
     await db.query("update commerce.form_responses set state = 'read' where id = $1", [id]);
     await expect(db.query(`update commerce.form_responses set answers = '[{"label":"x","value":"y"}]' where id = $1`, [id])).rejects.toThrow(/form_responses\.fixed/);
     await expect(db.query("update commerce.form_responses set contact_email = 'b@example.com' where id = $1", [id])).rejects.toThrow(/form_responses\.fixed/);
+    // Its files (D738 F6b) are what was sent too, and a response carries at most three.
+    await expect(db.query(`update commerce.form_responses set files = '[{"question":"q"}]' where id = $1`, [id])).rejects.toThrow(/form_responses\.fixed/);
+    await expect(
+      db.query(`insert into commerce.form_responses (form_id, answers, path, locale, delivery, files) values ($1, '[]', '/', 'nb', 'sent', '[{},{},{},{}]')`, [form]),
+    ).rejects.toThrow(/form_responses_files/);
     await expect(
       db.query("insert into commerce.form_responses (form_id, answers, contact_email, path, locale, delivery) values ($1, '[]', 'A@example.com', '/', 'nb', 'sent')", [form]),
     ).rejects.toThrow(/form_responses_contact/);
     await db.query("delete from commerce.forms where id = $1", [form]);
     expect((await db.query("select 1 from commerce.form_responses where id = $1", [id])).rows).toHaveLength(0);
+  });
+});
+
+describe("payments in a form (D738 F6c)", () => {
+  it("lets a store's message form pay only for the store's own variant, and keeps which cart a response went on to pay with", async () => {
+    const mine = await createProduct({ storeId: store });
+    const theirs = await createProduct({ storeId: other });
+    const { id } = await one<{ id: string }>("insert into commerce.forms (store_id, kind, name, payment_variant_id) values ($1, 'message', 'Course', $2) returning id", [store, mine.variantId]);
+    await expect(db.query("update commerce.forms set payment_variant_id = $2 where id = $1", [id, theirs.variantId])).rejects.toThrow(/forms\.payment/);
+    await expect(db.query("insert into commerce.forms (store_id, kind, name, signup, payment_variant_id) values ($1, 'signup', 'News', '{}', $2)", [store, mine.variantId])).rejects.toThrow(/forms_payment/);
+    await expect(db.query("insert into commerce.forms (store_id, kind, name, payment_variant_id) values (null, 'message', 'Ours', $1)", [mine.variantId])).rejects.toThrow(/forms[._]payment/);
+    const { id: response } = await one<{ id: string }>("insert into commerce.form_responses (form_id, answers, path, locale, delivery) values ($1, '[]', '/', 'en', 'sent') returning id", [id]);
+    await expect(
+      db.query("insert into commerce.form_payments (response_id, store_id, cart_id, variant_id) values ($1, $2, gen_random_uuid(), $3)", [response, other, mine.variantId]),
+    ).rejects.toThrow(/form_payments\.store/);
+    await db.query("insert into commerce.form_payments (response_id, store_id, cart_id, variant_id) values ($1, $2, gen_random_uuid(), $3)", [response, store, mine.variantId]);
+    await expect(db.query("update commerce.form_payments set cart_id = gen_random_uuid() where response_id = $1", [response])).rejects.toThrow(/form_payments\.fixed/);
+    await db.query("delete from commerce.forms where id = $1", [id]);
+    expect((await db.query("select 1 from commerce.form_payments where response_id = $1", [response])).rows).toHaveLength(0);
   });
 });
 

@@ -5,6 +5,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { UsageMetric } from "@/lib/usage-metrics";
 
+import { pruneCacheEvents } from "./cache-events";
 import { log } from "./log";
 import { aiCostSql, domainsSql, emailsSql, productsSql, recordingsSql, staffSql } from "./usage-sql";
 
@@ -56,7 +57,7 @@ export type MeasureResult = { day: string; written: number };
 export async function measureDay(day: string, gaugesToo: boolean): Promise<MeasureResult> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error(`Not a day: ${day}`);
   const statements = [...(gaugesToo ? gauges(day) : []), ...counters(day)];
-  return db().transaction(async (tx) => {
+  const result = await db().transaction(async (tx) => {
     await tx.execute(sql`select set_config('statement_timeout', '120s', true)`);
     let written = 0;
     for (const statement of statements) {
@@ -65,6 +66,9 @@ export async function measureDay(day: string, gaugesToo: boolean): Promise<Measu
     }
     return { day, written };
   });
+  // The cache events keep 90 days (bloat review step 1.25).
+  await pruneCacheEvents().catch((error: unknown) => log("warn", "cache.events_prune_failed", {}, error));
+  return result;
 }
 
 /** Usage rows older than 25 months go (D314), and hourly traffic older than 35 days (D669); never throws. */

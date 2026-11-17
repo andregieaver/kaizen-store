@@ -29,6 +29,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   ai_usage: "record",
   analytics_alert_sends: "record",
   api_tokens: "secret",
+  // Which cart a form's response went on to pay with (D738 F6c): about a person's response, gone with it.
+  form_payments: "record",
   // A picture an Admin API caller was sending (D440): its token's, gone a day after.
   api_uploads: "record",
   // Which app an owner cut off for which person (D439): about a connection, set again after a move.
@@ -39,6 +41,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   assistant_conversations: "record",
   audit_log: "record",
   autopilot_event_checks: "record",
+  // Which A/B tests the autopilot started for its own changes and how the store decided them (E4.1, D729); the tests are in the file.
+  autopilot_tests: "record",
   booking_seasons: "catalogue",
   broadcast_link_clicks: "record",
   broadcasts: "record",
@@ -64,6 +68,10 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   document_pdf_state: "record",
   document_series: "record",
   domain_registrations: "secret",
+  // A store's own sending domain (D727): verified at Resend for this store, so set again after a move.
+  sending_domains: "secret",
+  // The sending guard's hold (D730): a state of the original's sending, not its settings.
+  sending_pauses: "record",
   feed_settings: "secret",
   field_search: "record",
   google_places: "record",

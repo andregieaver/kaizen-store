@@ -195,6 +195,8 @@ export const homeEn = {
     progressSub: "The essentials every store needs",
     everythingElse: "Everything else",
     everythingElseSub: { one: "{n} more setting most stores never change", many: "{n} more settings most stores never change" },
+    show: "Show",
+    hide: "Hide",
     groups: { paid: "Get paid", deliver: "Sell and deliver", business: "Your business and team", look: "Look and legal", tools: "Tools" },
     labels: { billing: "Your plan", tax: "VAT" },
     state: {
@@ -293,6 +295,10 @@ export const homeEn = {
     blogComments: {
       one: "{store}: {n} comment on your articles is waiting to be checked.",
       many: "{store}: {n} comments on your articles are waiting to be checked.",
+    },
+    unansweredQuestions: {
+      one: "{store}: your chat assistant could not answer {n} question. Write the answer once, and it can answer it next time.",
+      many: "{store}: your chat assistant could not answer {n} questions. Write the answers once, and it can answer them next time.",
     },
     booksDiffer: { one: "{store}: {n} document in the books differs from Tripletex.", many: "{store}: {n} documents in the books differ from Tripletex." },
     booksWaiting: { one: "{store}: {n} document has waited more than a week to be posted to the books.", many: "{store}: {n} documents have waited more than a week to be posted to the books." },

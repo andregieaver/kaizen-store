@@ -25,7 +25,7 @@ const html = (element: Parameters<typeof renderToString>[0]) =>
 
 const action = async () => ({ status: "ok" as const, messages: [] });
 
-describe("the activity log", () => {
+describe("the change log", () => {
   const entry = (over: Partial<ActivityEntry> = {}): ActivityEntry => ({
     id: 7,
     at: "2026-10-03T08:30:00.000Z",
@@ -311,7 +311,7 @@ describe("the page checker's panel", () => {
     expect(out).toContain("This page has 2 problems to look at");
     expect(out).toContain("Publish anyway");
     expect(out).toContain("Fix first");
-    expect(out).toContain("written down in the activity log");
+    expect(out).toContain("written down in the change log");
     expect(html(createElement(PublishWithIssuesDialog, { issues: [issue], busy: true, onPublishAnyway: () => {}, onFixFirst: () => {} }))).toContain("This page has a problem to look at");
   });
 });

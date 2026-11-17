@@ -86,6 +86,7 @@ import { PriceBreaksSection } from "@/components/admin/price-breaks-section";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
 import { OperatorPicker } from "@/components/admin/operator-picker";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { MakePictureButton, PictureMakerProvider, type PictureMaker } from "@/components/admin/picture-maker";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -381,6 +382,8 @@ export function ProductEditor(props: Props) {
         languageNames={languageNames}
       />
       </div>
+      {/* Round 36 (D724): a new product starts on a phone with its title and description, what everyone fills in first. */}
+      <div className={productId === null ? "max-md:-order-3" : undefined}>
       <TextSection
         product={product}
         update={update}
@@ -391,6 +394,7 @@ export function ProductEditor(props: Props) {
         productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
         suggest={(request) => suggestTextAction(storeSlug, productId, request)}
       />
+      </div>
       {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
       <div className="flex flex-col gap-6 max-md:-order-1">
       {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
@@ -434,6 +438,15 @@ export function ProductEditor(props: Props) {
         />
       )}
       </div>
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow
+        flat
+        last
+        title={w.terms.title}
+        sub={product.categories.length + product.tags.length === 0 ? w.terms.phone.none : countWords(product.categories.length + product.tags.length, w.terms.phone.chosen)}
+        change={w.terms.phone.change}
+        done={w.terms.phone.done}
+      >
       <section aria-labelledby="terms-heading" className={card}>
         <h2 id="terms-heading" className="mb-1 text-title text-ink">
           {w.terms.title}
@@ -467,6 +480,8 @@ export function ProductEditor(props: Props) {
           </label>
         )}
       </section>
+      </PhoneRow>
+      </div>
       <EntityFields
         groups={fieldGroups}
         data={fieldData}
@@ -2995,6 +3010,7 @@ function PriceWordsSection({
 function KindSection({ product, update, offered }: SectionProps & { offered: Record<ProductInput["kind"], boolean> }) {
   // Content for the unit price goes with a change to something that is not goods (D160): said once, where it happened.
   const w = useAdminText("product").kind;
+  const rowWords = useAdminText("product").terms.phone;
   const [lostContent, setLostContent] = useState(false);
   const choose = (kind: ProductInput["kind"]) => {
     setLostContent(kind !== "goods" && product.variants.some((v) => v.measure !== null));
@@ -3036,23 +3052,26 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
       };
     });
   };
+  const kinds = [
+    ["goods", w.goods, w.goodsNote],
+    ["appointment", w.appointment, w.appointmentNote],
+    ["stay", w.stay, w.stayNote],
+    ["rental", w.rental, w.rentalNote],
+    ["gift_card", w.giftCard, w.giftCardNote],
+    ["bundle", w.bundle, w.bundleNote],
+  ] as const;
+  const current = kinds.find(([value]) => value === product.kind);
+  // Round 36 (D724): on a phone what the product is, is one row saying the kind.
   return (
+    <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+    <PhoneRow flat last title={w.title} sub={current ? `${current[1]} · ${current[2]}` : undefined} change={rowWords.change} done={rowWords.done}>
     <section aria-labelledby="kind-heading" className={card}>
       <fieldset>
         <legend id="kind-heading" className="mb-3 font-medium">
           {w.title}
         </legend>
         <div className="flex flex-wrap gap-2 text-sm">
-          {(
-            [
-              ["goods", w.goods, w.goodsNote],
-              ["appointment", w.appointment, w.appointmentNote],
-              ["stay", w.stay, w.stayNote],
-              ["rental", w.rental, w.rentalNote],
-              ["gift_card", w.giftCard, w.giftCardNote],
-              ["bundle", w.bundle, w.bundleNote],
-            ] as const
-          ).filter(([value]) => offered[value]).map(([value, name, note]) => (
+          {kinds.filter(([value]) => offered[value]).map(([value, name, note]) => (
             <label
               key={value}
               className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-line p-3 has-checked:border-brand sm:flex-none"
@@ -3078,6 +3097,8 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
         </p>
       )}
     </section>
+    </PhoneRow>
+    </div>
   );
 }
 

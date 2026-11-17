@@ -155,6 +155,91 @@ test("asks a question only when an earlier answer holds (F3)", async ({ page: p,
   await visitor.close();
 });
 
+test("keeps a campaign from the address the form was sent on (F6a)", async ({ page: p, browser }) => {
+  await p.goto(`${base}/${formId}`);
+  await p.locator("[data-form-add]").click();
+  const hidden = p.locator("[data-question]").last();
+  await hidden.locator("select").first().selectOption("hidden");
+  await expect(hidden.locator("[data-param]")).toHaveValue("utm_campaign");
+  await hidden.getByLabel("Name in the responses").fill("E2E campaign");
+  await shoot(p, "12-hidden-field");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+
+  const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const site = await visitor.newPage();
+  await site.goto(`/s/${E2E_STORE}/${slug}?utm_campaign=e2e-winter`);
+  const form = site.locator("form").filter({ has: site.getByRole("textbox", { name: /order number/i }) });
+  await expect(form).toBeVisible();
+  // Never asked: the visitor sees no field for it.
+  await expect(form.getByText("E2E campaign")).toHaveCount(0);
+  await form.getByRole("textbox").nth(0).fill("Ada Campaign");
+  await form.getByRole("textbox").nth(1).fill("ada.campaign@example.com");
+  await form.getByRole("textbox").nth(2).fill("From the winter mail");
+  await site.waitForTimeout(2200);
+  await form.getByRole("button").click();
+  await expect(site.locator("p[role=status]").first()).toBeVisible();
+  await visitor.close();
+
+  await p.goto(`${base}/responses/${formId}`);
+  const row = p.locator("[data-response]").filter({ hasText: "ada.campaign@example.com" });
+  await row.getByRole("button").first().click();
+  await expect(row).toContainText("E2E campaign");
+  await expect(row).toContainText("e2e-winter");
+  await shoot(p, "13-hidden-response");
+});
+
+test("asks for a file, drawing a picture again in the browser and refusing a program (F6b)", async ({ page: p, browser }) => {
+  await p.goto(`${base}/${formId}`);
+  await p.locator("[data-form-add]").click();
+  const file = p.locator("[data-question]").last();
+  await file.locator("select").first().selectOption("file");
+  await file.getByLabel("Question", { exact: true }).fill("E2E photo");
+  await shoot(p, "14-file-question");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+
+  const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const site = await visitor.newPage();
+  await site.goto(`/s/${E2E_STORE}/${slug}`);
+  const form = site.locator("form").filter({ has: site.getByRole("textbox", { name: /order number/i }) });
+  await expect(form.locator("[data-file-input]")).toHaveCount(1);
+  // A program is refused at once, in the visitor's language (the store's is Norwegian).
+  await form.locator("[data-file-input]").setInputFiles({ name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") });
+  await expect(form.getByText(/kan ikke tas imot/)).toBeVisible();
+  // A picture (a PNG, drawn again as a WebP) is taken.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGM4YaOBFTEMLQkAdntLARs7+acAAAAASUVORK5CYII=", "base64");
+  await form.locator("[data-file-input]").setInputFiles({ name: "IMG_0042.png", mimeType: "image/png", buffer: png });
+  await expect(form.locator("[data-file-chosen]")).toContainText(/IMG_0042\.(webp|jpg)/);
+  await shoot(site, "15-site-file");
+  // Storing and downloading need the private bucket, which this build has not: src/server/forms-admin.int.test.ts sends a file to an
+  // in-memory one, and downloads it as staff.
+  await form.locator("[data-file-chosen] button").click();
+  await expect(form.locator("[data-file-chosen]")).toHaveCount(0);
+  await visitor.close();
+});
+
+test("asks for a payment with one of the store's products (F6c)", async ({ page: p }) => {
+  await p.goto(`${base}/${formId}`);
+  const card = p.locator("[data-form-payment]");
+  await expect(card).toBeVisible();
+  // Found by its name, chosen, saved, and still chosen after a reload; No payment takes it off again.
+  await card.locator("[data-payment-query]").fill("Keramikkopp");
+  await card.getByRole("button", { name: "Search" }).click();
+  await card.locator("[data-payment-results] button").first().click();
+  await expect(card.locator("[data-payment-chosen]")).toContainText("Keramikkopp");
+  await shoot(p, "17-payment");
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+  await p.reload();
+  await expect(p.locator("[data-payment-chosen]")).toContainText("Keramikkopp");
+  await p.locator("[data-payment-chosen]").getByRole("button", { name: "No payment" }).click();
+  await p.locator("[data-form-save]").click();
+  await expect(p.getByRole("status")).toHaveText("Saved.");
+  await p.reload();
+  await expect(p.locator("[data-payment-chosen]")).toHaveCount(0);
+});
+
 test("saves a form as a template and starts a new form from it (F4)", async ({ page: p }) => {
   await p.goto(`${base}/${formId}`);
   const card = p.locator("[data-save-template]");
@@ -174,8 +259,8 @@ test("saves a form as a template and starts a new form from it (F4)", async ({ p
   await expect(p).toHaveURL(new RegExp(`${base}/[0-9a-f-]{36}$`));
   expect(p.url()).not.toContain(formId);
   await expect(p.locator("[data-form-name]")).toHaveValue("E2E Contact template");
-  // It asks what the form asked, and sends to the owner's own address, ready to place.
-  await expect(p.locator("[data-question]")).toHaveCount(6);
+  // It asks what the form asked (F6a and F6b added a hidden field and a file), and sends to the owner's own address, ready to place.
+  await expect(p.locator("[data-question]")).toHaveCount(8);
   await expect(p.locator("[data-form-recipients]")).not.toHaveValue("");
   await p.locator("[data-form-name]").fill("E2E From template");
   await p.locator("[data-form-save]").click();

@@ -257,6 +257,16 @@ The findings cover:
 Serious findings go to Home's attention list and the control center (`attentionFor()`, a `{ one, many }` pair in both `home` catalogues).
 The AI manager repeats them and never makes one up.
 
+**The domain watch (ecosystem plan E4.2, D729).** The checks above run when the page opens. Once a day each active domain of an open store
+(the house store's too) is also asked whether it still serves the store (`watchDomains()`, `src/server/domain-watch.ts`, the dispatcher's
+`domainWatch`, 20 a run, those asked longest ago first): `https://{domain}/api/health` at the public address its name has then; the store's
+own health answer is fine, a TLS error is a failing certificate (`certificate_failing`), another site's answer, a name with no address or
+nothing listening is a domain that points away (`points_away`), and a time-out, a redirect or a server error is not known, never a failure.
+For a domain registered elsewhere, the registry's expiry and registrar (RDAP) are kept with it. The answer is kept in the connection's
+checks (`checks.watch`, the only thing the watch writes) and read for three days (`WATCH_FRESH_DAYS`) by `domainHealth()`: on this page,
+in `check_domain`, and by the analytics alert *A domain needs a look* (`domain-problem`, `docs/analytics.md`), which reads only what is
+kept and never asks the world on a page view. kaizenaflow.com itself is the platform's own domain, not a store's, and is not watched yet.
+
 ### 5.4 Moving DNS here (for a domain registered elsewhere)
 
 *Let Kaizena Flow handle DNS* is the step that ends the headache for domains bought elsewhere:

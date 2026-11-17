@@ -412,7 +412,7 @@ export const inventoryEn = {
       failed: "Not saved",
       written: "What was imported",
       stopped: "What was imported before it stopped",
-      reference: "Reference for the activity log and the history:",
+      reference: "Reference for the change log and the history:",
       referenceEnd: "Each change is in the stock history with the reason of its row.",
     },
     will: { update: "Would be changed", unchanged: "Unchanged", conflict: "Out of date: left alone", skip: "Would be skipped", checked: "Checked" },

@@ -220,6 +220,18 @@ export const fieldsNb: FieldsMessages = {
     notHere: "Ikke her: ren HTML, skript og CSS. Sidene og nettstedets egen kode har egne steder for det.",
   },
   group: {
+    phone: {
+      everywhere: "Overalt der den kan være",
+      rules: { one: "{n} sett med regler", many: "{n} sett med regler" },
+      fromName: "Laget av navnet",
+      on: "på",
+      off: "av",
+      change: "Endre",
+      done: "Ferdig",
+      open: "Åpne",
+      close: "Lukk",
+      previewSub: "Skjemaet de ansatte får",
+    },
     fixFirst: "Ingenting er lagret ennå. Rett opp dette:",
     added: "Felt av typen {type} lagt til.",
     confirmDelete: "Slette feltet {label}? Det som er skrevet inn i det, slettes når du lagrer gruppen.",

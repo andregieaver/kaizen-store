@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { deleteDiscountAction, generateCodesAction } from "../actions";
 import { DiscountForm } from "../discount-form";
 
-export const metadata: Metadata = { title: "Coupon" };
+export const metadata: Metadata = { title: "Discount code" };
 
 export default async function DiscountPage({ params }: PageProps<"/admin/[store]/discounts/[discountId]">) {
   const { store: slug, discountId } = await params;

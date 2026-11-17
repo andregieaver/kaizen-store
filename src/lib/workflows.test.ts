@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { z } from "zod";
-
+import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 import {
   actionsFor,
   conditionHolds,
-  draftWorkflowInputSchema,
   fieldsFor,
   needsPaidFacts,
   PAID_ORDER_FIELDS,
@@ -164,14 +162,10 @@ describe("what an order rule knew, as fields of a paid order (ecosystem plan E3.
     expect(workflowInputSchema.safeParse({ ...base, actions: [{ kind: "hold_order", reason: "x".repeat(201) }] }).success).toBe(false);
   });
 
-  it("keeps the AI manager's draft_workflow as it was until its release step: five operators, 200 characters and no hold", () => {
-    expect(draftWorkflowInputSchema.safeParse(base).success).toBe(false);
-    expect(draftWorkflowInputSchema.safeParse({ ...base, actions: [{ kind: "tag_order", tag: "x" }], conditions: [{ field: "order.total", op: "at_least", value: "1" }] }).success).toBe(false);
-    expect(draftWorkflowInputSchema.safeParse({ ...base, actions: [{ kind: "tag_order", tag: "x" }], conditions: [{ field: "order.total", op: "more_than", value: "1" }] }).success).toBe(true);
-    const json = JSON.stringify(z.toJSONSchema(draftWorkflowInputSchema));
-    expect(json).toContain('"enum":["is","is_not","contains","more_than","less_than"]');
-    expect(json).not.toContain("hold_order");
-    // The store's own editor takes a rule's list of products.
-    expect(workflowInputSchema.safeParse({ ...base, conditions: [{ field: "order.products", op: "is_one_of", value: "x".repeat(1900) }] }).success).toBe(true);
+  it("lets the AI manager's draft_workflow do what the editor does: the new operators, a rule's list of products and the hold", () => {
+    const input = OWNER_TOOLS_BY_NAME.draft_workflow.input;
+    expect(input.safeParse(base).success).toBe(true);
+    expect(input.safeParse({ ...base, conditions: [{ field: "order.products", op: "is_one_of", value: "x".repeat(1900) }] }).success).toBe(true);
+    expect(input.safeParse({ ...base, conditions: [{ field: "order.total", op: "at_least", value: "1" }] }).success).toBe(true);
   });
 });

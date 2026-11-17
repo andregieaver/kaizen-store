@@ -16,6 +16,9 @@ import type { Account } from "./auth";
 import { aboutStoreOf, kaizenToolsFor } from "./support-kaizen";
 import { supportToolsFor, type SupportCustomer } from "./support-tools";
 import { chatPromptVersion } from "./prompt-versions";
+import { gapOf } from "@/lib/unanswered-questions";
+import { log } from "./log";
+import { keepUnanswered } from "./unanswered-questions";
 
 /**
  * The AI's answer in a support conversation (D216, `docs/support.md` 5.2): its history comes from the database (the customer's
@@ -90,5 +93,13 @@ export async function runSupportTurn(
   const body = (reply.reply || m.chat.sorry).slice(0, MESSAGE_MAX.ai);
   // The prompt version the answer was written under (D391) is kept with it, for the desk; the visitor's feed leaves it out.
   await addMessage(desk, conversationId, "ai", null, body, { data: { ...data, prompt: chatPromptVersion() }, ...(reply.action ? { action: reply.action } : {}) });
+  // A question the answer stood on nothing for goes to the site's gap list (ecosystem plan E4.3): the customer's last message, as code saw
+  // it (`gapOf()`). Never in the way of the answer: a failure is logged with ids only.
+  const signal = gapOf(reply);
+  if (signal) {
+    await keepUnanswered(desk, { conversationId, lang: context.lang, words: history.at(-1)!.body, signal }).catch((error: unknown) =>
+      log("warn", "support.question_not_kept", { storeId: context.storeId, conversationId, signal }, error),
+    );
+  }
   return { reply, ...(reply.handoff ? { handoff: reply.handoff, ...(reply.escalation ? { escalation: reply.escalation } : {}) } : {}) };
 }

@@ -32,7 +32,7 @@ const form = (over: Partial<AffiliateSettings> = {}, props: Record<string, unkno
 describe("the referral settings form", () => {
   it("shows the program off, what it does and what turning it on means", () => {
     const out = form();
-    expect(out).toContain("Referral program");
+    expect(out).toContain("Refer a friend");
     expect(out).toContain("The referral program is on");
     expect(out).not.toMatch(/id="affiliate-enabled"[^>]*checked/);
     expect(out).toContain("It is off. Nobody has a link");

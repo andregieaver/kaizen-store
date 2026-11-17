@@ -17,6 +17,7 @@ import { KpiCard } from "./kpi-card";
 import { moneyWriter } from "./overview-text";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { ExportButton, ExportsNeedWrite, TaxStatement } from "./tax-parts";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 /**
  * The VAT view of the VAT, OSS and IOSS page (D161, `docs/wave-1c-reports.md` 2.2): VAT per delivery country, rate and basis from the
@@ -71,6 +72,7 @@ function writers(locale: string) {
 export function TaxView({ base, locale, range, report, reconciliation, drift, canExport, exportProblem, words = taxReportsEn }: TaxViewProps) {
   const w = words;
   const v = w.vat;
+  const p = w.parts.phone;
   const c = v.columns;
   const writer = writers(locale);
   const main = writer(report.mainCurrency);
@@ -147,7 +149,8 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
         ) : null}
       </p>
 
-      <AnalyticsSection id="vat-cards" title={v.cardsTitle} description={fillWords(v.cardsDescription, { currency: report.mainCurrency })}>
+      {/* An empty period says so once on a phone (round 39, D731): the card, without the section's own heading and description. */}
+      <AnalyticsSection id="vat-cards" title={v.cardsTitle} description={fillWords(v.cardsDescription, { currency: report.mainCurrency })} phoneQuiet={documents === 0}>
         {documents === 0 ? (
           <div className="rounded-panel border border-dashed border-line px-4 py-6 text-sm text-muted">
             <p>{v.nothing}</p>
@@ -189,8 +192,12 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
         ) : null}
       </AnalyticsSection>
 
+      {/* On a phone (round 39, D731) the table, the chart and the reconciliation are rows of one card, each saying what it holds. */}
+      <PhoneRows className="gap-8">
+      <PhoneRow title={v.tableTitle} sub={report.rows.length === 0 ? p.noVat : countWords(report.rows.length, p.rows, { n: count(report.rows.length) })} change={p.open} done={p.close}>
       <AnalyticsSection
         id="vat-table"
+        phoneQuiet
         title={v.tableTitle}
         description={v.tableDescription}
         action={
@@ -205,8 +212,10 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
         {!canExport ? <ExportsNeedWrite words={w} /> : null}
         {drift ? <Note tone="warning" title={w.parts.changedSinceExport}>{drift}</Note> : null}
       </AnalyticsSection>
+      </PhoneRow>
 
-      <AnalyticsSection id="vat-chart" title={v.chartSection} description={fillWords(v.chartDescription, { currency: report.mainCurrency })}>
+      <PhoneRow title={v.chartSection} sub={bars.length === 0 ? p.noVat : countWords(bars.length, p.countries, { n: count(bars.length) })} change={p.open} done={p.close}>
+      <AnalyticsSection id="vat-chart" phoneQuiet title={v.chartSection} description={fillWords(v.chartDescription, { currency: report.mainCurrency })}>
         <ChartCard title={v.chartTitle}>
           <HorizontalBars label={v.chartTitle} rows={bars} emptyText={v.tableEmpty} exportable={false} exportReason="tax.vat_chart" />
           <details className="mt-3 text-sm">
@@ -217,16 +226,20 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
           </details>
         </ChartCard>
       </AnalyticsSection>
+      </PhoneRow>
 
+      <PhoneRow last title={w.recon.title} sub={reconciliation ? (reconciliation.balanced ? w.recon.equal : w.recon.notReconciled) : v.reconUnreadable} change={p.open} done={p.close}>
       {reconciliation ? (
-        <ReconciliationPanel view={reconciliation} base={base} locale={locale} range={range} last={last} canExport={canExport} words={w} />
+        <ReconciliationPanel view={reconciliation} base={base} locale={locale} range={range} last={last} canExport={canExport} words={w} phoneQuiet />
       ) : (
-        <AnalyticsSection id="vat-reconciliation" title={w.recon.title}>
+        <AnalyticsSection id="vat-reconciliation" title={w.recon.title} phoneQuiet>
           <Note tone="warning" title={v.reconUnreadable}>
             {v.reconUnreadableText}
           </Note>
         </AnalyticsSection>
       )}
+      </PhoneRow>
+      </PhoneRows>
     </div>
   );
 }
@@ -291,6 +304,7 @@ export function ReconciliationPanel({
   last,
   canExport,
   words = taxReportsEn,
+  phoneQuiet = false,
 }: {
   view: ReconciliationView;
   base: string;
@@ -299,6 +313,8 @@ export function ReconciliationPanel({
   last: string;
   canExport: boolean;
   words?: TaxReportsMessages;
+  /** Inside a phone row that names it (round 39, D731). */
+  phoneQuiet?: boolean;
 }) {
   const w = words;
   const r = w.recon;
@@ -308,6 +324,7 @@ export function ReconciliationPanel({
   return (
     <AnalyticsSection
       id="vat-reconciliation"
+      phoneQuiet={phoneQuiet}
       title={r.title}
       description={r.description}
       action={

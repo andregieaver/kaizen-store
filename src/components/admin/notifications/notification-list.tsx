@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, type FormState } from "@/components/admin/action-form";
 import { SwitchButton } from "@/components/admin/notifications/switch-button";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { countWords } from "@/lib/admin-fill";
 import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
 import { NOTIFICATION_GROUPS, notificationPath, type NotificationGroup } from "@/lib/notifications";
@@ -42,28 +43,40 @@ export function NotificationList({
 }) {
   const groups = NOTIFICATION_GROUPS.map((group) => ({ group, rows: items.filter((i) => i.def.group === group) })).filter((g) => g.rows.length > 0);
   // Round 22 (D687): each group says how many of its emails go out, and each email is one line: its name, and its switch or Always.
+  // Round 41 (D737): on a phone each group is a row of one card, saying how many of its emails go out, opening its list.
   return (
-    <div className="flex flex-col gap-6">
-      {groups.map(({ group, rows }) => {
+    <PhoneRows>
+      {groups.map(({ group, rows }, i) => {
         const on = rows.filter((r) => r.status !== "off").length;
         const note = groupNote(group, handovers, words);
+        const count = countWords(rows.length, words.emails.groupCount, { on });
         return (
-          <section key={group} aria-label={words.emails.groups[group]} className="flex flex-col gap-2">
-            <div className="flex flex-col gap-0.5 px-1">
-              <h2 className="text-body-strong text-ink">
+          <PhoneRow
+            key={group}
+            flat
+            last={i === groups.length - 1}
+            title={words.emails.groups[group]}
+            sub={group === "pickup" && !handovers ? `${count} · ${words.emails.phone.noneOffered}` : count}
+            change={words.emails.phone.open}
+            done={words.emails.phone.close}
+          >
+          <section aria-label={words.emails.groups[group]} className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5 px-1 max-sm:px-0">
+              <h2 className="text-body-strong text-ink max-sm:sr-only">
                 {words.emails.groups[group]} <span className="font-normal text-ink-2">· {countWords(rows.length, words.emails.groupCount, { on })}</span>
               </h2>
               {note && <p className="text-caption text-ink-2">{note}</p>}
             </div>
-            <ul className="divide-y divide-line rounded-lg border border-line bg-card px-4 sm:px-5">
+            <ul className="divide-y divide-line rounded-lg border border-line bg-card px-4 sm:px-5 max-sm:rounded-none max-sm:border-0 max-sm:px-0">
               {rows.map((item) => (
                 <NotificationRow key={item.def.id} item={item} base={base} switchAction={switchAction} words={words} />
               ))}
             </ul>
           </section>
+          </PhoneRow>
         );
       })}
-    </div>
+    </PhoneRows>
   );
 }
 

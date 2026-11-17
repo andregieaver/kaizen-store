@@ -13,10 +13,8 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { formatMoney } from "@/lib/money";
 import { platformAlertsFor } from "@/lib/platform-briefing";
 import { platformCan, requirePlatformReader } from "@/server/auth";
-import { alertText, platformBriefingSetting, platformSnapshot } from "@/server/platform-briefing";
-import { platformOverview } from "@/server/platform-overview";
-import { cronJobRows } from "@/server/cron-runs";
-import { failedWebhookEvents } from "@/server/stripe-webhooks";
+import { platformHomeReads } from "@/server/admin-screens";
+import { alertText } from "@/server/platform-briefing";
 import { jobsNeedingLook } from "@/lib/cron-health";
 import { AdminLink } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -39,13 +37,7 @@ export default async function PlatformOverviewPage() {
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "platform").overview;
   const bw = adminText(lang, "platform").briefing;
-  const [o, jobs, snapshot, briefing, failedEvents] = await Promise.all([
-    platformOverview(),
-    cronJobRows(),
-    platformSnapshot(),
-    platformBriefingSetting(),
-    failedWebhookEvents(),
-  ]);
+  const { o, jobs, snapshot, briefing, failedEvents } = await platformHomeReads();
   const lateJobs = jobsNeedingLook(jobs);
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
   // What the figures raise (D513) that the list below does not already say (requests and overdue plans are there).
