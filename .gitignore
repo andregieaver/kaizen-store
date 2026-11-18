@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Agents' worktrees (each a git checkout of its own)
 /.claude/worktrees/
+
+# The Orbit store's photographs, made by e2e/seed/themed-store.seed.ts (bloat review step 1.6)
+/public/e2e-orbit/

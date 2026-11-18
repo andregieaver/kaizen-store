@@ -164,6 +164,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
+      # Before the build: stores' pages are prerendered from the database (bloat review step 1.6, e2e/performance.spec.ts holds its pages).
+      - name: Seed a store on the Orbit theme (e2e/seed/themed-store.seed.ts)
+        run: pnpm seed:themed
       - run: pnpm build
       # Each built route and page loads in a fresh process, as a cold Vercel function loads it (bloat review step 0.6): a lazy
       # import changes load order, and a route that first loads a module of an import cycle can fail while the same code loads

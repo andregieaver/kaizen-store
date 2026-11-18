@@ -3,6 +3,7 @@ import "server-only";
 import Stripe from "stripe";
 
 import { PAYOUT_EVENTS } from "@/lib/payouts";
+import { stripeEndpoint } from "@/lib/stripe-endpoint";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { platformSecretKey } from "./stripe-keys";
@@ -15,11 +16,15 @@ export { platformModes, platformPublishableKey } from "./stripe-keys";
  */
 export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const;
 
+/** Stripe's own API, or the end-to-end build's stand-in on this machine (`stripeEndpoint()`: never on Vercel, never without the switch). */
+const endpoint = stripeEndpoint({ testUrl: process.env.STRIPE_TEST_URL, allowTest: process.env.STRIPE_ALLOW_TEST_URL, vercel: process.env.VERCEL });
+
 const OPTIONS: Stripe.StripeConfig = {
   apiVersion: STRIPE_API_VERSION,
   maxNetworkRetries: 2,
   timeout: 15_000,
   appInfo: { name: "Kaizena Flow" },
+  ...(endpoint ?? {}),
 };
 
 /** A Stripe client for a store's own secret key (payments before Connect). */

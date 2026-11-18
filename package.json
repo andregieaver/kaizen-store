@@ -18,6 +18,7 @@
     "db:clone": "node scripts/db-template.mjs clone",
     "db:check": "drizzle-kit check && drizzle-kit generate && git diff --exit-code -- supabase && test -z \"$(git ls-files --others --exclude-standard -- supabase)\"",
     "test:int": "vitest run --config vitest.integration.config.mts",
+    "seed:themed": "vitest run --config vitest.seed.config.mts",
     "parity": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs",
     "parity:write": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs write",
     "parity:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/parity.mjs check"

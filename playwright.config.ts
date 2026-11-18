@@ -3,6 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 const port = Number(process.env.PORT ?? 3000);
 // The VIES stand-in's port (e2e/fixtures/vies-stub.mjs).
 const viesPort = Number(process.env.VIES_STUB_PORT ?? 3911);
+// The Stripe API's stand-in (e2e/fixtures/stripe-stub.mjs, bloat review step 1.7): the app's Stripe SDK is pointed at it, and no
+// platform keys are given, so payments stay off unless a spec arranges a store that takes them (e2e/draft-pay.spec.ts relies on that).
+const stripePort = Number(process.env.STRIPE_STUB_PORT ?? 3913);
 // The signed-in admin tests (e2e/signed-in/): only with E2E_SIGNED_IN, in a build whose NEXT_PUBLIC_SUPABASE_URL is the Auth
 // stand-in (e2e/fixtures/auth-stub.mjs, CI's `signed-in` job). Without it they are not projects at all, so a plain run never
 // tries to sign in.
@@ -75,15 +78,24 @@ export default defineConfig({
       env: { VIES_STUB_PORT: String(viesPort) },
     },
     {
+      // A stand-in for Stripe's API; the app below is pointed at it (never honoured on Vercel).
+      command: "node e2e/fixtures/stripe-stub.mjs",
+      url: `http://127.0.0.1:${stripePort}/__health`,
+      reuseExistingServer: !process.env.CI,
+      env: { STRIPE_STUB_PORT: String(stripePort) },
+    },
+    {
       command: `pnpm start --port ${port}`,
       url: `http://localhost:${port}`,
       reuseExistingServer: !process.env.CI,
-      // The scheduler's routes answer to this in tests (e2e/cookie-scan.spec.ts); VIES is the stub (never honoured on Vercel).
+      // The scheduler's routes answer to this in tests (e2e/cookie-scan.spec.ts); VIES and Stripe's API are stubs (never honoured on Vercel).
       env: {
         CRON_SECRET: process.env.CRON_SECRET ?? "e2e-cron-secret",
         SETTINGS_ENCRYPTION_KEY: process.env.SETTINGS_ENCRYPTION_KEY,
         VIES_TEST_URL: `http://127.0.0.1:${viesPort}/check-vat-number`,
         VIES_ALLOW_TEST_URL: "1",
+        STRIPE_TEST_URL: `http://127.0.0.1:${stripePort}`,
+        STRIPE_ALLOW_TEST_URL: "1",
       },
     },
   ],
