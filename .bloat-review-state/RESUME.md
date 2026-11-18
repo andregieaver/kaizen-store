@@ -270,3 +270,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 18 Nov: 1.12 commit 2 pushed 1e7d19649 (journey: fixed plans while measuring, vacuum full; findings: aiFor() reads every store's AI row, +19 rows with 19 stores; 28 KNOWN_READS). CI watched bash bkb9jpahn. If green: claim D for 1.12 (Done), write up.
 - kz-b executor a6c27c9758455bb59 (Opus): 1.19 commits 1-3 (commit 2 has a migration; surface budget may need a raise by me with Idle cost line). Commits 4-5 need owner's eval run on Platform → AI.
 - kz-c executor a7b0e59a44cd73ab3: 1.6 then 1.7 (resumed).
+- 18 Nov: 1.6 (2 commits) + 1.7 c1 (Stripe stand-in, guarded: switch + loopback + not Vercel) pushed 873efcd84; CI watched bash bf3ow98g6 (also bkb9jpahn on 1e7d19649). 1.6 stays In progress (production check of step 4.5 table after phase 2) - write a D-row now anyway? Brief: check. Screenshots sent.
+- kz-c executor a92b7eae36e9a74e8 (Opus): 1.7 commit 2+, option (b) second server with dummy test keys.
