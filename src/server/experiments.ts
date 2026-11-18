@@ -132,62 +132,101 @@ export type PageExperiment = {
   variants: { key: string; slug: string | null }[];
 };
 
+/** A store's running test as `runningTests()` reads it: the page under test (null once it is gone), its place, its goal and its versions. */
+export type RunningTest = {
+  id: string;
+  targetPageId: string;
+  /** The type of the page under test; null when the page is gone (the test still runs). */
+  targetType: string | null;
+  /** The page's place (`commerce.page_place()`): a working page, the front page, the All products page, or none. */
+  targetRole: string | null;
+  primaryGoal: string;
+  goalParams: unknown;
+  /** Every version, by letter: `pageId` is null for the original. */
+  variants: { key: string; pageId: string | null }[];
+};
+
+const RUNNING_TEST = z.object({
+  id: col.uuid,
+  target_page_id: col.uuid,
+  target_type: col.textOrNull,
+  target_role: col.textOrNull,
+  primary_goal: col.text,
+  goal_params: z.unknown(),
+  variants: z.array(z.object({ key: col.text, pageId: col.uuid.nullable() })),
+});
+
 /**
- * The running test on a page, for drawing the page: a marker that tells the browser which version this is, and the
- * variants' pages to read. Cached with the store's tests, so a page without one stays as static as it was.
+ * Every running test of a store, in one statement (bloat review step 2.18): the storefront's questions about running tests
+ * (`experimentOfPage()`, `pageGoalTests()`, `storeHasExperiments()`, `siteTests()`, `runningExperimentIds()`) are filters over this one
+ * cached read. Every read of running tests also asks `commerce.extension_on(store, 'ab_testing')` (D748). A test whose page is gone still
+ * counts as running, as it did for the questions that never read the page.
  */
-export async function experimentOfPage(storeId: string, pageId: string): Promise<PageExperiment | null> {
+export async function runningTests(storeId: string): Promise<RunningTest[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(experimentsTag(storeId));
+  const rows = await typedRows(
+    RUNNING_TEST,
+    sql`
+      select e.id, e.target_page_id, p.type as target_type, commerce.page_place(e.store_id, e.target_page_id) as target_role, e.primary_goal, e.goal_params,
+        coalesce((select jsonb_agg(jsonb_build_object('key', v.key, 'pageId', v.page_id) order by v.key)
+          from commerce.experiment_variants v where v.experiment_id = e.id), '[]'::jsonb) as variants
+      from commerce.experiments e
+      left join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
+      where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
+      order by e.id
+    `,
+    readDb(),
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    targetPageId: r.target_page_id,
+    targetType: r.target_type,
+    targetRole: r.target_role,
+    primaryGoal: r.primary_goal,
+    goalParams: r.goal_params,
+    variants: r.variants,
+  }));
+}
+
+/** The block a test's goal counts, if it counts one. */
+const goalBlockOf = (params: unknown): string | null =>
+  typeof (params as { block?: unknown } | null)?.block === "string" ? String((params as { block: string }).block) : null;
+
+/**
+ * The running test on a page, for drawing the page: a marker that tells the browser which version this is, and the
+ * variants' pages to read. Cached with the store's tests, so a page without one stays as static as it was: a filter over
+ * `runningTests()`.
+ */
+export async function experimentOfPage(storeId: string, pageId: string): Promise<PageExperiment | null> {
   // The test of a page with a place of its own (a working page, the front page, the All products page) is served from its route
   // (placeVersionFor()), not from the page's address: not found here.
-  const [row] = await readDb().execute<Row>(sql`
-    select e.id, e.primary_goal, e.goal_params,
-      (select jsonb_agg(jsonb_build_object('key', v.key, 'has_page', v.page_id is not null) order by v.key)
-       from commerce.experiment_variants v where v.experiment_id = e.id) as variants
-    from commerce.experiments e
-    where e.store_id = ${storeId}::uuid and e.target_page_id = ${pageId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
-      and commerce.page_place(e.store_id, e.target_page_id) is null
-  `);
-  if (!row) return null;
-  const id = String(row.id);
+  const test = (await runningTests(storeId)).find((t) => t.targetPageId === pageId && t.targetRole === null);
+  if (!test) return null;
+  const id = test.id;
   return {
     id,
-    goal: row.primary_goal as Goal,
-    goalBlock: typeof (row.goal_params as { block?: unknown })?.block === "string" ? String((row.goal_params as { block: string }).block) : null,
-    variants: ((row.variants ?? []) as { key: string; has_page: boolean }[]).map((v) => ({ key: v.key, slug: v.has_page ? variantSlug(id, v.key) : null })),
+    goal: test.primaryGoal as Goal,
+    goalBlock: goalBlockOf(test.goalParams),
+    variants: test.variants.map((v) => ({ key: v.key, slug: v.pageId !== null ? variantSlug(id, v.key) : null })),
   };
 }
 
 /**
  * The running tests whose goal is going on to this page (D148 phase 20), by id: the page draws a marker for them (`AbPageGoal`). Cached with the
- * store's tests, so a page no test counts stays as static as it was.
+ * store's tests, so a page no test counts stays as static as it was: a filter over `runningTests()`.
  */
 export async function pageGoalTests(storeId: string, pageId: string): Promise<string[]> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(experimentsTag(storeId));
   if (!isUuid(pageId)) return [];
-  const rows = await typedRows(
-    z.object({ id: col.uuid }),
-    sql`
-      select e.id from commerce.experiments e
-      where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing') and e.primary_goal = 'page' and e.goal_params ->> 'page' = ${pageId}
-      order by e.id
-    `,
-    readDb(),
-  );
-  return rows.map((r) => r.id);
+  return (await runningTests(storeId))
+    .filter((t) => t.primaryGoal === "page" && (t.goalParams as { page?: unknown } | null)?.page === pageId)
+    .map((t) => t.id);
 }
 
-/** Whether a store has a running test: the cookie banner and the assignment script are there only then. Cached with the tests. */
+/** Whether a store has a running test: the cookie banner and the assignment script are there only then. Cached with the tests: a filter over `runningTests()`. */
 export async function storeHasExperiments(storeId: string): Promise<boolean> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(experimentsTag(storeId));
-  const [row] = await readDb().execute<Row>(sql`select 1 as one from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' and commerce.extension_on(store_id, 'ab_testing') limit 1`);
-  return Boolean(row);
+  return (await runningTests(storeId)).length > 0;
 }
 
 /** A running test of something every page shows (the header, the footer, or the product layout) or of a working page, as the pages that draw it need it. */
@@ -204,33 +243,26 @@ export type SiteTest = {
   versions: { key: string; pageId: string }[];
 };
 
-/** The store's running tests of its header, footer or product layout. Cached with the tests: a store without one draws its pages as it always did. */
+/**
+ * The store's running tests of its header, footer or product layout. Cached with the tests: a store without one draws its pages as it always
+ * did. A filter over `runningTests()`.
+ */
 export async function siteTests(storeId: string): Promise<SiteTest[]> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(experimentsTag(storeId));
-  const rows = await readDb().execute<Row>(sql`
-    select e.id, e.target_page_id, p.type as target_type, e.goal_params,
-      commerce.page_place(e.store_id, e.target_page_id) as target_role,
-      (select jsonb_agg(jsonb_build_object('key', v.key, 'pageId', v.page_id) order by v.key) from commerce.experiment_variants v where v.experiment_id = e.id and v.page_id is not null) as versions
-    from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
-    where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
-      and (p.type in ('header', 'footer', 'product_layout')
-        or commerce.page_place(e.store_id, e.target_page_id) = any(${`{${TESTED_PLACES.join(",")}}`}::text[]))
-    order by e.id
-  `);
-  return rows.flatMap((r): SiteTest[] => {
-    const kind = targetKindOf(String(r.target_type), r.target_role ? String(r.target_role) : null);
+  const places: readonly string[] = TESTED_PLACES;
+  return (await runningTests(storeId)).flatMap((t): SiteTest[] => {
+    if (t.targetType === null) return [];
+    if (!(["header", "footer", "product_layout"].includes(t.targetType) || (t.targetRole !== null && places.includes(t.targetRole)))) return [];
+    const kind = targetKindOf(t.targetType, t.targetRole);
     if (!kind || kind === "page") return [];
     return [
       {
-        id: String(r.id),
-        token: testToken(String(r.id)),
+        id: t.id,
+        token: testToken(t.id),
         kind,
-        role: isTestedPlace(r.target_role) ? r.target_role : null,
-        targetPageId: String(r.target_page_id),
-        goalBlock: typeof (r.goal_params as { block?: unknown })?.block === "string" ? String((r.goal_params as { block: string }).block) : null,
-        versions: ((r.versions ?? []) as { key: string; pageId: string }[]).map((v) => ({ key: v.key, pageId: v.pageId })),
+        role: isTestedPlace(t.targetRole) ? t.targetRole : null,
+        targetPageId: t.targetPageId,
+        goalBlock: goalBlockOf(t.goalParams),
+        versions: t.variants.flatMap((v) => (v.pageId !== null ? [{ key: v.key, pageId: v.pageId }] : [])),
       },
     ];
   });
@@ -260,13 +292,9 @@ export async function siteVersionContent(storeId: string, testId: string, key: s
   return layout;
 }
 
-/** The ids of a store's running tests, for the browser to know when it lacks an answer. Cached with the tests. */
+/** The ids of a store's running tests, for the browser to know when it lacks an answer. Cached with the tests: a filter over `runningTests()`. */
 export async function runningExperimentIds(storeId: string): Promise<string[]> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(experimentsTag(storeId));
-  const rows = await readDb().execute<Row>(sql`select id from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' and commerce.extension_on(store_id, 'ab_testing') order by id`);
-  return rows.map((r) => String(r.id));
+  return (await runningTests(storeId)).map((t) => t.id);
 }
 
 // ---------------------------------------------------------------------------

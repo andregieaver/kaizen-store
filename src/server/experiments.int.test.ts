@@ -1449,3 +1449,63 @@ describe("phase 20: going on to a page, forms elsewhere, new or returning visito
     await admin.discardExperiment(account, storeId, made.id);
   }, 30_000);
 });
+
+describe("the questions about running tests are one read (bloat review step 2.18)", () => {
+  it("answers each question as before, from the one statement of runningTests()", async () => {
+    await endAll();
+    const { countStatements } = await import("@/db/statement-count");
+    const pageTest = await runningTest("orders");
+    // A header of its own (chromePage()'s address is taken by the header of phase 3's test).
+    const content = await publishedOf(aboutId);
+    const slug = `ab-header-one-read-${run}`;
+    const text = JSON.stringify({ ...content, title: "One read header", slug, rows: withBlock(content, "heading-about", (b) => ({ ...b, text: "Header one read" })).rows });
+    const [inserted] = await db().execute<Row>(sql`
+      insert into commerce.pages (store_id, slug, type, draft, published, published_at) values (${storeId}::uuid, ${slug}, 'header', ${text}::jsonb, ${text}::jsonb, now()) returning id
+    `);
+    const header = String(inserted.id);
+    await db().execute(sql`update commerce.stores set header_id = ${header}::uuid where id = ${storeId}::uuid`);
+    const made = await admin.createExperiment(account, storeId, { name: "Header, one read", pageId: header, goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await editVersion(made.id, "b", (c) => withBlock(c, "heading-about", (b) => ({ ...b, text: "Header one read B" })));
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    const headerTest = made.id;
+    const versionB = (await admin.getExperiment(storeId, headerTest))!.variants.find((v) => v.key === "b")!.pageId!;
+    const pageVersionB = (await admin.getExperiment(storeId, pageTest))!.variants.find((v) => v.key === "b")!.pageId!;
+    expect(pageVersionB).toBeTruthy();
+
+    expect(await engine.experimentOfPage(storeId, aboutId)).toEqual({
+      id: pageTest,
+      goal: "orders",
+      goalBlock: null,
+      variants: [
+        { key: "a", slug: null },
+        { key: "b", slug: engine.variantSlug(pageTest, "b") },
+      ],
+    });
+    expect(await engine.storeHasExperiments(storeId)).toBe(true);
+    expect(await engine.siteTests(storeId)).toEqual([
+      { id: headerTest, token: abSite.testToken(headerTest), kind: "header", role: null, targetPageId: header, goalBlock: null, versions: [{ key: "b", pageId: versionB }] },
+    ]);
+    expect(await engine.runningExperimentIds(storeId)).toEqual([pageTest, headerTest].sort());
+    expect(await engine.pageGoalTests(storeId, aboutId)).toEqual([]);
+
+    // next/cache is a stand-in here, so each question reads: each sends the one statement of runningTests(), and nothing else.
+    const questions: (() => Promise<unknown>)[] = [
+      () => engine.experimentOfPage(storeId, aboutId),
+      () => engine.storeHasExperiments(storeId),
+      () => engine.siteTests(storeId),
+      () => engine.runningExperimentIds(storeId),
+      () => engine.pageGoalTests(storeId, aboutId),
+    ];
+    for (const ask of questions) {
+      const { count, statements } = await countStatements(ask);
+      expect(count).toBe(1);
+      expect(statements.find((s) => !s.control)?.text).toMatch(/commerce\.experiment_variants v where v\.experiment_id = e\.id/);
+    }
+
+    await endAll();
+    expect(await engine.storeHasExperiments(storeId)).toBe(false);
+    expect(await engine.experimentOfPage(storeId, aboutId)).toBeNull();
+    await db().execute(sql`update commerce.stores set header_id = null where id = ${storeId}::uuid`);
+  }, 30_000);
+});

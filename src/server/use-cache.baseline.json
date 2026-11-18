@@ -218,25 +218,7 @@
       "DOCS_GUIDE_TAG, AI_TAG"
     ]
   },
-  "src/server/experiments.ts#experimentOfPage": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
-    ]
-  },
-  "src/server/experiments.ts#pageGoalTests": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
-    ]
-  },
-  "src/server/experiments.ts#storeHasExperiments": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
-    ]
-  },
-  "src/server/experiments.ts#siteTests": {
+  "src/server/experiments.ts#runningTests": {
     "life": "\"hours\"",
     "tags": [
       "experimentsTag(storeId)"
@@ -246,12 +228,6 @@
     "life": "\"hours\"",
     "tags": [
       "experimentsTag(storeId), `pages:${storeId}`"
-    ]
-  },
-  "src/server/experiments.ts#runningExperimentIds": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
     ]
   },
   "src/server/field-tiles.ts#shownFieldsForItems": {
