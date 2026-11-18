@@ -172,7 +172,7 @@ ${f.contactEmail}`,
         {
           topic: "controller",
           heading: "1. Who is responsible",
-          body: `${f.legalName}, organisation number ${f.organisationNumber}, ${f.postalAddress}, is the controller for the processing described in this notice. Contact us about privacy at ${f.contactEmail}.`,
+          body: `${f.legalName}, organisation number ${f.organisationNumber}, ${f.postalAddress}, is the controller for the processing described in this notice. Contact us about privacy at ${f.contactEmail}.${f.officer ? ` Our data protection officer is ${f.officer}.` : ""}`,
         },
         {
           topic: "scope",

@@ -1,0 +1,68 @@
+{
+  "chunkBytes": {
+    "beacon": {
+      "route": "/api/visit/speed/route",
+      "bytes": 997844,
+      "max": 1037758
+    },
+    "api": {
+      "route": "/api/cron/cart-reminders/route",
+      "bytes": 10594493,
+      "max": 11018273
+    },
+    "store": {
+      "route": "/s/[store]/[market]/search/page",
+      "bytes": 11077742,
+      "max": 11520852
+    },
+    "pay": {
+      "route": "/s/[store]/[market]/cart/page",
+      "bytes": 11078224,
+      "max": 11521353
+    },
+    "site": {
+      "route": "/(platform-nb)/no/sign-up/page",
+      "bytes": 10881311,
+      "max": 11316564
+    },
+    "admin-store": {
+      "route": "/admin/(gated)/[store]/articles/[pageId]/preview/page",
+      "bytes": 13372983,
+      "max": 13907903
+    },
+    "admin-platform": {
+      "route": "/admin/(gated)/platform/ai/dream/[runId]/page",
+      "bytes": 13231040,
+      "max": 13760282
+    },
+    "proxy": {
+      "route": ".next/server/middleware.js",
+      "bytes": 2253770,
+      "max": 2343921
+    },
+    "instrumentation": {
+      "route": ".next/server/instrumentation.js",
+      "bytes": 426,
+      "max": 444
+    }
+  },
+  "manifest": {
+    "bytes": 11406364,
+    "entries": 1566
+  },
+  "routingRules": {
+    "max": 1600
+  },
+  "coldMs": {},
+  "coldMsNote": "not held yet: the medians wobbled by up to 30% between runs, the distance from /api/health by more than 100%; held at first figure + 25% once a runner shows steady figures",
+  "coldBarMs": {
+    "beacon": 100,
+    "proxy": 100,
+    "storePage": 300,
+    "adminPage": 450
+  },
+  "coldBarFrom": "enforced when phase 2 is in (steps 2.20 to 2.24)",
+  "storefrontMessagesBytes": {
+    "max": 590000
+  }
+}

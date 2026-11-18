@@ -9,7 +9,7 @@ import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
-import { isAdminLang } from "@/lib/admin-lang";
+import { adminLangOf, isAdminLang } from "@/lib/admin-lang";
 import { isOfferedScheme } from "@/lib/admin-schemes";
 import { isAdminView } from "@/lib/admin-view";
 import { isColorChoice } from "@/lib/color-mode";
@@ -18,6 +18,9 @@ import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { endAccountGrants } from "@/server/oauth";
 import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepResult } from "@/server/two-step";
+import { adminText } from "@/lib/admin-text";
+import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
+import { ownedAccount, setOfficer } from "@/server/privacy-officers";
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -158,4 +161,18 @@ export async function removeTwoStepAction(): Promise<StepResult> {
   // A platform admin must use it: switching it off would only hold them at set-up at once.
   if (account.platformAdmin) return { ok: false, problem: "Platform admins must use two-step sign-in." };
   return removeSecondStep(account);
+}
+
+/** The data protection officer for all the account's stores (D763): its owner's alone. */
+export async function setAccountOfficerAction(_state: FormState, form: FormData): Promise<FormState> {
+  const account = await requireAccount();
+  const w = adminText(adminLangOf(account.adminLocale), "privacyOfficer");
+  const owned = await ownedAccount(account.id);
+  if (!owned) return { status: "error", messages: [w.notOwner] };
+  const read = readOfficerChoice(officerFields(form), { store: false });
+  if (!read.ok) return { status: "error", messages: read.problems };
+  const result = await setOfficer(account.id, owned.id, null, read.choice);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [w.saved] };
 }

@@ -17,6 +17,8 @@ export type AssessmentFacts = {
   mask: "balanced" | "strict";
   /** The day it was drawn, YYYY-MM-DD. */
   today: string;
+  /** The data protection officer the store or its account names (D763), or null. */
+  officer?: { name: string | null; email: string } | null;
 };
 
 export type AssessmentLang = "en" | "nb";
@@ -32,6 +34,13 @@ type Words = {
   sign: { heading: string; role: string; name: string; date: string; decision: string; owner: string; dpo: string };
 };
 
+/** The officer's line under "who is responsible", when the store or its account names one. */
+const officerLine = (f: AssessmentFacts, lang: AssessmentLang) => {
+  if (!f.officer) return "";
+  const who = f.officer.name ? `${escape(f.officer.name)}, ${escape(f.officer.email)}` : escape(f.officer.email);
+  return `<p>${lang === "nb" ? "Personvernombud" : "Data protection officer"}: ${who}.</p>`;
+};
+
 const list = (items: string[]) => `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
 const table = (head: string[], rows: string[][]) =>
   `<table><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -44,7 +53,7 @@ const EN: Words = {
     {
       heading: "1. Who is responsible",
       body: (f, fill) =>
-        `<p>Controller: ${fill(f.legalName)}, organisation number ${fill(f.organisationNumber)}, ${fill(f.postalAddress)}, ${fill(f.contactEmail)}, running the online store ${escape(f.storeName)}.</p><p>Processor: Kaizena Flow, which hosts the store and keeps the recordings on its behalf under the data processing agreement, in Ireland. Kaizena Flow never uses them for its own purposes, and its staff do not watch them.</p>`,
+        `<p>Controller: ${fill(f.legalName)}, organisation number ${fill(f.organisationNumber)}, ${fill(f.postalAddress)}, ${fill(f.contactEmail)}, running the online store ${escape(f.storeName)}.</p><p>Processor: Kaizena Flow, which hosts the store and keeps the recordings on its behalf under the data processing agreement, in Ireland. Kaizena Flow never uses them for its own purposes, and its staff do not watch them.</p>${officerLine(f, "en")}`,
     },
     {
       heading: "2. What is processed and why",
@@ -99,7 +108,7 @@ const NB: Words = {
     {
       heading: "1. Hvem som er ansvarlig",
       body: (f, fill) =>
-        `<p>Behandlingsansvarlig: ${fill(f.legalName)}, organisasjonsnummer ${fill(f.organisationNumber)}, ${fill(f.postalAddress)}, ${fill(f.contactEmail)}, som driver nettbutikken ${escape(f.storeName)}.</p><p>Databehandler: Kaizena Flow, som drifter butikken og lagrer opptakene for den etter databehandleravtalen, i Irland. Kaizena Flow bruker dem aldri til egne formål, og de ansatte ser ikke på dem.</p>`,
+        `<p>Behandlingsansvarlig: ${fill(f.legalName)}, organisasjonsnummer ${fill(f.organisationNumber)}, ${fill(f.postalAddress)}, ${fill(f.contactEmail)}, som driver nettbutikken ${escape(f.storeName)}.</p><p>Databehandler: Kaizena Flow, som drifter butikken og lagrer opptakene for den etter databehandleravtalen, i Irland. Kaizena Flow bruker dem aldri til egne formål, og de ansatte ser ikke på dem.</p>${officerLine(f, "nb")}`,
     },
     {
       heading: "2. Hva som behandles, og hvorfor",
@@ -151,7 +160,7 @@ export function assessmentHtml(facts: AssessmentFacts, lang: AssessmentLang): st
   const w = lang === "nb" ? NB : EN;
   const fill = (value: string | null) => (value && value.trim() ? escape(value.trim()) : lang === "nb" ? "[fyll ut]" : "[fill in]");
   const sections = w.sections.map((s) => `<h2>${s.heading}</h2>${s.body(facts, fill)}`).join("\n");
-  const sign = `<h2>${w.sign.heading}</h2>${table([w.sign.role, w.sign.name, w.sign.date, w.sign.decision], [[w.sign.owner, "", "", ""], [w.sign.dpo, "", "", ""]])}`;
+  const sign = `<h2>${w.sign.heading}</h2>${table([w.sign.role, w.sign.name, w.sign.date, w.sign.decision], [[w.sign.owner, "", "", ""], [w.sign.dpo, facts.officer?.name ? escape(facts.officer.name) : "", "", ""]])}`;
   return `<!doctype html>
 <html lang="${lang}"><head><meta charset="utf-8"><title>${escape(w.title)} · ${escape(facts.storeName)}</title>
 <style>body{font:16px/1.55 system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem;color:#1b1b1b}h1{font-size:1.6rem}h2{font-size:1.15rem;margin-top:2rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:.4rem .5rem;text-align:left;vertical-align:top}.note{color:#555}</style>

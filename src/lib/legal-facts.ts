@@ -58,6 +58,8 @@ export type LegalFacts = {
    */
   heatmaps?: true;
   sessionRecordings?: true;
+  /** The data protection officer the store or its account names (D763); present only when one is named, as the facts above. */
+  privacyOfficer?: { name: string | null; email: string };
   /** The browse email is on (D691): the privacy starter says which product views are kept for it. */
   browseEmails?: true;
   /** The names of the tracking tools the store has set up (they load only with consent). */

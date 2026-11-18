@@ -26,6 +26,8 @@ export type LegalDoc = { title: string; description: string; sections: LegalSect
 /** The facts the texts are filled from, each already a string to print (a placeholder where the fact is missing). */
 export type FilledFacts = BusinessDetails & {
   saleFee: string;
+  /** Kaizena Flow's data protection officer as one line (D763), or "" when none is named. */
+  officer: string;
   links: Record<"terms" | "privacy" | "dpa" | "cookies", string>;
 };
 
@@ -39,7 +41,13 @@ export type PlatformLegalWords = {
 
 export const PLATFORM_LEGAL_WORDS = { en: EN, nb: NB } as const;
 
-export type PlatformLegalFacts = { business: BusinessDetails; saleFeeBps: number; today: Date };
+export type PlatformLegalFacts = {
+  business: BusinessDetails;
+  saleFeeBps: number;
+  today: Date;
+  /** Kaizena Flow's data protection officer (D763), the platform account's; absent when none is named. */
+  officer?: { name: string | null; email: string } | null;
+};
 
 /** A sale fee in basis points as each language writes a percentage: 1.99 % / 1,99 %. */
 export function feeWords(bps: number, lang: "en" | "nb"): string {
@@ -60,6 +68,7 @@ export function filledFacts(words: PlatformLegalWords, facts: PlatformLegalFacts
     postalAddress: pick("postalAddress").replace(/\s*\n\s*/g, ", "),
     contactEmail: pick("contactEmail"),
     saleFee: feeWords(facts.saleFeeBps, words.lang),
+    officer: facts.officer ? (facts.officer.name ? `${facts.officer.name}, ${facts.officer.email}` : facts.officer.email) : "",
     links: words.links,
   };
 }

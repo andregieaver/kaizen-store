@@ -168,6 +168,12 @@ jobs:
       - name: Seed a store on the Orbit theme (e2e/seed/themed-store.seed.ts)
         run: pnpm seed:themed
       - run: pnpm build
+      # The megabytes traced beside each function and what carries them (bloat review step 1.8, scripts/trace-budgets.json): a breach fails the job with the figure.
+      - name: What a function carries
+        run: node scripts/trace-sizes.mjs --check >> "$GITHUB_STEP_SUMMARY"
+      # What each kind of route lists at start, the server-reference manifest, the routing rules and the cold loads (bloat review step 1.8, scripts/route-budget.json).
+      - name: What a route loads
+        run: node scripts/route-budget.mjs >> "$GITHUB_STEP_SUMMARY"
       # Each built route and page loads in a fresh process, as a cold Vercel function loads it (bloat review step 0.6): a lazy
       # import changes load order, and a route that first loads a module of an import cycle can fail while the same code loads
       # fine behind another route (the Mollie webhook, 12 November 2026). A server that has answered other requests hides that.

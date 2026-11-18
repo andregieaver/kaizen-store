@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, dirname, relative } from "node:path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { importsOf, reach } from "../../scripts/lib/import-walk.mjs";
 import { FORBIDDEN_ON_PAY_ROUTES, importsForbidden } from "./pay-routes";
 
 /**
@@ -12,64 +13,6 @@ import { FORBIDDEN_ON_PAY_ROUTES, importsForbidden } from "./pay-routes";
  */
 const SRC = join(process.cwd(), "src");
 const MARKET = join(SRC, "app/s/[store]/[market]");
-
-const IMPORT =
-  /(?:^|\n)\s*(import|export)\s+([^;]*?)\s+from\s+["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)|(?:^|\n)\s*import\s+["']([^"']+)["']/g;
-
-/** Whether an import clause brings in only types, which are erased and carry nothing into the bundle: `import type { A }`, `import { type A }`. */
-function typesOnly(clause: string): boolean {
-  if (/^type\s/.test(clause.trim())) return true;
-  const named = /^\{([\s\S]*)\}$/.exec(clause.trim());
-  return (
-    named !== null &&
-    named[1]
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .every((part) => part.startsWith("type "))
-  );
-}
-
-/** The modules a file imports as values. */
-function importsOf(text: string): string[] {
-  const found: string[] = [];
-  for (const match of text.matchAll(IMPORT)) {
-    if (match[3] !== undefined) {
-      if (!typesOnly(match[2])) found.push(match[3]);
-    } else found.push((match[4] ?? match[5])!);
-  }
-  return found;
-}
-
-function resolve(from: string, specifier: string): string | null {
-  const base = specifier.startsWith("@/")
-    ? join(SRC, specifier.slice(2))
-    : specifier.startsWith(".")
-      ? join(dirname(from), specifier)
-      : null;
-  if (!base) return null;
-  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts"), join(base, "index.tsx")]) {
-    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
-  }
-  return null;
-}
-
-/** Every file `entry` reaches by static or dynamic import inside `src/`, the entry included, minus what `stop` says not to follow. */
-function reach(entry: string, stop: (file: string) => boolean = () => false): Map<string, string> {
-  const seen = new Map<string, string>([[entry, ""]]);
-  const queue = [entry];
-  while (queue.length > 0) {
-    const file = queue.pop()!;
-    const text = readFileSync(file, "utf8");
-    for (const specifier of importsOf(text)) {
-      const target = resolve(file, specifier);
-      if (!target || seen.has(target) || stop(target)) continue;
-      seen.set(target, file);
-      queue.push(target);
-    }
-  }
-  return seen;
-}
 
 /** Every source file of the storefront that links somewhere. */
 function sources(dir: string, found: string[] = []): string[] {
@@ -93,7 +36,7 @@ const DRAWS = /\b(liveCustomCode|StoreCustomCode|ConsentManager|SiteConsent|Stor
 
 /** What a file reaches that a pay route may not: a forbidden module, or the use of a name that draws one, with the chain that leads there. */
 function forbiddenFrom(entry: string, stop?: (file: string) => boolean): string[] {
-  const seen = reach(entry, stop);
+  const seen = reach(SRC, entry, { dynamic: true, stop });
   const chainTo = (file: string) => {
     const chain = [rel(file)];
     for (let at = seen.get(file); at; at = seen.get(at)) chain.unshift(rel(at));
@@ -144,7 +87,7 @@ describe("the import graph of the market layout", () => {
   });
 
   it("holds the extras in one component, which is where they are drawn", () => {
-    const extras = reach(join(MARKET, "extras.tsx"));
+    const extras = reach(SRC, join(MARKET, "extras.tsx"), { dynamic: true });
     const names = [...extras.keys()].map((file) => rel(file).replace(/\.tsx?$/, ""));
     // The slot's component really draws what the layout no longer does, so this test cannot pass by the list going stale.
     for (const fragment of FORBIDDEN_ON_PAY_ROUTES) {
@@ -218,7 +161,7 @@ describe("entering a pay route", () => {
 describe("the gift box and the pay link", () => {
   const atActions = (file: string) => /\/actions\.ts$/.test(file);
   const importedBy = (entry: string) => {
-    const seen = reach(entry, atActions);
+    const seen = reach(SRC, entry, { dynamic: true, stop: atActions });
     return [...seen.keys()].flatMap((file) => [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => ({ file: rel(file), specifier: m[1] })));
   };
 
@@ -258,7 +201,7 @@ describe("the gift box and the pay link", () => {
 describe("the change pay link and the order's parcels", () => {
   const atActions = (file: string) => /\/actions\.ts$/.test(file);
   const importedBy = (entry: string) => {
-    const seen = reach(entry, atActions);
+    const seen = reach(SRC, entry, { dynamic: true, stop: atActions });
     return [...seen.keys()].flatMap((file) => [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => ({ file: rel(file), specifier: m[1] })));
   };
 
@@ -281,7 +224,7 @@ describe("the change pay link and the order's parcels", () => {
 
   it("the parcels component imports no zod and no server code as values, and reaches none of the forbidden extras", () => {
     const entry = join(SRC, "components/order-shipments.tsx");
-    const values = importsOf(readFileSync(entry, "utf8"));
+    const values = importsOf(readFileSync(entry, "utf8"), { dynamic: true });
     expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
     expect(forbiddenFrom(entry, stop)).toEqual([]);
     // And the order page draws it.
@@ -291,7 +234,7 @@ describe("the change pay link and the order's parcels", () => {
   it("the parcel's tracking (D238 2.7) imports no zod and no server code as values, holds no script, and reaches none of the forbidden extras", () => {
     const entry = join(SRC, "components/parcel-tracking.tsx");
     const source = readFileSync(entry, "utf8");
-    const values = importsOf(source);
+    const values = importsOf(source, { dynamic: true });
     expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
     expect(source).not.toMatch(/^["']use client["']/m);
     expect(source).not.toMatch(/<script|<img|<iframe/);
@@ -311,8 +254,8 @@ describe("the checkout form in the store's look", () => {
   const entry = join(SRC, "components/checkout-form.tsx");
 
   it("reaches no zod, no server-only module and no server code", () => {
-    const imports = [...reach(entry, atServerActions).keys()].flatMap((file) =>
-      atServerActions(file) ? [] : importsOf(readFileSync(file, "utf8")).map((specifier) => ({ file: rel(file), specifier })),
+    const imports = [...reach(SRC, entry, { dynamic: true, stop: atServerActions }).keys()].flatMap((file) =>
+      atServerActions(file) ? [] : importsOf(readFileSync(file, "utf8"), { dynamic: true }).map((specifier) => ({ file: rel(file), specifier })),
     );
     const offenders = imports.filter(({ specifier }) => specifier === "zod" || specifier === "server-only" || specifier.startsWith("@/server/") || specifier.startsWith("@/db/"));
     expect(offenders).toEqual([]);

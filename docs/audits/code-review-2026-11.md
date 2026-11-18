@@ -116,7 +116,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.10 | Cache tags per product | FF3 | M | Open | |
 | 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
-| 3.13 | Domain folders | FV4, FH6 | L | Open || the import cycle of src/server is measured and cut from 229 to 15 files (bloat review step 0.6, 12 November 2026, e4d0bfb to 4a8f058) |
+| 3.13 | Domain folders | FV4, FH6 | L | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach |
 | 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only |
 | 3.15 | Keep the big tables lean | FD7, FD8 | M | Open | The 13 duplicate indexes dropped by bloat step 0.26, 15 November 2026, commit f1c57b2f; hot-table index counts held by the surface budget. |
 | 3.16 | One error shape for the API | FD10 | M | Open | |
@@ -130,11 +130,11 @@ This report is a working document: the plan below is the list of work, and this 
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 4.1 | Lint rules for the boundaries | FH7, FH8 | M | Open || the import cycle of src/server is measured and cut from 229 to 15 files (bloat review step 0.6, 12 November 2026, e4d0bfb to 4a8f058) |
+| 4.1 | Lint rules for the boundaries | FH7, FH8 | M | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach |
 | 4.2 | All environment reads through `env.ts` | FD12 | S | Open || `src/server/encryption-key.ts` now holds `encryptionKey()`, a reader of `SETTINGS_ENCRYPTION_KEY` (bloat review step 0.6) |
 | 4.3 | Generate the navigation doc | FN11 | S | Open | |
 | 4.4 | The small ones | severity 1 findings | S to M | Open | |
-| 4.5 | Check that each guard exists | - | S | Open | |
+| 4.5 | Check that each guard exists | - | S | Open | Guards of bloat review step 1.8: `src/server/route-load.graph.test.ts`, `src/lib/dependencies.scan.test.ts`, `scripts/trace-sizes.mjs`, `scripts/route-budget.mjs` |
 | 4.6 | Measure, then tune | (admin audit, phase 4) | M | Open | |
 
 **Change log**
@@ -169,6 +169,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 12 November 2026: FD5 and step 3.14 half done by bloat review step 0.4; FH12 and step 4.4 corrected: the run-time driver is pg, not postgres.
 - 12 November 2026: bloat review step 0.5: `src/server/lazy-packages.scan.test.ts` holds that no server module imports sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf as a value; it is the first of step 4.1's boundary rules for packages.
 - 12 November 2026: bloat review step 0.6: the import cycle of src/server cut from 229 to 15 files (notes on steps 3.13 and 4.1); the line on circular imports corrected; `encryption-key.ts` noted on step 4.2; CI loads every built route in a fresh process (`scripts/cold-load-routes.mjs`).
+- 18 November 2026: bloat review step 1.8: `src/server/route-load.graph.test.ts` holds the files each of 18 server entries reaches, the largest cycle and a forbidden list per entry (step 4.1's boundary rules for modules); `src/lib/dependencies.scan.test.ts` holds a reason and an importer per package; CI's e2e job runs `scripts/trace-sizes.mjs --check` and `scripts/route-budget.mjs` after the build (step 4.5's guards).
 - 13 November 2026: bloat review step 0.9: notes on step 0.10 (the signed-in frame's first scripts after three stray imports went; status unchanged).
 - 14 November 2026: bloat review step 0.10: step 3.2 (one definition per block, still Open) has its first slice: `src/lib/rich-text-doc.ts` holds the rich text part of `page-content.ts`, which re-exports it with its public surface unchanged.
 - 14 November 2026: bloat review step 0.13: the skeleton is now fetched on hover, touch or focus (`AdminLink`); the pending bar answers a touch or keyboard press for one round trip first (step 0.10's row, status unchanged).

@@ -9,6 +9,7 @@ import { marketPath } from "@/lib/paths";
 import { carrierInfo } from "@/lib/shipping-carriers";
 
 import { chatWidgetFor } from "./chat-agent";
+import { officerForStore } from "./privacy-officers";
 import { getReturnSettings } from "./return-settings";
 import { listCarriers } from "./shipping-carriers";
 import type { Store } from "./stores";
@@ -72,7 +73,7 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
   const main = store.markets[0];
   const offered = new Set(store.markets.map((m) => m.code.toUpperCase()));
   const modules = [store.bookingsOn ? "bookings" : null, store.deliveriesOn ? "deliveries" : null, store.workOn ? "work" : null].filter((m): m is string => m !== null);
-  return assembleLegalFacts({
+  const facts = assembleLegalFacts({
     store: {
       name: store.name,
       legalName: store.details.legalName,
@@ -129,4 +130,8 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     // Where the site's own pages are, in the store's main market: the withdrawal function (D153) and the cookies page.
     links: main ? { withdraw: marketPath(store.slug, main.slug, "/withdraw"), cookies: marketPath(store.slug, main.slug, "/cookies") } : {},
   });
+  // The data protection officer (D763), the store's own or its account's: present only when one is named, so the facts of a store without
+  // one are unchanged and the legal AI's upkeep rewrites nothing.
+  const { officer } = await officerForStore(store);
+  return officer ? { ...facts, privacyOfficer: { name: officer.name, email: officer.email } } : facts;
 }

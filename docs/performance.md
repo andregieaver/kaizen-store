@@ -359,6 +359,80 @@ baseline (200 bytes of room) or an area no client part under it names (`src/comp
 `unnamed` list. Named is counted from source, by static import, not what a browser reads at load: `e2e/signed-in/admin-scripts.spec.ts` (step 1.5) is the
 browser's cross-check on five screens.
 
+## What a server route loads, and what holds it (bloat review step 1.8)
+
+Four guards hold what a server entry loads and carries, from the numbers of 18 November 2026. Three rules keep them low. A route
+imports a helper from the file that defines it, never through a feature's module. A package or module most requests do not need is
+loaded with `import()` where it is used. A feature's readers do not import its writers.
+
+The files each entry reaches by static value imports (`node scripts/route-load.mjs`; `import()` is not followed, and a client
+component's own imports are left out):
+
+| Entry | Files reached | Forbidden modules it reaches today |
+|---|---|---|
+| proxy | 323 | admin-messages, ai.ts, auth.ts, pages.ts, seo.ts |
+| start hook | 1 | none |
+| health | 10 | none |
+| beacon-visit | 114 | admin-messages |
+| beacon-touch | 114 | admin-messages |
+| beacon-speed | 128 | admin-messages |
+| beacon-own-speed | 116 | admin-messages |
+| beacon-recommendation-events | 110 | admin-messages |
+| shop-tiles | 320 | supabase-js, admin-messages, auth.ts |
+| store-layout | 594 | none |
+| store-home | 488 | none |
+| store-product | 886 | none |
+| admin-store-layout | 1,068 | none |
+| admin-orders | 1,076 | none |
+| platform-admin-layout | 1,065 | none |
+| platform-admin-home | 1,062 | none |
+| site-front-page | 488 | none |
+| docs-feedback | 282 | none |
+
+The largest import cycle in `src/server` is 23 files, and no route handler reaches over 1,500 files.
+
+The megabytes traced beside a function (`node scripts/trace-sizes.mjs`, after `pnpm build`; 883 traces):
+
+| Trace | MB |
+|---|---|
+| median trace | 62.2 |
+| the proxy's | 60.7 |
+| the store home's | 56.3 |
+| the store checkout's | 56.8 |
+| `/api/health` | 14.8 |
+| `/api/visit` | 15.3 |
+
+Sharp is in 776 traces, the product taxonomy in 883, Chromium in 14, react-dom in 6, a file under `public/` in 4, a source map in
+none.
+
+The chunk bytes an entry lists at start, the largest route of each kind, and the server-reference manifest
+(`node scripts/route-budget.mjs`):
+
+| Kind | Largest route | KB |
+|---|---|---|
+| beacon | `/api/visit/speed` | 974.5 |
+| api | `/api/cron/cart-reminders` | 10,346.2 |
+| store | `/s/[store]/[market]/search` | 10,818.1 |
+| pay | `/s/[store]/[market]/cart` | 10,818.6 |
+| site | `/(platform-nb)/no/sign-up` | 10,626.3 |
+| admin-store | `/admin/[store]/articles/[pageId]/preview` | 13,059.6 |
+| admin-platform | `/admin/platform/ai/dream/[runId]` | 12,920.9 |
+| proxy | `.next/server/middleware.js` | 2,200.9 |
+| instrumentation | `.next/server/instrumentation.js` | 0.4 |
+
+The manifest is 11,406,364 bytes with 1,566 entries (a median of 115 per route, 121 per admin route, 4 per beacon) and reads in
+about 82 ms. There are 1,018 routing rules of the 1,600 held (Vercel's cap is 2,048). A cold load of `/api/health` takes about
+110 to 145 ms, the proxy about 290 to 330 ms beyond a function that does nothing, and the store and admin pages about 300 to 380 ms.
+Those timings moved by up to 30% between runs on a shared machine, so they are printed beside the bars (100 ms for a beacon and
+the proxy, 300 for a store page, 450 for an admin page) and not held yet.
+
+- `src/server/route-load.graph.test.ts` with `node scripts/route-load.mjs`: files per entry, the cycle, the forbidden modules and the
+  handlers over 1,500 files, against `src/server/route-load.baseline.json`.
+- `src/lib/dependencies.scan.test.ts`: every direct package has a line saying why it is here, and an importer.
+- `scripts/trace-sizes.mjs` in CI's e2e job, after the build: the traced megabytes and what carries them, against `scripts/trace-budgets.json`.
+- `scripts/route-budget.mjs` in CI's e2e job, after the build: chunk bytes per kind, the manifest, the routing rules, the cold loads and the words,
+  against `scripts/route-budget.json`.
+
 ## Statements per screen (bloat review step 1.9)
 
 The database client counts statements (`src/db/statement-count.ts`): off unless a test asks inside `countStatements()` or an admin render

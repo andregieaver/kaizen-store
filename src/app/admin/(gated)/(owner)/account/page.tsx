@@ -19,6 +19,8 @@ import { memberCan } from "@/server/permissions";
 import { pushDevicesOf, pushPublicKey } from "@/server/push";
 import { PushSettings } from "@/components/admin/push-settings";
 import { removePushAction, removePushDeviceAction, savePushAction } from "./push-actions";
+import { PrivacyOfficerForm } from "@/components/admin/privacy-officer-form";
+import { accountOfficer, officerCandidates, ownedAccount, storedChoice } from "@/server/privacy-officers";
 import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { twoStepStatus } from "@/server/two-step";
@@ -35,6 +37,7 @@ import {
   regenerateRecoveryCodesAction,
   removeTwoStepAction,
   revokeAppAction,
+  setAccountOfficerAction,
   setPasswordAction,
 } from "./actions";
 
@@ -68,6 +71,12 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
     owner && kaizenLifeSignInOn() ? kaizenLifeIdentity(supabase) : null,
     owner ? supabase.auth.oauth.listGrants().then(({ data }) => data ?? [], () => []) : [],
   ]);
+  // The data protection officer for every store the person's account owns (D763): its owner's choice.
+  const ownAccount = await ownedAccount(account.id);
+  const officer = ownAccount
+    ? await Promise.all([storedChoice(ownAccount.id, null), officerCandidates(ownAccount.id, null), accountOfficer(ownAccount.id)]).then(([choice, people, current]) => ({ choice, people, current }))
+    : null;
+  const pw = adminText(lang, "privacyOfficer");
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={fillWords(w.signedInAs, { who: account.name ? `${account.name} (${account.email})` : account.email })} />
@@ -141,6 +150,16 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           </Link>
         </section>
       )}
+
+      {officer ? (
+        <section aria-labelledby="officer-heading" id="privacy-officer" className="flex max-w-xl flex-col gap-3">
+          <h2 id="officer-heading" className="text-title text-ink">
+            {pw.title}
+          </h2>
+          <p className="text-sm text-muted">{pw.accountLead}</p>
+          <PrivacyOfficerForm words={pw} action={setAccountOfficerAction} store={false} choice={officer.choice} people={officer.people} current={officer.current} />
+        </section>
+      ) : null}
 
       <section aria-labelledby="password-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="password-heading" className="text-title text-ink">
