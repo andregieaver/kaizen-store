@@ -12,6 +12,7 @@ import { formatPriceInput, parsePrice } from "@/lib/product-input";
 import { ruleOf, ruleProblem, type QuantityRule } from "@/lib/quantity-rules";
 
 import { audit, type Membership } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 import { offeredTo } from "./product-conditions";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 
@@ -394,6 +395,7 @@ export async function setListBreaks({ account, store }: Membership, listId: stri
       `);
     }
   });
+  refreshBuyFacts(store.id);
   await audit(account.id, store.id, "price_list.breaks_saved", { list: listId, breaks: rows.length });
   return { ok: true };
 }

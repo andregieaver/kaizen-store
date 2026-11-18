@@ -21,6 +21,7 @@ import { SUPPLIER_KEY_PREFIX } from "@/lib/supplier-orders";
 import { variantLabel } from "@/lib/product-input";
 
 import { audit, type Membership } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 import { catalogTag } from "./catalog";
 import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
@@ -392,6 +393,7 @@ export async function saveDropShipWait(member: Membership, raw: unknown): Promis
     insert into commerce.order_settings (store_id, drop_ship_wait_minutes) values (${member.store.id}::uuid, ${minutes})
     on conflict (store_id) do update set drop_ship_wait_minutes = excluded.drop_ship_wait_minutes, updated_at = now()
   `);
+  refreshBuyFacts(member.store.id);
   await audit(member.account.id, member.store.id, "products.supplier_wait_saved", { minutes }, { area: "products" }).catch((error) => log("error", "suppliers.wait_audit_failed", {}, error));
   return { ok: true };
 }

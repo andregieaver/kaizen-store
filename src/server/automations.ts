@@ -29,6 +29,7 @@ import {
 } from "@/lib/automations";
 import { broadcastContentSchema, sendProblems, type BroadcastContent } from "@/lib/broadcasts";
 
+import { refreshBuyFacts } from "./buy-facts";
 import { limitFor, usageNow } from "./limits";
 import { FIRST_KINDS, policyVerdict, type ContactPolicy, type PolicyReason } from "@/lib/contact-policy";
 import { nextSendTime } from "@/lib/sms";
@@ -154,6 +155,7 @@ export async function saveAutomation(store: Pick<EmailStore, "id" | "localizatio
     values (${store.id}::uuid, ${kind}, ${parsed.data.delayDays}, ${JSON.stringify(content)}::jsonb, ${accountId}::uuid)
     on conflict (store_id, kind) do update set delay_days = excluded.delay_days, content = excluded.content, updated_by = excluded.updated_by
   `);
+  refreshBuyFacts(store.id);
   await audit(accountId, store.id, "marketing_automation.saved", { kind, delayDays: parsed.data.delayDays }, { target: { type: "automation", id: kind } });
   return { ok: true };
 }
@@ -178,6 +180,7 @@ export async function switchAutomation(store: Pick<EmailStore, "id" | "localizat
       enabled_at = case when excluded.enabled and commerce.automations.enabled then commerce.automations.enabled_at else excluded.enabled_at end,
       updated_by = excluded.updated_by
   `);
+  refreshBuyFacts(store.id);
   // Browse off (D691): the product views kept for it go at once; nothing is kept for an email that will not go.
   if (kind === "browse" && !on) await db().execute(sql`delete from commerce.customer_product_views where store_id = ${store.id}::uuid`);
   await audit(accountId, store.id, "marketing_automation.switched", { kind, on }, { target: { type: "automation", id: kind } });

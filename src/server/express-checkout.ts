@@ -25,6 +25,7 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import type { Store } from "./stores";
 
 import { audit } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 import { getBuyer } from "./b2b";
 import { getCart } from "./cart";
 import { listCheckoutFields } from "./checkout-rules";
@@ -209,6 +210,7 @@ export async function checkWalletDomains(storeId: string, storeSlug: string, mod
     update commerce.stripe_accounts set wallet_domains = ${JSON.stringify(kept)}::jsonb, wallet_domains_at = now()
     where store_id = ${storeId}::uuid and mode = ${mode}
   `);
+  refreshBuyFacts(storeId);
   await audit(accountId, storeId, "payments.wallets_checked", { mode, hosts: hosts.length, registered: Object.keys(kept).length }, { area: "settings" });
   return { ok: true, hosts: hosts.length };
 }

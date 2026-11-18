@@ -14,6 +14,7 @@ import {
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 
 type Row = Record<string, unknown>;
 
@@ -76,6 +77,7 @@ export async function saveMethodChoices(
         on conflict (store_id, market_code, method) do update set enabled = excluded.enabled, updated_by = excluded.updated_by, updated_at = now()
       `);
   });
+  refreshBuyFacts(storeId);
   await audit(accountId, storeId, "payments.methods_changed", {
     on: changes.filter((c) => c.enabled).map((c) => `${c.market}:${c.method}`),
     off: changes.filter((c) => !c.enabled).map((c) => `${c.market}:${c.method}`),

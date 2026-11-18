@@ -46,6 +46,7 @@ import { profileChoices } from "./shipping-admin";
 import { aiAbilities } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
+import { refreshBuyFacts } from "./buy-facts";
 import { auditProductSave, productSnapshot } from "./product-audit";
 import { checkLimit } from "./limits";
 import { listLayoutChoices } from "./product-layouts";
@@ -1024,6 +1025,8 @@ export async function saveProduct(
       `);
       return saved;
     });
+    // Price breaks and producer schemes are buy facts (step 2.13): refreshed once the transaction has committed.
+    refreshBuyFacts(store.id);
     if (actor) await auditProductSave({ accountId: actor.id, storeId: store.id }, id, before, await productSnapshot(store.id, id, context.primaryLocale));
     return { ok: true, productId: id };
   } catch (error) {

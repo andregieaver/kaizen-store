@@ -39,6 +39,7 @@ import { SWITCHABLE_METHODS } from "@/lib/payment-methods";
 import { DEFAULT_WEIGHT_GRAMS } from "@/lib/shipping-limits";
 
 import { audit, type Membership } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 import { termsOfProducts } from "./campaigns";
 import { customerTierIds } from "./customer-tiers";
 import { log } from "./log";
@@ -434,6 +435,7 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
       where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
     `);
     if (done.length === 0) return { ok: false, problems: ["This field is gone."] };
+    refreshBuyFacts(storeId);
     await audit(member.account.id, storeId, "shipping.checkout_field_changed", { kind: f.kind, required: f.required, ...(f.width && { width: f.width }) }, { target: { type: "checkout_field", id } });
     return { ok: true, id };
   }
@@ -447,6 +449,7 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
     returning id
   `);
   const made = String(row.id);
+  refreshBuyFacts(storeId);
   await audit(member.account.id, storeId, "shipping.checkout_field_made", { kind: f.kind, required: f.required, width: f.width ?? "full", sensitive: f.sensitive ?? false }, { target: { type: "checkout_field", id: made } });
   return { ok: true, id: made };
 }
@@ -455,6 +458,7 @@ export async function switchCheckoutField(member: Membership, id: string, on: bo
   const done = await db().execute(sql`
     update commerce.checkout_fields set enabled = ${on}, updated_at = now() where store_id = ${member.store.id}::uuid and id = ${id}::uuid returning id
   `);
+  refreshBuyFacts(member.store.id);
   if (done.length > 0) await audit(member.account.id, member.store.id, on ? "shipping.checkout_field_on" : "shipping.checkout_field_off", {}, { target: { type: "checkout_field", id } });
 }
 
@@ -490,6 +494,7 @@ export async function moveCheckoutField(member: Membership, id: string, to: numb
 
 export async function deleteCheckoutField(member: Membership, id: string): Promise<void> {
   const done = await db().execute(sql`delete from commerce.checkout_fields where store_id = ${member.store.id}::uuid and id = ${id}::uuid returning id`);
+  refreshBuyFacts(member.store.id);
   if (done.length > 0) await audit(member.account.id, member.store.id, "shipping.checkout_field_deleted", {}, { target: { type: "checkout_field", id } });
 }
 
