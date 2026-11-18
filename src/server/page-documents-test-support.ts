@@ -2,9 +2,9 @@ import type { StatementRecord } from "@/db/statement-count";
 
 /**
  * Test support for reads of whole page documents (bloat review step 2.17): whether a statement's select list returns the column `draft`
- * or `published` whole (bare or qualified, `p.published`, with or without an alias), not a JSON operator on it, a function of it, or
- * `published_at`, `published_title`, `published_titles`. Only the outermost select list is read; a subquery's is not. The name ends in
- * test-support.ts, so the code ratchet does not count it.
+ * or `published` whole (bare or qualified, `p.published`, `coalesce()` of the two or a `case` giving one, with or without an alias), not
+ * a JSON operator on it, another function of it, or `published_at`, `published_title`, `published_titles`. Only the outermost select list
+ * is read; a subquery's is not. The name ends in test-support.ts, so the code ratchet does not count it.
  */
 
 /** The items of a statement's first select list, split at the commas outside parentheses. */
@@ -35,11 +35,19 @@ function selectList(text: string): string[] {
   return items.map((item) => item.replace(/^distinct\s+/i, ""));
 }
 
-const WHOLE = /^(?:[a-z_][a-z0-9_]*\.)?(draft|published)(?:\s+(?:as\s+)?[a-z_][a-z0-9_]*)?$/i;
+const COLUMN = String.raw`(?:[a-z_][a-z0-9_]*\.)?(?:draft|published)`;
+/**
+ * An item that returns a whole document: the bare column, `coalesce()` of the two, or a `case` whose result is one of them, each with or
+ * without an alias.
+ */
+const WHOLE = new RegExp(
+  String.raw`^(?:${COLUMN}|coalesce\(\s*${COLUMN}\s*,\s*${COLUMN}\s*\)|case\s+when\s[\s\S]*\sthen\s+${COLUMN}\s+end)(?:\s+(?:as\s+)?[a-z_][a-z0-9_]*)?$`,
+  "i",
+);
 
 /** Whether a statement returns the column draft or published whole. */
 export function selectsDocument(text: string): boolean {
-  return selectList(text).some((item) => WHOLE.test(item));
+  return selectList(text).some((item) => WHOLE.test(item.replace(/\s+/g, " ")));
 }
 
 /** How many whole page documents the statements returned: the rows of each that selects draft or published whole. */

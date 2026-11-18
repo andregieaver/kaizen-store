@@ -367,6 +367,16 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   (each language's title) and `remembered_modal`. Menus (`publishedPageNames()`), the page index and the consent banner
   (`usesRememberedModals()`) read them; a write that names one fails.
 
+## Lists, grids and the feed read no document (bloat review step 2.17, `src/server/pages.ts`)
+
+- Lists, pickers, grids, the static params and the feed read a page's list fields from columns and the index, never its document:
+  the Pages and Articles lists `listPages()` (in SQL, a hundred a page with `countPages()` and `ListPager`; the parsed compare only for
+  a live page whose copies differ as stored), every page of a kind by title `pageTitles()`, the published ones `publishedPageIndex()`,
+  a grid's and the feed's cards `pageCards()` and `articleCards()`. A document is opened to draw the page, to edit it, for a card with
+  neither excerpt nor search description, and where every document's body is read (the sitemaps' pictures, llms.txt's words). A new
+  statement that returns `draft` or `published` whole is named in `ratchet.baseline.json`: in `pageDocuments` with its reason when it
+  may read many rows, in `pageDocumentsOneRow` when it reads one page (`ratchet.scan.test.ts`).
+
 ## Pages following the theme (D243, `docs/theme-phase-2.md` step 2, `src/server/theme-detach.ts`)
 
 - **Pages following the theme (D243, `docs/theme-phase-2.md` step 2, `src/server/theme-detach.ts`)**: *Let pages follow the theme*
