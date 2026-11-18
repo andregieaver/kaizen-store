@@ -265,3 +265,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Main failures not ours: api-contract, eval replay, personal-data.nb + personal-purposes (organisations table).
 - 18 Nov ~01:50: CI on 6f82079a5 failed: e2e document budgets (demo store grown by earlier specs) and query-budget 20-store cleanup (organisation_members FK, D748). Fixed in 42c9b03de; CI watched (bash by37ybp66). Locally the 20-store run then showed route.cookie-scan growth +10 statements and subscription-reminders +669 rows: if CI shows them, accept with FIRST=1 UPDATE_BASELINE=1 using CI's figures, say why. Then write up 1.17 and 1.3.
 - Local kaizen DB has organisations migrations applied (339 stores unplaced, place_store leaves them).
+- 18 Nov: container restarted. Postgres restarted by hand. Executors resumed by SendMessage (a0af61e90e526b47e kz-b 1.12c2 uncommitted; a7b0e59a44cd73ab3 kz-c 1.6 c1 bfe1fbf02 local). CI on 42c9b03de re-watched (bash bllh93yzn).
