@@ -24,6 +24,10 @@ on:
         description: "Deploy the head of main to production through the Vercel deploy hook, without running the checks"
         type: boolean
         default: false
+      prebuilt_trial:
+        description: "Build this commit on the runner with vercel build and deploy it prebuilt as a PREVIEW (bloat review step 1.29); production is not touched"
+        type: boolean
+        default: false
 
 concurrency:
   # A newer push cancels a running check on a pull request. A run on main is never cancelled (it may be in the
@@ -600,6 +604,47 @@ jobs:
           PUSHED_AT: ${{ github.event.head_commit.timestamp }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
+
+  # Manual, preview only (bloat review step 1.29, docs/build-memory.md): the runner's size, then this commit built with `vercel build` and
+  # deployed prebuilt as a preview, whose /api/health goes to the summary (its commit from build-stats.json and the build's peak). Needs the
+  # secrets VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID. `vercel pull` writes the environment's settings into .vercel/: never print it,
+  # upload it or cache it.
+  prebuilt-trial:
+    if: github.event_name == 'workflow_dispatch' && inputs.prebuilt_trial
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: node scripts/timed.mjs install-trial -- pnpm install --frozen-lockfile
+      - name: The runner's cores and memory
+        run: |
+          { echo '### Runner'; echo '```'; nproc; free -g; cat /sys/fs/cgroup/memory.max 2>/dev/null || true; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: The preview environment's settings
+        run: node scripts/timed.mjs trial-pull -- pnpm dlx vercel@65 pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - name: Build this commit as Vercel would
+        run: node scripts/timed.mjs trial-build -- pnpm dlx vercel@65 build --token="$VERCEL_TOKEN"
+      # The recorder prints its own line to stdout, so the URL is written inside the command it times.
+      - name: Deploy the prebuilt output as a preview
+        run: node scripts/timed.mjs trial-deploy -- sh -c 'pnpm dlx vercel@65 deploy --prebuilt --token="$VERCEL_TOKEN" > deployment-url.txt'
+      - name: What the preview reports
+        run: |
+          { echo '### Preview /api/health'; echo '```json'; curl -s "$(cat deployment-url.txt)/api/health"; echo; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-prebuilt-trial
+          path: timings.jsonl
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Every job's seconds, added up as runner minutes (bloat review step 1.20, scripts/runner-minutes.mjs), and each job's install seconds from
   # the timings it uploaded. After every other check of a push, red or green; it reads the run's own jobs and writes nothing.

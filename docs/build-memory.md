@@ -79,6 +79,19 @@ wait for the deploy (`scripts/await-deploy.mjs`) prints the build's line against
 `### Production build`. The ceiling is the median of the last ten production builds plus 10%, never above 75% of the machine
 (`scripts/lib/build-stats.mjs`); until a later commit turns it on, a build above it is only printed.
 
+## Stage 2: the build in CI (bloat review step 1.29)
+
+The repository is public (GitHub's API, 18 November 2026), so Actions minutes on GitHub's standard runners are not metered. `vercel build`
+sets `VERCEL` on a GitHub runner too, so `next.config.ts` keys the memory limits on `TIGHT_MACHINE` (Vercel's own machine: `VERCEL` without
+`GITHUB_ACTIONS`): the Turbopack cache and the one worker stay there only. The type check stays off and the source maps stay off for every
+Vercel deployment, wherever it is built, so what production runs and logs does not change. `scripts/next-build.mjs` keeps its 7 GB heap on a
+runner.
+
+The manual job `prebuilt-trial` (*Actions, CI, Run workflow*, `prebuilt_trial` on) prints the runner's cores and memory, builds the commit
+with `vercel build` and deploys it prebuilt as a preview, and puts the preview's `/api/health` in the summary. It needs the secrets
+`VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. It passes when that answer reports the run's commit (from `build-stats.json`) and
+`build.peakKb` is at most 75% of `build.machineKb`. Not run yet (18 November 2026): the runner's figures and the result go here.
+
 ## Measured again, 17 November 2026 (D709)
 
 The same way as above: the seeded database (`node scripts/db-setup.mjs --seed`, 1,471 pages generated, 850 on 28 October), `VERCEL=1`

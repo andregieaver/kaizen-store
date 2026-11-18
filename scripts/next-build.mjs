@@ -1,5 +1,6 @@
-// `pnpm build` (docs/build-memory.md): `next build`, with a 7 GB heap for its type check everywhere but Vercel. Vercel's build machine
-// has 8 GB and skips the type check (next.config.ts, `ON_VERCEL`), so a heap that size there only lets the compile hold more.
+// `pnpm build` (docs/build-memory.md): `next build`, with a 7 GB heap for its type check everywhere but Vercel's own machine. That machine
+// has 8 GB and skips the type check (next.config.ts, `ON_VERCEL`), so a heap that size there only lets the compile hold more; `vercel build`
+// on a GitHub runner (step 1.29) sets VERCEL too, and keeps the heap.
 // It ends with one line, `Build: <seconds> s, peak memory <x.x> GB (<source>)` (bloat review step 1.20), after a failed build too: on Vercel
 // that line is the last of the build log. GITHUB_STEP_SUMMARY gets the same line; BUILD_REPORT names a file for { seconds, peakBytes, source }.
 // On Vercel's production build it also writes build-stats.json (step 1.21: seconds, peak, the machine's memory and the ten builds before, only
@@ -12,7 +13,7 @@ import { machineKb } from "./lib/build-stats.mjs";
 import { formatGb, startPeakSampler } from "./lib/peak-memory.mjs";
 
 const env = { ...process.env };
-if (!env.VERCEL && !/max-old-space-size/.test(env.NODE_OPTIONS ?? "")) {
+if ((!env.VERCEL || env.GITHUB_ACTIONS) && !/max-old-space-size/.test(env.NODE_OPTIONS ?? "")) {
   env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ""} --max-old-space-size=7168`.trim();
 }
 
