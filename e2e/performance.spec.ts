@@ -22,9 +22,8 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  * but a `nomodule` one (Next's polyfills, 225,082 bytes twice over, which no browser that runs the page loads), never what the page has
  * loaded by the time it is looked at, which grows with what it does after (bloat review step 1.3, as `e2e/signed-in/admin-scripts.spec.ts`).
  */
-async function firstScripts(page: Page, address: string): Promise<{ url: string; text: string }[]> {
-  const html = await (await page.request.get(address)).text();
-  const urls = [
+function scriptAddresses(html: string): string[] {
+  return [
     ...new Set(
       [...html.matchAll(/<script\b[^>]*>/g)]
         .map((match) => match[0])
@@ -34,7 +33,11 @@ async function firstScripts(page: Page, address: string): Promise<{ url: string;
         .map((src) => new URL(src.replaceAll("&amp;", "&"), base).href),
     ),
   ];
-  return Promise.all(urls.map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
+}
+
+async function firstScripts(page: Page, address: string): Promise<{ url: string; text: string }[]> {
+  const html = await (await page.request.get(address)).text();
+  return Promise.all(scriptAddresses(html).map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
 }
 
 test("the front page's first scripts carry no zod, no lightbox and no checkout form", async ({ page }) => {
@@ -371,17 +374,98 @@ test("a product tile takes the 800 px copy on a 3x phone, and no tile or gallery
 });
 
 /**
+ * Five pages as a phone loads them, from a cold cache until the network has been quiet for three seconds (bloat review step 1.3): the
+ * bytes on the wire (`wire`: body and headers of every request), the script files the page's HTML did not name (`lateScripts` and
+ * `lateScriptBytes`, decoded, held exactly: they are the build's, they do not wobble), the page's own fetches that are not the router's
+ * (`ownFetches`: the visit count, the tiles' call) and every request to another host (none is allowed). `wire` is its figure plus 4 %,
+ * rounded up to the next 1,000. Measured on the build of 17 November 2026 (three runs: the largest wire of each page is the figure: the front page 351,687, the product page 370,098, /products 360,361, /om-oss 405,020 and the cart 410,890 bytes; the late scripts, 3, 4, 3, 7 and 5 files, were the same each time). A budget only falls.
+ */
+const WIRE_BUDGETS: Record<string, { wire: number; lateScripts: number; lateScriptBytes: number; ownFetches: number }> = {
+  "/s/demo/no": { wire: 366_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 0 },
+  "/s/demo/no/p/demo-keramikkopp": { wire: 385_000, lateScripts: 4, lateScriptBytes: 65_979, ownFetches: 0 },
+  "/s/demo/no/products": { wire: 375_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 0 },
+  "/s/demo/no/om-oss": { wire: 422_000, lateScripts: 7, lateScriptBytes: 197_608, ownFetches: 0 },
+  "/s/demo/no/cart": { wire: 428_000, lateScripts: 5, lateScriptBytes: 81_954, ownFetches: 0 },
+};
+
+const QUIET_MS = 3_000;
+
+for (const [path, budget] of Object.entries(WIRE_BUDGETS)) {
+  test(`${path} on a phone: bytes on the wire, late scripts and the page's own calls stay within their budgets`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    try {
+      const firstTags = new Set(scriptAddresses(await (await context.request.get(path)).text()).map((url) => url.split("#")[0]));
+      const requests: Promise<{ url: string; type: string; bytes: number; router: boolean; bodyLength: number }>[] = [];
+      const last: string[] = [];
+      let moved = Date.now();
+      page.on("request", (request) => {
+        moved = Date.now();
+        last.push(request.url());
+      });
+      page.on("requestfinished", (request) => {
+        moved = Date.now();
+        requests.push(
+          (async () => {
+            const headers = await request.allHeaders();
+            const sizes = await request.sizes();
+            const type = request.resourceType();
+            const bodyLength = type === "script" ? ((await (await request.response())?.body().catch(() => null))?.length ?? 0) : 0;
+            return {
+              url: request.url(),
+              type,
+              bytes: sizes.responseBodySize + sizes.responseHeadersSize,
+              router: "next-router-prefetch" in headers || "next-router-segment-prefetch" in headers || "rsc" in headers,
+              bodyLength,
+            };
+          })().catch(() => ({ url: request.url(), type: "", bytes: 0, router: false, bodyLength: 0 })),
+        );
+      });
+      page.on("requestfailed", () => {
+        moved = Date.now();
+      });
+      await page.goto(path, { waitUntil: "load" });
+      const giveUp = Date.now() + 30_000;
+      while (Date.now() - moved < QUIET_MS) {
+        if (Date.now() > giveUp) throw new Error(`${path}: the page never went quiet; the last requests: ${last.slice(-5).join(", ")}`);
+        await page.waitForTimeout(250);
+      }
+      const seen = await Promise.all(requests);
+      const wire = seen.reduce((sum, r) => sum + r.bytes, 0);
+      const late = seen.filter((r) => r.type === "script" && !firstTags.has(r.url.split("#")[0]));
+      const lateScripts = late.length;
+      const lateScriptBytes = late.reduce((sum, r) => sum + r.bodyLength, 0);
+      const otherHosts = seen.filter((r) => new URL(r.url).host !== new URL(base).host && !r.url.startsWith("data:") && !r.url.startsWith("blob:")).map((r) => r.url);
+      const ownFetches = seen.filter((r) => (r.type === "fetch" || r.type === "xhr") && !r.router).length;
+      if (MEASURE) {
+        console.log(`[wire] ${path} ${wire} ${lateScripts} ${lateScriptBytes} ${ownFetches} ${otherHosts.length}`);
+        return;
+      }
+      const text = `${path}: wire ${wire}, late scripts ${lateScripts} (${lateScriptBytes} bytes: ${late.map((r) => r.url).join(", ")}), own fetches ${ownFetches}`;
+      expect(wire, text).toBeLessThan(budget.wire);
+      expect(lateScripts, text).toBe(budget.lateScripts);
+      expect(lateScriptBytes, text).toBe(budget.lateScriptBytes);
+      expect(ownFetches, text).toBeLessThanOrEqual(budget.ownFetches);
+      expect(otherHosts, `${path} asked another host for these`).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+/**
  * The demo store's front page and a product page as a phone loads them (D336): the bytes sent over the wire, the largest picture and
  * the time to the page's first byte, each under its budget. Bytes are as transferred (compressed), counted from every response the
  * page asked for until two seconds after it loaded; the first load is cold (its bytes are the weight), and the first byte is the
  * median of the three loads after it. Measured on the build of 2026-10-27: the front page 311 KB, the product page 331 KB, the largest
- * picture about 1 KB (the demo's pictures are drawings), the first byte under 10 ms. The budgets leave room for ordinary growth and a
+ * picture about 1 KB (the demo's pictures are drawings), the first byte under 10 ms. The weight is the page's wire budget above (one number per page; this load waits two seconds, the other until three quiet ones). The budgets leave room for ordinary growth and a
  * slower runner: a change that passes one is a regression to look at, not a number to raise.
  */
 const SPEED_BUDGETS = {
-  "/s/demo/no": { weight: 450_000, largestPicture: 200_000, firstByteMs: 250 },
-  "/s/demo/no/p/demo-keramikkopp": { weight: 450_000, largestPicture: 200_000, firstByteMs: 250 },
-} as const;
+  "/s/demo/no": { weight: WIRE_BUDGETS["/s/demo/no"].wire, largestPicture: 200_000, firstByteMs: 250 },
+  "/s/demo/no/p/demo-keramikkopp": { weight: WIRE_BUDGETS["/s/demo/no/p/demo-keramikkopp"].wire, largestPicture: 200_000, firstByteMs: 250 },
+};
 
 for (const [path, budget] of Object.entries(SPEED_BUDGETS)) {
   test(`${path} stays within its page weight, largest picture and first byte budget`, async ({ browser }) => {
