@@ -140,3 +140,11 @@ push (`src/lib/ci-once.scan.test.ts`).
 `pending`. It stays right only while no lint rule reads more than one file (`src/lib/ci-once.scan.test.ts`).
 
 A push of tests alone (`*.test.ts`, `e2e/**`, `src/test/**`) is checked but not deployed (`scripts/deploy-needed.mjs`).
+
+## The visitor's pages
+
+e2e/performance.spec.ts (first scripts, documents, stylesheets, wire bytes and late scripts of the visitor's pages)
+and e2e/prefetch.spec.ts (router requests of five pages) hold figures in CI's e2e job. They only fall.
+`E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts` prints each figure.
+Two counts in src/server/ratchet.baseline.json hold the statements that read a whole page document (pageDocumentReads)
+and the places that refresh a store's whole pages tag (pagesTagRefreshes); `node scripts/ratchet.mjs` lowers them.
