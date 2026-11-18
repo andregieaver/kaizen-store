@@ -62,6 +62,7 @@ import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/se
 import { relatedProducts } from "@/server/listing";
 import { priceBreaksFor } from "@/server/price-breaks";
 import { expressAreaFor, klarnaMessaging } from "@/server/express-checkout";
+import type { BuyFacts } from "@/server/buy-facts";
 import { blockedSchemes } from "@/server/producer-registrations";
 import { buyerRulesFor, listPricesFor } from "@/server/price-lists";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
@@ -105,6 +106,8 @@ export type ProductPageContext = {
   campaigns?: Notices;
   /** The product's published reviews (D301), while the store has reviews on; null or absent draws no review part. */
   reviews?: ReviewFacts | null;
+  /** What the owner set about buying (bloat review step 2.13), read with the page's cached reads; absent in the admin's layout preview, where the parts read as before. */
+  buy?: BuyFacts;
 };
 
 export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
@@ -273,7 +276,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
               <MemberNotice store={store} m={m} />
-              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} />
+              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} buy={ctx.buy} />
             </Suspense>
           </section>
         );
@@ -285,7 +288,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </h2>
           <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
             <MemberNotice store={store} m={m} />
-            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} />
+            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} buy={ctx.buy} />
           </Suspense>
         </section>
       );
@@ -307,7 +310,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
       if (kind === "quote") {
         return (
           <Suspense fallback={null}>
-            <QuoteQuestion block={block} store={store} product={product} market={market} m={m} heading={title} />
+            <QuoteQuestion block={block} store={store} product={product} market={market} m={m} heading={title} buy={ctx.buy} />
           </Suspense>
         );
       }
@@ -592,9 +595,9 @@ async function QuoteBuy({ store, product, market, m, only = false, primary = onl
 }
 
 /** The question part set to a quote (D431): the form in place, with the part's own fields and words, where this shopper may ask. */
-async function QuoteQuestion({ block, store, product, market, m, heading }: { block: ProductBlock; store: Store; product: ProductDetail; market: Market; m: Messages; heading: string | null }) {
+async function QuoteQuestion({ block, store, product, market, m, heading, buy }: { block: ProductBlock; store: Store; product: ProductDetail; market: Market; m: Messages; heading: string | null; buy?: BuyFacts }) {
   await connection();
-  if (!quotable(product) || !(product.priceOnRequest || (await quotesOfferedHere(store)))) return null;
+  if (!quotable(product) || !(product.priceOnRequest || (await quotesOfferedHere(store, buy?.quoteMode)))) return null;
   const variants = quoteVariants(product, m);
   const prefill = await quotePrefill(store.id);
   return (
@@ -972,11 +975,14 @@ async function VariantsWithStock({
   optionsFrom,
   quantity,
   quote,
+  buy,
 }: {
   store: Store;
   product: ProductDetail;
   market: Market;
   m: Messages;
+  /** What the owner set about buying (step 2.13), from the page's cached read; absent in the admin's preview, where each is read as before. */
+  buy?: BuyFacts;
   /** From this many variants each option is a list of its own (D320, the buy part's `optionsFrom`). */
   optionsFrom?: number;
   /** The buy part's own quantity chooser (D430, `ProductBlock.quantity`); absent follows the store's (`stores.quantity_picker`). */
@@ -999,11 +1005,12 @@ async function VariantsWithStock({
   // Producer responsibility (D342): not sold in this country while a scheme it is under has no valid registration here, read for this
   // request (a registration lapses at the store's midnight), as the cart and checkout refuse it.
   await connection();
-  if ((await blockedSchemes(store.id, product.id, market.code)).length > 0) {
+  // A store with no product under a scheme (the buy facts say so) asks nothing.
+  if ((!buy || buy.hasSchemes) && (await blockedSchemes(store.id, product.id, market.code)).length > 0) {
     return <p className="text-sm">{m.producer.notSoldHere}</p>;
   }
   // Request a quote (D431): where the store offers it to this shopper, beside Add to cart, or in its place (the buy part's choice).
-  const quoteWay = quotable(product) ? quoteFor(product, await quotesOfferedHere(store), quote) : null;
+  const quoteWay = quotable(product) ? quoteFor(product, await quotesOfferedHere(store, buy?.quoteMode), quote) : null;
   if (quoteWay === "instead") return <QuoteBuy store={store} product={product} market={market} m={m} primary />;
   // Stock, policy and the days a backorder states are read for this request, never cached (D172).
   // A signed-in buyer's price lists (D321) and the product's price breaks (D323): goods bought once only, never with purchase options, as the
@@ -1015,13 +1022,13 @@ async function VariantsWithStock({
   const expressKind = product.kind === "goods" && product.plans.length === 0 && !product.subscriptionOnly;
   const [availability, notifyOn, listed, breaks, listRules, express, klarna] = await Promise.all([
     stockOnce(store.id, ids),
-    backInStockOn(store.id),
+    buy ? buy.backInStock : backInStockOn(store.id),
     buyer ? buyer.then((id) => listPricesFor(store.id, id, ids, market.code)) : new Map<string, { amountMinor: number; listId: string }>(),
-    buyer ? buyer.then((id) => priceBreaksFor(store.id, id, ids, market.code)) : new Map<string, BreakStep[]>(),
+    buyer && (!buy || buy.hasBreaks) ? buyer.then((id) => priceBreaksFor(store.id, id, ids, market.code)) : new Map<string, BreakStep[]>(),
     // A buyer's price lists may give a variant a rule of their own (D323 E3); the page's cached rule is the variant's.
     buyer ? buyer.then((id) => buyerRulesFor(store.id, id, ids)) : new Map<string, QuantityRule>(),
-    expressKind ? expressAreaFor(store, market, m) : null,
-    expressKind ? klarnaMessaging(store, market) : null,
+    expressKind ? expressAreaFor(store, market, m, buy) : null,
+    expressKind ? klarnaMessaging(store, market, buy) : null,
   ]);
   const ruleOfVariant = (variant: ProductDetail["variants"][number]) => listRules.get(variant.id) ?? variant.rule;
   // The price a variant is offered at: the buyer's list price where a list gives one (in the market's view, never a reduction), else the shop's.

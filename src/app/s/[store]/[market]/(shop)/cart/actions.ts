@@ -435,6 +435,7 @@ export async function expressCheckoutAction(
   const cartHref = shop ? marketPath(shop.store.slug, shop.market.slug, "/cart") : "/";
   if (!shop) return { ok: false, message: m.problemEmpty, cartHref };
   const problem = (key: CheckoutProblem | ExpressProblem) => ({ ok: false as const, message: expressProblemText(m, key, shop.market.lang), cartHref });
+  // Two arguments on purpose (bloat review step 2.13): the press reads the store's facts live, never from the product page's cached ones.
   if (!(await expressOn(shop.store, shop.market))) return problem("not_here");
   if (add) {
     const form = new FormData();

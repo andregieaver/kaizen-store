@@ -4,8 +4,8 @@
     "max": 2
   },
   "product": {
-    "statements": 12,
-    "max": 14
+    "statements": 1,
+    "max": 3
   },
   "all products": {
     "statements": 1,
@@ -24,8 +24,8 @@
     "max": 3
   },
   "cart with three lines": {
-    "statements": 32,
-    "max": 34,
+    "statements": 30,
+    "max": 32,
     "bar": 12
   },
   "checkout at its first step": {
@@ -37,15 +37,23 @@
     "max": 2
   },
   "large store product": {
-    "statements": 12,
-    "max": 14
+    "statements": 3,
+    "max": 5
+  },
+  "product with price breaks": {
+    "statements": 3,
+    "max": 5
+  },
+  "product with producer schemes": {
+    "statements": 2,
+    "max": 4
   },
   "large store home, cold": {
     "statements": 1,
     "max": 3
   },
   "large store product, cold": {
-    "statements": 15,
-    "max": 17
+    "statements": 6,
+    "max": 8
   }
 }

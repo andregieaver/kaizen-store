@@ -2,7 +2,9 @@
 // makes one. Prices go through commerce.set_price only (CLAUDE.md). It does nothing when the store already exists.
 import postgres from "postgres";
 
-/** Returns { slug, handle }: the store's slug and one product's handle. The store's first market has no path segment: its pages are /s/<slug> and /s/<slug>/p/<handle>. */
+/**
+ * Returns { slug, handle, breaksHandle, schemesHandle }: the store's slug, one product's handle, and the handles of a product with a price break
+ * and of one under a producer scheme (step 2.13; made on every run, whether or not the store existed). The store's first market has no path segment: its pages are /s/<slug> and /s/<slug>/p/<handle>. */
 export async function seedLargeStore(url, { slug = "budget-500", products = 500 } = {}) {
   const sql = postgres(url, { max: 1, onnotice: () => {} });
   try {
@@ -16,9 +18,7 @@ export async function seedLargeStore(url, { slug = "budget-500", products = 500 
     }
     const storeId = existing.id;
     const [done] = await sql`select 1 as x from commerce.products where store_id = ${storeId}::uuid and handle = ${handle}`;
-    if (done) {
-      return { slug, handle };
-    }
+    if (done) return { slug, handle, ...(await extras(sql, storeId)) };
     // The people a product names (maker, responsible person) are the store's own rows, made with its copy of the demo catalogue.
     const [model] = await sql`
       select manufacturer_id, responsible_person_id, tax_code from commerce.products
@@ -53,8 +53,19 @@ export async function seedLargeStore(url, { slug = "budget-500", products = 500 
         from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.sku like 'BUDGET-P-%'`;
       await tx`update commerce.products set status = 'active' where store_id = ${storeId}::uuid and handle like 'budget-p-%'`;
     });
-    return { slug, handle };
+    return { slug, handle, ...(await extras(sql, storeId)) };
   } finally {
     await sql.end();
   }
+}
+
+/** One price break on the store's first product and one producer scheme on its second (no registration is needed: the page still runs the schemes read, which is what is counted). */
+async function extras(sql, storeId) {
+  const [first, second] = await sql`select id, handle from commerce.products where store_id = ${storeId}::uuid and handle like 'budget-p-%' order by handle limit 2`;
+  await sql`
+    insert into commerce.price_breaks (store_id, product_id, from_quantity, percent)
+    select p.store_id, p.id, 10, 5 from commerce.products p where p.store_id = ${storeId}::uuid and p.id = ${first.id}::uuid
+    on conflict do nothing`;
+  await sql`insert into commerce.product_schemes (store_id, product_id, scheme) values (${storeId}::uuid, ${second.id}::uuid, 'packaging') on conflict do nothing`;
+  return { breaksHandle: first.handle, schemesHandle: second.handle };
 }

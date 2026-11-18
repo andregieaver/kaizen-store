@@ -115,7 +115,9 @@ the path, component or table you change, or list the rules with a search for lin
 
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag
   `catalog` and `catalog:{storeId}`); stock is read per request inside
-  `<Suspense>`.
+  `<Suspense>`. What only an owner sets about buying is `buyFacts()`
+  (`src/server/buy-facts.ts`), cached with tags `buy:{store}` and `buy-platform`
+  and carried in the product page's prerender; stock stays per request.
 
 ## Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`)
 

@@ -682,7 +682,7 @@ judged against the bare store's bars (`docs/rules/budgets.md`).
 ## Server budgets (bloat review step 1.11)
 
 `scripts/server-budget.mjs` is the one home of a store page's statement count: on the built app it counts the statements of the demo
-store's pages, a large store's two pages (500 products, cold and warm) and the cart and checkout of a guest with three lines, from the
+store's pages, a large store's pages (500 products, cold and warm, with a price break on one product and a producer scheme on another) and the cart and checkout of a guest with three lines, from the
 server's own statement log (`STATEMENT_LOG=1`, `src/db/statement-log.ts`; CI's Postgres image does not load `pg_stat_statements`). A page is requested once unmeasured, then twice more with the smaller count kept (a cached read whose lifetime ends repeats its statement on one request); the cache-event flush and the house store's lookup are left out as noise. Each
 budget is today's count plus 2 in `scripts/server-budget.json`; CI runs it after Playwright and fails the e2e job for a page over its max.
 To lower a budget after a change that cut statements, run `node scripts/server-budget.mjs --write` (it never raises one).
@@ -693,17 +693,19 @@ bloat review step 1.12), none of a switched-off feature beyond its named excepti
 | Page | Statements | Max | Bar |
 |---|---|---|---|
 | home | 0 | 2 |  |
-| product | 12 | 14 |  |
+| product | 1 | 3 |  |
 | all products | 1 | 3 |  |
 | category | 1 | 3 |  |
 | search | 6 | 8 |  |
 | home with a cart cookie | 1 | 3 |  |
-| cart with three lines | 32 | 34 | 12 or fewer |
+| cart with three lines | 30 | 32 | 12 or fewer |
 | checkout at its first step | 2 | 4 |  |
 | large store home | 0 | 2 |  |
-| large store product | 12 | 14 |  |
+| large store product | 3 | 5 |  |
+| product with price breaks | 3 | 5 |  |
+| product with producer schemes | 2 | 4 |  |
 | large store home, cold | 1 | 3 |  |
-| large store product, cold | 15 | 17 |  |
+| large store product, cold | 6 | 8 |  |
 <!-- server-budget:end -->
 
 ## Whose classes the stylesheet holds, and the style text owners add

@@ -82,8 +82,9 @@ export async function buysForBusiness(store: Pick<Store, "id" | "audience">): Pr
 }
 
 /** Whether the shopper of this request is offered Request a quote on products that show their price (the buy part, the cart). */
-export async function quotesOfferedHere(store: Pick<Store, "id" | "audience">): Promise<boolean> {
-  const mode = await quoteMode(store.id);
+export async function quotesOfferedHere(store: Pick<Store, "id" | "audience">, knownMode?: string): Promise<boolean> {
+  // The product page hands the mode it already holds (`buyFacts()`); anywhere else it is read.
+  const mode = knownMode && isQuoteMode(knownMode) ? knownMode : await quoteMode(store.id);
   if (mode === "off") return false;
   return quoteOffered(mode, { business: mode === "business" ? await buysForBusiness(store) : false });
 }
