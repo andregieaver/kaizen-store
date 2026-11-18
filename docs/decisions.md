@@ -759,6 +759,7 @@ this file wins.
 | D757 | **Ecosystem plan phase 5: what phases 3 and 4 left (lead, activity and domain events; the house store's alerts, domain and** (claimed 2026-11-18, text follows) | 2026-11-18 | |
 | D758 | **A store on a launch theme in the measured set** (claimed 2026-11-18, text follows) | 2026-11-18 | |
 | D759 | **A cart with products and the checkout's payment step measured** (claimed 2026-11-18, text follows) | 2026-11-18 | |
+| D760 | **Every agent's round held, tokens per call shown** (claimed 2026-11-18, text follows) | 2026-11-18 | |
 
 ### Selling from Norway to Sweden and Denmark
 
