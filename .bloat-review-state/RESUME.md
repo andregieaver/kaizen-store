@@ -279,3 +279,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 18 Nov ~06: second container restart. Register fix d9ebd9e6c (organisations nb reason + purpose) released D748's migration; production on d9ebd9e6c.
 - Pushed 1.19 c1-3 (998a3d1ca, migration 20261118023925_ai_usage_turns, ai_usage 23k rows) and 1.7 c2 (596444af5). CI watched (bash, after restart re-create if lost). After release: advisors, D-rows: 1.19 (In progress, c4-5 owner's eval), 1.7 Done, 1.6 D-row (stays In progress until phase 2 check). Screenshots of /admin/platform/ai/usage in scratchpad/shot/.
 - No executors running now. Next candidates: 1.5, 1.8, 1.23 (builds), 1.20->1.21, 1.14 (after 1.6), 1.16 (after 1.8).
+- executors: kz-b adbd7006b7ee1bf1b (1.5 Sonnet), kz-c a28b2e4f78e2246fc (1.8 Sonnet)
+- 18 Nov ~08:45: 1.19 migration applied by CI (20261118023925_ai_usage_turns), advisors INFO only. Written up: 1.6 D758 (In progress), 1.7 D759 Done, 1.19 D760 (In progress, c4-5 owner) — e6531ed77. Release of 596444af timed out waiting on newer runs (other session's E2 migrations); production still d9ebd9e6 until their release.
+- RISK: D656 (other session, heatmaps DPIA) is 15,195 bytes > 4,000: docs-budget.scan fails in static -> could freeze releases again. Other session's to fix; watch.
