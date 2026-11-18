@@ -6,7 +6,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * Without the key (no `SETTINGS_ENCRYPTION_KEY`) links carry no reference and presses are counted per link only, as before. Pure.
  */
 
-/** How long a press is kept: 180 days, then it goes (`pruneEmailClicks()`). */
+/** How long a press is kept: 180 days, then it goes (`emailClicksPrune()`, inside `pruneBroadcastRecipients()`). */
 export const CLICK_DAYS = 180;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

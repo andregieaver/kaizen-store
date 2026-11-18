@@ -17375,7 +17375,7 @@ export const broadcastLinkClicks = commerce.table(
 /**
  * Who pressed which link of a broadcast, and when (email plan M1.3, D754; the owner's decision M0.1 b): one row per press by a subscriber
  * still on the list, found by the signed reference in their own links (`src/lib/email-clicks.ts`). Personal data: in the export's
- * `marketing` section, deleted with the subscriber on erasure and 180 days after the press (`pruneEmailClicks()`). The counts per link
+ * `marketing` section, deleted with the subscriber on erasure and 180 days after the press (`emailClicksPrune()`, inside `pruneBroadcastRecipients()`). The counts per link
  * (`broadcast_link_clicks`) are kept apart and stay. Never copied. No open is recorded: there is no pixel.
  */
 export const emailClicks = commerce.table(

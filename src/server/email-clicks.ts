@@ -49,16 +49,11 @@ export async function keepClick(storeId: string, broadcastId: string, link: stri
   }
 }
 
-/** Daily: presses older than 180 days go. Never throws. */
-export async function pruneEmailClicks(): Promise<number> {
-  try {
-    const rows = await db().execute(sql`delete from commerce.email_clicks where clicked_at < now() - make_interval(days => ${CLICK_DAYS}) returning id`);
-    return rows.length;
-  } catch (error) {
-    log("error", "email_clicks.prune_failed", {}, error);
-    return 0;
-  }
-}
+/**
+ * The delete of presses older than 180 days, as a statement for a `with` (a data-changing `with` runs once whether read or not): the daily
+ * prune of broadcasts' recipients carries it, so the daily route makes no statement more (`pruneBroadcastRecipients()`).
+ */
+export const emailClicksPrune = () => sql`delete from commerce.email_clicks where clicked_at < now() - make_interval(days => ${CLICK_DAYS})`;
 
 const clickRow = z.object({
   broadcast: col.text,
