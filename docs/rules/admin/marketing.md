@@ -234,7 +234,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Email automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6, `src/lib/automations.ts`, `src/server/automations.ts`,…
 
 - **Email automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6, `src/lib/automations.ts`, `src/server/automations.ts`,
-  `src/server/stock-requests.ts`)**: welcome, after a purchase and win-back go only to `subscribed` addresses, once per person and
+  `src/server/stock-requests.ts`)**: whether back in stock is on comes with `buyFacts()` on the product page (step 2.13, refreshed by
+  `saveAutomation()` and `switchAutomation()`); welcome, after a purchase and win-back go only to `subscribed` addresses, once per person and
   trigger (`automation_sends`, written before the email), and only for a moment after the automation's `enabled_at` and within
   `CATCH_UP_DAYS`; their words start from `AUTOMATION_STARTERS` (hand-written, four languages) and every marketing email is built
   by `marketingEmail()` (unsubscribe token and headers). Back in stock is `stock_requests`, written only by `stock-requests.ts`: a

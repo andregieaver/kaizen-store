@@ -84,6 +84,7 @@ const { getShopperOrder } = await import("./orders");
 const { getStore } = await import("./stores");
 const { checkWalletDomains, expressOn, klarnaMessaging, startExpress, walletDomains } = await import("./express-checkout");
 const { saveMethodChoices } = await import("./payment-methods");
+const { buyFacts } = await import("./buy-facts");
 
 const run = Date.now().toString(36);
 const slug = `express-${run}`;
@@ -246,5 +247,105 @@ describe("the wallets card", () => {
 
   it("says there is no account for a mode the store has none in", async () => {
     expect(await checkWalletDomains(storeId, slug, "live", null)).toEqual({ ok: false, problem: "no_account" });
+  });
+});
+
+describe("the product page's facts (bloat review step 2.13)", () => {
+  const market = async () => {
+    const s = await store();
+    return s.markets.find((m) => m.code === "NO") ?? s.markets[0];
+  };
+
+  /** The express area from the live reads and from the cached facts must say the same, in every state. */
+  async function sameExpress(expected: boolean) {
+    jar.clear();
+    const s = await store();
+    const m = await market();
+    const live = await expressOn(s, m);
+    const facts = await expressOn(s, m, await buyFacts(storeId, m.code));
+    expect(facts).toBe(live);
+    expect(live).toBe(expected);
+  }
+
+  it("offers the express area alike for a private buyer on Stripe's checkout", async () => {
+    await sameExpress(true);
+  });
+
+  it("offers it alike with payments off", async () => {
+    await db().execute(sql`update commerce.payment_providers set enabled = false where store_id = ${storeId}::uuid`);
+    try {
+      await sameExpress(false);
+    } finally {
+      await db().execute(sql`update commerce.payment_providers set enabled = true where store_id = ${storeId}::uuid`);
+    }
+  });
+
+  it("offers it alike with Mollie as the store's checkout", async () => {
+    vi.stubEnv("MOLLIE_CLIENT_ID", "mollie-client");
+    vi.stubEnv("MOLLIE_CLIENT_SECRET", "mollie-secret");
+    vi.stubEnv("SETTINGS_ENCRYPTION_KEY", Buffer.alloc(32, 7).toString("base64"));
+    await db().execute(sql`
+      insert into commerce.mollie_connections (store_id, organization_id, profile_id, scopes, refresh_token)
+      values (${storeId}::uuid, 'org_test', 'pfl_test', 'payments.read', 'x')
+    `);
+    await db().execute(sql`insert into commerce.checkout_providers (store_id, mode, provider) values (${storeId}::uuid, 'test', 'mollie')`);
+    try {
+      await sameExpress(false);
+    } finally {
+      await db().execute(sql`delete from commerce.checkout_providers where store_id = ${storeId}::uuid`);
+      await db().execute(sql`delete from commerce.mollie_connections where store_id = ${storeId}::uuid`);
+      vi.unstubAllEnvs();
+      vi.stubEnv("SITE_URL", "https://kaizenaflow.test");
+    }
+  });
+
+  it("offers it alike with a checkout question of the store's own", async () => {
+    await db().execute(sql`insert into commerce.checkout_fields (store_id, kind, label, enabled) values (${storeId}::uuid, 'text', '{"en":"Ref"}'::jsonb, true)`);
+    try {
+      await sameExpress(false);
+    } finally {
+      await db().execute(sql`delete from commerce.checkout_fields where store_id = ${storeId}::uuid`);
+    }
+  });
+
+  it("offers it alike where the store requires an account and nobody is signed in", async () => {
+    await db().execute(sql`update commerce.stores set customer_accounts = 'required' where id = ${storeId}::uuid`);
+    try {
+      await sameExpress(false);
+    } finally {
+      await db().execute(sql`update commerce.stores set customer_accounts = 'optional' where id = ${storeId}::uuid`);
+    }
+  });
+
+  it("offers it alike to a business buyer", async () => {
+    // A store that sells only to businesses (its audience is the Sell to businesses feature's, so the store is handed over as one).
+    const s = { ...(await store()), audience: "businesses" as const };
+    const m = await market();
+    const live = await expressOn(s, m);
+    expect(await expressOn(s, m, await buyFacts(storeId, m.code))).toBe(live);
+    expect(live).toBe(false);
+  });
+
+  it("draws Klarna's line alike: not active, active, and switched off for the country", async () => {
+    const s = await store();
+    const m = await market();
+    const both = async () => {
+      const live = await klarnaMessaging(s, m);
+      expect(await klarnaMessaging(s, m, await buyFacts(storeId, m.code))).toEqual(live);
+      return live;
+    };
+    await db().execute(sql`delete from commerce.payment_methods where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.stripe_accounts set method_states = '{}'::jsonb where store_id = ${storeId}::uuid and mode = 'test'`);
+    expect(await both()).toBeNull();
+    await db().execute(sql`
+      update commerce.stripe_accounts set method_states = '{"card_payments":{"status":"active"},"klarna_payments":{"status":"active"}}'::jsonb
+      where store_id = ${storeId}::uuid and mode = 'test'
+    `);
+    expect(await both()).toEqual({ publishableKey: "pk_test_express", stripeAccount: accountId });
+    await db().execute(sql`
+      insert into commerce.payment_methods (store_id, market_code, method, enabled) values (${storeId}::uuid, 'NO', 'klarna', false)
+      on conflict (store_id, market_code, method) do update set enabled = false
+    `);
+    expect(await both()).toBeNull();
   });
 });

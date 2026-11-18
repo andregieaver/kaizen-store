@@ -176,6 +176,8 @@ try {
     ["checkout at its first step", "/s/demo/no/checkout", cookie],
     ["large store home", bigBase],
     ["large store product", `${bigBase}/p/${big.handle}`],
+    ["product with price breaks", `${bigBase}/p/${big.breaksHandle}`],
+    ["product with producer schemes", `${bigBase}/p/${big.schemesHandle}`],
   ];
   for (const [name, url, cookieHeader] of pages) {
     let one = await count(url, cookieHeader, { warm: true });

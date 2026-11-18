@@ -453,7 +453,8 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
     copy's first blog), `blog_authors`, `blog_comments` and `page_schedules` are `never`.
   - Shopper words are `blogComments` in the browser catalogues (nb, sv, da, en by hand); admin words are the `blog` catalogue (en, nb).
 - **H (D342) Producer responsibility.** A *Producer responsibility* page under Settings: registrations (scheme, country, number,
-  authority, valid from and to) written only by `src/server/producer-registrations.ts`; `commerce.registration_blocks()` (the view's rule)
+  authority, valid from and to) written only by `src/server/producer-registrations.ts` (the product page reads them per request only for a store
+  that has a product under a scheme, `buyFacts().hasSchemes`, step 2.13); `commerce.registration_blocks()` (the view's rule)
   read by the cart and `placeOrder()` alike: a product under a scheme with no valid registration in a country is not sold there from the
   day after its registration ends, with a plain reason; staff see what is blocked; the number shown on the product page and the invoice
   where the scheme asks. Copies carry nothing (a registration is the company's).

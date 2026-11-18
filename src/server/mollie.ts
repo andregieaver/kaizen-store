@@ -20,6 +20,7 @@ import { siteUrl } from "@/lib/site";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 import { encryptionKey } from "./encryption-key";
 
 type Row = Record<string, unknown>;
@@ -171,6 +172,7 @@ export async function connectMollie(storeId: string, accountId: string, params: 
       access_token = excluded.access_token, access_expires_at = excluded.access_expires_at, connected_at = now(), connected_by = excluded.connected_by,
       revoked_at = null
   `);
+  refreshBuyFacts(storeId);
   await audit(accountId, storeId, "payments.mollie_connected", { organization: organization.id, profile: profile.id });
   return { organization: organization.id, profile: profile.id };
 }
@@ -332,6 +334,7 @@ export async function disconnectMollie(storeId: string, accountId: string): Prom
     `);
     await tx.execute(sql`delete from commerce.checkout_providers where store_id = ${storeId}::uuid and provider = 'mollie'`);
   });
+  refreshBuyFacts(storeId);
   await audit(accountId, storeId, "payments.mollie_disconnected", {});
 }
 
@@ -357,6 +360,7 @@ export async function chooseCheckoutProvider(storeId: string, accountId: string,
       on conflict (store_id, mode) do update set provider = excluded.provider, updated_by = excluded.updated_by, updated_at = now()
     `);
   }
+  refreshBuyFacts(storeId);
   await audit(accountId, storeId, "payments.checkout_provider", { mode, provider });
   return { ok: true };
 }

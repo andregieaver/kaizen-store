@@ -25,6 +25,7 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import type { Store } from "./stores";
 
 import { audit } from "./auth";
+import { paymentsOnOf, providerOf, refreshBuyFacts, type BuyFacts } from "./buy-facts";
 import { getBuyer } from "./b2b";
 import { getCart } from "./cart";
 import { listCheckoutFields } from "./checkout-rules";
@@ -52,11 +53,26 @@ type Row = Record<string, unknown>;
  */
 
 /**
- * Whether the express area is offered to this shopper, read per request: Kaizena Flow's own checkout page (Stripe's form in it, not Stripe's
- * hosted page), Stripe as the store's checkout (not Mollie), payments on and not a store template, a signed-in shopper where the store
- * requires accounts (D365), a private buyer (a business's checkout asks its company), and no questions of the store's own to answer (D357).
+ * Whether the express area is offered to this shopper: Kaizena Flow's own checkout page (Stripe's form in it, not Stripe's hosted page),
+ * Stripe as the store's checkout (not Mollie), payments on and not a store template, a signed-in shopper where the store requires accounts
+ * (D365), a private buyer (a business's checkout asks its company), and no questions of the store's own to answer (D357). The store's part
+ * comes from `buyFacts()` where the caller has it (the product page: cached, refreshed by its writers), else it is read; the shopper's
+ * part is read per request.
  */
-export async function expressOn(store: Store, market: Market): Promise<boolean> {
+export async function expressOn(store: Store, market: Market, facts?: BuyFacts): Promise<boolean> {
+  if (facts) {
+    // The store's part is in the facts (cached, refreshed by its writers); only the shopper's part is read here.
+    const [customer, buyer] = await Promise.all([getCustomer(store.id), getBuyer(store)]);
+    return (
+      facts.checkoutUi === "custom" &&
+      paymentsOnOf(facts) &&
+      providerOf(facts) === "stripe" &&
+      !facts.starter &&
+      !signInRequired(store, customer !== null) &&
+      buyer === "private" &&
+      !facts.checkoutFields
+    );
+  }
   const [ui, info, customer, buyer, fields] = await Promise.all([
     getCheckoutUi(),
     getCheckoutInfo(store.id, market.code),
@@ -76,8 +92,8 @@ export async function expressOn(store: Store, market: Market): Promise<boolean> 
 }
 
 /** The express area's props for this shopper, or null where it is not offered (`expressOn()`). Per request. */
-export async function expressAreaFor(store: Store, market: Market, m: Messages): Promise<ExpressSetup | null> {
-  if (!(await expressOn(store, market))) return null;
+export async function expressAreaFor(store: Store, market: Market, m: Messages, facts?: BuyFacts): Promise<ExpressSetup | null> {
+  if (!(await expressOn(store, market, facts))) return null;
   const display = await termsDisplayFor(store, market);
   const theme = store.theme.settings;
   const bodyFont = theme.fonts.body ? findFont(theme.fonts.body) : null;
@@ -148,10 +164,17 @@ export async function startExpress(
 /**
  * Klarna's line under a price (Stripe's messaging element), where Klarna is active on the store's account in the mode it takes payments in,
  * not switched off for the country (D291), and the market's currency and country are ones the element draws. Null otherwise. The keys are
- * the ones the checkout page hands the browser.
+ * the ones the checkout page hands the browser. The store's part comes from `buyFacts()` where the caller has it, else it is read.
  */
-export async function klarnaMessaging(store: Store, market: Market): Promise<{ publishableKey: string; stripeAccount: string } | null> {
+export async function klarnaMessaging(store: Store, market: Market, facts?: BuyFacts): Promise<{ publishableKey: string; stripeAccount: string } | null> {
   if (!klarnaMessagingFits(market.currency, market.code)) return null;
+  if (facts) {
+    if (facts.checkoutUi !== "custom" || !paymentsOnOf(facts) || providerOf(facts) !== "stripe" || !facts.accountId || !facts.activeMode) return null;
+    if (facts.klarnaOff) return null;
+    if (!facts.klarnaActive) return null;
+    const key = platformPublishableKey(facts.activeMode);
+    return key ? { publishableKey: key, stripeAccount: facts.accountId } : null;
+  }
   const [ui, info, account, choices] = await Promise.all([getCheckoutUi(), getCheckoutInfo(store.id, market.code), getCheckoutAccount(store.id), methodChoices(store.id)]);
   if (ui !== "custom" || !info.paymentsOn || info.provider !== "stripe" || !account?.accountId) return null;
   if (!methodOn(choices, market.code, "klarna")) return null;
@@ -209,6 +232,7 @@ export async function checkWalletDomains(storeId: string, storeSlug: string, mod
     update commerce.stripe_accounts set wallet_domains = ${JSON.stringify(kept)}::jsonb, wallet_domains_at = now()
     where store_id = ${storeId}::uuid and mode = ${mode}
   `);
+  refreshBuyFacts(storeId);
   await audit(accountId, storeId, "payments.wallets_checked", { mode, hosts: hosts.length, registered: Object.keys(kept).length }, { area: "settings" });
   return { ok: true, hosts: hosts.length };
 }

@@ -56,6 +56,7 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/order-edit-emails.ts": { count: 1, reason: "the change email says the store pays a refund back itself when the refunded payment was taken outside Kaizena Flow (manual)" },
   "src/server/order-export.ts": { count: 1, reason: "flags a venue payment made in Stripe's test mode in the order file; a manual payment is never a test payment (`payments_manual_real`)" },
   "src/server/orders.ts": { count: 4, reason: "the order page's key reads stripe, mollie, venue, manual, exchange and terms (D293) payments; the other three read `payment_providers` (whether payments are on, Stripe's or Mollie's, D292)" },
+  "src/server/buy-facts.ts": { count: 5, reason: "reads `payment_providers` (whether payments are on, the active mode, Mollie, the Stripe account and Klarna's state: the product page's cached buy facts, step 2.13), not payments" },
   "src/server/booking-changes.ts": { count: 1, reason: "the order page's key: stripe, venue and manual" },
   "src/server/withdrawals.ts": { count: 3, reason: "the order page's key as the withdrawal function's proof: stripe, venue and manual" },
   "src/server/withdraw-link.ts": { count: 1, reason: "the order page's key in the confirmation email's withdrawal link: stripe, venue and manual" },

@@ -17,6 +17,7 @@ import { headerOverlays } from "@/lib/site-layout";
 import { featureOn } from "@/lib/store-features";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
+import { buyFacts } from "@/server/buy-facts";
 import { campaignNotices } from "@/server/campaign-notices";
 import { reviewFacts } from "@/server/review-facts";
 import { productsPageOf } from "@/server/pages";
@@ -124,17 +125,19 @@ export default async function ProductPage({ params }: Props) {
   const back = productsPage
     ? { href: marketPath(store.slug, market.slug, "/products"), title: localizePage(productsPage.content, market.locale).title }
     : null;
-  const [chosen, header, campaigns, recommendations, reviews] = await Promise.all([
+  const [chosen, header, campaigns, recommendations, reviews, buy] = await Promise.all([
     productLayoutForVisitor(store.id, product.id, ab),
     siteLayoutFor(store.id, "header"),
     campaignNotices(store.id, market),
     getRecommendSettings(store.id),
     // The product's published reviews (D301), a cached read like the catalogue's, while the store has reviews on.
     featureOn(store, "reviews") ? reviewFacts(store.id, product.id) : Promise.resolve(null),
+    // What only an owner sets about buying (bloat review step 2.13): one cached read, carried in the prerendered page.
+    buyFacts(store.id, market.code),
   ]);
   // The layout the product uses, or the built-in one; the visitor's version of it while it is under an A/B test (D148).
   const layout = chosen?.content ?? DEFAULT_PRODUCT_LAYOUT;
-  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns, reviews };
+  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns, reviews, buy };
   // A header over every page (D80) lies over a product page whose layout starts with a background.
   const over = headerOverlays(header?.content.overlay, { front: false, categories: [], tags: [], rows: layout.rows });
 

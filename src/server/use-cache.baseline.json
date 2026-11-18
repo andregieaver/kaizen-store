@@ -1,14 +1,14 @@
 {
-  "src/app/s/[store]/[market]/legacy-redirect.ts#legacyLocation": {
-    "life": "{ stale: 300, revalidate: 1, expire: 3600 }",
-    "tags": [
-      "redirectsTag(store.id), catalogTag(store.id)"
-    ]
-  },
   "src/app/s/[store]/[market]/(shop)/term-listing.tsx#pictureAlt": {
     "life": "\"hours\"",
     "tags": [
       "CATALOG_TAG, catalogTag(storeId)"
+    ]
+  },
+  "src/app/s/[store]/[market]/legacy-redirect.ts#legacyLocation": {
+    "life": "{ stale: 300, revalidate: 1, expire: 3600 }",
+    "tags": [
+      "redirectsTag(store.id), catalogTag(store.id)"
     ]
   },
   "src/server/affiliates.ts#affiliateSite": {
@@ -41,6 +41,12 @@
       "pagesTag(storeId)"
     ]
   },
+  "src/server/blogs.ts#blogCategoryIds": {
+    "life": "\"hours\"",
+    "tags": [
+      "pagesTag(storeId)"
+    ]
+  },
   "src/server/blogs.ts#blogFeed": {
     "life": "\"hours\"",
     "tags": [
@@ -50,6 +56,12 @@
   "src/server/brreg.ts#fetchUnit": {
     "life": "\"days\"",
     "tags": []
+  },
+  "src/server/buy-facts.ts#buyFacts": {
+    "life": "\"hours\"",
+    "tags": [
+      "buyTag(storeId), catalogTag(storeId), BUY_PLATFORM_TAG"
+    ]
   },
   "src/server/campaign-notices.ts#campaignNotices": {
     "life": "{ stale: 300, revalidate: seconds, expire: 86400 }",
@@ -324,6 +336,12 @@
     "life": "\"hours\"",
     "tags": [
       "pagesTag(owner)"
+    ]
+  },
+  "src/server/pages.ts#articleCards": {
+    "life": "\"hours\"",
+    "tags": [
+      "pagesTag(storeId)"
     ]
   },
   "src/server/pages.ts#findPublishedPage": {

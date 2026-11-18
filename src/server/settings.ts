@@ -10,6 +10,7 @@ import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Membership, type Role } from "./auth";
 import { auditChange } from "./audit";
+import { refreshBuyFacts } from "./buy-facts";
 import { getStripeAccounts, type StripeAccount } from "./connect";
 import { memberCan, NO_ACCESS } from "./permissions";
 import { encryptionKey } from "./encryption-key";
@@ -76,6 +77,7 @@ export async function setStripeProvider(
            updated_at = now(), updated_by = ${account.id}::uuid
      where store_id = ${store.id}::uuid and provider = 'stripe'
   `);
+  refreshBuyFacts(store.id);
   await audit(account.id, store.id, "payments.provider_updated", {
     provider: "stripe",
     enabled,

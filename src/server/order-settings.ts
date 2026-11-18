@@ -10,6 +10,7 @@ import { ORDER_AUDIT_ACTIONS } from "@/lib/order-ops-events";
 import { isQuoteMode, type QuoteMode } from "@/lib/quotes";
 
 import { audit, type Membership } from "./auth";
+import { refreshBuyFacts } from "./buy-facts";
 import { memberCan } from "./permissions";
 
 type Row = Record<string, unknown>;
@@ -115,6 +116,7 @@ export async function saveOrderSettings(member: Pick<Membership, "account" | "st
       draft_valid_days = excluded.draft_valid_days, staff_mark_paid = excluded.staff_mark_paid, capture = excluded.capture,
       stock_routing = excluded.stock_routing, quote_requests = excluded.quote_requests, updated_at = now()
   `);
+  refreshBuyFacts(member.store.id);
   const changed = (Object.keys(next) as (keyof OrderSettings)[]).filter((key) => next[key] !== before[key]);
   if (changed.length > 0) await audit(member.account.id, member.store.id, ORDER_AUDIT_ACTIONS.settingsChanged, { changed });
   return { ok: true, settings: next };

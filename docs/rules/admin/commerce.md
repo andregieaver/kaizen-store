@@ -593,6 +593,11 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   page's steps. It is offered only where `expressOn()` says; Klarna's line (`KlarnaMessage`) only where `klarnaMessaging()` says. Each web
   address's wallets are `stripe_accounts.wallet_domains`, written only by `checkWalletDomains()` (Payments page, owners). A new place that offers
   express payment asks `expressOn()` and `expressFits()`, and a new kind of line a wallet's sheet cannot ask about is refused by `expressFits()`.
+  The store's part of `expressOn()` and `klarnaMessaging()` is cached in `buyFacts()` where the product page calls them with the facts
+  (step 2.13); the shopper's part is read per request, and the cart's press (`expressOn()` with two arguments) reads live. The same facts
+  carry the quote mode (Request a quote, D431) and back in stock.
+  A writer of payment, checkout-field, quote, back-in-stock, price-break or scheme settings calls `refreshBuyFacts()` after its write has
+  committed, and the platform's checkout look `refreshBuyPlatform()` (`buy-writers.scan.test.ts`).
 
 ## Payment providers (wave 4 unit E, D292, `docs/wave-4-payments.md` 7, `src/lib/payment-providers.ts`, `src/server/payment-providers/`,…
 

@@ -18,6 +18,7 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
 
+import { perRequest } from "./request-memo";
 import { mollieAppOn } from "./mollie";
 import { platformModes } from "./stripe-keys";
 
@@ -518,6 +519,11 @@ export async function getShopperOrder(
  * shown when `view` is given, D109) and VAT rate.
  */
 export async function getCheckoutInfo(storeId: string, marketCode: string, view?: Pick<Market, "conversion">) {
+  // One answer per render when no view is asked for (the product page's parts each ask); a view reads as before.
+  return view ? readCheckoutInfo(storeId, marketCode, view) : perRequest("checkout-info:" + storeId + ":" + marketCode, () => readCheckoutInfo(storeId, marketCode));
+}
+
+async function readCheckoutInfo(storeId: string, marketCode: string, view?: Pick<Market, "conversion">) {
   const [row] = await db().execute<Row>(sql`
     select
       exists (

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import Stripe from "stripe";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { capabilityStates, PAYMENT_CAPABILITIES as ALL_CAPABILITIES } from "@/lib/payment-methods";
@@ -12,7 +13,10 @@ import { accountStatus, requirementNotes, type AccountStatus, type PaymentModeNa
 import { audit, type Account, type Membership } from "./auth";
 import type { SaveResult } from "./settings";
 import { createPlatformWebhooks, platformStripe, type WebhookKind } from "./stripe";
+import { refreshBuyFacts, refreshBuyPlatform } from "./buy-facts";
 import { log } from "./log";
+import { perRequest } from "./request-memo";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -122,6 +126,7 @@ export async function createStripeAccount(
             ${BASE_LIST}::text[], ${account.id}::uuid)
     on conflict (store_id, mode) do nothing
   `);
+  refreshBuyFacts(store.id);
   await audit(account.id, store.id, "payments.stripe_account_created", { mode, accountId: created.id });
   return { ok: true };
 }
@@ -327,6 +332,7 @@ export async function ensureTestAccount(
       -- A new account has no domains registered and no display settings changed yet.
       payment_domains = '{}', payment_methods_shown = false, updated_at = now()
   `);
+  refreshBuyFacts(storeId);
   const replaced = saved && saved.account_id !== created.id ? String(saved.account_id) : null;
   await audit(actorId, storeId, "payments.test_account_created", { accountId: created.id, replaced });
   return { ok: true, accountId: created.id, ready: status.cardPayments === "active" };
@@ -334,6 +340,13 @@ export async function ensureTestAccount(
 
 async function saveStatus(storeId: string, mode: PaymentModeName, account: Stripe.V2.Core.Account) {
   const status = accountStatus(account);
+  // The buy facts read card_payments (the account) and Klarna's status; webhooks and every admin visit of a test store land here, so
+  // the cache is refreshed only when one of the two changed.
+  const before = await typedRow(
+    z.object({ card_payments: col.textOrNull, klarna: col.textOrNull }),
+    sql`select card_payments, method_states -> 'klarna_payments' ->> 'status' as klarna from commerce.stripe_accounts
+        where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${account.id}`,
+  );
   await db().execute(sql`
     update commerce.stripe_accounts
        set card_payments = ${status.cardPayments}, requirements_due = ${status.requirementsDue},
@@ -342,6 +355,8 @@ async function saveStatus(storeId: string, mode: PaymentModeName, account: Strip
            updated_at = now()
      where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${account.id}
   `);
+  const states = capabilityStates(account.configuration?.merchant?.capabilities as Record<string, never> | undefined) as Record<string, { status?: string } | undefined>;
+  if (!before || before.card_payments !== status.cardPayments || (before.klarna ?? null) !== (states?.klarna_payments?.status ?? null)) refreshBuyFacts(storeId);
   return status;
 }
 
@@ -474,14 +489,17 @@ export type CheckoutUi = "custom" | "hosted";
 
 /** Where shoppers pay: Kaizen's own checkout page, or Stripe's page as a fallback. */
 export async function getCheckoutUi(): Promise<CheckoutUi> {
-  const [row] = await db().execute<Row>(sql`select checkout_ui from commerce.platform_settings`);
-  return row?.checkout_ui === "hosted" ? "hosted" : "custom";
+  return perRequest("checkout-ui", async () => {
+    const [row] = await db().execute<Row>(sql`select checkout_ui from commerce.platform_settings`);
+    return row?.checkout_ui === "hosted" ? "hosted" : "custom";
+  });
 }
 
 export async function setCheckoutUi(account: Account, ui: CheckoutUi): Promise<SaveResult> {
   await db().execute(sql`
     update commerce.platform_settings set checkout_ui = ${ui}, updated_at = now(), updated_by = ${account.id}::uuid
   `);
+  refreshBuyPlatform();
   await audit(account.id, null, "platform.checkout_ui_updated", { ui });
   return { ok: true };
 }
