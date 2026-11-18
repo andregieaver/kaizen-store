@@ -29,7 +29,7 @@ export default async function NewPrivacyRequestPage({ params }: PageProps<"/admi
         <PageHeader
           back={{ href: `/admin/${store.slug}/privacy`, label: w.common.privacyRequests }}
           title={w.forms.logTitle}
-          description={<>{w.forms.newDescription}</>}
+          description={<><span className="sm:hidden">{w.forms.phone.lead}</span><span className="max-sm:hidden">{w.forms.newDescription}</span></>}
         />
         <LogRequestForm action={logRequestAction.bind(null, store.slug)} today={todayIn(store.timeZone)} />
       </div>

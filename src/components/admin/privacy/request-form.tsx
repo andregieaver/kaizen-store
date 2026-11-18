@@ -2,6 +2,7 @@
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { useAdminText } from "@/components/admin/admin-text";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { fillWords } from "@/lib/admin-fill";
 import { PRIVACY_KINDS } from "@/lib/privacy-request";
 
@@ -18,7 +19,9 @@ export function LogRequestForm({ action, today }: { action: Action; today: strin
   const { forms: f, common: c, staff } = useAdminText("privacy");
   return (
     <section aria-labelledby="log-request" className={card}>
-      <h2 id="log-request" className="text-title text-ink">
+      {/* Round 50 (D765): on a phone the card's title is the page's, the fields keep their labels, and the deadline is one line with how it is
+          counted a row under the button. */}
+      <h2 id="log-request" className="text-title text-ink max-sm:sr-only">
         {f.logTitle}
       </h2>
       <ActionForm action={action} className="flex flex-col gap-4">
@@ -32,26 +35,32 @@ export function LogRequestForm({ action, today }: { action: Action; today: strin
                 </option>
               ))}
             </select>
-            <span className={hint}>{fillWords(f.kindHint, { export: c.kinds.export, erasure: c.kinds.erasure.toLowerCase() })}</span>
+            <span className={`${hint} max-sm:hidden`}>{fillWords(f.kindHint, { export: c.kinds.export, erasure: c.kinds.erasure.toLowerCase() })}</span>
           </label>
           <label className={label}>
             {f.email}
             <input name="email" type="email" required autoComplete="off" maxLength={254} className={input} />
-            <span className={hint}>{f.emailHint}</span>
+            <span className={`${hint} max-sm:hidden`}>{f.emailHint}</span>
           </label>
           <label className={label}>
             {f.received}
             <input name="receivedOn" type="date" required defaultValue={today} max={today} className={input} />
-            <span className={hint}>{staff.receivedHelp}</span>
+            <span className={`${hint} max-sm:hidden`}>{staff.receivedHelp}</span>
           </label>
           <label className={label}>
             {c.note} <span className={hint}>{f.staffNote}</span>
             <textarea name="note" rows={3} maxLength={1000} className={`${input} py-2`} />
           </label>
         </div>
-        <p className="text-sm text-muted">{staff.clock}</p>
+        <p className="text-sm text-muted sm:hidden">{f.phone.due}</p>
+        <p className="text-sm text-muted max-sm:hidden">{staff.clock}</p>
         <div>
           <SubmitButton>{f.logButton}</SubmitButton>
+        </div>
+        <div className="border-t border-line sm:hidden">
+          <PhoneRow inset last title={f.phone.clock} sub={f.phone.clockSub} change={f.phone.open} done={f.phone.close}>
+            <p className="text-sm text-muted">{staff.clock}</p>
+          </PhoneRow>
         </div>
       </ActionForm>
     </section>

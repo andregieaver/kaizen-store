@@ -89,7 +89,9 @@ export function RedirectUpload({
           {u.label}
         </label>
         <input id="redirect-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
-        <p className={hint}>
+        {/* Round 50 (D765): one line on a phone. */}
+        <p className={`${hint} sm:hidden`}>{w.import.phone.hint}</p>
+        <p className={`${hint} max-sm:hidden`}>
           {fillWords(u.hintA, { size: formatBytes(IMPORT_MAX_BYTES), lines: wholeNumber(REDIRECT_IMPORT_MAX_ROWS, locale) })} <strong>{"Redirect from"}</strong> {u.hintB} <strong>{"Redirect to"}</strong>
           {u.hintC}
         </p>

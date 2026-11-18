@@ -4,6 +4,15 @@ import type { LoyaltyMessages } from "./loyalty.en";
 export const loyaltyNb: LoyaltyMessages = {
   /** Skapere (D386): butikkens side for skaperprogrammet. */
   creators: {
+    /** Round 50 (D765): what a phone shows. */
+    phone: {
+      lead: "Folk med en egen kanal selger varene dine med en kode og tjener en andel. Du betaler dem selv.",
+      more: "Flere valg",
+      moreSub: "Kategorienes egen provisjon, lenkens informasjonskapsel",
+      none: "Ingen har søkt ennå. Ingen utbetalinger registrert.",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "Skapere",
     on: "Skaperprogrammet er på.",
     off: "Skaperprogrammet er av.",
