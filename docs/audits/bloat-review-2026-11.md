@@ -191,7 +191,7 @@ commit as the fix.
 | 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | Open | |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
-| 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | Open | |
+| 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | Local: commit 1 (reconcile migration; admit() sets mirror from getUser, fails closed). Commit 2 stopped: old gate cases hold aal1 on an empty mirror. JWT key answer owed. |
 | 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | Open | |
 | 2.35 | Answer a store's own domain without a deployment | SF-13 | L | strong | 2.20, 1.8, 1.29 | Open | |
 | 2.36 | Send the AI manager a lean default round | AI-1, AI-9, AI-11, FT-4, AI-6, GAP-ai-s1, GAP-ai-2 | M | strong | 1.19, 0.5, 0.11 | Open | |
