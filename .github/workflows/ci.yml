@@ -36,6 +36,8 @@ concurrency:
 # The type check of the whole program and the build need more than Node's default heap (D312); the catalogues alone take about 125 MB.
 env:
   NODE_OPTIONS: --max-old-space-size=7168
+  # Every check runs through scripts/timed.mjs (bloat review step 1.20), which appends its seconds here; each job uploads the file.
+  TIMINGS_FILE: timings.jsonl
 
 jobs:
   # The checks run side by side (about 10 minutes once a runner is free). Every job below is one runner to wait for
@@ -52,7 +54,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-static -- pnpm install --frozen-lockfile
       # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
       - uses: actions/cache@v4
         with:
@@ -60,9 +62,16 @@ jobs:
           key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
           restore-keys: |
             eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
+      - run: node scripts/timed.mjs lint -- pnpm lint
+      - run: node scripts/timed.mjs typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck
+      - run: node scripts/timed.mjs unit --unit -- pnpm test --reporter=default --reporter=json --outputFile=.vitest-report.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-static
+          path: timings.jsonl
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Known advisories in what production runs (PSI 2026-10-24, SEC-08). In `release`'s `needs` (PSI 2026-10-31): a high advisory
   # holds back a migration and the deploy that follows it; a push without a migration still deploys after its quick gate and shows it red here.
@@ -113,7 +122,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-int-${{ matrix.shard }} -- pnpm install --frozen-lockfile
       # It reads only the repository, so one shard is enough.
       - name: Migrations match the schema
         if: matrix.shard == 1
@@ -122,9 +131,16 @@ jobs:
         run: node scripts/db-setup.mjs --seed
       - name: Query budget on the fresh database (src/server/query-budget.int.test.ts)
         if: matrix.shard == 1
-        run: pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts
+        run: node scripts/timed.mjs query-budget -- pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts
       - name: Integration tests against the database
-        run: pnpm test:int --shard=${{ matrix.shard }}/3 --exclude src/server/query-budget.int.test.ts
+        run: node scripts/timed.mjs int-${{ matrix.shard }} -- pnpm test:int --shard=${{ matrix.shard }}/3 --exclude src/server/query-budget.int.test.ts
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-int-${{ matrix.shard }}
+          path: timings.jsonl
+          retention-days: 7
+          if-no-files-found: ignore
 
   e2e:
     if: github.event_name != 'workflow_dispatch'
@@ -161,42 +177,44 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-e2e -- pnpm install --frozen-lockfile
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
       # Before the build: stores' pages are prerendered from the database (bloat review step 1.6, e2e/performance.spec.ts holds its pages).
       - name: Seed a store on the Orbit theme (e2e/seed/themed-store.seed.ts)
         run: pnpm seed:themed
-      - run: pnpm build
+      - run: node scripts/timed.mjs build-e2e -- pnpm build
       # The megabytes traced beside each function and what carries them (bloat review step 1.8, scripts/trace-budgets.json): a breach fails the job with the figure.
       - name: What a function carries
-        run: node scripts/trace-sizes.mjs --check >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/timed.mjs trace-sizes -- node scripts/trace-sizes.mjs --check >> "$GITHUB_STEP_SUMMARY"
       # What each kind of route lists at start, the server-reference manifest, the routing rules and the cold loads (bloat review step 1.8, scripts/route-budget.json).
       - name: What a route loads
-        run: node scripts/route-budget.mjs >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/timed.mjs route-budget -- node scripts/route-budget.mjs >> "$GITHUB_STEP_SUMMARY"
       # Each built route and page loads in a fresh process, as a cold Vercel function loads it (bloat review step 0.6): a lazy
       # import changes load order, and a route that first loads a module of an import cycle can fail while the same code loads
       # fine behind another route (the Mollie webhook, 12 November 2026). A server that has answered other requests hides that.
       - name: Every built route loads on its own
-        run: node scripts/cold-load-routes.mjs
+        run: node scripts/timed.mjs cold-loads -- node scripts/cold-load-routes.mjs
       # Which routes are static, how many holes each has and what the demo store's resume data keeps (bloat review step 1.11): a hard
       # gate, so a new cookies() or headers() read in a shared part fails here and not in a visitor's first load.
       - name: What is static
-        run: node scripts/render-modes.mjs >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/timed.mjs render-modes -- node scripts/render-modes.mjs >> "$GITHUB_STEP_SUMMARY"
       # WebKit too: the shopper's pages also run in Safari's engine (playwright.config.ts, the webkit project; PSI UX-12).
       # The image has both browsers, so this finds them and does nothing; were the pinned version ever ahead of the
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).
       - run: pnpm exec playwright install chromium webkit
-      - run: pnpm test:e2e
+      - run: node scripts/timed.mjs e2e --playwright-report=playwright-report.json -- pnpm test:e2e
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
       # The statements each store page sends, counted from the app's own statement log (bloat review step 1.11): after Playwright, so
       # nothing else sends statements, and `success()` so a red Playwright run is not hidden behind it. A hard gate.
       - name: Statements per store page
         if: success()
-        run: node scripts/server-budget.mjs >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/timed.mjs server-budget -- node scripts/server-budget.mjs >> "$GITHUB_STEP_SUMMARY"
       # After the end-to-end run, so a budget failure never hides its results; `!cancelled()` so it still reports when a test failed.
       - name: Every route's first scripts against the baseline (scripts/bundle-budget.mjs)
         if: ${{ !cancelled() }}
-        run: node scripts/bundle-budget.mjs
+        run: node scripts/timed.mjs bundle-budget -- node scripts/bundle-budget.mjs
       # What failed, kept for a week: each failed test's page snapshot and its retry's trace (playwright.config.ts), read with
       # `pnpm exec playwright show-trace`. Without them a failure that does not come back locally cannot be read.
       - if: failure()
@@ -204,6 +222,13 @@ jobs:
         with:
           name: e2e-results
           path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-e2e
+          path: timings.jsonl
           retention-days: 7
           if-no-files-found: ignore
 
@@ -244,14 +269,22 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-hosts -- pnpm install --frozen-lockfile
       - name: Create the database with the demo catalogue, a store on a domain of its own, and Kaizena Flow's site served from its store
         run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
-      - run: pnpm build
+      - run: node scripts/timed.mjs build-hosts -- pnpm build
       - run: pnpm exec playwright install chromium
-      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts e2e/docs-host.spec.ts e2e/house-site.spec.ts
+      - run: node scripts/timed.mjs hosts --playwright-report=playwright-report.json -- pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts e2e/docs-host.spec.ts e2e/house-site.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-hosts
+          path: timings.jsonl
+          retention-days: 7
+          if-no-files-found: ignore
 
   # The admin as signed-in people see it (e2e/signed-in/): the app is built against a stand-in for Supabase Auth
   # (e2e/fixtures/auth-stub.mjs), so its own sign-in form, session check and permissions run unchanged; an owner and a
@@ -289,17 +322,26 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-signed-in -- pnpm install --frozen-lockfile
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
-      - run: pnpm build
+      - run: node scripts/timed.mjs build-signed-in -- pnpm build
       - run: pnpm exec playwright install chromium
-      - run: pnpm exec playwright test --project=signed-in
+      - run: node scripts/timed.mjs signed-in --playwright-report=playwright-report.json -- pnpm exec playwright test --project=signed-in
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: signed-in-results
           path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-signed-in
+          path: timings.jsonl
           retention-days: 7
           if-no-files-found: ignore
 
@@ -337,7 +379,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-pending -- pnpm install --frozen-lockfile
       # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
       - uses: actions/cache@v4
         with:
@@ -354,13 +396,13 @@ jobs:
       # `release` then waits for the whole of `static`, which runs the same three and more.
       - name: "Quick gate: lint"
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
-        run: pnpm lint
+        run: node scripts/timed.mjs gate-lint -- pnpm lint
       - name: "Quick gate: type check"
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
-        run: pnpm typecheck
+        run: node scripts/timed.mjs gate-typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck
       - name: "Quick gate: money, cart, checkout and VAT tests"
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
-        run: pnpm test:smoke
+        run: node scripts/timed.mjs gate-smoke -- pnpm test:smoke
       # The deploy hook builds the head of main at the moment it is called, not this commit (D530). A later push may have
       # brought a migration that production has not had: deploying the head then puts new code on the old schema (it
       # happened on 10 November 2026). So the ledger is read again against the head's files just before the call, and
@@ -401,6 +443,7 @@ jobs:
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
+          PUSHED_AT: ${{ github.event.head_commit.timestamp }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
       # D741: a run that left its deploy to a newer run (D710), or to the head's release because the head has a migration, makes sure it happens. It waits while newer runs go on; when they have all
@@ -421,6 +464,13 @@ jobs:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         run: node scripts/await-deploy.mjs
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-pending
+          path: timings.jsonl
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Migrations were pending (or AUTO_MIGRATE is off): after every check, apply the files, then deploy, in one
   # job. A failed check, a failed migration or a status that could not be read deploys nothing. Re-running a
@@ -457,7 +507,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: node scripts/timed.mjs install-release -- pnpm install --frozen-lockfile
         if: needs.pending.outputs.pending == 'true'
       - name: Apply the pending migrations
         if: needs.pending.outputs.pending == 'true'
@@ -495,6 +545,7 @@ jobs:
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
+          PUSHED_AT: ${{ github.event.head_commit.timestamp }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
       # D741, as in `pending` (run 1551 applied its migrations and left the deploy to the head's release): this commit's migrations are applied, so its code may go out on its own.
@@ -513,6 +564,13 @@ jobs:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         run: node scripts/await-deploy.mjs
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: timings-release
+          path: timings.jsonl
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Manual: deploy again (to test the hook, or after a failed deploy) without running anything else.
   redeploy:
@@ -533,8 +591,29 @@ jobs:
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
+          PUSHED_AT: ${{ github.event.head_commit.timestamp }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
+
+  # Every job's seconds, added up as runner minutes (bloat review step 1.20, scripts/runner-minutes.mjs), and each job's install seconds from
+  # the timings it uploaded. After every other check of a push, red or green; it reads the run's own jobs and writes nothing.
+  timings:
+    if: always() && github.event_name != 'workflow_dispatch'
+    needs: [static, audit, integration, e2e, hosts, signed-in]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Runner minutes of this push
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/runner-minutes.mjs >> "$GITHUB_STEP_SUMMARY"
 
   baseline:
     if: github.event_name == 'workflow_dispatch' && inputs.baseline_through != ''

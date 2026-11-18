@@ -1,0 +1,26 @@
+# Are the ceilings of scripts/ci-budgets.json still close to what CI does (bloat review step 1.20)? Each Monday it reads the timings of the last
+# ten CI runs on main and goes red when a ceiling is more than 25% above its median (10% for the build's memory) or a release key is over
+# 600 seconds. It reads, never writes, and never pushes.
+name: CI budgets
+
+on:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  ceilings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/ci-budgets-check.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
