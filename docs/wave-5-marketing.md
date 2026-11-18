@@ -254,7 +254,9 @@ Resend's events (`applyEmailEvent()`): a hard bounce (`Permanent`) of any email 
 A button's address in a sent email is `/api/marketing/c/{broadcast}/{link}?m={market}`: the route looks the link up in the broadcast's own content
 (so it never redirects anywhere the store did not write), adds one to `broadcast_link_clicks` (the broadcast, the link and a count: no person, no
 time, no address) and redirects to it. There is no open-tracking pixel. The report says plainly that a count includes mail apps that open links to
-check them.
+check them. *Later (17 November 2026, D754, the owner's decision M0.1 b of `docs/audits/email-marketing-2026-11.md`):* each recipient's links carry
+`p`, their subscriber's id signed for the broadcast, and a press with a genuine one by a subscriber still on the list is also kept as theirs in
+`email_clicks` (subscriber, broadcast, link, time; 180 days); the report shows how many people pressed beside the presses.
 
 ### 5.6 The report
 

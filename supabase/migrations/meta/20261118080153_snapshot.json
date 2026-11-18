@@ -1,6 +1,6 @@
 {
-  "id": "5cb38059-d46a-4dce-bfc6-38ab36707d8e",
-  "prevId": "8d080945-5852-4063-8668-8e279e350ad2",
+  "id": "10ef9cf9-6e83-4f7e-bf39-ee9011f53c23",
+  "prevId": "32973e69-d466-49cc-b940-6b1b293fb434",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3898,6 +3898,32 @@
           "notNull": true,
           "default": 0
         },
+        "cached_input_tokens": {
+          "name": "cached_input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "turn_id": {
+          "name": "turn_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "round": {
+          "name": "round",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loaded_tools": {
+          "name": "loaded_tools",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "characters": {
           "name": "characters",
           "type": "integer",
@@ -4048,6 +4074,22 @@
           "method": "btree",
           "where": "\"commerce\".\"ai_usage\".\"acted_by\" = 'autopilot'",
           "concurrently": false
+        },
+        "ai_usage_turn_idx": {
+          "name": "ai_usage_turn_idx",
+          "columns": [
+            {
+              "expression": "turn_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"ai_usage\".\"turn_id\" is not null",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -4098,6 +4140,14 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "ai_usage_round": {
+          "name": "ai_usage_round",
+          "value": "\"commerce\".\"ai_usage\".\"round\" is null or \"commerce\".\"ai_usage\".\"round\" between 0 and 100"
+        },
+        "ai_usage_cached": {
+          "name": "ai_usage_cached",
+          "value": "\"commerce\".\"ai_usage\".\"cached_input_tokens\" >= 0 and \"commerce\".\"ai_usage\".\"cached_input_tokens\" <= \"commerce\".\"ai_usage\".\"input_tokens\""
+        },
         "ai_usage_acted_by": {
           "name": "ai_usage_acted_by",
           "value": "\"commerce\".\"ai_usage\".\"acted_by\" in ('person', 'ai_manager', 'autopilot')"
@@ -32473,6 +32523,173 @@
         "einvoice_sends_attempts": {
           "name": "einvoice_sends_attempts",
           "value": "\"commerce\".\"einvoice_sends\".\"attempts\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.email_clicks": {
+      "name": "email_clicks",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subscriber_id": {
+          "name": "subscriber_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "broadcast_id": {
+          "name": "broadcast_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "link": {
+          "name": "link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clicked_at": {
+          "name": "clicked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "email_clicks_subscriber_idx": {
+          "name": "email_clicks_subscriber_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "clicked_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "email_clicks_broadcast_idx": {
+          "name": "email_clicks_broadcast_idx",
+          "columns": [
+            {
+              "expression": "broadcast_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "link",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "email_clicks_clicked_idx": {
+          "name": "email_clicks_clicked_idx",
+          "columns": [
+            {
+              "expression": "clicked_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "email_clicks_store_id_stores_id_fk": {
+          "name": "email_clicks_store_id_stores_id_fk",
+          "tableFrom": "email_clicks",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "email_clicks_subscriber_fk": {
+          "name": "email_clicks_subscriber_fk",
+          "tableFrom": "email_clicks",
+          "columnsFrom": [
+            "store_id",
+            "subscriber_id"
+          ],
+          "tableTo": "marketing_subscribers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "email_clicks_broadcast_fk": {
+          "name": "email_clicks_broadcast_fk",
+          "tableFrom": "email_clicks",
+          "columnsFrom": [
+            "store_id",
+            "broadcast_id"
+          ],
+          "tableTo": "broadcasts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "email_clicks_link": {
+          "name": "email_clicks_link",
+          "value": "\"commerce\".\"email_clicks\".\"link\" ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'"
         }
       },
       "isRLSEnabled": false

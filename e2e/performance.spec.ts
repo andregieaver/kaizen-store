@@ -1,8 +1,10 @@
+import { join } from "node:path";
 import { brotliCompressSync } from "node:zlib";
 
 import { expect, test, type Page } from "@playwright/test";
 
 import { parsePageContent } from "../src/lib/page-content";
+import { PAYMENT_CAPABILITIES } from "../src/lib/payment-methods";
 import { ORBIT_PACK, orbitHomePage } from "../src/lib/signature/orbit";
 
 import { storePageRows, testDb, testStore } from "./db";
@@ -22,7 +24,7 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  * but a `nomodule` one (Next's polyfills, 225,082 bytes twice over, which no browser that runs the page loads), never what the page has
  * loaded by the time it is looked at, which grows with what it does after (bloat review step 1.3, as `e2e/signed-in/admin-scripts.spec.ts`).
  */
-function scriptAddresses(html: string): string[] {
+function scriptAddresses(html: string, origin = base): string[] {
   return [
     ...new Set(
       [...html.matchAll(/<script\b[^>]*>/g)]
@@ -30,14 +32,15 @@ function scriptAddresses(html: string): string[] {
         .filter((tag) => !/\snomodule\b/i.test(tag))
         .map((tag) => /\ssrc="([^"]+)"/.exec(tag)?.[1])
         .filter((src): src is string => Boolean(src))
-        .map((src) => new URL(src.replaceAll("&amp;", "&"), base).href),
+        .map((src) => new URL(src.replaceAll("&amp;", "&"), origin).href),
     ),
   ];
 }
 
-async function firstScripts(page: Page, address: string): Promise<{ url: string; text: string }[]> {
+/** The page's first scripts, `address` fetched with the page's cookies; `origin` is the server's when it is not the main one (the money path's). */
+async function firstScripts(page: Page, address: string, origin = base): Promise<{ url: string; text: string }[]> {
   const html = await (await page.request.get(address)).text();
-  return Promise.all(scriptAddresses(html).map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
+  return Promise.all(scriptAddresses(html, origin).map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
 }
 
 test("the front page's first scripts carry no zod, no lightbox and no checkout form", async ({ page }) => {
@@ -809,6 +812,196 @@ test.describe("a store on a launch theme (Orbit)", () => {
       expect(count, `router requests of ${addresses.home}`).toBeLessThanOrEqual(THEMED_HOME.routerRequests);
     } finally {
       await context.close();
+    }
+  });
+});
+
+/**
+ * The money path (bloat review step 1.7): a cart with two lines and the checkout at its payment step, on a phone. A store made for the run
+ * (`testStore("betaling")`, the template's catalogue) takes payments in test mode through rows made with SQL, as e2e/draft-pay.spec.ts
+ * makes them. Its checkout opens Stripe's session only with Kaizena Flow's platform keys, so these pages are asked of the second server of
+ * the same build (playwright.config.ts, `E2E_MONEY_BASE`): its keys are dummy values in Stripe's test shape, and its Stripe calls go to
+ * the stand-in e2e/fixtures/stripe-stub.mjs (`STRIPE_TEST_URL` with `STRIPE_ALLOW_TEST_URL=1`, never on Vercel). In the browser,
+ * https://js.stripe.com/** is routed to e2e/fixtures/stripe-js-stub.js, which draws the payment form as a box; every other host is
+ * aborted and listed, and the list must be empty. Held for each page: its first scripts and its document (`firstScripts()` and
+ * `documentOf()` on the page's address, fetched with the shopper's cookies), the router requests the page asks for (by referrer) until
+ * three quiet seconds, none on the checkout in three seconds on its settled payment form, and the requests to another host: none on the cart,
+ * exactly one, the provider's script, on the checkout. The routed script's real size is not known here: the nightly production run of
+ * step 1.14 reads the real script's bytes, so no wire figure is held for these pages. Each figure is its first measure plus 5 % (bytes and
+ * characters rounded up to the next 500, counts up to the next whole), measured on the build of 18 November 2026 on a fresh database and
+ * again after the whole suite (five runs each, the same figures): the cart 729,906 / 99,324 / 69,173 / 406 and 19 router requests, the
+ * checkout 729,906 / 89,441 / 64,402 / 401 and 18. The stand-in's boxes are about as tall as Stripe's elements: shorter, they pulled the
+ * page's lower links into view after the form showed (2 to 5 router requests in 4 runs of 11). The stand-in's form shows at once, before
+ * Stripe's real one could, so a prefetch the page's hydration starts can still land between the form showing and the page settling (two
+ * for the cart's link in 2 runs of 2 on a busy machine): those count in the total, and the window held at none starts once it settles.
+ * After phase 2
+ * the two-line cart is judged against the bare store's bars, and the checkout at its payment step has first scripts of at most 670,000
+ * bytes (docs/rules/budgets.md). `E2E_MEASURE=1` prints each figure as `[money] <page> <measure> <value>`, holds none, and keeps the
+ * shopper's browser state in e2e/.auth/money.json for docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs.
+ */
+const MONEY_BASE = process.env.E2E_MONEY_BASE;
+
+type MoneyPage = "cart" | "checkout";
+
+const MONEY_BUDGETS: Record<MoneyPage, { firstScripts: number; document: number; payload: number; main: number; routerRequests: number; thirdParty: number }> = {
+  cart: { firstScripts: 766_500, document: 104_500, payload: 73_000, main: 500, routerRequests: 20, thirdParty: 0 },
+  checkout: { firstScripts: 766_500, document: 94_000, payload: 68_000, main: 500, routerRequests: 19, thirdParty: 1 },
+};
+
+test.describe("the money path", () => {
+  let slug = "";
+  let handles: string[] = [];
+
+  test.beforeAll(async () => {
+    if (!MONEY_BASE) {
+      if (process.env.CI) throw new Error("The money path's server is missing: playwright.config.ts starts it unless E2E_CUSTOM_HOSTS or E2E_SIGNED_IN is set");
+      test.skip(true, "no second server for the money path (E2E_CUSTOM_HOSTS or E2E_SIGNED_IN is set)");
+      return;
+    }
+    const store = await testStore("betaling");
+    slug = store.slug;
+    const sql = testDb();
+    try {
+      // Payments on in test mode with an active account; every payment method already asked for, so nothing asks Stripe for more.
+      await sql`
+        insert into commerce.payment_providers (store_id, provider, enabled, active_mode) values (${store.id}, 'stripe', true, 'test')
+        on conflict (store_id, provider) do update set enabled = true, active_mode = 'test'`;
+      await sql`
+        insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due, payment_methods_requested)
+        values (${store.id}, 'test', ${`acct_E2E${Date.now()}`}, 'active', false, ${PAYMENT_CAPABILITIES})
+        on conflict (store_id, mode) do update set card_payments = 'active', requirements_due = false, payment_methods_requested = excluded.payment_methods_requested`;
+      // Two of the template's own products, in stock (the specs add others to the template as they run, so none is picked by order).
+      const products = await sql`
+        select distinct p.handle from commerce.products p join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id
+        join commerce.variant_availability a on a.variant_id = v.id
+        where p.store_id = ${store.id} and p.status = 'active' and a.in_stock > 0 and p.handle in ('demo-notatbok', 'demo-handlenett')
+        order by p.handle desc`;
+      handles = products.map((row) => String(row.handle));
+      expect(handles, "the notebook and the shopping bag, in stock").toEqual(["demo-notatbok", "demo-handlenett"]);
+    } finally {
+      await sql.end();
+    }
+  });
+
+  test("a cart with two lines and the checkout at its payment step: first scripts, document, router requests and other hosts", async ({ browser }) => {
+    test.setTimeout(180_000);
+    const money = MONEY_BASE!;
+    const host = new URL(money).host;
+    const context = await browser.newContext({ baseURL: money, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const provider: string[] = [];
+    const aborted: string[] = [];
+    await context.route(
+      (url) => url.host !== host,
+      (route) => {
+        const url = route.request().url();
+        if (url.startsWith("https://js.stripe.com/")) {
+          provider.push(url);
+          return route.fulfill({ path: join(__dirname, "fixtures", "stripe-js-stub.js"), contentType: "text/javascript" });
+        }
+        aborted.push(url);
+        return route.abort();
+      },
+    );
+    const page = await context.newPage();
+    // Every router request with the page that asked for it (its referrer), and the time of the last request of any kind.
+    const routed: Promise<{ url: string; from: string } | null>[] = [];
+    let moved = Date.now();
+    page.on("request", (request) => {
+      moved = Date.now();
+      routed.push(
+        request.allHeaders().then((headers) =>
+          ROUTER_HEADERS.some((name) => name in headers) ? { url: request.url(), from: headers.referer ? new URL(headers.referer).pathname : "" } : null,
+        ),
+      );
+    });
+    page.on("requestfinished", () => {
+      moved = Date.now();
+    });
+    page.on("requestfailed", () => {
+      moved = Date.now();
+    });
+    const quiet = async (what: string) => {
+      const giveUp = Date.now() + 30_000;
+      while (Date.now() - moved < QUIET_MS) {
+        if (Date.now() > giveUp) throw new Error(`${what}: the page never went quiet`);
+        await page.waitForTimeout(250);
+      }
+    };
+    /** The router requests a page asked for, from the `from`-th request seen on. */
+    const routerRequestsOf = async (path: string, from = 0) =>
+      (await Promise.all(routed.slice(from))).filter((seen) => seen !== null && seen.from === path).map((seen) => new URL(seen!.url).pathname);
+    const routers: Record<MoneyPage, string[]> = { cart: [], checkout: [] };
+    // The checkout's router requests from the moment the payment form shows until the page settles (printed: the stand-in's form shows
+    // at once, so a prefetch the page's hydration starts can land after it), and while the shopper is on the settled form (none).
+    let settling: string[] = [];
+    let afterForm: string[] = [];
+    const figures = {} as Record<MoneyPage, { firstScripts: number; document: number; payload: number; main: number; routerRequests: number; thirdParty: number }>;
+    const measureHtml = async (address: string) => {
+      const scripts = await firstScripts(page, address, money);
+      return { firstScripts: scripts.reduce((sum, script) => sum + script.text.length, 0), ...(await documentOf(page, address)) };
+    };
+    try {
+      for (const [index, handle] of handles.entries()) {
+        await page.goto(`/s/${slug}/p/${handle}`);
+        await page.getByRole("button", { name: "Legg i handlekurven", disabled: false }).first().click();
+        await expect(page.getByRole("link", { name: `Handlekurv (${index + 1})` })).toBeVisible();
+      }
+
+      // The cart, loaded afresh: two lines, then quiet.
+      const cart = `/s/${slug}/cart`;
+      provider.length = 0;
+      const cartFrom = routed.length;
+      await page.goto(cart, { waitUntil: "load" });
+      await expect(page.getByRole("button", { name: /Fjern/ }).filter({ visible: true })).toHaveCount(2);
+      await quiet(cart);
+      routers.cart = await routerRequestsOf(cart, cartFrom);
+      figures.cart = { ...(await measureHtml(cart)), routerRequests: routers.cart.length, thirdParty: provider.length };
+      if (MEASURE) await context.storageState({ path: "e2e/.auth/money.json" });
+
+      // The checkout: the cart's button places the order and opens the session, and the page shows the payment form.
+      const checkout = `/s/${slug}/checkout`;
+      provider.length = 0;
+      const checkoutFrom = routed.length;
+      await page.getByRole("button", { name: "Til kassen" }).click();
+      await expect(page).toHaveURL(new RegExp(`${checkout}$`));
+      await expect(page.getByTestId("payment-form-stub")).toBeVisible({ timeout: 30_000 });
+      const formShown = routed.length;
+      await quiet("the checkout's payment step");
+      // The shopper on the form: once the page has settled, three more seconds in which nothing asks the router.
+      const settled = routed.length;
+      await page.waitForTimeout(QUIET_MS);
+      routers.checkout = await routerRequestsOf(checkout, checkoutFrom);
+      settling = await routerRequestsOf(checkout, formShown);
+      afterForm = await routerRequestsOf(checkout, settled);
+      figures.checkout = { ...(await measureHtml(checkout)), routerRequests: routers.checkout.length, thirdParty: provider.length };
+    } finally {
+      await context.close();
+    }
+
+    if (MEASURE) {
+      console.log(`[money] address cart /s/${slug}/cart`);
+      console.log(`[money] address checkout /s/${slug}/checkout`);
+      for (const key of ["cart", "checkout"] as const) {
+        for (const [measure, value] of Object.entries(figures[key])) console.log(`[money] ${key} ${measure} ${value}`);
+        for (const path of routers[key]) console.log(`[money] ${key} router ${path}`);
+      }
+      console.log(`[money] checkout routerWhileFormSettles ${settling.length}${settling.map((path) => ` ${path}`).join("")}`);
+      console.log(`[money] checkout routerOnSettledForm ${afterForm.length}${afterForm.map((path) => ` ${path}`).join("")}`);
+      console.log(`[money] other hosts ${aborted.length}`);
+      return;
+    }
+    expect(aborted, "requests to a host that is neither the app's nor the payment provider's script").toEqual([]);
+    expect(afterForm, "router requests of the checkout while the shopper is on its settled payment form").toEqual([]);
+    for (const key of ["cart", "checkout"] as const) {
+      const budget = MONEY_BUDGETS[key];
+      const measured = figures[key];
+      const text = `${key}: ${JSON.stringify(measured)}; router requests: ${routers[key].join(", ")}`;
+      expect(measured.firstScripts, text).toBeLessThan(budget.firstScripts);
+      expect(measured.document, text).toBeLessThan(budget.document);
+      expect(measured.payload, text).toBeLessThan(budget.payload);
+      expect(measured.main, text).toBeLessThan(budget.main);
+      expect(measured.routerRequests, text).toBeLessThanOrEqual(budget.routerRequests);
+      expect(measured.thirdParty, text).toBe(budget.thirdParty);
     }
   });
 });

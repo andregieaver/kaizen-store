@@ -154,7 +154,7 @@ export const DA: StarterText = {
     "privacy.purpose.accounting": "at føre regnskab og opbevare det materiale, loven kræver (retlig forpligtelse)",
     "privacy.purpose.service": "at besvare dine spørgsmål og reklamationer (opfyldelse af aftalen, og vores legitime interesse i at yde god service)",
     "privacy.purpose.security": "at holde butikken sikker og forebygge svindel og misbrug (vores legitime interesse)",
-    "privacy.purpose.marketing": "at sende dig markedsføring på e-mail, kun hvis du har sagt ja til det (samtykke)",
+    "privacy.purpose.marketing": "at sende dig markedsføring på e-mail, kun hvis du har sagt ja til det (samtykke), og at se hvilke af dens links du trykker på, gemt i 180 dage (e-mailene har ingen sporingspixel, så om du åbner en registreres ikke)",
     "privacy.purpose.visits": "at tælle besøg i butikken uden cookies, for at se, hvordan den bruges; vi gemmer ingen IP-adresse og ingen browseridentifikator (vores legitime interesse)",
     // D656: hand-written, for legal review.
     "privacy.purpose.heatmaps": "at se, som summer pr. side og dag, hvor besøgende, der tillader statistik, klikker, hvor langt de ruller, og hvor længe dele af en side er på skærmen (heatmaps; dit samtykke)",

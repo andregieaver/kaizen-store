@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
@@ -24,7 +25,9 @@ export const metadata: Metadata = { title: "Cart reminders" };
 
 const STATUS_SIGNAL = { waiting: "insight", reminded: "warning", recovered: "positive", bought: "positive", opted_out: "neutral", expired: "neutral" } as const;
 
-const tile = "flex flex-col gap-1 rounded-lg border border-line bg-card p-4";
+// Round 47 (D755): on a phone the four figures are one card, its cells divided by lines.
+const tile =
+  "flex flex-col gap-1 rounded-lg border border-line bg-card p-4 max-sm:rounded-none max-sm:border-0 max-sm:p-3 max-sm:odd:border-r max-sm:nth-[-n+2]:border-b max-sm:[&>span:last-child]:text-title";
 
 /**
  * Reminders about carts left at checkout (D33): whether they go out, the
@@ -59,7 +62,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>}
       />
 
       <Card
@@ -77,7 +80,10 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           {settings.enabled ? (
             <p>{w.onText}</p>
           ) : (
-            <p>{w.offText}</p>
+            <>
+              <p className="sm:hidden">{w.phone.offShort}</p>
+              <p className="max-sm:hidden">{w.offText}</p>
+            </>
           )}
         </div>
       </Card>
@@ -86,7 +92,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         <h2 id="stats-heading" className="text-title text-ink">
           {w.last30}
         </h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-card max-sm:bg-card">
           <div className={tile}>
             <span className="text-sm text-muted">{w.captured}</span>
             <span className="text-metric text-ink tabular-nums">{stats.captured}</span>
@@ -116,9 +122,12 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           </Link>
         </div>
         {settings.steps.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.noReminders}
-          </p>
+          <>
+            <p className="text-sm text-muted sm:hidden">{carts.length === 0 ? w.phone.none : w.noReminders}</p>
+            <p className={`p-8 text-center text-sm text-muted max-sm:hidden ${CARD_CLASS}`}>
+              {w.noReminders}
+            </p>
+          </>
         ) : (
           <Card compact>
             <List label={w.reminders}>
@@ -149,14 +158,18 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         )}
       </section>
 
-      <section aria-labelledby="carts-heading" className="flex flex-col gap-3">
+      {/* With no reminders and no carts, a phone said both in the line above. */}
+      <section aria-labelledby="carts-heading" className={`flex flex-col gap-3 ${settings.steps.length === 0 && carts.length === 0 ? "max-sm:hidden" : ""}`}>
         <h2 id="carts-heading" className="text-title text-ink">
           {w.latest}
         </h2>
         {carts.length === 0 ? (
-          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
-            {w.noCarts}
-          </p>
+          <>
+            <p className="text-sm text-muted sm:hidden">{w.phone.noCarts}</p>
+            <p className={`p-8 text-center text-sm text-muted max-sm:hidden ${CARD_CLASS}`}>
+              {w.noCarts}
+            </p>
+          </>
         ) : (
           <Card compact>
             <List label={w.carts}>
@@ -192,9 +205,13 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         )}
       </section>
 
-      <Card title={w.privacy} className="text-sm" compact>
-        <p className="text-muted">{w.privacyText}</p>
-      </Card>
+      <div className="max-sm:overflow-hidden max-sm:rounded-card">
+        <PhoneRow flat last title={w.privacy} sub={w.phone.privacySub} change={w.phone.open} done={w.phone.close}>
+          <Card title={w.privacy} className="text-sm" compact>
+            <p className="text-muted">{w.privacyText}</p>
+          </Card>
+        </PhoneRow>
+      </div>
     </div>
   );
 }

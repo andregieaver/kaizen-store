@@ -163,6 +163,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "Adressene en utsendelse gikk til (D297), låst da sendingen startet: listes i eksporten av markedsføringsopplysninger, og slettes når personens opplysninger slettes og 90 dager etter at sendingen var ferdig (tallene beholdes).",
   automation_sends:
     "Hvilke automatiske e-poster (D298) som gikk til en abonnent, og når: listes i eksporten av markedsføringsopplysninger, og slettes med abonnenten når personens opplysninger slettes, og etter 90 dager.",
+  email_clicks:
+    "Hvem som trykket på hvilken lenke i en utsendelse, og når (D754), for en abonnent som fortsatt står på listen: listes i eksporten av markedsføringsopplysninger, og slettes med abonnenten når personens opplysninger slettes, og 180 dager etter trykket.",
   product_reviews:
     "En produktomtale personen skrev (D301): stjernene, ordene og navnet de valgte, funnet via kontoen; eksporteres, og slettes når personens opplysninger slettes (ordene er deres, og produktets gjennomsnitt regnes om).",
   review_pictures:

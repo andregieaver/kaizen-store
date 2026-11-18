@@ -1,0 +1,22 @@
+[
+  { "id": "orders-last-week", "says": "How many orders last week?" },
+  { "id": "orders-return-label", "says": "Make a return label for order 1042." },
+  { "id": "products-stock", "says": "Set the stock of the blue mug to 12." },
+  { "id": "products-new", "says": "Add a new product: a blue mug for 199 kr." },
+  { "id": "customers-tag", "says": "Tag Kari Nordmann as a VIP customer." },
+  { "id": "customers-lapsed", "says": "Which customers have not ordered for 90 days?" },
+  { "id": "discount-code", "says": "Create a 10% discount code for returning customers." },
+  { "id": "newsletter", "says": "Send a newsletter about the autumn sale." },
+  { "id": "discount-code-nb", "says": "Lag en rabattkode på 10 %" },
+  { "id": "page-text", "says": "Change the text on the front page's banner to Autumn is here." },
+  { "id": "page-publish", "says": "Publish the about page." },
+  { "id": "design-buttons", "says": "Make the store's buttons dark green." },
+  { "id": "shipping-free-over", "says": "Give free shipping on orders over 500 kr." },
+  { "id": "tax-sweden", "says": "Is VAT set up right for selling to Sweden?" },
+  { "id": "settings-gift-cards", "says": "Turn on gift cards." },
+  { "id": "analytics-sales-drop", "says": "Why did sales drop yesterday?" },
+  { "id": "analytics-best-sellers", "says": "What were my best-selling products last month?" },
+  { "id": "staff-invite", "says": "Invite kari@example.com as staff with access to orders." },
+  { "id": "plan-price", "says": "What plan am I on and what does it cost?" },
+  { "id": "greeting", "says": "Hi!" }
+]

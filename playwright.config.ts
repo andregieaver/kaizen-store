@@ -6,6 +6,13 @@ const viesPort = Number(process.env.VIES_STUB_PORT ?? 3911);
 // The Stripe API's stand-in (e2e/fixtures/stripe-stub.mjs, bloat review step 1.7): the app's Stripe SDK is pointed at it, and no
 // platform keys are given, so payments stay off unless a spec arranges a store that takes them (e2e/draft-pay.spec.ts relies on that).
 const stripePort = Number(process.env.STRIPE_STUB_PORT ?? 3913);
+// The money path (bloat review step 1.7, e2e/performance.spec.ts): a second `pnpm start` of the same build, the only server with Kaizena
+// Flow's platform keys (dummy test-mode values, never real ones) and the Stripe stand-in, so a store's checkout reaches its payment step
+// there while every other spec keeps a server without keys. Not in the hosts or signed-in jobs, which run no spec that uses it; the spec
+// reads its address from E2E_MONEY_BASE and skips without it.
+const moneyPort = Number(process.env.E2E_MONEY_PORT ?? 3001);
+const money = !process.env.E2E_CUSTOM_HOSTS && !process.env.E2E_SIGNED_IN;
+if (money) process.env.E2E_MONEY_BASE = `http://localhost:${moneyPort}`;
 // The signed-in admin tests (e2e/signed-in/): only with E2E_SIGNED_IN, in a build whose NEXT_PUBLIC_SUPABASE_URL is the Auth
 // stand-in (e2e/fixtures/auth-stub.mjs, CI's `signed-in` job). Without it they are not projects at all, so a plain run never
 // tries to sign in.
@@ -98,5 +105,25 @@ export default defineConfig({
         STRIPE_ALLOW_TEST_URL: "1",
       },
     },
+    ...(money
+      ? [
+          {
+            // The same build again, with platform keys in Stripe's test shape and the stand-in: only the money path's describe asks it.
+            command: `pnpm start --port ${moneyPort}`,
+            url: `http://localhost:${moneyPort}`,
+            reuseExistingServer: !process.env.CI,
+            env: {
+              CRON_SECRET: process.env.CRON_SECRET ?? "e2e-cron-secret",
+              SETTINGS_ENCRYPTION_KEY: process.env.SETTINGS_ENCRYPTION_KEY,
+              VIES_TEST_URL: `http://127.0.0.1:${viesPort}/check-vat-number`,
+              VIES_ALLOW_TEST_URL: "1",
+              STRIPE_TEST_URL: `http://127.0.0.1:${stripePort}`,
+              STRIPE_ALLOW_TEST_URL: "1",
+              STRIPE_SECRET_KEY_TEST: "sk_test_e2e_stand_in_not_a_key",
+              STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_e2e_stand_in_not_a_key",
+            },
+          },
+        ]
+      : []),
   ],
 });

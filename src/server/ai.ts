@@ -471,7 +471,13 @@ export class AiError extends Error {
 }
 
 /** What a call used, in a form to record (D106). */
-type Metered<T> = { value: T; amounts?: Partial<UsageAmounts>; estimated?: boolean };
+type Metered<T> = {
+  value: T;
+  amounts?: Partial<UsageAmounts>;
+  estimated?: boolean;
+  /** What the answer adds to the row's context (bloat review step 1.19: the round called `load_tools`). */
+  context?: Pick<UsageContext, "loadedTools">;
+};
 
 /**
  * Runs a call to a model and records it as usage (D106): once, however
@@ -490,7 +496,7 @@ async function metered<T>(connection: AiConnection, meter: { kind: AiKind; provi
     await recordUsage(context, { ...event, failed: true });
     throw error;
   }
-  await recordUsage(context, { ...event, amounts: result.amounts, estimated: result.estimated });
+  await recordUsage(result.context ? { ...context, ...result.context } : context, { ...event, amounts: result.amounts, estimated: result.estimated });
   return result.value;
 }
 
@@ -697,6 +703,10 @@ export type ToolCall = { id: string; type: "function"; function: { name: string;
 /** A tool the model may call: its name, what it does, and its arguments as JSON Schema. */
 export type ToolDefinition = { name: string; description: string; parameters: Record<string, unknown> };
 
+/** The output limit of a round with tools when the caller gives none: `chatWithTools()`'s and `streamWithTools()`'s (bloat review step 1.19). */
+export const CHAT_TOOLS_MAX_TOKENS = 800;
+export const STREAM_TOOLS_MAX_TOKENS = 1200;
+
 /** One step of a conversation with tools: the model's text, or the tools it asks for. */
 export async function chatWithTools(
   connection: AiConnection,
@@ -715,7 +725,7 @@ async function chatWithToolsOnce(
   tools: ToolDefinition[],
   options: { maxTokens?: number; timeoutMs?: number },
 ): Promise<Metered<{ content: string | null; toolCalls: ToolCall[] }>> {
-  const limit = options.maxTokens ?? 800;
+  const limit = options.maxTokens ?? CHAT_TOOLS_MAX_TOKENS;
   const json = await post(
     connection,
     "/chat/completions",
@@ -755,7 +765,16 @@ export async function streamWithTools(
   messages: ToolChatMessage[],
   tools: ToolDefinition[],
   onText: (delta: string) => void,
-  options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal; onTokens?: (tokens: number) => void } = {},
+  options: {
+    maxTokens?: number;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onTokens?: (tokens: number) => void;
+    /** The round's tokens as usage records them, once per call (bloat review step 1.19): the turn's round log reads them. */
+    onUsage?: (usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }) => void;
+    /** What the answer adds to its usage row's context, worked out from the answer once it is whole. */
+    usageOf?: (answer: { content: string | null; toolCalls: ToolCall[] }) => Pick<UsageContext, "loadedTools">;
+  } = {},
 ): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
   const textModel = connection.textModel;
   if (!textModel) throw new AiError("No text model is set.");
@@ -763,7 +782,12 @@ export async function streamWithTools(
     const answer = await streamWithToolsOnce(connection, messages, tools, onText, options);
     // The tokens the round used, in and out (reported, or estimated as usage records them), for a turn's ceiling (code review 0.8).
     options.onTokens?.((answer.amounts?.inputTokens ?? 0) + (answer.amounts?.outputTokens ?? 0));
-    return answer;
+    options.onUsage?.({
+      inputTokens: answer.amounts?.inputTokens ?? 0,
+      outputTokens: answer.amounts?.outputTokens ?? 0,
+      cachedInputTokens: answer.amounts?.cachedInputTokens ?? 0,
+    });
+    return options.usageOf ? { ...answer, context: options.usageOf(answer.value) } : answer;
   });
 }
 
@@ -777,7 +801,7 @@ async function streamWithToolsOnce(
   onText: (delta: string) => void,
   options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal },
 ): Promise<Metered<{ content: string | null; toolCalls: ToolCall[] }>> {
-  const limit = options.maxTokens ?? 1200;
+  const limit = options.maxTokens ?? STREAM_TOOLS_MAX_TOKENS;
   const timeout = AbortSignal.timeout(options.timeoutMs ?? 60_000);
   let response: Response;
   try {

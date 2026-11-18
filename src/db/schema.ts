@@ -12110,6 +12110,14 @@ export const aiUsage = commerce.table(
     failed: integer("failed").notNull().default(0),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
+    /** Of the input tokens, those the provider read from its prompt cache (bloat review step 1.19); priced as input, as all input is. */
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    /** The AI manager's turn the call was a round of (one id per `runTurn()`); null for any other call. */
+    turnId: uuid("turn_id"),
+    /** Which round of that turn, from 0. */
+    round: integer("round"),
+    /** The round called `load_tools`. */
+    loadedTools: boolean("loaded_tools").notNull().default(false),
     /** Text read out by speech models. */
     characters: integer("characters").notNull().default(0),
     audioBytes: integer("audio_bytes").notNull().default(0),
@@ -12130,6 +12138,9 @@ export const aiUsage = commerce.table(
     index("ai_usage_owner_idx").on(t.ownerAccountId, t.createdAt),
     index("ai_usage_actor_idx").on(t.actorAccountId),
     index("ai_usage_autopilot_idx").on(t.storeId, t.createdAt).where(sql`${t.actedBy} = 'autopilot'`),
+    index("ai_usage_turn_idx").on(t.turnId).where(sql`${t.turnId} is not null`),
+    check("ai_usage_round", sql`${t.round} is null or ${t.round} between 0 and 100`),
+    check("ai_usage_cached", sql`${t.cachedInputTokens} >= 0 and ${t.cachedInputTokens} <= ${t.inputTokens}`),
     check("ai_usage_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     check("ai_usage_source", sql`${t.source} in ('platform', 'store')`),
     check("ai_usage_kind", sql`${t.kind} in ('text', 'embedding', 'transcription', 'speech', 'image', 'live', 'search')`),
@@ -17358,6 +17369,40 @@ export const broadcastLinkClicks = commerce.table(
       foreignColumns: [broadcasts.storeId, broadcasts.id],
     }).onDelete("cascade"),
     check("broadcast_link_clicks_link", sql`${t.link} ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'`),
+  ],
+);
+
+/**
+ * Who pressed which link of a broadcast, and when (email plan M1.3, D754; the owner's decision M0.1 b): one row per press by a subscriber
+ * still on the list, found by the signed reference in their own links (`src/lib/email-clicks.ts`). Personal data: in the export's
+ * `marketing` section, deleted with the subscriber on erasure and 180 days after the press (`pruneEmailClicks()`). The counts per link
+ * (`broadcast_link_clicks`) are kept apart and stay. Never copied. No open is recorded: there is no pixel.
+ */
+export const emailClicks = commerce.table(
+  "email_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    subscriberId: uuid("subscriber_id").notNull(),
+    broadcastId: uuid("broadcast_id").notNull(),
+    link: text("link").notNull(),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      name: "email_clicks_subscriber_fk",
+      columns: [t.storeId, t.subscriberId],
+      foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "email_clicks_broadcast_fk",
+      columns: [t.storeId, t.broadcastId],
+      foreignColumns: [broadcasts.storeId, broadcasts.id],
+    }).onDelete("cascade"),
+    index("email_clicks_subscriber_idx").on(t.storeId, t.subscriberId, t.clickedAt),
+    index("email_clicks_broadcast_idx").on(t.broadcastId, t.link),
+    index("email_clicks_clicked_idx").on(t.clickedAt),
+    check("email_clicks_link", sql`${t.link} ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'`),
   ],
 );
 
