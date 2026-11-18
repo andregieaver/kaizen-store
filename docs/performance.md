@@ -541,6 +541,8 @@ store's pages, a large store's two pages (500 products, cold and warm) and the c
 server's own statement log (`STATEMENT_LOG=1`, `src/db/statement-log.ts`; CI's Postgres image does not load `pg_stat_statements`). A page is requested once unmeasured, then twice more with the smaller count kept (a cached read whose lifetime ends repeats its statement on one request); the cache-event flush and the house store's lookup are left out as noise. Each
 budget is today's count plus 2 in `scripts/server-budget.json`; CI runs it after Playwright and fails the e2e job for a page over its max.
 To lower a budget after a change that cut statements, run `node scripts/server-budget.mjs --write` (it never raises one).
+A shop-only store's pages scan only the tables listed in ratchet.baseline.json's shopJourney (`src/server/shop-journey.int.test.ts`,
+bloat review step 1.12), none of a switched-off feature beyond its named exceptions, and read no more rows with 19 other stores.
 
 <!-- server-budget:start -->
 | Page | Statements | Max | Bar |
