@@ -41,6 +41,7 @@ import {
   type AnyPgColumn,
   type PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
+import { FLOW_TRIGGERS } from "../lib/flow-triggers";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { LIMIT_KEYS } from "../lib/limits";
 import { EXTENSION_IDS, EXTENSION_SOURCES } from "../lib/extensions";
@@ -8501,6 +8502,111 @@ export const fikenSync = commerce.table(
       "fiken_sync_texts",
       sql`length(${t.companySlug}) between 1 and 100 and length(${t.localId}) between 1 and 80 and length(coalesce(${t.externalKey}, '')) <= 50 and length(coalesce(${t.errorKey}, '')) <= 40 and length(coalesce(${t.errorDetail}, '')) <= 400 and length(coalesce(${t.theirRef}, '')) <= 60 and length(coalesce(${t.requestId}, '')) <= 100`,
     ),
+  ],
+);
+
+/**
+ * A flow (D767, `docs/flows.md`, email plan M2.1): a trigger, a tree of steps and goals. Saved off; switched on only after a test of the
+ * version saved (`tested_version`), as workflows are. Each save is a version kept in `flow_versions`, so a person finishes the version they
+ * entered on; who changed it is in the audit log. The store's own setting (`NOT_PERSONAL`); never copied in slice 1. Only
+ * `src/server/flows.ts` writes it.
+ */
+export const flows = commerce.table(
+  "flows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    trigger: text("trigger").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    testedVersion: integer("tested_version"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("flows_store_id_key").on(t.storeId, t.id),
+    index("flows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
+    check("flows_name", sql`char_length(${t.name}) between 1 and 120`),
+    check("flows_trigger", sql`${t.trigger} in (${sqlList(FLOW_TRIGGERS)})`),
+    check("flows_on_when_tested", sql`not ${t.enabled} or ${t.testedVersion} = ${t.version}`),
+  ],
+);
+
+/** A flow's saved versions (D767): its steps and goals as saved, kept while a run may still follow them. */
+export const flowVersions = commerce.table(
+  "flow_versions",
+  {
+    storeId: storeId().references(() => stores.id),
+    flowId: uuid("flow_id").notNull(),
+    version: integer("version").notNull(),
+    steps: jsonb("steps").notNull(),
+    goals: jsonb("goals").notNull().default(sql`'[]'::jsonb`),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.flowId, t.version] }),
+    foreignKey({ name: "flow_versions_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
+  ],
+);
+
+/**
+ * One person's way through a flow (D767): the version they entered on, where they are (`path`, a place in the tree, `/`-joined), when they
+ * wake, and how they left (`goal`, `done`, `stopped`). One running per person per flow. Personal data, by the subscriber: exported, erased
+ * with them, and gone 90 days after it ends.
+ */
+export const flowRuns = commerce.table(
+  "flow_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    flowId: uuid("flow_id").notNull(),
+    version: integer("version").notNull(),
+    subscriberId: uuid("subscriber_id").notNull(),
+    /** What started it, once: the event's id in the log. */
+    entryKey: text("entry_key").notNull(),
+    path: text("path"),
+    status: text("status").notNull().default("running"),
+    wakeAt: timestamp("wake_at", { withTimezone: true }).notNull().defaultNow(),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    enteredAt: timestamp("entered_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("flow_runs_store_id_key").on(t.storeId, t.id),
+    unique("flow_runs_entry_key").on(t.flowId, t.entryKey),
+    uniqueIndex("flow_runs_one_running_idx").on(t.flowId, t.subscriberId).where(sql`${t.status} = 'running'`),
+    index("flow_runs_due_idx").on(t.wakeAt).where(sql`${t.status} = 'running'`),
+    index("flow_runs_subscriber_idx").on(t.storeId, t.subscriberId),
+    index("flow_runs_ended_idx").on(t.endedAt),
+    foreignKey({ name: "flow_runs_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
+    foreignKey({
+      name: "flow_runs_subscriber_fk",
+      columns: [t.storeId, t.subscriberId],
+      foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+    }).onDelete("cascade"),
+    check("flow_runs_status", sql`${t.status} in ('running', 'goal', 'done', 'stopped')`),
+    check("flow_runs_ended", sql`(${t.status} = 'running') = (${t.endedAt} is null)`),
+  ],
+);
+
+/** What each step did for one run (D767): an email's outcome (and the contact policy's reason when held); once per run and step. */
+export const flowRunSteps = commerce.table(
+  "flow_run_steps",
+  {
+    storeId: storeId().references(() => stores.id),
+    runId: uuid("run_id").notNull(),
+    stepId: text("step_id").notNull(),
+    outcome: text("outcome").notNull(),
+    suppressedReason: text("suppressed_reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.runId, t.stepId] }),
+    index("flow_run_steps_store_idx").on(t.storeId, t.createdAt),
+    foreignKey({ name: "flow_run_steps_run_fk", columns: [t.storeId, t.runId], foreignColumns: [flowRuns.storeId, flowRuns.id] }).onDelete("cascade"),
+    check("flow_run_steps_outcome", sql`${t.outcome} in ('sent', 'logged', 'failed', 'suppressed')`),
+    check("flow_run_steps_reason", sql`${t.suppressedReason} is null or ${t.suppressedReason} in ('cap', 'spacing', 'room', 'paused')`),
   ],
 );
 

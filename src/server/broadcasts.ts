@@ -45,6 +45,7 @@ import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
 import { getContactPolicy, recentContacts } from "./contact-policy";
 import { clickRef, emailClicksPrune, keepClick } from "./email-clicks";
+import { flowRunsPrune } from "./flows";
 import { log } from "./log";
 import { sendCredit } from "./order-credit";
 import { col, typedRows } from "./typed-rows";
@@ -789,7 +790,7 @@ export async function broadcastReport(storeId: string, broadcast: Broadcast): Pr
 export async function pruneBroadcastRecipients(): Promise<number> {
   // Who pressed a broadcast's links goes 180 days after the press (M1.3, D754), in this same statement: the daily route's statement budget holds.
   const due = await db().execute<Row>(sql`
-    with clicks_gone as (${emailClicksPrune()})
+    with clicks_gone as (${emailClicksPrune()}), flow_runs_gone as (${flowRunsPrune()})
     select id, store_id, started_at, finished_at from commerce.broadcasts
     where status in ('sent', 'cancelled') and counts is null and finished_at < now() - make_interval(days => ${RECIPIENTS_KEEP_DAYS})
     limit 50

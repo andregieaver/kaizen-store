@@ -66,7 +66,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.5 | Bound every query and webhook route | FD9 | S | Done | 11 Nov 2026, D567; see Notes below |
 | 1.6 | Safe indexes on hot tables | FD4 | M | Done | 11 Nov 2026, D569; see Notes below |
 | 1.7 | Squash to a baseline | FD3 | M | Done | 11 Nov 2026, D572; see Notes below |
-| 1.8 | Give the build room, and deploy what was checked | FH10 | M | Open | CI's browser builds no longer type-check (bloat step 0.38, 16 Nov 2026, commit 1 of that step); the type check stays in static and the gate. |
+| 1.8 | Give the build room, and deploy what was checked | FH10 | M | Open | CI's browser builds no longer type-check (bloat step 0.38, 16 Nov 2026, commit 1 of that step); the type check stays in static and the gate. Bloat 1.20: serverSourceMaps off, -0.8 GB at the 8 GB cap. |
 | 1.9 | Test what gets owners paid | FH9 | M | Open | |
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Open | |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
@@ -742,3 +742,4 @@ scale. `statement_timeout` on a role behind the transaction pooler (FD9) needs a
 - 17 November 2026: bloat step 1.17 commit 1: the admin's remaining action files off the wrapper, tables, selects, Oslo dates and confirm calls are counted from now (`adminRepeats` in the ratchet baseline; steps 1.4 and 1.12 to 1.15 keep their status).
 - 17 November 2026: bloat step 1.17 commit 3: `src/server/unused.scan.test.ts` holds the unused exports (21), the exports only tests use (855, by count), the files only tests reach, the public files and API routes nothing names; `node scripts/unused.mjs` writes `src/server/unused.baseline.json`.
 - 17 November 2026: bloat step 1.18: the surface budget (`src/lib/surface-budget.baseline.json`) holds the hot tables' index and trigger counts and a new store's rows; step 3.15 stays Open.
+- 18 November 2026: bloat review step 1.20: `scripts/timed.mjs` records every CI check's seconds, `scripts/next-build.mjs` ends with `Build: N s, peak memory X GB`, and the two source-map switches are measured under an 8 GB cap (`docs/build-memory.md`: `serverSourceMaps: false` stays on Vercel, `enablePrerenderSourceMaps` gained nothing); row 1.8's status unchanged.

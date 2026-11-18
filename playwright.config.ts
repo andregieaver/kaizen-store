@@ -38,7 +38,7 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: process.env.CI ? [["github"], ["json"]] : "list",
   use: {
     baseURL: `http://localhost:${port}`,
     trace: "on-first-retry",

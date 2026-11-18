@@ -1,6 +1,7 @@
 import { after, connection } from "next/server";
 
 import { queueAdConversions, sendAdConversions } from "@/server/ad-conversions";
+import { tickFlows } from "@/server/flows";
 import { runAutomations } from "@/server/automations";
 import { queuePlatformAdConversions, sendPlatformAdConversions } from "@/server/platform-ad-conversions";
 import { runBroadcasts } from "@/server/broadcasts";
@@ -28,6 +29,8 @@ async function run(request: Request) {
   after(async () => {
     await runBroadcasts({ deadline });
     await runAutomations({ deadline });
+    // Flows (D767): people enter from the event log, and each due run moves on; nothing is read while no flow is on.
+    await tickFlows();
     // Review request emails that are due (D301 G3), to subscribed buyers only.
     await runReviewRequests({ deadline });
     // Gift cards whose day has come (D300 F2), and any whose email failed before.

@@ -8,6 +8,8 @@
  *   PRODUCTION_URL      the site's address (default https://kaizenaflow.com)
  *   EXPECTED_COMMIT     the commit to wait for (default GITHUB_SHA)
  *   DEPLOY_WAIT_SECONDS how long to wait (default 1200)
+ *   PUSHED_AT           when the commit was pushed (CI passes the head commit's timestamp); the wait's own start when not set. Once
+ *                       production runs the commit, `Push to live: N s` says how long that took (and goes to $GITHUB_STEP_SUMMARY)
  *   SMOKE_PAGES         the pages to request once production runs it, separated by commas, each a path or a full https:// address
  *                       (default `/,/s/demo/no`: Kaizena Flow's home and the template store's Norwegian front page)
  *
@@ -20,6 +22,7 @@
  * It reads nothing secret and prints only commits, paths and statuses.
  */
 import { execFileSync } from "node:child_process";
+import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 /** What a health answer says of the commit: `live` (it, or a later one that includes it), else `waiting`. */
@@ -27,6 +30,13 @@ export function deployVerdict(expected, reported, includes) {
   if (!reported || typeof reported !== "string") return "waiting";
   if (reported === expected) return "live";
   return includes(expected, reported) ? "live" : "waiting";
+}
+
+/** Whole seconds from `pushedAt` (an ISO timestamp, or a time in ms) to `now` (ms); null when `pushedAt` is not a time or lies after `now`. */
+export function secondsSince(pushedAt, now) {
+  const at = typeof pushedAt === "number" ? pushedAt : Date.parse(String(pushedAt ?? ""));
+  if (!Number.isFinite(at) || at > now) return null;
+  return Math.round((now - at) / 1000);
 }
 
 /** Whether `later` includes `commit` in its history, from the repository's own history (fetched once if it is too shallow to tell). */
@@ -156,6 +166,7 @@ async function reportedCommit(url) {
 }
 
 async function main() {
+  const jobStarted = Date.now();
   const url = (process.env.PRODUCTION_URL || "https://kaizenaflow.com").replace(/\/+$/, "");
   const expected = process.env.EXPECTED_COMMIT || process.env.GITHUB_SHA;
   if (!expected) {
@@ -170,6 +181,16 @@ async function main() {
     last = await reportedCommit(url);
     if (deployVerdict(expected, last, includes) === "live") {
       console.log(last === expected ? `Production runs ${expected}.` : `Production runs ${last}, which includes ${expected}.`);
+      // From the push (or, without PUSHED_AT, from the start of this job) to the commit being live.
+      const toLive = secondsSince(process.env.PUSHED_AT || jobStarted, Date.now()) ?? secondsSince(jobStarted, Date.now());
+      console.log(`Push to live: ${toLive} s`);
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        try {
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Push to live: ${toLive} s\n`);
+        } catch {
+          // A convenience: the deploy check never fails for it.
+        }
+      }
       // Twice at most, a minute apart: a function still starting may answer late once.
       let problems = smokeProblems(await smokeResults(url));
       if (problems.length > 0) {

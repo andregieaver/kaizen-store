@@ -30,7 +30,7 @@ What held the memory, measured without the cap:
   - no type check: CI's `static` job and the quick gate run `pnpm typecheck` on every push. Since 16 November 2026 (bloat review step 0.38) CI's three browser builds skip it too (`SKIP_BUILD_TYPECHECK=1`): one push checked the same commit five times, 183 s each;
   - no Turbopack build cache;
   - one worker;
-  - no source maps (D709, 17 November 2026, measured below).
+  - no source maps (D709, 17 November 2026, measured below; `serverSourceMaps` too since step 1.20, 18 November 2026).
 - `pnpm build` is `scripts/next-build.mjs`: `next build` with a 7 GB heap everywhere except Vercel.
 - `src/app/globals.css` points Tailwind at the code under `src`: without `src/data`, tests (`*.test.ts`, `*.test.tsx`, `src/test`), the interface texts (`src/lib/messages`, `src/lib/admin-messages`) and `src/db`, and without any SQL.
   - The CSS lost 37 selectors, all of them words in docs, e2e selectors or numbers in the taxonomy's JSON. No class the app uses was lost.
@@ -44,12 +44,20 @@ What held the memory, measured without the cap:
 
 - **A type error can now reach production** without failing the deploy, when a push has no migration (those deploy before the checks finish). CI's `static` job still goes red.
 - **The margin was about 0.8 GB on 28 October** (about 1 to 1.7 GB since D709, below). If the build grows past it:
-  - switch the project to Vercel's Enhanced build machine (16 GB, a paid setting the owner changes under Project Settings → Build and Deployment);
-  - or cut what the compile holds.
+  - cut what the compile holds;
+  - or build in CI and deploy the built output (bloat review step 1.21's free way). The owner has ruled out paid services, so the 16 GB build machine is not an option.
 - **Vercel environment variables:** a `NODE_OPTIONS` set there overrides none of this, but a large heap set there would let the compile hold more.
 - **11 November 2026: the margin was crossed once.** Vercel's build of `f5c1ec8` (D555) was killed for memory while collecting page data
   with one worker; the same commit built when the deploy hook was asked again a few minutes later. On 17 November it happened twice
   (`d066e58d`, `0624ff3c`); the next section is what was done.
+- **Every build ends with a line**, `Build: N s, peak memory X GB (source)` (`scripts/next-build.mjs`, step 1.20), on Vercel too: it is the last line of the build log. Read the peak
+  there after each deploy (the source is the container's own peak when the kernel keeps one, else the machine's used memory, which counts every process on the machine).
+  CI's builds print the same line into the run's summary. `scripts/ci-budgets.json` holds the ceilings on every check's seconds, filled from ten CI runs on `main`
+  (`node scripts/ci-budgets-check.mjs --suggest`); the build's peak memory is read by hand from Vercel's log and written under the next heading.
+- **Source-map switches, 18 November 2026 (step 1.20, measured below).** The peak with `serverSourceMaps: false` was 6.8 GB under the 8 GB cap against 7.6 to 7.8 GB without it
+  (two runs); `enablePrerenderSourceMaps: false` alone gained nothing (7.9 GB). The first stays, on Vercel only; the second is not kept.
+  If the peak with a switch is 6.0 GB or less, the build has a quarter of the machine free and step 1.21's change can wait; nothing is paid for either way: the 16 GB machine is not an option, and step 1.21's free way is to build in CI and deploy the built output.
+  At 6.8 GB the peak is above 6.0 GB, so step 1.21's change does not wait.
 
 ## Measured again, 17 November 2026 (D709)
 
@@ -76,6 +84,27 @@ logs (`log.ts`'s `errorStack`) were, and stay, positions in the built chunks. Of
 
 **The margin is about 1.0 to 1.7 GB** against 8 GB (peaks of 6.3 to 7.0 GB). At the rate the code grew over these three weeks the
 compile gains about 0.5 GB a week, so this buys **two to three weeks, not a lasting answer.** There is no other large, safe cut left
-in the configuration: what remains is the compile of the code itself. The lasting answer is Vercel's Enhanced build machine (16 GB,
-Project Settings → Build and Deployment, a paid setting the owner changes); after it, the one-worker and no-source-map settings can
-stay or go, and this note should say which.
+in the configuration: what remains is the compile of the code itself. The owner has ruled out a paid build machine, so the lasting
+answer is bloat review step 1.21's free way: build in CI and deploy the built output. After it, the one-worker and no-source-map
+settings can stay or go, and this note should say which.
+
+## Measured again, 18 November 2026 (bloat review step 1.20)
+
+The two source-map switches the first measurement did not try, one build each under a cgroup v1 memory cap of 8 GB with swap off, `VERCEL=1`, the seeded
+database (1,524 pages), a build directory cleared before each run, one build at a time (the machine's other builds ran beside it). "Peak" is the cgroup's own
+highest use (`memory.max_usage_in_bytes`, GB of 1,024 MB), which counts the files the build reads and writes as well as its processes, so it reads higher than
+the resident figures above; the rows compare with each other. The `Build:` line's own peak (the machine's used memory) was 7.8 to 14.0 GB because other builds ran
+at the same time, and is not the figure. No build was killed.
+
+| Setting (the tree after commit 1 of step 1.20, `next.config.ts` as noted) | Peak under the 8 GB cap | Seconds | Date |
+| --- | --- | --- | --- |
+| (a) As the code is (`turbopackSourceMaps` and `turbopackInputSourceMaps` off), first run | 7.83 GB | 235 | 18 Nov 2026 |
+| (a) The same, second run (how much two runs differ) | 7.63 GB | 222 | 18 Nov 2026 |
+| (b) With top-level `enablePrerenderSourceMaps: false` on Vercel | 7.85 GB | 188 | 18 Nov 2026 |
+| (c) With (b) and `experimental.serverSourceMaps: false` | 7.21 GB | 171 | 18 Nov 2026 |
+| (d) With `serverSourceMaps: false` alone | 6.84 GB | 198 | 18 Nov 2026 |
+
+`enablePrerenderSourceMaps` gained nothing (0.0 to 0.2 GB above (a): inside the 0.2 GB between the two runs of (a)), so it is not in `next.config.ts`. `serverSourceMaps: false`
+gained 0.8 to 1.0 GB over (a) alone and 0.4 to 0.6 GB with the other switch, more than 0.3 GB each time, so it stays in `next.config.ts` for Vercel only; CI's and local builds
+keep their source maps. The name `turbopackSourceMaps` (already off since D709) is the Turbopack one in this Next version's config type, `serverSourceMaps` is the
+generic one beside it.

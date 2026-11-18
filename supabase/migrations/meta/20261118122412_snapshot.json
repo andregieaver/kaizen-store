@@ -1,6 +1,6 @@
 {
-  "id": "947381b5-98ee-4f57-92da-27d005fee2e5",
-  "prevId": "c9aa19c7-f64f-4c33-8281-b5256a86e49b",
+  "id": "e76f3094-6277-4ff9-997a-4e0f37655e54",
+  "prevId": "c82ec49d-f7b5-49fa-a3e5-29582807ba84",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -36339,6 +36339,585 @@
         "filed_emails_people": {
           "name": "filed_emails_people",
           "value": "cardinality(\"commerce\".\"filed_emails\".\"addresses\") between 1 and 200"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.flow_run_steps": {
+      "name": "flow_run_steps",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "step_id": {
+          "name": "step_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suppressed_reason": {
+          "name": "suppressed_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "flow_run_steps_store_idx": {
+          "name": "flow_run_steps_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "flow_run_steps_store_id_stores_id_fk": {
+          "name": "flow_run_steps_store_id_stores_id_fk",
+          "tableFrom": "flow_run_steps",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "flow_run_steps_run_fk": {
+          "name": "flow_run_steps_run_fk",
+          "tableFrom": "flow_run_steps",
+          "columnsFrom": [
+            "store_id",
+            "run_id"
+          ],
+          "tableTo": "flow_runs",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "flow_run_steps_run_id_step_id_pk": {
+          "name": "flow_run_steps_run_id_step_id_pk",
+          "columns": [
+            "run_id",
+            "step_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "flow_run_steps_outcome": {
+          "name": "flow_run_steps_outcome",
+          "value": "\"commerce\".\"flow_run_steps\".\"outcome\" in ('sent', 'logged', 'failed', 'suppressed')"
+        },
+        "flow_run_steps_reason": {
+          "name": "flow_run_steps_reason",
+          "value": "\"commerce\".\"flow_run_steps\".\"suppressed_reason\" is null or \"commerce\".\"flow_run_steps\".\"suppressed_reason\" in ('cap', 'spacing', 'room', 'paused')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.flow_runs": {
+      "name": "flow_runs",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "flow_id": {
+          "name": "flow_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subscriber_id": {
+          "name": "subscriber_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_key": {
+          "name": "entry_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'running'"
+        },
+        "wake_at": {
+          "name": "wake_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "claimed_until": {
+          "name": "claimed_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entered_at": {
+          "name": "entered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "flow_runs_one_running_idx": {
+          "name": "flow_runs_one_running_idx",
+          "columns": [
+            {
+              "expression": "flow_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"flow_runs\".\"status\" = 'running'",
+          "concurrently": false
+        },
+        "flow_runs_due_idx": {
+          "name": "flow_runs_due_idx",
+          "columns": [
+            {
+              "expression": "wake_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"flow_runs\".\"status\" = 'running'",
+          "concurrently": false
+        },
+        "flow_runs_subscriber_idx": {
+          "name": "flow_runs_subscriber_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "flow_runs_ended_idx": {
+          "name": "flow_runs_ended_idx",
+          "columns": [
+            {
+              "expression": "ended_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "flow_runs_store_id_stores_id_fk": {
+          "name": "flow_runs_store_id_stores_id_fk",
+          "tableFrom": "flow_runs",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "flow_runs_flow_fk": {
+          "name": "flow_runs_flow_fk",
+          "tableFrom": "flow_runs",
+          "columnsFrom": [
+            "store_id",
+            "flow_id"
+          ],
+          "tableTo": "flows",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "flow_runs_subscriber_fk": {
+          "name": "flow_runs_subscriber_fk",
+          "tableFrom": "flow_runs",
+          "columnsFrom": [
+            "store_id",
+            "subscriber_id"
+          ],
+          "tableTo": "marketing_subscribers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "flow_runs_store_id_key": {
+          "name": "flow_runs_store_id_key",
+          "columns": [
+            "store_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "flow_runs_entry_key": {
+          "name": "flow_runs_entry_key",
+          "columns": [
+            "flow_id",
+            "entry_key"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "flow_runs_status": {
+          "name": "flow_runs_status",
+          "value": "\"commerce\".\"flow_runs\".\"status\" in ('running', 'goal', 'done', 'stopped')"
+        },
+        "flow_runs_ended": {
+          "name": "flow_runs_ended",
+          "value": "(\"commerce\".\"flow_runs\".\"status\" = 'running') = (\"commerce\".\"flow_runs\".\"ended_at\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.flow_versions": {
+      "name": "flow_versions",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "flow_id": {
+          "name": "flow_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "steps": {
+          "name": "steps",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "goals": {
+          "name": "goals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "flow_versions_store_id_stores_id_fk": {
+          "name": "flow_versions_store_id_stores_id_fk",
+          "tableFrom": "flow_versions",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "flow_versions_flow_fk": {
+          "name": "flow_versions_flow_fk",
+          "tableFrom": "flow_versions",
+          "columnsFrom": [
+            "store_id",
+            "flow_id"
+          ],
+          "tableTo": "flows",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "flow_versions_flow_id_version_pk": {
+          "name": "flow_versions_flow_id_version_pk",
+          "columns": [
+            "flow_id",
+            "version"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "commerce.flows": {
+      "name": "flows",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trigger": {
+          "name": "trigger",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "tested_version": {
+          "name": "tested_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "flows_store_trigger_idx": {
+          "name": "flows_store_trigger_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trigger",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"flows\".\"enabled\"",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "flows_store_id_stores_id_fk": {
+          "name": "flows_store_id_stores_id_fk",
+          "tableFrom": "flows",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "flows_store_id_key": {
+          "name": "flows_store_id_key",
+          "columns": [
+            "store_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "flows_name": {
+          "name": "flows_name",
+          "value": "char_length(\"commerce\".\"flows\".\"name\") between 1 and 120"
+        },
+        "flows_trigger": {
+          "name": "flows_trigger",
+          "value": "\"commerce\".\"flows\".\"trigger\" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned')"
+        },
+        "flows_on_when_tested": {
+          "name": "flows_on_when_tested",
+          "value": "not \"commerce\".\"flows\".\"enabled\" or \"commerce\".\"flows\".\"tested_version\" = \"commerce\".\"flows\".\"version\""
         }
       },
       "isRLSEnabled": false

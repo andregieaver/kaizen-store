@@ -9,6 +9,7 @@
     "lint": "eslint --max-warnings 0 --cache --cache-strategy content --cache-location node_modules/.cache/eslint/",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "check": "node scripts/timed.mjs lint -- pnpm lint && node scripts/timed.mjs typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck && node scripts/timed.mjs unit --unit -- pnpm test --reporter=default --reporter=json --outputFile=.vitest-report.json",
     "test:smoke": "vitest run src/lib/money.test.ts src/lib/cart.test.ts src/lib/checkout.test.ts src/lib/discounts.test.ts src/lib/vat.test.ts src/lib/vat-treatment.test.ts",
     "test:e2e": "playwright test",
     "perf": "node scripts/perf.mjs",
