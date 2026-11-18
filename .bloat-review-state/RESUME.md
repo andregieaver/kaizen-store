@@ -282,3 +282,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - executors: kz-b adbd7006b7ee1bf1b (1.5 Sonnet), kz-c a28b2e4f78e2246fc (1.8 Sonnet)
 - 18 Nov ~08:45: 1.19 migration applied by CI (20261118023925_ai_usage_turns), advisors INFO only. Written up: 1.6 D758 (In progress), 1.7 D759 Done, 1.19 D760 (In progress, c4-5 owner) — e6531ed77. Release of 596444af timed out waiting on newer runs (other session's E2 migrations); production still d9ebd9e6 until their release.
 - RISK: D656 (other session, heatmaps DPIA) is 15,195 bytes > 4,000: docs-budget.scan fails in static -> could freeze releases again. Other session's to fix; watch.
+- 18 Nov ~10: CI on c0561894a failed on OUR budgets from other session's D748 E2 (extension facts on every store read). Accepted only those keys (frame.store rows, journey tables) in 90170376d. Local-only moves (ledger 220->1350, broadcasts, recurring) NOT accepted. Watching newest CI for release.
