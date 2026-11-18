@@ -10,8 +10,11 @@ import { MIN_DAYS, type Goal } from "./experiments";
  * count is null, and the owner can give their own.
  */
 
-/** The goals whose rate today the store counts for every visit; a click or a form depends on the button or form, which it does not. */
-export const COUNTED_GOALS = ["orders", "cart", "checkout"] as const satisfies readonly Goal[];
+/**
+ * The goals whose rate today the store counts for every visit; a click or a form depends on the button or form, which it does not. A sign-up
+ * to Kaizena Flow is counted on its own store alone (`HOUSE_GOALS`, ecosystem plan E5.3, D757): its sign-ups per visit, null on every other.
+ */
+export const COUNTED_GOALS = ["orders", "cart", "checkout", "signup"] as const satisfies readonly Goal[];
 export type CountedGoal = (typeof COUNTED_GOALS)[number];
 
 /** Where a target's visitors were counted from. */
@@ -24,7 +27,10 @@ export type TrafficFacts = {
   days: number;
   /** The share of cookie choices in the last 90 days that accepted statistics; null with fewer than 20 choices. */
   consentShare: number | null;
-  /** Today's rate of each counted goal, per visit, over the same days; null while there were no visits. */
+  /**
+   * Today's rate of each counted goal, per visit, over the same days; null while there were no visits. `signup` is Kaizena Flow's own store's
+   * sign-ups (its sign-up form sent) per visit to its site, null on any other store.
+   */
   baselines: Record<CountedGoal, number | null>;
   /** Each testable target's visits a day (all visitors, before consent) and what they were counted from; null when unknown. */
   targets: Record<string, { visitsPerDay: number | null; basis: TrafficBasis | null }>;
@@ -69,14 +75,15 @@ export function goalEstimate(input: {
 
 /**
  * The goal to start from for a target: orders when a test of them answers within six weeks, else the counted goal that answers soonest
- * (usually adding to the cart, which has a higher rate), else orders. A small store learns sooner from the cart than from orders.
+ * (usually adding to the cart, which has a higher rate; on Kaizena Flow's own store, which sells nothing, its sign-ups), else orders. A small
+ * store learns sooner from the cart than from orders.
  */
 export function recommendedGoal(facts: TrafficFacts, targetId: string, trafficShare = 1, versions = 2): Goal {
   const orders = goalEstimate({ facts, targetId, goal: "orders", trafficShare, versions });
   if (orders && !orders.tooLong) return "orders";
-  const others = (["cart", "checkout"] as const)
+  const others = (["cart", "checkout", "signup"] as const)
     .map((goal) => ({ goal, estimate: goalEstimate({ facts, targetId, goal, trafficShare, versions }) }))
-    .filter((g): g is { goal: "cart" | "checkout"; estimate: RuntimeEstimate } => g.estimate !== null)
+    .filter((g): g is { goal: "cart" | "checkout" | "signup"; estimate: RuntimeEstimate } => g.estimate !== null)
     .sort((a, b) => a.estimate.days - b.estimate.days);
   return others[0]?.goal ?? "orders";
 }

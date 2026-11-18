@@ -143,6 +143,8 @@ import type { OauthMessages } from "./admin-messages/oauth.en";
 import { OAUTH_WORDS } from "./admin-words/oauth";
 import type { SandboxMessages } from "./admin-messages/sandbox.en";
 import { SANDBOX_WORDS } from "./admin-words/sandbox";
+import type { HouseAutopilotMessages } from "./admin-messages/house-autopilot.en";
+import { HOUSE_AUTOPILOT_WORDS } from "./admin-words/house-autopilot";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -223,6 +225,7 @@ export type AdminAreaMessages = {
   schedules: SchedulesMessages;
   oauth: OauthMessages;
   sandbox: SandboxMessages;
+  houseAutopilot: HouseAutopilotMessages;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -232,7 +235,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "automatic"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "automatic", "houseAutopilot"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
@@ -318,6 +321,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   schedules: { en: schedulesEn, nb: schedulesNb },
   oauth: OAUTH_WORDS,
   sandbox: SANDBOX_WORDS,
+  houseAutopilot: HOUSE_AUTOPILOT_WORDS,
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

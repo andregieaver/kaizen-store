@@ -10,7 +10,7 @@ import { experimentCard, type CardState } from "@/lib/experiment-card";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
 import { GUARDRAIL_HARM, GUARDRAIL_WATCHES, guardrailStopReason } from "@/lib/experiment-guardrails";
 import { differenceLine } from "@/lib/version-difference-words";
-import { GOAL_WORDS, MAX_RUN_DAYS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
+import { GOAL_WORDS, isHouseGoal, MAX_RUN_DAYS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
 import { COUNTED_GOALS, eligiblePerDay, goalEstimate } from "@/lib/experiment-traffic";
 import { findClaims } from "@/lib/claims";
 import { addDays, todayIn } from "@/lib/analytics-period";
@@ -321,8 +321,9 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
   const speeds = (targetId: string) => {
     const perDay = eligiblePerDay(traffic, targetId);
     if (perDay === null) return undefined;
+    // The goals the tools offer (`TOOL_GOALS`): a sign-up to Kaizena Flow is its own store's, chosen on the new-test form (D757).
     const days = Object.fromEntries(
-      COUNTED_GOALS.map((goal) => {
+      COUNTED_GOALS.filter((goal) => !isHouseGoal(goal)).map((goal) => {
         const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2 });
         return [goal, e ? (e.days > MAX_RUN_DAYS ? "longer than a test may run" : `about ${e.days} days`) : "no figure to work from"];
       }),

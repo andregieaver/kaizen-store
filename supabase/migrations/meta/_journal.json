@@ -680,6 +680,20 @@
       "when": 1794987738458,
       "tag": "20261118074218_email_clicks_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794990184992,
+      "tag": "20261118082304_slim_luckman",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794990190443,
+      "tag": "20261118082310_autopilot_signup_tests_rules",
+      "breakpoints": true
     }
   ]
 }

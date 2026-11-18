@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { goalMet, targetFromInput, targetProgress, type GoalFigures } from "./autopilot-goals";
+import {
+  aimsAtSignups,
+  GOAL_TARGETS,
+  goalMet,
+  goalTargetInput,
+  HELD_GOAL_TARGETS,
+  suggestedSignupPercent,
+  targetFromInput,
+  targetProgress,
+  TOOL_GOAL_TARGETS,
+  type GoalFigures,
+} from "./autopilot-goals";
 import { parsePrice } from "./product-input";
 
 /** The autopilot's goals (D309, `docs/ai-autopilot.md` 7.1): targets typed by the model, and progress worked out in code. */
@@ -18,6 +29,7 @@ const figures = (over: Partial<GoalFigures> = {}): GoalFigures => ({
   contribution30d: 850_000,
   margin30d: 20,
   since: { "2026-10-01": { revenue: 3_000_000, contribution: 600_000 } },
+  signupRate30d: null,
   missing: {},
   ...over,
 });
@@ -82,6 +94,48 @@ describe("profit targets (docs/100-day-challenge.md E2)", () => {
     expect(targetProgress({ kind: "contribution_30d", amount_minor: 1, currency: "NOK" }, unknown)).toMatchObject({ met: null, now: "not measured", missing: "Too few costs." });
     expect(targetProgress({ kind: "contribution_since", amount_minor: 1, currency: "NOK", since: "2026-10-01" }, unknown)).toMatchObject({ met: null, missing: "Too few costs." });
     expect(targetProgress({ kind: "contribution_30d", amount_minor: 1, currency: "EUR" }, figures())).toMatchObject({ met: null });
+  });
+});
+
+describe("Kaizena Flow's sign-ups per visit (ecosystem plan E5.3, D757)", () => {
+  it("is a goal of Kaizena Flow's own and its own store's, never another store's", () => {
+    expect(aimsAtSignups("platform")).toBe(true);
+    expect(aimsAtSignups("house")).toBe(true);
+    expect(aimsAtSignups("store")).toBe(false);
+    expect(targetFromInput({ kind: "signup_rate_30d", percent: 2.5 }, "platform", null, parsePrice)).toEqual({ ok: true, target: { kind: "signup_rate_30d", percent: 2.5 } });
+    expect(targetFromInput({ kind: "signup_rate_30d", percent: 2.5 }, "house", "NOK", parsePrice)).toEqual({ ok: true, target: { kind: "signup_rate_30d", percent: 2.5 } });
+    expect(targetFromInput({ kind: "signup_rate_30d", percent: 2.5 }, "store", "NOK", parsePrice)).toEqual({ ok: false, problem: "Only Kaizena Flow and its own store count sign-ups to Kaizena Flow." });
+    expect(targetFromInput({ kind: "signup_rate_30d" }, "platform", null, parsePrice)).toMatchObject({ ok: false, problem: "signup_rate_30d needs a percent." });
+    // Its own store keeps every target a store has.
+    expect(targetFromInput({ kind: "pages", count: 5 }, "house", "NOK", parsePrice)).toMatchObject({ ok: true });
+  });
+
+  it("says what it is in words, measured from the share of visits that signed up", () => {
+    expect(targetProgress({ kind: "signup_rate_30d", percent: 2 }, figures({ signupRate30d: 2.345 }))).toEqual({
+      kind: "signup_rate_30d",
+      target: "2 % of visits sign up to Kaizena Flow",
+      now: "2.35 %",
+      met: true,
+    });
+    expect(targetProgress({ kind: "signup_rate_30d", percent: 3 }, figures({ signupRate30d: 2.3 }))).toMatchObject({ met: false });
+    const off = targetProgress({ kind: "signup_rate_30d", percent: 3 }, figures({ missing: { signup_rate_30d: "Kaizena Flow's store does not count visits." } }));
+    expect(off).toMatchObject({ met: null, now: "not measured", missing: "Kaizena Flow's store does not count visits." });
+  });
+
+  it("is held out of the AI manager's set_goal until the agents' eval is recorded with it", () => {
+    expect(TOOL_GOAL_TARGETS).toEqual(GOAL_TARGETS.filter((k) => !(HELD_GOAL_TARGETS as readonly string[]).includes(k)));
+    expect(goalTargetInput.safeParse({ kind: "signup_rate_30d", percent: 2 }).success).toBe(false);
+    expect(goalTargetInput.safeParse({ kind: "conversion_30d", percent: 2 }).success).toBe(true);
+  });
+
+  it("offers a fifth more than today's share to aim for, rounded up to a tenth", () => {
+    expect(suggestedSignupPercent(2.5)).toBe(3);
+    expect(suggestedSignupPercent(0.83)).toBe(1);
+    expect(suggestedSignupPercent(1.26)).toBe(1.6);
+    expect(suggestedSignupPercent(0.004)).toBe(0.1);
+    expect(suggestedSignupPercent(null)).toBe(1);
+    expect(suggestedSignupPercent(0)).toBe(1);
+    expect(suggestedSignupPercent(95)).toBe(100);
   });
 });
 

@@ -15,9 +15,9 @@ import { AutopilotPage, type AutopilotTab } from "./autopilot-page";
 const html = (element: Parameters<typeof renderToString>[0]) =>
   renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 const action = async () => ({ status: "ok" as const, messages: [] });
-const actions = { decide: action, answer: action, plan: action, dropGoal: action, settings: action, cancelFollowUp: action };
+const actions = { decide: action, answer: action, plan: action, dropGoal: action, setSignupGoal: action, settings: action, cancelFollowUp: action };
 
-const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [], effects: null, tests: [] };
+const empty: AutopilotOverview = { calls: [], questions: [], ownerOnly: [], plans: [], goals: [], reviews: [], events: [], settings: DEFAULT_AUTONOMY, costMicros: 1_250_000, unpricedCalls: 0, report: null, followUps: [], effects: null, tests: [], signups: null, site: null };
 
 const page = (overview: AutopilotOverview, tab: AutopilotTab = "decisions", lang: "en" | "nb" = "en") =>
   html(createElement(AutopilotPage, { overview, base: "/admin/demo/assistant/autopilot", assistantHref: "/admin/demo/assistant", siteName: "Demo", tab, lang, actions, links: { payments: "/admin/demo/settings/payments", tests: "/admin/demo/experiments" } }));
@@ -209,6 +209,37 @@ describe("its tests of its own page changes (E4.1)", () => {
     const platform = page({ ...empty, tests: null }, "settings");
     expect(platform).not.toContain("Test my page changes first");
     expect(platform).toContain('type="hidden" name="tests_changes" value="on"');
+  });
+});
+
+describe("Kaizena Flow's own site: its sign-ups per visit (E5.3, D757)", () => {
+  const tests = [{ experimentId: "e9", page: "Pricing", state: "testing" as const, daysLeft: 12, at: "2026-11-18T10:00:00.000Z" }];
+  const platform: AutopilotOverview = { ...empty, tests: null, events: null, site: { slug: "kaizenaflow", tests } };
+
+  it("leads Kaizena Flow's own Autopilot to its site's store, where the switch is, and lists that store's tests", () => {
+    const settings = page(platform, "settings");
+    expect(settings).toContain("tests its changes to the site's pages on sign-ups");
+    expect(settings).toContain('href="/admin/kaizenaflow/assistant/autopilot?tab=settings"');
+    expect(settings).not.toMatch(/type="checkbox" name="tests_changes"/);
+    expect(page(platform, "settings", "nb")).toContain("Åpne innstillingene der");
+    const decisions = page(platform);
+    expect(decisions).toContain("Testing my change to Pricing against the current page: about 12 days left");
+    expect(decisions).toContain('href="/admin/kaizenaflow/experiments/e9"');
+    expect(page(empty, "settings")).not.toContain("data-site-tests");
+  });
+
+  it("offers the goal in words with today's share and a fifth more filled in, where no goal aims at it yet", () => {
+    const goals = page({ ...empty, signups: { percent: 2.5, reason: null } }, "goals");
+    expect(goals).toContain("More sign-ups to Kaizena Flow");
+    expect(goals).toContain("Now 2.5 % of visits to the site end in a sign-up, over the last 30 days.");
+    expect(goals).toMatch(/name="percent"[^>]*value="3"/);
+    expect(goals).toContain(">Set this goal<");
+    expect(goals).not.toContain("signup_rate_30d");
+    const off = page({ ...empty, signups: { percent: null, reason: "not_counting" } }, "goals", "nb");
+    expect(off).toContain("Flere registreringer hos Kaizena Flow");
+    expect(off).toContain("Kaizena Flows butikk teller ikke besøk");
+    expect(off).toMatch(/name="percent"[^>]*value="1"/);
+    expect(page(empty, "goals")).not.toContain("More sign-ups to Kaizena Flow");
   });
 });
 

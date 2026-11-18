@@ -29,7 +29,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * once an hour in the dispatcher's job `autopilotTests`, never by a model (the autopilot's events leave these tests out):
  * - version B clearly better: the change goes live through `apply_winner`, within the owner's levels (`autopilotDecision()`, area Website),
  *   as the autopilot; at *Ask me first*, or past a limit, it is kept for their yes as any gated call is. Never while the autopilot is paused,
- *   for the store or platform-wide;
+ *   for the store or platform-wide, and on Kaizena Flow's own store, which sells nothing, only once its speed guardrail found it fine (D757);
  * - clearly worse, stopped by a guardrail, a broken split, or its time up without an answer for the change: the page stays as it was, the test
  *   stopped and its original kept, as the autopilot, whatever the levels, as the watch's rollback (D628) undoes a change without asking;
  * - a test a person stopped or decided, or one whose maker can no longer act in the store, is left to a person on the A/B tests screens.
@@ -44,6 +44,8 @@ const OPEN = z.object({
   slug: col.text,
   account_id: col.uuid.nullable(),
   page: col.text,
+  /** The goal the test counts: on Kaizena Flow's own store its sign-ups, whose change must also clear the speed guardrail (D757). */
+  goal: col.text,
   /** Null while undecided; `asked` only when the owner declined the change or let the question lapse. */
   outcome: z.enum(["asked"]).nullable(),
 });
@@ -117,6 +119,8 @@ async function decideOne(r: Open, run: DecideRun, now: Date, paused: boolean): P
     verdict: results.verdict.kind,
     best: results.verdict.best,
     harmed: Boolean(results.harmed),
+    goal: r.goal,
+    guardrails: results.guardrails,
     plannedEnd: test.plannedEnd,
     now,
   });
@@ -185,7 +189,7 @@ export async function decideAutopilotTests(options: { now?: Date; everyRun?: boo
     const open = await typedRows(
       OPEN,
       sql`
-        select t.store_id, t.experiment_id, s.slug, t.account_id, coalesce(nullif(p.published ->> 'title', ''), p.slug) as page, t.outcome
+        select t.store_id, t.experiment_id, s.slug, t.account_id, coalesce(nullif(p.published ->> 'title', ''), p.slug) as page, t.goal, t.outcome
         from commerce.autopilot_tests t
         join commerce.stores s on s.id = t.store_id
         join commerce.pages p on p.store_id = t.store_id and p.id = t.page_id

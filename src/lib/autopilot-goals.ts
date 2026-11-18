@@ -21,14 +21,54 @@ export const GOAL_TARGETS = [
   "margin_30d",
   "revenue_since",
   "contribution_since",
+  // Kaizena Flow's sign-ups per 100 visits to its site (ecosystem plan E5.3, D757): its own store sells nothing, so this is what it aims at.
+  "signup_rate_30d",
 ] as const;
 export type GoalTargetKind = (typeof GOAL_TARGETS)[number];
 
-/** The targets each scope measures: a store's figures, or Kaizena Flow's own (pages and open stores). */
-export const TARGETS_FOR: Record<"store" | "platform", readonly GoalTargetKind[]> = {
+/**
+ * The targets the AI manager's `set_goal` offers: every one but those held out of its schema until the agents' eval is recorded with them
+ * (D391, the tools' version; like `HELD_FOR_EVAL` in `owner-tools.ts`). Until then a person sets a held one on the Autopilot page's Goals.
+ */
+export const HELD_GOAL_TARGETS = ["signup_rate_30d"] as const satisfies readonly GoalTargetKind[];
+export const TOOL_GOAL_TARGETS = [
+  "revenue_30d",
+  "orders_30d",
+  "conversion_30d",
+  "open_by",
+  "products",
+  "pages",
+  "stores",
+  "contribution_30d",
+  "margin_30d",
+  "revenue_since",
+  "contribution_since",
+] as const satisfies readonly Exclude<GoalTargetKind, (typeof HELD_GOAL_TARGETS)[number]>[];
+
+/** Whose goals: a store's, Kaizena Flow's own store's (`stores.house`, D466), or Kaizena Flow's with no store. */
+export type GoalScopeKind = "store" | "house" | "platform";
+
+/**
+ * The targets each scope measures: a store's figures, or Kaizena Flow's own (pages, open stores, and sign-ups per visit to its site, which its
+ * own store serves since D484, so its store's autopilot can aim at them too).
+ */
+export const TARGETS_FOR: Record<GoalScopeKind, readonly GoalTargetKind[]> = {
   store: ["revenue_30d", "orders_30d", "conversion_30d", "open_by", "products", "pages", "contribution_30d", "margin_30d", "revenue_since", "contribution_since"],
-  platform: ["pages", "stores"],
+  house: ["revenue_30d", "orders_30d", "conversion_30d", "open_by", "products", "pages", "contribution_30d", "margin_30d", "revenue_since", "contribution_since", "signup_rate_30d"],
+  platform: ["pages", "stores", "signup_rate_30d"],
 };
+
+/** Whether a scope's goals can aim at Kaizena Flow's sign-ups per visit: its own, and its own store's. */
+export const aimsAtSignups = (scope: GoalScopeKind): boolean => TARGETS_FOR[scope].includes("signup_rate_30d");
+
+/**
+ * The share of visits signing up the Autopilot page offers to aim for: a fifth more than today's (the change its tests are sized to find),
+ * rounded up to a tenth of a percent; 1 % while today's is not known.
+ */
+export function suggestedSignupPercent(now: number | null): number {
+  if (now === null || !(now > 0)) return 1;
+  return Math.min(100, Math.ceil(Math.round(now * 1.2 * 1000) / 100) / 10);
+}
 
 export const GOALS_ACTIVE_MAX = 5;
 export const TARGETS_MAX = 5;
@@ -49,13 +89,14 @@ export const goalTargetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("margin_30d"), percent: z.number().positive().max(100) }),
   z.object({ kind: z.literal("revenue_since"), amount_minor: z.number().int().positive(), currency: z.string().regex(/^[A-Z]{3}$/), since: day }),
   z.object({ kind: z.literal("contribution_since"), amount_minor: z.number().int().positive(), currency: z.string().regex(/^[A-Z]{3}$/), since: day }),
+  z.object({ kind: z.literal("signup_rate_30d"), percent: z.number().positive().max(100) }),
 ]);
 export type GoalTarget = z.infer<typeof goalTargetSchema>;
 export const goalTargetsSchema = z.array(goalTargetSchema).max(TARGETS_MAX);
 
-/** A target as the model gives it: flat, an amount typed in the main currency's major units ("50 000"). */
+/** A target as the model gives it: flat, an amount typed in the main currency's major units ("50 000"). Only the tool's kinds (`TOOL_GOAL_TARGETS`). */
 export const goalTargetInput = z.object({
-  kind: z.enum(GOAL_TARGETS),
+  kind: z.enum(TOOL_GOAL_TARGETS),
   amount: z
     .string()
     .trim()
@@ -70,15 +111,20 @@ export const goalTargetInput = z.object({
   since: day.optional().describe("revenue_since and contribution_since: the first day counted, YYYY-MM-DD (the challenge's Day 1)."),
 });
 export type GoalTargetInput = z.infer<typeof goalTargetInput>;
+/** A target typed by the model or by a person on the Autopilot page, whose Goals also set the kinds held out of the tool. */
+export type GoalTargetTyped = Omit<GoalTargetInput, "kind"> & { kind: GoalTargetKind };
 
 /** A typed target made into a stored one, or the problem in words. `parseAmount` reads the major units in the main currency. */
 export function targetFromInput(
-  input: GoalTargetInput,
-  scope: "store" | "platform",
+  input: GoalTargetTyped,
+  scope: GoalScopeKind,
   currency: string | null,
   parseAmount: (text: string, currency: string) => number | null,
 ): { ok: true; target: GoalTarget } | { ok: false; problem: string } {
-  if (!TARGETS_FOR[scope].includes(input.kind)) return { ok: false, problem: `A ${scope === "store" ? "store" : "Kaizena Flow"} goal cannot measure ${input.kind}.` };
+  if (!TARGETS_FOR[scope].includes(input.kind)) {
+    if (input.kind === "signup_rate_30d") return { ok: false, problem: "Only Kaizena Flow and its own store count sign-ups to Kaizena Flow." };
+    return { ok: false, problem: `A ${scope === "platform" ? "Kaizena Flow" : "store"} goal cannot measure ${input.kind}.` };
+  }
   const need = (what: string) => ({ ok: false as const, problem: `${input.kind} needs ${what}.` });
   switch (input.kind) {
     case "revenue_30d":
@@ -95,6 +141,7 @@ export function targetFromInput(
     }
     case "conversion_30d":
     case "margin_30d":
+    case "signup_rate_30d":
       return input.percent ? { ok: true, target: { kind: input.kind, percent: input.percent } } : need("a percent");
     case "open_by":
       return input.date ? { ok: true, target: { kind: "open_by", date: input.date } } : need("a date");
@@ -123,6 +170,8 @@ export type GoalFigures = {
   margin30d: number | null;
   /** Net sales and contribution profit since each first day a goal names, keyed by the day; null where not known. */
   since: Record<string, { revenue: number | null; contribution: number | null; missing?: string }>;
+  /** Sign-ups to Kaizena Flow per 100 visits to its site over the last 30 days, its own store's (D757); null anywhere else or not known. */
+  signupRate30d: number | null;
   /** Why a figure is null, by target kind. */
   missing: Partial<Record<GoalTargetKind, string>>;
 };
@@ -158,6 +207,10 @@ export function targetProgress(target: GoalTarget, f: GoalFigures, locale = "en-
       return f.conversion30d === null
         ? notMeasured(`${pct(target.percent)} of visits order`)
         : { kind: target.kind, target: `${pct(target.percent)} of visits order`, now: pct(f.conversion30d), met: f.conversion30d >= target.percent };
+    case "signup_rate_30d": {
+      const words = `${pct(target.percent)} of visits sign up to Kaizena Flow`;
+      return f.signupRate30d === null ? notMeasured(words) : { kind: target.kind, target: words, now: pct(f.signupRate30d), met: f.signupRate30d >= target.percent };
+    }
     case "open_by": {
       const words = `Open by ${target.date}`;
       if (f.openedOn) return { kind: target.kind, target: words, now: `Open since ${f.openedOn}`, met: f.openedOn <= target.date };

@@ -1,6 +1,6 @@
 {
-  "id": "4c543cb6-fe6f-4781-b2e6-027b719e49b3",
-  "prevId": "2b7ebfeb-a63b-4f24-aff6-cbd70862ff8d",
+  "id": "368e287d-a923-4eda-92b0-f3bfec5a8c60",
+  "prevId": "93a16723-97d3-4531-86ba-3c34d43967fd",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -9563,7 +9563,7 @@
       "checkConstraints": {
         "autopilot_tests_goal": {
           "name": "autopilot_tests_goal",
-          "value": "\"commerce\".\"autopilot_tests\".\"goal\" in ('orders', 'cart', 'checkout')"
+          "value": "\"commerce\".\"autopilot_tests\".\"goal\" in ('orders', 'cart', 'checkout', 'signup')"
         },
         "autopilot_tests_days": {
           "name": "autopilot_tests_days",

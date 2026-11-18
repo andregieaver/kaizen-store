@@ -9,7 +9,7 @@ import { autopilotOverview } from "@/server/autopilot-overview";
 import { holderOfPrincipal } from "@/server/owner-assistant";
 import { requireOwnerRole } from "@/server/permissions";
 
-import { answerStepAction, cancelFollowUpAction, changePlanAction, decideCallAction, dropGoalAction, saveSettingsAction } from "./actions";
+import { answerStepAction, cancelFollowUpAction, changePlanAction, decideCallAction, dropGoalAction, saveSettingsAction, setSignupGoalAction } from "./actions";
 import { WalletCard } from "./wallet-card";
 
 export const metadata: Metadata = { title: "Autopilot" };
@@ -42,6 +42,7 @@ export default async function StoreAutopilotPage({ params, searchParams }: PageP
           answer: answerStepAction.bind(null, slug),
           plan: changePlanAction.bind(null, slug),
           dropGoal: dropGoalAction.bind(null, slug),
+          setSignupGoal: setSignupGoalAction.bind(null, slug),
           settings: saveSettingsAction.bind(null, slug),
           cancelFollowUp: cancelFollowUpAction.bind(null, slug),
         }}
