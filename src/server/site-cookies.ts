@@ -92,8 +92,24 @@ export async function siteCookies(
   options: { buyers?: boolean; colorMode?: boolean; privateStore?: boolean } = {},
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[]; extras: ConsentExtra[] }> {
   const listed = new Map<string, ListedCookie>();
+  // Every question at once (bloat review step 2.18): each is asked with the condition it always had, and none waits for another.
+  const [facts, agent, modals, referral, site, recommendSettings, experiments, platformLangs, { items, notes }] = await Promise.all([
+    storeId === null ? Promise.resolve(null) : storeFeatures(storeId),
+    getChatAgent(storeId),
+    // Pop-ups that remember being closed keep it in the browser, as a preference (D121).
+    usesRememberedModals(storeId),
+    // Kaizen's referral link is kept in a cookie, as marketing, while its program is on (D131): the banner asks for it.
+    storeId === null ? referralPublicSettings() : Promise.resolve(null),
+    // A store with a referral program keeps the link a visitor opened, as marketing, once they allow it (D131).
+    storeId === null ? Promise.resolve(null) : affiliateSite(storeId),
+    // A store with recommendations on keeps what a visitor did in this tab, to suggest products (D139).
+    storeId === null ? Promise.resolve(null) : getRecommendSettings(storeId),
+    // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
+    storeId === null ? Promise.resolve(false) : storeHasExperiments(storeId),
+    storeId === null ? getPlatformLangs() : Promise.resolve(null),
+    siteFindings(storeId),
+  ]);
   // A cookie of a store feature that is off (D178) is not the site's while it is: left out, even when an earlier scan found it.
-  const facts = storeId === null ? null : await storeFeatures(storeId);
   const features = facts?.features ?? null;
   const offFeature = (cookie: KnownCookie) => Boolean(cookie.feature && features && !featureOn(features, cookie.feature));
   const list = (cookie: KnownCookie) => {
@@ -102,22 +118,13 @@ export async function siteCookies(
     if (!listed.has(name)) listed.set(name, { name, provider, category, days, purpose, ...(storage ? { kind: `${storage}Storage` as const } : {}) });
   };
   // The chat agent keeps its conversation in the tab while it is on (D81).
-  const chat = (await getChatAgent(storeId))?.enabled ?? false;
-  // Pop-ups that remember being closed keep it in the browser, as a preference (D121).
-  const modals = await usesRememberedModals(storeId);
-  // Kaizen's referral link is kept in a cookie, as marketing, while its program is on (D131): the banner asks for it.
-  const referral = storeId === null ? await referralPublicSettings() : null;
-  // A store with a referral program keeps the link a visitor opened, as marketing, once they allow it (D131).
-  const site = storeId === null ? null : await affiliateSite(storeId);
+  const chat = agent?.enabled ?? false;
   // A creator's link (D386) is the same cookie, kept while either programme works.
   const affiliate = site?.capture ?? false;
-  // A store with recommendations on keeps what a visitor did in this tab, to suggest products (D139).
-  const recommendations = storeId === null ? false : (await getRecommendSettings(storeId)).enabled;
-  // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
-  const experiments = storeId === null ? false : await storeHasExperiments(storeId);
+  const recommendations = recommendSettings?.enabled ?? false;
   // Kaizena Flow's own site in more than one language remembers a closed language suggestion, as a preference (D312); a store with Several
   // languages on remembers a language a visitor chose in its switcher, for its front door (D479).
-  const languages = storeId === null ? (await getPlatformLangs()).length > 1 : Boolean(features && featureOn(features, "languages"));
+  const languages = storeId === null ? (platformLangs ?? []).length > 1 : Boolean(features && featureOn(features, "languages"));
   // A store that counts visits and already asks about statistics keeps a visitor's first visit in 30 days once they allow it (D303 I3).
   // Heatmaps run under statistics and recordings ask a purpose of their own (D656): the banner asks for them while they are on.
   const heatmaps = Boolean(facts?.heatmaps);
@@ -128,7 +135,6 @@ export async function siteCookies(
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.captureDays } : cookie))
     .forEach(list);
 
-  const { items, notes } = await siteFindings(storeId);
   for (const item of reviewFindings(items, notes)) {
     if (item.note) {
       const key = `${item.kind}|${item.name}`;

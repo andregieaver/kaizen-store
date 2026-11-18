@@ -176,7 +176,7 @@ commit as the fix.
 | 2.15 | Let tagged reads live until their tag is refreshed | SD-8, CA-10 | M | strong | 2.14, 1.11, 1.25 | Open | |
 | 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | Done | 18 Nov, 64e5b620, D775: title, titles by language and remembered modal in generated columns. |
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | In progress | 18 Nov, 13522625, D778: lists 100 a page from columns, grids from SQL; a week's statistics to read. |
-| 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | Open | |
+| 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | In progress | Local: siteCookies() asks together; search rules read once. |
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | Open | |
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Open | |
