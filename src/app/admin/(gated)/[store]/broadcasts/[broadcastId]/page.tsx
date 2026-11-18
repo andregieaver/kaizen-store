@@ -9,6 +9,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { marketingProblem } from "@/lib/marketing-words";
+import { formatMoney } from "@/lib/money";
 import { audienceCount, broadcastReport, getBroadcast } from "@/server/broadcasts";
 import { uploadsEnabled } from "@/server/media";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -137,6 +138,10 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
   const report = await broadcastReport(store.id, broadcast);
   const c = report.counts;
   const n = (v: number) => v.toLocaleString(numbers);
+  const money = (minor: Record<string, number>) =>
+    Object.entries(minor)
+      .map(([currency, amount]) => formatMoney(amount, currency, numbers))
+      .join(" + ");
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -162,11 +167,17 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
           ) : undefined
         }
       />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <KpiTile label={wb.wentTo} value={n(c.recipients)} context={c.queued > 0 ? fillWords(wb.stillToSend, { n: n(c.queued) }) : undefined} />
         <KpiTile label={wb.sent} value={n(c.sent)} context={c.logged > 0 ? fillWords(wb.keptOnly, { n: n(c.logged) }) : undefined} />
         <KpiTile label={wb.delivered} value={n(c.delivered)} context={wb.deliveredContext} />
         <KpiTile label={wb.unsubscribedSince} value={n(c.unsubscribed)} />
+        {/* M1.4 (D761): each order credited once, to the latest email or text its buyer got before it. */}
+        <KpiTile
+          label={wb.ordersAfter}
+          value={n(report.credit.orders)}
+          context={report.credit.orders > 0 ? fillWords(wb.ordersAfterContext, { amount: money(report.credit.minor) }) : wb.ordersAfterNone}
+        />
       </div>
       <Card title={wb.whatElse} compact>
         <dl className="grid gap-2 sm:grid-cols-2">

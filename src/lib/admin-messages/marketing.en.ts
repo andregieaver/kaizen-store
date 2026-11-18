@@ -403,6 +403,9 @@ export const marketingEn = {
     presses: "Presses on its links",
     pressesDescription: "Presses counts every press, also mail apps that open links to check them. People counts those on your list who pressed, kept for 180 days. Opens are not tracked.",
     pressedBy: "People on your list who pressed a link: {n}",
+    ordersAfter: "Orders after it",
+    ordersAfterContext: "{amount}, placed within a week of its email",
+    ordersAfterNone: "Paid orders placed within a week of its email",
     peopleColumn: "People",
     noLinks: "It had no links.",
     link: "Link",
@@ -800,6 +803,7 @@ export const marketingEn = {
     stoppedBy: { staff: "Stopped by you", cap: "Stopped at the month's cap" },
     counts: { queued: "Waiting", sent: "Sent", delivered: "Delivered", failed: "Failed", skipped: "Not sent" },
     cost: "Cost: {cost} {currency}",
+    ordersAfter: { none: "No paid orders yet within a week of these texts.", one: "Then {n} paid order within a week, {amount}.", many: "Then {n} paid orders within a week, {amount}." },
     ownerOnly: "Only the store's owner connects the account and changes its rules.",
   },
   /** The sending guard (D730): what the Marketing pages say while marketing email is held, or close to it. */

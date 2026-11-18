@@ -1,3 +1,5 @@
+import { featureOn } from "./store-features";
+
 /**
  * Paid extensions (D748, `docs/extensions.md`), pure: which extensions there are, what a size of one includes, and whether an account has
  * one. The catalogue's words, sizes, prices, bundles and what each plan includes are rows (`src/server/extensions.ts`, edited at Platform →
@@ -162,3 +164,11 @@ export const storeExtensionsOn = (store: { extensionFacts?: unknown }, now: Date
 /** One extension works at `now` for a store. */
 export const storeExtensionOn = (store: { extensionFacts?: unknown }, id: ExtensionId, now: Date = new Date()): boolean =>
   extensionOn(readExtensionFacts(store.extensionFacts), id, now);
+
+/**
+ * Deals are on (D464, D748): the store feature `sales` is on and the store's account has the Deals and contracts extension. Every part of
+ * another screen that shows deals, leads, activities or contracts asks this, never `dealsOn(store)` alone.
+ */
+export function dealsOn(store: { features: readonly string[]; extensionFacts?: unknown }, now: Date = new Date()): boolean {
+  return featureOn(store, "sales") && storeExtensionOn(store, "deals", now);
+}

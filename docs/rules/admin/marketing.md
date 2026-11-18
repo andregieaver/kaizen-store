@@ -162,7 +162,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`applyEmailEvent()`). Links go through `/api/marketing/c/…`, which redirects only to the content's own links and counts a press
   (`broadcast_link_clicks`); a recipient's own links carry their signed reference (`p`, D754, `src/lib/email-clicks.ts`), and a
   press with a genuine one by a subscriber still on the list is kept as theirs (`email_clicks`, only through `keepClick()`: export,
-  erasure, 180 days, said in the privacy notice); never add an open pixel. AI words are suggestions only, through `findClaims()`
+  erasure, 180 days, said in the privacy notice); never add an open pixel. Orders after any message (a broadcast, an automation
+  email, a text) are counted only through `orderCredit()`/`creditOrders()` (D761): each paid order once, for the latest message
+  its buyer got in the 7 days before it, so no screen counts an order twice. AI words are suggestions only, through `findClaims()`
   (feature `marketing_email`). Recipients are personal data (export, erasure, pruned 90 days after a send with its figures kept).
 
 ## A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)

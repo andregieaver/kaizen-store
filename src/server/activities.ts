@@ -236,6 +236,7 @@ export async function runActivityPushes(now: Date = new Date(), send: Parameters
         where a.id in (
           select id from commerce.activities
           where timed and done_at is null and notified_at is null
+            and commerce.extension_on(store_id, 'deals')
             and due_at <= ${now.toISOString()}::timestamptz and due_at > ${new Date(now.getTime() - DUE_WINDOW_MS).toISOString()}::timestamptz
           order by due_at limit ${PUSHES_PER_RUN}
           for update skip locked

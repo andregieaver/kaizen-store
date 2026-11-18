@@ -67,6 +67,7 @@ import { signupCodeChoices } from "@/server/discounts";
 import { builderForms } from "@/server/forms-admin";
 import { planChoices } from "@/lib/plan-offer";
 import { getPublicPlans } from "@/server/public-plans";
+import { storeExtensionOn } from "@/lib/extensions";
 
 /** Where a store's pages (or articles, D57) are edited. */
 export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "page") =>
@@ -194,7 +195,9 @@ export async function storePageContext(
     colours: themeSwatches(store.theme.settings),
     variantOf,
     // Tests of a page, a product layout, a header or a footer, and of their parts (D148).
-    experimentsHref: type === "page" || type === "product_layout" || type === "header" || type === "footer" ? `/admin/${store.slug}/experiments/new` : null,
+    // "A/B test this" only while the account has A/B testing (D748).
+    experimentsHref:
+      (type === "page" || type === "product_layout" || type === "header" || type === "footer") && storeExtensionOn(store, "ab_testing") ? `/admin/${store.slug}/experiments/new` : null,
     templates: {
       list: bind(templatesListAction),
       setActive: bind(setTemplateActiveAction),

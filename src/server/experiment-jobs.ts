@@ -29,7 +29,11 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
   let answered = 0;
   try {
     const due = await db().execute<Row>(sql`
-      select id, store_id from commerce.experiments where status = 'scheduled' and commerce.store_is_active(store_id) and scheduled_start <= ${now.toISOString()}::timestamptz order by scheduled_start
+      select id, store_id from commerce.experiments
+       where status = 'scheduled' and commerce.store_is_active(store_id) and scheduled_start <= ${now.toISOString()}::timestamptz
+         -- A/B testing is a paid extension (D748): a scheduled test waits while the account does not have it.
+         and commerce.extension_on(store_id, 'ab_testing')
+       order by scheduled_start
     `);
     for (const row of due) {
       const storeId = String(row.store_id);

@@ -16,7 +16,6 @@ import { activitiesOf } from "@/server/activities";
 import { filedEmailsOf } from "@/server/email-filing";
 import { FiledEmailsCard } from "@/components/admin/deals/filed-emails-card";
 import { activityActions, activityTeam } from "../../deals/activity-actions-of";
-import { featureOn } from "@/lib/store-features";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { companyOwes } from "@/server/payment-terms";
 import { readTimeline } from "@/server/customer-timeline";
@@ -47,6 +46,7 @@ import {
   searchRegisterCompaniesAction,
   setMainAccountAction,
 } from "../actions";
+import { dealsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Company" };
 
@@ -87,7 +87,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const employees = employeePercent(company);
   // Deals (S2, D464): the company's, while Deals is on.
-  const salesOn = featureOn(store, "sales");
+  const salesOn = dealsOn(store);
   const deals = salesOn ? await listDeals(store, { companyId: company.id }) : [];
   const dealWords = adminText(lang, "deals");
   const mayChange = memberCan(current, "customers:write");

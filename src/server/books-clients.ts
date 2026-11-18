@@ -35,6 +35,8 @@ async function booksMemberships(account: Pick<Account, "id">) {
     sql`select s.id, s.slug, s.name, s.time_zone, m.role::text as role, m.kind, m.role_id, r.permissions
           from commerce.store_members m
           join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter and not s.sandbox
+            -- The books are part of Work, a paid extension (D748): a client whose account does not have it has no books here.
+            and commerce.extension_on(s.id, 'work')
           left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
          where m.account_id = ${account.id}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
          order by lower(s.name), s.slug`,

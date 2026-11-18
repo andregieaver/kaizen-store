@@ -593,6 +593,15 @@ export const reportsEn = {
       spendEntries: { one: "{n} entry", many: "{n} entries" },
       spendNoneSub: "None entered · add or import",
       discountsSub: "{n} of {all} orders had a discount",
+      messagesTitle: "Your emails and texts",
+      messagesSub: { none: "No orders after them in this period", one: "{n} order after them", many: "{n} orders after them" },
+    },
+    /** M1.4 (D761): orders after the store's own messages, by the one rule. */
+    messages: {
+      lead: "Paid orders placed within a week of the latest email or text their buyer got, each counted once. Some would have come anyway.",
+      sources: { broadcast: "Broadcasts", automation: "Automations", text: "Texts" },
+      orders: { one: "{n} order", many: "{n} orders" },
+      none: "No orders",
     },
     adUnits: { NOK: "krone", DKK: "krone", SEK: "krona", EUR: "euro", GBP: "pound", USD: "dollar", CHF: "franc", PLN: "zloty", ISK: "krona", CZK: "koruna" } as Record<string, string>,
     merWords: "every sale divided by every ad {unit}",

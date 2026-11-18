@@ -7,13 +7,13 @@ import { ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
 import { HOME_WORDS } from "@/lib/admin-words/home";
 import { storeAttentionItems, type ActivityFigures, type DisputeFigures, type QueueFigures, type StoreAttentionItem } from "@/lib/control-center";
 import { DISPUTE_STATUSES, disputeNeedsResponse } from "@/lib/payment-facts";
-import { featureOn } from "@/lib/store-features";
 
 import { leadCounts } from "./leads";
 import { OPEN_QUESTION } from "./unanswered-questions";
 import { textList, uuidList } from "./sql-arrays";
 import type { Store } from "./stores";
 import { col, typedRows } from "./typed-rows";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * One attention source (ecosystem plan E2.1, D713): the queues that wait on a store's people, counted in SQL for any number of stores at
@@ -193,7 +193,7 @@ export type StoreAttention = Record<AdminLang, StoreAttentionItem[]>;
  */
 export async function storeAttention(store: Store, now: Date = new Date()): Promise<StoreAttention> {
   const ids = [store.id];
-  const sales = featureOn(store, "sales") ? ids : [];
+  const sales = dealsOn(store) ? ids : [];
   const counts = await queueCounts({ disputes: ids, decisions: ids, leads: sales, activities: sales, comments: ids, questions: ids }, null, now);
   const figures: QueueFigures = { slug: store.slug, name: store.name, role: "owner", ...queueFiguresOf(store.id, counts) };
   return Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, storeAttentionItems(figures, now.getTime(), HOME_WORDS[lang].attention)])) as StoreAttention;
