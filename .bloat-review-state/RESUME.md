@@ -303,3 +303,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 1.29 c1 in kz-c (cda7ab593, on cherry-picked 1.21 copies): manual prebuilt-trial job; TIGHT_MACHINE. Reviewed OK. Push AFTER 1.21 (kz-b) lands; rebase drops copies. c2 stopped: D710 newer-push + D741 deploy-fallback in ci.yml need a design decision; race between runs (deploy --prod --skip-domain then promote); trial needs VERCEL_ORG_ID/VERCEL_PROJECT_ID secrets (VERCEL_TOKEN exists?) and a DB for preview build (seeded PG service recommended), sensitive vars come back empty from vercel pull.
 - 18 Nov ~20: release blocked by agent-eval replay (other session's E5.1/E5.3 changed manager prompt; owner must record eval on Platform → AI) + webkit search failing twice (other session's). 1.16 migration NOT yet applied. Pushed 1.21 (83947ed86) and 1.29 c1 (efe24bc85). D772 (1.21), D773 (1.29) written. After release: 1.16 advisors + D771 migration line already in row.
 - Phase 1 remaining: 1.22 (CRON_SECRET), 1.26 (after 1.22), 1.14 c2 (owner addresses), 1.29 c2 (owner setup + design), 1.21 c3 later, 1.6/1.16/1.20/1.23 production checks. No executors running.
+
+## PHASE 2 started 18 Nov ~20:30 (owner: "Start phase 2")
+- Context file: run/phase2-context.md (appended to template for each phase-2 executor).
+- kz-b: 2.1 (Opus, CLAUDE.md map; owner decided 12 Nov) agent acf074252b5b8fec7.
+- kz-c: 2.2 (Sonnet, store layout once) agent abbce2dc1145d5b3c.
+- Order constraints: 2.2<2.3, 2.4<2.5, 2.14<2.15, 2.16<2.17,2.18, 2.20<2.35, 2.36<2.37, 2.27&2.29<2.30, 2.11<2.49, 2.25&2.26<2.50, 2.9&2.22<2.47.
+- Next candidates: 2.13 (stock), 2.16 (page columns, migration), 2.20 (proxy leaves), 2.33, 2.36 (AI lean round), 2.42, 2.48.
