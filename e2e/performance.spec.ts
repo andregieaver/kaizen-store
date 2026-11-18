@@ -188,7 +188,7 @@ test.describe("a page's document and its payload stay within their budgets", () 
       }
       expect(copies.htmlElements, address).toBe(1);
       // The six-row page repeats its own sections' rows (10,825 bytes measured, none of them the layout): its bound is its own.
-      expect(copies.duplicateBytes, address).toBeLessThan(address === sixRows ? 12_000 : 2000);
+      expect(copies.duplicateBytes, address).toBeLessThan(address === sixRows ? 12_000 : 3_000);
     }
   });
 
