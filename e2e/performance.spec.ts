@@ -98,7 +98,7 @@ for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
 /**
  * The document a page sends and what is in it (bloat review step 1.3): `document` is the characters of the HTML, `payload` the characters
  * of the inline scripts that carry the page's data to the browser (`self.__next_f.push(`), `main` the characters from the first `<main` to
- * the last `</main>`. Five pages, the last a six-row page made from Orbit's home. Each budget is its figure plus 5 %, rounded up to the next
+ * the last `</main>`. Six pages, the last a six-row page made from Orbit's home. The home's document (112,000) and /om-oss (82,000, payload 53,000, main 2,500) were set when the layout began to be sent once (bloat review step 2.2: the home 135,935 bytes before, 105,599 after, on one machine's data). Each budget is its figure plus 5 %, rounded up to the next
  * 500, measured on the build of 17 November 2026 (the home 134,151 and its payload 93,017, the product page 138,003, /products 153,070 and 107,040, Kaizena Flow's front page 39,827, the six-row page 147,059). In CI's e2e job the specs before this one add to the demo
  * store, so the home's main and /products are set from CI's run of 18 November (the home's main 12,173; /products 163,817, 113,030 and 9,957). A budget only falls.
  */
@@ -113,8 +113,54 @@ async function documentOf(page: Page, address: string): Promise<{ document: numb
   return { document: html.length, payload, main: from >= 0 && to > from ? to + "</main>".length - from : 0 };
 }
 
+/**
+ * How many times a document's payload carries the layout (bloat review step 2.2): `htmlElements` counts the `["$","html"` rows of the
+ * joined payload, which is 1 for one layout and 2 when a parallel slot on a root layout makes Next draw it again as a not-found fallback;
+ * `duplicateBytes` sums the rows whose first 160 characters (references to other rows blanked) and length were already seen, the way
+ * `docs/audits/bloat-review-2026-11/scripts/flight.mjs` splits the payload into rows.
+ */
+function layoutCopies(html: string): { htmlElements: number; duplicateBytes: number } {
+  let payload = "";
+  for (const match of html.matchAll(/<script[^>]*>(?:\(self\.__next_f=self\.__next_f\|\|\[\]\)|self\.__next_f)\.push\((\[[\s\S]*?\])\)<\/script>/g)) {
+    let entry: unknown;
+    try {
+      entry = JSON.parse(match[1]);
+    } catch {
+      continue;
+    }
+    if (Array.isArray(entry) && entry[0] === 1 && typeof entry[1] === "string") payload += entry[1];
+  }
+  const htmlElements = payload.split('["$","html"').length - 1;
+  const buf = Buffer.from(payload, "utf8");
+  const seen = new Set<string>();
+  let duplicateBytes = 0;
+  let at = 0;
+  while (at < buf.length) {
+    const colon = buf.indexOf(0x3a, at);
+    if (colon < 0) break;
+    let bodyStart = colon + 1;
+    let end: number;
+    if (String.fromCharCode(buf[colon + 1]) === "T") {
+      const comma = buf.indexOf(0x2c, colon);
+      const length = parseInt(buf.subarray(colon + 2, comma).toString(), 16);
+      bodyStart = comma + 1;
+      end = comma + 1 + length;
+    } else {
+      const newline = buf.indexOf(0x0a, colon);
+      end = newline < 0 ? buf.length : newline + 1;
+    }
+    const size = end - at;
+    const key = buf.subarray(bodyStart, end).toString().slice(0, 160).replace(/\$L?[0-9a-f]+/g, "$X") + size;
+    if (seen.has(key)) duplicateBytes += size;
+    else seen.add(key);
+    at = end;
+  }
+  return { htmlElements, duplicateBytes };
+}
+
 const DOCUMENT_BUDGETS: Record<string, { document: number; payload: number; main: number }> = {
-  "/s/demo/no": { document: 141_000, payload: 98_000, main: 13_000 },
+  "/s/demo/no": { document: 112_000, payload: 98_000, main: 13_000 },
+  "/s/demo/no/om-oss": { document: 82_000, payload: 53_000, main: 2_500 },
   "/s/demo/no/p/demo-keramikkopp": { document: 145_000, payload: 95_500, main: 4_000 },
   "/s/demo/no/products": { document: 172_500, payload: 119_000, main: 10_500 },
   "/": { document: 42_000, payload: 25_500, main: 1_500 },
@@ -128,6 +174,22 @@ test.describe("a page's document and its payload stay within their budgets", () 
     expect(content).not.toBeNull();
     expect(content!.rows).toHaveLength(6);
     sixRows = await storePageRows("ytelse-seks-rader", content!.rows as never);
+  });
+
+  test("a store document carries its layout once", async ({ page }) => {
+    const addresses = new Set(["/s/demo/no", "/s/demo/no/om-oss", "/s/demo/no/p/demo-keramikkopp", "/s/demo/no/cart"]);
+    for (const key of Object.keys(DOCUMENT_BUDGETS)) addresses.add(key === "six-row page" ? sixRows : key);
+    for (const address of addresses) {
+      const html = await (await page.request.get(address)).text();
+      const copies = layoutCopies(html);
+      if (MEASURE) {
+        console.log(`[layout] ${address} ${html.length} ${copies.htmlElements} ${copies.duplicateBytes}`);
+        continue;
+      }
+      expect(copies.htmlElements, address).toBe(1);
+      // The six-row page repeats its own sections' rows (10,825 bytes measured, none of them the layout): its bound is its own.
+      expect(copies.duplicateBytes, address).toBeLessThan(address === sixRows ? 12_000 : 2000);
+    }
   });
 
   for (const [key, budget] of Object.entries(DOCUMENT_BUDGETS)) {
