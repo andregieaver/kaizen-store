@@ -68,6 +68,8 @@ export const recordingsEn = {
     sensitive: "My store does not sell health, religious, political or other sensitive goods",
     policy: "My privacy policy says visits may be recorded",
     policyLink: "Your privacy policy",
+    assessment: "I have made a data protection impact assessment for my store",
+    assessmentLink: "Get yours, filled in from your store",
     share: "How many visits to record",
     hideAll: "Hide all text in recordings",
     hideAllHint: "Every word on the page is hidden in recordings, not only what visitors wrote.",
@@ -79,7 +81,7 @@ export const recordingsEn = {
     saved: "Saved.",
     nowOn: "Recordings are on. Visitors are asked about recordings.",
     nowOff: "Recordings are off. Those already made are kept until their 30 days are up.",
-    confirmAll: "Confirm the three points before recordings start.",
+    confirmAll: "Confirm the four points before recordings start.",
   },
 };
 

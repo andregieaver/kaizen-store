@@ -64,7 +64,7 @@ export type AnalyticsSettingsViewProps = {
   /** Heatmaps on (D656); left out where the page does not offer them. */
   heatmaps?: boolean;
   /** Recordings of visits (D656 step 11): whether on, the share recorded, what they hide, and whether the store may switch them on. */
-  recordings?: { on: boolean; share: number; mask: "balanced" | "strict"; available: boolean; privacyHref: string };
+  recordings?: { on: boolean; share: number; mask: "balanced" | "strict"; available: boolean; privacyHref: string; /** The store's own assessment to download (D656, Q3). */ assessmentHref: string };
   /** Null for a member who may look but not change. */
   actions: SettingsActions | null;
 };
@@ -637,7 +637,7 @@ export const RECORDING_SHARE_CHOICES = [10, 25, 50, 100] as const;
 
 export function RecordingsSection({ recordings, action }: { recordings: NonNullable<AnalyticsSettingsViewProps["recordings"]>; action: FormAction | null }) {
   const w = adminText(analyticsLang(), "recordings").settings;
-  const { on, share, mask, available, privacyHref } = recordings;
+  const { on, share, mask, available, privacyHref, assessmentHref } = recordings;
   return (
     <AnalyticsSection id="recordings" title={w.title} description={w.description}>
       <div className={card}>
@@ -664,6 +664,15 @@ export function RecordingsSection({ recordings, action }: { recordings: NonNulla
                     <Link href={privacyHref} className="underline">
                       {w.policyLink}
                     </Link>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="assessment" value="yes" className="mt-1" />
+                  <span>
+                    {w.assessment} ·{" "}
+                    <a href={assessmentHref} download className="underline">
+                      {w.assessmentLink}
+                    </a>
                   </span>
                 </label>
               </fieldset>

@@ -362,7 +362,7 @@ describe("heatmaps and recordings (D656)", () => {
 
   it("refuses recordings without the confirmations, and outside Kaizena Flow's own store while they are held", async () => {
     expect(await setRecordings(admin, recordings)).toEqual({ ok: false, problems: ["Only an owner can change this."] });
-    expect(await setRecordings(owner, { ...recordings, confirmed: false })).toEqual({ ok: false, problems: ["Confirm the three points before recordings start."] });
+    expect(await setRecordings(owner, { ...recordings, confirmed: false })).toEqual({ ok: false, problems: ["Confirm the four points before recordings start."] });
     expect(await setRecordings(owner, { ...recordings, share: 30 })).toEqual({ ok: false, problems: ["Choose how many visits to record."] });
     expect(await setRecordings(owner, recordings)).toEqual({ ok: false, problems: ["Recordings are not available yet."] });
     // Switching them off and choosing the share needs no hold.

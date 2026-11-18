@@ -43,8 +43,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   rrweb's sandbox (never `allow-scripts`, never `UNSAFE_replayCanvas`) under its page's own enforced policy (`replayRouteHeaders()`).
   Platform admins see counts only (Usage and limits, where the owner role holds `recordings_open`) and never watch a store's recordings;
   Kaizena Flow never uses them for itself.
-- The switches are on Analytics → Settings, through `storeAction()` with the `owner` key: recordings start only after three
-  confirmations (not aimed at children, nothing sensitive sold, the privacy policy says so), with a share of tabs and *Hide all text*.
+- The switches are on Analytics → Settings, through `storeAction()` with the `owner` key: recordings start only after four
+  confirmations (not aimed at children, nothing sensitive sold, the privacy policy says so, and the store's own DPIA, downloadable
+  there from Kaizena Flow's template with the store's facts: the lawyer's answer to Q3), with a share of tabs and *Hide all text*.
   The four tables are left out of the export and of a store's copy. A/B behaviour comes from tagged totals (`versionBehaviour()`); the
   `frustratedVersion()` flag warns, never stops. The DPIA draft is `docs/dpia-recordings.md`; review it when what is recorded changes.
 - The AI manager reads heatmaps through `page_behaviour` and `version_behaviour` (`src/server/heat-tools.ts`, figures written by

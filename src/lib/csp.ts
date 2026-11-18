@@ -203,7 +203,8 @@ export function baseRouteHeaders(themesOrigin: string | null, env: CspEnv = {}):
 /**
  * The recording player's page (D656, `docs/heatmaps-and-recordings.md` 8.6): an enforced policy for what a replayed page may load, on top of
  * the server's sanitising of the events. Pictures, fonts and media only from the admin itself, data and blob addresses, and the storage
- * host; no `script-src` or `style-src`, so the admin's own scripts and styles are untouched. The replay frame is `about:blank` and inherits
+ * host; stylesheets from the admin, the storage host and inline; frames from the admin only; no plugins, base or outside form posts. No
+ * `script-src`, so the admin's own scripts are untouched (the replay frame runs none: its sandbox has no `allow-scripts`). The replay frame is `about:blank` and inherits
  * it. Sent after `baseRouteHeaders()`: a later entry with the same key replaces an earlier one, so it repeats the admin's `frame-ancestors`.
  */
 export function replayRouteHeaders(themesOrigin: string | null, env: CspEnv = {}): { source: string; headers: HeaderEntry[] }[] {
@@ -214,6 +215,14 @@ export function replayRouteHeaders(themesOrigin: string | null, env: CspEnv = {}
     `img-src 'self' data: blob:${extra}`,
     `font-src 'self' data:${extra}`,
     `media-src 'self' blob:${extra}`,
+    // A second wall behind the sanitising (the review of 18 November 2026): stylesheets only from the admin, the storage host and inline
+    // (the replay draws its styles inline; the admin's own come from itself), frames only from the admin, no plugins, no other base, no form
+    // posting anywhere but the admin.
+    `style-src 'self' 'unsafe-inline'${extra}`,
+    `frame-src 'self'`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
   ].join("; ");
   return [{ source: "/admin/:store/analytics/recordings/:id", headers: [{ key: "Content-Security-Policy", value }] }];
 }

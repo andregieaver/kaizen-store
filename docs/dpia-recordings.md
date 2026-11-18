@@ -120,9 +120,16 @@ No id, address or user agent is kept; the totals cannot be traced back to a visi
 | A recording tied to a person by time or context | Medium | Relative event times, floored and rounded facts, no ids joined, no IP | Low; context in a recording (for example a name shown on a page) could still identify; masking and the page list limit this |
 | Special-category data on sensitive stores (health, sexual wellness, religion, politics; CJEU C-252/21, C-21/23) | Medium for those stores | The owner confirms the store sells nothing sensitive and is not aimed at children before recording starts (Q6) | Depends on the owner's confirmation |
 | Children (Datatilsynet strongly advises against tracking on services for children) | Medium for those stores | The same confirmation | Depends on the owner's confirmation |
-| Hostile HTML in a forged recording reaching the owner's browser | Medium | Same-site, own-page and consent checks, budgets, owner-only access; the player's sanitising, a frame without scripts and an enforced CSP (step 11) | Low; [[Add: a person's review of `replay-sanitize.ts` and its tests]] |
+| Hostile HTML in a forged recording reaching the owner's browser | Medium | Same-site, own-page and consent checks, budgets, owner-only access; the player's sanitising, a frame without scripts and an enforced CSP (step 11) | Low; reviewed 18 November 2026 (below the table) |
 | Recording before the law is settled | — | `platform_settings.recordings_open` stays off until O3, Q3, Q6 and Q7 are answered; only Kaizena Flow's own site may record meanwhile | — |
 | Kaizena Flow using stores' recordings for itself | Low | Never built; the DPA says so (O3) | Low |
+
+---
+
+The player's review (18 November 2026): a reviewer that did not write the sanitiser, and an attack battery in its tests (outside addresses
+and script schemes in every attribute, CSS and incremental source). Two fixes came of it: no SVG data address outside CSS, and a depth
+limit on nested CSS. The player's policy now also limits stylesheets, frames, objects, the base address and form posts. A human security
+review is still worth having before stores record at scale.
 
 ---
 
@@ -158,7 +165,8 @@ None of these is a decision. For the owner, with a lawyer:
 ## 8. Sign-off
 
 Signed on 18 November 2026 from the review note sent to the lawyer. The lawyer's answers: **Q3**, each store that records needs its own
-DPIA (this document is offered as its template); **Q6**, the owner's confirmations are enough; **Q7**, documenting the balanced default
+DPIA (this document is offered as its template: the Recordings switch gives each owner one filled in with the store's facts, and asks
+them to confirm they have made it before recordings start); **Q6**, the owner's confirmations are enough; **Q7**, documenting the balanced default
 as the alternative measure to M0 is enough. The further points, answered the same day: recordings are not on Datatilsynet's list (section 1); heatmaps alone would not do (section 5);
 no consultation of visitors and no prior consultation of Datatilsynet is needed (section 6); and Kaizena Flow must appoint a data
 protection officer, who then signs below.

@@ -168,7 +168,7 @@ export async function setRecordings({ account, store, role }: Membership, input:
   if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
   if (!(RECORDING_SHARES as readonly number[]).includes(input.share)) return refuse("Choose how many visits to record.");
   if (input.mask !== "balanced" && input.mask !== "strict") return refuse("Choose what recordings hide.");
-  if (input.enabled && !input.confirmed) return refuse("Confirm the three points before recordings start.");
+  if (input.enabled && !input.confirmed) return refuse("Confirm the four points before recordings start.");
   // The platform's hold (D656): until `platform_settings.recordings_open` is on, only Kaizena Flow's own house store records.
   if (input.enabled && !store.house && !(await recordingsOpenNow())) return refuse("Recordings are not available yet.");
   await db().execute(sql`

