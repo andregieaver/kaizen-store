@@ -79,6 +79,23 @@ export const capacityNb: CapacityMessages = {
     connections: "{n} aktive tilkoblinger",
     size: "{size} totalt",
     drainOff: "Loggstrømmen er ikke koblet til, så besøk måles ikke.",
+    styles: {
+      title: "Stiltekst eierne legger til",
+      description: "CSS-en en butikk legger i hvert av dokumentene sine: sin egen, toppens og bunnens. Leses før åpning og hvert kvartal.",
+      take: "Ta avlesningen",
+      summary: "Median {median} per butikk, {over} over 20 KB, {share} % av publiserte sider bruker bevegelse.",
+      noPages: "Ingen publiserte sider ennå.",
+      over: "Over 20 KB",
+      store: "Butikk",
+      bytes: "Stiltekst",
+      pages: "Publiserte sider",
+      motion: "Sider med bevegelse",
+      triggers: {
+        median: "Medianbutikken er over 10 KB: se på nytt på å levere denne CSS-en som et eksternt stilark.",
+        store: "En butikk er over 20 KB: stilarkene bør flyttes til ett eksternt stilark med hash.",
+        motion: "Under halvparten av publiserte sider bruker bevegelse: last motion.css bare der en side bruker den (trinn 2.49 i gjennomgangen).",
+      },
+    },
   },
   recordings: {
     title: "Opptak av besøk",

@@ -686,3 +686,51 @@ bloat review step 1.12), none of a switched-off feature beyond its named excepti
 | large store home, cold | 1 | 3 |  |
 | large store product, cold | 15 | 17 |  |
 <!-- server-budget:end -->
+
+## Whose classes the stylesheet holds, and the style text owners add
+
+The one stylesheet carries every audience's classes. A class's audience is decided by which root layouts can reach a file that
+names it: store pages (`src/app/s`); Kaizena Flow's own pages, docs and theme previews; the admin; and the on-site editor, meaning
+files of `src/components/admin` and `src/components/inline-edit` that a public page reaches.
+`docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs` (after the build, in CI's e2e job) prints the bytes each
+audience alone names.
+
+First reading, 18 November 2026, site sheet `2mz2so11lb4_y.css` (218,793 bytes raw, 29,059 Brotli, one sheet for every audience):
+
+| Audience | Rules | Raw bytes | Brotli bytes |
+|---|---|---|---|
+| store | 766 | 49,251 | 7,127 |
+| platform-only | 114 | 9,396 | 1,609 |
+| editor-only | 164 | 10,505 | 2,098 |
+| platform+editor | 48 | 3,388 | 985 |
+| admin-only | 925 | 69,838 | 8,195 |
+| unknown | 264 | 27,607 | 4,113 |
+
+No store page can draw 23,289 bytes raw and 3,903 Brotli (platform-only, editor-only and platform+editor together); only admin
+files name 69,838 bytes raw. The review's figures of 12 November were 13.8 to 16.2 KB and 51.8 KB: the sheet has grown since.
+
+The tolerance: at most 15 KB raw of classes no store page can draw once step 2.11 has split the sheet. Until then the script
+fails above 25,000 bytes raw or 4,200 Brotli, today's figure with room for the daily work; step 2.11 takes the lines to 17,000 raw
+and 2,000 Brotli, and then fails on any admin-only class in the site's sheet. A third stylesheet for stores is weighed only above
+the tolerance.
+
+An owner's own CSS is limited per sheet: 50,000 characters for each of the store's, the header's and the footer's (CSS_MAX in
+`src/lib/custom-css.ts` and the database checks). The limit is not on the sum (the owner, bloat review step 1.23); the 20 KB line
+below watches the sum.
+
+The style text each store adds to every document (its own, its header's and its footer's) is read on Platform, Usage and limits
+with `?reading=styles`. First reading: to be taken on production before opening.
+
+| Store | Style text bytes | Published pages | Pages with motion |
+|---|---|---|---|
+| | | | |
+
+Median, stores above 20 KB and the share of published pages with motion: to be filled in with the first reading.
+
+The three lines, each a trigger:
+
+- Above 10 KB for the median store: look again at serving owners' CSS as an external stylesheet.
+- Any store above 20 KB: its sheets move to one external hashed stylesheet, and the page marks that store.
+- Under half of published pages using motion: build step 2.49 (motion.css loaded only where a page uses it).
+
+Read again each quarter, with the migrations' squash.

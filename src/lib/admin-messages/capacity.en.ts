@@ -83,6 +83,23 @@ export const capacityEn = {
     connections: "{n} active connections",
     size: "{size} in all",
     drainOff: "The log drain is not connected, so visits are not measured.",
+    styles: {
+      title: "Style text owners add",
+      description: "The CSS a store adds to every one of its documents: its own, its header's and its footer's. Read before opening and each quarter.",
+      take: "Take the reading",
+      summary: "Median {median} a store, {over} above 20 KB, {share}% of published pages use motion.",
+      noPages: "No published pages yet.",
+      over: "Above 20 KB",
+      store: "Store",
+      bytes: "Style text",
+      pages: "Published pages",
+      motion: "Pages with motion",
+      triggers: {
+        median: "The median store is above 10 KB: look again at serving this CSS as an external stylesheet.",
+        store: "A store is above 20 KB: its sheets should move to one external hashed stylesheet.",
+        motion: "Under half of published pages use motion: load motion.css only where a page uses it (bloat review step 2.49).",
+      },
+    },
   },
   recordings: {
     title: "Recordings of visits",
