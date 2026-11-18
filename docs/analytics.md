@@ -422,6 +422,9 @@ delivery method is wave 8. Counts only, never a customer, for a member who may r
     certificate, another site's answer or nothing listening is a domain that points away, a time-out, a redirect or a server error
     is not known; it keeps the answer, and RDAP's expiry for a domain registered elsewhere, in the connection's checks
     (`checks.watch`), read for three days (`WATCH_FRESH_DAYS`). The Domains page's health reads the same answer.
+  Kaizena Flow's own store raises the three on the platform's home and in its briefing too (E5.2, D757): `signalSnapshotFor()` reads
+  them for it, `signalAlertsFor()` runs the same three rules alone, and kaizenaflow.com itself is among its domains, from the watch's
+  answer kept for it in `platform_settings.domain_watch`.
 - **Targets** (`analytics_targets`): a month's net revenue; progress, the share expected by today (the month's
   weekday-weighted run), and ahead or behind. Since D348 a target is also of **orders**, the **conversion rate** or the
   **average order value**, over a **week** (Monday to Sunday), a **month**, a **quarter** or **chosen days** (up to two years),

@@ -7,7 +7,7 @@ import { db, readDb, type Db } from "@/db/client";
 import { articlePath, blogOfArticle } from "@/lib/blogs";
 import { readEntryContent } from "@/lib/content-types";
 import type { FieldDef } from "@/lib/custom-fields";
-import { cutPassages, documentInput, documentType, DOCUMENT_FILE_MAX, entryKnowledgeText, pageKnowledgeText } from "@/lib/knowledge";
+import { cutPassages, documentInput, documentType, DOCUMENT_FILE_MAX, entryKnowledgeText, knowledgeFloor, pageKnowledgeText, reachesFloor } from "@/lib/knowledge";
 import { mergeLocales } from "@/lib/localization";
 import { parsePageContent } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
@@ -463,10 +463,16 @@ export type Passage = {
   url?: string;
 };
 
+const PASSAGE_ROW = z.object({ id: z.coerce.string(), title: col.text, path: col.textOrNull, body: col.text, url: col.textOrNull });
+type PassageRow = z.output<typeof PASSAGE_ROW>;
+
 /**
  * The passages that best answer a question, in the visitor's language (or
  * any, for documents): by meaning with the site's AI where it has vectors,
- * and by keyword, merged by reciprocal rank.
+ * and by keyword, merged by reciprocal rank. By meaning only what reaches
+ * the site's similarity limit (`knowledgeFloor()`, ecosystem plan E5.4,
+ * D757): none may be close enough to be an answer, which the chat then
+ * says, and the question is counted.
  */
 export async function searchKnowledge(storeId: string | null, query: string, locale: string, limit = 5, options: { widget?: string } = {}): Promise<Passage[]> {
   // A chat widget on the owner's own websites (D582, D583) reads the knowledge base's documents and the pages of its own sites, never the
@@ -481,42 +487,54 @@ export async function searchKnowledge(storeId: string | null, query: string, loc
   const columns = sql`id, title, path, body, (
     select 'https://' || s.host || p.path from commerce.support_widget_site_pages p join commerce.support_widget_sites s on s.id = p.site_id
     where p.id = site_page_id) as url`;
-  const keyword = readDb().execute<Row>(sql`
-    select ${columns} from commerce.knowledge_chunks,
-      websearch_to_tsquery(commerce.search_config(${locale}), ${query}) q,
-      websearch_to_tsquery('simple', ${query}) qs
-    where ${owned(storeId)} and ${inLanguage} and (search @@ q or search @@ qs)
-    order by greatest(ts_rank(search, q), ts_rank(search, qs)) desc
-    limit ${limit * 2}
-  `);
-  const meaning = (async () => {
+  const keyword = typedRows(
+    PASSAGE_ROW,
+    sql`
+      select ${columns} from commerce.knowledge_chunks,
+        websearch_to_tsquery(commerce.search_config(${locale}), ${query}) q,
+        websearch_to_tsquery('simple', ${query}) qs
+      where ${owned(storeId)} and ${inLanguage} and (search @@ q or search @@ qs)
+      order by greatest(ts_rank(search, q), ts_rank(search, qs)) desc
+      limit ${limit * 2}
+    `,
+    readDb(),
+  );
+  const meaning = (async (): Promise<PassageRow[]> => {
     const connection = await aiFor(storeId, { feature: "chat_agent" });
-    if (!connection?.space) return [] as Row[];
+    if (!connection?.space) return [];
     try {
       const { vectors } = await embedTexts(connection, [query], 5000);
-      return await readDb().execute<Row>(sql`
-        select ${columns} from commerce.knowledge_chunks
-        where ${owned(storeId)} and ${inLanguage} and space = ${connection.space}
-        order by embedding OPERATOR(extensions.<=>) ${vectorLiteral(vectors[0])}::extensions.vector
-        limit ${limit * 2}
-      `);
+      const rows = await typedRows(
+        PASSAGE_ROW.extend({ distance: col.decimal.nullable() }),
+        sql`
+          select ${columns}, embedding OPERATOR(extensions.<=>) ${vectorLiteral(vectors[0])}::extensions.vector as distance
+          from commerce.knowledge_chunks
+          where ${owned(storeId)} and ${inLanguage} and space = ${connection.space}
+          order by distance
+          limit ${limit * 2}
+        `,
+        readDb(),
+      );
+      // The nearest came back however far they were: below the site's limit a passage is no answer (E5.4, D757). The rows are the
+      // nearest first, so what is left is what the same limit in the query would have kept.
+      const floor = knowledgeFloor(connection.minSimilarity);
+      return rows.filter((row) => reachesFloor(row.distance, floor));
     } catch (error) {
       if (!(error instanceof AiError)) throw error;
-      return [] as Row[];
+      return [];
     }
   })();
   const [byKeyword, byMeaning] = await Promise.all([keyword, meaning]);
-  const scores = new Map<string, { row: Row; score: number }>();
+  const scores = new Map<string, { row: PassageRow; score: number }>();
   for (const list of [byMeaning, byKeyword]) {
     list.forEach((row, rank) => {
-      const id = String(row.id);
-      const entry = scores.get(id) ?? { row, score: 0 };
+      const entry = scores.get(row.id) ?? { row, score: 0 };
       entry.score += 1 / (60 + rank);
-      scores.set(id, entry);
+      scores.set(row.id, entry);
     });
   }
   return [...scores.values()]
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(({ row }) => ({ title: String(row.title), path: row.path ? String(row.path) : null, body: String(row.body), ...(row.url ? { url: String(row.url) } : {}) }));
+    .map(({ row }) => ({ title: row.title, path: row.path || null, body: row.body, ...(row.url ? { url: row.url } : {}) }));
 }

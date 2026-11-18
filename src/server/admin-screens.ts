@@ -114,7 +114,8 @@ export async function platformHomeReads() {
   const [o, jobs, snapshot, briefing, failedEvents] = await Promise.all([
     platformOverview(),
     cronJobRows(),
-    platformSnapshot(),
+    // With what Kaizena Flow's own site raises (ecosystem plan E5.2, D757): its store's heat, speed and domains, and kaizenaflow.com.
+    platformSnapshot(new Date(), { house: true }),
     platformBriefingSetting(),
     failedWebhookEvents(),
   ]);

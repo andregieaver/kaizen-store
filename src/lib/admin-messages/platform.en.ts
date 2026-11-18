@@ -394,6 +394,7 @@ export const platformEn = {
       trials_ending: { one: "1 trial ends in the next 3 days.", many: "{n} trials end in the next 3 days." },
       database_flag: { one: "1 thing to look at under Usage and limits.", many: "{n} things to look at under Usage and limits." },
       admin_slow: "The admin is slow: {kind} on a {screen}, {metric} {value} at the 75th percentile over 28 days.",
+      house_signal: "Kaizena Flow's site: {text}",
     },
     asked: { one: "1 asked for a store", many: "{n} asked for a store" },
     opened: { one: "1 store opened", many: "{n} stores opened" },
@@ -496,6 +497,11 @@ export const platformEn = {
       many: "{n} AI requests failed in the last 7 days.",
     },
     seeAi: "See AI usage",
+    unansweredQuestions: {
+      one: "Kaizena Flow's chat assistant could not answer {n} question. Write the answer once, and it can answer it next time.",
+      many: "Kaizena Flow's chat assistant could not answer {n} questions. Write the answers once, and it can answer them next time.",
+    },
+    answerQuestions: "Answer",
     jobs: {
       one: "{n} scheduled job is late or failing.",
       many: "{n} scheduled jobs are late or failing.",

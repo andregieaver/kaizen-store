@@ -872,7 +872,7 @@ export const settingsEn = {
       fallbackHint: "Up to three, tried in order when the text model fails, so the chat, support and the autopilot keep answering. Written provider/model, separated by commas. Never used for search by meaning.",
       similarity: "Similarity needed for search by meaning",
       similarityHint:
-        "From 0 to 1. Products less like the search than this are not found by meaning. Each model scores differently: Test shows a matching and an unrelated product's scores, and the limit belongs between them.",
+        "From 0 to 1. Products less like the search than this are not found by meaning, nor are passages of the chat assistant's knowledge less like the question: then it says it has no answer, and the question waits for yours. Each model scores differently: Test shows a matching and an unrelated product's scores, and the limit belongs between them.",
       on: "On",
       vision: "Model that sees pictures",
       visionText:

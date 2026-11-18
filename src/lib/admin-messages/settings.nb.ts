@@ -861,7 +861,7 @@ export const settingsNb: SettingsMessages = {
       fallbackHint: "Opptil tre, prøvd i rekkefølge når tekstmodellen feiler, så chatten, kundeservicen og autopiloten fortsetter å svare. Skrevet leverandør/modell, skilt med komma. Brukes aldri til søk etter betydning.",
       similarity: "Likhet som kreves for søk etter betydning",
       similarityHint:
-        "Fra 0 til 1. Produkter som ligner søket mindre enn dette, blir ikke funnet etter betydning. Hver modell gir ulike verdier: Test viser verdiene for et produkt som passer og et som ikke har noe med søket å gjøre, og grensen hører hjemme mellom dem.",
+        "Fra 0 til 1. Produkter som ligner søket mindre enn dette, blir ikke funnet etter betydning, og heller ikke avsnitt i chatassistentens kunnskap som ligner spørsmålet mindre: da sier den at den ikke har noe svar, og spørsmålet venter på ditt. Hver modell gir ulike verdier: Test viser verdiene for et produkt som passer og et som ikke har noe med søket å gjøre, og grensen hører hjemme mellom dem.",
       on: "På",
       vision: "Modell som ser bilder",
       visionText:

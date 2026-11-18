@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { FieldDef } from "./custom-fields";
-import { cleanDocumentText, cutPassages, documentInput, documentType, entryKnowledgeText, pageKnowledgeText } from "./knowledge";
+import { DEFAULT_MIN_SIMILARITY } from "./ai-provider";
+import { cleanDocumentText, cutPassages, documentInput, documentType, entryKnowledgeText, KNOWLEDGE_MIN_SIMILARITY, knowledgeFloor, pageKnowledgeText, reachesFloor } from "./knowledge";
 import { newPageContent } from "./page-content";
 
 describe("knowledge documents (D81)", () => {
@@ -122,6 +123,41 @@ describe("entryKnowledgeText (D428)", () => {
     expect(title).toBe("Butikken i Bergen");
     expect(text).toContain("Opening hours: Lørdager 10–16");
     expect(text).toContain("Parking: Yes");
+  });
+});
+
+describe("the relevance floor by meaning (ecosystem plan E5.4, D757)", () => {
+  it("starts from the limit measured for Kaizena Flow's own model, between text that fits and nonsense", () => {
+    // D74, text-embedding-3-small in production: searches that fit at 0.33 to 0.55, nonsense at 0.16.
+    expect(KNOWLEDGE_MIN_SIMILARITY).toBe(DEFAULT_MIN_SIMILARITY);
+    expect(KNOWLEDGE_MIN_SIMILARITY).toBeGreaterThan(0.16);
+    expect(KNOWLEDGE_MIN_SIMILARITY).toBeLessThan(0.33);
+  });
+
+  it("is the site's own limit, as each model scores on its own scale, and the start where none can be read", () => {
+    expect(knowledgeFloor(0.75)).toBe(0.75);
+    expect(knowledgeFloor(0)).toBe(0);
+    expect(knowledgeFloor(1)).toBe(1);
+    for (const unreadable of [null, undefined, Number.NaN, -0.1, 1.5, Number.POSITIVE_INFINITY]) expect(knowledgeFloor(unreadable)).toBe(KNOWLEDGE_MIN_SIMILARITY);
+  });
+
+  it("reads pgvector's cosine distance as 1 minus the similarity: at the floor a passage is found, past it not", () => {
+    const floor = 0.3;
+    expect(reachesFloor(0, floor)).toBe(true);
+    expect(reachesFloor(0.45, floor)).toBe(true);
+    expect(reachesFloor(0.7, floor)).toBe(true);
+    // 0.7 as floating point adds it up, a hair over.
+    expect(reachesFloor(0.7000000000000001, floor)).toBe(true);
+    expect(reachesFloor(0.71, floor)).toBe(false);
+    // Nonsense with Kaizena Flow's model (0.16), and a passage turned away from the question.
+    expect(reachesFloor(0.84, floor)).toBe(false);
+    expect(reachesFloor(1.6, floor)).toBe(false);
+    // A vector of zeros has no distance: never an answer.
+    expect(reachesFloor(null, floor)).toBe(false);
+    expect(reachesFloor(Number.NaN, floor)).toBe(false);
+    // A limit of 0 keeps everything not turned away from the question.
+    expect(reachesFloor(1, 0)).toBe(true);
+    expect(reachesFloor(1.01, 0)).toBe(false);
   });
 });
 

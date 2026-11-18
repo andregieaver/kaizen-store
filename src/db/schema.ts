@@ -1980,6 +1980,11 @@ export const platformSettings = commerce.table(
      * custom domains is built into each deployment, so a change needs one.
      */
     domainsDeployRequestedAt: timestamp("domains_deploy_requested_at", { withTimezone: true }),
+    /**
+     * What the domain watch last found of Kaizena Flow's own host (ecosystem plan E5.2, D757), a store domain's `checks.watch` in the same
+     * shape (`DomainWatch`): `watchDomains()` asks it once a day, and the platform's alerts read it while it is fresh. Null until asked.
+     */
+    domainWatch: jsonb("domain_watch"),
     /** Kaizen's own header and footer (D80), its pages of type `header` and `footer`; null: the standard ones. Foreign keys in a custom migration. */
     headerId: uuid("header_id"),
     footerId: uuid("footer_id"),
@@ -2010,6 +2015,7 @@ export const platformSettings = commerce.table(
     check("platform_settings_sandbox_daily_cap", sql`${t.sandboxDailyCap} between 0 and 10000`),
     check("platform_settings_sandbox_ai", sql`${t.sandboxAiMicros} between 0 and 100000000`),
     check("platform_settings_sandbox_storage", sql`${t.sandboxStorageBytes} between 0 and 1000000000`),
+    check("platform_settings_domain_watch", sql`${t.domainWatch} is null or jsonb_typeof(${t.domainWatch}) = 'object'`),
     // English always, first; the other languages the site has (`PLATFORM_LANGS`).
     check("platform_settings_locales", sql`coalesce(${t.locales}[1] = 'en-GB', false) and ${t.locales} <@ array['en-GB', 'nb-NO']::text[]`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),

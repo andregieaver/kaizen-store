@@ -391,6 +391,7 @@ export const platformNb: PlatformMessages = {
       trials_ending: { one: "1 prøveperiode slutter de neste 3 dagene.", many: "{n} prøveperioder slutter de neste 3 dagene." },
       database_flag: { one: "1 ting å se på under Bruk og grenser.", many: "{n} ting å se på under Bruk og grenser." },
       admin_slow: "Adminpanelet er tregt: {kind} på {screen}, {metric} {value} ved 75-persentilen over 28 dager.",
+      house_signal: "Kaizena Flows nettsted: {text}",
     },
     asked: { one: "1 ba om en butikk", many: "{n} ba om en butikk" },
     opened: { one: "1 butikk åpnet", many: "{n} butikker åpnet" },
@@ -495,6 +496,11 @@ export const platformNb: PlatformMessages = {
       many: "{n} KI-forespørsler feilet de siste 7 dagene.",
     },
     seeAi: "Se KI-bruk",
+    unansweredQuestions: {
+      one: "Kaizena Flows chatassistent kunne ikke svare på {n} spørsmål. Skriv svaret én gang, så kan den svare neste gang.",
+      many: "Kaizena Flows chatassistent kunne ikke svare på {n} spørsmål. Skriv svarene én gang, så kan den svare neste gang.",
+    },
+    answerQuestions: "Svar",
     jobs: {
       one: "{n} planlagt jobb er forsinket eller feiler.",
       many: "{n} planlagte jobber er forsinket eller feiler.",

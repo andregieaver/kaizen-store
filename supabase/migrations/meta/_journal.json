@@ -680,6 +680,13 @@
       "when": 1794987738458,
       "tag": "20261118074218_email_clicks_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794990382758,
+      "tag": "20261118082622_milky_sway",
+      "breakpoints": true
     }
   ]
 }
