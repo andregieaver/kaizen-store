@@ -267,3 +267,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Local kaizen DB has organisations migrations applied (339 stores unplaced, place_store leaves them).
 - 18 Nov: container restarted. Postgres restarted by hand. Executors resumed by SendMessage (a0af61e90e526b47e kz-b 1.12c2 uncommitted; a7b0e59a44cd73ab3 kz-c 1.6 c1 bfe1fbf02 local). CI on 42c9b03de re-watched (bash bllh93yzn).
 - 18 Nov: 1.17 D751 and 1.3 D752 Done (18adb31f1). CI on 42c9b03de green for ours (cookie-scan growth was local only).
+- 18 Nov: 1.12 commit 2 pushed 1e7d19649 (journey: fixed plans while measuring, vacuum full; findings: aiFor() reads every store's AI row, +19 rows with 19 stores; 28 KNOWN_READS). CI watched bash bkb9jpahn. If green: claim D for 1.12 (Done), write up.
+- kz-b executor a6c27c9758455bb59 (Opus): 1.19 commits 1-3 (commit 2 has a migration; surface budget may need a raise by me with Idle cost line). Commits 4-5 need owner's eval run on Platform → AI.
+- kz-c executor a7b0e59a44cd73ab3: 1.6 then 1.7 (resumed).
