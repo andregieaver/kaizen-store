@@ -323,3 +323,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.3 pushed d0aa131fc (om-oss doc 81,000 in review), CI watched by1g4hxf5; then D-row. kz-c: 2.13 next.
 - 2.17 pushed 135226258 (lists paged 100, grids cards from SQL, pageDocuments 17 + pageDocumentsOneRow 33). After CI: D-row; screenshot of pager not taken.
 - 2.3 Done D777 (5347e33a7). 2.17 CI watched ba6mv6bum (prod already 135226258). kz-b 2.18 af99a51a962e605a6 (Opus), kz-c 2.13 a3405673ece3f95a7.
+- 2.17 written up (In progress; week's pg_stat_statements + list look).
+- 2.13 pushed 23d3b5425 (product page 12->1 statements; buy facts cached; product_terms kept). After CI: D-row; follow-up: getProduct()'s hosts/product_market_texts/selling_plans reads.
+- 18 Nov ~23: CI on 2.13 failed at route-budget (manifest 11,911,903 > 11,406,364+4%, other session's new server actions). Accepted today's figure 8f1ba1e75; CI watched bil83qa9x (Playwright for 2.13). kz-b 2.18 af99a51a962e605a6, kz-c 2.33 a08563e3a7a090c4c.
