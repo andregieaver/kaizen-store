@@ -18,6 +18,7 @@ import {
   supportPresenceAction,
 } from "./actions";
 import { carryOutRequestAction, decideRequestAction } from "./requests/actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
@@ -34,6 +35,8 @@ export default async function SupportInboxPage({
   const initialOpen =
     typeof c === "string" && /^[0-9a-f-]{36}$/i.test(c) ? c : null;
   const member = await requirePermission(slug, "support:read");
+  const notInAccount = requireExtension(member, "support_desk");
+  if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const [{ feed: initial, tab: initialTab }, mine] = await Promise.all([
     openingInbox([staff]),

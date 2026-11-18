@@ -6,21 +6,23 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import {
   EXTENSION_IDS,
-  extensionState,
   isExtensionId,
   readAllowances,
+  readExtensionFacts,
+  standingOf,
   type Allowances,
   type ExtensionId,
-  type ExtensionRow,
-  type ExtensionSource,
   type ExtensionState,
   type StateSource,
 } from "@/lib/extensions";
 import type { ExtensionPriceInput, ExtensionInput, BundleInput, GrantInput } from "@/lib/extension-form";
-import { ON_PLAN_STATUSES, type PlanInterval } from "@/lib/plans";
+import type { PlanInterval } from "@/lib/plans";
 
 import { audit, type Account } from "./auth";
 import { planCurrencies } from "./billing";
+import { refreshTag } from "./refresh";
+import { experimentsTag } from "./experiments";
+import { storeTag } from "./stores";
 import type { SaveResult } from "./settings";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 
@@ -119,76 +121,48 @@ export async function getExtensionCatalogue(): Promise<Catalogue> {
 export type ExtensionStanding = { state: ExtensionState; source: StateSource };
 export type ExtensionStandings = Record<ExtensionId, ExtensionStanding>;
 
-const FACTS_ROW = z.object({ platform: col.bool, launched_at: col.timestampOrNull, included: z.array(extensionId) });
-const OWN_ROW = z.object({
-  extension_id: extensionId,
-  source: z.enum(["bought", "bundle", "trial"]),
-  trial_ends_at: col.timestampOrNull,
-  ended_at: col.timestampOrNull,
-  grace_ends_at: col.timestampOrNull,
-});
-
-const at = (iso: string | null) => (iso === null ? null : new Date(iso));
+const FACTS_ROW = z.object({ facts: z.unknown() });
 
 /**
- * An account's standing with every extension (`extensionState()`): Kaizena Flow's own has them all; until extensions are sold every account
- * has every one; then what a plan of one of its stores includes, and its own rows. Read per request, never cached: a trial that ends ends.
+ * An account's standing with every extension (`extensionState()`), from `commerce.organisation_extension_facts()`, the facts every store read
+ * carries: Kaizena Flow's own has them all; until extensions are sold every account has every one; then what a plan of one of its stores
+ * includes, and its own rows. Read per request, never cached.
  */
 export async function organisationExtensionStandings(organisationId: string, now = new Date(), executor: Executor = db()): Promise<ExtensionStandings> {
-  const facts = await typedRow(
-    FACTS_ROW,
-    sql`
-      select o.platform,
-             (select ps.extensions_launched_at from commerce.platform_settings ps) as launched_at,
-             coalesce((
-               select array_agg(distinct g.extension_id)
-                 from commerce.stores s
-                 join commerce.store_billing b on b.store_id = s.id
-                 join commerce.plan_extension_grants g on g.plan_id = b.plan_id
-                where s.organisation_id = o.id and b.status in (${sql.join(
-                  ON_PLAN_STATUSES.map((status) => sql`${status}`),
-                  sql`, `,
-                )})
-             ), '{}') as included
-        from commerce.organisations o
-       where o.id = ${organisationId}::uuid
-    `,
-    executor,
-  );
-  const own = facts
-    ? await typedRows(
-        OWN_ROW,
-        sql`select extension_id, source, trial_ends_at, ended_at, grace_ends_at from commerce.organisation_extensions where organisation_id = ${organisationId}::uuid`,
-        executor,
-      )
-    : [];
-  return standings(
-    {
-      platform: facts?.platform ?? false,
-      launchedAt: at(facts?.launched_at ?? null),
-      included: facts?.included ?? [],
-      rows: own.map((r) => ({
-        extensionId: r.extension_id,
-        row: { source: r.source as ExtensionSource, trialEndsAt: at(r.trial_ends_at), endedAt: at(r.ended_at), graceEndsAt: at(r.grace_ends_at) },
-      })),
-    },
-    now,
-  );
-}
-
-function standings(
-  facts: { platform: boolean; launchedAt: Date | null; included: readonly ExtensionId[]; rows: { extensionId: ExtensionId; row: ExtensionRow }[] },
-  now: Date,
-): ExtensionStandings {
+  const row = await typedRow(FACTS_ROW, sql`select commerce.organisation_extension_facts(${organisationId}::uuid) as facts`, executor);
+  const facts = readExtensionFacts(row?.facts);
   const out = {} as ExtensionStandings;
-  for (const id of EXTENSION_IDS) {
-    out[id] = extensionState(
-      { platform: facts.platform, launchedAt: facts.launchedAt, included: facts.included.includes(id), row: facts.rows.find((r) => r.extensionId === id)?.row ?? null },
-      now,
-    );
-  }
+  for (const id of EXTENSION_IDS) out[id] = standingOf(facts, id, now);
   return out;
 }
+
+/**
+ * Refreshes the cached store reads that carry the extension facts: every store of an account (after its own row changes), or of the accounts
+ * on some plans (after what a plan includes changes). Call it after the write's transaction has committed.
+ */
+export async function refreshExtensionFacts(scope: { organisationId: string } | { planIds: readonly string[] }): Promise<void> {
+  const rows =
+    "organisationId" in scope
+      ? await typedRows(SLUG_ROW, sql`select id, slug from commerce.stores where organisation_id = ${scope.organisationId}::uuid`)
+      : scope.planIds.length === 0
+        ? []
+        : await typedRows(
+            SLUG_ROW,
+            sql`
+              select distinct s.id, s.slug from commerce.stores s
+               where s.organisation_id in (
+                 select s2.organisation_id from commerce.stores s2 join commerce.store_billing b on b.store_id = s2.id
+                  where b.plan_id in (${sql.join(scope.planIds.map((id) => sql`${id}::uuid`), sql`, `)}) and s2.organisation_id is not null
+               )
+            `,
+          );
+  for (const row of rows) {
+    refreshTag(storeTag(row.slug));
+    refreshTag(experimentsTag(row.id));
+  }
+}
+
+const SLUG_ROW = z.object({ id: col.uuid, slug: col.text });
 
 const ACTIVE_PRICE_ROW = z.object({ id: col.uuid, currency: col.currency, interval, amount_minor: col.minor });
 
@@ -315,13 +289,14 @@ export async function savePlanGrants(actor: Account, planIds: readonly string[],
     }
   });
   await audit(actor.id, null, "platform.extension_grants_updated", { plans: planIds.length, grants: grants.length });
+  await refreshExtensionFacts({ planIds });
   return { ok: true };
 }
 
 /** When extensions started being sold, or null while every account has every extension (step E5 sets it). */
 export async function extensionsLaunchedAt(): Promise<Date | null> {
   const row = await typedRow(z.object({ at: col.timestampOrNull }), sql`select extensions_launched_at as at from commerce.platform_settings`);
-  return at(row?.at ?? null);
+  return row?.at ? new Date(row.at) : null;
 }
 
 /**

@@ -20,6 +20,18 @@ export const commonNb: CommonMessages = {
     kaizenLife: "Kaizen Life",
     signOut: "Logg ut",
   },
+  extensions: {
+    off: "{name} er ikke en del av denne kontoen",
+    hidden: "Det er en utvidelse: sidene, lenkene og verktøyene kommer når kontoen har den. Ingenting som er lagret i den, går tapt.",
+    onlyOwner: "Det er kontoens eier som bestemmer hvilke utvidelser den har.",
+    names: {
+      ab_testing: "A/B-testing",
+      support_desk: "AI-kundestøtte",
+      email_automation: "E-postautomatisering",
+      work: "Work",
+      deals: "Avtaler og kontrakter",
+    },
+  },
   features: {
     labels: {
       shop: "Nettbutikk",

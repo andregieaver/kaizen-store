@@ -15,6 +15,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../../../../broadcasts/actions";
 import { broadcastChoices } from "../../../../broadcasts/editor-props";
 import { deleteFollowUpAction, saveFollowUpAction, testFollowUpAction } from "../../../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Second or third email" };
 
@@ -25,6 +26,8 @@ export const metadata: Metadata = { title: "Second or third email" };
 export default async function FollowUpPage({ params }: PageProps<"/admin/[store]/automations/[kind]/follow-ups/[position]">) {
   const { store: slug, kind, position } = await params;
   const member = await requirePermission(slug, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   if (!isLifecycle(kind)) notFound();
   const { store } = member;
   const automation = await getAutomation(store, kind);

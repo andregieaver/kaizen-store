@@ -698,6 +698,8 @@ export async function prepareDueRecurringWork(options: { now?: Date; storeId?: s
     stores = await db().execute<Row>(sql`
       select s.id, s.time_zone from commerce.stores s
       where 'work' = any (s.modules) and s.status <> 'closed'
+        -- Work is a paid extension (D748): no repeating invoice is made while the account does not have it.
+        and commerce.extension_on(s.id, 'work')
         and (${options.storeId ?? null}::uuid is null or s.id = ${options.storeId ?? null}::uuid)
         and exists (select 1 from commerce.work_recurring_invoices r where r.store_id = s.id and r.is_active)
       order by s.id

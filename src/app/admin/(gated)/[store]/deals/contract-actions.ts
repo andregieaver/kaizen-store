@@ -10,11 +10,11 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
-import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
 import { signAsStore } from "@/server/contract-signing";
 import { cancelContract, createContract, deleteDraft, newVersion, saveDraft, saveSigners, type ContractProblem } from "@/server/contracts";
 import { storeAction } from "@/server/store-action";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * Contracts' actions (D695): each runs through `storeAction()` with `customers:write` (a deal's key), checks Deals is on whatever a stale
@@ -28,13 +28,13 @@ const wordsOf = (member: Membership): DealsMessages["contracts"] => adminText(ad
 
 /** Deals off for this store: the reason, in the member's words. */
 const offFor = (member: Membership): string | null =>
-  featureOn(member.store, "sales") ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
+  dealsOn(member.store) ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
 
 const problemText = (w: DealsMessages["contracts"], problem: ContractProblem): string => w.problems[problem];
 
 /** A new contract on the deal from the store's template; its page next. */
 export async function newContractAction(storeSlug: string, dealId: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.create", answer: failed }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.create", answer: failed }, async (member) => {
     const off = offFor(member);
     if (off) return failed(off);
     const w = wordsOf(member);
@@ -52,7 +52,7 @@ export type ContractSaveState = { ok: boolean; messages: string[] };
 /** A draft's title, words and signers kept together; the page is drawn again with its preview. */
 export async function saveContractAction(storeSlug: string, contractId: string, input: ContractSaveInput): Promise<ContractSaveState> {
   const answer = (message: string): ContractSaveState => ({ ok: false, messages: [message] });
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.save", answer }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.save", answer }, async (member) => {
     const off = offFor(member);
     if (off) return answer(off);
     const w = wordsOf(member);
@@ -69,7 +69,7 @@ export async function saveContractAction(storeSlug: string, contractId: string, 
 /** A draft deleted; back to its deal. */
 export async function deleteContractAction(storeSlug: string, dealId: string, contractId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const answer = (message: string) => ({ ok: false as const, problems: [message] });
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.delete", answer }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.delete", answer }, async (member) => {
     const w = wordsOf(member);
     const gone = await deleteDraft(member, contractId);
     if (!gone.ok) return answer(problemText(w, gone.problem));
@@ -79,7 +79,7 @@ export async function deleteContractAction(storeSlug: string, dealId: string, co
 
 /** A sent contract cancelled; its page is drawn again. */
 export async function cancelContractAction(storeSlug: string, contractId: string): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.cancel", answer: failed }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.cancel", answer: failed }, async (member) => {
     const w = wordsOf(member);
     const done = await cancelContract(member, contractId);
     if (!done.ok) return failed(problemText(w, done.problem));
@@ -90,7 +90,7 @@ export async function cancelContractAction(storeSlug: string, contractId: string
 
 /** A new version of a sent, declined or expired contract: a draft with its words and signers; its page next. */
 export async function newVersionAction(storeSlug: string, dealId: string, contractId: string): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.new_version", answer: failed }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.new_version", answer: failed }, async (member) => {
     const off = offFor(member);
     if (off) return failed(off);
     const w = wordsOf(member);
@@ -102,7 +102,7 @@ export async function newVersionAction(storeSlug: string, dealId: string, contra
 
 /** The store's signer signs inside the admin (D695 step 3): their name and agreement, their session as the proof; the customer is asked next. */
 export async function signForStoreAction(storeSlug: string, contractId: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.sign_for_store", answer: failed }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.sign_for_store", answer: failed }, async (member) => {
     const w = wordsOf(member);
     const h = await headers();
     const signed = await signAsStore(

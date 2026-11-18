@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { Card } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
@@ -37,13 +38,23 @@ export function ProfilesView({
 }) {
   const names = Object.fromEntries(profiles.map((p) => [p.id, p.name]));
   const general = products.filter((p) => p.profileId === null).length;
+  const adding = canWrite && profiles.length < PROFILES_MAX;
+  // Round 49 (D762): on a phone General, each profile and adding one are rows of one card; a profile's or a new one's form opens under it.
   return (
     <div className="flex flex-col gap-6">
-      <Card title={w.general} description={w.generalDescription}>
-        <p className="text-sm text-ink-2">{countWords(general, w.products)}</p>
-      </Card>
-      {profiles.map((profile) => (
-        <Card key={profile.id} title={profile.name} description={countWords(profile.products, w.products)}>
+      <PhoneRows>
+      <div className={`flex min-h-14 flex-col justify-center gap-0.5 bg-card px-4 py-2 sm:hidden ${profiles.length === 0 && !adding ? "" : "border-b border-line"}`}>
+        <span className="text-body text-ink">{w.general}</span>
+        <span className="text-caption text-ink-2">{`${countWords(general, w.products).replace(/\.$/, "")} · ${w.phone.generalSub}`}</span>
+      </div>
+      <div className="max-sm:hidden">
+        <Card title={w.general} description={w.generalDescription}>
+          <p className="text-sm text-ink-2">{countWords(general, w.products)}</p>
+        </Card>
+      </div>
+      {profiles.map((profile, i) => (
+        <PhoneRow key={profile.id} flat last={i === profiles.length - 1 && !adding} title={profile.name} sub={countWords(profile.products, w.products)} change={w.phone.change} done={w.phone.done}>
+        <Card title={profile.name} description={countWords(profile.products, w.products)}>
           <ActionForm action={save(profile.id)} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1 text-sm">
               {w.name}
@@ -65,11 +76,13 @@ export function ProfilesView({
             </ActionForm>
           )}
         </Card>
+        </PhoneRow>
       ))}
       {canWrite &&
         (profiles.length >= PROFILES_MAX ? (
           <p className="text-sm text-muted">{fillWords(w.full, { max: PROFILES_MAX })}</p>
         ) : (
+          <PhoneRow flat last title={w.addTitle} sub={w.phone.addSub} change={w.phone.open} done={w.phone.close}>
           <Card title={w.addTitle} description={w.addDescription}>
             <ActionForm action={save(null)} className="flex flex-col gap-4">
               <label className="flex flex-col gap-1 text-sm">
@@ -82,7 +95,10 @@ export function ProfilesView({
               </div>
             </ActionForm>
           </Card>
+          </PhoneRow>
         ))}
+      </PhoneRows>
+      <p className="px-0.5 text-caption text-muted sm:hidden">{w.phone.sum}</p>
     </div>
   );
 }

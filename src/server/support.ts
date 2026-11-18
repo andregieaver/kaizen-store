@@ -134,7 +134,8 @@ export async function ensureDesk(desk: Desk): Promise<DeskSettings> {
 /** A settings row as the code reads it (also from the cached read in `chat-agent.ts`). */
 export function settingsOf(row: Row): DeskSettings {
   return {
-    mode: String(row.mode) as SupportMode,
+    // A store whose account does not have the AI support desk (D748) is a desk switched off: the shop's chat assistant answers alone.
+    mode: row.desk_on === false ? "off" : (String(row.mode) as SupportMode),
     transcriptDays: Number(row.transcript_days),
     endAfterMinutes: Number(row.end_after_minutes),
     emailFollowup: Boolean(row.email_followup),
@@ -157,7 +158,9 @@ export function settingsOf(row: Row): DeskSettings {
 
 /** The desk's settings, or null before its first conversation. */
 export async function deskSettings(desk: Desk): Promise<DeskSettings | null> {
-  const [row] = await db().execute<Row>(sql`select * from commerce.support_settings where ${deskIs(desk, sql`store_id`)}`);
+  const [row] = await db().execute<Row>(
+    sql`select *, (store_id is null or commerce.extension_on(store_id, 'support_desk')) as desk_on from commerce.support_settings where ${deskIs(desk, sql`store_id`)}`,
+  );
   return row ? settingsOf(row) : null;
 }
 

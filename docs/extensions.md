@@ -53,7 +53,7 @@ deliver, invoice an order and report its VAT stays.
 
 | Extension | Takes with it (tables today) | Stays in the core | Standalone |
 |---|---|---|---|
-| **A/B testing** | Page experiments (`experiments`, `experiment_*`), search merchandising tests (`search_experiments`) | — | No: it needs a site |
+| **A/B testing** | Page experiments (`experiments`, `experiment_*`) and their test versions of pages (`search_experiments` is the platform's own search test, not a store's) | — | No: it needs a site |
 | **AI support desk** | The support inbox, agents, replies, inbound email (`support_*`), chat widgets on the owner's own sites (`support_widgets`, `support_widget_site*`, D582) | The storefront's shopper chat agent (D81) | Yes |
 | **Email automation** | Automations (`automations`, `automation_steps`, `automation_sends`), broadcasts (`broadcasts`, `broadcast_*`), segments (`segments`), marketing from the store's facts (D352), the account's own sending domain | The subscriber list and consent (D295, collected at checkout), transactional email (order mails, notifications D238) | Yes |
 | **Work** | Clients, assignments, tasks, time and timers, Work invoices and credit notes (`work_*`), **the ledger and the books**: ledger (`ledger_*`), the VAT return (D496), SAF-T (D497), bank statements (D486), subscriptions (D503), receipts by email (D504), budget (D505), year-end (D506), accountants (D512), the threshold watch (D514), Peppol e-invoices for Work (D463) | Invoices and credit notes for shop orders (D159), the shop's VAT, OSS and IOSS reports (D161) | Yes |
@@ -260,6 +260,35 @@ Each step leaves production working and changes nothing an owner sees until step
 every extension too; E5 sets it and turns what each account already uses into its 60-day trials. Platform → Plans → Extensions edits
 words, sizes, allowances, prices in every currency the plans or the catalogue use (`extensionCurrencies()`), bundles and plan grants.
 
+**E3 as built, first part (18 November 2026).** The facts ride in the cached store read and are read against the clock, so no page
+pays a query more; a trial still ends on time. Gated at the store's level: navigation, `ADMIN_PAGES`, every page of an extension's
+folders (`requireExtension()`, a panel that E5 turns into the marker), their actions and routes, and the AI manager's and MCP's
+tools (`TOOL_EXTENSIONS`). The second part takes the account's level, cross-links, webhook topics, jobs
+(`commerce.extension_on()`) and the storefront.
+
+**E3 as built, second part (18 November 2026).** Jobs ask `commerce.extension_on()`: scheduled A/B starts and the storefront's split
+(visitors see the original; `refreshExtensionFacts()` refreshes the tests' cache tag too), broadcasts (asked once per sending broadcast,
+never per recipient), email automations and back in stock, repeating Work invoices, ledger posting, activity reminders, Pipedrive moves and
+signer reminders. A desk without the support desk reads as switched off (`deskSettings()`: the shop's chat answers alone). The account's
+level: a membership's `store.workOn` needs the Work extension (`liveStore()`), the Work tab, Work's store list, an accountant's clients and the
+combined inbox count only stores whose account has it. Cross-links: `dealsOn()` replaces `featureOn(store, "sales")` everywhere (customer,
+company, order and draft pages, Home's Today card, attention, leads, email filing, custom fields, segments), the control center asks per
+extension, the marketing hub shows tests, automations and the sending guard only with theirs, and the page builder's "A/B test this" only
+with A/B testing.
+
+**E3, third part (to do).** Webhook topics offered on the endpoints page, the admin finder's records and workflows' fields, the support
+widget on the owner's own sites, and the pages customers open (signing a contract, a Work invoice, a broadcast's tracked link), which E5's
+read-only state decides with them.
+
+**Migration versions and the advisors after each release** (the decision, D748, points here):
+
+- E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
+  Advisors: no new warning (INFO only: RLS on, no policy, on both new tables).
+- E2: `20261118080146_extensions`, `20261118080153_extensions_catalogue`, applied by CI 18 November 2026 08:53 UTC; 5 extensions, 8 sizes,
+  32 prices (EUR, NOK), 2 bundles and the grants of Grow, Advanced and Plus. Advisors: no new warning (INFO only: RLS on, no policy; new
+  indexes not yet used).
+- E3, first part: `20261118082207_extension_facts`.
+
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
 ## 14. Still open
@@ -271,3 +300,5 @@ Settled by the owner when the step that needs it starts:
 3. Yearly extension prices mid-period: prorated to the account's renewal date (proposed).
 4. How long read-only data is kept for an account that never comes back: while the account lives (proposed), then the usual
    closing rules (D171, D377).
+5. A store's own sending domain (D727) also sends its order emails, so it is kept in the core for now (E3 left its card in place); the
+   spec put it with Email automation. Confirm which.

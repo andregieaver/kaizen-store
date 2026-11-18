@@ -14,7 +14,7 @@ import { checkPermission } from "@/server/permissions";
  */
 export async function POST(request: NextRequest, { params }: RouteContext<"/admin/[store]/experiments/export">) {
   const { store: slug } = await params;
-  const member = await checkPermission(slug, "marketing:read");
+  const member = await checkPermission(slug, "marketing:read", "ab_testing");
   if (!member) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   const tests = await listedTests(member.store, { words: experimentsEn, numberLocale: "en-GB" });

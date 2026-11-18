@@ -30,6 +30,7 @@ import { listStaff } from "@/server/settings";
 import { activityActions } from "../activity-actions-of";
 import { newContractAction } from "../contract-actions";
 import { deleteDealAction, linkThingAction, placeDealAction, saveDealFieldsAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Deal" };
 
@@ -40,6 +41,8 @@ export const metadata: Metadata = { title: "Deal" };
 export default async function DealPage({ params }: PageProps<"/admin/[store]/deals/[dealId]">) {
   const { store: slug, dealId } = await params;
   const member = await requirePermission(slug, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   if (!z.uuid().safeParse(dealId).success) notFound();

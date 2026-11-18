@@ -167,7 +167,13 @@ export async function recordingEvents(store: { id: string; slug: string }, row: 
       continue;
     }
   }
-  return sanitizeEvents(events, { storeOrigins: storeOrigins(store.slug), supabaseOrigin: new URL(publicEnv().NEXT_PUBLIC_SUPABASE_URL).origin });
+  try {
+    return sanitizeEvents(events, { storeOrigins: storeOrigins(store.slug), supabaseOrigin: new URL(publicEnv().NEXT_PUBLIC_SUPABASE_URL).origin });
+  } catch (error) {
+    // A forged recording the sanitiser cannot read is sent as nothing, never as it came.
+    log("error", "recordings.sanitize_failed", { storeId: store.id, recordingId: row.id }, error);
+    return [];
+  }
 }
 
 export type EventsAnswer = { status: 200; body: Uint8Array } | { status: 404 | 503 };

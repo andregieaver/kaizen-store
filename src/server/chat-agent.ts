@@ -124,7 +124,9 @@ export type ChatWidgetProfile = {
 
 /** The desk's settings as the site's cached pages read them, or null before its first conversation. */
 async function cachedDeskSettings(storeId: string | null) {
-  const [row] = await readDb().execute<Row>(sql`select * from commerce.support_settings where ${owned(storeId)}`);
+  const [row] = await readDb().execute<Row>(
+    sql`select *, (store_id is null or commerce.extension_on(store_id, 'support_desk')) as desk_on from commerce.support_settings where ${owned(storeId)}`,
+  );
   return row ? settingsOf(row) : null;
 }
 

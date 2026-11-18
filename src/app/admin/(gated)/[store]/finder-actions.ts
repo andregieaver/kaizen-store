@@ -1,5 +1,6 @@
 "use server";
 
+import { storeExtensionsOn } from "@/lib/extensions";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
 import { recordGroups, recordQuery } from "@/lib/finder-records";
@@ -29,6 +30,7 @@ export async function findStorePagesAction(store: string, query: string): Promis
     lang,
     flags: {
       features: effectiveFeatures(member.store),
+      extensions: storeExtensionsOn(member.store),
       work: member.store.workOn,
       owner: can(holder, "owner"),
       canOpen: (page) => page.area !== "store" || canOpenPath(holder, page.path),

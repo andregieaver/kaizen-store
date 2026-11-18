@@ -5,6 +5,7 @@
  * page goes here too.
  */
 
+import type { ExtensionId } from "./extensions";
 import { requirementMet, type FeatureId, type FeatureRequirement } from "./store-features";
 import { PAGES_NB } from "./admin-messages/pages.nb";
 import { CUSTOMERS_FEATURE, sectionOf } from "./store-nav";
@@ -32,6 +33,8 @@ export type AdminPage = {
   needs?: PageNeeds;
   /** The store feature (D178) it stands behind, one or several of which any is enough; its navigation item says the same (a test holds them). */
   feature?: FeatureRequirement;
+  /** The paid extension (D748) it is part of: offered only while the account has it; its navigation item says the same (a test holds them). */
+  extension?: ExtensionId;
 };
 
 const store = (id: string, path: string, title: string, group: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
@@ -511,15 +514,15 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["recommendations", "recommended", "upsell", "cross-sell", "cross sell", "complementary", "you may also like", "related products", "personalised", "personalized", "ai recommendations", "suggestions", "frequently bought together"],
     feature: "shop",
   }),
-  store("experiments", "/experiments", "A/B tests", "Sales", "A/B tests of pages, a row or component of one, the store's header or footer, or a product layout: show two versions to real visitors who have accepted statistics cookies, and keep the one that gets more orders, more revenue per visitor, more people adding to the cart or reaching checkout, or more clicks on a chosen button. The list shows what is running, waiting and decided.", {
+  store("experiments", "/experiments", "A/B tests", "Sales", "A/B tests of pages, a row or component of one, the store's header or footer, or a product layout: show two versions to real visitors who have accepted statistics cookies, and keep the one that gets more orders, more revenue per visitor, more people adding to the cart or reaching checkout, or more clicks on a chosen button. The list shows what is running, waiting and decided.", { extension: "ab_testing",
     tasks: ["Test two versions of a page", "See which version of a page sells more", "Stop a test", "Choose a winner", "Keep the original page"],
     keywords: ["a/b test", "ab test", "split test", "experiment", "test a page", "conversion", "which version", "optimise", "optimize", "winner", "variant"],
   }),
-  store("experiment.new", "/experiments/new", "New A/B test", "Sales", "Makes an A/B test of a page, or of one row, column or component of it chosen in the page builder with \"A/B test this\": what it should improve, who takes part and a guess of how long it needs. The first version is a copy of the page."),
-  store("experiment", "/experiments/[id]", "A/B test", "Sales", "One test: change its versions, check its settings and start it now or at a time; once running, see in plain words whether a version is better, stop it, choose a winner or keep the original."),
-  store("experiment.variants", "/experiments/variants", "Test versions", "Sales", "Goes back to the list of tests: a version is changed from its test."),
-  store("experiment.variant", "/experiments/variants/[pageId]", "A test version", "Sales", "Changes a version of a page made for an A/B test in the page builder."),
-  store("experiment.variant.preview", "/experiments/variants/[pageId]/preview", "Test version preview", "Sales", "Previews a version of a page made for an A/B test."),
+  store("experiment.new", "/experiments/new", "New A/B test", "Sales", "Makes an A/B test of a page, or of one row, column or component of it chosen in the page builder with \"A/B test this\": what it should improve, who takes part and a guess of how long it needs. The first version is a copy of the page.", { extension: "ab_testing" }),
+  store("experiment", "/experiments/[id]", "A/B test", "Sales", "One test: change its versions, check its settings and start it now or at a time; once running, see in plain words whether a version is better, stop it, choose a winner or keep the original.", { extension: "ab_testing" }),
+  store("experiment.variants", "/experiments/variants", "Test versions", "Sales", "Goes back to the list of tests: a version is changed from its test.", { extension: "ab_testing" }),
+  store("experiment.variant", "/experiments/variants/[pageId]", "A test version", "Sales", "Changes a version of a page made for an A/B test in the page builder.", { extension: "ab_testing" }),
+  store("experiment.variant.preview", "/experiments/variants/[pageId]/preview", "Test version preview", "Sales", "Previews a version of a page made for an A/B test.", { extension: "ab_testing" }),
   store("campaign.new", "/campaigns/new", "New automatic discount", "Sales", "Creates an automatic discount: what it gives, what it applies to, and when it runs.", { feature: "shop" }),
   store("campaign", "/campaigns/[campaignId]", "Automatic discount", "Sales", "One automatic discount: what it gives, what it applies to, when it runs, and switching it off or deleting it.", { feature: "shop" }),
   store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {
@@ -588,34 +591,34 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["b2b", "business customers", "employees", "company account", "invite", "wholesale"],
     tasks: ["Make a company with a main account", "Invite or remove a company's employees"], feature: "business" }),
   store("b2b-company", "/companies/[companyId]", "Company", "Sales", "One company: settings, its accounts, invitations, and inviting or removing employees.", { feature: "business" }),
-  store("deals", "/deals", "Deals", "Sales", "The board of deals: what each customer or company may buy, in a column per stage, with Won and Lost, each column's value and the value weighted by its stage's chance.", {
+  store("deals", "/deals", "Deals", "Sales", "The board of deals: what each customer or company may buy, in a column per stage, with Won and Lost, each column's value and the value weighted by its stage's chance.", { extension: "deals",
     keywords: ["deals", "pipeline", "sales pipeline", "crm", "leads", "opportunities", "prospects", "board", "forecast"],
     tasks: ["Add a deal for a customer or company", "Move a deal to the next stage", "Mark a deal won or lost"],
     feature: "sales",
   }),
-  store("leads", "/leads", "Leads", "Sales", "The leads inbox: people who asked for something in the last 90 days (a quote, a question or a form's message, a chat, a subscription) and are not customers yet, one row a person, each request opening where it is kept. Make a deal of a lead, or dismiss it until they ask again.", {
+  store("leads", "/leads", "Leads", "Sales", "The leads inbox: people who asked for something in the last 90 days (a quote, a question or a form's message, a chat, a subscription) and are not customers yet, one row a person, each request opening where it is kept. Make a deal of a lead, or dismiss it until they ask again.", { extension: "deals",
     keywords: ["leads", "prospects", "enquiries", "inquiries", "follow up", "potential customers"],
     tasks: ["Make a deal of a lead", "Dismiss a lead", "Open what a lead asked for"],
     feature: "sales",
   }),
-  store("deal.new", "/deals/new", "New deal", "Sales", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { feature: "sales" }),
-  store("deal", "/deals/[dealId]", "Deal", "Sales", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", {
+  store("deal.new", "/deals/new", "New deal", "Sales", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { extension: "deals", feature: "sales" }),
+  store("deal", "/deals/[dealId]", "Deal", "Sales", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", { extension: "deals",
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
     feature: "sales",
   }),
-  store("deals.contract_templates", "/deals/contract-templates", "Contract templates", "Sales", "The store's contract templates (D695): the words a new contract starts from, in Norwegian or English.", {
+  store("deals.contract_templates", "/deals/contract-templates", "Contract templates", "Sales", "The store's contract templates (D695): the words a new contract starts from, in Norwegian or English.", { extension: "deals",
     tasks: ["Change the contract template", "Add a contract template"],
     keywords: ["contract template", "agreement template", "terms"],
     feature: "sales",
   }),
-  store("deals.contract_template", "/deals/contract-templates/[templateId]", "Contract template", "Sales", "One contract template (D695): its words, language, days to sign and reminders, beside how it will look.", {
+  store("deals.contract_template", "/deals/contract-templates/[templateId]", "Contract template", "Sales", "One contract template (D695): its words, language, days to sign and reminders, beside how it will look.", { extension: "deals",
     feature: "sales",
   }),
-  store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "Sales", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", {
+  store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "Sales", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", { extension: "deals",
     tasks: ["Change a contract's words", "Choose who signs a contract"],
     feature: "sales",
   }),
-  store("deals.pipelines", "/deals/pipelines", "Pipelines", "Sales", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", {
+  store("deals.pipelines", "/deals/pipelines", "Pipelines", "Sales", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", { extension: "deals",
     keywords: ["pipelines", "stages", "probability", "sales process"],
     feature: "sales",
   }),
@@ -624,11 +627,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
     keywords: ["subscription box", "standing order", "weekly delivery", "grocery"],
   }),
-  store("segments", "/segments", "Segments", "Sales", "Segments: who gets a broadcast, a text message or an automation, chosen from the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", {
+  store("segments", "/segments", "Segments", "Sales", "Segments: who gets a broadcast, a text message or an automation, chosen from the store's customers and subscribers by rules (orders, money spent, first and last order, customer type from analytics, country, language, customer group, company, account, tags, email consent), each counted now with how many want the store's emails.", { extension: "email_automation",
     keywords: ["segment", "audience", "customer list", "rfm", "vip", "win-back", "target group", "målgruppe"],
     tasks: ["Make a segment of my best customers", "See how many customers have not ordered for six months"],
   }),
-  store("broadcasts", "/broadcasts", "Broadcasts", "Sales", "Broadcasts: emails with news and offers written once in the store's languages and sent to the people on the subscriber list who want them, everyone or a segment's, once each, with an unsubscribe link. Draft, test to yourself, send now or schedule, stop, and see what happened (sent, delivered, bounced, unsubscribed, presses on links). Write with AI suggests the words.", {
+  store("broadcasts", "/broadcasts", "Broadcasts", "Sales", "Broadcasts: emails with news and offers written once in the store's languages and sent to the people on the subscriber list who want them, everyone or a segment's, once each, with an unsubscribe link. Draft, test to yourself, send now or schedule, stop, and see what happened (sent, delivered, bounced, unsubscribed, presses on links). Write with AI suggests the words.", { extension: "email_automation",
     keywords: ["newsletter", "email campaign", "email marketing", "mailing", "send email to customers", "nyhetsbrev"],
     tasks: ["Send a newsletter to everyone who wants my emails", "Email my best customers about the autumn collection"],
   }),
@@ -636,7 +639,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["sms", "text message", "sms marketing", "texting", "46elks", "mobile marketing", "sms campaign", "tekstmelding"],
     tasks: ["Send an offer by text message", "Connect an SMS account"],
   }),
-  store("email-automations", "/automations", "Email automations", "Sales", "Email automations: emails that go by themselves once switched on, to the people on the subscriber list who want them, once each: a welcome after they join, a thank-you some days after an order is delivered, a win-back after a time without orders, and back in stock (shoppers ask on a sold-out product and get one email when it is back). Each says how many it sent in the last 30 days.", {
+  store("email-automations", "/automations", "Email automations", "Sales", "Email automations: emails that go by themselves once switched on, to the people on the subscriber list who want them, once each: a welcome after they join, a thank-you some days after an order is delivered, a win-back after a time without orders, and back in stock (shoppers ask on a sold-out product and get one email when it is back). Each says how many it sent in the last 30 days.", { extension: "email_automation",
     keywords: ["automation", "flow", "welcome email", "win-back", "winback", "back in stock", "notify me", "restock", "lifecycle email", "velkomstmail"],
     tasks: ["Send a welcome email to new subscribers", "Tell customers when a sold-out product is back"],
   }),
@@ -648,15 +651,15 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["product feed", "google shopping", "merchant center", "meta catalogue", "facebook shop", "instagram shopping", "tiktok catalog", "pinterest catalog", "xml feed", "csv feed"],
     tasks: ["Show my products on Google Shopping", "Get a catalogue feed for Meta"],
   }),
-  store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
-  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Second or third email", "Sales", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete."),
+  store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch.", { extension: "email_automation" }),
+  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Second or third email", "Sales", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete.", { extension: "email_automation" }),
   store("text-message.new", "/text-messages/new", "New text message", "Sales", "Writes a new text message: its name, who gets it and its words, with what each reader gets and how many texts it takes."),
   store("text-message", "/text-messages/[campaignId]", "Text message", "Sales", "One text message: a draft priced by 46elks against the month's cap and sent; once started, how many wait for their readers' daytime, went, arrived, failed or were not sent, and what they cost."),
-  store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
-  store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),
-  store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change."),
-  store("segment", "/segments/[segmentId]", "Segment", "Sales", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules."),
-  store("segment.rfm", "/segments/rfm/[group]", "Customers of a type", "Sales", "The customers of one type on the Customers analytics page (VIP, loyal, promising, new, at risk, lost), a page at a time, with a CSV for the owner and Save as a segment."),
+  store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says.", { extension: "email_automation" }),
+  store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links.", { extension: "email_automation" }),
+  store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change.", { extension: "email_automation" }),
+  store("segment", "/segments/[segmentId]", "Segment", "Sales", "One segment: how many people are in it, how many want the store's emails, who they are, and its rules.", { extension: "email_automation" }),
+  store("segment.rfm", "/segments/rfm/[group]", "Customers of a type", "Sales", "The customers of one type on the Customers analytics page (VIP, loyal, promising, new, at risk, lost), a page at a time, with a CSV for the owner and Save as a segment.", { extension: "email_automation" }),
   store("subscribers", "/subscribers", "Subscribers", "Sales", "The subscriber list: people who asked for the store's emails with news and offers, from sign-up forms, checkout or My account, with the words they agreed to, when, and whether they confirmed by email. Search, see who is waiting for their link and who left, open one for their consent history, unsubscribe a person who asked, and export the list (owners).", {
     keywords: ["newsletter", "mailing list", "email list", "marketing consent", "opt-in", "double opt-in", "unsubscribe", "nyhetsbrev", "abonnenter"],
     tasks: ["See who subscribed to the newsletter", "Export the subscriber list", "Unsubscribe a person"],
@@ -819,7 +822,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Enter this month's ad spend", "See which channel earns the most"],
     feature: "shop",
   }),
-  store("analytics.sales", "/analytics/sales", "Sales analytics", "Analytics", "From the deals (S6, D520): when the open deals may close and their value weighted by stage, how deals move from stage to stage, what each person won and lost, and how long a deal takes to win.", {
+  store("analytics.sales", "/analytics/sales", "Sales analytics", "Analytics", "From the deals (S6, D520): when the open deals may close and their value weighted by stage, how deals move from stage to stage, what each person won and lost, and how long a deal takes to win.", { extension: "deals",
     keywords: ["sales forecast", "pipeline report", "win rate", "conversion", "deals"], feature: "sales" }),
   store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
     keywords: ["mrr", "arr", "churn", "recurring"], feature: "subscriptions" }),
@@ -895,30 +898,30 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["unanswered questions", "knowledge gaps", "faq", "what customers ask", "could not answer", "chatbot gaps"],
     tasks: ["Answer what the chat assistant could not", "See what visitors ask the chat"],
   }),
-  store("support", "/support", "Support inbox", "Store", "Every conversation with the store's customers, live: who is waiting for a person, who is talking to the chat assistant, and what was said. Open one to read it as it happens.", {
+  store("support", "/support", "Support inbox", "Store", "Every conversation with the store's customers, live: who is waiting for a person, who is talking to the chat assistant, and what was said. Open one to read it as it happens.", { extension: "support_desk",
     keywords: ["inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
     tasks: ["See who is waiting", "Read a conversation with the chat assistant", "Set yourself online or away"],
   }),
-  store("support.requests", "/support/requests", "Support requests", "Store", "What the store's chat assistant could not do itself and passed to your team: a refund, cancelling a paid order, changing an address, an exception or anything else, with the conversation, the order and the customer. Do the work on the order page, then mark it done or decline it with a note; the customer is told in the chat and by email when away. Decided requests are under ?show=decided.", {
+  store("support.requests", "/support/requests", "Support requests", "Store", "What the store's chat assistant could not do itself and passed to your team: a refund, cancelling a paid order, changing an address, an exception or anything else, with the conversation, the order and the customer. Do the work on the order page, then mark it done or decline it with a note; the customer is told in the chat and by email when away. Decided requests are under ?show=decided.", { extension: "support_desk",
     keywords: ["requests", "refund request", "cancel order", "change address", "exception", "support"],
     tasks: ["Decide a request the chat assistant passed on", "See decided requests"],
   }),
-  store("support.reports", "/support/reports", "Support reports", "Store", "Figures for the store's support desk over a period: conversations started, the share the AI handled alone and the share it resolved (its own judgement), the hand-over rate and why, time to a person's first answer (median and slowest tenth), missed conversations, time to the end, ratings, tone at the end, topics, requests and the partner's drafts. Per desk, never per person; rates and medians from 10 conversations.", {
+  store("support.reports", "/support/reports", "Support reports", "Store", "Figures for the store's support desk over a period: conversations started, the share the AI handled alone and the share it resolved (its own judgement), the hand-over rate and why, time to a person's first answer (median and slowest tenth), missed conversations, time to the end, ratings, tone at the end, topics, requests and the partner's drafts. Per desk, never per person; rates and medians from 10 conversations.", { extension: "support_desk",
     keywords: ["support report", "response time", "first response", "csat", "handover rate", "missed chats", "deflection"],
     tasks: ["See how long customers wait for an answer", "See how many chats the AI handles alone"],
   }),
-  store("support.replies", "/support/replies", "Saved replies", "Store", "The support desk's saved replies: texts with a title and a /shortcut, optionally for one language, that your team puts in an answer by typing / in the inbox's composer. {customer_first_name}, {agent_first_name} and {store} are filled in for the conversation.", {
+  store("support.replies", "/support/replies", "Saved replies", "Store", "The support desk's saved replies: texts with a title and a /shortcut, optionally for one language, that your team puts in an answer by typing / in the inbox's composer. {customer_first_name}, {agent_first_name} and {store} are filled in for the conversation.", { extension: "support_desk",
     keywords: ["saved replies", "canned responses", "macros", "templates", "shortcuts", "support"],
     tasks: ["Add a saved reply", "Change a saved reply's text"],
   }),
-  store("support.widgets", "/support/widgets", "Website chat", "Store", "The store's chat on the owner's other websites (D582): chat widgets, each with its own look (button colour, background, text colour, corners, side, the button's words, panel width, font, greeting, own CSS) and language, and a tag to paste on one or several websites. A website shows the chat once its tag is found on its front page or in its DNS. Conversations come to the support inbox; there the chat answers from the knowledge base only.", {
+  store("support.widgets", "/support/widgets", "Website chat", "Store", "The store's chat on the owner's other websites (D582): chat widgets, each with its own look (button colour, background, text colour, corners, side, the button's words, panel width, font, greeting, own CSS) and language, and a tag to paste on one or several websites. A website shows the chat once its tag is found on its front page or in its DNS. Conversations come to the support inbox; there the chat answers from the knowledge base only.", { extension: "support_desk",
     keywords: ["chat widget", "embed chat", "website chat", "live chat on my site", "wordpress chat", "chat script", "chat tag"],
     tasks: ["Put the chat on another website", "Style the chat to match a website", "Add a website to a chat widget"],
   }),
-  store("support.widget", "/support/widgets/[id]", "Chat widget", "Store", "One chat widget for the owner's websites (D582): its look with a live preview, its tag, its websites and whether each shows the chat, and deleting it.", {
+  store("support.widget", "/support/widgets/[id]", "Chat widget", "Store", "One chat widget for the owner's websites (D582): its look with a live preview, its tag, its websites and whether each shows the chat, and deleting it.", { extension: "support_desk",
     keywords: ["chat widget", "widget style", "chat colour", "chat tag"],
   }),
-  store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", {
+  store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", { extension: "support_desk",
     keywords: ["support mode", "live chat", "people only", "opening hours", "email follow-up", "transcripts", "handover"],
     tasks: ["Let people answer the chat", "Answer customers with the AI first", "Set support opening hours", "Turn email answers on or off"],
   }),
@@ -1019,11 +1022,11 @@ const PAGES: readonly AdminPage[] = [
   store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Store", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
     keywords: ["tripletex", "accounting", "bookkeeping", "regnskap", "bokføring", "vouchers", "bilag", "accountant"],
   }),
-  store("books", "/settings/books", "Books", "Store", "The store's own books (D478): opened from a day by the owner; every invoice, credit note and Work payment posted to them as it happens, on the same accounts as Tripletex; what waits and why; the trial balance, profit and loss, balance sheet and VAT by code of any days; locking the books through a day.", {
+  store("books", "/settings/books", "Books", "Store", "The store's own books (D478): opened from a day by the owner; every invoice, credit note and Work payment posted to them as it happens, on the same accounts as Tripletex; what waits and why; the trial balance, profit and loss, balance sheet and VAT by code of any days; locking the books through a day.", { extension: "work",
     keywords: ["books", "ledger", "accounting", "bookkeeping", "regnskap", "hovedbok", "saldobalanse", "trial balance", "bilag", "lock period", "profit and loss", "resultatregnskap", "balance sheet", "balanse", "VAT report", "mva"],
     tasks: ["See the profit and loss", "See the balance sheet", "See VAT by code for a term"],
   }),
-  store("books.vat", "/settings/books/vat/[term]", "VAT return", "Store", "A term's VAT return from the store's own books (D496): the lines Skatteetaten's form asks for, the VAT to pay or get back, the due day, the return as Skatteetaten's XML to download, and with Tripletex connected the same term worked out from Tripletex's postings and compared code by code. The owner chooses two-month or yearly terms.", {
+  store("books.vat", "/settings/books/vat/[term]", "VAT return", "Store", "A term's VAT return from the store's own books (D496): the lines Skatteetaten's form asks for, the VAT to pay or get back, the due day, the return as Skatteetaten's XML to download, and with Tripletex connected the same term worked out from Tripletex's postings and compared code by code. The owner chooses two-month or yearly terms.", { extension: "work",
     keywords: ["vat return", "mva-melding", "mva melding", "merverdiavgift", "vat", "mva", "termin", "skatteetaten", "altinn", "vat to pay"],
     tasks: ["See what VAT to pay this term", "Download the VAT return for Skatteetaten", "Compare the VAT return with Tripletex"],
   }),
@@ -1180,7 +1183,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["my themes", "theme submissions", "shared themes", "theme author", "theme designer", "submission"],
     tasks: ["See if my theme was approved", "Withdraw a theme I shared"],
   }),
-  account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
+  account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", { extension: "support_desk",
     keywords: ["inbox", "live chat", "customer service", "conversations"],
   }),
   account("account.books", "/account/books", "Books", "An accountant's clients (D512): every store whose books you keep or read, each with the VAT term to report and when it is due, supplier invoices due, bank lines and documents waiting, receipts in the inbox and how far the books are locked, the most pressing first.", {
@@ -1482,6 +1485,8 @@ export function pageHref(page: AdminPage, params: Record<string, string>, storeS
 export type SiteFlags = {
   /** The store's features that are on (D178, `effectiveFeatures()`); a page behind a feature is offered only while it is. */
   features?: readonly FeatureId[];
+  /** The paid extensions that work for the account (D748 E3, `storeExtensionsOn()`); not given, every one. */
+  extensions?: readonly ExtensionId[];
   work?: boolean;
   owner?: boolean;
   /** Whether the person can open the page (wave 1, 1f: their role's keys); where it is not given every page is open to them. Built from `canOpenPath()` in `permissions.ts`. */
@@ -1492,6 +1497,7 @@ export type SiteFlags = {
 export function pageOffered(page: AdminPage, flags: SiteFlags): boolean {
   if (flags.canOpen && !flags.canOpen(page)) return false;
   if (page.feature !== undefined && !requirementMet(flags.features ?? [], page.feature)) return false;
+  if (page.extension !== undefined && flags.extensions !== undefined && !flags.extensions.includes(page.extension)) return false;
   if (page.needs === "work") return Boolean(flags.work);
   if (page.needs === "owner") return Boolean(flags.owner);
   return true;

@@ -25,6 +25,7 @@ import { memberCan } from "./permissions";
 import { buyerKeysOf } from "./reviews";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * A customer's timeline (S1 of `docs/own-books-and-sales.md`, D462), read from what the store already keeps: orders, quote requests,
@@ -53,7 +54,7 @@ export function timelineGates(member: Membership): TimelineGates {
     bookingsOn: featureOn(store, "appointments") || featureOn(store, "bookings"),
     settings: memberCan(member, "settings:read"),
     workOn: store.workOn,
-    salesOn: featureOn(store, "sales"),
+    salesOn: dealsOn(store),
   };
 }
 

@@ -13,12 +13,15 @@ import { uploadsEnabled } from "@/server/media";
 
 import { audienceCountAction, deleteTemplateAction, saveBroadcastAction, findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
 import { broadcastChoices } from "../editor-props";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "New broadcast" };
 
 /** A new broadcast (D297): written and saved as a draft, then tested and sent from its own page. */
 export default async function NewBroadcastPage({ params, searchParams }: PageProps<"/admin/[store]/broadcasts/new">) {
   const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const base = `/admin/${store.slug}/broadcasts`;
   const lang = adminLangOf(member.account.adminLocale);

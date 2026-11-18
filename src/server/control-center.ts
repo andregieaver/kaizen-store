@@ -65,7 +65,10 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     select s.id, s.slug, s.name, s.status, s.setup_completed_at, s.modules, s.features, s.time_zone, s.house, m.role, m.kind, m.role_id, sr.permissions as role_permissions,
            p.name as plan_name, b.status as billing_status, b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancelling,
            pr.enabled as payments_on, pr.active_mode,
-           exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready
+           exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready,
+           -- The paid extensions the store's account has now (D748): their items are asked only of those stores.
+           commerce.extension_on(s.id, 'work') as work_ext, commerce.extension_on(s.id, 'deals') as deals_ext,
+           commerce.extension_on(s.id, 'support_desk') as support_ext
     from commerce.store_members m
     -- Store templates (D175) are the platform's work, not the account's stores.
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter and not s.sandbox
@@ -89,19 +92,21 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
 
   // Work's own attention items, for the stores that have it switched on (D122): one set of queries for them all.
   const workStores = storeRows
-    .filter((r) => ((r.modules ?? []) as string[]).includes("work"))
+    .filter((r) => ((r.modules ?? []) as string[]).includes("work") && r.work_ext === true)
     .map((r) => ({ id: String(r.id), slug: String(r.slug), name: String(r.name), timeZone: String(r.time_zone ?? "Europe/Oslo") }));
 
   // Invoices that wait are the owner's to fix (they change the seller's details or tax profile): other roles are not asked.
   const ownerIds = idsWith(storeRows, "owner");
+  // The books (D478) are part of Work (D748): their items are asked only where the account has it.
+  const bookOwnerIds = idsWith(storeRows.filter((r) => r.work_ext === true), "owner");
   // Privacy requests (D162) are shown to those who may open the log: `customers:read`, like the page.
   const customerIds = idsWith(storeRows, "customers:read");
   // Support (D216, step 14): conversations waiting for a person, for the stores where the member may read the desk. Counts only.
-  const supportIds = idsWith(storeRows, "support:read");
+  const supportIds = idsWith(storeRows.filter((r) => r.support_ext === true), "support:read");
   // The queues of ecosystem plan E2.1 (`src/server/attention.ts`): disputes need `orders:read` (their page's key), the AI manager's
   // decisions are the owner's (the Autopilot page's), leads and the day's activities need `customers:read` while Deals is on (the
   // leads view's and the *Today* card's), and blog comments `website:read` (the Comments page's).
-  const dealIds = new Set(storeRows.filter((r) => featureOn(((r.features ?? []) as unknown[]).map(String), "sales")).map((r) => String(r.id)));
+  const dealIds = new Set(storeRows.filter((r) => r.deals_ext === true && featureOn(((r.features ?? []) as unknown[]).map(String), "sales")).map((r) => String(r.id)));
   const salesCustomerIds = customerIds.filter((id) => dealIds.has(id));
 
   const none = <T>() => Promise.resolve<T[]>([]);
@@ -251,7 +256,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     `),
     // The store's own books (D478): documents that differ from Tripletex while their entry stands, documents waiting more than a week, and
     // bills overdue or falling due within the week (D492).
-    ownerIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+    bookOwnerIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select b.store_id,
         (select count(*) from commerce.ledger_comparisons c
           join commerce.ledger_entries e on e.book_id = c.book_id and e.source_kind = c.source_kind and e.source_id = c.source_id and e.reverses is null
@@ -262,7 +267,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         (select count(*) from commerce.supplier_invoices i where i.store_id = b.store_id and i.book_id = b.id and i.paid_entry_id is null
             and i.due_on between commerce.store_day(b.store_id, now()) and commerce.store_day(b.store_id, now()) + 7)::int as bills_due
       from commerce.ledger_books b
-      where b.store_id in (${idList(ownerIds)}) and b.closed_on is null
+      where b.store_id in (${idList(bookOwnerIds)}) and b.closed_on is null
     `),
     // What the chat assistant passed to the team and waits for a decision (ecosystem plan E1.7): the Support → Requests page.
     supportIds.length === 0
@@ -309,7 +314,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ]),
   );
   // The threshold watch (D514), where the member may read the books: each threshold near or just passed, in their language.
-  const booksReaders = new Set(idsWith(storeRows, "books:read"));
+  const booksReaders = new Set(idsWith(storeRows.filter((r) => r.work_ext === true), "books:read"));
   const lang = adminLangOf(account.adminLocale);
   const watchWords = BOOKS_WORDS[lang].watch;
   const turnoverBy = new Map(

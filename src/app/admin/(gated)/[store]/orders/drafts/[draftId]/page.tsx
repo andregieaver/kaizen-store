@@ -34,6 +34,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/drafts-words";
+import { dealsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Draft order" };
 
@@ -69,7 +70,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
     listVatCategories(),
     mayRecordOutsidePayment(member),
     // The deal the draft or quote is linked to (ecosystem plan E1.3): only while Deals are on, for people who may read customers.
-    featureOn(store, "sales") && memberCan(member, "customers:read") ? dealOfThing(store.id, "draft", draftId) : Promise.resolve(null),
+    dealsOn(store) && memberCan(member, "customers:read") ? dealOfThing(store.id, "draft", draftId) : Promise.resolve(null),
   ]);
   if (!preview) notFound();
   const { draft } = preview;

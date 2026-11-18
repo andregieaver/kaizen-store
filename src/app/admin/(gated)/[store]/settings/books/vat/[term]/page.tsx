@@ -21,6 +21,7 @@ import { getTripletexConnection } from "@/server/tripletex";
 import { ourVatReturn, theirVatReturn, vatReturnOrgNumber, type OurVatReturn } from "@/server/vat-return";
 
 import { setVatTermAction } from "../../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "VAT return" };
 
@@ -86,6 +87,8 @@ async function TripletexComparison({ storeId, ours, w, money, amount }: { storeI
 export default async function VatReturnPage({ params }: PageProps<"/admin/[store]/settings/books/vat/[term]">) {
   const { store: slug, term: termKey } = await params;
   const member = await requirePermission(slug, "books:read");
+  const notInAccount = requireExtension(member, "work");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const books = adminText(lang, "books");

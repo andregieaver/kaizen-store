@@ -21,7 +21,7 @@ export async function saveSupportSettingsAction(
   formData: FormData,
 ): Promise<FormState> {
   const w = adminText(await actionAdminLang(), "support").problems;
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   const owner = await checkPermission(slug, "owner");
   const result = await saveDeskSettings(

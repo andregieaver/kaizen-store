@@ -11,6 +11,7 @@ import { ensurePipeline } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { createPipelineAction, deletePipelineAction, renamePipelineAction, saveStagesAction } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Pipelines" };
 
@@ -23,6 +24,8 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm fon
  */
 export default async function PipelinesPage({ params }: PageProps<"/admin/[store]/deals/pipelines">) {
   const member = await requirePermission((await params).store, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   const { store } = member;

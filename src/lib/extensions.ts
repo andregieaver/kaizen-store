@@ -1,3 +1,5 @@
+import { featureOn } from "./store-features";
+
 /**
  * Paid extensions (D748, `docs/extensions.md`), pure: which extensions there are, what a size of one includes, and whether an account has
  * one. The catalogue's words, sizes, prices, bundles and what each plan includes are rows (`src/server/extensions.ts`, edited at Platform →
@@ -8,6 +10,15 @@
 /** The extensions, in the order the owner named them. A new one is an id here, its row in a migration and its gates (step E3). */
 export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
+
+/** Each extension's name in the AI's and the logs' words (the catalogue's own words are the platform admin's, read from the database). */
+export const EXTENSION_NAMES: Record<ExtensionId, string> = {
+  ab_testing: "A/B testing",
+  support_desk: "AI support desk",
+  email_automation: "Email automation",
+  work: "Work",
+  deals: "Deals and contracts",
+};
 
 export const isExtensionId = (value: unknown): value is ExtensionId => (EXTENSION_IDS as readonly unknown[]).includes(value);
 
@@ -93,4 +104,71 @@ export function extensionState(facts: StateFacts, now: Date): { state: Extension
   }
   if (row.endedAt === null || now < row.endedAt) return { state: "active", source: row.source };
   return { state: before(row.graceEndsAt) ? "grace" : "read_only", source: row.source };
+}
+
+/** An account's facts as the store read carries them (`commerce.organisation_extension_facts()`): cached, and read against the clock. */
+export type ExtensionFacts = {
+  platform: boolean;
+  launchedAt: Date | null;
+  included: readonly ExtensionId[];
+  rows: readonly { extensionId: ExtensionId; row: ExtensionRow }[];
+};
+
+/** Every account has every extension: the facts of a store not yet placed before launch, and what code without facts assumes. */
+export const ALL_EXTENSIONS: ExtensionFacts = { platform: false, launchedAt: null, included: [], rows: [] };
+
+const date = (value: unknown): Date | null => {
+  if (typeof value !== "string" && !(value instanceof Date)) return null;
+  const at = new Date(value);
+  return Number.isNaN(at.getTime()) ? null : at;
+};
+
+/** Reads the facts from their JSON (`commerce.organisation_extension_facts()`); anything it cannot read is left out. */
+export function readExtensionFacts(value: unknown): ExtensionFacts {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return ALL_EXTENSIONS;
+  const v = value as Record<string, unknown>;
+  const rows = Array.isArray(v.rows) ? v.rows : [];
+  return {
+    platform: v.platform === true,
+    launchedAt: date(v.launchedAt),
+    included: (Array.isArray(v.included) ? v.included : []).filter(isExtensionId),
+    rows: rows.flatMap((r) => {
+      if (!r || typeof r !== "object") return [];
+      const x = r as Record<string, unknown>;
+      if (!isExtensionId(x.extensionId) || !(EXTENSION_SOURCES as readonly unknown[]).includes(x.source)) return [];
+      return [{ extensionId: x.extensionId, row: { source: x.source as ExtensionSource, trialEndsAt: date(x.trialEndsAt), endedAt: date(x.endedAt), graceEndsAt: date(x.graceEndsAt) } }];
+    }),
+  };
+}
+
+/** The account's standing with one extension at `now`, from its facts. */
+export function standingOf(facts: ExtensionFacts, id: ExtensionId, now: Date): { state: ExtensionState; source: StateSource } {
+  return extensionState(
+    { platform: facts.platform, launchedAt: facts.launchedAt, included: facts.included.includes(id), row: facts.rows.find((r) => r.extensionId === id)?.row ?? null },
+    now,
+  );
+}
+
+/** The extension works at `now`: its screens, tools, links and everything that faces customers are there (`commerce.extension_on()` in SQL). */
+export function extensionOn(facts: ExtensionFacts, id: ExtensionId, now: Date): boolean {
+  const { state } = standingOf(facts, id, now);
+  return state === "active" || state === "trial" || state === "grace" || state === "platform";
+}
+
+/** The extensions that work at `now`. */
+export const extensionsOn = (facts: ExtensionFacts, now: Date): ExtensionId[] => EXTENSION_IDS.filter((id) => extensionOn(facts, id, now));
+
+/** The extensions that work at `now` for a store, from the facts its read carries (`Store.extensionFacts`). */
+export const storeExtensionsOn = (store: { extensionFacts?: unknown }, now: Date = new Date()): ExtensionId[] => extensionsOn(readExtensionFacts(store.extensionFacts), now);
+
+/** One extension works at `now` for a store. */
+export const storeExtensionOn = (store: { extensionFacts?: unknown }, id: ExtensionId, now: Date = new Date()): boolean =>
+  extensionOn(readExtensionFacts(store.extensionFacts), id, now);
+
+/**
+ * Deals are on (D464, D748): the store feature `sales` is on and the store's account has the Deals and contracts extension. Every part of
+ * another screen that shows deals, leads, activities or contracts asks this, never `dealsOn(store)` alone.
+ */
+export function dealsOn(store: { features: readonly string[]; extensionFacts?: unknown }, now: Date = new Date()): boolean {
+  return featureOn(store, "sales") && storeExtensionOn(store, "deals", now);
 }

@@ -20,7 +20,7 @@ const noAccess = async () => adminText(await actionAdminLang(), "marketing").pro
 
 /** Counts a rule set before it is saved (D296), for staff who may save one: the numbers only, never people. */
 export async function previewSegmentAction(storeSlug: string, rules: unknown): Promise<PreviewResult> {
-  const member = await checkPermission(storeSlug, "marketing:write");
+  const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
   if (!member) return { ok: false, problem: await noAccess() };
   const w = wordsOf(member.account.adminLocale);
   const parsed = segmentRulesSchema.safeParse(rules);
@@ -31,7 +31,7 @@ export async function previewSegmentAction(storeSlug: string, rules: unknown): P
 
 /** Saves a segment (`marketing:write`) and opens it. */
 export async function saveSegmentAction(storeSlug: string, id: string | null, input: unknown): Promise<{ ok: false; problem: string } | void> {
-  const member = await checkPermission(storeSlug, "marketing:write");
+  const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
   if (!member) return { ok: false, problem: await noAccess() };
   const w = wordsOf(member.account.adminLocale);
   if (id !== null && !z.uuid().safeParse(id).success) return { ok: false, problem: w.unknownSegment };
@@ -41,7 +41,7 @@ export async function saveSegmentAction(storeSlug: string, id: string | null, in
 }
 
 export async function deleteSegmentAction(storeSlug: string, id: string): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   if (!z.uuid().safeParse(id).success) return;
   const deleted = await deleteSegment(member.store.id, member.account.id, id);
   // A code or campaign is limited to it (D380): the page says which.
@@ -52,7 +52,7 @@ export async function deleteSegmentAction(storeSlug: string, id: string): Promis
 
 /** Keeps one of the ready segments as the store's own (round 8, D626): named in the account's language, then opened. */
 export async function keepStarterAction(storeSlug: string, key: string): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   const starter = SEGMENT_STARTERS.find((s) => s.key === key);
   if (!starter) return;
   const words = adminText(adminLangOf(member.account.adminLocale), "marketing").segments.starters[key];

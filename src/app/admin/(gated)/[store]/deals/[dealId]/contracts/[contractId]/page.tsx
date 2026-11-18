@@ -19,6 +19,7 @@ import { listStaff } from "@/server/settings";
 
 import { cancelContractAction, deleteContractAction, newVersionAction, saveContractAction, signForStoreAction } from "../../../contract-actions";
 import { sendContractAction } from "../../../contract-send-actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Contract" };
 
@@ -36,6 +37,8 @@ const signal = (status: ContractStatus) =>
 export default async function ContractPage({ params }: PageProps<"/admin/[store]/deals/[dealId]/contracts/[contractId]">) {
   const { store: slug, dealId, contractId } = await params;
   const member = await requirePermission(slug, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   if (!z.uuid().safeParse(dealId).success || !z.uuid().safeParse(contractId).success) notFound();

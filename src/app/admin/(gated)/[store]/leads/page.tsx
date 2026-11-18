@@ -15,6 +15,7 @@ import { leadsOf } from "@/server/leads";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { dismissLeadAction, makeLeadDealAction } from "../deals/lead-actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Leads" };
 
@@ -26,6 +27,8 @@ export const metadata: Metadata = { title: "Leads" };
  */
 export default async function LeadsPage({ params }: PageProps<"/admin/[store]/leads">) {
   const member = await requirePermission((await params).store, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   const { store } = member;

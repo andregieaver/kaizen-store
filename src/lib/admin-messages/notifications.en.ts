@@ -790,6 +790,14 @@ export const notificationsEn = {
   },
   /** Settings → Workflows (D356). */
   workflows: {
+    /** Round 49 (D762): what a phone shows. */
+    phone: {
+      lead: "When something happens, do what you choose.",
+      makeSub: "When, only if, then",
+      limits: "Runs at most 100 times an hour; never emails customers, refunds or spends.",
+      open: "Open",
+      close: "Close",
+    },
     title: "Workflows",
     description: "When something happens in the store, or at a set time, check what you choose and do what you choose: tag, tell staff, post to Slack, send to your own endpoint or ask the AI manager.",
     make: "New workflow",

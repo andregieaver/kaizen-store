@@ -1071,6 +1071,14 @@ export const notificationsNb: NotificationsMessages = {
     },
   },
   workflows: {
+    /** Round 49 (D762): what a phone shows. */
+    phone: {
+      lead: "Når noe skjer, gjør det du velger.",
+      makeSub: "Når, bare hvis, så",
+      limits: "Kjører høyst 100 ganger i timen; sender aldri e-post til kunder, refunderer eller bruker penger.",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "Arbeidsflyter",
     description: "Når noe skjer i butikken, eller til en fast tid, sjekk det du velger og gjør det du velger: merk, gi beskjed til ansatte, skriv i Slack, send til ditt eget endepunkt eller spør KI-assistenten.",
     make: "Ny arbeidsflyt",

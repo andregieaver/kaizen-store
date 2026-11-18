@@ -18,11 +18,15 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { partLabelText, variantNameText } from "@/lib/experiment-words";
 
 import { createExperimentAction } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "New A/B test" };
 
 export default async function NewExperimentPage({ params, searchParams }: PageProps<"/admin/[store]/experiments/new">) {
-  const { store, account } = await requirePermission((await params).store, "marketing:read");
+  const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "ab_testing");
+  if (notInAccount) return notInAccount;
+  const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "experiments");
   const base = `/admin/${store.slug}/experiments`;

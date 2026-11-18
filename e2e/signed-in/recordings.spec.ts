@@ -133,6 +133,15 @@ test.describe("as the owner", () => {
     }
   });
 
+  test("downloads the store's own assessment, filled in from the store (Q3)", async ({ page }) => {
+    const answer = await page.request.get(`/admin/${E2E_STORE}/analytics/recordings/assessment`);
+    expect(answer.status()).toBe(200);
+    expect(answer.headers()["content-disposition"]).toContain(`recordings-assessment-${E2E_STORE}.html`);
+    const html = await answer.text();
+    expect(html).toContain("Data protection impact assessment: recordings of visits");
+    expect(html).toContain("50 % of browser tabs");
+  });
+
   test("the events route logs the viewing and answers the owner", async ({ page }) => {
     const answer = await page.request.get(`/admin/${E2E_STORE}/analytics/recordings/${COMPUTER}/events`);
     expect(answer.status()).toBe(200);
@@ -155,5 +164,6 @@ test.describe("as a Read-only member", () => {
     expect(await audits(PHONE)).toHaveLength(before);
     await page.goto(`/admin/${E2E_STORE}/analytics/recordings/${PHONE}`);
     await expect(page.locator("[data-recording-stage]")).toHaveCount(0);
+    expect((await page.request.get(`/admin/${E2E_STORE}/analytics/recordings/assessment`)).status()).toBe(404);
   });
 });

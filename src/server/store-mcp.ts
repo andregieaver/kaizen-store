@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { isReadOnly, mcpTools, toolScope, type McpToolInfo } from "@/lib/mcp-catalogue";
 import { missingScopes, protectedResourceMetadata, scopeKeys, STORES_READ, type AccessLevel, type OAuthScope } from "@/lib/oauth";
-import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
+import { toolExtension, toolFeature, toolOffered } from "@/lib/owner-tool-features";
 import { toolKey, toolRefusal } from "@/lib/owner-tool-permissions";
 import { can } from "@/lib/permissions";
 import { OWNER_TOOLS_BY_NAME, readToolInput } from "@/lib/owner-tools";
@@ -158,7 +158,7 @@ async function memberFor(caller: McpCaller, slug: unknown): Promise<Membership |
 export async function mcpToolsFor(caller: McpCaller): Promise<McpToolInfo[]> {
   if (caller.via.kind === "kaizen-life") {
     const stores = (await Promise.all(caller.stores.map((s) => getStore(s.slug)))).filter((s): s is Store => s !== null);
-    return mcpTools().filter((tool) => toolFeature(tool.name) === undefined || stores.some((store) => toolOffered(store, tool.name)));
+    return mcpTools().filter((tool) => (toolFeature(tool.name) === undefined && toolExtension(tool.name) === undefined) || stores.some((store) => toolOffered(store, tool.name)));
   }
   const scopes = caller.via.scopes;
   const members = (await Promise.all(caller.stores.map((s) => memberFor(caller, s.slug)))).filter((m): m is Membership => m !== null);
@@ -166,7 +166,7 @@ export async function mcpToolsFor(caller: McpCaller): Promise<McpToolInfo[]> {
     const scope = toolScope(tool.name);
     if (!scope || missingScopes(scopes, [scope]).length > 0) return false;
     if (scope === STORES_READ) return true;
-    return members.some((member) => memberCan(member, scope) && (toolFeature(tool.name) === undefined || toolOffered(member.store, tool.name)));
+    return members.some((member) => memberCan(member, scope) && toolOffered(member.store, tool.name));
   });
 }
 

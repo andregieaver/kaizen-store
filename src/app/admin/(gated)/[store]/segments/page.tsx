@@ -12,6 +12,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments, segmentNames, segmentPeople } from "@/server/segments";
 
 import { keepStarterAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Segments" };
 
@@ -21,6 +22,8 @@ export const metadata: Metadata = { title: "Segments" };
  */
 export default async function SegmentsPage({ params }: PageProps<"/admin/[store]/segments">) {
   const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const [segments, tiers] = await Promise.all([listSegments(store.id), listTiers(store.id)]);
   // Read once for every segment and ready one: the facts their rules ask for (ecosystem plan E3.6, D718), the customer types always (the

@@ -289,7 +289,7 @@ describe("clicks per person (email plan M1.3, D754)", () => {
 
   it("keep a press as the subscriber's own only with their genuine reference while they are on the list", async () => {
     vi.stubEnv("SETTINGS_ENCRYPTION_KEY", Buffer.alloc(32, 3).toString("base64"));
-    const { clickRef, clicksOf: exported, pruneEmailClicks } = await import("./email-clicks");
+    const { clickRef, clicksOf: exported } = await import("./email-clicks");
     try {
       const kari = await subscriber(storeId, `kari-click-${run}@example.com`, "subscribed");
       const left = await subscriber(storeId, `left-click-${run}@example.com`, "subscribed");
@@ -319,7 +319,7 @@ describe("clicks per person (email plan M1.3, D754)", () => {
       // Older than 180 days, it goes; the count per link stays.
       await bc.recordClick(id, "nb-NO.1", "no", clickRef(id, kari));
       await db().execute(sql`update commerce.email_clicks set clicked_at = now() - interval '181 days' where broadcast_id = ${id}::uuid and subscriber_id = ${kari}::uuid and clicked_at = (select min(clicked_at) from commerce.email_clicks where broadcast_id = ${id}::uuid)`);
-      expect(await pruneEmailClicks()).toBeGreaterThanOrEqual(1);
+      await bc.pruneBroadcastRecipients();
       expect(await clicksOf(id)).toHaveLength(1);
       expect((await bc.broadcastReport(storeId, (await bc.getBroadcast(storeId, id))!)).links.find((l) => l.key === "nb-NO.1")?.clicks).toBe(6);
 

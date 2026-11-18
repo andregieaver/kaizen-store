@@ -16,6 +16,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../../broadcasts/actions";
 import { broadcastChoices } from "../../broadcasts/editor-props";
 import { saveAutomationAction, switchAutomationAction, testAutomationAction } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Email automation" };
 
@@ -23,6 +24,8 @@ export const metadata: Metadata = { title: "Email automation" };
 export default async function AutomationPage({ params }: PageProps<"/admin/[store]/automations/[kind]">) {
   const { store: slug, kind } = await params;
   const member = await requirePermission(slug, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   if (!isLifecycle(kind)) notFound();
   const { store } = member;
   const automation = await getAutomation(store, kind);

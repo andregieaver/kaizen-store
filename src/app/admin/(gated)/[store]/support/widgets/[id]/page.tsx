@@ -23,6 +23,7 @@ import {
   removeWidgetSiteAction,
   saveWidgetAction,
 } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Chat widget" };
 
@@ -30,6 +31,8 @@ export const metadata: Metadata = { title: "Chat widget" };
 export default async function SupportWidgetPage({ params }: PageProps<"/admin/[store]/support/widgets/[id]">) {
   const { store: slug, id } = await params;
   const member = await requirePermission(slug, "support:read");
+  const notInAccount = requireExtension(member, "support_desk");
+  if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const widget = await getWidget(staff.desk, id);
   if (!widget) notFound();

@@ -14,6 +14,7 @@ import { stagedCopy } from "@/server/site-staging";
 
 import { storePagesBase } from "./context";
 import { PageDrawing } from "./drawing";
+import { requireExtension } from "@/components/admin/extension-off";
 
 /** A store's page preview (D53, D57), apart from its editors (`editor-views.tsx`): a route loads every client component its modules import (bloat review step 0.10). */
 
@@ -36,6 +37,8 @@ export async function StorePreviewPageView({
   // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
+  const notInAccount = type === "variant" ? requireExtension(gated, "ab_testing") : null;
+  if (notInAccount) return notInAccount;
   const { store } = gated;
   const ew = adminText(adminLangOf(gated.account.adminLocale), "builder").editor;
   const found = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;

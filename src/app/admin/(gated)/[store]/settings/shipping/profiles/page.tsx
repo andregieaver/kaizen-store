@@ -30,7 +30,7 @@ export default async function ShippingProfilesPage({ params }: PageProps<"/admin
       <PageHeader
         back={{ href: base, label: all.pages.back }}
         title={all.pages.profilesTitle}
-        description={all.pages.profilesDescription}
+        description={<><span className="sm:hidden">{all.profiles.phone.lead}</span><span className="max-sm:hidden">{all.pages.profilesDescription}</span></>}
       />
       <ProfilesView
         profiles={setup.profiles}

@@ -15,7 +15,7 @@ export async function GET(
   { params }: RouteContext<"/admin/[store]/support/c/[id]">,
 ) {
   const { store, id } = await params;
-  const member = await checkPermission(store, "support:read");
+  const member = await checkPermission(store, "support:read", "support_desk");
   if (!member || !UUID.test(id))
     return new NextResponse("Not found", { status: 404, headers: NO_STORE });
   const conversation = await conversationFeed(

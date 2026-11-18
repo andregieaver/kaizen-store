@@ -13,7 +13,7 @@
  *
  * Rule 2, attributes: `on*`, `srcdoc` and `ping` go; `http-equiv` takes `content` with it; every value that starts with a scheme, `//`,
  * `/` or `\` (and every value of an attribute that only holds a URL, such as `src` or `href`) goes through rule 1; `srcset` and
- * `imagesrcset` keep only their allowed candidates; `rr_dataURL` stays only as `data:image/…`; `style` and `_cssText` are CSS (rule 3).
+ * `imagesrcset` keep only their allowed candidates; `rr_dataURL` stays only as `data:image/…`, never SVG; `style` and `_cssText` are CSS (rule 3).
  *
  * Rule 3, CSS: the text is tokenised as CSS Syntax 3 does it, so escapes (`\75 rl(` is `url(`) are decoded and names compared without
  * regard to case. The arguments of `url(…)`, `src(…)`, `image-set(…)`, `-webkit-image-set(…)`, `image(…)`, `cross-fade(…)` and the
@@ -137,12 +137,15 @@ function supabasePicture(url: URL, ctx: Allowed): boolean {
   );
 }
 
-/** Rule 1: the URL to keep (perhaps rewritten), or `null` when it may not stay. */
-function checkUrl(raw: string, ctx: Allowed): string | null {
+/**
+ * Rule 1: the URL to keep (perhaps rewritten), or `null` when it may not stay. Outside CSS (`css` false) a picture's data address may not be
+ * SVG: in a frame, an object or a link an SVG document can run script, while CSS only ever draws it as a picture (review, 18 Nov 2026).
+ */
+function checkUrl(raw: string, ctx: Allowed, css = false): string | null {
   const value = normalizeUrl(raw);
   if (value === "") return "";
   if (value.startsWith("#")) return value;
-  if (/^data:image\//i.test(value)) return value;
+  if (/^data:image\//i.test(value)) return css || !/^data:image\/svg/i.test(value) ? value : null;
   let url: URL;
   try {
     url = SCHEME.test(value) ? new URL(value) : new URL(value, RELATIVE_BASE);
@@ -254,7 +257,8 @@ function sanitizeAttributes(
     if (key === "rr_dataURL") {
       if (
         typeof value === "string" &&
-        /^data:image\//i.test(normalizeUrl(value))
+        /^data:image\//i.test(normalizeUrl(value)) &&
+        !/^data:image\/svg/i.test(normalizeUrl(value))
       )
         put(out, key, value);
       continue;
@@ -595,7 +599,7 @@ function urlsAllowed(pass: Pass, a: number, b: number): boolean {
         (inner === null ? isImport : URL_FUNCTIONS.has(inner)));
     if (!isUrl) continue;
     if (token.type === "badstring") return false;
-    const checked = checkUrl(token.value, pass.ctx);
+    const checked = checkUrl(token.value, pass.ctx, true);
     if (checked === null) return false;
     if (checked !== token.value)
       pass.rewrites.set(
@@ -616,7 +620,10 @@ function render(pass: Pass, a: number, b: number): string {
 }
 
 /** Tokens [a, b) as a list of items: declarations and statements up to `;`, rules up to their block's `}`. */
-function sanitizeList(pass: Pass, a: number, b: number): string {
+/** Deeper than any real style sheet; a block nested deeper is dropped whole, so a forged one cannot overflow the stack (review, 18 Nov 2026). */
+const MAX_CSS_DEPTH = 64;
+
+function sanitizeList(pass: Pass, a: number, b: number, depth = 0): string {
   const { tokens, match } = pass;
   let out = "";
   let i = a;
@@ -634,10 +641,10 @@ function sanitizeList(pass: Pass, a: number, b: number): string {
     }
     if (block >= 0) {
       const close = Math.min(match[block], b);
-      if (urlsAllowed(pass, i, block)) {
+      if (depth < MAX_CSS_DEPTH && urlsAllowed(pass, i, block)) {
         out +=
           render(pass, i, block + 1) +
-          sanitizeList(pass, block + 1, close) +
+          sanitizeList(pass, block + 1, close, depth + 1) +
           (close < b ? render(pass, close, close + 1) : "");
       }
       i = close + 1;

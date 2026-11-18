@@ -1,3 +1,4 @@
+import { storeExtensionOn, type ExtensionId } from "@/lib/extensions";
 import "server-only";
 
 import { sql } from "drizzle-orm";
@@ -77,17 +78,24 @@ async function refused(member: Membership, keys: readonly PermissionKey[]): Prom
 }
 
 /** For a page or a route handler: the membership when the member holds the key, else a redirect to sign in or the second step, or a 404. */
-export async function requirePermission(storeSlug: string, key: PermissionKey): Promise<Membership> {
+export async function requirePermission(storeSlug: string, key: PermissionKey, extension?: ExtensionId): Promise<Membership> {
   const member = await requireMember(storeSlug);
   if (!memberCan(member, key)) await refused(member, [key]);
+  // A route or action of a paid extension (D748 E3) is not there while the store's account does not have it; its pages say so themselves.
+  if (extension && !storeExtensionOn(member.store, extension)) notFound();
   return member;
 }
 
-/** For an action: the membership when the member holds the key, else null (not a member, held at their second step, or lacking the key). */
-export async function checkPermission(storeSlug: string, key: PermissionKey): Promise<Membership | null> {
+/**
+ * For an action: the membership when the member holds the key, else null (not a member, held at their second step, or lacking the key). With
+ * `extension`, also null while the store's account does not have that paid extension (D748 E3): an extension's actions are refused as its
+ * pages are hidden.
+ */
+export async function checkPermission(storeSlug: string, key: PermissionKey, extension?: ExtensionId): Promise<Membership | null> {
   const member = await getMembership(storeSlug);
   if (member && !memberCan(member, key)) await logRefusal(member, [key]);
-  return member && memberCan(member, key) ? member : null;
+  if (!member || !memberCan(member, key)) return null;
+  return extension && !storeExtensionOn(member.store, extension) ? null : member;
 }
 
 /** For a page or a route handler that any of several keys opens (the page builder's side actions): the first the member holds, else a 404. */

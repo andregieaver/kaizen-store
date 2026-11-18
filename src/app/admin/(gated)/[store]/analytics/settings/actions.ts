@@ -143,7 +143,7 @@ export async function setRecordingsAction(storeSlug: string, _state: FormState, 
   return storeAction({ store: storeSlug, key: "owner", action: "analytics.recordings", answer: (message) => failed([message]) }, async (member, lang) => {
     const w = adminText(lang, "recordings");
     const enabled = form.get("enabled") === "on";
-    const confirmed = member.store.recordings || ["children", "sensitive", "policy"].every((k) => form.get(k) === "yes");
+    const confirmed = member.store.recordings || ["children", "sensitive", "policy", "assessment"].every((k) => form.get(k) === "yes");
     if (enabled && !confirmed) return failed([w.settings.confirmAll]);
     const share = Number(form.get("share") ?? member.store.recordingShare);
     const result = await setRecordings(member, { enabled, share, mask: form.get("strict") === "yes" ? "strict" : "balanced", confirmed });

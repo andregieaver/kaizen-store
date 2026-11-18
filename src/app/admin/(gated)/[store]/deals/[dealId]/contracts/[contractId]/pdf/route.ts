@@ -9,7 +9,7 @@ import { requirePermission } from "@/server/permissions";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/deals/[dealId]/contracts/[contractId]/pdf">) {
   const { store: slug, contractId } = await params;
-  const member = await requirePermission(slug, "customers:read");
+  const member = await requirePermission(slug, "customers:read", "deals");
   if (!z.uuid().safeParse(contractId).success) return new Response("Not found", { status: 404 });
   const bytes = await contractPdf(member, contractId);
   if (!bytes) return new Response("Not found", { status: 404 });

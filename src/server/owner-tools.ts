@@ -376,7 +376,7 @@ export function heldBy(holder: PermissionHolder | null | undefined): PermissionH
 function requireToolPermission(ctx: OwnerToolContext, name: string): void {
   if (!mayUseTool(heldBy(ctx.holder), name)) fail(toolRefusal(name));
   // A tool of a feature that is off is refused (D178), whoever asks: the assistant does not offer it, the store's MCP server lists it for every store.
-  if (!toolOffered(ctx.store, name)) fail(toolFeatureRefusal(name));
+  if (!toolOffered(ctx.store, name)) fail(toolFeatureRefusal(name, ctx.store));
 }
 
 export { OwnerToolError };

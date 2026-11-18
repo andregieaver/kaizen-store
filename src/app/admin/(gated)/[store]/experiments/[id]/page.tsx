@@ -26,6 +26,7 @@ import { experimentTraffic } from "@/server/experiment-traffic";
 import { experimentResults } from "@/server/experiment-results";
 import { Chip, PageHeader } from "@/components/admin/ui";
 import { previewLinkAction } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "A/B test" };
 
@@ -65,6 +66,8 @@ function pathOf(test: ExperimentInfo, card: ExperimentCard, w: ExperimentsMessag
 export default async function ExperimentPage({ params }: PageProps<"/admin/[store]/experiments/[id]">) {
   const { store: slug, id } = await params;
   const member = await requirePermission(slug, "marketing:read");
+  const notInAccount = requireExtension(member, "ab_testing");
+  if (notInAccount) return notInAccount;
   const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "experiments");

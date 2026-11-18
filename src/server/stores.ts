@@ -108,6 +108,14 @@ export type Store = {
   deliveriesOn: boolean;
   /** Work: clients, assignments, time and invoices for consultants (D122). */
   workOn: boolean;
+  /** The account that owns the store (D748 E1); null while nobody owns it. */
+  organisationId: string | null;
+  /**
+   * The account's paid-extension facts as `commerce.store_extension_facts()` gives them (D748 E3), kept as read: what works is decided against
+   * the clock by `storeExtensionsOn()` (`src/server/extension-gates.ts`), so a trial ends on time though the store is cached. A writer of the
+   * facts refreshes the account's stores' tags (`refreshOrganisationStores()`).
+   */
+  extensionFacts: unknown;
   /** Where the store's times are, e.g. appointments' (D65). */
   timeZone: string;
   /** Hours before an appointment its reminder goes (D65); 0 sends none. */
@@ -260,6 +268,7 @@ async function readStore(slug: string): Promise<Store | null> {
       (s.house and coalesce((select p.site_from_store from commerce.platform_settings p), false)) as on_site,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.checkout_phone, s.checkout_name, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.heatmaps, s.recordings, s.recording_share, s.recording_mask, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
+      s.organisation_id, commerce.store_extension_facts(s.id) as extension_facts,
       s.price_decimals, s.price_words, s.quantity_picker,
       s.locales, s.rates_auto, s.rates_updated_at, s.language_rule, s.currency_follows_language, s.language_currencies,
       (
@@ -349,6 +358,8 @@ async function readStore(slug: string): Promise<Store | null> {
     privatePassword: Boolean(row.private_password),
     ...featured(row.features),
     workOn: ((row.modules ?? []) as string[]).includes("work"),
+    organisationId: text(row.organisation_id),
+    extensionFacts: row.extension_facts ?? null,
     timeZone: String(row.time_zone ?? "Europe/Oslo"),
     bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
     ...localized(row),

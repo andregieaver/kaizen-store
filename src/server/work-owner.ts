@@ -123,6 +123,8 @@ export async function workStoresFor(account: Pick<Account, "id">): Promise<WorkS
              where ev.store_id = s.id and ev.account_id = m.account_id) as last_used
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
+      -- Only a store whose account has the Work extension (D748): Work is not offered in the others at all.
+      and commerce.extension_on(s.id, 'work')
       -- Never a store the platform keeps for itself (a store template's frozen copy, a design profile's workspace, D177).
       and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
     left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id

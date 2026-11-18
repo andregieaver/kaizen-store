@@ -8,12 +8,12 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { filedText, participantsOf } from "@/lib/filed-email";
 import { bareAddress, filingAddress, inboundDomain } from "@/lib/inbound-email";
-import { featureOn } from "@/lib/store-features";
 
 import { log } from "./log";
 import { getStore, storeSlugOf } from "./stores";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * Email on the timeline (S5 of `docs/own-books-and-sales.md`, D476): a store's filing address, and the mail its team copies or forwards to
@@ -48,7 +48,7 @@ export async function fileReceived(storeId: string, mail: ReceivedMail, env: Rec
   if (!domain) return { status: "refused", reason: "not_set_up" };
   const slug = await storeSlugOf(storeId);
   const store = slug ? await getStore(slug) : null;
-  if (!store || !featureOn(store, "sales")) return { status: "refused", reason: "sales_off" };
+  if (!store || !dealsOn(store)) return { status: "refused", reason: "sales_off" };
   const from = bareAddress(mail.from);
   const team = await typedRows(
     z.object({ id: col.uuid, email: col.text }),

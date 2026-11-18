@@ -9,7 +9,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext<"/admin/[store]/support/feed">,
 ) {
-  const member = await checkPermission((await params).store, "support:read");
+  const member = await checkPermission((await params).store, "support:read", "support_desk");
   if (!member)
     return new NextResponse("Not found", { status: 404, headers: NO_STORE });
   return NextResponse.json(

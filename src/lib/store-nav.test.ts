@@ -143,6 +143,29 @@ describe("the store admin's sections (D147)", () => {
     }
   });
 
+  it("tags each page of a paid extension as the admin map does (D748 E3)", () => {
+    const pages = new Map(ADMIN_PAGES.filter((p) => p.area === "store").map((p) => [p.path, p]));
+    for (const section of STORE_SECTIONS) {
+      for (const item of section.groups.flatMap((g) => g.items)) {
+        expect(pages.get(item.path)?.extension, item.path).toBe(item.extension ?? section.extension);
+      }
+    }
+  });
+
+  it("leaves out the pages of an extension the account does not have, and keeps them while it has every one (D748 E3)", () => {
+    const launched = { platform: false, launchedAt: "2026-01-01T00:00:00Z", included: ["ab_testing"], rows: [] };
+    const paths = (facts: unknown) =>
+      storeSections({ features: ["shop", "sales"], extensionFacts: facts }).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));
+    const all = paths(null);
+    expect(all).toEqual(expect.arrayContaining(["/deals", "/broadcasts", "/experiments", "/support", "/settings/books"]));
+    const some = paths(launched);
+    expect(some).toContain("/experiments");
+    expect(some).not.toEqual(expect.arrayContaining(["/deals"]));
+    for (const gone of ["/deals", "/leads", "/broadcasts", "/automations", "/segments", "/support", "/support/widgets", "/settings/books"]) expect(some, gone).not.toContain(gone);
+    // The chat assistant is the shop's own, not the support desk's.
+    expect(some).toContain("/chat");
+  });
+
   it("puts returns with the orders and their rules with the selling settings (D153)", () => {
     const orders = STORE_SECTIONS.find((s) => s.key === "orders")!;
     expect(orders.groups[0].items.map((i) => i.label).slice(0, 3)).toEqual(["Orders", "Draft orders", "Returns"]);

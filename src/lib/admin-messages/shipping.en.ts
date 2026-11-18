@@ -263,6 +263,17 @@ export const shippingEn = {
   },
   /** Profiles (`ProfilesView`, `ProductChooser`). */
   profiles: {
+    /** Round 49 (D762): what a phone shows. */
+    phone: {
+      lead: "Products that ship differently get their own rates.",
+      generalSub: "every product in no other profile",
+      addSub: "Bulky, fragile or cold: a name and its products",
+      sum: "A basket with products of several profiles pays the sum of their rates.",
+      open: "Open",
+      close: "Close",
+      change: "Change",
+      done: "Done",
+    },
     general: "General",
     generalDescription: "Every product in no other profile. Methods price it in their General blocks.",
     products: { one: "{n} product.", many: "{n} products." },

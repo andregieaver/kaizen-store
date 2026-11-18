@@ -10,7 +10,6 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { adminText } from "@/lib/admin-text";
 import { DEAL_LINK_KINDS, type DealLinkKind } from "@/lib/deals";
-import { featureOn } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
@@ -38,6 +37,7 @@ import {
 import { saveStaffFields } from "@/server/field-entities";
 import { checkPermission } from "@/server/permissions";
 import type { SaveResult } from "@/server/settings";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * Deals' actions (S2, D464): each checks the member may change customers and that Deals is on, whatever a stale page sends, and answers in
@@ -51,9 +51,9 @@ const wordsOf = (member: Membership): Words => adminText(adminLangOf(member.acco
 
 /** The member, when they may change customers and Deals is on; else the reason, in their words. */
 async function writer(storeSlug: string): Promise<{ member: Membership; w: Words } | { refused: string }> {
-  const member = await checkPermission(storeSlug, "customers:write");
+  const member = await checkPermission(storeSlug, "customers:write", "deals");
   if (!member) return { refused: adminText(await actionAdminLang(), "deals").problems.forbidden };
-  if (!featureOn(member.store, "sales")) {
+  if (!dealsOn(member.store)) {
     return { refused: featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features) };
   }
   return { member, w: wordsOf(member) };
@@ -183,8 +183,8 @@ export async function saveDealFieldsAction(storeSlug: string, dealId: string, ch
 
 /** Who a new deal may be with, as the form's search asks (two letters or more). */
 export async function searchWhoAction(storeSlug: string, query: string): Promise<WhoChoice[]> {
-  const member = await checkPermission(storeSlug, "customers:write");
-  if (!member || !featureOn(member.store, "sales")) return [];
+  const member = await checkPermission(storeSlug, "customers:write", "deals");
+  if (!member || !dealsOn(member.store)) return [];
   return searchWho(member.store.id, String(query ?? ""));
 }
 

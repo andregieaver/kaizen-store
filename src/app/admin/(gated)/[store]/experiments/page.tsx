@@ -10,6 +10,7 @@ import { partLabelText, targetLabelText } from "@/lib/experiment-words";
 import { requirePermission } from "@/server/permissions";
 import { experimentList, type ListedTest } from "@/server/experiment-list";
 import { Card, CARD_CLASS, Chip, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -62,7 +63,10 @@ function ideaFacts(idea: TestIdea, w: ExperimentsMessages, locale: string): stri
 
 /** The store's A/B tests (D148; grouped since phase 15): what waits for a decision, what is still learning, what is planned, and ideas. */
 export default async function ExperimentsPage({ params }: PageProps<"/admin/[store]/experiments">) {
-  const { store, account } = await requirePermission((await params).store, "marketing:read");
+  const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "ab_testing");
+  if (notInAccount) return notInAccount;
+  const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "experiments");
   const locale = ADMIN_LANG_FACTS[lang].locale;

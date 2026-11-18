@@ -14,7 +14,7 @@ import { checkPermission } from "@/server/permissions";
  */
 
 export async function makeLeadDealAction(storeSlug: string, email: string): Promise<void> {
-  const member = await checkPermission(storeSlug, "customers:write");
+  const member = await checkPermission(storeSlug, "customers:write", "deals");
   if (!member) return;
   const kinds = adminText(adminLangOf(member.account.adminLocale), "deals").leads.dealKinds;
   const made = await makeLeadDeal(member, email, kinds);
@@ -23,7 +23,7 @@ export async function makeLeadDealAction(storeSlug: string, email: string): Prom
 }
 
 export async function dismissLeadAction(storeSlug: string, email: string): Promise<void> {
-  const member = await checkPermission(storeSlug, "customers:write");
+  const member = await checkPermission(storeSlug, "customers:write", "deals");
   if (!member) return;
   if ((await dismissLead(member, email)).ok) refresh();
 }

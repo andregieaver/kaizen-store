@@ -1,3 +1,4 @@
+import type { ExtensionId } from "@/lib/extensions";
 import "server-only";
 
 import { unstable_rethrow } from "next/navigation";
@@ -32,10 +33,11 @@ const wordsIn = (lang: AdminLang): Common => COMMON_WORDS[lang].action;
 
 /** A store admin's action: `key` is checked for the member, `answer` turns a refusal or a failure into the action's result. */
 export async function storeAction<T>(
-  options: { store: string; key: PermissionKey; action: string; answer: ActionAnswer<T> },
+  options: { store: string; key: PermissionKey; action: string; answer: ActionAnswer<T>; extension?: ExtensionId },
   run: (member: Membership, lang: AdminLang) => Promise<T>,
 ): Promise<T> {
-  const member = await checkPermission(options.store, options.key);
+  // An action of a paid extension (D748 E3) is refused, as one the person may not, while the store's account does not have it.
+  const member = await checkPermission(options.store, options.key, options.extension);
   if (!member) return options.answer(wordsIn(await actionAdminLang()).noAccess, "refused");
   const lang = adminLangOf(member.account.adminLocale);
   try {

@@ -71,8 +71,7 @@ export async function removeWidgetSiteAction(slug: string, _state: FormState, fo
 
 /** Copies a Google Fonts family to Kaizena Flow for a widget's look (D59), as the font picker asks when a font is chosen. */
 export async function installWidgetFontAction(slug: string, family: string) {
-  return storeAction(
-    { store: slug, key: "support:write", action: "support.widget_font", answer: (problem: string) => ({ ok: false as const, problem }) },
+  return storeAction({ store: slug, key: "support:write", extension: "support_desk", action: "support.widget_font", answer: (problem: string) => ({ ok: false as const, problem }) },
     async () => installFont(String(family)),
   );
 }

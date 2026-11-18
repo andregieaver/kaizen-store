@@ -41,6 +41,7 @@ import { getTripletexConnection } from "@/server/tripletex";
 import { vatReturnOrgNumber } from "@/server/vat-return";
 
 import { addBillAction, addThresholdAction, removeThresholdAction, dismissInboxAction, saveBudgetAction, yearEndAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -55,6 +56,8 @@ const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
  */
 export default async function BooksPage({ params, searchParams }: PageProps<"/admin/[store]/settings/books">) {
   const member = await requirePermission((await params).store, "books:read");
+  const notInAccount = requireExtension(member, "work");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "books");

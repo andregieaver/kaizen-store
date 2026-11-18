@@ -43,8 +43,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   rrweb's sandbox (never `allow-scripts`, never `UNSAFE_replayCanvas`) under its page's own enforced policy (`replayRouteHeaders()`).
   Platform admins see counts only (Usage and limits, where the owner role holds `recordings_open`) and never watch a store's recordings;
   Kaizena Flow never uses them for itself.
-- The switches are on Analytics → Settings, through `storeAction()` with the `owner` key: recordings start only after three
-  confirmations (not aimed at children, nothing sensitive sold, the privacy policy says so), with a share of tabs and *Hide all text*.
+- The switches are on Analytics → Settings, through `storeAction()` with the `owner` key: recordings start only after four
+  confirmations (not aimed at children, nothing sensitive sold, the privacy policy says so, and the store's own DPIA, downloadable
+  there from Kaizena Flow's template with the store's facts: the lawyer's answer to Q3), with a share of tabs and *Hide all text*.
   The four tables are left out of the export and of a store's copy. A/B behaviour comes from tagged totals (`versionBehaviour()`); the
   `frustratedVersion()` flag warns, never stops. The DPIA draft is `docs/dpia-recordings.md`; review it when what is recorded changes.
 - The AI manager reads heatmaps through `page_behaviour` and `version_behaviour` (`src/server/heat-tools.ts`, figures written by
@@ -161,7 +162,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`applyEmailEvent()`). Links go through `/api/marketing/c/…`, which redirects only to the content's own links and counts a press
   (`broadcast_link_clicks`); a recipient's own links carry their signed reference (`p`, D754, `src/lib/email-clicks.ts`), and a
   press with a genuine one by a subscriber still on the list is kept as theirs (`email_clicks`, only through `keepClick()`: export,
-  erasure, 180 days, said in the privacy notice); never add an open pixel. AI words are suggestions only, through `findClaims()`
+  erasure, 180 days, said in the privacy notice); never add an open pixel. Orders after any message (a broadcast, an automation
+  email, a text) are counted only through `orderCredit()`/`creditOrders()` (D761): each paid order once, for the latest message
+  its buyer got in the 7 days before it, so no screen counts an order twice. AI words are suggestions only, through `findClaims()`
   (feature `marketing_email`). Recipients are personal data (export, erasure, pruned 90 days after a send with its figures kept).
 
 ## A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)

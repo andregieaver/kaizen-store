@@ -11,6 +11,7 @@ import { memberDesk } from "@/server/support-desk";
 import { PageHeader } from "@/components/admin/ui";
 
 import { carryOutRequestAction, decideRequestAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Support requests" };
 
@@ -24,6 +25,8 @@ export default async function SupportRequestsPage({
 }: PageProps<"/admin/[store]/support/requests">) {
   const { store: slug } = await params;
   const member = await requirePermission(slug, "support:read");
+  const notInAccount = requireExtension(member, "support_desk");
+  if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
   const t = adminText(lang, "support");
