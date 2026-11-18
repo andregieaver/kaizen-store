@@ -6,6 +6,7 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
 import { ScopedCss } from "@/components/custom-css";
+import { PreviewBreakpoints } from "@/components/part-styles";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import type { PageType } from "@/lib/page-content";
 import { requirePlatformReader } from "@/server/auth";
@@ -51,6 +52,7 @@ export async function PreviewPageView({ type, params, searchParams, themeStore =
       {/* Kaizen's own CSS and the page's (D100), kept inside the preview. */}
       <div className="py-6 [contain:paint]" data-site-css="">
         <ScopedCss css={[(await getPlatformChrome()).customCss, page.draft.css]} root="[data-site-css]" />
+        <PreviewBreakpoints owner={null} />
         {type === "header" || type === "footer" ? (
           // As Kaizen's pages draw it (D80), with its logo, menus and details.
           <div className="overflow-hidden rounded-panel border border-line">

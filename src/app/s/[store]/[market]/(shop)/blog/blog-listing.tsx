@@ -16,7 +16,7 @@ import { newBlock } from "@/lib/page-rows";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath } from "@/lib/paths";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
-import { blogArticles, findBlog, storeBlogs } from "@/server/blogs";
+import { blogCategoryIds, findBlog, storeBlogs } from "@/server/blogs";
 import { gridData } from "@/server/content-grid";
 import { pageForRole, publishedPageById, type PublishedPage } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
@@ -112,7 +112,7 @@ export async function blogMetadata(params: ShopParams, handle: string | null = n
 
 /** The categories a blog's own articles are in, with the ones above them: what its listing offers. */
 async function blogCategories(storeId: string, blog: Blog, terms: Term[]): Promise<Term[]> {
-  const used = new Set((await blogArticles(storeId, blog)).flatMap((article) => article.content.categories));
+  const used = new Set(await blogCategoryIds(storeId, blog));
   for (const id of [...used]) {
     for (let term = terms.find((x) => x.id === id), depth = 0; term?.parentId && depth < 10; term = terms.find((x) => x.id === term!.parentId), depth++) {
       used.add(term.parentId);

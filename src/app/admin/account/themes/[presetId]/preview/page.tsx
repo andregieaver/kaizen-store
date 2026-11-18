@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ScopedCss } from "@/components/custom-css";
+import { PreviewBreakpoints } from "@/components/part-styles";
 import { FontLinks } from "@/components/font-links";
 import { PageArticle } from "@/components/page-article";
 import { ProductCard } from "@/components/product-card";
@@ -134,6 +135,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
         <div data-site-css="" className="flex min-h-full flex-col [contain:paint]">
           {/* The profile's CSS, kept inside the preview as the admin's previews keep a store's (D100). */}
           <ScopedCss css={[store.customCss, header?.content.css, footer?.content.css, productLayout.css]} root="[data-site-css]" />
+          <PreviewBreakpoints owner={store.id} />
           {header ? <StoreSiteHeader store={store} market={market} notice={null} layout={header} /> : <StoreHeader store={store} market={market} notice={null} />}
           <main className="flex flex-col">
             {!showFront ? null : front ? (

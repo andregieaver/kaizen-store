@@ -256,7 +256,7 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
     case "articles.list": {
       const since = params.get("updated_after");
       if (since) sinceWhere(params, sql`now()`);
-      const pages = (await listPages(storeId, pageType(route.name))).filter((p) => !since || p.updatedAt > new Date(since).toISOString());
+      const pages = await listPages(storeId, pageType(route.name), { since: since ? new Date(since).toISOString() : undefined });
       return ok(route.name, { data: pages.map((p) => ({ id: p.id, title: p.title, slug: p.slug, state: p.state, published_at: p.publishedAt, updated_at: p.updatedAt })) });
     }
     case "pages.get":

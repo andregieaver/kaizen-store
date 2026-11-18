@@ -667,6 +667,82 @@ describe("titles and the modal flag come from columns (bloat review step 2.16)",
   });
 });
 
+describe("the Pages list's summaries (bloat review step 2.17)", () => {
+  let storeId: string;
+  const ids: Record<string, string> = {};
+  const slugOf = (name: string) => `${name}-${run}`;
+  const picture = (name: string) => ({ url: `https://example.com/${name}.jpg`, width: 800, height: 600, alt: "" });
+
+  beforeAll(async () => {
+    const { atelierAboutPage, ATELIER_PACK } = await import("@/lib/signature/atelier");
+    const [row] = await db().execute<Row>(sql`insert into commerce.stores (slug, name) values (${`list-${run}`}, 'List store') returning id`);
+    storeId = String(row.id);
+    // The stored documents, as written (newest change first in the list): a draft, a published page, one changed since, one whose two
+    // copies differ only by a default the schema fills (tags), one of a signature theme's pages, and a draft that is not page content.
+    const signature = { ...atelierAboutPage(ATELIER_PACK, () => null), slug: slugOf("sig") };
+    const withoutTags = (page: PageContent) => Object.fromEntries(Object.entries(page).filter(([key]) => key !== "tags"));
+    const fixtures: [string, unknown, unknown, number][] = [
+      ["draft", content(slugOf("draft"), { thumbnail: picture("draft") }), null, 6],
+      ["live", content(slugOf("live"), { searchEngines: false }), content(slugOf("live"), { searchEngines: false }), 5],
+      ["changed", content(slugOf("changed"), { title: "Changed title", aiAssistants: false, thumbnail: picture("new") }), content(slugOf("changed")), 4],
+      ["defaults", content(slugOf("defaults")), withoutTags(content(slugOf("defaults"))), 3],
+      ["sig", signature, signature, 2],
+      ["oops", { oops: 1 }, null, 1],
+    ];
+    for (const [name, draft, published, minutes] of fixtures) {
+      const [page] = await db().execute<Row>(sql`
+        insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, updated_at)
+        values (${storeId}::uuid, 'page', ${slugOf(name)}, ${JSON.stringify(draft)}::jsonb, ${published === null ? null : JSON.stringify(published)}::jsonb,
+          ${published === null ? null : "2026-11-01T10:00:00Z"}::timestamptz, ${published === null ? null : "2026-11-01T10:00:00Z"}::timestamptz,
+          now() - make_interval(mins => ${minutes}))
+        returning id
+      `);
+      ids[name] = String(page.id);
+    }
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid`);
+  });
+
+  it("gives each page's title, address, state, flags and picture as the parsed documents say", async () => {
+    const list = await pages.listPages(storeId);
+    expect(list.map(({ id, title, slug, state, searchEngines, aiAssistants, thumbnail }) => ({ id, title, slug, state, searchEngines, aiAssistants, thumbnail }))).toEqual([
+      { id: ids.oops, title: slugOf("oops"), slug: slugOf("oops"), state: "draft", searchEngines: true, aiAssistants: true, thumbnail: null },
+      { id: ids.sig, title: "About us", slug: slugOf("sig"), state: "published", searchEngines: true, aiAssistants: true, thumbnail: null },
+      { id: ids.defaults, title: `Page ${slugOf("defaults")}`, slug: slugOf("defaults"), state: "published", searchEngines: true, aiAssistants: true, thumbnail: null },
+      { id: ids.changed, title: "Changed title", slug: slugOf("changed"), state: "changed", searchEngines: true, aiAssistants: true, thumbnail: "https://example.com/new.jpg" },
+      { id: ids.live, title: `Page ${slugOf("live")}`, slug: slugOf("live"), state: "published", searchEngines: false, aiAssistants: true, thumbnail: null },
+      { id: ids.draft, title: `Page ${slugOf("draft")}`, slug: slugOf("draft"), state: "draft", searchEngines: true, aiAssistants: true, thumbnail: "https://example.com/draft.jpg" },
+    ]);
+    expect(list.find((page) => page.id === ids.live)?.publishedAt).toBe("2026-11-01T10:00:00.000Z");
+  });
+
+  it("gives the pickers the same ids, addresses and titles, and pages of a given size with the count", async () => {
+    const list = await pages.listPages(storeId);
+    expect((await pages.pageTitles(storeId)).map(({ id, slug, title }) => ({ id, slug, title }))).toEqual(list.map(({ id, slug, title }) => ({ id, slug, title })));
+    expect((await pages.listPages(storeId, "page", { limit: 2 })).map((page) => page.id)).toEqual([ids.oops, ids.sig]);
+    expect((await pages.listPages(storeId, "page", { limit: 2, offset: 2 })).map((page) => page.id)).toEqual([ids.defaults, ids.changed]);
+    expect(await pages.countPages(storeId)).toBe(6);
+    expect(await pages.countPages(storeId, "article")).toBe(0);
+  });
+
+  it("sends one statement without a document when every page is a draft or the same as published", async () => {
+    const { countStatements } = await import("@/db/statement-count");
+    // Only the draft and the unchanged pages: the two whose copies differ as stored are moved to another kind for the count.
+    await db().execute(sql`update commerce.pages set type = 'footer' where id in (${ids.changed}::uuid, ${ids.defaults}::uuid)`);
+    try {
+      const { result, statements, count } = await countStatements(() => pages.listPages(storeId));
+      expect(result.map((page) => page.state)).toEqual(["draft", "published", "published", "draft"]);
+      expect(count).toBe(1);
+      const { selectsDocument } = await import("./page-documents-test-support");
+      expect(selectsDocument(statements[0].text)).toBe(false);
+    } finally {
+      await db().execute(sql`update commerce.pages set type = 'page' where id in (${ids.changed}::uuid, ${ids.defaults}::uuid)`);
+    }
+  });
+});
+
 /** The plan text of a statement, with its parameters filled in as literals. */
 async function explain(text: string, params: unknown[]): Promise<string> {
   const filled = text.replace(/\$(\d+)/g, (_, n: string) => `'${String(params[Number(n) - 1]).replace(/'/g, "''")}'`);

@@ -71,7 +71,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | In progress | 18 Nov: CLAUDE.md's half by bloat step 2.1 (10,102 bytes, a map of the rule files); the decisions split waits on bloat step 2.40. |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
 | 1.12 | Build the admin kit | FS4 | L | Open | |
-| 1.13 | One way to search and page a list | FS2 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026 (Products and Customers not yet: the redesign changed those screens); the shared kit and the rest remain. |
+| 1.13 | One way to search and page a list | FS2 | M | Open | Paged at 100 with a count: Stores (2.10; bloat 0.19, 14 Nov), Pages and Articles of stores and platform (bloat 2.17, 18 Nov, local). Products and Customers not yet (redesign); the shared kit remains. |
 | 1.14 | One date formatter | FS5 | M | Open | |
 | 1.15 | Forms that answer | FS6 | M | Open | |
 | 1.16 | Unsaved work survives | FB5 | M | Open | |
@@ -177,6 +177,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 15 November 2026: bloat step 0.26: 13 duplicate indexes dropped (orders 34 to 32; four concurrently on orders, order_lines and visits), and `src/db/index-duplicates.test.ts` fails on the next one. Step 3.15 stays Open.
 - 16 November 2026: notes moved out of the table into Notes on the steps; a row is at most 300 characters (bloat review step 0.41).
 - 18 November 2026: bloat review step 2.1: CLAUDE.md keeps a map of the rule files, its how-to in `.claude/rules`; step 1.10 In progress (decisions split waits on 2.40); question 5 answered.
+- 18 November 2026: bloat review step 2.17: the Pages and Articles lists of a store and of the platform read and show 100 a page with a count (`ListPager`, the Stores list's markup); 1.13 stays Open (the shared ListSearch is not built).
 
 **Notes on the steps**
 

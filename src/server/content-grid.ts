@@ -9,9 +9,8 @@ import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
 import { customGridData } from "@/lib/custom-grid";
 import { assertNever, sourceTraits } from "@/lib/grid-source";
 import { tileFieldIds } from "@/lib/tile-fields";
-import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageContent, type PageType, termContentOf } from "@/lib/page-content";
+import { type ContentGridBlock, type PageContent, type PageType, termContentOf } from "@/lib/page-content";
 import { articlePath, blogOfArticle } from "@/lib/blogs";
-import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import type { StoreRoute } from "@/lib/store-parts";
 import type { ThemeLayers } from "@/lib/section-styles";
@@ -26,7 +25,8 @@ import { gridEntries } from "./content-site";
 import { fieldsTag } from "./custom-fields";
 import { shownFieldsForItems } from "./field-tiles";
 import { storeBlogs } from "./blogs";
-import { pagesTag } from "./pages";
+import { articleInBlog, pageCardColumns, pageCardRow, pageCards, pageInMarketSql, pagesTag } from "./pages";
+import { typedRows } from "./typed-rows";
 import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
 import { owned } from "./owned";
@@ -214,7 +214,7 @@ async function gridPages(
   const prefix = type === "article" ? "/blog" : "";
   // A store's articles are at their own blog's address (D341): `/blog/{slug}`, or `/blogs/{handle}/{slug}` for another blog.
   const blogs = owner && type === "article" ? await storeBlogs(owner) : [];
-  const href = (slug: string, content?: PageContent) => {
+  const href = (slug: string, content?: Pick<PageContent, "blogId">) => {
     const blog = content && blogs.length > 0 ? blogOfArticle(blogs, content) : null;
     const path = blog ? articlePath(blog, slug) : `${prefix}/${slug}`;
     return shop ? marketPath(shop.store.slug, shop.market.slug, path) : path;
@@ -222,11 +222,7 @@ async function gridPages(
   // Only one blog's articles: the first blog's are those that name none, or a blog that is gone.
   const wanted = filter.blog ? blogs.find((b) => b.id === filter.blog) : undefined;
   if (filter.blog && !wanted) return { ...EMPTY_GRID };
-  const inWanted = !wanted
-    ? sql`true`
-    : wanted.main
-      ? sql`(p.published ->> 'blogId' is null or not exists (select 1 from commerce.blogs b where b.store_id = p.store_id and b.id::text = p.published ->> 'blogId' and not b.main))`
-      : sql`p.published ->> 'blogId' = ${wanted.id}`;
+  const inWanted = wanted ? articleInBlog(wanted) : sql`true`;
   const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: PLATFORM_LANG_FACTS[lang].messages, locale: PLATFORM_LANG_FACTS[lang].locale };
   const terms = await currentTerms(owner, termContentOf(type));
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
@@ -260,40 +256,40 @@ async function gridPages(
       parent = String(own.slug);
     } else parent = filter.parent;
   }
-  const rows = await readDb().execute<Row>(sql`
-    select p.id, p.slug, p.published, coalesce(p.first_published_at, p.published_at) as first_published_at
-    from commerce.pages p
-    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
-      and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
-      and (${parent}::text is null or (
-        left(p.slug, length(${parent}::text) + 1) = ${parent}::text || '/'
-        and position('/' in substr(p.slug, length(${parent}::text) + 2)) = 0))
-      and ${matches("categories", categories)}
-      and ${matches("tags", tags)}
-      -- A page for other countries only (D338) is not listed in this one; the same rule as \`pageInMarket()\`.
-      and (${shop?.market.code ?? null}::text is null or coalesce(jsonb_array_length(p.published -> 'markets'), 0) = 0
-        or (p.published -> 'markets') ? ${shop?.market.code ?? ""}::text)
-      and ${inWanted}
-    order by ${dated && filter.sort !== "title" ? articleOrder : order}
-    limit ${Math.max(1, Math.min(48, filter.limit))}
-  `);
-  const items = rows.flatMap((row): GridItem[] => {
-    const stored = parsePageContent(row.published);
-    if (!stored) return [];
-    // A store's page in the market's language where it is translated (D55); Kaizena Flow's in the language drawn (D312 P4).
-    const content = localizePage(stored, shop ? shop.market.locale : pageLocaleOf(lang));
-    return [
-      {
-        id: String(row.id),
-        href: href(String(row.slug), stored),
-        title: content.title,
-        excerpt: content.excerpt || content.seo.description || pageExcerpt(content, EXCERPT_MAX),
-        image: content.thumbnail ? { url: content.thumbnail.url, alt: content.thumbnail.alt } : null,
-        price: null,
-        ...(dated && { date: new Date(String(row.first_published_at)).toISOString() }),
-      },
-    ];
-  });
+  // A store's page in the market's language where it is translated (D55); Kaizena Flow's in the language drawn (D312 P4).
+  const locale = shop ? shop.market.locale : pageLocaleOf(lang);
+  // The cards' facts in SQL (bloat review step 2.17): a document is read only for a card with neither excerpt nor search description.
+  const rows = await typedRows(
+    pageCardRow,
+    sql`
+      select ${pageCardColumns(locale)}
+      from commerce.pages p
+      where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
+        and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
+        and (${parent}::text is null or (
+          left(p.slug, length(${parent}::text) + 1) = ${parent}::text || '/'
+          and position('/' in substr(p.slug, length(${parent}::text) + 2)) = 0))
+        and ${matches("categories", categories)}
+        and ${matches("tags", tags)}
+        -- A page for other countries only (D338) is not listed in this one; the same rule as \`pageInMarket()\`.
+        and ${shop ? pageInMarketSql(shop.market.code) : sql`true`}
+        and ${inWanted}
+      order by ${dated && filter.sort !== "title" ? articleOrder : order}
+      limit ${Math.max(1, Math.min(48, filter.limit))}
+    `,
+    readDb(),
+  );
+  const items = (await pageCards(owner, rows, locale, EXCERPT_MAX)).map(
+    (card): GridItem => ({
+      id: card.id,
+      href: href(card.slug, { blogId: card.blogId ?? undefined }),
+      title: card.title,
+      excerpt: card.excerpt,
+      image: card.image,
+      price: null,
+      ...(dated && { date: card.firstPublishedAt }),
+    }),
+  );
   if (owner && shop && filter.tileFields.length > 0) {
     return { items: await withTileFields(owner, type === "article" ? "article" : "page", shop.market, filter.tileFields, items), ...language };
   }

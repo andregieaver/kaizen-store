@@ -29,7 +29,7 @@ import { BuyerSwitch } from "./buyer";
 import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
-import { PageRowView } from "./page-article";
+import { ArticleStyles, PageRowView } from "./page-article";
 import { GradientLayer } from "./page-parts";
 import { DrawerBackground } from "./drawer-background";
 import { MotionSupport } from "./motion-support";
@@ -343,8 +343,9 @@ export function SiteRows({ content, ctx, place }: { content: PageContent; ctx: S
   const first = flowRows(rows)[0];
   return (
     <>
+      <ArticleStyles rows={rows} place={place} />
       {rows.map((row) => (
-        <PageRowView key={row.id} row={row} place={place} renderBlock={render} first={row === first} late={ctx.place === "footer"} />
+        <PageRowView key={row.id} styled row={row} place={place} renderBlock={render} first={row === first} late={ctx.place === "footer"} />
       ))}
       <MotionSupport needs={motionNeeds(rows)} />
     </>

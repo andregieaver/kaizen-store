@@ -68,6 +68,24 @@ export function mainHeadingIn(rows: readonly PageRow[], themeSlug?: string | nul
 }
 
 /**
+ * The part stylesheet of all of a list of rows at once (bloat review step 2.3), as `RowView` would draw it row by row: with the site's
+ * theme laid under them and a store's links made (`StoreRowView`). One sheet for an article's rows, a header's or a footer's, where
+ * the class names are hashes of each element's rules, so the rules are the same and each is written once.
+ */
+export function ArticleStyles({ rows, place }: { rows: PageRow[]; place: GridPlace }) {
+  // A place of no owner that brings its theme's layers has nothing to read: drawn at once, as its rows are (`PageRowView`).
+  if (!place.owner && place.theme) return <PartStyles rows={themedRows(rows, place.theme.elements, place.theme.sections)} owner={null} />;
+  return <ReadArticleStyles rows={rows} place={place} />;
+}
+
+async function ReadArticleStyles({ rows, place }: { rows: PageRow[]; place: GridPlace }) {
+  const layers = place.theme ?? (await themeLayersFor(place.owner));
+  const base = place.owner ? await storeLinkBase(place.owner, place.market) : null;
+  const linked = base ? rows.map((row) => withStoreLinks(row, base)) : rows;
+  return <PartStyles rows={themedRows(linked, layers.elements, layers.sections)} owner={place.owner} />;
+}
+
+/**
  * A page's rows (D42, D43): on the site, and in the admin's preview of a
  * draft. Only the rows show (D45); the title is the page's heading for
  * screen readers and search engines unless a heading component is the main
@@ -115,9 +133,12 @@ export function PageArticle({
       {/* The page's own CSS (D100), for the whole page. */}
       {!inAdmin && <CustomCss css={content.css} name={`page-${place.pageId ?? "layout"}`} />}
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
+      {/* What the rows' settings say at each screen size (D179), one stylesheet for all of them. */}
+      <ArticleStyles rows={rows} place={place} />
       {rows.map((row, index) => (
         <PageRowView
           key={row.id}
+          styled
           row={row}
           // The row drawn above it in the page's flow (a modal's row is not), which it meets when both draw a box (D262).
           above={rowAbove(rows, index)}
@@ -185,6 +206,8 @@ export function PageRowView(props: {
   late?: boolean;
   /** Its headings and texts are marked for the staff's "Edit text" (D192): `PageArticle`'s. */
   editable?: boolean;
+  /** The rows' part stylesheet is drawn once for all of them (`ArticleStyles`): this row draws none of its own. */
+  styled?: boolean;
 }) {
   // A row is drawn with its site's theme laid under it (D182: what its Theme tab says for rows, headings, text and buttons): a store's, or
   // Kaizena Flow's own where the place has no owner (D235). A place that brings the layers (a preview of an installed theme, D244, or a
@@ -222,11 +245,12 @@ function RowView({
   first = false,
   late = false,
   editable = false,
+  styled = false,
 }: Parameters<typeof PageRowView>[0]) {
   return (
     <>
-      {/* What the row's settings say at each screen size (D179). */}
-      <PartStyles rows={[row]} owner={place.owner} />
+      {/* What the row's settings say at each screen size (D179), unless the article has drawn them for all its rows. */}
+      {!styled && <PartStyles rows={[row]} owner={place.owner} />}
       {/* Who sees the row (D179 phase 4): the server leaves it out for anyone else. */}
       <VisiblePart show={row.visibility?.show} place={place} preview={inAdmin}>
         {row.modal ? (

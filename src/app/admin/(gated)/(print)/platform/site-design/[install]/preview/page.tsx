@@ -5,6 +5,7 @@ import { connection } from "next/server";
 
 import { ArticleView } from "@/components/article-view";
 import { ScopedCss } from "@/components/custom-css";
+import { PreviewBreakpoints } from "@/components/part-styles";
 import { FontLinks } from "@/components/font-links";
 import { PageArticle } from "@/components/page-article";
 import { PlatformFooter, PlatformHeader } from "@/components/platform-layout";
@@ -90,6 +91,7 @@ export default async function PlatformThemePreviewPage({ params, searchParams }:
         <div data-site-css="" className="flex min-h-full flex-col [contain:paint]">
           {/* The theme's CSS, kept inside the preview as the admin's previews keep a site's (D100). */}
           <ScopedCss css={[chrome.customCss, preview.header?.content.css, preview.footer?.content.css, shown?.content.css]} root="[data-site-css]" />
+          <PreviewBreakpoints owner={null} />
           {preview.header ? <KaizenSiteHeader chrome={chrome} layout={preview.header} theme={theme} /> : <PlatformHeader chrome={chrome} />}
           <main className="flex flex-col">
             {shown && place ? (

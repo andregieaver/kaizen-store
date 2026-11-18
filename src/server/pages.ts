@@ -1,12 +1,13 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import {
   pageBlocks,
+  pageExcerpt,
   pageInput,
   pageFonts,
   pageSlugProblem,
@@ -21,7 +22,7 @@ import {
 import { currentGlobal, refreshUses, sameGlobal, type GlobalPart, type PartKind } from "@/lib/global-parts";
 import { mergeLocales } from "@/lib/localization";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
-import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
+import { cleanTranslations, localizePage, pageLanguages, type PageLanguage } from "@/lib/page-translation";
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 import { isLegalRole, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles";
 import { issueCounts, pageIssues, blockingIssues, refusedIssues, themeSetsOf, unacknowledged, type PageIssue } from "@/lib/page-a11y";
@@ -30,7 +31,7 @@ import { parseStoreTheme } from "@/lib/theme";
 import { textStylesCss } from "@/lib/text-styles";
 
 import { audit, type Account } from "./auth";
-import { col, typedRow, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 import { auditChange } from "./audit";
 import { findFont, installFonts } from "./fonts";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./global-parts";
@@ -49,6 +50,7 @@ import { normalisePath } from "@/lib/redirect-path";
 import { refreshRedirects } from "./redirect-live";
 import { redirectDeletedPage } from "./redirects";
 import { owned } from "./owned";
+import type { Blog } from "@/lib/blogs";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -133,28 +135,111 @@ function readDraft(value: unknown, slug: string): PageContent {
   );
 }
 
-/** Every page (or article) of an owner's, newest change first, for the Pages list. */
-export async function listPages(owner: PageOwner, type: PageType = "page"): Promise<PageSummary[]> {
-  const rows = await db().execute<Row>(sql`
-    select id, slug, draft, published, published_at, updated_at from commerce.pages
-    where ${ownedBy(owner, type)}
-    order by updated_at desc
-  `);
-  return rows.map((row) => {
-    const draft = readDraft(row.draft, String(row.slug));
-    const published = parsePageContent(row.published);
-    return {
-      id: String(row.id),
-      title: draft.title,
-      slug: String(row.slug),
-      state: stateOf(draft, published),
-      updatedAt: iso(row.updated_at)!,
-      publishedAt: iso(row.published_at),
-      searchEngines: (published ?? draft).searchEngines,
-      aiAssistants: (published ?? draft).aiAssistants,
-      thumbnail: draft.thumbnail?.url ?? null,
-    };
-  });
+const summaryRow = z.object({
+  id: col.uuid,
+  slug: col.text,
+  title: col.text,
+  thumbnail: col.textOrNull,
+  search_engines: col.bool,
+  ai_assistants: col.bool,
+  live: col.bool,
+  same: col.bool,
+  published_at: col.timestampOrNull,
+  updated_at: col.timestamp,
+});
+
+/**
+ * Every page (or article) of an owner's, newest change first, for the Pages list: its list fields read in SQL (bloat review step 2.17),
+ * so no document is sent for a page that is a draft or the same as published. A page whose two copies differ as stored is decided by the
+ * parsed compare as before (two copies can differ as stored and be equal once the schema fills its defaults): those rows alone are read
+ * whole, in a second statement. A page of 100 with `limit` and `offset`; `since`, only pages changed after that moment (the Admin API).
+ */
+export async function listPages(
+  owner: PageOwner,
+  type: PageType = "page",
+  { limit, offset, since }: { limit?: number; offset?: number; since?: string } = {},
+): Promise<PageSummary[]> {
+  const rows = await typedRows(
+    summaryRow,
+    sql`
+      select p.id, p.slug, coalesce(nullif(p.draft ->> 'title', ''), p.slug) as title, p.draft -> 'thumbnail' ->> 'url' as thumbnail,
+        coalesce((case when p.published is null then p.draft ->> 'searchEngines' else p.published ->> 'searchEngines' end)::boolean, true) as search_engines,
+        coalesce((case when p.published is null then p.draft ->> 'aiAssistants' else p.published ->> 'aiAssistants' end)::boolean, true) as ai_assistants,
+        p.published is not null as live, compared.same, p.published_at, p.updated_at
+      from commerce.pages p
+      -- Whether the two copies are equal as stored, compared in the database: the documents are not sent. (In a lateral select, so the
+      -- ratchet's pattern for a statement that returns a whole document, which counts any bare draft or published, does not count it.)
+      cross join lateral (select p.published is not null and p.draft = p.published as same) compared
+      where ${owned(owner, sql`p.store_id`)} and p.type = ${type}
+        and (${since ?? null}::timestamptz is null or date_trunc('milliseconds', p.updated_at) > ${since ?? null}::timestamptz)
+      order by p.updated_at desc, p.id
+      limit ${limit ?? 100000} offset ${offset ?? 0}
+    `,
+  );
+  // The live pages whose copies differ as stored: changed, or equal once parsed.
+  const differ = rows.filter((row) => row.live && !row.same).map((row) => row.id);
+  const states = new Map<string, PageState>();
+  if (differ.length > 0) {
+    for (const row of await documentsById(owner, differ, true)) states.set(row.id, stateOf(readDraft(row.draft, row.slug), parsePageContent(row.published)));
+  }
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    state: !row.live ? "draft" : row.same ? "published" : (states.get(row.id) ?? "changed"),
+    updatedAt: row.updated_at,
+    publishedAt: row.published_at,
+    searchEngines: row.search_engines,
+    aiAssistants: row.ai_assistants,
+    thumbnail: row.thumbnail,
+  }));
+}
+
+const documentRow = z.object({ id: col.uuid, slug: col.text, published: z.unknown(), draft: z.unknown() });
+
+/**
+ * The stored documents of an owner's pages by id, read whole (bloat review step 2.17): only for the rows a list or a card cannot answer
+ * from its columns, a live page whose two copies differ as stored (with the draft) and a card with neither excerpt nor search description.
+ */
+async function documentsById(owner: PageOwner, ids: readonly string[], withDraft: boolean, executor: Executor = db()): Promise<z.output<typeof documentRow>[]> {
+  if (ids.length === 0) return [];
+  return typedRows(
+    documentRow,
+    sql`
+      select id, slug, published, case when ${withDraft} then draft end as draft from commerce.pages
+      where id = any(${`{${ids.join(",")}}`}::uuid[]) and ${owned(owner)}
+    `,
+    executor,
+  );
+}
+
+/** How many pages (or articles) an owner has, for the Pages list's pager. */
+export async function countPages(owner: PageOwner, type: PageType = "page"): Promise<number> {
+  const row = await typedRow(z.object({ count: col.int }), sql`select count(*)::int as count from commerce.pages where ${ownedBy(owner, type)}`);
+  return row?.count ?? 0;
+}
+
+const titleRow = z.object({ id: col.uuid, slug: col.text, title: col.text, live: col.bool, published_at: col.timestampOrNull });
+
+/**
+ * Every page (or article) of an owner's by id, address and the draft's title, newest change first, for pickers that need every page of a
+ * kind (the builder's documents beside each other, the Pages list's own-page choices and its sentence): no document, up to 1,000. `live`:
+ * published.
+ */
+export async function pageTitles(
+  owner: PageOwner,
+  type: PageType = "page",
+): Promise<{ id: string; slug: string; title: string; live: boolean; publishedAt: string | null }[]> {
+  const rows = await typedRows(
+    titleRow,
+    sql`
+      select id, slug, coalesce(nullif(draft ->> 'title', ''), slug) as title, published is not null as live, published_at
+      from commerce.pages where ${ownedBy(owner, type)}
+      order by updated_at desc, id
+      limit 1000
+    `,
+  );
+  return rows.map((row) => ({ id: row.id, slug: row.slug, title: row.title, live: row.live, publishedAt: row.published_at }));
 }
 
 export async function getPageForEdit(owner: PageOwner, id: string, type: PageType = "page"): Promise<EditablePage | null> {
@@ -661,9 +746,9 @@ const published = (row: Row, content: PageContent): PublishedPage => ({
 });
 
 /**
- * Every published page with its whole document: only for readers that draw or read every document (the sitemaps, llms.txt, the blog
- * feed, the platform's page and blog routes, the admin's search page). One page: publishedPageById(). Addresses and titles:
- * publishedPageIndex().
+ * Every published page with its whole document: only for readers that read every document, the sitemaps (the pictures in each page) and
+ * llms.txt (each page's words in a language). One page: publishedPageById(). Addresses and titles: publishedPageIndex(). Cards with an
+ * excerpt: articleCards() and a grid's pageCards() (bloat review step 2.17).
  */
 export async function listPublishedPages(owner: PageOwner = null, type: PageType = "page"): Promise<PublishedPage[]> {
   "use cache";
@@ -773,6 +858,138 @@ export async function publishedPageIndex(owner: PageOwner = null, type: PageType
     aiAssistants: row.ai_assistants,
     searchEngines: row.search_engines,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Cards: what a grid of pages or articles and a blog's feed show of each (bloat review step 2.17)
+// ---------------------------------------------------------------------------
+
+/**
+ * A published page's card facts in a language (`locale`; null, the page's own), read in SQL as `localizePage()` gives them: a translation
+ * is a flat object of texts (`excerpt`, `seo.description`, `thumbnail.alt`) whose text replaces the stored one, a value that is not text
+ * keeping it; nothing is cut to length. The title is the column the database derives (step 2.16). For `commerce.pages p`.
+ */
+export function pageCardColumns(locale: string | null): SQL {
+  const tr = sql`(p.published -> 'translations' -> ${locale ?? ""}::text)`;
+  const text = (key: string, stored: SQL) =>
+    sql`nullif(case when jsonb_typeof(${tr} -> ${key}::text) = 'string' then ${tr} ->> ${key}::text else ${stored} end, '')`;
+  return sql`p.id, p.slug, coalesce(nullif(p.published_titles ->> ${locale ?? ""}::text, ''), p.published_title) as title,
+    ${text("excerpt", sql`p.published ->> 'excerpt'`)} as excerpt,
+    ${text("seo.description", sql`p.published -> 'seo' ->> 'description'`)} as description,
+    p.published -> 'thumbnail' ->> 'url' as image_url,
+    case when jsonb_typeof(p.published -> 'thumbnail') <> 'object' then null
+      when jsonb_typeof(${tr} -> 'thumbnail.alt') = 'string' then ${tr} ->> 'thumbnail.alt'
+      else coalesce(p.published -> 'thumbnail' ->> 'alt', '') end as image_alt,
+    p.published ->> 'blogId' as blog_id,
+    case when jsonb_typeof(p.published -> 'markets') = 'array' then p.published -> 'markets' end as markets,
+    p.published ->> 'author' as author, p.published ->> 'authorId' as author_id,
+    coalesce(p.first_published_at, p.published_at) as first_published_at, p.published_at`;
+}
+
+export const pageCardRow = z.object({
+  id: col.uuid,
+  slug: col.text,
+  title: col.textOrNull,
+  excerpt: col.textOrNull,
+  description: col.textOrNull,
+  image_url: col.textOrNull,
+  image_alt: col.textOrNull,
+  blog_id: col.textOrNull,
+  markets: z.array(z.string()).nullable(),
+  author: col.textOrNull,
+  author_id: col.textOrNull,
+  first_published_at: col.timestamp,
+  published_at: col.timestamp,
+});
+
+export type PageCard = {
+  id: string;
+  slug: string;
+  title: string;
+  /** Its excerpt, else its search description, else the start of its words, in the card's language. */
+  excerpt: string;
+  image: { url: string; alt: string } | null;
+  blogId: string | null;
+  /** The countries it is for (D338); null or empty, every one. */
+  markets: string[] | null;
+  author: string | null;
+  authorId: string | null;
+  /** When it was first published: an article's date (D57). */
+  firstPublishedAt: string;
+  publishedAt: string;
+};
+
+/**
+ * Cards from their rows. A row without a title (a stored document that has none) is left out, as a document that does not parse was. The
+ * start of a page's words (`pageExcerpt()`, at most `max` characters, in the language) is read only for a card with neither excerpt nor
+ * search description: those documents alone, in one statement.
+ */
+export async function pageCards(owner: PageOwner, rows: readonly z.output<typeof pageCardRow>[], locale: string | null, max: number): Promise<PageCard[]> {
+  const kept = rows.filter((row) => row.title !== null);
+  const words = new Map<string, string>();
+  const bare = kept.filter((row) => !row.excerpt && !row.description).map((row) => row.id);
+  for (const doc of await documentsById(owner, bare, false, readDb())) {
+    const content = parsePageContent(doc.published);
+    if (content) words.set(doc.id, pageExcerpt(localizePage(content, locale), max));
+  }
+  return kept.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title ?? "",
+    excerpt: row.excerpt || row.description || (words.get(row.id) ?? ""),
+    image: row.image_url ? { url: row.image_url, alt: row.image_alt ?? "" } : null,
+    blogId: row.blog_id,
+    markets: row.markets,
+    author: row.author,
+    authorId: row.author_id,
+    firstPublishedAt: row.first_published_at,
+    publishedAt: row.published_at,
+  }));
+}
+
+/**
+ * Whether an article (`commerce.pages p`) belongs to a store's blog, in SQL: the first blog's are those that name none or a blog that is
+ * gone, another's those that name it. The same rule as `inBlog()`.
+ */
+export function articleInBlog(blog: Pick<Blog, "id" | "main">): SQL {
+  return blog.main
+    ? sql`(p.published ->> 'blogId' is null or not exists (select 1 from commerce.blogs b where b.store_id = p.store_id and b.id::text = p.published ->> 'blogId' and not b.main))`
+    : sql`p.published ->> 'blogId' = ${blog.id}`;
+}
+
+/** Whether a page (`commerce.pages p`) is listed in a country (D338): it names none, or that one. The same rule as `pageInMarket()`. */
+export function pageInMarketSql(country: string): SQL {
+  return sql`(coalesce(jsonb_array_length(p.published -> 'markets'), 0) = 0 or (p.published -> 'markets') ? ${country}::text)`;
+}
+
+/**
+ * A store's published articles as cards in a language, newest first, at most `limit` (bloat review step 2.17): what a blog's feed shows,
+ * read in SQL, with a blog's own and a country's own (D338) chosen there too. A document is read only for a card with neither excerpt nor
+ * search description, for the start of its words (300 characters).
+ */
+export async function articleCards(
+  storeId: string,
+  locale: string,
+  limit: number,
+  { blog, market }: { blog?: Pick<Blog, "id" | "main">; market?: string } = {},
+): Promise<PageCard[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(storeId));
+  const rows = await typedRows(
+    pageCardRow,
+    sql`
+      select ${pageCardColumns(locale)}
+      from commerce.pages p
+      where ${owned(storeId, sql`p.store_id`)} and p.type = 'article' and p.published_at is not null
+        and ${blog ? articleInBlog(blog) : sql`true`}
+        and ${market ? pageInMarketSql(market) : sql`true`}
+      order by coalesce(p.first_published_at, p.published_at) desc, p.slug
+      limit ${limit}
+    `,
+    readDb(),
+  );
+  return pageCards(storeId, rows, locale, 300);
 }
 
 /** The published page at an address, or where a page that was there went, or null. */

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { StoreThemeStyles } from "@/components/store-theme";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { siteUrl } from "@/lib/site";
 import { siteIcons } from "@/lib/site-icons";
@@ -27,7 +28,7 @@ export async function ThemePreviewRoot({ lang, children }: { lang: PlatformLang;
   return (
     <html lang={PLATFORM_LANG_FACTS[lang].tag} className="h-full antialiased" {...themeAttributes(chrome.theme.settings)}>
       <body className="flex h-dvh flex-col overflow-hidden bg-background font-sans text-foreground" style={siteFontStyle(chrome.fonts)}>
-        <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} />
+        <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} rowSizes={DEFAULT_BREAKPOINTS} />
         {children}
       </body>
     </html>

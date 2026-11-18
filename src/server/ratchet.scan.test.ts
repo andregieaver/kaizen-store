@@ -1,6 +1,10 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, CONFIRM_CALL, OSLO_ZONE, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ANY_SUPPRESSED, CONFIRM_CALL, OSLO_ZONE, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { selectsDocument } from "./page-documents-test-support";
 import baseline from "./ratchet.baseline.json";
 
 /**
@@ -162,5 +166,50 @@ describe("the ratchet (code review 1.2)", () => {
     // A table without a store, and a write by another key, are not this rule's.
     expect(unscopedWrites("sql`delete from commerce.accounts where id = ${id}::uuid`", tables)).toBe(0);
     expect(unscopedWrites("sql`delete from commerce.media where expires_at < now()`", tables)).toBe(0);
+  });
+});
+
+/**
+ * The statements that return a whole page document (bloat review step 2.17): each `select … from commerce.pages` (the pattern of step
+ * 1.3) whose select list returns `draft` or `published` whole, by file and function. Those that may return many rows are named in
+ * `pageDocuments` with the reason the documents are read; those that read one page (by its id or address) in `pageDocumentsOneRow`.
+ */
+function documentReads(root: string): string[] {
+  const walk = (dir: string): string[] =>
+    readdirSync(join(root, dir)).flatMap((name) => {
+      const path = `${dir}/${name}`;
+      if (statSync(join(root, path)).isDirectory()) return walk(path);
+      return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) && !TEST_SUPPORT.test(name) ? [path] : [];
+    });
+  const FUNCTION = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*(\w+)|^(?:export\s+)?(?:const|let)\s+(\w+)\s*[:=]/gm;
+  const pairs = new Set<string>();
+  for (const file of [...walk("src/server"), ...walk("src/app")]) {
+    const text = readFileSync(join(root, file), "utf8");
+    const functions = [...text.matchAll(FUNCTION)].map((m) => ({ at: m.index, name: m[1] ?? m[2] }));
+    for (const m of text.matchAll(new RegExp(PAGE_DOCUMENT_READ.source, PAGE_DOCUMENT_READ.flags))) {
+      if (!selectsDocument(m[0])) continue;
+      pairs.add(`${file}#${functions.filter((f) => f.at < m.index).at(-1)?.name ?? "(top)"}`);
+    }
+  }
+  return [...pairs].sort();
+}
+
+describe("the statements that read whole page documents (bloat review step 2.17)", () => {
+  const found = documentReads(process.cwd());
+  const many: Record<string, string> = baseline.pageDocuments;
+  const one: string[] = baseline.pageDocumentsOneRow;
+
+  it("are each named, with the reason when they may read many", () => {
+    const unnamed = found.filter((pair) => !(pair in many) && !one.includes(pair));
+    expect(
+      unnamed,
+      "a new statement returns a whole page document: read the columns the list shows (pageTitles(), publishedPageIndex(), pageCards()), or name it in ratchet.baseline.json's pageDocuments with the reason (pageDocumentsOneRow for one page by id)",
+    ).toEqual([]);
+  });
+
+  it("names only those still there, each once, with a reason", () => {
+    expect([...Object.keys(many), ...one].filter((pair) => !found.includes(pair)), "delete the line of a read that went").toEqual([]);
+    expect(Object.keys(many).filter((pair) => one.includes(pair))).toEqual([]);
+    expect(Object.entries(many).filter(([, reason]) => reason.trim().length < 20).map(([pair]) => pair)).toEqual([]);
   });
 });

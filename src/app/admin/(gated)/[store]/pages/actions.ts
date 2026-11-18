@@ -24,7 +24,7 @@ import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { stopPageJob } from "@/server/page-jobs";
-import { deletePage, getPageForEdit, listPages, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, pageTitles, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
 import { isDualKind, type DualChoice } from "@/lib/dual-page";
 import { requirementMet } from "@/lib/store-features";
 import { createRolePage } from "@/server/page-roles";
@@ -405,7 +405,7 @@ export async function storeDualChoicesAction(storeSlug: string, kind: unknown): 
   const member = await checkPageTypeAccess(storeSlug, kind, "read");
   // Product layouts are part of the online shop (D178 step 5).
   if (!member || (kind === "product_layout" && !requirementMet(member.store, "shop"))) return [];
-  return (await listPages(member.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
+  return (await pageTitles(member.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
 }
 
 /** A page build or a page's pictures stopped from the Pages list (PSI UX-01), as `cancel_page_build` stops a build. */

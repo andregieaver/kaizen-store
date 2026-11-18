@@ -39,7 +39,7 @@ import { planPageMotion, readMotionRows } from "@/server/motion-ai";
 import { duplicatePage } from "@/server/page-duplicate";
 import { translatePageTexts } from "@/server/page-translate";
 import { listVersions, readVersion } from "@/server/page-versions";
-import { deletePage, getPageForEdit, listPages, pagesTag, savePage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, pageTitles, pagesTag, savePage, unpublishPage } from "@/server/pages";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { budgetVisitor, takeBudget } from "@/server/request-budget";
 import { addressOf } from "@/server/analytics-visits";
@@ -216,7 +216,7 @@ export async function sandboxTranslateAction(sandboxId: string, request: unknown
 export async function sandboxDualChoicesAction(sandboxId: string, kind: unknown): Promise<DualChoice[]> {
   const sandbox = await open(sandboxId);
   if (!sandbox || !isKind(kind) || (kind === "product_layout" && !requirementMet(sandbox.store, "shop"))) return [];
-  return (await listPages(sandbox.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
+  return (await pageTitles(sandbox.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
 }
 
 /** A picture uploaded from the builder into the sandbox's library, within its storage allowance (D457 S3, 4.5). */

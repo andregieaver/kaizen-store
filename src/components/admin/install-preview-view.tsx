@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ScopedCss } from "@/components/custom-css";
+import { PreviewBreakpoints } from "@/components/part-styles";
 import { FontLinks } from "@/components/font-links";
 import { PageArticle } from "@/components/page-article";
 import { ProductLayoutView } from "@/components/product-parts";
@@ -98,6 +99,7 @@ export async function InstallPreviewView({
         <div data-site-css="" className="flex min-h-full flex-col [contain:paint]">
           {/* The theme's CSS, kept inside the preview as the admin's previews keep a store's (D100). */}
           <ScopedCss css={[store.customCss, preview.header?.content.css, preview.footer?.content.css, wantsProduct ? productLayout.css : content?.css]} root="[data-site-css]" />
+          <PreviewBreakpoints owner={store.id} />
           {preview.header ? <StoreSiteHeader store={store} market={market} notice={null} layout={preview.header} /> : <StoreHeader store={store} market={market} notice={null} />}
           <main className="flex flex-col">
             {wantsProduct ? (

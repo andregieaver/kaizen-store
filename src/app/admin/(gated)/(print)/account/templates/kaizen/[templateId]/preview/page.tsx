@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ArticleView } from "@/components/article-view";
 import { ScopedCss } from "@/components/custom-css";
+import { PreviewBreakpoints } from "@/components/part-styles";
 import { FontLinks } from "@/components/font-links";
 import { PageArticle } from "@/components/page-article";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
@@ -62,6 +63,7 @@ export default async function KaizenTemplatePreviewPage({
           <style>{themeCss(chrome.theme.settings, "[data-theme-canvas]")}</style>
           <div data-site-css="" className="flex flex-col gap-6 [contain:paint]">
             <ScopedCss css={[chrome.customCss, content.css]} root="[data-site-css]" />
+            <PreviewBreakpoints owner={null} />
             {type === "header" ? (
               <KaizenSiteHeader chrome={chrome} layout={{ id: preview.id, content }} />
             ) : type === "footer" ? (

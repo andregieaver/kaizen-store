@@ -14,7 +14,6 @@ import {
   blogProblems,
   blogTitle,
   feedPath,
-  inBlog,
   type AuthorProblem,
   type Blog,
   type BlogAuthor,
@@ -24,13 +23,12 @@ import {
 } from "@/lib/blogs";
 import { isSafeAddress } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
-import { pageExcerpt, type PageContent } from "@/lib/page-content";
-import { pageInMarket } from "@/lib/page-markets";
-import { localizePage } from "@/lib/page-translation";
+import type { PageContent } from "@/lib/page-content";
 import { marketUrl } from "@/lib/paths";
 
 import { audit, type Account } from "./auth";
-import { listPublishedPages, pagesTag, type PublishedPage } from "./pages";
+import { owned } from "./owned";
+import { articleCards, articleInBlog, pagesTag } from "./pages";
 import { resolveShop } from "./shop";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -109,10 +107,27 @@ export const bylineOf = (author: BlogAuthor | null, content: Pick<PageContent, "
 // Articles by blog
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/** The blog's published articles, newest first (an article without a blog of its own is the first blog's). */
-export async function blogArticles(storeId: string, blog: Pick<Blog, "id">): Promise<PublishedPage[]> {
-  const [blogs, articles] = await Promise.all([storeBlogs(storeId), listPublishedPages(storeId, "article")]);
-  return articles.filter((article) => inBlog(blogs, blog, article.content));
+/**
+ * The categories a blog's published articles are in, by id (an article without a blog of its own is the first blog's), read in SQL without
+ * a document (bloat review step 2.17).
+ */
+export async function blogCategoryIds(storeId: string, blog: Pick<Blog, "id" | "main">): Promise<string[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(storeId));
+  const rows = await typedRows(
+    z.object({ id: col.text }),
+    sql`
+      select distinct c.id
+      from commerce.pages p
+      cross join lateral jsonb_array_elements_text(
+        case when jsonb_typeof(p.published -> 'categories') = 'array' then p.published -> 'categories' else '[]'::jsonb end
+      ) as c(id)
+      where ${owned(storeId, sql`p.store_id`)} and p.type = 'article' and p.published_at is not null and ${articleInBlog(blog)}
+    `,
+    readDb(),
+  );
+  return rows.map((row) => row.id);
 }
 
 /** The blog at an address: the first one for `/blog` (handle null), else the one with that handle (never the first one's). */
@@ -139,9 +154,9 @@ export async function blogFeed(storeSlug: string, marketSlug: string, handle: st
   cacheTag(pagesTag(store.id));
   const blog = await findBlog(store.id, handle);
   if (!blog) return null;
-  const [all, authors] = await Promise.all([blogArticles(store.id, blog), storeAuthors(store.id)]);
-  // An article for other countries only (D338) is not in this country's feed.
-  const articles = all.filter((article) => pageInMarket(article.content, market.code));
+  // The blog's own articles in this country (an article for other countries only, D338, is not in its feed), as cards: no document but
+  // for one with neither excerpt nor search description (bloat review step 2.17).
+  const [articles, authors] = await Promise.all([articleCards(store.id, market.locale, FEED_ENTRIES_MAX, { blog, market: market.code }), storeAuthors(store.id)]);
   const m = t(market.lang);
   const name = blogTitle(blog, market.locale, store.localization.locales[0], m.blog);
   const url = (path: string) => marketUrl(store.slug, market.slug, path);
@@ -154,17 +169,16 @@ export async function blogFeed(storeSlug: string, marketSlug: string, handle: st
     author: store.name,
     // A blog with no articles yet: the moment the feed was made (cached with the pages).
     fallbackUpdated: new Date().toISOString(),
-    entries: articles.slice(0, FEED_ENTRIES_MAX).map((article) => {
-      const c = localizePage(article.content, market.locale);
+    entries: articles.map((article) => {
       const link = url(articlePath(blog, article.slug));
       return {
         id: link,
-        title: c.title,
+        title: article.title,
         link,
-        summary: c.excerpt || c.seo.description || pageExcerpt(c, 300),
+        summary: article.excerpt,
         published: article.firstPublishedAt,
         updated: article.publishedAt,
-        author: bylineOf(authorOf(authors, c), c, store.name),
+        author: bylineOf(authorOf(authors, { authorId: article.authorId ?? undefined }), { author: article.author ?? undefined }, store.name),
       };
     }),
   });

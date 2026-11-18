@@ -6,7 +6,7 @@ import { pageSlugProblem } from "@/lib/page-content";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import { findEntryPage } from "@/server/content-site";
-import { findPublishedPage, listPublishedPages } from "@/server/pages";
+import { findPublishedPage, publishedPageIndex } from "@/server/pages";
 import { languageMeta } from "@/server/platform-lang-meta";
 import { platformRoleOf } from "@/server/platform-roles";
 
@@ -21,7 +21,7 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
  */
 export async function pageStaticParams(nested: boolean) {
   // Only addresses a page may have: one made before an address was reserved (a language's `/no`) would otherwise take that route's place.
-  const pages = (await listPublishedPages()).filter((page) => pageSlugProblem(page.slug) === null);
+  const pages = (await publishedPageIndex()).filter((page) => pageSlugProblem(page.slug) === null);
   if (!nested) {
     const top = pages.filter((page) => !page.slug.includes("/"));
     // Cache Components needs at least one entry; "_" simply renders a 404.

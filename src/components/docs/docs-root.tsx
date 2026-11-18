@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { StoreThemeStyles } from "@/components/store-theme";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { docsOrigin } from "@/lib/docs-host";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
@@ -34,7 +35,7 @@ export async function DocsRoot({ lang, children }: { lang: PlatformLang; childre
   return (
     <html lang={PLATFORM_LANG_FACTS[lang].tag} className="antialiased" {...themeAttributes(theme.settings)}>
       <body className="min-h-dvh bg-background font-sans text-foreground" style={siteFontStyle(fonts)}>
-        <StoreThemeStyles store={{ id: "kaizen", theme, fonts }} />
+        <StoreThemeStyles store={{ id: "kaizen", theme, fonts }} rowSizes={DEFAULT_BREAKPOINTS} />
         {children}
       </body>
     </html>
