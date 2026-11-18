@@ -444,6 +444,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   dns_zones: never("The DNS Kaizena Flow keeps for the original's domains (D315): a domain belongs to one store."),
   dns_changes: never("The history of the original's DNS (D315)."),
   sending_domains: never("The original's own sending domain (D727): a domain is verified at Resend for one store, and a copy sends from the shared address until it adds its own."),
+  contact_policies: never("How often people hear from the original (D764): a copy has no list yet and starts from the default policy."),
   sending_pauses: never("The sending guard's hold on the original's marketing email (D730): a copy has sent nothing."),
   page_versions: never("A page's earlier versions (D305) are its own history: a copy starts with its pages as they are now."),
   // Blogs in depth (wave 7 unit G, D341).

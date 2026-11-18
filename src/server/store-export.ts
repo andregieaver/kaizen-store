@@ -84,6 +84,7 @@ export const STORE_EXPORT_TABLES = [
   "invoice_settings",
   "gift_card_settings",
   "review_settings",
+  "contact_policies",
   "order_rules",
   "order_views",
   "workflows",

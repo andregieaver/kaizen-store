@@ -1102,7 +1102,7 @@
       },
       "dispatcher.ledger": {
         "statements": 52,
-        "rowsRead": 1350
+        "rowsRead": 240
       },
       "dispatcher.legal-sources": {
         "statements": 6,
@@ -1154,7 +1154,7 @@
       },
       "dispatcher.recurring": {
         "statements": 41,
-        "rowsRead": 1972
+        "rowsRead": 862
       },
       "dispatcher.report-emails": {
         "statements": 1,
@@ -1258,7 +1258,7 @@
       },
       "route.broadcasts": {
         "statements": 116,
-        "rowsRead": 10619
+        "rowsRead": 8403
       },
       "route.cookie-scan": {
         "statements": 14,
@@ -1468,7 +1468,7 @@
       },
       "dispatcher.ledger": {
         "statements": 50,
-        "rowsRead": 1350
+        "rowsRead": 240
       },
       "dispatcher.legal-sources": {
         "statements": 0,
@@ -1520,7 +1520,7 @@
       },
       "dispatcher.recurring": {
         "statements": 40,
-        "rowsRead": 1970
+        "rowsRead": 860
       },
       "dispatcher.report-emails": {
         "statements": 0,
@@ -1624,7 +1624,7 @@
       },
       "route.broadcasts": {
         "statements": 100,
-        "rowsRead": 10615
+        "rowsRead": 8399
       },
       "route.cookie-scan": {
         "statements": 0,

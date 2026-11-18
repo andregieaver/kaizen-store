@@ -17,8 +17,8 @@ import { totpMatches } from "./totp.mjs";
 
 // Kept in step with e2e/signed-in/accounts.ts.
 export const E2E_PASSWORD = "e2e-Password-1";
-const ADMINS = ["e2e-admin@example.com"];
-const USERS = ["e2e-owner@example.com", "e2e-reader@example.com", ...ADMINS];
+const ADMINS = ["e2e-admin@example.com", "e2e-admin-nb@example.com"];
+const USERS = ["e2e-owner@example.com", "e2e-reader@example.com", "e2e-eier@example.com", ...ADMINS];
 
 const SECRET = "kaizen-e2e-auth-stub";
 const port = Number(process.env.AUTH_STUB_PORT ?? 3912);

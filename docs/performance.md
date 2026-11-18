@@ -359,6 +359,33 @@ baseline (200 bytes of room) or an area no client part under it names (`src/comp
 `unnamed` list. Named is counted from source, by static import, not what a browser reads at load: `e2e/signed-in/admin-scripts.spec.ts` (step 1.5) is the
 browser's cross-check on five screens.
 
+Five signed-in screens are held in English and in Norwegian (bloat review step 1.5, `e2e/signed-in/admin-scripts.spec.ts`,
+`e2e/signed-in/admin-handed.baseline.json`; two Norwegian accounts sign in through the Auth stand-in, `accounts.admin_locale = 'nb-NO'`).
+Each has three figures. The document is the server's HTML. The words handed are the bytes of the `texts` objects `AdminAreas` gives
+`AdminTextProvider`, read from the flight payload in the document. The script by idle is every script the page fetched until three quiet
+seconds. The first product and the first page are the store's first by creation, then by handle and slug (a store's rows share a
+`created_at`). A save's answer is the response to the server action that carries the changed title, on the product editor and the
+builder, for the English owner. The day's figures (18 November 2026, the largest of several runs, the baseline):
+
+| Screen | Language | Document | Words handed | Script by idle |
+|---|---|---|---|---|
+| Store home | English | 215,768 | 67,199 | 953,731 |
+| Store home | Norwegian | 205,204 | 82,220 | 953,731 |
+| Orders | English | 202,030 | 33,723 | 939,235 |
+| Orders | Norwegian | 189,524 | 47,103 | 939,235 |
+| A product's editor | English | 431,540 | 246,302 | 1,379,355 |
+| A product's editor | Norwegian | 452,922 | 268,191 | 1,379,355 |
+| The builder | English | 606,720 | 319,588 | 3,179,230 |
+| The builder | Norwegian | 632,988 | 346,167 | 3,179,230 |
+| Platform home | English | 123,368 | 33,723 | 896,262 |
+| Platform home | Norwegian | 138,023 | 47,103 | 896,262 |
+
+A save's answer: the product editor 311,274 bytes (it sends the words again, which step 2.28 takes out), the builder 1,122.
+The document is streamed, so a screen's loading skeleton is in it or not by timing: it varies by about 1% between runs; the admin is rebuilt daily, so the spec allows
+5% over the baseline for the document, the script and a save, and max(2,000 bytes, 5%) for the words (a whole area handed is 20 KB or more). The English owner's home and orders documents grow
+with what the specs before them made in the store (188 KB and 174 KB alone): their figures are what CI sees after the whole suite. A fall is a note: lower the baseline in the
+same change (`E2E_MEASURE=1` prints them), and a figure that must rise is the owner's call.
+
 ## What a server route loads, and what holds it (bloat review step 1.8)
 
 Four guards hold what a server entry loads and carries, from the numbers of 18 November 2026. Three rules keep them low. A route

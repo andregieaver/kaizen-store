@@ -1,0 +1,154 @@
+{
+  "en": {
+    "home": {
+      "document": 215768,
+      "handed": 67199,
+      "scriptByIdle": 953731,
+      "named": null,
+      "areas": [
+        "assistant",
+        "common",
+        "home",
+        "shell"
+      ]
+    },
+    "orders": {
+      "document": 202030,
+      "handed": 33723,
+      "scriptByIdle": 939235,
+      "named": null,
+      "areas": [
+        "assistant",
+        "common",
+        "shell"
+      ]
+    },
+    "product": {
+      "document": 431497,
+      "handed": 246259,
+      "scriptByIdle": 1379355,
+      "named": 64530,
+      "areas": [
+        "assistant",
+        "builder",
+        "common",
+        "fields",
+        "product",
+        "products",
+        "shell",
+        "website"
+      ]
+    },
+    "builder": {
+      "document": 606658,
+      "handed": 319551,
+      "scriptByIdle": 3179230,
+      "named": null,
+      "areas": [
+        "animation",
+        "assistant",
+        "backdrops",
+        "blocks",
+        "blog",
+        "builder",
+        "common",
+        "design",
+        "fields",
+        "products",
+        "schedules",
+        "shell",
+        "storeParts",
+        "website"
+      ]
+    },
+    "platform": {
+      "document": 123638,
+      "handed": 33723,
+      "scriptByIdle": 896262,
+      "named": null,
+      "areas": [
+        "assistant",
+        "common",
+        "shell"
+      ]
+    }
+  },
+  "nb": {
+    "home": {
+      "document": 205247,
+      "handed": 82220,
+      "scriptByIdle": 953731,
+      "named": null,
+      "areas": [
+        "assistant",
+        "common",
+        "home",
+        "shell"
+      ]
+    },
+    "orders": {
+      "document": 189379,
+      "handed": 47103,
+      "scriptByIdle": 939235,
+      "named": null,
+      "areas": [
+        "assistant",
+        "common",
+        "shell"
+      ]
+    },
+    "product": {
+      "document": 452922,
+      "handed": 268145,
+      "scriptByIdle": 1379355,
+      "named": 64530,
+      "areas": [
+        "assistant",
+        "builder",
+        "common",
+        "fields",
+        "product",
+        "products",
+        "shell",
+        "website"
+      ]
+    },
+    "builder": {
+      "document": 633031,
+      "handed": 346127,
+      "scriptByIdle": 3179230,
+      "named": null,
+      "areas": [
+        "animation",
+        "assistant",
+        "backdrops",
+        "blocks",
+        "blog",
+        "builder",
+        "common",
+        "design",
+        "fields",
+        "products",
+        "schedules",
+        "shell",
+        "storeParts",
+        "website"
+      ]
+    },
+    "platform": {
+      "document": 138023,
+      "handed": 47103,
+      "scriptByIdle": 896262,
+      "named": null,
+      "areas": [
+        "assistant",
+        "common",
+        "shell"
+      ]
+    }
+  },
+  "saves": {
+    "product": 311274,
+    "builder": 1122
+  }
+}

@@ -2,7 +2,7 @@ import { expect, test as setup, type Page } from "@playwright/test";
 
 import { testDb } from "../db";
 import { totp } from "../fixtures/totp.mjs";
-import { ADMIN, E2E_PASSWORD, E2E_STORE, OWNER, QUIET, READER } from "./accounts";
+import { ADMIN, ADMIN_NB, E2E_PASSWORD, E2E_STORE, E2E_STORE_NB, OWNER, OWNER_NB, QUIET, READER } from "./accounts";
 
 /**
  * Signs the test people in through the admin's own sign-in form, against the Auth stand-in (e2e/fixtures/auth-stub.mjs), and
@@ -92,6 +92,64 @@ setup("the owner and the reader sign in", async ({ browser }) => {
     await expect(readerPage.getByRole("heading", { level: 1 })).toBeVisible();
     await reader.storageState({ path: READER.state });
     await reader.close();
+  } finally {
+    await sql.end();
+  }
+});
+
+setup("the Norwegian owner signs in", async ({ browser }) => {
+  const sql = testDb();
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${E2E_STORE_NB}`;
+    if (!store) {
+      const [request] = await sql`
+        insert into commerce.access_requests (email, name, store_name) values (${OWNER_NB.email}, ${OWNER_NB.name}, 'E2E Butikk') returning id`;
+      await sql`select commerce.approve_access_request(${request.id}, ${E2E_STORE_NB}, 'E2E Butikk', null)`;
+    }
+    await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${E2E_STORE_NB}`;
+    await sql`update commerce.accounts set admin_locale = 'en' where lower(email) = ${OWNER_NB.email}`;
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    // A new account's language is taken from the browser, which is English here, so the form is the English one.
+    await signIn(page, OWNER_NB.email, `/admin/${E2E_STORE_NB}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await context.storageState({ path: OWNER_NB.state });
+    await sql`update commerce.accounts set admin_locale = 'nb-NO' where lower(email) = ${OWNER_NB.email}`;
+    await page.goto(`/admin/${E2E_STORE_NB}`);
+    await expect(page.locator("html")).toHaveAttribute("lang", "nb");
+    await context.storageState({ path: OWNER_NB.state });
+    await context.close();
+  } finally {
+    await sql.end();
+  }
+});
+
+setup("the Norwegian platform admin signs in with the second step", async ({ browser }) => {
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.accounts (email, name, platform_admin) values (${ADMIN_NB.email}, ${ADMIN_NB.name}, true)
+      on conflict do nothing`;
+    // Back to English first: on a database this ran against before the account reads Norwegian, and the second step's form is in its language.
+    await sql`update commerce.accounts set platform_admin = true, disabled_at = null, admin_locale = 'en' where lower(email) = ${ADMIN_NB.email}`;
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(`/admin/sign-in?next=${encodeURIComponent("/admin/platform")}`);
+    await page.getByLabel("Email").fill(ADMIN_NB.email);
+    await page.getByLabel("Password", { exact: true }).fill(E2E_PASSWORD);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.waitForURL((url) => url.pathname === "/admin/sign-in/two-step");
+    await page.getByLabel("Code").fill(totp());
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL((url) => url.pathname === "/admin/platform");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await context.storageState({ path: ADMIN_NB.state });
+    await sql`update commerce.accounts set admin_locale = 'nb-NO' where lower(email) = ${ADMIN_NB.email}`;
+    await page.goto("/admin/platform");
+    await expect(page.locator("html")).toHaveAttribute("lang", "nb");
+    await context.storageState({ path: ADMIN_NB.state });
+    await context.close();
   } finally {
     await sql.end();
   }

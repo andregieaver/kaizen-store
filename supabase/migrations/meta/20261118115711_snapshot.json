@@ -1,6 +1,6 @@
 {
-  "id": "a12731d5-f351-4466-980d-ee0c7d524ab9",
-  "prevId": "29c8269d-3dd7-447e-addf-680aacd0b1e9",
+  "id": "947381b5-98ee-4f57-92da-27d005fee2e5",
+  "prevId": "c9aa19c7-f64f-4c33-8281-b5256a86e49b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7831,6 +7831,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "suppressed_reason": {
+          "name": "suppressed_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -7981,6 +7987,10 @@
         "automation_sends_outcome": {
           "name": "automation_sends_outcome",
           "value": "\"commerce\".\"automation_sends\".\"outcome\" is null or \"commerce\".\"automation_sends\".\"outcome\" in ('sent', 'logged', 'failed', 'suppressed')"
+        },
+        "automation_sends_suppressed_reason": {
+          "name": "automation_sends_suppressed_reason",
+          "value": "\"commerce\".\"automation_sends\".\"suppressed_reason\" is null or \"commerce\".\"automation_sends\".\"suppressed_reason\" in ('cap', 'spacing')"
         }
       },
       "isRLSEnabled": false
@@ -13039,7 +13049,7 @@
         },
         "broadcast_recipients_skip": {
           "name": "broadcast_recipients_skip",
-          "value": "\"commerce\".\"broadcast_recipients\".\"skip_reason\" is null or \"commerce\".\"broadcast_recipients\".\"skip_reason\" in ('unsubscribed', 'stopped')"
+          "value": "\"commerce\".\"broadcast_recipients\".\"skip_reason\" is null or \"commerce\".\"broadcast_recipients\".\"skip_reason\" in ('unsubscribed', 'stopped', 'cap', 'spacing')"
         },
         "broadcast_recipients_email": {
           "name": "broadcast_recipients_email",
@@ -17839,6 +17849,77 @@
         "consents_version_length": {
           "name": "consents_version_length",
           "value": "length(\"commerce\".\"consents\".\"version\") <= 100"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.contact_policies": {
+      "name": "contact_policies",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "per_week": {
+          "name": "per_week",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "spacing_hours": {
+          "name": "spacing_hours",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 20
+        },
+        "quiet_hours": {
+          "name": "quiet_hours",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contact_policies_store_id_stores_id_fk": {
+          "name": "contact_policies_store_id_stores_id_fk",
+          "tableFrom": "contact_policies",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contact_policies_per_week": {
+          "name": "contact_policies_per_week",
+          "value": "\"commerce\".\"contact_policies\".\"per_week\" between 1 and 14"
+        },
+        "contact_policies_spacing": {
+          "name": "contact_policies_spacing",
+          "value": "\"commerce\".\"contact_policies\".\"spacing_hours\" between 0 and 72"
         }
       },
       "isRLSEnabled": false
