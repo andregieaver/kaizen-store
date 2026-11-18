@@ -19,7 +19,7 @@ whose shape this follows), `docs/security.md`, `docs/residency-register.md`, `sr
 movement. The Article 29 Working Party's guidelines on DPIAs (WP248 rev.01) name *systematic monitoring* as a criterion, and session
 replay is the CNIL's example of it in its recommendation on session replay (2026). That alone makes an assessment wise; whether it is
 *required* for every store that records, or only for large or sensitive ones, is open question Q3. Datatilsynet's list of processing
-that always needs a DPIA: [[Add: recordings checked against Datatilsynet's list, by a person]].
+that always needs a DPIA: not on it, in the lawyer's view (18 November 2026).
 
 **Heatmaps** keep only daily totals per page shape, device and A/B version (no visitor, no id, no address), so they carry a far lower
 risk; they are covered here because they share the consent, the collector and the A/B link.
@@ -130,15 +130,14 @@ No id, address or user agent is kept; the totals cannot be traced back to a visi
 
 The purpose is to find what is hard to use on a store's pages, so the store can fix it. Heatmaps answer most of that with totals and no
 personal data; recordings answer what totals cannot (the sequence of what a visitor tried), which is why they are a separate choice,
-sampled, masked, kept 30 days and off by default. [[Add: the owner's and lawyer's view on whether the purpose could be met with
-heatmaps alone for most stores.]]
+sampled, masked, kept 30 days and off by default. The lawyer's view (18 November 2026): heatmaps alone cannot meet the purpose for most stores, so recordings are necessary.
 
 ---
 
 ## 6. Consultation
 
-[[Add: whether visitors or their representatives were asked (Art. 35(9)), and the DPO's advice if one is appointed.]] Prior
-consultation with Datatilsynet (Art. 36) is needed only if a high risk remains after the measures: [[Add: the lawyer's view]].
+Visitors or their representatives need not be consulted (Art. 35(9)), in the lawyer's view (18 November 2026). A data protection officer is required (section 8), and their advice is to be added here once one is appointed. No high
+risk remains after the measures, so prior consultation with Datatilsynet (Art. 36) is not needed, in the lawyer's view (18 November 2026).
 
 ---
 
@@ -146,7 +145,8 @@ consultation with Datatilsynet (Art. 36) is needed only if a high risk remains a
 
 None of these is a decision. For the owner, with a lawyer:
 
-1. Answer Q3, Q6 and Q7 (`docs/heatmaps-and-recordings.md` section 12) before opening recordings to stores.
+1. ~~Answer Q3, Q6 and Q7 (`docs/heatmaps-and-recordings.md` section 12) before opening recordings to stores.~~ Answered by the
+   lawyer on 18 November 2026 (section 8).
 2. ~~Write the DPA's types of data, and a sentence in Kaizena Flow's privacy notice (O3).~~ Written 16 November 2026 at the
    owner's request (`src/lib/platform-legal/en.ts`, `nb.ts`); a lawyer should still read them.
 3. Decide who may watch recordings (O4): owner only is proposed.
@@ -159,14 +159,15 @@ None of these is a decision. For the owner, with a lawyer:
 
 Signed on 18 November 2026 from the review note sent to the lawyer. The lawyer's answers: **Q3**, each store that records needs its own
 DPIA (this document is offered as its template); **Q6**, the owner's confirmations are enough; **Q7**, documenting the balanced default
-as the alternative measure to M0 is enough. Left unanswered in that review, and still open: Datatilsynet's list (section 1),
-necessity (section 5), consultation and prior consultation (section 6), and whether a data protection officer is required.
+as the alternative measure to M0 is enough. The further points, answered the same day: recordings are not on Datatilsynet's list (section 1); heatmaps alone would not do (section 5);
+no consultation of visitors and no prior consultation of Datatilsynet is needed (section 6); and Kaizena Flow must appoint a data
+protection officer, who then signs below.
 
 | Role | Name | Date | Decision |
 |---|---|---|---|
 | Owner of Kaizena Flow | André Giæver | 18 November 2026 | Accepted |
 | Lawyer | Stig Brenner | 18 November 2026 | Accepted |
-| Data protection officer, if one is appointed | [[Add: whether one is required]] | | |
+| Data protection officer (required, in the lawyer's view) | [[Add: once appointed]] | | |
 
 Review this assessment when what is recorded or masked changes, when the player is built (step 11), before recordings open to stores,
 and at least yearly.
