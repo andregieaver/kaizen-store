@@ -71,6 +71,10 @@ export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   email: "customers",
   broadcast: "marketing",
   sending_pause: "marketing",
+  // Ecosystem plan E5.1 (D757).
+  activity: "customers",
+  lead: "customers",
+  domain: "settings",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];

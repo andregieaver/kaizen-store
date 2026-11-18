@@ -54,6 +54,12 @@ export type DomainWatch = {
   /** For a domain registered elsewhere: the registry's own expiry and registrar (RDAP), when it answered. */
   expiresAt?: string | null;
   registrar?: string | null;
+  /**
+   * The last answer that was known, kept through answers that were not: written by the database (`commerce.store_domain_watch_known()`,
+   * ecosystem plan E5.1, D757), never by the watch, so a domain that turns failing or works again is one event (`domain.failing`,
+   * `domain.recovered`) whatever time-outs come between.
+   */
+  known?: "ok" | "certificate" | "elsewhere" | null;
 };
 
 /** The watch's findings are facts for this many days; older ones are not known (the watch stopped, or the domain was not reached). */

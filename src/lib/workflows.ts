@@ -1,6 +1,8 @@
 import { z } from "zod";
 
+import { ACTIVITY_KINDS } from "./activities";
 import { EVENTS, type IntegrationEvent } from "./integrations";
+import { LEAD_KINDS } from "./leads";
 
 /**
  * Workflows (wave 9 unit C, D356, `docs/wave-9-platform.md` section 3, C): the pure parts. A workflow is a trigger (one of the store's events,
@@ -52,8 +54,15 @@ export function subjectOf(
   | "email"
   | "broadcast"
   | "sending_pause"
+  | "activity"
+  | "lead"
+  | "domain"
   | "schedule" {
   if (trigger === "schedule") return "schedule";
+  // Ecosystem plan E5.1 (D757).
+  if (trigger.startsWith("activity.")) return "activity";
+  if (trigger.startsWith("lead.")) return "lead";
+  if (trigger.startsWith("domain.")) return "domain";
   // Ecosystem plan E3.2 (D718).
   if (trigger.startsWith("deal.")) return "deal";
   if (trigger.startsWith("subscriber.")) return "subscriber";
@@ -230,6 +239,17 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "broadcast.failed", kind: "number" },
   ],
   sending_pause: [{ key: "sending_pause.reason", kind: "text", choices: ["bounces", "complaints"] }],
+  // Ecosystem plan E5.1 (D757).
+  activity: [
+    { key: "activity.kind", kind: "text", choices: ACTIVITY_KINDS },
+    { key: "activity.title", kind: "text" },
+  ],
+  lead: [{ key: "lead.requests.kind", kind: "text", choices: LEAD_KINDS }],
+  domain: [
+    { key: "domain.serving", kind: "text", choices: ["ok", "certificate", "elsewhere"] },
+    { key: "domain.primary", kind: "yes_no" },
+    { key: "domain.hostname", kind: "text" },
+  ],
   draft: [
     { key: "draft.source", kind: "text" },
     { key: "draft.currency", kind: "text" },

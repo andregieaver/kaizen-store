@@ -5,9 +5,11 @@ import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, 
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
+import type { HouseAutopilotMessages } from "@/lib/admin-messages/house-autopilot.en";
 import { adminText } from "@/lib/admin-text";
 import { formatUsd } from "@/lib/ai-cost";
 import { AUTONOMY_AREAS, AUTONOMY_LEVELS, levelOf } from "@/lib/autopilot-autonomy";
+import { suggestedSignupPercent } from "@/lib/autopilot-goals";
 import { FINISHED_STEPS, RETRY_OPTIONS } from "@/lib/autopilot-plans";
 import { testLine } from "@/lib/autopilot-tests";
 import type { AutopilotOverview } from "@/server/autopilot-overview";
@@ -23,7 +25,7 @@ import { AutopilotResults } from "./autopilot-results";
 
 type Action = { (state: FormState, form: FormData): Promise<FormState> };
 
-export type AutopilotActions = { decide: Action; answer: Action; plan: Action; dropGoal: Action; settings: Action; cancelFollowUp: Action };
+export type AutopilotActions = { decide: Action; answer: Action; plan: Action; dropGoal: Action; setSignupGoal: Action; settings: Action; cancelFollowUp: Action };
 
 export const AUTOPILOT_TABS = ["decisions", "plans", "goals", "results", "settings"] as const;
 export type AutopilotTab = (typeof AUTOPILOT_TABS)[number];
@@ -54,6 +56,8 @@ export function AutopilotPage({
 }) {
   const w = adminText(lang, "assistant");
   const a = w.autopilot;
+  // Kaizena Flow's own site (E5.3, D757): a server area, so these words are not handed to the browser with the assistant's.
+  const house = adminText(lang, "houseAutopilot");
   const waiting = overview.calls.length + overview.questions.length + overview.ownerOnly.length;
   const tabClass = (on: boolean) => `rounded-pill px-3 py-1.5 text-sm ${on ? "bg-sunken text-ink" : "text-muted hover:bg-sunken"}`;
   return (
@@ -81,12 +85,15 @@ export function AutopilotPage({
       )}
       {tab === "decisions" && <Decisions overview={overview} words={a} actions={actions} links={links} locale={ADMIN_LANG_FACTS[lang].locale} />}
       {tab === "decisions" && overview.tests && overview.tests.length > 0 && links.tests && <Tests tests={overview.tests} words={a} base={links.tests} />}
+      {/* Kaizena Flow's own Autopilot: its site's store's tests of the site's pages (D484, D757), each opening the test there. */}
+      {tab === "decisions" && overview.site && overview.site.tests.length > 0 && <Tests tests={overview.site.tests} words={a} base={`/admin/${overview.site.slug}/experiments`} />}
       {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
       {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
+      {tab === "goals" && overview.signups && <SignupGoal signups={overview.signups} words={house.signups} action={actions.setSignupGoal} locale={ADMIN_LANG_FACTS[lang].locale} />}
       {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} />}
       {tab === "results" && overview.effects && <AutopilotResults effects={overview.effects} words={a} />}
-      {tab === "settings" && <Settings overview={overview} words={a} action={actions.settings} />}
+      {tab === "settings" && <Settings overview={overview} words={a} siteWords={house.siteTests} action={actions.settings} />}
       {tab === "settings" && wallet}
     </div>
   );
@@ -340,6 +347,39 @@ function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["e
   );
 }
 
+/**
+ * Kaizena Flow's sign-ups per visit as a goal (ecosystem plan E5.3, D757), on its own Autopilot and its own store's while no active goal aims at
+ * them: today's share in words, one field holding a fifth more, one button. The AI manager's `set_goal` sets it only once the agents' eval is
+ * recorded with it (`HELD_GOAL_TARGETS`).
+ */
+function SignupGoal({ signups, words: w, action, locale }: { signups: NonNullable<AutopilotOverview["signups"]>; words: HouseAutopilotMessages["signups"]; action: Action; locale: string }) {
+  const percent = (n: number) => `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(n)} %`;
+  return (
+    <Card title={w.title} description={signups.percent === null ? w.notCounted[signups.reason ?? "no_visits"] : fillWords(w.now, { percent: percent(signups.percent) })}>
+      <ActionForm action={action} successMessage={w.setNow} className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          {w.aim}
+          <input
+            name="percent"
+            type="number"
+            inputMode="decimal"
+            min={0.1}
+            max={100}
+            step={0.1}
+            required
+            defaultValue={suggestedSignupPercent(signups.percent)}
+            className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm"
+          />
+        </label>
+        <Button type="submit" kind="main">
+          {w.set}
+        </Button>
+      </ActionForm>
+      <p className="mt-3 text-caption text-muted">{w.help}</p>
+    </Card>
+  );
+}
+
 function Goals({ goals, reviews, words: a, action }: { goals: AutopilotOverview["goals"]; reviews: AutopilotOverview["reviews"]; words: Words; action: Action }) {
   const g = a.goals;
   if (goals.length === 0) return <Card><p className="text-body text-muted">{g.empty}</p></Card>;
@@ -383,7 +423,7 @@ function Goals({ goals, reviews, words: a, action }: { goals: AutopilotOverview[
   );
 }
 
-function Settings({ overview, words: a, action }: { overview: AutopilotOverview; words: Words; action: Action }) {
+function Settings({ overview, words: a, siteWords, action }: { overview: AutopilotOverview; words: Words; siteWords: HouseAutopilotMessages["siteTests"]; action: Action }) {
   const s = a.settings;
   const settings = overview.settings;
   return (
@@ -455,7 +495,7 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
               </select>
             </label>
           ))}
-          {/* Its page changes tested first (E4.1, D729): a store's, whose pages A/B tests cover; Kaizena Flow's own site is its house store's. */}
+          {/* Its page changes tested first (E4.1, D729): a store's, whose pages A/B tests cover; Kaizena Flow's own site is its house store's (D757). */}
           {overview.tests !== null ? (
             <label className="flex items-start gap-3">
               <input type="checkbox" name="tests_changes" defaultChecked={settings.planning.testsPageChanges} className="mt-1" />
@@ -466,6 +506,17 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             </label>
           ) : (
             settings.planning.testsPageChanges && <input type="hidden" name="tests_changes" value="on" />
+          )}
+          {overview.site && (
+            <div className="flex flex-wrap items-start justify-between gap-3" data-site-tests>
+              <span className="flex max-w-[65ch] flex-col">
+                <span className="text-body-strong text-ink">{siteWords.title}</span>
+                <span className="text-caption text-muted">{siteWords.help}</span>
+              </span>
+              <ButtonLink href={`/admin/${overview.site.slug}/assistant/autopilot?tab=settings`} size="dense">
+                {siteWords.open}
+              </ButtonLink>
+            </div>
           )}
           <p className="text-caption text-muted">{s.never}</p>
         </fieldset>

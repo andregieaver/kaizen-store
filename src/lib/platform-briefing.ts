@@ -4,6 +4,9 @@
  * raise, and when a briefing is due. Worked out in code; nothing here is a model's.
  */
 
+import { ADMIN_LANG_FACTS, ADMIN_LANGS, type AdminLang } from "./admin-lang";
+import { signalAlertsFor, type SignalSnapshot } from "./analytics-alerts";
+import { analyticsWordsIn } from "./analytics-words";
 import type { SpeedRow } from "./speed";
 
 export const TARGET_METRICS = ["mrr", "sales", "paying", "new_stores"] as const;
@@ -65,10 +68,46 @@ export type PlatformSnapshot = {
   adminSpeed?: SpeedRow[];
   /** What the database flags raise from the two latest stored readings (step 1.13); none when there are fewer than two days. */
   flags?: { id: string; subject: string }[];
+  /**
+   * What Kaizena Flow's own store measures besides sales (ecosystem plan E5.2, D757): its pages' heat totals, its speed and its domains, with
+   * the platform's own host (`siteHost`, kaizenaflow.com, from the domain watch) among them, for E4.2's rules. Read for the home and the
+   * briefing; none where the store could not be read.
+   */
+  house?: { slug: string; siteHost: string | null; signals: SignalSnapshot } | null;
+  /** Questions Kaizena Flow's own chat assistant could not answer, still open (ecosystem plan E5.4, D757): the home's attention counts them. */
+  questionsOpen?: number;
 };
 
-export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag";
-export type PlatformAlert = { id: AlertId; severity: "urgent" | "warning" | "info"; values: Record<string, string | number>; href: string };
+export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag" | "house_signal";
+export type PlatformAlert = {
+  id: AlertId;
+  severity: "urgent" | "warning" | "info";
+  values: Record<string, string | number>;
+  href: string;
+  /** The words a store's rule wrote, in each admin language (`house_signal`); the others are written from `values`. */
+  text?: Readonly<Record<AdminLang, string>>;
+};
+
+/** Where an alert about kaizenaflow.com itself leads: no store's Domains page holds it, and the status page says when the site is down. */
+export const SITE_ALERT_HREF = "/admin/platform/status";
+
+/**
+ * Kaizena Flow's own store's alerts from what its site measures (E4.2's three rules by their own code, `signalAlertsFor()`; ecosystem plan
+ * E5.2, D757): which fire and how serious is the rule's, the same in every language; the words are the rule's in each admin language, with
+ * its numbers. Each leads to the store's own page that fixes it (its heatmap, Speed, Domains), or for kaizenaflow.com itself, which no
+ * store page holds, to the status page.
+ */
+export function houseSignalAlerts(house: PlatformSnapshot["house"]): PlatformAlert[] {
+  if (!house) return [];
+  const byLang = ADMIN_LANGS.map((lang) => [lang, signalAlertsFor({ ...house.signals, locale: ADMIN_LANG_FACTS[lang].locale }, analyticsWordsIn(lang).alertText)] as const);
+  const [, first] = byLang[0];
+  return first.flatMap((a): PlatformAlert[] => {
+    if (a.severity === "good") return [];
+    const text = Object.fromEntries(byLang.map(([lang, list]) => [lang, list.find((x) => x.id === a.id)?.text ?? a.text])) as Record<AdminLang, string>;
+    const site = a.id === "domain-problem" && house.siteHost !== null && a.evidence[0]?.label === house.siteHost;
+    return [{ id: "house_signal", severity: a.severity, values: { signal: a.id }, href: site ? SITE_ALERT_HREF : `/admin/${house.slug}${a.href}`, text }];
+  });
+}
 
 /** A request older than two days waits too long. */
 export const REQUEST_HOURS = 48;
@@ -89,7 +128,10 @@ export function adminSpeedAlerts(rows: readonly SpeedRow[]): PlatformAlert[] {
   return alerts;
 }
 
-/** What the figures raise, the most pressing first: a request waiting too long, stores not paying, revenue falling, a target behind, trials ending. */
+/**
+ * What the figures raise, the most pressing first: a request waiting too long, stores not paying, revenue falling, a target behind, trials
+ * ending, the admin slow, a database flag, and what Kaizena Flow's own site raises (visitors stuck, a page turned slow, a domain).
+ */
 export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
   const alerts: PlatformAlert[] = [];
   if (s.requests.oldestHours !== null && s.requests.oldestHours >= REQUEST_HOURS) {
@@ -109,6 +151,7 @@ export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
   if (s.flags && s.flags.length > 0) {
     alerts.push({ id: "database_flag", severity: "warning", values: { n: s.flags.length, first: s.flags[0].id }, href: "/admin/platform/capacity" });
   }
+  alerts.push(...houseSignalAlerts(s.house));
   const order = { urgent: 0, warning: 1, info: 2 } as const;
   return alerts.sort((a, b) => order[a.severity] - order[b.severity]);
 }

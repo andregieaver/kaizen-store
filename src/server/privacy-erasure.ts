@@ -748,6 +748,9 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
       -- Email plan M1.2 (D732): their emails that bounced or were marked as spam (the email.* payloads carry the address).
       union all select id from commerce.email_messages where store_id = ${sid}::uuid and status in ('bounced', 'complained')
         and lower(to_address) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
+      -- Ecosystem plan E5.1 (D757): their activities (a title may name them, as a deal's) and staff's decisions about them as a lead.
+      union all select id from commerce.activities where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
+      union all select id from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
     )
     update commerce.integration_deliveries d set
       payload = null,

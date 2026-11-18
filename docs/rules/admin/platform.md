@@ -314,6 +314,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `sendPlatformBriefing()` (the dispatcher's `platformBriefing` job), claimed in `platform_settings.briefing_last_period` first so a period
   goes once, to the owners and the finance role, each in their language.
   It also says when a kind of admin screen with 100 loads or more is not 'good' on largest paint or interaction time (`adminSpeedAlerts()`).
+  The home and the briefing (`platformSnapshot(now, { house: true })`, nothing else) carry what Kaizena Flow's own site raises (E5.2,
+  D757): its store's `page-frustration`, `page-slow` and `domain-problem` by the store's own rules (`signalAlertsFor()` over
+  `signalSnapshotFor()`), with kaizenaflow.com itself among its domains from `platform_settings.domain_watch` (written only by
+  `watchDomains()`), as `house_signal` alerts in each admin language (`houseSignalAlerts()`), linked to the store's page that fixes each,
+  or for kaizenaflow.com to the status page. The home's attention counts the platform's open questions (`questionsOpen`, in the figures'
+  one statement) for those who read support.
 
 
 ## Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)

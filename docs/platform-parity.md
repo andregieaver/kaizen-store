@@ -14,7 +14,8 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-7 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515; workflows on its events, D516; its own API, D518; its owners by the month they joined and by channel, D522; sign-ups and first paid plans as ad conversions, D523; timed plan prices, D524).
+6 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515; workflows on its events, D516; its own API, D518; its owners by the month they joined and by channel, D522; sign-ups and first paid plans as ad conversions, D523; timed plan prices, D524;
+Kaizena Flow's own site's alerts on the home and in the briefing, D757).
 
 ### Website
 
@@ -31,7 +32,6 @@ Nothing left: Kaizena Flow's sign-ups and paid plans go to the ad platforms as c
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
 | Reports | None | Console, C2 (later) |
-| Alerts from the site's own pages and domain (E4.2, D729) | Kaizena Flow's store raises them for kaizenaflow.com's pages on its own Home and Overview, as any store; not on the platform home or in its briefing, and kaizenaflow.com's own domain (the platform's, not a store's) is not watched | Console: the house store's alerts in `platformAlertsFor()`, and the platform's hosts in the domain watch (next of D729) |
 
 ### Customers
 
@@ -87,7 +87,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Redirects and the 404 report | Website → Redirects | Kaizena Flow's store: the site's missing addresses are recorded and can be sent on (D484) |
 | Staging, and translating the whole site | Website | Kaizena Flow's store (D484) |
 | A/B tests of pages | Marketing → A/B tests | Kaizena Flow's store, on the site's pages (D484), with sign-ups to Kaizena Flow as a goal only it has (D712) |
-| The autopilot tests its page changes first (E4.1, D729) | Autopilot → Settings, *Test my page changes first* | Kaizena Flow's store's autopilot, on the site's pages (D484), by the same path; its pages count no orders or carts, so they publish as before until its sign-ups per visit are counted for the estimate (the next step) |
+| The autopilot tests its page changes first (E4.1, D729) | Autopilot → Settings, *Test my page changes first* | Kaizena Flow's store's autopilot, on the site's pages (D484), by the same path, tested on its sign-ups per visit and only once page speed was watched too (E5.3, D757); Kaizena Flow's own Autopilot lists those tests and leads to the switch, and both can aim a goal at sign-ups per visit |
 | Traffic and visits | Analytics → Traffic | Kaizena Flow's store: visits on kaizenaflow.com are counted (D484) |
 | Heatmaps and recordings of visits (D656) | Analytics → Heatmaps, Recordings; Analytics → Settings | Kaizena Flow's store: kaizenaflow.com is served from it (`site_from_store` on, read 16 November 2026), so its heatmaps and recordings are the site's; recordings run there while the platform's hold is closed for other stores. Usage and limits shows each store's count and holds the switch; platform admins never watch a store's recordings |
 | The data protection officer (D763) | Your account (for all the account's stores); Settings → Company (a store's own) | Platform → Pages, beside the legal pages: the platform account's officer, named on Kaizena Flow's privacy notice |
@@ -96,6 +96,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Accounting (our ledger; Tripletex and Fiken compare with it) | Settings → Books | Plans → Analytics, *In the books* (D508): Kaizena Flow's sales, credit notes and Stripe payouts posted into the books the platform names (Human Web's) |
 | Payouts (D290) | Analytics → Payouts | Plans → Analytics, *Payouts* (D509): Kaizena Flow's own Stripe payouts, live and test apart, each with Stripe's fees, the sales it carried line by line and whether it adds up; posted to the books (D508) |
 | Team, roles and permissions (D158) | Settings → Team | Settings → Team (D471, D510): owners, and Support, Content, Finance and Read-only, each reading everything and changing its own part, and working in Kaizena Flow's store in the same role |
+| Alerts from the site's own pages and domain (E4.2, D729; the platform's D757) | Home, Analytics → Overview, the briefing | Platform home and briefing: Kaizena Flow's store's visitors stuck, a page turned slow and a domain, by the store's own rules, with kaizenaflow.com itself watched daily (`platform_settings.domain_watch`) |
 | Home and Overview: revenue, a comparison, alerts and the briefing (D348) | Home, Analytics → Overview | Platform home (D513): this month's recurring revenue and how it moved, paying and trying stores, sales against last month to the same day, sign-ups today, what the figures raise in the attention list, and the morning briefing by email (daily or weekly, to owners and finance) |
 | Targets (Analytics settings) | Analytics → Settings | Plans → Analytics, *Targets* (D513): a month's recurring revenue, sales, paying and new stores, their progress on the home and in the briefing |
 | Live (sign-ups today) | Analytics → Live | Kaizena Flow's store for visitors (D484); the platform home for who asked for a store and opened one today (D513) |

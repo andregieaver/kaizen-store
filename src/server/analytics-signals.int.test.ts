@@ -173,6 +173,86 @@ describe("a store domain whose health fails", () => {
   });
 });
 
+describe("Kaizena Flow's own site in the platform's alerts and briefing (ecosystem plan E5.2, D757)", () => {
+  // The platform's own host as the test names it: the world is never asked.
+  const site = `kaizenaflow-${run}.example`;
+  let house: string;
+  let before: unknown;
+
+  beforeAll(async () => {
+    const [row] = await db().execute<Row>(sql`select commerce.house_store() as id, (select domain_watch from commerce.platform_settings) as watch`);
+    house = String(row.id);
+    before = row.watch;
+  });
+
+  afterAll(async () => {
+    vi.unstubAllEnvs();
+    await db().execute(sql`delete from commerce.page_heat_days where store_id = ${house}::uuid and page = '/pricing'`);
+    await db().execute(sql`update commerce.platform_settings set domain_watch = ${before === null ? null : JSON.stringify(before)}::jsonb`);
+  });
+
+  it("asks kaizenaflow.com once a day with the stores' domains, and keeps its answer for the platform, not on a store", async () => {
+    const asked: string[] = [];
+    const registries: string[] = [];
+    await watch.watchDomains({
+      site,
+      probe: async (hostname) => (asked.push(hostname), hostname === site ? "certificate" : "ok"),
+      rdap: async (apex) => (registries.push(apex), { registrar: "Domeneshop AS", expiresAt: "2027-09-01T00:00:00.000Z" }),
+      now: NOW,
+    });
+    expect(asked).toContain(site);
+    // Its registration is no store's: the registry is always asked.
+    expect(registries).toContain(site);
+    const [row] = await db().execute<Row>(sql`select domain_watch from commerce.platform_settings`);
+    expect(row.domain_watch).toEqual({ at: NOW.toISOString(), serving: "certificate", registrar: "Domeneshop AS", expiresAt: "2027-09-01T00:00:00.000Z" });
+    const [stored] = await db().execute<Row>(sql`select count(*)::int as n from commerce.store_domains where hostname = ${site}`);
+    expect(stored.n).toBe(0);
+    // Asked again only a day later; where the site is not public (no host), never.
+    const again: string[] = [];
+    await watch.watchDomains({ site, probe: async (hostname) => (again.push(hostname), "ok"), rdap: async () => null, now: NOW });
+    expect(again).not.toContain(site);
+    const later = new Date(NOW.getTime() + 25 * 3_600_000);
+    const none: string[] = [];
+    await watch.watchDomains({ site: null, probe: async (hostname) => (none.push(hostname), "ok"), rdap: async () => null, now: later });
+    expect(none).not.toContain(site);
+  });
+
+  it("puts the house store's alerts and kaizenaflow.com's in the platform's alerts, read by the store's own rules", async () => {
+    const day = todayIn(NOW, (await getStore("kaizenaflow"))!.timeZone);
+    const zero = (n: number) => `{${Array(n).fill(0).join(",")}}`;
+    const put = async (d: string, views: number, frustrated: number) =>
+      db().execute(sql`
+        insert into commerce.page_heat_days (store_id, day, page, device, tag, views, reach, attention_ms, frustrated_views, dead_views)
+        values (${house}::uuid, ${d}::date, '/pricing', 'mobile', '', ${views}, ${zero(21)}::int[], ${zero(20)}::bigint[], ${frustrated}, ${frustrated})
+      `);
+    for (let k = 8; k <= 35; k++) await put(addDays(day, -k), 40, 2);
+    for (let k = 1; k <= 7; k++) await put(addDays(day, -k), 40, 12);
+    const { platformSnapshot, alertText } = await import("./platform-briefing");
+    const { platformAlertsFor } = await import("@/lib/platform-briefing");
+    // Not read where nothing shows it (the API's figures, Plans → Analytics).
+    expect((await platformSnapshot(NOW)).house).toBeNull();
+    vi.stubEnv("SITE_URL", `https://${site}`);
+    const snapshot = await platformSnapshot(NOW, { house: true });
+    expect(snapshot.house).toMatchObject({ slug: "kaizenaflow", siteHost: site });
+    const alerts = platformAlertsFor(snapshot).filter((a) => a.id === "house_signal");
+    // Both urgent: 30 % of views stuck against 5 % is further past its line than one domain.
+    expect(alerts.map((a) => [a.values.signal, a.severity, a.href])).toEqual([
+      ["page-frustration", "urgent", "/admin/kaizenaflow/analytics/heatmaps?page=%2Fpricing"],
+      ["domain-problem", "urgent", "/admin/platform/status"],
+    ]);
+    expect(alertText(alerts[1], "en")).toMatch(new RegExp(`^Kaizena Flow's site: kaizenaflow-${run}\\.example's https certificate failed when it was checked on `));
+    expect(alertText(alerts[0], "nb")).toMatch(/^Kaizena Flows nettsted: /);
+    // Once the watch's answer is too old to say, the site says nothing of its domain.
+    vi.stubEnv("SITE_URL", "http://localhost:3000");
+    const local = await platformSnapshot(NOW, { house: true });
+    expect(platformAlertsFor(local).filter((a) => a.id === "house_signal").map((a) => a.values.signal)).toEqual(["page-frustration"]);
+    vi.stubEnv("SITE_URL", `https://${site}`);
+    const stale = await platformSnapshot(new Date(NOW.getTime() + 4 * 86_400_000), { house: true });
+    expect(stale.house?.signals.domains?.find((d) => d.hostname === site)?.findings.map((f) => f.code)).toContain("healthy");
+    expect(platformAlertsFor(stale).some((a) => a.values.signal === "domain-problem")).toBe(false);
+  });
+});
+
 describe("what the watch reads from an answer", () => {
   it("knows the store's own health, a redirect, a server's error and another site's page apart", () => {
     const own = JSON.stringify({ status: "ok", region: "dub1", commit: "abc", supabase: "ok" });

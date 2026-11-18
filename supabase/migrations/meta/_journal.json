@@ -750,6 +750,27 @@
       "when": 1795002519761,
       "tag": "20261118114839_flows_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1795004642590,
+      "tag": "20261118122402_panoramic_shen",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1795004649158,
+      "tag": "20261118122409_lead_activity_domain_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1795004652482,
+      "tag": "20261118122412_autopilot_signup_tests_rules",
+      "breakpoints": true
     }
   ]
 }

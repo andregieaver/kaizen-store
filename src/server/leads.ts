@@ -118,6 +118,25 @@ export async function leadCounts(storeIds: readonly string[]): Promise<Map<strin
   return new Map(rows.filter((r) => r.leads > 0).map((r) => [r.store_id, r.leads]));
 }
 
+/** The most requests a lead event names. */
+export const LEAD_EVENT_REQUESTS = 20;
+
+/**
+ * What a person asked the store for up to a decision about them, in the inbox's window, newest first, as ids (ecosystem plan E5.1, D757:
+ * a `lead.*` event's `requests`). Each is the request's own record: a quote's draft, a form's response, a conversation, a subscriber.
+ */
+export async function leadRequestsOf(
+  storeId: string,
+  email: string,
+  until: string,
+): Promise<{ kind: LeadKind; source: (typeof LEAD_SOURCES)[number]; id: string; at: string }[]> {
+  const end = Date.parse(until);
+  return (await leadRows(storeId, normaliseEmail(email)))
+    .filter((r) => Date.parse(r.at) <= end)
+    .slice(0, LEAD_EVENT_REQUESTS)
+    .map((r) => ({ kind: r.kind, source: r.source, id: r.id, at: r.at }));
+}
+
 /** The store's leads: one a person, the newest first (`leadsFrom()`). */
 export async function leadsOf(storeId: string): Promise<Lead[]> {
   const rows = await leadRows(storeId);

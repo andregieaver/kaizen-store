@@ -1,8 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { siteUrl } from "./site";
+import { publicSiteHost, siteUrl } from "./site";
 
 afterEach(() => vi.unstubAllEnvs());
+
+describe("Kaizena Flow's own host for the domain watch (ecosystem plan E5.2, D757)", () => {
+  it("is the site's host on a public https domain of its own, and none anywhere else", () => {
+    expect(publicSiteHost("https://kaizenaflow.com")).toBe("kaizenaflow.com");
+    expect(publicSiteHost("https://KaizenaFlow.com/")).toBe("kaizenaflow.com");
+    for (const origin of ["http://localhost:3000", "http://kaizenaflow.com", "https://kaizen-store.vercel.app", "https://kaizenaflow.com:8443", "https://10.0.0.1", "https://[::1]", "https://intranet", "https://app.localhost", "not a url"]) {
+      expect(publicSiteHost(origin), origin).toBeNull();
+    }
+    vi.stubEnv("SITE_URL", "https://kaizen.example/");
+    expect(publicSiteHost()).toBe("kaizen.example");
+  });
+});
 
 describe("Kaizena Flow's own address", () => {
   it("is Kaizena Flow's domain, never a store's (P7, P8)", () => {

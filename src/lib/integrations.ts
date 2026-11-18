@@ -145,7 +145,15 @@ export type IntegrationEvent =
   | "email.bounced"
   | "email.complained"
   | "broadcast.sent"
-  | "marketing.paused";
+  | "marketing.paused"
+  // Ecosystem plan E5.1 (D757): what E3.2 left. An activity added or done (D468), staff's decision about a lead (D475), and a connected
+  // domain the daily watch finds failing or working again (E4.2).
+  | "activity.created"
+  | "activity.done"
+  | "lead.dismissed"
+  | "lead.deal_made"
+  | "domain.failing"
+  | "domain.recovered";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -201,6 +209,12 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "email.complained", label: "Email marked as spam", hint: "A customer marked one of the store's emails as spam. They have left the email list." },
   { id: "broadcast.sent", label: "Broadcast sent", hint: "A broadcast finished sending: how many it went to, and how many were sent, skipped or failed." },
   { id: "marketing.paused", label: "Marketing email paused", hint: "Too many recent marketing emails bounced or were marked as spam, so newsletters and automations are held until an owner resumes them." },
+  { id: "activity.created", label: "Activity added", hint: "A call, a meeting or a task was added, by a person or the AI manager, about a customer, a company or a deal. Activities moved in from another CRM send none. Never its note." },
+  { id: "activity.done", label: "Activity done", hint: "A call, a meeting or a task was marked done, or added as done. Marking it not done again sends nothing." },
+  { id: "lead.dismissed", label: "Lead set aside", hint: "Someone dismissed a lead in the leads inbox: they leave it until they ask for something again. What they asked for, as ids; never their address or words." },
+  { id: "lead.deal_made", label: "Lead made a deal", hint: "Someone made a deal of a lead: the person became a customer if they were not one, and a deal about them opened. What they asked for, as ids; never their address or words." },
+  { id: "domain.failing", label: "Domain failing", hint: "One of the store's connected domains no longer reaches the store, as the daily domain watch found: its certificate fails, or it points elsewhere or at nothing. Sent once, until it works again." },
+  { id: "domain.recovered", label: "Domain working again", hint: "A connected domain that was failing reaches the store again, as the daily domain watch found." },
 ];
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);
@@ -272,6 +286,13 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "email.complained",
   "broadcast.sent",
   "marketing.paused",
+  // Ecosystem plan E5.1 (D757).
+  "activity.created",
+  "activity.done",
+  "lead.dismissed",
+  "lead.deal_made",
+  "domain.failing",
+  "domain.recovered",
 ]);
 
 /** The events a service (Zapier, Make, Slack) may be sent. */

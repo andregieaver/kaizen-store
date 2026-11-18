@@ -45,7 +45,7 @@ const MORE_GOALS: readonly Goal[] = ["revenue", "checkout", "form", "page"];
 const HOUSE_FIRST_GOALS: readonly Goal[] = ["signup", "click", "form"];
 const DAY = 86_400_000;
 
-const emptyTraffic: TrafficFacts = { counting: false, days: 0, consentShare: null, baselines: { orders: null, cart: null, checkout: null }, targets: {} };
+const emptyTraffic: TrafficFacts = { counting: false, days: 0, consentShare: null, baselines: { orders: null, cart: null, checkout: null, signup: null }, targets: {} };
 
 /**
  * Making an A/B test on one screen (D148, redrawn in D660): what the owner wants more of, each goal saying how soon it answers at the shop's

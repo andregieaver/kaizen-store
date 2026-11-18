@@ -2357,6 +2357,19 @@ describe("the languages of Kaizena Flow's own site (D312)", () => {
   });
 });
 
+describe("the domain watch's answer for Kaizena Flow's own host (ecosystem plan E5.2, D757)", () => {
+  it("is none until asked, then an object as a store domain's watch is, never another kind of value", async () => {
+    expect((await one<{ domain_watch: unknown }>("select domain_watch from commerce.platform_settings")).domain_watch).toBeNull();
+    for (const value of ['"ok"', "[]", "1", "null"]) {
+      await expect(db.query("update commerce.platform_settings set domain_watch = $1::jsonb", [value])).rejects.toThrow(/platform_settings_domain_watch/);
+    }
+    const watch = { at: "2026-11-18T08:00:00.000Z", serving: "certificate", expiresAt: null, registrar: null };
+    await db.query("update commerce.platform_settings set domain_watch = $1::jsonb", [JSON.stringify(watch)]);
+    expect((await one<{ domain_watch: unknown }>("select domain_watch from commerce.platform_settings")).domain_watch).toEqual(watch);
+    await db.query("update commerce.platform_settings set domain_watch = null");
+  });
+});
+
 describe("the AI manager (D103)", () => {
   it("keeps platform conversations without a store, thumbs on answers, and memories per account", async () => {
     const accountId = await createAccount("manager@example.com");
@@ -5253,6 +5266,117 @@ describe("the event log (ecosystem plan E3.1, D718)", () => {
     await expect(
       db.query("insert into commerce.workflows (store_id, name, trigger, actions) values ($1, 'Nope', 'deal.dreamt', '[]')", [shop]),
     ).rejects.toThrow(/workflows_trigger/);
+  });
+});
+
+describe("the lead, activity and domain events (ecosystem plan E5.1, D757)", () => {
+  /** The store's events about a subject, in the log's order. */
+  const about = async (storeId: string, subjectId: string) =>
+    (await db.query<{ event: string }>("select event from commerce.events where store_id = $1 and subject_id = $2 order by tx, id", [storeId, subjectId])).rows.map(
+      (r) => r.event,
+    );
+
+  it("an activity added, done, opened again and done again; added done; none moved in from Pipedrive", async () => {
+    const shop = await createStore("e51-activities", ["NO"]);
+    const add = (done: boolean) =>
+      one<{ id: string }>(
+        `insert into commerce.activities (store_id, kind, title, due_at, done_at) values ($1, 'call', 'Ring Kari', now(), case when $2 then now() end) returning id`,
+        [shop, done],
+      );
+    const call = await add(false);
+    expect(await about(shop, call.id)).toEqual(["activity.created"]);
+    await db.query("update commerce.activities set done_at = now() where id = $1", [call.id]);
+    // Done again without being opened, or changed in other ways, is nothing new.
+    await db.query("update commerce.activities set done_at = now(), title = 'Ring Kari igjen' where id = $1", [call.id]);
+    await db.query("update commerce.activities set done_at = null where id = $1", [call.id]);
+    await db.query("update commerce.activities set done_at = now() where id = $1", [call.id]);
+    expect(await about(shop, call.id)).toEqual(["activity.created", "activity.done", "activity.done"]);
+    const logged = await add(true);
+    expect(await about(shop, logged.id)).toEqual(["activity.created", "activity.done"]);
+    const moved = await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.deal_importing', 'on', true)");
+      const { rows } = await tx.query<{ id: string }>(
+        "insert into commerce.activities (store_id, kind, title, due_at, done_at) values ($1, 'task', 'From Pipedrive', now(), now()) returning id",
+        [shop],
+      );
+      return rows[0].id;
+    });
+    expect(await about(shop, moved)).toEqual([]);
+  });
+
+  it("a decision about a lead, each time one is made: dismissed, then made a deal of; an erasure's delete is none", async () => {
+    const shop = await createStore("e51-leads", ["NO"]);
+    const { id: pipeline } = await one<{ id: string }>("insert into commerce.deal_pipelines (store_id, name) values ($1, 'Sales') returning id", [shop]);
+    const { id: stage } = await one<{ id: string }>("insert into commerce.deal_stages (store_id, pipeline_id, name, position) values ($1, $2, 'New', 0) returning id", [shop, pipeline]);
+    const { id: deal } = await one<{ id: string }>(
+      "insert into commerce.deals (store_id, title, pipeline_id, stage_id, currency) values ($1, 'Kari', $2, $3, 'NOK') returning id",
+      [shop, pipeline, stage],
+    );
+    const decide = (decision: "dismissed" | "deal", dealId: string | null) =>
+      one<{ id: string }>(
+        `insert into commerce.lead_decisions (store_id, email, decision, deal_id) values ($1, 'kari@example.com', $2, $3)
+         on conflict (store_id, email) do update set decision = excluded.decision, deal_id = excluded.deal_id, decided_at = now() returning id`,
+        [shop, decision, dealId],
+      );
+    const first = await decide("dismissed", null);
+    // Dismissed again later (they asked again in between): a new decision.
+    await decide("dismissed", null);
+    const made = await decide("deal", deal);
+    expect(made.id).toBe(first.id);
+    // A change that is no decision: nothing.
+    await db.query("update commerce.lead_decisions set decided_by = null where id = $1", [first.id]);
+    expect(await about(shop, first.id)).toEqual(["lead.dismissed", "lead.dismissed", "lead.deal_made"]);
+    await db.query("delete from commerce.lead_decisions where id = $1", [first.id]);
+    expect(await about(shop, first.id)).toEqual(["lead.dismissed", "lead.dismissed", "lead.deal_made"]);
+  });
+
+  it("a domain turning failing and working again, once each, whatever the watch could not tell between; keeps what it last knew", async () => {
+    const shop = await createStore("e51-domains", ["NO"]);
+    const { id: domain } = await one<{ id: string }>(
+      "insert into commerce.store_domains (store_id, hostname, token, status, is_primary) values ($1, 'butikk-e51.example', 'tok', 'active', true) returning id",
+      [shop],
+    );
+    // As the watch writes it (src/server/domain-watch.ts): the whole `watch` replaced, the rest of the checks kept.
+    const watch = (serving: string | null) =>
+      db.query(
+        `update commerce.store_domains set checks = coalesce(checks, '{}'::jsonb) || jsonb_build_object('watch', jsonb_build_object('at', now(), 'serving', $2::text))
+         where id = $1`,
+        [domain, serving],
+      );
+    const known = async () => (await one<{ known: string | null }>("select checks -> 'watch' ->> 'known' as known from commerce.store_domains where id = $1", [domain])).known;
+    await watch("ok");
+    expect(await known()).toBe("ok");
+    await watch(null);
+    expect(await known()).toBe("ok");
+    await watch("certificate");
+    await watch(null);
+    expect(await known()).toBe("certificate");
+    // Another failure, or failing again after a time-out, is the same failure.
+    await watch("elsewhere");
+    await watch("elsewhere");
+    await watch(null);
+    await watch("ok");
+    await watch("ok");
+    expect(await about(shop, domain)).toEqual(["domain.failing", "domain.recovered"]);
+    // Checks written by another (a reconnect without a watch) send nothing, and the watch's other keys stay.
+    await db.query("update commerce.store_domains set checks = checks || '{\"txt\": true}'::jsonb where id = $1", [domain]);
+    expect(await one("select checks ->> 'txt' as txt, checks -> 'watch' ->> 'serving' as serving from commerce.store_domains where id = $1", [domain])).toEqual({ txt: "true", serving: "ok" });
+    await db.query("update commerce.store_domains set checks = '{}'::jsonb where id = $1", [domain]);
+    expect(await about(shop, domain)).toEqual(["domain.failing", "domain.recovered"]);
+    // A first answer that fails is a failure.
+    await watch("elsewhere");
+    expect(await about(shop, domain)).toEqual(["domain.failing", "domain.recovered", "domain.failing"]);
+  });
+
+  it("offers the new events as workflows' triggers", async () => {
+    const shop = await createStore("e51-flows", ["DE"]);
+    for (const trigger of ["activity.created", "activity.done", "lead.dismissed", "lead.deal_made", "domain.failing", "domain.recovered"]) {
+      await db.query(
+        "insert into commerce.workflows (store_id, name, trigger, actions) values ($1, $2, $3, '[{\"kind\":\"email_staff\",\"subject\":\"x\",\"text\":\"y\"}]')",
+        [shop, `On ${trigger}`, trigger],
+      );
+    }
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.workflows where store_id = $1", [shop])).n).toBe(6);
   });
 });
 

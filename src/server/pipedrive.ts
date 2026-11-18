@@ -491,6 +491,8 @@ async function importPage(
 
   if (feed === "activities") {
     const acts = fresh as PdActivity[];
+    // Activities moved in are history too: no activity.created or activity.done for them (ecosystem plan E5.1, D757), the deals' flag.
+    await tx.execute(sql`select set_config('commerce.deal_importing', 'on', true)`);
     const deals = (
       await linksOf(tx, ctx, "deal", ids(acts.map((a) => a.dealId)))
     ).here;

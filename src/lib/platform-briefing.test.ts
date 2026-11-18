@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { adminSpeedAlerts, briefingDue, platformAlertsFor, targetProgress, type PlatformSnapshot } from "./platform-briefing";
+import { signalAlertsFor, type SignalSnapshot } from "./analytics-alerts";
+import { analyticsWordsIn } from "./analytics-words";
+import { adminSpeedAlerts, briefingDue, houseSignalAlerts, platformAlertsFor, SITE_ALERT_HREF, targetProgress, type PlatformSnapshot } from "./platform-briefing";
 import { speedRow } from "./speed";
 
 const snapshot = (over: Partial<PlatformSnapshot> = {}): PlatformSnapshot => ({
@@ -95,5 +97,53 @@ describe("the platform's targets, alerts and briefing (D513)", () => {
   it("gives no database_flag line with no flags, or without the field", () => {
     expect(platformAlertsFor(snapshot({ flags: [] })).some((a) => a.id === "database_flag")).toBe(false);
     expect(platformAlertsFor(snapshot()).some((a) => a.id === "database_flag")).toBe(false);
+  });
+});
+
+describe("what Kaizena Flow's own site raises (ecosystem plan E5.2, D757)", () => {
+  const stuck = { page: "/pricing", views7: 400, frustrated7: 100, viewsBefore: 1600, frustratedBefore: 80 };
+  const away = (hostname: string, primary: boolean) => ({
+    hostname,
+    status: "active" as const,
+    primary,
+    ageDays: 0,
+    findings: [{ code: "points_away" as const, severity: "error" as const, values: { domain: hostname, date: "2026-11-14" } }],
+  });
+  const house = (signals: Partial<SignalSnapshot>, siteHost: string | null = "kaizenaflow.com"): PlatformSnapshot["house"] => ({
+    slug: "kaizenaflow",
+    siteHost,
+    signals: { today: "2026-11-15", locale: "en", ...signals },
+  });
+
+  it("are the store's own rules, linked to the store's page that fixes each, in each admin language", () => {
+    const alerts = platformAlertsFor(snapshot({ house: house({ pageFrustration: [stuck] }) }));
+    expect(alerts).toHaveLength(1);
+    const [alert] = alerts;
+    // The same rule decides as on the store's Home: 25 % against 5 % is 20 points, urgent from 25.
+    const own = signalAlertsFor({ today: "2026-11-15", pageFrustration: [stuck] })[0];
+    expect(alert).toMatchObject({ id: "house_signal", severity: own.severity, values: { signal: "page-frustration" }, href: `/admin/kaizenaflow${own.href}` });
+    expect(alert.href).toBe("/admin/kaizenaflow/analytics/heatmaps?page=%2Fpricing");
+    expect(alert.text?.en).toBe(own.text);
+    expect(alert.text?.nb).toBe(signalAlertsFor({ today: "2026-11-15", locale: "nb-NO", pageFrustration: [stuck] }, analyticsWordsIn("nb").alertText)[0].text);
+    expect(alert.text?.nb).not.toBe(alert.text?.en);
+  });
+
+  it("says when kaizenaflow.com itself fails, most pressing first, and leads to the status page as no store page holds it", () => {
+    const alerts = platformAlertsFor(snapshot({ trialsEnding: 1, house: house({ domains: [away("kaizenaflow.com", true), away("old.example.no", false)] }) }));
+    expect(alerts.map((a) => [a.id, a.severity])).toEqual([
+      ["house_signal", "urgent"],
+      ["trials_ending", "info"],
+    ]);
+    expect(alerts[0]).toMatchObject({ values: { signal: "domain-problem" }, href: SITE_ALERT_HREF });
+    expect(alerts[0].text?.en).toMatch(/^kaizenaflow\.com no longer reaches your store: when it was checked on 2026-11-14/);
+    // A store domain of the house store first leads to its Domains page.
+    const store = platformAlertsFor(snapshot({ house: house({ domains: [away("shop.kaizenaflow.example", true)] }) }));
+    expect(store[0].href).toBe("/admin/kaizenaflow/settings/domains");
+  });
+
+  it("raises nothing where the site measures nothing to say, or the store could not be read", () => {
+    expect(platformAlertsFor(snapshot({ house: house({ pageFrustration: [], speed: [], domains: [] }) }))).toEqual([]);
+    expect(platformAlertsFor(snapshot({ house: null }))).toEqual([]);
+    expect(houseSignalAlerts(undefined)).toEqual([]);
   });
 });

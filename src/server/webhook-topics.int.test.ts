@@ -233,6 +233,31 @@ beforeAll(async () => {
     on conflict (store_id) do update set reason = excluded.reason returning id
   `);
   subjects.sending_pause = String(pause.id);
+
+  // Ecosystem plan E5.1 (D757): a call about the deal, the decision to make a deal of the lead who sent the form, and a domain the watch
+  // found failing.
+  const [activity] = await db().execute<Row>(sql`
+    insert into commerce.activities (store_id, kind, title, note, due_at, assignee_id, customer_id, deal_id, created_by)
+    values (${store.storeId}::uuid, 'call', 'Ring about the order', 'Private note', now(), ${store.accountId}::uuid, ${subjects.customer}::uuid,
+      ${deal.id}::uuid, ${store.accountId}::uuid)
+    returning id
+  `);
+  subjects.activity = String(activity.id);
+  const [decision] = await db().execute<Row>(sql`
+    insert into commerce.lead_decisions (store_id, email, decision, deal_id, decided_by)
+    values (${store.storeId}::uuid, 'kari@example.com', 'deal', ${deal.id}::uuid, ${store.accountId}::uuid)
+    on conflict (store_id, email) do update set decision = excluded.decision, deal_id = excluded.deal_id, decided_at = now() returning id
+  `);
+  subjects.lead = String(decision.id);
+  const [domain] = await db().execute<Row>(sql`
+    insert into commerce.store_domains (store_id, hostname, token, status, is_primary)
+    values (${store.storeId}::uuid, ${`topics-${run}.example`}, 'tok', 'active', true) returning id
+  `);
+  await db().execute(sql`
+    update commerce.store_domains set checks = jsonb_build_object('watch', jsonb_build_object('at', now(), 'serving', 'certificate'))
+    where store_id = ${store.storeId}::uuid and id = ${String(domain.id)}::uuid
+  `);
+  subjects.domain = String(domain.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -292,6 +317,26 @@ describe("every webhook topic's payload (D438)", () => {
     expect(subscriber).not.toHaveProperty("token");
     const deal = JSON.parse(await text("deal.created", subjects.deal!)).deal;
     expect(deal).toMatchObject({ status: "open", stage: { name: "New", position: 0 }, customer_id: subjects.customer });
+  });
+
+  it("sends an activity, a lead and a domain as ids and facts: never a note, an address or what a lead wrote (E5.1, D757)", async () => {
+    const text = async (event: string, subject: string) => JSON.stringify(await integrations.subjectData(storeRef(), event, subject));
+    const activity = await text("activity.created", subjects.activity!);
+    expect(JSON.parse(activity).activity).toMatchObject({ kind: "call", done_at: null, customer_id: subjects.customer, deal_id: subjects.deal, assignee_id: store.accountId });
+    expect(JSON.parse(activity).activity.admin_url).toContain(`/deals/${subjects.deal}`);
+    expect(activity).not.toContain("Private note");
+    const lead = await text("lead.deal_made", subjects.lead!);
+    expect(JSON.parse(lead).lead).toMatchObject({
+      decision: "deal",
+      deal_id: subjects.deal,
+      customer_id: subjects.customer,
+      requests: [{ kind: "question", source: "form", id: subjects.form_response }],
+    });
+    expect(lead).not.toContain("kari@example.com");
+    expect(lead).not.toContain("Hello");
+    const domain = JSON.parse(await text("domain.failing", subjects.domain!)).domain;
+    expect(domain).toMatchObject({ primary: true, serving: "certificate", language: null, market: null });
+    expect(domain.admin_url).toContain("/settings/domains");
   });
 
   it("holds what was made: the parcel, the return's line, the stock crossing", async () => {

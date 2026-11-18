@@ -9,6 +9,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { apexOf, type DomainWatch } from "@/lib/domain-health";
 import { isBlockedAddress } from "@/lib/replicate-url";
+import { publicSiteHost } from "@/lib/site";
 
 import { publicRdap, type Rdap } from "./domain-health";
 import { log } from "./log";
@@ -17,15 +18,19 @@ import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
 
 /**
- * The domain watch (ecosystem plan E4.2, D729): each active domain of an open store, the house store's too, is asked once a day whether it
- * still serves the store, a few a run from the five-minute dispatcher (`dispatcher.domain-watch`), those not asked for longest first. The
- * question is `https://{domain}/api/health`: the store's own health report back is fine; a TLS error is a certificate that fails; another
- * site's answer, a name that no longer resolves or nothing listening is a domain that points away; a time-out, a redirect or a server error
- * is not known, and never read as a failure. For a domain registered elsewhere, the registry's own expiry and registrar (RDAP) are kept too.
+ * The domain watch (ecosystem plan E4.2, D729): each active domain of an open store, the house store's too, and Kaizena Flow's own host
+ * (E5.2, D757), is asked once a day whether it still serves the store (or the platform), a few a run from the five-minute dispatcher
+ * (`dispatcher.domain-watch`), those not asked for longest first. The question is `https://{domain}/api/health`: the store's own health
+ * report back is fine; a TLS error is a certificate that fails; another site's answer, a name that no longer resolves or nothing listening
+ * is a domain that points away; a time-out, a redirect or a server error is not known, and never read as a failure. For a domain registered
+ * elsewhere, the registry's own expiry and registrar (RDAP) are kept too.
  *
- * What it found is written into the connection's checks (`store_domains.checks.watch`), the only thing it changes, and only there: the
- * Domains page's health (`hostHealth()`) and the domain alert (`domainAlertRows()`) read it through `domainHealth()`, while it is fresh
+ * What it found is written into the connection's checks (`store_domains.checks.watch`), and for Kaizena Flow's own host into
+ * `platform_settings.domain_watch`, the only things it changes: the Domains page's health (`hostHealth()`), the domain alert
+ * (`domainAlertRows()`) and the platform's alerts (`platformSnapshot()`) read them through `domainHealth()`, while they are fresh
  * (`WATCH_FRESH_DAYS`). Only public addresses are asked, at the address that was looked up (as the page replicator does), with a time limit.
+ * The database's triggers on that write keep the last known answer beside it (`watch.known`) and queue `domain.failing` or
+ * `domain.recovered` when it turns (ecosystem plan E5.1, D757), in the same statement.
  */
 
 /** Domains asked in one run, and at once. */
@@ -121,32 +126,49 @@ export const httpsProbe: ServingProbe = async (hostname) => {
   });
 };
 
-const DUE = z.object({ id: col.uuid, store_id: col.uuid, hostname: col.text, apex: col.textOrNull });
+const DUE = z.object({ id: col.uuid.nullable(), store_id: col.uuid.nullable(), hostname: col.text, apex: col.textOrNull, site: col.bool });
 
-/** Asks the active domains due a look, a few at once, and keeps each answer in its checks. Never throws for one domain. */
-export async function watchDomains(deps: WatchDeps = {}): Promise<{ checked: number; failing: number }> {
+/**
+ * Asks the active domains due a look, a few at once, and keeps each answer in its checks. Kaizena Flow's own host (`publicSiteHost()`,
+ * kaizenaflow.com) is the platform's, no store's domain (`docs/domains.md` 5.3), and is asked so too, once a day, its answer kept in
+ * `platform_settings.domain_watch` for the platform's alerts (ecosystem plan E5.2, D757); its registry is always asked, as the registration
+ * is not a store's. Never throws for one domain.
+ */
+export async function watchDomains(deps: WatchDeps & { site?: string | null } = {}): Promise<{ checked: number; failing: number }> {
   const now = deps.now ?? new Date();
   const probe = deps.probe ?? httpsProbe;
   const rdap = deps.rdap ?? publicRdap;
+  const site = deps.site === undefined ? publicSiteHost() : deps.site;
+  const before = sql`${now.toISOString()}::timestamptz - make_interval(hours => ${WATCH_EVERY_HOURS})`;
+  // One statement for the stores' domains and the site's own, so an idle run asks no more than it did.
   const due = await typedRows(
     DUE,
     sql`
-      select d.id, d.store_id, d.hostname, d.checks ->> 'apexName' as apex
-      from commerce.store_domains d
-      join commerce.stores s on s.id = d.store_id
-      where d.status = 'active' and (commerce.store_is_active(s.id) or s.house)
-        and coalesce((d.checks -> 'watch' ->> 'at')::timestamptz, '-infinity'::timestamptz) < ${now.toISOString()}::timestamptz - make_interval(hours => ${WATCH_EVERY_HOURS})
-      order by (d.checks -> 'watch' ->> 'at')::timestamptz nulls first, d.id
+      select x.id, x.store_id, x.hostname, x.apex, x.site from (
+        select d.id, d.store_id, d.hostname, d.checks ->> 'apexName' as apex, false as site, (d.checks -> 'watch' ->> 'at')::timestamptz as at
+        from commerce.store_domains d
+        join commerce.stores s on s.id = d.store_id
+        where d.status = 'active' and (commerce.store_is_active(s.id) or s.house)
+          and coalesce((d.checks -> 'watch' ->> 'at')::timestamptz, '-infinity'::timestamptz) < ${before}
+        union all
+        select null, null, ${site}::text, null, true, (p.domain_watch ->> 'at')::timestamptz
+        from commerce.platform_settings p
+        where ${site}::text is not null and coalesce((p.domain_watch ->> 'at')::timestamptz, '-infinity'::timestamptz) < ${before}
+      ) x
+      order by x.at nulls first, x.site desc, x.id
       limit ${WATCH_PER_RUN}
     `,
   );
   if (due.length === 0) return { checked: 0, failing: 0 };
   // Registered with Kaizena Flow: its expiry is the registration's own, never asked of the registry.
-  const ours = await typedRows(
-    z.object({ store_id: col.uuid, apex: col.text }),
-    sql`select store_id, apex from commerce.domain_registrations
-        where store_id = any(${uuidList([...new Set(due.map((d) => d.store_id))])}) and status <> 'transferred_out'`,
-  );
+  const stores = [...new Set(due.flatMap((d) => (d.store_id ? [d.store_id] : [])))];
+  const ours =
+    stores.length === 0
+      ? []
+      : await typedRows(
+          z.object({ store_id: col.uuid, apex: col.text }),
+          sql`select store_id, apex from commerce.domain_registrations where store_id = any(${uuidList(stores)}) and status <> 'transferred_out'`,
+        );
   const registered = new Set(ours.map((r) => `${r.store_id}:${r.apex}`));
   const out = { checked: 0, failing: 0 };
   for (let i = 0; i < due.length; i += WATCH_AT_ONCE) {
@@ -154,21 +176,25 @@ export async function watchDomains(deps: WatchDeps = {}): Promise<{ checked: num
       due.slice(i, i + WATCH_AT_ONCE).map(async (d) => {
         try {
           const apex = d.apex || apexOf(d.hostname);
-          const elsewhere = !registered.has(`${d.store_id}:${apex}`);
+          const elsewhere = d.site || !registered.has(`${d.store_id}:${apex}`);
           const [serving, registry] = await Promise.all([probe(d.hostname).catch(() => null), elsewhere ? rdap(apex).catch(() => null) : Promise.resolve(null)]);
           const watch: DomainWatch = {
             at: now.toISOString(),
             serving,
             ...(elsewhere ? { expiresAt: registry?.expiresAt ?? null, registrar: registry?.registrar ?? null } : {}),
           };
-          await db().execute(sql`
-            update commerce.store_domains set checks = coalesce(checks, '{}'::jsonb) || jsonb_build_object('watch', ${JSON.stringify(watch)}::jsonb)
-            where id = ${d.id}::uuid and store_id = ${d.store_id}::uuid and status = 'active'
-          `);
+          if (d.site) {
+            await db().execute(sql`update commerce.platform_settings set domain_watch = ${JSON.stringify(watch)}::jsonb`);
+          } else {
+            await db().execute(sql`
+              update commerce.store_domains set checks = coalesce(checks, '{}'::jsonb) || jsonb_build_object('watch', ${JSON.stringify(watch)}::jsonb)
+              where id = ${d.id}::uuid and store_id = ${d.store_id}::uuid and status = 'active'
+            `);
+          }
           out.checked++;
           if (serving === "certificate" || serving === "elsewhere") out.failing++;
         } catch (error) {
-          log("warn", "domain_watch.failed", { domain: d.id, store: d.store_id }, error);
+          log("warn", "domain_watch.failed", d.site ? { site: true } : { domain: d.id, store: d.store_id }, error);
         }
       }),
     );

@@ -25,17 +25,22 @@ import {
   type PlatformTarget,
   type TargetMetric,
 } from "@/lib/platform-briefing";
+import { HOUSE_SLUG } from "@/lib/house-routing";
 import { localNow } from "@/lib/staff-alerts";
 import { speedValueText, type SpeedKind, type SpeedMetric, type SpeedScreen } from "@/lib/speed";
-import { siteUrl } from "@/lib/site";
+import { publicSiteHost, siteUrl } from "@/lib/site";
 
+import { domainAlertRow, signalSnapshotFor } from "./analytics-insights";
 import { audit, platformCan, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { log } from "./log";
+import { owned } from "./owned";
 import { ownSpeedReport } from "./own-speed";
 import { planAnalytics } from "./plan-analytics";
 import { currentFlags } from "./platform-flags";
+import { getStore } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { OPEN_QUESTION } from "./unanswered-questions";
 
 /**
  * The platform's own figures, targets, alerts and morning briefing (C2 of `docs/platform-parity-plan.md`, D513, `src/lib/platform-briefing.ts`):
@@ -80,15 +85,56 @@ const FIGURES = z.object({
   trials_ending: col.int,
   waiting: col.int,
   oldest_hours: z.number().nullable(),
+  questions_open: col.int,
+  site_watch: z.unknown(),
 });
 
-/** The platform's figures now: recurring revenue and how it moved, paying and trying stores, sales this month, sign-ups today, requests, targets. */
-export async function platformSnapshot(now = new Date()): Promise<PlatformSnapshot> {
+/**
+ * What Kaizena Flow's own store measures besides sales, read by the store alerts' own readers (`signalSnapshotFor()`, ecosystem plan E5.2,
+ * D757), with kaizenaflow.com itself among its domains: the platform's host, no store's, read from what the domain watch kept for it
+ * (`platform_settings.domain_watch`) by the same `domainAlertRow()`. Null where the store cannot be read.
+ */
+async function houseSignals(now: Date, siteWatch: Promise<unknown>): Promise<PlatformSnapshot["house"]> {
+  try {
+    const store = await getStore(HOUSE_SLUG);
+    if (!store) return null;
+    const [signals, watch] = await Promise.all([signalSnapshotFor(store, now), siteWatch]);
+    const siteHost = publicSiteHost();
+    if (siteHost) {
+      const site = domainAlertRow({ hostname: siteHost, status: "active", primary: true, ageDays: 0, checks: { watch } }, undefined, now);
+      signals.domains = [site, ...(signals.domains ?? []).filter((d) => d.hostname !== siteHost)];
+    }
+    return { slug: store.slug, siteHost, signals };
+  } catch (error) {
+    log("warn", "platform_briefing.house_failed", {}, error);
+    return null;
+  }
+}
+
+/**
+ * The platform's figures now: recurring revenue and how it moved, paying and trying stores, sales this month, sign-ups today, requests,
+ * targets; with `house`, what Kaizena Flow's own site raises too (the home and the briefing).
+ */
+export async function platformSnapshot(now = new Date(), options: { house?: boolean } = {}): Promise<PlatformSnapshot> {
   const today = localNow(now, OSLO).date;
   const month = monthOf(today);
   const lastMonth = monthOf(new Date(Date.parse(`${month}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10));
   const sameDayLastMonth = `${lastMonth.slice(0, 8)}${today.slice(8, 10)}`;
-  const [analytics, moved, sales, figures, targets, speed, flagged] = await Promise.all([
+  const figuresRead = typedRow(
+    FIGURES,
+    sql`select
+          (select count(*)::int from commerce.access_requests where (created_at at time zone ${OSLO})::date = ${today}::date) as asked_today,
+          (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date = ${today}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as opened_today,
+          (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date >= ${month}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as new_stores,
+          (select count(*)::int from commerce.store_billing b where b.mode::text = 'live' and b.status = 'trialing' and b.trial_ends_at between now() and now() + interval '3 days') as trials_ending,
+          (select count(*)::int from commerce.access_requests where status = 'pending') as waiting,
+          (select extract(epoch from now() - min(created_at)) / 3600 from commerce.access_requests where status = 'pending')::float8 as oldest_hours,
+          -- E5.4 (D757): what Kaizena Flow's own chat assistant could not answer, counted as its Questions page lists them.
+          (select count(*)::int from commerce.unanswered_questions q where ${owned(null, sql`q.store_id`)} and ${OPEN_QUESTION}) as questions_open,
+          -- E5.2 (D757): what the domain watch last found of kaizenaflow.com.
+          (select p.domain_watch from commerce.platform_settings p) as site_watch`,
+  );
+  const [analytics, moved, sales, figures, targets, speed, flagged, house] = await Promise.all([
     planAnalytics(30),
     typedRows(
       z.object({ currency: col.currency, month_moved: col.minor, week_moved: col.minor }),
@@ -106,19 +152,12 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
             from commerce.platform_sales where mode = 'live' and (paid_at at time zone ${OSLO})::date >= ${lastMonth}::date
            group by currency`,
     ),
-    typedRow(
-      FIGURES,
-      sql`select
-            (select count(*)::int from commerce.access_requests where (created_at at time zone ${OSLO})::date = ${today}::date) as asked_today,
-            (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date = ${today}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as opened_today,
-            (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date >= ${month}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as new_stores,
-            (select count(*)::int from commerce.store_billing b where b.mode::text = 'live' and b.status = 'trialing' and b.trial_ends_at between now() and now() + interval '3 days') as trials_ending,
-            (select count(*)::int from commerce.access_requests where status = 'pending') as waiting,
-            (select extract(epoch from now() - min(created_at)) / 3600 from commerce.access_requests where status = 'pending')::float8 as oldest_hours`,
-    ),
+    figuresRead,
     platformTargets(month),
     ownSpeedReport("admin", now),
     currentFlags(now),
+    // The figures' failure is the snapshot's own; the site's row then reads no watch.
+    options.house ? houseSignals(now, figuresRead.then((f) => f?.site_watch ?? null, () => null)) : Promise.resolve(null),
   ]);
   const live = analytics.live;
   const mrr = live.mrr.map((m) => {
@@ -151,6 +190,8 @@ export async function platformSnapshot(now = new Date()): Promise<PlatformSnapsh
     targets: targets.map((target) => ({ target, progress: targetProgress(target, actualOf(target), today) })),
     adminSpeed: speed.rows,
     flags: (flagged?.flags ?? []).map((f) => ({ id: f.id, subject: f.subject })),
+    house,
+    questionsOpen: figures?.questions_open ?? 0,
   };
 }
 
@@ -216,6 +257,7 @@ export function alertText(alert: PlatformAlert, lang: AdminLang): string {
     });
   }
   if (alert.id === "database_flag") return countWords(Number(v.n), w.database_flag);
+  if (alert.id === "house_signal") return fillWords(w.house_signal, { text: alert.text?.[lang] ?? alert.text?.en ?? "" });
   return countWords(Number(v.n), w.trials_ending);
 }
 
@@ -237,7 +279,7 @@ export async function sendPlatformBriefing(options: { now?: Date } = {}): Promis
       sql`update commerce.platform_settings set briefing_last_period = ${due.key} where briefing_last_period is distinct from ${due.key} returning true as ok`,
     );
     if (!claimed) return { sent: 0 };
-    const [snapshot, period, recipients] = await Promise.all([platformSnapshot(now), periodFigures(due.from, due.to), briefingRecipients()]);
+    const [snapshot, period, recipients] = await Promise.all([platformSnapshot(now, { house: true }), periodFigures(due.from, due.to), briefingRecipients()]);
     const alerts = platformAlertsFor(snapshot);
     let sent = 0;
     for (const r of recipients) {

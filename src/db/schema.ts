@@ -1987,6 +1987,11 @@ export const platformSettings = commerce.table(
      * custom domains is built into each deployment, so a change needs one.
      */
     domainsDeployRequestedAt: timestamp("domains_deploy_requested_at", { withTimezone: true }),
+    /**
+     * What the domain watch last found of Kaizena Flow's own host (ecosystem plan E5.2, D757), a store domain's `checks.watch` in the same
+     * shape (`DomainWatch`): `watchDomains()` asks it once a day, and the platform's alerts read it while it is fresh. Null until asked.
+     */
+    domainWatch: jsonb("domain_watch"),
     /** Kaizen's own header and footer (D80), its pages of type `header` and `footer`; null: the standard ones. Foreign keys in a custom migration. */
     headerId: uuid("header_id"),
     footerId: uuid("footer_id"),
@@ -2017,6 +2022,7 @@ export const platformSettings = commerce.table(
     check("platform_settings_sandbox_daily_cap", sql`${t.sandboxDailyCap} between 0 and 10000`),
     check("platform_settings_sandbox_ai", sql`${t.sandboxAiMicros} between 0 and 100000000`),
     check("platform_settings_sandbox_storage", sql`${t.sandboxStorageBytes} between 0 and 1000000000`),
+    check("platform_settings_domain_watch", sql`${t.domainWatch} is null or jsonb_typeof(${t.domainWatch}) = 'object'`),
     // English always, first; the other languages the site has (`PLATFORM_LANGS`).
     check("platform_settings_locales", sql`coalesce(${t.locales}[1] = 'en-GB', false) and ${t.locales} <@ array['en-GB', 'nb-NO']::text[]`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),
@@ -18770,7 +18776,10 @@ export const autopilotTests = commerce.table(
     pageId: uuid("page_id").notNull(),
     /** In whose name the autopilot made the change and the store decides the test: the plan's maker, read again before each decision. */
     accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
-    /** The counted goal (`orders`, `cart`, `checkout`) and the days the test was sized for at the store's traffic, at most 21 (`AUTOPILOT_TEST_MAX_DAYS`). */
+    /**
+     * The counted goal (`orders`, `cart`, `checkout`; `signup` on Kaizena Flow's own store alone, E5.3, D757, a rule of the database) and the
+     * days the test was sized for at the store's traffic, at most 21 (`AUTOPILOT_TEST_MAX_DAYS`).
+     */
     goal: text("goal").notNull(),
     days: integer("days").notNull(),
     /** Null while undecided; `applied` (the change went live), `asked` (kept for the owner's yes), `kept` (the page stays as it was), `left` (a person decides). */
@@ -18791,7 +18800,7 @@ export const autopilotTests = commerce.table(
     index("autopilot_tests_account_idx").on(t.accountId),
     index("autopilot_tests_approval_idx").on(t.approvalId),
     index("autopilot_tests_conversation_idx").on(t.conversationId),
-    check("autopilot_tests_goal", sql`${t.goal} in ('orders', 'cart', 'checkout')`),
+    check("autopilot_tests_goal", sql`${t.goal} in ('orders', 'cart', 'checkout', 'signup')`),
     check("autopilot_tests_days", sql`${t.days} between 1 and 90`),
     check("autopilot_tests_outcome", sql`${t.outcome} is null or ${t.outcome} in ('applied', 'asked', 'kept', 'left')`),
     check("autopilot_tests_decided", sql`(${t.outcome} is null) = (${t.decidedAt} is null)`),

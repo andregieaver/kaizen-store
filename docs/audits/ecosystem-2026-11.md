@@ -76,10 +76,10 @@ behaviour joins pages, never people.
 
 | Id | Step | Size | Status |
 |---|---|---|---|
-| E5.1 | The lead, activity and domain-problem events E3.2 left, on the log and offered to webhooks and workflows | M | Open |
-| E5.2 | The house store's frustration, slow-page and domain alerts in the platform's alerts and morning briefing, and kaizenaflow.com itself in the domain watch (E4.2's platform step) | S | Open |
-| E5.3 | The house store's sign-ups per visit as a goal, so the autopilot can test kaizenaflow.com's pages (E4.1's platform step) | M | Open |
-| E5.4 | A relevance floor for the knowledge base's meaning search, so a question nothing answers is counted; the open questions counted on the platform's Home (E4.3's next) | S | Open |
+| E5.1 | The lead, activity and domain-problem events E3.2 left, on the log and offered to webhooks and workflows | M | Done, 18 Nov 2026 (ed46bec4): `activity.created`, `activity.done`, `lead.dismissed`, `lead.deal_made`, `domain.failing`, `domain.recovered`; contract 1.44 |
+| E5.2 | The house store's frustration, slow-page and domain alerts in the platform's alerts and morning briefing, and kaizenaflow.com itself in the domain watch (E4.2's platform step) | S | Done, 18 Nov 2026 (af413b10): `house_signal` alerts; the site's host watched daily into `platform_settings.domain_watch` |
+| E5.3 | The house store's sign-ups per visit as a goal, so the autopilot can test kaizenaflow.com's pages (E4.1's platform step) | M | Done, 18 Nov 2026 (c356124b). `signup_rate_30d` is held out of `set_goal` until the eval is run again |
+| E5.4 | A relevance floor for the knowledge base's meaning search, so a question nothing answers is counted; the open questions counted on the platform's Home (E4.3's next) | S | Done, 18 Nov 2026 (af413b10): the provider's own similarity limit |
 
 E3.6's email engagement is M2.4 of `email-marketing-2026-11.md`; E1.5's one desk is step 6 of `docs/platform-parity-plan.md`.
 

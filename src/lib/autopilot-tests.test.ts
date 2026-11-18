@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assistantEn } from "./admin-messages/assistant.en";
 import { assistantNb } from "./admin-messages/assistant.nb";
 import { staffEmailsEn } from "./admin-messages/staff-emails.en";
-import { AUTOPILOT_TEST_MAX_DAYS, chooseTest, daysLeft, testAction, testLine, testState } from "./autopilot-tests";
+import { AUTOPILOT_TEST_MAX_DAYS, chooseTest, daysLeft, guardrailsToClear, testAction, testLine, testState } from "./autopilot-tests";
 import type { TrafficFacts } from "./experiment-traffic";
 
 /** A store that counts visits, where 60 % accept statistics cookies, 2 % of visits order, 10 % add to the cart and 5 % reach checkout. */
@@ -11,7 +11,7 @@ const facts = (visitsPerDay: number | null, counting = true): TrafficFacts => ({
   counting,
   days: 30,
   consentShare: 0.6,
-  baselines: { orders: 0.02, cart: 0.1, checkout: 0.05 },
+  baselines: { orders: 0.02, cart: 0.1, checkout: 0.05, signup: null },
   targets: { page: { visitsPerDay, basis: "landing" } },
 });
 
@@ -42,6 +42,28 @@ describe("which test the autopilot's change gets (E4.1)", () => {
   });
 });
 
+describe("Kaizena Flow's own site: its sign-ups per visit (E5.3, D757)", () => {
+  /** Kaizena Flow's own store sells nothing: no order, cart or checkout rate, and one visit in ten ending in a sign-up. */
+  const house = (visitsPerDay: number | null): TrafficFacts => ({ ...facts(visitsPerDay), baselines: { orders: null, cart: null, checkout: null, signup: 0.1 } });
+
+  it("tests a change on sign-ups, sized from the site's own sign-up rate", () => {
+    // 2,000 visits a day, 1,200 of whom could take part: a change of a fifth in one visit in ten answers in two weeks.
+    expect(chooseTest(house(2000), "page")).toEqual({ goal: "signup", days: 14 });
+    expect(chooseTest({ ...house(2000), baselines: { ...house(2000).baselines, signup: 0.02 } }, "page")).toEqual({ none: "too_slow" });
+  });
+
+  it("publishes as before where the site is too quiet, or no sign-up was counted", () => {
+    expect(chooseTest(house(50), "page")).toEqual({ none: "too_slow" });
+    expect(chooseTest({ ...house(2000), baselines: { orders: null, cart: null, checkout: null, signup: null } }, "page")).toEqual({ none: "not_counted" });
+    expect(chooseTest({ ...house(2000), counting: false }, "page")).toEqual({ none: "not_counted" });
+  });
+
+  it("needs the speed guardrail cleared before a sign-up test's change goes live, as nothing else watches a site that sells nothing", () => {
+    expect(guardrailsToClear("signup")).toEqual(["speed"]);
+    for (const goal of ["orders", "cart", "checkout", null, "form"]) expect(guardrailsToClear(goal)).toEqual([]);
+  });
+});
+
 describe("what the store does with the autopilot's test (E4.1)", () => {
   const running = { status: "running" as const, stopReason: null, best: null, plannedEnd: "2026-12-01T12:00:00Z", now: NOW };
 
@@ -65,6 +87,25 @@ describe("what the store does with the autopilot's test (E4.1)", () => {
     expect(testAction({ ...running, status: "stopped", stopReason: "person", verdict: "better", best: "b" })).toBe("leave");
     expect(testAction({ ...running, status: "applied", verdict: "better", best: "b" })).toBe("leave");
     expect(testAction({ ...running, status: "discarded", verdict: "worse" })).toBe("leave");
+  });
+
+  it("makes a sign-up test's change live only once speed was watched and found fine (E5.3, D757)", () => {
+    const signups = { ...running, verdict: "better" as const, best: "b", goal: "signup" };
+    const speed = (state: "watching" | "fine" | "worse" | "off") => [
+      { kind: "orders" as const, state: "watching" as const },
+      { kind: "speed" as const, state },
+    ];
+    expect(testAction({ ...signups, guardrails: speed("fine") })).toBe("apply");
+    // Still watching: the test waits for it, until its time is up or it stopped.
+    expect(testAction({ ...signups, guardrails: speed("watching") })).toBe("wait");
+    expect(testAction({ ...signups, guardrails: speed("watching"), plannedEnd: "2026-11-17T11:00:00Z" })).toBe("keep");
+    expect(testAction({ ...signups, status: "stopped", stopReason: "planned_end", guardrails: speed("watching") })).toBe("keep");
+    // Nothing can watch it (the store stopped counting visits), or nothing was said: the page stays as it was.
+    expect(testAction({ ...signups, guardrails: speed("off") })).toBe("keep");
+    expect(testAction(signups)).toBe("keep");
+    // A store's tests need nothing more than before: its orders and payments guardrails stop a harmful version themselves.
+    expect(testAction({ ...signups, goal: "cart", guardrails: speed("watching") })).toBe("apply");
+    expect(testAction({ ...signups, goal: "orders" })).toBe("apply");
   });
 });
 

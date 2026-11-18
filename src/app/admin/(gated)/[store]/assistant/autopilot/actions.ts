@@ -3,7 +3,7 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { answerStep, cancelFollowUpFrom, changePlan, decideCall, dropGoalFrom, saveSettings } from "@/server/autopilot-actions";
+import { answerStep, cancelFollowUpFrom, changePlan, decideCall, dropGoalFrom, saveSettings, setSignupGoalFrom } from "@/server/autopilot-actions";
 import { requireOwnerRole } from "@/server/permissions";
 
 /** The store's Autopilot page (D309): for the store's owners only, as the AI manager is. */
@@ -31,6 +31,11 @@ export async function cancelFollowUpAction(storeSlug: string, _state: FormState,
 
 export async function dropGoalAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return after(await dropGoalFrom(await requireOwnerRole(storeSlug), form));
+}
+
+/** Kaizena Flow's sign-ups per visit as a goal, on its own store alone (D757); any other store's is refused by `setGoal()`. */
+export async function setSignupGoalAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return after(await setSignupGoalFrom(await requireOwnerRole(storeSlug), form));
 }
 
 export async function saveSettingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {

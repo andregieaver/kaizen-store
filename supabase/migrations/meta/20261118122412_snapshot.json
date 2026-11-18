@@ -1,6 +1,6 @@
 {
-  "id": "05b23cf5-a326-47ae-b7a0-cc9bbc2f646c",
-  "prevId": "b7ddf970-82d1-4cee-aa29-9c5fcec2a286",
+  "id": "e76f3094-6277-4ff9-997a-4e0f37655e54",
+  "prevId": "c82ec49d-f7b5-49fa-a3e5-29582807ba84",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -9573,7 +9573,7 @@
       "checkConstraints": {
         "autopilot_tests_goal": {
           "name": "autopilot_tests_goal",
-          "value": "\"commerce\".\"autopilot_tests\".\"goal\" in ('orders', 'cart', 'checkout')"
+          "value": "\"commerce\".\"autopilot_tests\".\"goal\" in ('orders', 'cart', 'checkout', 'signup')"
         },
         "autopilot_tests_days": {
           "name": "autopilot_tests_days",
@@ -61081,6 +61081,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "domain_watch": {
+          "name": "domain_watch",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "header_id": {
           "name": "header_id",
           "type": "uuid",
@@ -61315,6 +61321,10 @@
         "platform_settings_sandbox_storage": {
           "name": "platform_settings_sandbox_storage",
           "value": "\"commerce\".\"platform_settings\".\"sandbox_storage_bytes\" between 0 and 1000000000"
+        },
+        "platform_settings_domain_watch": {
+          "name": "platform_settings_domain_watch",
+          "value": "\"commerce\".\"platform_settings\".\"domain_watch\" is null or jsonb_typeof(\"commerce\".\"platform_settings\".\"domain_watch\") = 'object'"
         },
         "platform_settings_locales": {
           "name": "platform_settings_locales",
@@ -101022,7 +101032,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'email.bounced', 'email.complained', 'broadcast.sent', 'marketing.paused', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'email.bounced', 'email.complained', 'broadcast.sent', 'marketing.paused', 'activity.created', 'activity.done', 'lead.dismissed', 'lead.deal_made', 'domain.failing', 'domain.recovered', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",
