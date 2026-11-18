@@ -37,6 +37,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   // Broadcasts (D297): a template or demo store sends no marketing email.
   "src/server/broadcasts.ts": "real",
   "src/server/automations.ts": "real",
+  // The product page's cached buy facts (step 2.13): back in stock is on only for a real, open store, as backInStockOn() says.
+  "src/server/buy-facts.ts": "real",
   "src/server/autopilot-goals.ts": "real",
   "src/server/stock-requests.ts": "real",
   "src/server/review-import.ts": "real",
@@ -180,6 +182,7 @@ const SANDBOX_KEPT: Record<string, string> = {
   "src/app/s/[store]/[market]/layout.tsx": "A sandbox never finishes setting up, so its storefront is never indexed.",
   "src/server/account-erasure.ts": "An account's own erasure: the sandbox account is never erased.",
   "src/server/automations.ts": NOT_OPEN,
+  "src/server/buy-facts.ts": NOT_OPEN,
   "src/server/broadcasts.ts": `${NOT_OPEN} And email.ts suppresses every email of a sandbox.`,
   "src/server/stock-requests.ts": NOT_OPEN,
   "src/server/review-requests.ts": NOT_OPEN,
