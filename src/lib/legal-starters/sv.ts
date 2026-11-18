@@ -148,6 +148,7 @@ export const SV: StarterText = {
     "privacy.controller.2": "Butiken körs på plattformen Kaizena Flow. Plattformen behandlar personuppgifter för vår räkning, som vårt personuppgiftsbiträde.",
     "h.privacy.contact": "Kontakt",
     "privacy.contact.1": "Frågor om dina personuppgifter: {email}. Telefon: {phone}.",
+    "privacy.contact.officer": "Vårt dataskyddsombud: {officer}.",
     "h.privacy.purposes_basis": "Vad vi använder uppgifterna till",
     "privacy.purposes.1": "Vi använder personuppgifter för de här ändamålen, vart och ett på den rättsliga grund som anges:",
     "privacy.purpose.orders": "att ta emot, ta betalt för, leverera och följa upp dina beställningar, och att bekräfta och skicka det du har köpt (fullgörande av avtalet)",

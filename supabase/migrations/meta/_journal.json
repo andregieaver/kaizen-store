@@ -701,6 +701,20 @@
       "when": 1794990127277,
       "tag": "20261118082207_extension_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1794994340546,
+      "tag": "20261118093220_mushy_galactus",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1794994342903,
+      "tag": "20261118093222_privacy_officers_rules",
+      "breakpoints": true
     }
   ]
 }

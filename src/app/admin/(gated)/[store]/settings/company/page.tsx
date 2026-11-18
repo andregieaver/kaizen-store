@@ -26,6 +26,11 @@ import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 import { saveAudienceAction, saveBusinessAction, saveOfficeAction } from "./actions";
 import { cancelBusinessChangeAction, planBusinessChangeAction, tickBusinessStepAction } from "./business-actions";
 import { BusinessChangeSection } from "@/components/admin/business-change-section";
+import { PrivacyOfficerForm } from "@/components/admin/privacy-officer-form";
+import { officerSummary } from "@/lib/privacy-officer";
+import { accountOfficer, officerCandidates, officerForStore, storedChoice } from "@/server/privacy-officers";
+
+import { setStoreOfficerAction } from "./officer-actions";
 import { businessChecklist } from "@/lib/business-change";
 import { zonedDate } from "@/lib/booking-slots";
 import { businessChangesOf, businessChecklistFacts, businessSeriesNow } from "@/server/business-change";
@@ -77,6 +82,17 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   const businessSummary = [store.details.legalName, store.details.organisationNumber, store.details.postalAddress?.replace(/\s*\n\s*/g, ", "), countryName]
     .filter(Boolean)
     .join(" · ");
+  // The data protection officer (D763): the store's own, or its account's.
+  const pw = adminText(lang, "privacyOfficer");
+  const org = store.organisationId;
+  const officer = org
+    ? await Promise.all([officerForStore(store), storedChoice(org, store.id), officerCandidates(org, store.id), accountOfficer(org)]).then(([resolved, choice, people, ofAccount]) => ({ resolved, choice, people, ofAccount }))
+    : null;
+  const officerSub = officer?.resolved.officer
+    ? officer.resolved.source === "account"
+      ? fillWords(pw.sameAsAccountWho, { who: officerSummary(officer.resolved.officer) })
+      : officerSummary(officer.resolved.officer)
+    : pw.nobody;
   const office = company.office;
   const officeSummary = office
     ? [`${office.street}, ${office.postalCode} ${office.city}`, office.hours ? weekSummary(office.hours.week, all.hours) : w.noHours].join(" · ")
@@ -113,6 +129,20 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
           >
             {businessForm}
           </FoldRow>
+          {officer ? (
+            <FoldRow title={pw.title} sub={officerSub} action={owner ? w.change : null}>
+              <p className="mb-3 text-sm text-muted">{pw.storeLead}</p>
+              <PrivacyOfficerForm
+                words={pw}
+                action={setStoreOfficerAction.bind(null, store.slug)}
+                store
+                choice={officer.choice}
+                people={officer.people}
+                current={officer.resolved.officer}
+                accountOfficer={officer.ofAccount}
+              />
+            </FoldRow>
+          ) : null}
           <FoldRow title={w.office} sub={officeSummary} action={office ? w.change : w.add}>
             <ActionForm action={saveOfficeAction.bind(null, store.slug)} className="flex flex-col gap-4">
               <PlaceFields place={company.office} countries={countries} defaultCountry={homeCountry} what={w.theOffice} w={all} />

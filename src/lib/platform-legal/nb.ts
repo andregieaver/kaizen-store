@@ -171,7 +171,7 @@ ${f.contactEmail}`,
         {
           topic: "controller",
           heading: "1. Hvem som er ansvarlig",
-          body: `${f.legalName}, organisasjonsnummer ${f.organisationNumber}, ${f.postalAddress}, er behandlingsansvarlig for behandlingen som beskrives i denne erklæringen. Kontakt oss om personvern på ${f.contactEmail}.`,
+          body: `${f.legalName}, organisasjonsnummer ${f.organisationNumber}, ${f.postalAddress}, er behandlingsansvarlig for behandlingen som beskrives i denne erklæringen. Kontakt oss om personvern på ${f.contactEmail}.${f.officer ? ` Personvernombudet vårt er ${f.officer}.` : ""}`,
         },
         {
           topic: "scope",
