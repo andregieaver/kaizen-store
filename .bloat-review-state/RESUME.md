@@ -310,3 +310,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-c: 2.2 (Sonnet, store layout once) agent abbce2dc1145d5b3c.
 - Order constraints: 2.2<2.3, 2.4<2.5, 2.14<2.15, 2.16<2.17,2.18, 2.20<2.35, 2.36<2.37, 2.27&2.29<2.30, 2.11<2.49, 2.25&2.26<2.50, 2.9&2.22<2.47.
 - Next candidates: 2.13 (stock), 2.16 (page columns, migration), 2.20 (proxy leaves), 2.33, 2.36 (AI lean round), 2.42, 2.48.
+- 18 Nov ~21: production on 9d248f47a (all through 1.29 c1 live; other session reverted Flows from manager prompt for one deploy so eval matched). All 19 of today's migrations applied. Owner's eval run 153e0382 = same prompts as committed recording; nothing to commit. D771 got advisors (INFO) + first cold-start figures (520583e00).
