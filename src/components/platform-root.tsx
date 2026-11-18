@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
 import { StoreThemeStyles } from "@/components/store-theme";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { themeAttributes } from "@/lib/theme";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { OffPayRoutes } from "@/components/off-pay-routes";
@@ -69,7 +70,7 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
         style={siteFontStyle(chrome.fonts)}
       >
         {/* Kaizen's own fonts, from its copies (D59), its theme (D235) and its screen sizes' breakpoint classes (D179). */}
-        <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} />
+        <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} rowSizes={DEFAULT_BREAKPOINTS} />
         {/* Kaizena Flow's text styles (D393), before its own CSS. */}
         <CustomCss css={await textStylesCssFor(null)} name="text-styles-kaizen" />
         {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}

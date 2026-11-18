@@ -1,5 +1,6 @@
 import { ArticleView } from "@/components/article-view";
 import { ScopedCss } from "@/components/custom-css";
+import { PreviewBreakpoints } from "@/components/part-styles";
 import { FontLinks } from "@/components/font-links";
 import { PageArticle } from "@/components/page-article";
 import { ProductLayoutView } from "@/components/product-parts";
@@ -51,6 +52,7 @@ export function PageDrawing({
     // Whatever it draws stays inside the preview, even `position: fixed`.
     <div data-site-css="" className="flex flex-col gap-6 [contain:paint]">
       <ScopedCss css={[store.customCss, content.css]} root="[data-site-css]" />
+      <PreviewBreakpoints owner={store.id} />
       {type === "product_layout" ? (
         <LayoutPreview store={store} layout={content} asked={asked} />
       ) : type === "entry_layout" ? (

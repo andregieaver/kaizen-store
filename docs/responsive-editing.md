@@ -149,7 +149,7 @@ runs nothing.
   value at 375, 800, 1100 and 1400 px is the same read the old way and from the upgraded settings.
 - **The part stylesheet** (`src/lib/part-css.ts`, drawn by `PartStyles` in `src/components/part-styles.tsx` beside every
   row `PageRowView` draws — pages, articles, headers, footers, product layouts, modals, working pages and Kaizen's pages —
-  and by `CanvasPartStyles` in the builder): `rowStyle()`, `rowGridStyle()`, `columnStyle()`, `blockStyle()`,
+  and by `CanvasPartStyles` in the builder; the breakpoint classes are not part of it: see below): `rowStyle()`, `rowGridStyle()`, `columnStyle()`, `blockStyle()`,
   `gridListStyle()`, `partRules()`, `renderPartCss()`. Each element keeps `kz-{id}` (the stable hook for owners) and
   gets a class named by a hash of what its rules say (`kzr-…`), so the same id on two pages (a copy, an A/B version, a
   page kept hidden after client navigation) never takes the other's rules. To keep the cascade exactly as it was, what
@@ -282,8 +282,9 @@ runs nothing.
   Tailwind's `sm:` (now Medium, 768 px by default, from 640), `md:` and `lg:` in field loops, custom fields, Kaizen's plans,
   tabs' titles, testimonials, an article's title, the product listing's grid, the gallery's arrows, the standard header's
   menu button, account link and country choice and a site part's menu button, and the carousel's fallback columns
-  (`globals.css`'s `@media` rules). Drawn by `BreakpointSheet` with the store's screen sizes beside the part stylesheet
-  (`PartStyles`), in the store's head (`StoreThemeStyles`) and Kaizen's layout, and as container queries on the canvas
+  (`globals.css`'s `@media` rules). Drawn by `BreakpointSheet` once per document: in the store's head
+  (`StoreThemeStyles`) and Kaizen's layouts (which pass `rowSizes`); an admin preview that draws site rows draws its own with
+  `PreviewBreakpoints` (`stylesheet-sources.scan.test.ts`); and as container queries on the canvas
   (`CanvasPartStyles`), so the canvas at a size shows them right. Other storefront chrome (cart, checkout, account pages)
   keeps Tailwind's breakpoints.
 - **The builder**: `TypographyFields` (`src/components/admin/typography-fields.tsx`) in every Style tab (rows, columns and

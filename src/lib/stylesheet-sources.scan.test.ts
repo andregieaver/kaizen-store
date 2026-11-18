@@ -204,3 +204,45 @@ describe("Tailwind reads code only (bloat review 0.35)", () => {
     expect(sourceLines(sample).positive).not.toEqual(["../"]);
   });
 });
+
+describe("The breakpoint sheet once per document (bloat review 2.3)", () => {
+  /** Admin files that draw site rows without a layout above them, and need no PreviewBreakpoints: file to reason. */
+  const ALLOWED: Record<string, string> = {};
+  const DRAWS_ROWS = /from "@\/components\/(page-article|article-view|product-parts|site-parts|store-page-article)"/;
+
+  const rowDrawers = [...sourceFiles("src/app/admin"), ...sourceFiles("src/components/admin")].filter(
+    (file) => file.endsWith(".tsx") && DRAWS_ROWS.test(readFileSync(join(ROOT, file), "utf8")),
+  );
+
+  it("an admin file that draws site rows draws PreviewBreakpoints", () => {
+    expect(rowDrawers.length).toBeGreaterThanOrEqual(6);
+    for (const file of rowDrawers) {
+      if (file in ALLOWED) continue;
+      expect(
+        readFileSync(join(ROOT, file), "utf8"),
+        `${file}: draw <PreviewBreakpoints owner={...} /> beside the rows, or add the file to ALLOWED with its reason`,
+      ).toContain("PreviewBreakpoints");
+    }
+  });
+
+  it("every site root draws the breakpoint sheet", () => {
+    const roots = [
+      "src/app/s/[store]/[market]/layout.tsx",
+      "src/app/s/[store]/(chooser)/layout.tsx",
+      "src/app/s/[store]/private/[market]/layout.tsx",
+      "src/components/platform-root.tsx",
+      "src/components/docs/docs-root.tsx",
+      "src/components/theme-preview-root.tsx",
+    ];
+    for (const file of roots) {
+      const text = readFileSync(join(ROOT, file), "utf8");
+      expect(text, file).toContain("<StoreThemeStyles");
+      if (/platform-root|docs-root|theme-preview-root/.test(file)) expect(text, file).toContain("rowSizes={DEFAULT_BREAKPOINTS}");
+    }
+  });
+
+  it("the part stylesheet draws no breakpoint sheet", () => {
+    const text = readFileSync(join(ROOT, "src/components/part-styles.tsx"), "utf8");
+    expect(text.split("<BreakpointSheet").length - 1).toBe(1);
+  });
+});

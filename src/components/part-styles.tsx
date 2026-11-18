@@ -40,27 +40,23 @@ export function BreakpointSheet({ breakpoints }: { breakpoints: Breakpoints }) {
 /** A store's: its theme's screen sizes, read from the cached store. */
 async function StoreSheet({ owner, ...drawn }: Drawn & { owner: string }) {
   const breakpoints = await breakpointsFor(owner);
-  return (
-    <>
-      <BreakpointSheet breakpoints={breakpoints} />
-      <Sheet {...drawn} breakpoints={breakpoints} />
-    </>
-  );
+  return <Sheet {...drawn} breakpoints={breakpoints} />;
 }
 
+/**
+ * The breakpoint classes for site rows drawn where no site layout draws them: an admin preview. On the site the layout draws the
+ * sheet once (StoreThemeStyles); the builder's canvas has its own (CanvasPartStyles).
+ */
+export async function PreviewBreakpoints({ owner }: { owner: string | null }) {
+  return <BreakpointSheet breakpoints={await breakpointsFor(owner)} />;
+}
 
 /**
  * The part stylesheet of rows on the site (D179, `src/lib/part-css.ts`): what their settings say at each of the screen
  * sizes, a store's own (its theme) or Kaizen's (the defaults). Every place that draws rows draws this beside them
- * (`PageRowView`), and a listing its grid's (`blocks`).
+ * (`PageRowView`), and a listing its grid's (`blocks`). The breakpoint classes are not drawn here: the site's layout draws them once
+ * (`StoreThemeStyles`), and an admin preview draws `PreviewBreakpoints`.
  */
 export function PartStyles({ owner, ...drawn }: Drawn & { owner: string | null }) {
-  return owner ? (
-    <StoreSheet owner={owner} {...drawn} />
-  ) : (
-    <>
-      <BreakpointSheet breakpoints={DEFAULT_BREAKPOINTS} />
-      <Sheet {...drawn} breakpoints={DEFAULT_BREAKPOINTS} />
-    </>
-  );
+  return owner ? <StoreSheet owner={owner} {...drawn} /> : <Sheet {...drawn} breakpoints={DEFAULT_BREAKPOINTS} />;
 }

@@ -83,7 +83,7 @@ with its processor slowed four times, and a computer.
 - **Pictures are never resized on the server**: `images: { unoptimized: true }` in `next.config.ts`, so every `next/image` is served as stored and `/_next/image` does not exist (`src/lib/image-service.scan.test.ts`). A picture's sizes are the files kept for it (`src/lib/picture-sizes.ts`).
 - **Font stylesheets and font files are kept for a year, at the CDN too** (`immutable`, `s-maxage`); a change to how one is written raises `FONT_CSS_VERSION`, which is in
   every stylesheet's address.
-- **A store document holds its layout once**, held by `e2e/performance.spec.ts`: one `html` element in the payload and under 2,000 bytes of duplicate rows (bloat review step 2.2). The `@drawer` slot sits in the `(shop)` route group because a slot on a root layout makes Next draw that layout twice; each layout-level sheet is in a document twice (HTML and payload).
+- **A store document holds its layout once**, held by `e2e/performance.spec.ts`: one `html` element in the payload and under 2,000 bytes of duplicate rows (bloat review step 2.2). The `@drawer` slot sits in the `(shop)` route group because a slot on a root layout makes Next draw that layout twice; each layout-level sheet is in a document twice (HTML and payload): the breakpoint sheet and the theme sheet too, however many rows a page has (a three-row page in the same spec, step 2.3).
 
 After D212 the demo store's front page, built locally, loads 206 KB of scripts (compressed; 266 KB after D211, 469 KB before) and
 scores 92 to 96 for performance on a phone.

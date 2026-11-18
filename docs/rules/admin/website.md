@@ -700,8 +700,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `TypographyFields` in every Design tab's text fold; old size, weight, font and text-alignment fields are folded in on read
   (`foldTypography()`); a new text of a block is a kind in `TEXT_FIELDS` with a role in `textRoles()` (its element marked
   `data-kz-text` where no selector names it), which `typography.test.ts` holds for every text. A component's own Tailwind
-  breakpoints are `kzb-md-…`/`kzb-lg-…` classes (`BREAKPOINT_CLASSES`, drawn by `BreakpointSheet` on the store's sizes and on the
-  canvas), never `sm:`/`md:`/`lg:` inside a block. Who sees a part (phase 4) is `visibility.show` (never, signed in, signed out,
+  breakpoints are `kzb-md-…`/`kzb-lg-…` classes (`BREAKPOINT_CLASSES`, drawn by `BreakpointSheet` once per document, in the layout's
+  `StoreThemeStyles` (Kaizena Flow's pass `rowSizes`); an admin preview of site rows draws `PreviewBreakpoints`; the canvas has its own), never `sm:`/`md:`/`lg:` inside a block. Who sees a part (phase 4) is `visibility.show` (never, signed in, signed out,
   or conditions: rules pure and closed in `src/lib/visibility.ts`, OR between groups, AND within, at most 30 such parts a page):
   the site draws every row, column and block through `<VisiblePart>`, a `<Suspense>` hole that reads `visitorFacts()`
   (`src/server/visibility.ts`, each kind once per request through `perRequest()`, from the request and the store's own rows) and

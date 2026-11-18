@@ -7,7 +7,7 @@ import { parsePageContent } from "../src/lib/page-content";
 import { PAYMENT_CAPABILITIES } from "../src/lib/payment-methods";
 import { ORBIT_PACK, orbitHomePage } from "../src/lib/signature/orbit";
 
-import { storePageRows, testDb, testStore } from "./db";
+import { storePageRows, storePageWith, testDb, testStore } from "./db";
 import { mergedRunBytes, runBytes } from "./run-bytes";
 
 /**
@@ -98,7 +98,7 @@ for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
 /**
  * The document a page sends and what is in it (bloat review step 1.3): `document` is the characters of the HTML, `payload` the characters
  * of the inline scripts that carry the page's data to the browser (`self.__next_f.push(`), `main` the characters from the first `<main` to
- * the last `</main>`. Six pages, the last a six-row page made from Orbit's home. The home's document (112,000) and /om-oss (82,000, payload 53,000, main 2,500) were set when the layout began to be sent once (bloat review step 2.2: the home 135,935 bytes before, 105,599 after, on one machine's data). Each budget is its figure plus 5 %, rounded up to the next
+ * the last `</main>`. Six pages, the last a six-row page made from Orbit's home. The home's document (112,000) and /om-oss (payload 53,000, main 2,500) were set when the layout began to be sent once (bloat review step 2.2: the home 135,935 bytes before, 105,599 after, on one machine's data); /om-oss's document fell from 82,000 to 80,000 when the breakpoint sheet began to be drawn once per document (step 2.3: 78,849 measured). Each budget is its figure plus 5 %, rounded up to the next
  * 500, measured on the build of 17 November 2026 (the home 134,151 and its payload 93,017, the product page 138,003, /products 153,070 and 107,040, Kaizena Flow's front page 39,827, the six-row page 147,059). In CI's e2e job the specs before this one add to the demo
  * store, so the home's main and /products are set from CI's run of 18 November (the home's main 12,173; /products 163,817, 113,030 and 9,957). A budget only falls.
  */
@@ -160,7 +160,7 @@ function layoutCopies(html: string): { htmlElements: number; duplicateBytes: num
 
 const DOCUMENT_BUDGETS: Record<string, { document: number; payload: number; main: number }> = {
   "/s/demo/no": { document: 112_000, payload: 98_000, main: 13_000 },
-  "/s/demo/no/om-oss": { document: 82_000, payload: 53_000, main: 2_500 },
+  "/s/demo/no/om-oss": { document: 80_000, payload: 53_000, main: 2_500 },
   "/s/demo/no/p/demo-keramikkopp": { document: 145_000, payload: 95_500, main: 4_000 },
   "/s/demo/no/products": { document: 172_500, payload: 119_000, main: 10_500 },
   "/": { document: 42_000, payload: 25_500, main: 1_500 },
@@ -263,6 +263,25 @@ test("the store home's style text and breakpoint sheets stay few", async ({ page
   }
   expect(styleText, "characters inside <style> elements").toBeLessThanOrEqual(6_000);
   expect(breakpointSheets, "occurrences of kz-bp-").toBeLessThanOrEqual(4);
+});
+
+test("a three-row page draws each fixed sheet twice: in the HTML and in the payload", async ({ page }) => {
+  // The breakpoint sheet is drawn once per document by the layout (bloat review step 2.3), the theme sheet once by the layout too:
+  // each href is in the HTML once and in the payload once, however many rows the page has.
+  const address = await storePageWith("tre-rader", [
+    { id: "h1", type: "heading", text: "En", level: 2 },
+    { id: "h2", type: "heading", text: "To", level: 2 },
+    { id: "h3", type: "heading", text: "Tre", level: 2 },
+  ]);
+  const html = await (await page.request.get(address)).text();
+  const breakpoint = (html.match(/kz-bp-/g) ?? []).length;
+  const theme = (html.match(/theme-[0-9a-f-]{36}-/g) ?? []).length;
+  if (MEASURE) {
+    console.log(`[fixed-sheets] ${address} kz-bp- ${breakpoint} theme ${theme}`);
+    return;
+  }
+  expect(breakpoint, "occurrences of kz-bp-").toBe(2);
+  expect(theme, "occurrences of the theme sheet's href").toBe(2);
 });
 
 test("a page's scripts carry the texts its client components read, never a language's whole interface text (D212)", async ({ page }) => {
