@@ -170,3 +170,15 @@ new tool over 2,500 characters is split, or the commit says why it is kept whole
 on Platform → AI and its recording committed, as a prompt change does. A changed output limit or reasoning effort is a decision: update the
 baseline and docs/decisions.md. Each AI manager round is a row of commerce.ai_usage with its turn, round, cached input tokens and whether it
 called load_tools, and a log line `ai_manager.round` (numbers only); Platform → AI → Usage shows tokens per call from those rows.
+
+The money path (step 1.7): e2e/performance.spec.ts makes a store that takes payments in test mode with SQL
+(testStore("betaling"), its payment_providers and stripe_accounts rows) and asks a second `pnpm start` of the same build
+(playwright.config.ts, E2E_MONEY_PORT, 3001), the only server with platform keys, dummy values in Stripe's test shape. The
+payment stand-in: on the server, STRIPE_TEST_URL with STRIPE_ALLOW_TEST_URL=1 points the Stripe SDK at
+e2e/fixtures/stripe-stub.mjs (this machine's address only, never on Vercel); in the browser, the test's own route serves
+e2e/fixtures/stripe-js-stub.js for https://js.stripe.com/**. Held for a cart with two lines and the checkout at its payment
+step, each at its first figure plus 5 %: the first scripts, the document, its payload and main, the router requests until quiet,
+none on the settled payment form, and the other hosts (none on the cart, the provider's script alone on the checkout; any other
+host fails).
+After phase 2 the two-line cart is judged against the bare store's bars, and the checkout at its payment step has first scripts
+of at most 670,000 bytes.

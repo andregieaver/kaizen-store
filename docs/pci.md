@@ -134,6 +134,15 @@ hosted page.
 are exactly the owner-script risk): `savePage()` refuses to save one on the page chosen for the checkout, and `setPageRole()`
 refuses to choose a page that holds one. An uploaded video is allowed.
 
+## The end-to-end stand-in
+
+The end-to-end tests reach the checkout's payment step without Stripe (bloat review step 1.7). Two variables point the Stripe SDK at
+a stand-in on the test machine (`e2e/fixtures/stripe-stub.mjs`): `STRIPE_TEST_URL` and `STRIPE_ALLOW_TEST_URL`. `stripeEndpoint()`
+(`src/lib/stripe-endpoint.ts`) uses the address only when all three hold: `STRIPE_ALLOW_TEST_URL` is `1`, the address is plain http
+to `127.0.0.1` or `localhost`, and `VERCEL` is not set; otherwise every call goes to Stripe's own API. Production never sets either
+variable. In the browser the test routes `https://js.stripe.com/**` to `e2e/fixtures/stripe-js-stub.js`, which draws the payment
+form as a plain box. No card data exists in the tests: no card is typed, no payment is confirmed, and the stand-ins hold no number.
+
 ## Runbook
 
 | Symptom | Likely cause | What to do |
