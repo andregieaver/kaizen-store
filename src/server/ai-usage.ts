@@ -28,6 +28,11 @@ export type UsageContext = {
   feature: AiFeature;
   /** The signed-in person who asked, where there is one. */
   accountId: string | null;
+  /** The AI manager's turn the call is a round of, and which round from 0 (bloat review step 1.19); none for any other call. */
+  turnId?: string;
+  round?: number;
+  /** The round's answer called `load_tools`. */
+  loadedTools?: boolean;
 };
 
 export type UsageEvent = {
@@ -71,7 +76,8 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
     await db().execute(sql`
       insert into commerce.ai_usage (
         store_id, owner_account_id, actor_account_id, source, provider, model, kind, feature,
-        requests, failed, input_tokens, output_tokens, characters, audio_bytes, audio_seconds, images, searches, estimated, session_ref, acted_by
+        requests, failed, input_tokens, output_tokens, cached_input_tokens, characters, audio_bytes, audio_seconds, images, searches, estimated, session_ref, acted_by,
+        turn_id, round, loaded_tools
       ) values (
         ${context.storeId}::uuid,
         ${
@@ -80,8 +86,10 @@ export async function recordUsage(context: UsageContext, event: UsageEvent): Pro
             : sql`null`
         },
         ${context.accountId}::uuid, ${event.source}, ${event.provider.slice(0, 60)}, ${event.model.slice(0, 200)}, ${event.kind}, ${feature},
-        ${event.requests ?? 1}, ${event.failed ? 1 : 0}, ${Math.round(a.inputTokens)}, ${Math.round(a.outputTokens)}, ${Math.round(a.characters)},
-        ${Math.round(a.audioBytes)}, ${Math.round(a.audioSeconds)}, ${Math.round(a.images)}, ${Math.round(a.searches)}, ${event.estimated === true}, ${event.sessionRef ?? null}, ${currentActor()}
+        ${event.requests ?? 1}, ${event.failed ? 1 : 0}, ${Math.round(a.inputTokens)}, ${Math.round(a.outputTokens)},
+        ${Math.min(Math.round(a.cachedInputTokens), Math.round(a.inputTokens))}, ${Math.round(a.characters)},
+        ${Math.round(a.audioBytes)}, ${Math.round(a.audioSeconds)}, ${Math.round(a.images)}, ${Math.round(a.searches)}, ${event.estimated === true}, ${event.sessionRef ?? null}, ${currentActor()},
+        ${context.turnId ?? null}::uuid, ${context.round ?? null}::int, ${context.loadedTools === true}
       )
     `);
   } catch (error) {
@@ -139,6 +147,7 @@ export async function usageRows({ days, ownedBy = null, storeId = null }: UsageQ
       u.source, u.provider, u.model, u.kind, u.feature,
       sum(u.requests)::bigint as requests, sum(u.failed)::bigint as failed,
       sum(u.input_tokens)::bigint as input_tokens, sum(u.output_tokens)::bigint as output_tokens,
+      sum(u.cached_input_tokens)::bigint as cached_input_tokens,
       sum(u.characters)::bigint as characters, sum(u.audio_seconds)::bigint as audio_seconds, sum(u.images)::bigint as images,
       sum(case when u.estimated then u.requests else 0 end)::bigint as estimated_requests,
       coalesce(sum(${costMicrosSql}), 0)::bigint as cost_micros,
@@ -168,6 +177,7 @@ export async function usageRows({ days, ownedBy = null, storeId = null }: UsageQ
     failed: Number(r.failed),
     inputTokens: Number(r.input_tokens),
     outputTokens: Number(r.output_tokens),
+    cachedInputTokens: Number(r.cached_input_tokens),
     characters: Number(r.characters),
     audioSeconds: Number(r.audio_seconds),
     images: Number(r.images),
@@ -177,13 +187,15 @@ export async function usageRows({ days, ownedBy = null, storeId = null }: UsageQ
   }));
 }
 
-export type DailyUsage = { day: string; requests: number; tokens: number; costMicros: number };
+/** `cachedTokens`: of the input tokens, those read from the provider's cache (bloat review step 1.19). */
+export type DailyUsage = { day: string; requests: number; tokens: number; cachedTokens?: number; costMicros: number };
 
 /** Requests and tokens per day over the period, for the chart. */
 export async function usageByDay({ days, ownedBy = null, storeId = null }: UsageQuery): Promise<DailyUsage[]> {
   const rows = await db().execute<Row>(sql`
     select to_char(d.day, 'YYYY-MM-DD') as day, coalesce(sum(u.requests), 0)::bigint as requests,
       coalesce(sum(u.input_tokens + u.output_tokens), 0)::bigint as tokens,
+      coalesce(sum(u.cached_input_tokens), 0)::bigint as cached_tokens,
       coalesce(sum(${costMicrosSql}), 0)::bigint as cost_micros
     from generate_series(
       date_trunc('day', now() at time zone 'utc') - make_interval(days => ${Math.max(1, Math.round(days)) - 1}),
@@ -196,7 +208,7 @@ export async function usageByDay({ days, ownedBy = null, storeId = null }: Usage
     ${priceFor}
     group by d.day order by d.day
   `);
-  return rows.map((r) => ({ day: String(r.day), requests: Number(r.requests), tokens: Number(r.tokens), costMicros: Number(r.cost_micros) }));
+  return rows.map((r) => ({ day: String(r.day), requests: Number(r.requests), tokens: Number(r.tokens), cachedTokens: Number(r.cached_tokens), costMicros: Number(r.cost_micros) }));
 }
 
 /** The stores an account owns (not closed), by name: what an owner's usage report covers. */

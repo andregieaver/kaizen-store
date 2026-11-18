@@ -36,6 +36,7 @@ A route that must grow takes it on purpose with --write --accept, so the growth 
 | scripts/render-modes.baseline.json | node scripts/render-modes.mjs (CI's e2e job, after the build) | node scripts/render-modes.mjs --write after pnpm build | compute, holes, platform-wide tags and revalidate of twelve routes, and the demo store's resume data |
 | src/server/use-cache.baseline.json | src/server/use-cache.scan.test.ts | WRITE_CACHED_READS=1 pnpm exec vitest run src/server/use-cache.scan.test.ts | each cached read's cacheLife and cacheTag arguments (a change fails; a new read is a note) |
 | scripts/server-budget.json | node scripts/server-budget.mjs (CI's e2e job, after Playwright) | node scripts/server-budget.mjs --write after a change that cut statements (it never raises one) | statements of eight store pages, the cart with three lines and the checkout, warm and cold, today's count + 2 |
+| src/server/ai-round.baseline.json | src/server/ai-round.scan.test.ts | node scripts/ai-round.mjs lowers; --first accepts a rise (shown in the diff, its reason in the commit) | the characters of every agent's round (the AI manager's on no page and each area's, for a shop-only store and one with every feature on, and seven fixed rounds), tools over 2,500 characters, each agent's output limit and reasoning effort |
 
 The server's measure 7, refreshes and store draws, is held by Platform, Usage and limits (`#cache`, `docs/capacity.md`) and `src/server/cache-events.int.test.ts`, which fails when 11 job refreshes of one subject in a day are not flagged, when 10 are, or when a platform tag is.
 
@@ -160,3 +161,24 @@ and e2e/prefetch.spec.ts (router requests of five pages) hold figures in CI's e2
 `E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts` prints each figure.
 Two counts in src/server/ratchet.baseline.json hold the statements that read a whole page document (pageDocumentReads)
 and the places that refresh a store's whole pages tag (pagesTagRefreshes); `node scripts/ratchet.mjs` lowers them.
+
+### Every agent's round (step 1.19)
+
+src/server/ai-round.scan.test.ts draws every agent's round (src/server/ai-round.ts) and holds it to src/server/ai-round.baseline.json. A change
+that raises a round raises the baseline in the same commit (`node scripts/ai-round.mjs --first`), with its reason in the commit message; a
+new tool over 2,500 characters is split, or the commit says why it is kept whole. A change to which tools a round sends needs a new eval run
+on Platform → AI and its recording committed, as a prompt change does. A changed output limit or reasoning effort is a decision: update the
+baseline and docs/decisions.md. Each AI manager round is a row of commerce.ai_usage with its turn, round, cached input tokens and whether it
+called load_tools, and a log line `ai_manager.round` (numbers only); Platform → AI → Usage shows tokens per call from those rows.
+
+The money path (step 1.7): e2e/performance.spec.ts makes a store that takes payments in test mode with SQL
+(testStore("betaling"), its payment_providers and stripe_accounts rows) and asks a second `pnpm start` of the same build
+(playwright.config.ts, E2E_MONEY_PORT, 3001), the only server with platform keys, dummy values in Stripe's test shape. The
+payment stand-in: on the server, STRIPE_TEST_URL with STRIPE_ALLOW_TEST_URL=1 points the Stripe SDK at
+e2e/fixtures/stripe-stub.mjs (this machine's address only, never on Vercel); in the browser, the test's own route serves
+e2e/fixtures/stripe-js-stub.js for https://js.stripe.com/**. Held for a cart with two lines and the checkout at its payment
+step, each at its first figure plus 5 %: the first scripts, the document, its payload and main, the router requests until quiet,
+none on the settled payment form, and the other hosts (none on the cart, the provider's script alone on the checkout; any other
+host fails).
+After phase 2 the two-line cart is judged against the bare store's bars, and the checkout at its payment step has first scripts
+of at most 670,000 bytes.

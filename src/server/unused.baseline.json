@@ -879,6 +879,9 @@
     "src/lib/store-copy-rules.ts#SECRET_TABLES": "A constant a guard test reads.",
     "src/lib/support-state.ts#nextState": "An oracle a test compares the live code against.",
     "src/server/agent-eval.ts#replayAgentEval": "Replays the recorded agent eval in CI (agent-eval-replay.int.test.ts).",
+    "src/server/ai-round.ts#AGENT_LIMITS": "The drawing of the agents' rounds that src/server/ai-round.scan.test.ts holds to src/server/ai-round.baseline.json (bloat review step 1.19).",
+    "src/server/ai-round.ts#drawFixedRounds": "The drawing of the agents' rounds that src/server/ai-round.scan.test.ts holds to src/server/ai-round.baseline.json (bloat review step 1.19).",
+    "src/server/ai-round.ts#drawManagerRound": "The drawing of the agents' rounds that src/server/ai-round.scan.test.ts holds to src/server/ai-round.baseline.json (bloat review step 1.19).",
     "src/server/carriers/ups.ts#forgetUpsTokens": "A reset helper a test calls between cases."
   },
   "testOnlyFiles": {
@@ -888,7 +891,8 @@
     "src/lib/legal-wording-nb.ts": "The law's own words for Norwegian legal pages (D312), kept as the checked source of the legal starters.",
     "src/lib/nav-labels.ts": "No importer on 17 Nov 2026; for the reviewer to delete.",
     "src/lib/signature-themes.ts": "No importer on 17 Nov 2026; for the reviewer to delete.",
-    "src/lib/store-export-scope.ts": "What the whole-store file leaves out and why (PSI DATA-05); store-export.scan.test.ts reads it."
+    "src/lib/store-export-scope.ts": "What the whole-store file leaves out and why (PSI DATA-05); store-export.scan.test.ts reads it.",
+    "src/server/ai-round.ts": "The drawing of every agent's round that src/server/ai-round.scan.test.ts holds to its baseline (bloat review step 1.19); no route sends what it draws."
   },
   "publicUnreferenced": {},
   "apiUnreferenced": {

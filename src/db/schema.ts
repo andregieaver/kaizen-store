@@ -11911,6 +11911,14 @@ export const aiUsage = commerce.table(
     failed: integer("failed").notNull().default(0),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
+    /** Of the input tokens, those the provider read from its prompt cache (bloat review step 1.19); priced as input, as all input is. */
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    /** The AI manager's turn the call was a round of (one id per `runTurn()`); null for any other call. */
+    turnId: uuid("turn_id"),
+    /** Which round of that turn, from 0. */
+    round: integer("round"),
+    /** The round called `load_tools`. */
+    loadedTools: boolean("loaded_tools").notNull().default(false),
     /** Text read out by speech models. */
     characters: integer("characters").notNull().default(0),
     audioBytes: integer("audio_bytes").notNull().default(0),
@@ -11931,6 +11939,9 @@ export const aiUsage = commerce.table(
     index("ai_usage_owner_idx").on(t.ownerAccountId, t.createdAt),
     index("ai_usage_actor_idx").on(t.actorAccountId),
     index("ai_usage_autopilot_idx").on(t.storeId, t.createdAt).where(sql`${t.actedBy} = 'autopilot'`),
+    index("ai_usage_turn_idx").on(t.turnId).where(sql`${t.turnId} is not null`),
+    check("ai_usage_round", sql`${t.round} is null or ${t.round} between 0 and 100`),
+    check("ai_usage_cached", sql`${t.cachedInputTokens} >= 0 and ${t.cachedInputTokens} <= ${t.inputTokens}`),
     check("ai_usage_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     check("ai_usage_source", sql`${t.source} in ('platform', 'store')`),
     check("ai_usage_kind", sql`${t.kind} in ('text', 'embedding', 'transcription', 'speech', 'image', 'live', 'search')`),

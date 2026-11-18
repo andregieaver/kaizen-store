@@ -75,6 +75,8 @@ export type AiSource = keyof typeof SOURCE_WORDS;
 export type UsageAmounts = {
   inputTokens: number;
   outputTokens: number;
+  /** Of `inputTokens`, those the provider read from its prompt cache (bloat review step 1.19): counted, and priced as input like the rest. */
+  cachedInputTokens: number;
   characters: number;
   audioBytes: number;
   audioSeconds: number;
@@ -83,21 +85,27 @@ export type UsageAmounts = {
   searches: number;
 };
 
-export const NO_USAGE: UsageAmounts = { inputTokens: 0, outputTokens: 0, characters: 0, audioBytes: 0, audioSeconds: 0, images: 0, searches: 0 };
+export const NO_USAGE: UsageAmounts = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, characters: 0, audioBytes: 0, audioSeconds: 0, images: 0, searches: 0 };
 
 /** Tokens for text a provider did not count: about four characters each. */
 export const estimateTokens = (characters: number) => Math.ceil(Math.max(0, characters) / 4);
 
-/** The token counts an OpenAI-compatible answer carries (`usage`), in either of the two names providers use; null when it has none. */
-export function readTokens(usage: unknown): { inputTokens: number; outputTokens: number } | null {
+/**
+ * The token counts an OpenAI-compatible answer carries (`usage`), in either of the two names providers use; null when it has none. The
+ * cached input tokens are `prompt_tokens_details.cached_tokens` (OpenAI-compatible) or `cache_read_input_tokens` (Anthropic-style), 0
+ * when neither is a number, and never more than the input tokens.
+ */
+export function readTokens(usage: unknown): { inputTokens: number; outputTokens: number; cachedInputTokens: number } | null {
   if (!usage || typeof usage !== "object") return null;
   const u = usage as Record<string, unknown>;
   const n = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : null);
   const input = n(u.prompt_tokens) ?? n(u.input_tokens);
   const output = n(u.completion_tokens) ?? n(u.output_tokens);
   const total = n(u.total_tokens);
-  if (input === null && output === null) return total === null ? null : { inputTokens: total, outputTokens: 0 };
-  return { inputTokens: input ?? 0, outputTokens: output ?? 0 };
+  if (input === null && output === null) return total === null ? null : { inputTokens: total, outputTokens: 0, cachedInputTokens: 0 };
+  const details = u.prompt_tokens_details && typeof u.prompt_tokens_details === "object" ? (u.prompt_tokens_details as Record<string, unknown>) : {};
+  const cached = n(details.cached_tokens) ?? n(u.cache_read_input_tokens) ?? 0;
+  return { inputTokens: input ?? 0, outputTokens: output ?? 0, cachedInputTokens: Math.min(cached, input ?? 0) };
 }
 
 /** The reporting periods offered, in days; null is everything kept. */
@@ -130,6 +138,8 @@ export type UsageRow = {
   failed: number;
   inputTokens: number;
   outputTokens: number;
+  /** Of the input tokens, those read from the provider's cache (bloat review step 1.19); rows made before it have none. */
+  cachedInputTokens?: number;
   characters: number;
   audioSeconds: number;
   images: number;
@@ -142,7 +152,7 @@ export type UsageRow = {
 
 export type UsageSums = Pick<
   UsageRow,
-  "requests" | "failed" | "inputTokens" | "outputTokens" | "characters" | "audioSeconds" | "images" | "estimatedRequests" | "costMicros" | "unpricedRequests"
+  "requests" | "failed" | "inputTokens" | "outputTokens" | "cachedInputTokens" | "characters" | "audioSeconds" | "images" | "estimatedRequests" | "costMicros" | "unpricedRequests"
 >;
 
 export const emptySums = (): UsageSums => ({
@@ -150,6 +160,7 @@ export const emptySums = (): UsageSums => ({
   failed: 0,
   inputTokens: 0,
   outputTokens: 0,
+  cachedInputTokens: 0,
   characters: 0,
   audioSeconds: 0,
   images: 0,
@@ -163,6 +174,7 @@ export function addSums(into: UsageSums, row: UsageSums): UsageSums {
   into.failed += row.failed;
   into.inputTokens += row.inputTokens;
   into.outputTokens += row.outputTokens;
+  into.cachedInputTokens = (into.cachedInputTokens ?? 0) + (row.cachedInputTokens ?? 0);
   into.characters += row.characters;
   into.audioSeconds += row.audioSeconds;
   into.images += row.images;

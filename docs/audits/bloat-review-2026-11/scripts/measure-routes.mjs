@@ -4,6 +4,13 @@
 // product and pageId: a product id and a page id of e2e-shop, for the admin's editors. themedProduct and themedPage: the handle of a
 // product and the slug of a built page of e2e-orbit, the store on the Orbit theme that `pnpm seed:themed` makes before the build
 // (bloat review step 1.6; its first product and its about page: andromeda and about on 18 November 2026).
+// moneyState, moneyCart and moneyCheckout (bloat review step 1.7, all three or none): a browser state file and the paths of a cart with
+// two lines and of its checkout at the payment step, which `E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'money
+// path'` makes (it saves e2e/.auth/money.json once the cart has two lines and prints `[money] address cart <path>` and `[money] address
+// checkout <path>`). Those pages answer only on a server with Kaizena Flow's test keys and the Stripe stand-in: run this script with
+// BASE_URL at the e2e's second server (playwright.config.ts, http://localhost:3001; started by hand as the config starts it, so it
+// outlives the spec, which reuses it locally), while the order the spec placed still waits (CHECKOUT_MINUTES). This script does not
+// route js.stripe.com: the checkout asks Stripe's real script itself.
 // For each page: a cold browser (empty cache) against a warm server; every response's bytes as transferred (the server gzips)
 // and decoded; which scripts and styles were actually run or matched by the time the page was idle (V8 and CSS coverage);
 // what the document is made of (markup, inline RSC payload, inline styles); and what the page asks for after it has loaded.
@@ -68,6 +75,15 @@ const PAGES = [
   { name: "admin-platform-home", group: "admin", path: "/admin/platform", state: "admin", ...DESK },
   { name: "admin-platform-stores", group: "admin", path: "/admin/platform/stores", state: "admin", ...DESK },
 ];
+// The money path (step 1.7): a cart with two lines and its checkout at the payment step, in the shopper's own browser state.
+if (args.moneyState && args.moneyCart && args.moneyCheckout) {
+  PAGES.push(
+    { name: "store-cart-two-lines", group: "storefront", path: args.moneyCart, stateFile: args.moneyState, ...PHONE },
+    { name: "store-checkout-payment", group: "storefront", path: args.moneyCheckout, stateFile: args.moneyState, ...PHONE },
+  );
+} else {
+  console.log("money path skipped: pass moneyState, moneyCart and moneyCheckout");
+}
 
 /** Bytes of a script that ran at least once, from V8's nested ranges (a later, inner range overrides the outer one). */
 function usedBytes(entry) {
@@ -98,7 +114,7 @@ async function measure(browser, spec) {
     isMobile: spec.isMobile,
     hasTouch: spec.hasTouch,
     deviceScaleFactor: spec.deviceScaleFactor,
-    storageState: spec.state ? join(REPO, `e2e/.auth/${spec.state}.json`) : undefined,
+    storageState: spec.stateFile ?? (spec.state ? join(REPO, `e2e/.auth/${spec.state}.json`) : undefined),
   });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
