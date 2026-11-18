@@ -683,6 +683,16 @@ export const bookingsNb: BookingsMessages = {
     sentOn: "Sendt til en side",
   },
   cartReminders: {
+    /** Round 47 (D755): what a phone shows. */
+    phone: {
+      lead: "E-post til kunder som forlot en handlekurv, med lenke tilbake til den.",
+      offShort: "Slått på går tre: etter en time, en dag og tre dager.",
+      none: "Ingen ennå. Ingen handlekurver med e-post heller.",
+      noCarts: "Ingen handlekurver med e-post ennå.",
+      privacySub: "Hva du sier til kundene",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "Påminnelser om handlekurv",
     description: "E-poster til kunder som skrev inn e-postadressen sin i kassen, men ikke betalte, med en lenke tilbake til den samme handlekurven.",
     on: "Påminnelsene er på",

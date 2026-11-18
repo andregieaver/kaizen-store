@@ -42,6 +42,7 @@ export const setupEn = {
     confirm: "Switch off what I left out. Nothing is deleted: switch it on again under Settings, Features.",
     later: "The bonus and referral programs, and everything here, are switched on and off later under Settings, Features.",
     tickToGoOn: "Tick “Switch off what I left out” below to go on, or choose what you need.",
+    phoneIntro: "Change it later under Settings, Features.",
   },
   answers: {
     goods: { label: "Products to ship", words: "Things you send by post or a carrier, or that customers collect." },
