@@ -21,6 +21,7 @@ import type { PlanInterval } from "@/lib/plans";
 import { audit, type Account } from "./auth";
 import { planCurrencies } from "./billing";
 import { refreshTag } from "./refresh";
+import { experimentsTag } from "./experiments";
 import { storeTag } from "./stores";
 import type { SaveResult } from "./settings";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
@@ -142,23 +143,26 @@ export async function organisationExtensionStandings(organisationId: string, now
 export async function refreshExtensionFacts(scope: { organisationId: string } | { planIds: readonly string[] }): Promise<void> {
   const rows =
     "organisationId" in scope
-      ? await typedRows(SLUG_ROW, sql`select slug from commerce.stores where organisation_id = ${scope.organisationId}::uuid`)
+      ? await typedRows(SLUG_ROW, sql`select id, slug from commerce.stores where organisation_id = ${scope.organisationId}::uuid`)
       : scope.planIds.length === 0
         ? []
         : await typedRows(
             SLUG_ROW,
             sql`
-              select distinct s.slug from commerce.stores s
+              select distinct s.id, s.slug from commerce.stores s
                where s.organisation_id in (
                  select s2.organisation_id from commerce.stores s2 join commerce.store_billing b on b.store_id = s2.id
                   where b.plan_id in (${sql.join(scope.planIds.map((id) => sql`${id}::uuid`), sql`, `)}) and s2.organisation_id is not null
                )
             `,
           );
-  for (const row of rows) refreshTag(storeTag(row.slug));
+  for (const row of rows) {
+    refreshTag(storeTag(row.slug));
+    refreshTag(experimentsTag(row.id));
+  }
 }
 
-const SLUG_ROW = z.object({ slug: col.text });
+const SLUG_ROW = z.object({ id: col.uuid, slug: col.text });
 
 const ACTIVE_PRICE_ROW = z.object({ id: col.uuid, currency: col.currency, interval, amount_minor: col.minor });
 

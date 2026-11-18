@@ -29,7 +29,9 @@ import {
   stopPlatformPageJobAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
-import { writeLegalPagesAction } from "./legal-action";
+import { setPlatformOfficerAction, writeLegalPagesAction } from "./legal-action";
+import { PrivacyOfficerForm } from "@/components/admin/privacy-officer-form";
+import { accountOfficer, officerCandidates, platformAccountId, storedChoice } from "@/server/privacy-officers";
 
 import { typeWords } from "./type-words";
 
@@ -55,6 +57,12 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
     type === "page" ? getPlatformPageRoles() : [],
     type === "page" ? platformLegalOverview() : null,
   ]);
+  // Kaizena Flow's own data protection officer (D763), beside its legal pages: the platform account's.
+  const platform = legal ? await platformAccountId() : null;
+  const officer = platform
+    ? await Promise.all([storedChoice(platform, null), officerCandidates(platform, null), accountOfficer(platform)]).then(([choice, people, current]) => ({ choice, people, current }))
+    : null;
+  const pw = adminText(adminLangOf(admin.adminLocale), "privacyOfficer");
   // The theme store's own pages (D285) are edited from Themes, so they are not mixed with these.
   const themeStorePages = new Set(roles.flatMap(([role, id]) => (isThemeStoreRole(role) ? [id] : [])));
   const pages = all.filter((p) => !themeStorePages.has(p.id));
@@ -139,6 +147,15 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         />
       )}
       {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
+      {officer && (
+        <section className="flex max-w-xl flex-col gap-3" aria-labelledby="platform-officer" id="privacy-officer">
+          <h2 id="platform-officer" className="text-title text-ink">
+            {pw.title}
+          </h2>
+          <p className="text-sm text-muted">{pw.platformLead}</p>
+          <PrivacyOfficerForm words={pw} action={setPlatformOfficerAction} store={false} choice={officer.choice} people={officer.people} current={officer.current} />
+        </section>
+      )}
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">

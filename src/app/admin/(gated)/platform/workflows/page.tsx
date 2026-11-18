@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -55,18 +56,23 @@ export default async function PlatformWorkflowsPage() {
   return (
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={<>{own.workflows.description}</>} />
+        <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{own.workflows.description}</span></>} />
+        {/* Round 49 (D762), as the store's page: on a phone the workflows come first and a new one is a row under them. */}
         {canWrite && (
-          <Card title={w.make}>
-            <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} scope="platform" namePlaceholder={own.workflows.namePlaceholder} />
-          </Card>
+          <div className="max-sm:order-1 max-sm:overflow-hidden max-sm:rounded-card">
+            <PhoneRow flat last title={w.make} sub={w.phone.makeSub} change={w.phone.open} done={w.phone.close}>
+              <Card title={w.make}>
+                <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} scope="platform" namePlaceholder={own.workflows.namePlaceholder} />
+              </Card>
+            </PhoneRow>
+          </div>
         )}
         {views.length === 0 ? (
           <p className="text-sm text-muted">{w.none}</p>
         ) : (
           views.map((flow) => <WorkflowCard key={flow.id} flow={flow} endpoints={endpointChoices} triggerLabels={triggerLabels} canWrite={canWrite} actions={actions} scope="platform" />)
         )}
-        <p className="text-sm text-muted">{own.workflows.limits}</p>
+        <p className="text-sm text-muted max-sm:order-2">{own.workflows.limits}</p>
       </div>
     </AdminTextScope>
   );

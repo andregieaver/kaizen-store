@@ -147,6 +147,15 @@ export const privacyNb: PrivacyMessages = {
     openCustomer: "Åpne kunden",
   },
   forms: {
+    /** Round 50 (D765): what a phone shows. */
+    phone: {
+      lead: "For en som kom på e-post, brev eller telefon.",
+      due: "Svar innen én måned fra datoen den kom inn.",
+      clock: "Slik telles måneden",
+      clockSub: "Forlengelser, helger, loven",
+      open: "Åpne",
+      close: "Lukk",
+    },
     extendQuestion: "Hvorfor forlenges fristen?",
     extendHint: "Personen får denne begrunnelsen på e-post. Du kan forlenge én gang, innen den første måneden, med inntil to måneder til.",
     extendButton: "Forleng og gi personen beskjed",

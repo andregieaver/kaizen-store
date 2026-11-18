@@ -10,11 +10,11 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
-import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
 import { signAsStore } from "@/server/contract-signing";
 import { cancelContract, createContract, deleteDraft, newVersion, saveDraft, saveSigners, type ContractProblem } from "@/server/contracts";
 import { storeAction } from "@/server/store-action";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * Contracts' actions (D695): each runs through `storeAction()` with `customers:write` (a deal's key), checks Deals is on whatever a stale
@@ -28,7 +28,7 @@ const wordsOf = (member: Membership): DealsMessages["contracts"] => adminText(ad
 
 /** Deals off for this store: the reason, in the member's words. */
 const offFor = (member: Membership): string | null =>
-  featureOn(member.store, "sales") ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
+  dealsOn(member.store) ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
 
 const problemText = (w: DealsMessages["contracts"], problem: ContractProblem): string => w.problems[problem];
 

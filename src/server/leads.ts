@@ -6,7 +6,6 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { normaliseEmail } from "@/lib/email-address";
 import { LEAD_KINDS, LEAD_SOURCES, LEAD_WINDOW_DAYS, LEADS_MAX, leadDealTitle, leadsFrom, type Lead, type LeadKind } from "@/lib/leads";
-import { featureOn } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
 import { createCustomer, customerByEmail } from "./customer-staff";
@@ -14,6 +13,7 @@ import { createDeal, linkThing, pipelinesOf } from "./deals";
 import { memberCan } from "./permissions";
 import { uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * A leads inbox (S4 of `docs/own-books-and-sales.md`, D475): people who asked a store for something in the last 90 days but are not its
@@ -165,7 +165,7 @@ async function decide(member: Membership, email: string, decision: "dismissed" |
   `);
 }
 
-const writable = (member: Membership) => memberCan(member, WRITE) && featureOn(member.store, "sales");
+const writable = (member: Membership) => memberCan(member, WRITE) && dealsOn(member.store);
 const addressOf = normaliseEmail;
 
 /** A lead dismissed: out of the inbox until they ask for something again. */

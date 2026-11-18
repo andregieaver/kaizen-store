@@ -36,6 +36,7 @@ import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
 import { TodayCard } from "@/components/admin/activities/today-card";
 import { activityDoneAction } from "./deals/activity-actions";
 import { dismissBriefingAction, turnOnBriefingAction } from "./settings/notifications/staff/actions";
+import { dealsOn } from "@/lib/extensions";
 
 type Props = PageProps<"/admin/[store]">;
 
@@ -123,7 +124,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
   const greeting = name ? fillWords(t.greeting[partOfDay(now, store.timeZone)], { name }) : store.name;
   const dateText = now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", timeZone: store.timeZone });
   // The *Today* card lists the day's calls, meetings and tasks itself (S3, D468), as the pack card does the orders to send.
-  const todayShown = Boolean(store.setupCompletedAt) && featureOn(store, "sales") && memberCan(current, "customers:read");
+  const todayShown = Boolean(store.setupCompletedAt) && dealsOn(store) && memberCan(current, "customers:read");
   const needs = attention
     .filter((item) => !(toSend > 0 && item.kind === "to_send"))
     .filter((item) => !(todayShown && (item.kind === "activities_overdue" || item.kind === "activities_today")))

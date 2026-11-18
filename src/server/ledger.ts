@@ -1040,7 +1040,9 @@ export async function runLedgerPosting(options: { budgetMs?: number } = {}): Pro
   const books = await typedRows(
     z.object({ id: col.uuid, store_id: col.uuid, currency: col.currency, opened_on: col.text, closed_on: col.textOrNull }),
     sql`select id, store_id, currency, opened_on::text, closed_on::text from commerce.ledger_books
-         where closed_on is null or closed_on >= current_date - 60
+         where (closed_on is null or closed_on >= current_date - 60)
+           -- The books are part of Work, a paid extension (D748): nothing is posted while the account does not have it.
+           and commerce.extension_on(store_id, 'work')
          order by updated_at`,
   );
   let posted = 0;

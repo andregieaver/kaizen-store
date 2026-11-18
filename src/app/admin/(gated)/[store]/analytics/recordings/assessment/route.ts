@@ -4,6 +4,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { todayIn } from "@/lib/analytics-period";
 import { assessmentFileName, assessmentHtml } from "@/lib/recording-assessment";
 import { checkPermission } from "@/server/permissions";
+import { officerForStore } from "@/server/privacy-officers";
 
 /**
  * The store's own data protection impact assessment for recordings of visits (D656; Q3, answered 18 November 2026: each store that records
@@ -16,6 +17,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/admin/[s
   const member = await checkPermission(slug, "owner");
   if (!member) return new NextResponse("Not found", { status: 404 });
   const { store } = member;
+  const { officer } = await officerForStore(store);
   const html = assessmentHtml(
     {
       storeName: store.name,
@@ -26,6 +28,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/admin/[s
       share: store.recordingShare,
       mask: store.recordingMask,
       today: todayIn(new Date(), store.timeZone),
+      officer: officer ? { name: officer.name, email: officer.email } : null,
     },
     adminLangOf(member.account.adminLocale) === "nb" ? "nb" : "en",
   );

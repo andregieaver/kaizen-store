@@ -197,6 +197,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   extension's folders calls `requireExtension(member, id)` and every action or route there passes the extension to `checkPermission()`,
   `requirePermission()` or `storeAction()` (`extension-gates.scan.test.ts`). A job asks `commerce.extension_on(store, id)`. A writer of an
   account's extension rows, a plan's grants or the launch date calls `refreshExtensionFacts()` after it commits.
+- Deals on another screen are `dealsOn(store)` (the feature `sales` and the Deals extension), never `featureOn(store, "sales")`; a
+  membership's `store.workOn` already includes the Work extension (`liveStore()` in `auth.ts`); a desk whose account lacks the support
+  desk reads as mode `off`.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

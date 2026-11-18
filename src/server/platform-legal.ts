@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db, readDb } from "@/db/client";
 import { audit, type Account } from "@/server/auth";
 import { savePage } from "@/server/pages";
+import { accountOfficer, platformAccountId } from "@/server/privacy-officers";
 import { parseBusinessDetails, type BusinessDetails } from "@/lib/navigation";
 import { pageExcerpt, parsePageContent, type PageContent } from "@/lib/page-content";
 import {
@@ -26,7 +27,10 @@ export type LegalWriteOutcome = { kind: PlatformLegalKind; outcome: "made" | "wr
 /** The facts the pages are written from: Kaizena Flow's business details and its sale fee. */
 async function platformFacts(today: Date): Promise<PlatformLegalFacts> {
   const [row] = await readDb().execute<Row>(sql`select business, sale_fee_bps from commerce.platform_settings`);
-  return { business: parseBusinessDetails(row?.business), saleFeeBps: Number(row?.sale_fee_bps ?? 0), today };
+  // Kaizena Flow's own data protection officer (D763): the platform account's.
+  const platform = await platformAccountId();
+  const officer = platform ? await accountOfficer(platform) : null;
+  return { business: parseBusinessDetails(row?.business), saleFeeBps: Number(row?.sale_fee_bps ?? 0), today, officer: officer ? { name: officer.name, email: officer.email } : null };
 }
 
 /** Kaizena Flow's own page at an address, with what it shows (null: none there). */

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PhoneRow } from "@/components/admin/phone-row";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -34,7 +35,7 @@ export default async function RedirectImportPage({ params }: Props) {
   const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
-      <RedirectsHead slug={store.slug} active="import" title={w.import.title} intro={w.import.intro} words={w} />
+      <RedirectsHead slug={store.slug} active="import" title={w.import.title} intro={<><span className="sm:hidden">{w.import.phone.lead}</span><span className="max-sm:hidden">{w.import.intro}</span></>} words={w} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -68,6 +69,9 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       ) : (
         <RedirectUpload slug={store.slug} start={startRedirectUploadAction.bind(null, store.slug)} register={registerRedirectUploadAction.bind(null, store.slug)} />
       )}
+      {/* Round 50 (D765): as Import stock and Import products, how the file is read is a row on a phone, keeping the file one line. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={i.phone.rules} sub={i.phone.rulesSub} change={i.phone.open} done={i.phone.close}>
       <Notice title={i.doesTitle}>
         <ul className="list-disc pl-5">
           <li>
@@ -86,6 +90,8 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </li>
         </ul>
       </Notice>
+      </PhoneRow>
+      </div>
       {jobs.length > 0 && (
         <section aria-labelledby="recent-redirect-imports" className="flex flex-col gap-2">
           <h2 id="recent-redirect-imports" className="text-title text-ink">
@@ -128,7 +134,8 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         </section>
       )}
-      <p className={`${hint} ${card} !p-3`}>{fillWords(i.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+      <p className={`${hint} px-0.5 sm:hidden`}>{fillWords(i.phone.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+      <p className={`${hint} ${card} !p-3 max-sm:hidden`}>{fillWords(i.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
     </AdminTextScope>
   );
 }

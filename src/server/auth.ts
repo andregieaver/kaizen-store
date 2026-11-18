@@ -1,3 +1,4 @@
+import { storeExtensionOn } from "@/lib/extensions";
 import "server-only";
 
 import { sql } from "drizzle-orm";
@@ -75,7 +76,15 @@ export const holderOf = (member: Pick<Membership, "role" | "kind" | "permissions
   ...(member.limit != null && { limit: member.limit }),
 });
 
-export type StoreSummary = { slug: string; name: string; role: Role; /** The store has Work switched on (D122). */ workOn: boolean };
+export type StoreSummary = {
+  slug: string;
+  name: string;
+  role: Role;
+  /** The store has Work switched on (D122) and its account has the Work extension (D748). */
+  workOn: boolean;
+  /** The store's account has the Work extension (D748), whether or not the store uses Work. */
+  workExtension: boolean;
+};
 
 // ---------------------------------------------------------------------------
 // The session and its second step (wave 1, 1f, docs/wave-1-trust.md 2.8)
@@ -270,7 +279,8 @@ export async function requirePlatformReader(): Promise<Account> {
 /** The stores an account works in, by name. */
 export async function listStores(account: Account): Promise<StoreSummary[]> {
   const rows = await db().execute<Row>(sql`
-    select s.slug, s.name, m.role, 'work' = any(s.modules) as work_on
+    select s.slug, s.name, m.role, ('work' = any(s.modules) and commerce.extension_on(s.id, 'work')) as work_on,
+      commerce.extension_on(s.id, 'work') as work_extension
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null
@@ -284,6 +294,7 @@ export async function listStores(account: Account): Promise<StoreSummary[]> {
     name: String(row.name),
     role: row.role as Role,
     workOn: Boolean(row.work_on),
+    workExtension: Boolean(row.work_extension),
   }));
 }
 
@@ -340,9 +351,15 @@ async function memberRow(storeId: string, accountId: string): Promise<Row | null
   return row ?? null;
 }
 
+/**
+ * The store as a member works in it now: Work (D122) is on only while the store's account also has the Work extension (D748 E3), read
+ * against the clock here since the store itself is cached. Every page, action and tool that asks `store.workOn` of a membership follows.
+ */
+const liveStore = (store: Store): Store => (store.workOn && !storeExtensionOn(store, "work") ? { ...store, workOn: false } : store);
+
 const membershipFrom = (account: Account, store: Store, row: Row): Membership => ({
   account,
-  store,
+  store: liveStore(store),
   role: row.role as Role,
   kind: row.kind === "collaborator" ? "collaborator" : "staff",
   expiresAt: row.expires_at ? new Date(String(row.expires_at)) : null,

@@ -218,6 +218,8 @@ export async function contractJob(deps: JobDeps): Promise<ContractJobResult> {
         select g.store_id, g.contract_id from commerce.contract_signers g
         join commerce.contracts c on c.store_id = g.store_id and c.id = g.contract_id
         where c.status = 'sent' and g.role <> 'store' and g.signed_at is null and g.declined_at is null and g.reminders < ${MAX_REMINDERS}
+          -- Deals and contracts is a paid extension (D748): no signer is reminded while the account does not have it.
+          and commerce.extension_on(g.store_id, 'deals')
           and g.notified_at < ${now.toISOString()}::timestamptz - make_interval(days => coalesce(c.reminder_days, ${REMINDER_DAYS}))
           and not exists (select 1 from commerce.contract_signers e where e.store_id = g.store_id and e.contract_id = g.contract_id
                           and e.position < g.position and e.signed_at is null)

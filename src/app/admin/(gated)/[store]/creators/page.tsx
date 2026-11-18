@@ -38,13 +38,26 @@ export default async function CreatorsPage({ params }: PageProps<"/admin/[store]
   return (
     <AdminTextScope texts={adminTexts(lang, ["loyalty"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={<>{settings.enabled ? w.on : w.off} {w.description}</>} />
+        <PageHeader
+          title={w.title}
+          description={
+            <>
+              <span className="sm:hidden">{w.phone.lead}</span>
+              <span className="max-sm:hidden">
+                {settings.enabled ? w.on : w.off} {w.description}
+              </span>
+            </>
+          }
+        />
         <CreatorSettingsForm
           initial={settings}
           categories={categories}
           canEdit={isOwner}
           save={saveCreatorSettingsAction.bind(null, store.slug)}
         />
+        {/* Round 50 (D765): with no creators and no payouts, a phone says both in one line. */}
+        {creators.length === 0 && payouts.length === 0 && <p className="text-body text-muted sm:hidden">{w.phone.none}</p>}
+        <div className={creators.length === 0 && payouts.length === 0 ? "flex flex-col gap-6 max-sm:hidden" : "flex flex-col gap-6"}>
         <CreatorsList
           rows={creators}
           locale={locale}
@@ -54,6 +67,7 @@ export default async function CreatorsPage({ params }: PageProps<"/admin/[store]
           recordPayout={recordCreatorPayoutAction.bind(null, store.slug)}
         />
         <CreatorPayouts rows={payouts} locale={locale} csvAction={isOwner ? `/admin/${store.slug}/creators/csv` : null} />
+        </div>
       </div>
     </AdminTextScope>
   );

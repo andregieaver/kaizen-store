@@ -1298,6 +1298,13 @@ when the settings page first shows it), which the owner forwards their own suppo
 `reply-{key}@{domain}` (`support_conversations.reply_key`, random), set as the Reply-To of every answer email, so a reply comes back
 to its conversation. A key opens nothing: it only routes mail, as any support address does.
 
+**Threads that come back to the desk's own address.** A customer who answers from their mailbox's copy of the email they sent, or a
+mail program that replies to the support mailbox instead of the Reply-To, writes to the desk's address, not the reply address. Such an
+email continues the conversation its `In-Reply-To` or `References` name (`referencedIds()`: In-Reply-To first, then References newest
+back, at most `THREAD_IDS_MAX`), found by the conversation's first Message-ID or any email filed into it (`threadOfHeaders()`), and
+only when it comes from the conversation's own address; otherwise, or with no ids it knows, it starts a new conversation as before.
+The 24 hours of `REOPEN_HOURS` still apply.
+
 **Receiving.** Resend's `email.received` event reaches the signed webhook that already takes delivery events
 (`/api/resend/webhook`, `RESEND_WEBHOOK_SECRET`). The event is kept at once as a row of `commerce.support_inbound_emails` (Resend's id
 unique, so a repeated event does nothing; from, subject, Message-ID, when) and the work runs after the answer (`after()`) and every

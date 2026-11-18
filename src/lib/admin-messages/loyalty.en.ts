@@ -9,6 +9,15 @@ import type { Widen } from "./common.en";
 export const loyaltyEn = {
   /** Creators (D386): the store's creator programme page. */
   creators: {
+    /** Round 50 (D765): what a phone shows. */
+    phone: {
+      lead: "People with a channel sell your goods with a code and earn a share. You pay them yourself.",
+      more: "More choices",
+      moreSub: "Categories' own commission, the link's cookie",
+      none: "No one has applied yet. No payouts recorded.",
+      open: "Open",
+      close: "Close",
+    },
     title: "Creators",
     on: "The creator programme is on.",
     off: "The creator programme is off.",

@@ -18,7 +18,8 @@ export async function ownerWho(account: Account, stores: readonly StoreSummary[]
   const owner = stores.some((store) => store.role === "owner");
   const [desks, domains, books] = await Promise.all([ownerDesks(account), owner ? Promise.resolve(true) : holdsDomains(account.id), booksClientStores(account)]);
   return {
-    who: { owner, work: owner || stores.some((store) => store.workOn), support: desks.length > 0, domains, books: showsClients(books) },
+    // Work's tab (D123) is an owner's whose account has the Work extension (D748), or anyone's in a store that uses it.
+    who: { owner, work: stores.some((store) => (store.role === "owner" && store.workExtension) || store.workOn), support: desks.length > 0, domains, books: showsClients(books) },
     desks,
   };
 }

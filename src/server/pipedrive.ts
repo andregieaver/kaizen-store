@@ -821,6 +821,7 @@ export async function runPipedriveMoves(
     z.object({ store_id: col.uuid }),
     sql`select store_id from commerce.crm_moves
          where source = ${SOURCE} and token_encrypted is not null and run->>'status' = 'running' and (lease_until is null or lease_until < now())
+           and commerce.extension_on(store_id, 'deals')
          order by updated_at limit 20`,
   );
   const now = deps.now ?? Date.now;

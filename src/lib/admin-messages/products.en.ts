@@ -327,6 +327,16 @@ export const productsEn = {
     priceHistory: "A price that changed is in the product's price history.",
   },
   importPage: {
+    /** Round 49 (D762): what a phone shows. */
+    phone: {
+      lead: "From our file or Shopify's, checked before anything changes.",
+      hint: "Up to {max}. Nothing changes until you have seen the check.",
+      rules: "How the file is read",
+      rulesSub: "Handles, SKUs, prices, pictures",
+      kept: "Your file is deleted {days} days after the import; fetched pictures stay.",
+      open: "Open",
+      close: "Close",
+    },
     back: "Products",
     title: "Import products",
     intro:

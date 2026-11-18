@@ -424,6 +424,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   page_heat_days: never("Heatmaps' daily totals of the original's visitors (D656); a copy counts its own."),
   click_cells: never("Clicks per part of the original's pages (D656); a copy counts its own."),
   recordings: never("Recordings of visits to the original's pages (D656): another store's visitors, never copied."),
+  privacy_officers: never("The data protection officer the original names for itself (D763); a copy uses its account's until its owner names another."),
   page_map_shots: never("Pictures of the original's pages under its heatmaps (D656); a copy's are taken of its own pages."),
   speed_samples: never("How fast the original's pages loaded for its visitors (D336); a copy measures its own."),
   search_queries: never("A log of the original's searches."),

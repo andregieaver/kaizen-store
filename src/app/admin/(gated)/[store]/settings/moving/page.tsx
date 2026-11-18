@@ -39,7 +39,7 @@ import { figureText, type ShopReport } from "@/lib/shopify-report";
 import type { MovingMessages } from "@/lib/admin-messages/moving.en";
 import { PipedriveMove } from "@/components/admin/moving/pipedrive-move";
 import { PD_FEEDS, planTotal } from "@/lib/pipedrive";
-import { featureOffered, featureOn } from "@/lib/store-features";
+import { featureOffered, } from "@/lib/store-features";
 import { pipedriveMove, pipedriveOffered } from "@/server/pipedrive";
 import { featureOffer } from "@/server/store-features";
 
@@ -70,6 +70,7 @@ import {
   startCopyAction,
   startMoveAction,
 } from "./actions";
+import { dealsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Moving in" };
 
@@ -217,7 +218,7 @@ async function PipedrivePanel({ storeSlug, locale }: { storeSlug: string; locale
   const { store } = member;
   const w = adminText(adminLangOf(member.account.adminLocale), "moving").pipedrive;
   if (!pipedriveOffered()) return null;
-  if (!featureOn(store, "sales")) {
+  if (!dealsOn(store)) {
     if (!featureOffered("sales", await featureOffer(store.id))) return null;
     return (
       <Card title={w.title} description={w.intro}>

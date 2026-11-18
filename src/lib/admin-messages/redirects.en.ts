@@ -238,6 +238,16 @@ export const redirectsEn = {
     },
   },
   import: {
+    /** Round 50 (D765): what a phone shows. */
+    phone: {
+      lead: "From our file or Shopify's, checked before anything changes.",
+      hint: "Needs Redirect from and Redirect to. Nothing changes until you have seen the check.",
+      rules: "How the file is read",
+      rulesSub: "Paths, refusals, what is replaced",
+      kept: "Your file is deleted {days} days after the import.",
+      open: "Open",
+      close: "Close",
+    },
     title: "Import redirects",
     intro: "Bring redirects in from a CSV file: the file this store's export makes, or a Shopify redirect file. You see what the import would do, line by line, before anything is changed.",
     openTitle: "An import is already open",

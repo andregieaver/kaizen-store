@@ -170,7 +170,14 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
     case "privacy":
       return [
         { topic: "controller", blocks: [p("privacy.controller.1", { store, name, org, address }), p("privacy.controller.2")] },
-        { topic: "contact", blocks: [p("privacy.contact.1", { email, phone })] },
+        {
+          topic: "contact",
+          blocks: [
+            p("privacy.contact.1", { email, phone }),
+            // The data protection officer (D763), named where the store or its account has one.
+            ...(f.privacyOfficer ? [p("privacy.contact.officer", { officer: f.privacyOfficer.name ? `${f.privacyOfficer.name}, ${f.privacyOfficer.email}` : f.privacyOfficer.email })] : []),
+          ],
+        },
         {
           topic: "purposes_basis",
           blocks: [

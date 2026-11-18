@@ -305,6 +305,7 @@
     "src/db/schema.ts#priceListProducts",
     "src/db/schema.ts#priceListQuantityRules",
     "src/db/schema.ts#prices",
+    "src/db/schema.ts#privacyOfficers",
     "src/db/schema.ts#privacyRequests",
     "src/db/schema.ts#producerRegistrations",
     "src/db/schema.ts#productMarketTexts",

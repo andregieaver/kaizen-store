@@ -46,4 +46,12 @@ describe("a store's own recordings assessment (D656)", () => {
     expect(assessmentHtml(facts(), "nb")).toContain('<html lang="nb">');
     expect(assessmentFileName('shop"\r\nx')).toBe("recordings-assessment-shopx.html");
   });
+
+  it("names the store's data protection officer, and puts them in the sign-off", () => {
+    const html = assessmentHtml(facts({ officer: { name: "Ola <Ombud>", email: "dpo@krus.example" } }), "en");
+    expect(html).toContain("<p>Data protection officer: Ola &lt;Ombud&gt;, dpo@krus.example.</p>");
+    expect(html).toContain("<td>Data protection officer, if any</td><td>Ola &lt;Ombud&gt;</td>");
+    expect(assessmentHtml(facts({ officer: { name: null, email: "dpo@krus.example" } }), "nb")).toContain("<p>Personvernombud: dpo@krus.example.</p>");
+    expect(assessmentHtml(facts(), "en")).not.toContain("Data protection officer:");
+  });
 });

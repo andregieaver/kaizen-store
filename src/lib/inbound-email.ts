@@ -165,6 +165,30 @@ export function cleanSubject(subject: string | null | undefined): string | null 
 export const answerSubject = (subject: string | null, fallback: string) => (subject ? `Re: ${subject}`.slice(0, SUBJECT_MAX + 4) : fallback);
 
 /** A Message-ID as a header carries it (`<…>`), or null when it is not one. */
+/** How many message ids of a reply's headers are looked at to find its conversation. */
+export const THREAD_IDS_MAX = 20;
+
+/**
+ * The message ids a reply refers to (D332): its `In-Reply-To` first, then `References` from the newest back, each as `<id>`, without
+ * repeats, at most `THREAD_IDS_MAX`. An email that came to the desk's own address rather than a conversation's reply address (a mail
+ * app that ignored Reply-To, or a message the person wrote to the support address from the thread) still names the conversation it
+ * continues here.
+ */
+export function referencedIds(headers: Headers): string[] {
+  const ids: string[] = [];
+  const add = (raw: string) => {
+    for (const match of raw.matchAll(/<[^<>\s]{1,996}>/g)) {
+      const id = messageIdOf(match[0]);
+      if (id && !ids.includes(id)) ids.push(id);
+      if (ids.length >= THREAD_IDS_MAX) return;
+    }
+  };
+  add(header(headers, "in-reply-to"));
+  const references = header(headers, "references").match(/<[^<>\s]{1,996}>/g) ?? [];
+  if (ids.length < THREAD_IDS_MAX) add([...references].reverse().join(" "));
+  return ids;
+}
+
 export function messageIdOf(raw: string | null | undefined): string | null {
   const id = (raw ?? "").trim();
   if (!id || id.length > MESSAGE_ID_MAX || /[\r\n]/.test(id)) return null;

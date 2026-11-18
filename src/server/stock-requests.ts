@@ -287,6 +287,8 @@ async function claimBack(only: string | undefined, limit: number): Promise<Row[]
       join commerce.variant_availability va on va.store_id = r.store_id and va.variant_id = r.variant_id
       where r.status = 'waiting' and va.in_stock > 0 and ${OFFERED}
         and commerce.store_is_active(r.store_id) and not (s.is_template or s.starter)
+        -- Back in stock is one of Email automation's flows (D748): waits while the account does not have it.
+        and commerce.extension_on(r.store_id, 'email_automation')
         and (${only ?? null}::uuid is null or r.store_id = ${only ?? null}::uuid)
       order by r.created_at
       limit ${limit}

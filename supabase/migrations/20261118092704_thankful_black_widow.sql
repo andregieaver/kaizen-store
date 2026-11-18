@@ -1,2 +1,0 @@
-ALTER TABLE "commerce"."platform_settings" ADD COLUMN "domain_watch" jsonb;--> statement-breakpoint
-ALTER TABLE "commerce"."platform_settings" ADD CONSTRAINT "platform_settings_domain_watch" CHECK ("commerce"."platform_settings"."domain_watch" is null or jsonb_typeof("commerce"."platform_settings"."domain_watch") = 'object');

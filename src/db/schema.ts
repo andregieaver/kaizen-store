@@ -21285,3 +21285,33 @@ export const kaizenLifeJtis = commerce.table(
   },
   (t) => [index("kaizen_life_jtis_expires_idx").on(t.expiresAt), check("kaizen_life_jtis_jti", sql`length(${t.jti}) between 16 and 100`)],
 );
+
+/**
+ * The data protection officer (D763): one row per account (`store_id` null) that every store of the account uses, and a row per store that
+ * names its own instead. The officer is a person on the team (`account_id`, their name and address read from their account) or someone
+ * outside (name, email, phone, firm). Owner only; shown on the store's privacy statement and its recordings assessment.
+ */
+export const privacyOfficers = commerce.table(
+  "privacy_officers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organisationId: uuid("organisation_id")
+      .notNull()
+      .references(() => organisations.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+    name: text("name"),
+    email: text("email"),
+    phone: text("phone"),
+    firm: text("firm"),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("privacy_officers_account_default").on(t.organisationId).where(sql`${t.storeId} is null`),
+    uniqueIndex("privacy_officers_store").on(t.storeId).where(sql`${t.storeId} is not null`),
+    check("privacy_officers_who", sql`${t.accountId} is not null or (coalesce(length(trim(${t.name})), 0) > 0 and coalesce(${t.email}, '') ~ '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')`),
+    check("privacy_officers_sizes", sql`coalesce(char_length(${t.name}), 0) <= 200 and coalesce(char_length(${t.email}), 0) <= 254 and coalesce(char_length(${t.phone}), 0) <= 40 and coalesce(char_length(${t.firm}), 0) <= 200`),
+  ],
+);

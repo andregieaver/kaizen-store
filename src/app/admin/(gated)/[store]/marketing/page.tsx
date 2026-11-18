@@ -28,6 +28,7 @@ import { sendingHealth } from "@/server/sending-guard";
 import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
 
 import { resumeSendingAction } from "./actions";
+import { storeExtensionOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Marketing" };
 
@@ -48,6 +49,9 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   const shop = featureOn(store, "shop");
   const currency = store.markets[0]?.currency ?? "EUR";
   const ex = adminText(lang, "experiments");
+  // A/B tests and email automation are paid extensions (D748): their parts of the hub are there only while the account has them.
+  const abOn = storeExtensionOn(store, "ab_testing");
+  const emailOn = storeExtensionOn(store, "email_automation");
   const [automations, stats, cart, campaigns, subscribers, buyers, best, tests, health] = await Promise.all([
     getAutomations(store),
     automationStats(store.id),
@@ -56,14 +60,14 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
     subscriberCounts(store.id),
     customerCounts(store.id, currency),
     shop ? bestSellerByCount(store.id) : Promise.resolve(null),
-    listedTests(store, { words: ex, numberLocale: ADMIN_LANG_FACTS[lang].locale }),
+    abOn ? listedTests(store, { words: ex, numberLocale: ADMIN_LANG_FACTS[lang].locale }) : Promise.resolve([]),
     sendingHealth(store.id),
   ]);
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
 
   // What runs now, each with what it did in 30 days: the automations that are on, cart reminders, the campaigns that are on.
   const running = [
-    ...LIFECYCLE_KINDS.filter((kind) => automations[kind].enabled).map((kind) => ({
+    ...LIFECYCLE_KINDS.filter((kind) => emailOn && automations[kind].enabled).map((kind) => ({
       key: kind,
       title: kinds[kind].title,
       sub: w.automation,
@@ -83,7 +87,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
 
   // The plays that are not running yet, each opening the page that sets it up.
   const plays = [
-    ...(!automations.after_purchase.enabled ? [{ key: "after", icon: Mail, tone: "bg-positive-soft text-positive-text", ...w.after, short: w.phone.after, href: `${base}/automations/after_purchase` }] : []),
+    ...(emailOn && !automations.after_purchase.enabled ? [{ key: "after", icon: Mail, tone: "bg-positive-soft text-positive-text", ...w.after, short: w.phone.after, href: `${base}/automations/after_purchase` }] : []),
     ...(shop && !cart?.enabled ? [{ key: "cart", icon: ShoppingCart, tone: "bg-warning-soft text-warning-text", ...w.cart, short: w.phone.cart, href: `${base}/cart-reminders` }] : []),
     ...(shop && !campaigns.some((c) => c.active)
       ? [{ key: "offer", icon: Tag, tone: "bg-insight-soft text-insight-text", ...w.offer, does: best ? fillWords(w.offer.does, { product: best.title }) : w.offer.doesNone, short: best ? fillWords(w.phone.offer, { product: best.title }) : w.phone.offerNone, href: `${base}/campaigns/new` }]
@@ -100,13 +104,15 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   return (
     <div className="flex flex-col gap-7">
       <PageHeader title={w.title} meta={[lead]} />
-      <SendingGuardNotice
-        state={noticeState(health)}
-        words={adminText(lang, "marketing").sendingGuard}
-        locale={ADMIN_LANG_FACTS[lang].locale}
-        timeZone={store.timeZone}
-        resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
-      />
+      {emailOn && (
+        <SendingGuardNotice
+          state={noticeState(health)}
+          words={adminText(lang, "marketing").sendingGuard}
+          locale={ADMIN_LANG_FACTS[lang].locale}
+          timeZone={store.timeZone}
+          resume={memberCan(member, "marketing:write") ? resumeSendingAction.bind(null, store.slug) : null}
+        />
+      )}
 
       {plays.length > 0 && (
         <section aria-labelledby="plays" className="flex flex-col gap-3">

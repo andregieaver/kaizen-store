@@ -884,7 +884,7 @@
       },
       "frame.store": {
         "statements": 5,
-        "rowsRead": 54
+        "rowsRead": 66
       },
       "route.autopilot": {
         "statements": 26,
@@ -1102,7 +1102,7 @@
       },
       "dispatcher.ledger": {
         "statements": 52,
-        "rowsRead": 220
+        "rowsRead": 1350
       },
       "dispatcher.legal-sources": {
         "statements": 6,
@@ -1154,7 +1154,7 @@
       },
       "dispatcher.recurring": {
         "statements": 41,
-        "rowsRead": 842
+        "rowsRead": 1972
       },
       "dispatcher.report-emails": {
         "statements": 1,
@@ -1250,7 +1250,7 @@
       },
       "frame.store": {
         "statements": 5,
-        "rowsRead": 444
+        "rowsRead": 536
       },
       "route.autopilot": {
         "statements": 26,
@@ -1258,7 +1258,7 @@
       },
       "route.broadcasts": {
         "statements": 116,
-        "rowsRead": 7229
+        "rowsRead": 10619
       },
       "route.cookie-scan": {
         "statements": 14,
@@ -1468,7 +1468,7 @@
       },
       "dispatcher.ledger": {
         "statements": 50,
-        "rowsRead": 220
+        "rowsRead": 1350
       },
       "dispatcher.legal-sources": {
         "statements": 0,
@@ -1520,7 +1520,7 @@
       },
       "dispatcher.recurring": {
         "statements": 40,
-        "rowsRead": 840
+        "rowsRead": 1970
       },
       "dispatcher.report-emails": {
         "statements": 0,
@@ -1616,7 +1616,7 @@
       },
       "frame.store": {
         "statements": 0,
-        "rowsRead": 390
+        "rowsRead": 470
       },
       "route.autopilot": {
         "statements": 0,
@@ -1624,7 +1624,7 @@
       },
       "route.broadcasts": {
         "statements": 100,
-        "rowsRead": 7225
+        "rowsRead": 10615
       },
       "route.cookie-scan": {
         "statements": 0,
@@ -1763,9 +1763,13 @@
       "frame": [
         "markets",
         "menus",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "pages",
         "payment_providers",
+        "plan_extension_grants",
+        "platform_settings",
         "return_settings",
         "store_currencies",
         "stores",
@@ -1779,9 +1783,13 @@
         "markets",
         "media",
         "menus",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "pages",
         "payment_providers",
+        "plan_extension_grants",
+        "platform_settings",
         "price_lists",
         "prices",
         "product_media",
@@ -1797,9 +1805,13 @@
         "experiments",
         "markets",
         "menus",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "pages",
         "payment_providers",
+        "plan_extension_grants",
+        "platform_settings",
         "return_settings",
         "store_currencies",
         "stores"
@@ -1818,9 +1830,13 @@
         "markets",
         "media",
         "menus",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "pages",
         "payment_providers",
+        "plan_extension_grants",
+        "platform_settings",
         "price_lists",
         "prices",
         "producer_registrations",
@@ -1846,8 +1862,12 @@
         "markets",
         "media",
         "menus",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "payment_providers",
+        "plan_extension_grants",
+        "platform_settings",
         "price_lists",
         "prices",
         "product_media",
@@ -1886,10 +1906,13 @@
         "media",
         "menus",
         "order_settings",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "payment_methods",
         "payment_providers",
         "pickup_options",
+        "plan_extension_grants",
         "platform_settings",
         "price_breaks",
         "price_list_prices",
@@ -1931,10 +1954,14 @@
         "order_payment_terms",
         "order_settings",
         "orders",
+        "organisation_extensions",
+        "organisations",
         "page_roles",
         "payment_providers",
         "payments",
         "pickup_options",
+        "plan_extension_grants",
+        "platform_settings",
         "product_media",
         "product_variants",
         "products",
@@ -2018,11 +2045,15 @@
         "order_lines",
         "order_payment_terms",
         "orders",
+        "organisation_extensions",
+        "organisations",
         "payment_disputes",
         "payment_providers",
         "payments",
+        "plan_extension_grants",
         "plan_limits",
         "plans",
+        "platform_settings",
         "privacy_requests",
         "product_reviews",
         "product_variants",
@@ -2066,15 +2097,15 @@
       ]
     },
     "rowsRead": {
-      "frame": 13,
-      "home": 2090,
-      "listing": 13,
-      "product": 1939,
-      "search": 2793,
-      "cart": 170,
-      "checkout": 270,
+      "frame": 16,
+      "home": 2093,
+      "listing": 16,
+      "product": 1942,
+      "search": 2799,
+      "cart": 173,
+      "checkout": 273,
       "order": 163,
-      "ownerHome": 711,
+      "ownerHome": 720,
       "adminOrders": 8,
       "adminProducts": 2794
     },
@@ -2260,6 +2291,7 @@
       "ecb_reference_rates",
       "economic_operators",
       "einvoice_sends",
+      "email_clicks",
       "email_filing",
       "email_messages",
       "email_opt_outs",
@@ -2271,6 +2303,12 @@
       "experiment_exposures",
       "experiment_variants",
       "experiments",
+      "extension_bundle_members",
+      "extension_bundle_prices",
+      "extension_bundles",
+      "extension_prices",
+      "extension_sizes",
+      "extensions",
       "feed_settings",
       "field_groups",
       "field_search",
@@ -2365,6 +2403,7 @@
       "order_terms",
       "order_views",
       "orders",
+      "organisation_extensions",
       "organisation_members",
       "organisations",
       "own_speed_samples",
@@ -2389,6 +2428,7 @@
       "payouts",
       "peppol_receivers",
       "pickup_options",
+      "plan_extension_grants",
       "plan_feature_grants",
       "plan_features",
       "plan_limits",

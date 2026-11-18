@@ -152,6 +152,7 @@ export const EN: StarterText = {
     "privacy.controller.2": "The store runs on the Kaizena Flow platform. The platform processes personal data on our behalf, as our processor.",
     "h.privacy.contact": "Contact",
     "privacy.contact.1": "Questions about your personal data: {email}. Phone: {phone}.",
+    "privacy.contact.officer": "Our data protection officer: {officer}.",
     "h.privacy.purposes_basis": "What we use your data for",
     "privacy.purposes.1": "We use personal data for these purposes, each on the legal basis shown:",
     "privacy.purpose.orders": "to take, pay for, deliver and follow up your orders, and to confirm and send you what you have bought (performance of the contract)",

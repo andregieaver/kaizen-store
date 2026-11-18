@@ -114,8 +114,8 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { einvoiceLines } from "@/server/einvoice-sending";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { featureOn } from "@/lib/store-features";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
+import { dealsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -167,7 +167,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     // The store's tags in use, as suggestions.
     tagSuggestions(store.id),
     // The deal the order is linked to (ecosystem plan E1.3): only while Deals are on, for people who may read customers.
-    featureOn(store, "sales") && memberCan(member, "customers:read") ? dealOfThing(store.id, "order", orderId) : Promise.resolve(null),
+    dealsOn(store) && memberCan(member, "customers:read") ? dealOfThing(store.id, "order", orderId) : Promise.resolve(null),
   ]);
   // Whether its items can be changed now, and if not why, in words (D174 2.2: copied, unpaid, sent and the rest included).
   const editability = order ? await orderEditability(store.id, orderId) : null;

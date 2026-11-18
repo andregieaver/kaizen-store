@@ -1,2 +1,0 @@
-ALTER TABLE "commerce"."autopilot_tests" DROP CONSTRAINT "autopilot_tests_goal";--> statement-breakpoint
-ALTER TABLE "commerce"."autopilot_tests" ADD CONSTRAINT "autopilot_tests_goal" CHECK ("commerce"."autopilot_tests"."goal" in ('orders', 'cart', 'checkout', 'signup'));
