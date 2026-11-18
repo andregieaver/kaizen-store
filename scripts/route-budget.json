@@ -42,8 +42,8 @@
     },
     "instrumentation": {
       "route": ".next/server/instrumentation.js",
-      "bytes": 426,
-      "max": 444
+      "bytes": 730,
+      "max": 2000
     }
   },
   "manifest": {
