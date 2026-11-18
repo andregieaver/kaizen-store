@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+
+import { advance, checkFlow, nextPath, pathOf, pathText, stepAt, type FlowFacts, type FlowStep } from "./flows";
+
+const email = (id: string, subject = "Hei"): FlowStep => ({
+  id,
+  kind: "email",
+  content: { "nb-NO": { subject, preview: "", blocks: [{ type: "paragraph", text: "Hei" }] } },
+});
+const facts = (over: Partial<FlowFacts> = {}): FlowFacts => ({ orderedSinceEntry: false, clickedFlowEmail: false, segments: new Set(), ...over });
+
+// Welcome, three days, then: if they have not ordered, best sellers; else a thank-you. Then a last email.
+const tree: FlowStep[] = [
+  email("welcome"),
+  { id: "w1", kind: "wait", hours: 72 },
+  { id: "q", kind: "if", condition: { kind: "ordered_since_entry" }, then: [email("thanks")], else: [email("best"), { id: "w2", kind: "wait", hours: 48 }] },
+  email("last"),
+];
+
+describe("flows (D767, email plan M2.1)", () => {
+  it("accepts a sound tree and says what is wrong with another, in words", () => {
+    expect(checkFlow(tree)).toEqual([]);
+    expect(checkFlow([])).toContain("A flow needs at least one step.");
+    expect(checkFlow([{ id: "w", kind: "wait", hours: 1 }])).toContain("A flow sends at least one email.");
+    expect(checkFlow([email("a"), email("a")])).toContain("Two steps have the same id.");
+    expect(checkFlow([email("a", "")])).toContain('The email "a" has no subject or no words yet.');
+    const deep = (n: number): FlowStep => (n === 0 ? email(`e${n}`) : { id: `i${n}`, kind: "if", condition: { kind: "clicked_flow_email" }, then: [deep(n - 1)], else: [] });
+    expect(checkFlow([deep(5)])).toContain("Branches go at most 4 deep.");
+  });
+
+  it("walks places through branches and on after them", () => {
+    expect(stepAt(tree, ["2", "else", "1"])).toMatchObject({ id: "w2" });
+    expect(nextPath(tree, ["0"])).toEqual(["1"]);
+    expect(nextPath(tree, ["2", "else", "0"])).toEqual(["2", "else", "1"]);
+    // The end of a branch goes on after its `if`.
+    expect(nextPath(tree, ["2", "else", "1"])).toEqual(["3"]);
+    expect(nextPath(tree, ["2", "then", "0"])).toEqual(["3"]);
+    expect(nextPath(tree, ["3"])).toBeNull();
+    expect(pathOf(pathText(["2", "then", "0"]))).toEqual(["2", "then", "0"]);
+  });
+
+  it("sends, waits, takes the branch the person's facts choose, and ends", () => {
+    expect(advance(tree, [], ["0"], facts())).toMatchObject({ do: "email", step: { id: "welcome" }, next: ["1"] });
+    expect(advance(tree, [], ["1"], facts())).toEqual({ do: "wait", hours: 72, next: ["2"] });
+    expect(advance(tree, [], ["2"], facts())).toMatchObject({ do: "email", step: { id: "best" }, next: ["2", "else", "1"] });
+    expect(advance(tree, [], ["2"], facts({ orderedSinceEntry: true }))).toMatchObject({ do: "email", step: { id: "thanks" }, next: ["3"] });
+    expect(advance(tree, [], ["3"], facts())).toMatchObject({ do: "email", step: { id: "last" }, next: null });
+    expect(advance(tree, [], null, facts())).toEqual({ do: "end", reason: "done" });
+  });
+
+  it("ends a run at once when a goal is met", () => {
+    expect(advance(tree, [{ kind: "ordered" }], ["2"], facts({ orderedSinceEntry: true }))).toEqual({ do: "end", reason: "goal" });
+  });
+
+  it("goes past an empty branch, and decides a segment condition from the person's segments", () => {
+    const seg = "11111111-1111-4111-8111-111111111111";
+    const steps: FlowStep[] = [{ id: "q", kind: "if", condition: { kind: "in_segment", segmentId: seg }, then: [email("vip")], else: [] }, email("all")];
+    expect(advance(steps, [], ["0"], facts())).toMatchObject({ do: "email", step: { id: "all" } });
+    expect(advance(steps, [], ["0"], facts({ segments: new Set([seg]) }))).toMatchObject({ do: "email", step: { id: "vip" } });
+  });
+});

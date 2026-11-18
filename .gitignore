@@ -52,3 +52,8 @@ next-env.d.ts
 
 # The Orbit store's photographs, made by e2e/seed/themed-store.seed.ts (bloat review step 1.6)
 /public/e2e-orbit/
+
+# Written by scripts/timed.mjs and the checks it wraps (bloat review step 1.20)
+/.vitest-report.json
+/timings.jsonl
+/playwright-report.json

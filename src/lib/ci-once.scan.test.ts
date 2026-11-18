@@ -19,8 +19,11 @@ const jobsOf = (text: string) => {
   return body.split(/\n(?=  [a-z][a-z0-9-]*:\n)/).slice(1).map((job) => ({ name: job.slice(2, job.indexOf(":")), text: job }));
 };
 
-/** The jobs whose text has a line that runs the command. */
-const jobsRunning = (text: string, command: RegExp) => jobsOf(text).filter((job) => command.test(job.text));
+/** The jobs whose text has a line that runs the command, bare or through the recorder (`node scripts/timed.mjs <label> ... -- `, step 1.20). */
+const jobsRunning = (text: string, command: RegExp) => {
+  const recorded = new RegExp(`run: (?:node scripts/timed\\.mjs [^\\n]*?-- )?${command.source.replace(/^run: /, "")}`);
+  return jobsOf(text).filter((job) => recorded.test(job.text));
+};
 
 /** The build jobs that do not set the variable that skips the build's own type check. */
 const buildsWithoutSkip = (text: string) =>

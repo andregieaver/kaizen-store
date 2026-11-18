@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { challengePagesFrom, deployVerdict, pageLine, pageProblems, SMOKE_CHECKS, smokePages, smokeProblems } from "../../scripts/await-deploy.mjs";
+import { challengePagesFrom, deployVerdict, pageLine, pageProblems, secondsSince, SMOKE_CHECKS, smokePages, smokeProblems } from "../../scripts/await-deploy.mjs";
 
 /** CI's wait for production to run a pushed commit (D389): the commit itself, or a later deployment that includes it, is live. */
 describe("deployVerdict", () => {
@@ -74,5 +74,19 @@ describe("page checks", () => {
     expect(pageLine({ address: "/", status: 200, bytes: 48213, cache: { vercel: "HIT", next: null } })).toBe(
       "GET /: 200, 48213 bytes, x-vercel-cache HIT, x-nextjs-cache none",
     );
+  });
+});
+
+describe("secondsSince", () => {
+  it("counts whole seconds from a push time to now", () => {
+    expect(secondsSince("2026-11-18T10:00:00Z", Date.parse("2026-11-18T10:02:30Z"))).toBe(150);
+    expect(secondsSince(Date.parse("2026-11-18T10:00:00Z"), Date.parse("2026-11-18T10:00:01Z"))).toBe(1);
+  });
+
+  it("gives null for a missing, garbled or future time", () => {
+    expect(secondsSince("", 1_000)).toBeNull();
+    expect(secondsSince(undefined, 1_000)).toBeNull();
+    expect(secondsSince("not a time", 1_000)).toBeNull();
+    expect(secondsSince(5_000, 1_000)).toBeNull();
   });
 });

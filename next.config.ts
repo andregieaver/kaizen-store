@@ -89,8 +89,10 @@ const nextConfig: NextConfig = {
     // (each holds about 1.3 GB, and the first starts while the compile's memory is still held). And without source maps (D709): the
     // compile had grown to 7.5 GB by 17 November 2026 and 6.3 GB without them. Production never reads the server's maps (Node runs
     // without --enable-source-maps; Next turns them on only for its debug prerender) and the browser's were never made.
+    // And without the server bundle's source maps (`serverSourceMaps`, step 1.20): under an 8 GB cap the build peaked at 7.6 to 7.8 GB with
+    // them and 6.8 GB without, on 18 November 2026 (docs/build-memory.md). `enablePrerenderSourceMaps: false` gained nothing and is not set.
     ...(ON_VERCEL
-      ? { turbopackFileSystemCacheForBuild: false, cpus: 1, turbopackSourceMaps: false, turbopackInputSourceMaps: false }
+      ? { turbopackFileSystemCacheForBuild: false, cpus: 1, turbopackSourceMaps: false, turbopackInputSourceMaps: false, serverSourceMaps: false }
       : {}),
     // Market pages each have their own root layout, so the 404 page is global.
     globalNotFound: true,

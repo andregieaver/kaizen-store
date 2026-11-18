@@ -86,13 +86,16 @@ A push to `main` takes one of two paths, chosen by reading production's ledger (
 The `integration` job runs the integration files in three shards, each on a database of its own seeded fresh; shard 1 first runs
 `src/server/query-budget.int.test.ts` alone, which counts statements and rows read per scheduled job with 1 and with 20 stores, and the
 sharded run leaves it out (bloat review step 1.10).
+Every check and build of CI runs through `scripts/timed.mjs`, which prints its seconds, adds them to the run's summary and fails above the key's ceiling in `scripts/ci-budgets.json`
+(empty until ten runs on `main` have been read; bloat review step 1.20); each job uploads its `timings.jsonl`, and a `timings` job adds the push's runner minutes.
+A weekly workflow (`.github/workflows/ci-budgets.yml`) goes red when a ceiling is more than 25% above the median of the last ten runs.
 In the `e2e` job the build is followed by `scripts/trace-sizes.mjs --check` and `scripts/route-budget.mjs` (what a function carries and
 what a route loads: a breach fails the job with the figure, bloat review step 1.8), then by `scripts/render-modes.mjs` (which routes
 are static, how many holes each has), and Playwright by
 `scripts/server-budget.mjs` (statements per store page): both fail the job, so a push with a migration waits for them (bloat review step 1.11).
 
 Either way the job then waits for production to run the commit (D389, `scripts/await-deploy.mjs`): it reads `/api/health` until the
-`commit` there is this one, or a later one that includes it, and fails, saying what production reports, after twenty minutes. Set the
+`commit` there is this one, or a later one that includes it, and fails, saying what production reports, after twenty minutes. Once it is live it prints `Push to live: N s` (from `PUSHED_AT`, the push's time) and adds it to the run's summary. Set the
 repository variable `PRODUCTION_URL` when the site's address is not `https://kaizenaflow.com`. It then requests the pages of `SMOKE_PAGES` (a repository variable; by default Kaizena Flow's home and the template store's Norwegian front page), one after the other and each twice: the job, not a visitor, pays the first cold draw, the log shows each page's status, bytes and cache headers, and a page that does not answer 200 fails the job (bloat review step 0.3).
 
 Both need the repository variable `AUTO_MIGRATE` to be `true` (the `pending` job is off without it, and
