@@ -6,20 +6,25 @@ import { testDb } from "./db";
  * Back in stock (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6.4). A store of its own (the template store is no real store and never asks)
  * whose demo lamp is sold out and does not keep selling: with back in stock on, its page asks for an address, and a typed one is told to confirm
  * by email. Who is told when stock returns is held by automations.int.test.ts.
+ *
+ * Whether back in stock is on is one of the store's buy facts, cached until a writer refreshes them (bloat review step 2.13,
+ * `src/server/buy-facts.ts`). This file sets it with SQL, which refreshes nothing, so each state has a store of its own, set before
+ * its page is first drawn.
  */
 
-const STORE = "e2e-back-in-stock";
 const RUN = Date.now().toString(36);
+const STORES = { off: "e2e-back-in-stock", on: "e2e-back-in-stock-on" } as const;
 // The store sells in one country, so its addresses carry none (D181).
-const LAMP = `/s/${STORE}/p/demo-bordlampe`;
+const lamp = (on: boolean) => `/s/${STORES[on ? "on" : "off"]}/p/demo-bordlampe`;
 
 test.describe.configure({ mode: "serial" });
 
 async function arrange(on: boolean) {
+  const STORE = STORES[on ? "on" : "off"];
   const sql = testDb();
   try {
     if ((await sql`select 1 from commerce.stores where slug = ${STORE}`).length === 0) {
-      const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${`bis-${RUN}@example.com`}, 'E2E', 'E2E Back in stock') returning id`;
+      const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${`bis-${on ? "on-" : ""}${RUN}@example.com`}, 'E2E', 'E2E Back in stock') returning id`;
       await sql`select commerce.approve_access_request(${request.id}, ${STORE}, 'E2E Back in stock', null)`;
     }
     const [store] = await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()), status = 'active' where slug = ${STORE} returning id`;
@@ -36,14 +41,14 @@ async function arrange(on: boolean) {
 
 test("a sold-out variant offers nothing while the store has it off", async ({ page }) => {
   await arrange(false);
-  await page.goto(LAMP);
+  await page.goto(lamp(false));
   await expect(page.getByText("Utsolgt").filter({ visible: true }).first()).toBeVisible();
   await expect(page.locator("[data-back-in-stock]")).toHaveCount(0);
 });
 
 test("with it on, a shopper asks for a sold-out variant and is told to confirm by email", async ({ page }) => {
   await arrange(true);
-  await page.goto(LAMP);
+  await page.goto(lamp(true));
   const form = page.locator("form[data-back-in-stock]").filter({ visible: true }).first();
   await expect(form.getByText("Få en e-post når den er tilbake")).toBeVisible();
   await form.getByRole("textbox", { name: "E-postadressen din" }).fill("ikke-en-adresse");
