@@ -1,6 +1,6 @@
 {
-  "id": "7dcfe461-cf2f-4dd9-916d-2662ac986b2f",
-  "prevId": "a957a22c-50a2-4b44-9f94-0f5e2c79cb9b",
+  "id": "f7711d22-31e5-4d1c-83d1-5a298c43a633",
+  "prevId": "2f4da04d-1570-448d-942f-e016ad3f65ce",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -56304,6 +56304,36 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "published_title": {
+          "name": "published_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "published ->> 'title'",
+            "type": "stored"
+          }
+        },
+        "published_titles": {
+          "name": "published_titles",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "commerce.page_titles(published)",
+            "type": "stored"
+          }
+        },
+        "remembered_modal": {
+          "name": "remembered_modal",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "coalesce(jsonb_path_exists(published, '$.rows[*].modal ? ((@.frequency == \"session\" || @.frequency == \"days\" || !exists(@.frequency)) && (@.triggers.exitIntent == true || exists(@.triggers.timer)))'), false)",
+            "type": "stored"
+          }
         },
         "published_at": {
           "name": "published_at",

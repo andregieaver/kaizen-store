@@ -752,12 +752,7 @@ export async function publishedPageIndex(owner: PageOwner = null, type: PageType
   const rows = await typedRows(
     indexRow,
     sql`
-      select id, slug, coalesce(published ->> 'title', '') as title,
-        coalesce((
-          select jsonb_object_agg(t.key, t.value ->> 'title')
-          from jsonb_each(case when jsonb_typeof(published -> 'translations') = 'object' then published -> 'translations' else '{}'::jsonb end) t
-          where coalesce(t.value ->> 'title', '') <> ''
-        ), '{}'::jsonb) as titles,
+      select id, slug, coalesce(published_title, '') as title, published_titles as titles,
         published_at, first_published_at, published ->> 'blogId' as blog_id,
         coalesce((published ->> 'aiAssistants')::boolean, false) as ai_assistants,
         coalesce((published ->> 'searchEngines')::boolean, false) as search_engines
@@ -808,6 +803,22 @@ export async function findPublishedPage(
   return { page };
 }
 
+/** The statement behind publishedPageNames(), apart so a test can explain it (bloat review step 2.16). */
+export function namesQuery(owner: PageOwner, locale: string | null, type: PageType) {
+  // The title in the shopper's language where the page is translated (D55), from the columns the database derives.
+  const title = sql`coalesce(nullif(p.published_titles ->> ${locale ?? ""}, ''), p.published_title)`;
+  return sql`
+    select p.slug as address, p.slug, ${title} as title
+    from commerce.pages p
+    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
+    union all
+    select r.slug, p.slug, ${title}
+    from commerce.page_redirects r
+    join commerce.pages p on p.id = r.page_id and p.published_at is not null
+    where ${owned(owner, sql`r.store_id`)} and r.type = ${type}
+  `;
+}
+
 /**
  * An owner's published pages by address, for menu links (D54): where each
  * is now and its title, also under the addresses it had before, so a link
@@ -821,18 +832,7 @@ export async function publishedPageNames(
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner));
-  // The title in the shopper's language where the page is translated (D55).
-  const title = sql`coalesce(nullif(p.published #>> array['translations', ${locale ?? ""}, 'title'], ''), p.published ->> 'title')`;
-  const rows = await readDb().execute<Row>(sql`
-    select p.slug as address, p.slug, ${title} as title
-    from commerce.pages p
-    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
-    union all
-    select r.slug, p.slug, ${title}
-    from commerce.page_redirects r
-    join commerce.pages p on p.id = r.page_id and p.published_at is not null
-    where ${owned(owner, sql`r.store_id`)} and r.type = ${type}
-  `);
+  const rows = await readDb().execute<Row>(namesQuery(owner, locale, type));
   return rows.map((row) => [String(row.address), { slug: String(row.slug), title: String(row.title ?? row.slug) }]);
 }
 

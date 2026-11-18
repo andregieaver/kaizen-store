@@ -59,3 +59,45 @@ describe("flows (D767, email plan M2.1)", () => {
     expect(advance(steps, [], ["0"], facts({ segments: new Set([seg]) }))).toMatchObject({ do: "email", step: { id: "vip" } });
   });
 });
+
+describe("changing a flow where it is (D767 slice 2)", () => {
+  it("changes one email's subject and first paragraph in one language, inside a branch too, and leaves the rest", async () => {
+    const { withEmailWords } = await import("./flows");
+    const changed = withEmailWords(tree, "best", "nb-NO", { subject: "Våre favoritter", text: "Se hva andre kjøper." });
+    expect(stepAt(changed, ["2", "else", "0"])).toMatchObject({
+      id: "best",
+      content: { "nb-NO": { subject: "Våre favoritter", blocks: [{ type: "paragraph", text: "Se hva andre kjøper." }] } },
+    });
+    expect(stepAt(changed, ["0"])).toEqual(stepAt(tree, ["0"]));
+    // A language it had none of yet gets the words as its first paragraph.
+    const added = withEmailWords(tree, "welcome", "en-GB", { subject: "Welcome", text: "Hello" });
+    expect(stepAt(added, ["0"])).toMatchObject({ content: { "en-GB": { subject: "Welcome", blocks: [{ type: "paragraph", text: "Hello" }] }, "nb-NO": { subject: "Hei" } } });
+  });
+
+  it("changes a wait in days", async () => {
+    const { withWaitDays } = await import("./flows");
+    expect(stepAt(withWaitDays(tree, "w1", 5), ["1"])).toEqual({ id: "w1", kind: "wait", hours: 120 });
+  });
+});
+
+describe("the canvas's changes (D767 slice 2)", () => {
+  it("adds a step after another, first in a branch, with a free id, and removes one", async () => {
+    const { insertStep, newStep, removeStep, freeStepId } = await import("./flows");
+    expect(freeStepId(tree, "email")).toBe("email-1");
+    const wait = newStep(tree, "wait", "nb-NO", { subject: "", text: "" });
+    expect(wait).toEqual({ id: "wait-1", kind: "wait", hours: 24 });
+    const after = insertStep(tree, wait, { afterId: "welcome" });
+    expect(after.map((s) => s.id)).toEqual(["welcome", "wait-1", "w1", "q", "last"]);
+    const mail = newStep(after, "email", "nb-NO", { subject: "Ny", text: "Tekst" });
+    const inBranch = insertStep(after, mail, { into: "q", branch: "then" });
+    expect(stepAt(inBranch, ["3", "then", "0"])).toMatchObject({ id: "email-1", content: { "nb-NO": { subject: "Ny" } } });
+    expect(stepAt(removeStep(inBranch, "email-1"), ["3", "then", "0"])).toMatchObject({ id: "thanks" });
+    // An `if` goes with its branches.
+    expect(removeStep(tree, "q").map((s) => s.id)).toEqual(["welcome", "w1", "last"]);
+  });
+
+  it("changes an if's condition", async () => {
+    const { withCondition } = await import("./flows");
+    expect(stepAt(withCondition(tree, "q", { kind: "clicked_flow_email" }), ["2"])).toMatchObject({ condition: { kind: "clicked_flow_email" } });
+  });
+});

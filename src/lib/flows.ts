@@ -156,3 +156,78 @@ export function advance(steps: readonly FlowStep[], goals: readonly FlowGoal[], 
   }
   return { do: "end", reason: "done" };
 }
+
+/** The tree with one step replaced by `change(step)`, wherever it is; the same tree when no step has that id. Pure. */
+export function replaceStep(steps: readonly FlowStep[], id: string, change: (step: FlowStep) => FlowStep): FlowStep[] {
+  return steps.map((step) => {
+    if (step.id === id) return change(step);
+    if (step.kind === "if") return { ...step, then: replaceStep(step.then, id, change), else: replaceStep(step.else, id, change) };
+    return step;
+  });
+}
+
+/**
+ * An email step with new words in one language (D767 slice 2, words changed where they are): its subject, and its first paragraph's
+ * text (a paragraph is added first when it has none); its other blocks and languages stay as they were.
+ */
+export function withEmailWords(steps: readonly FlowStep[], id: string, locale: string, words: { subject: string; text: string }): FlowStep[] {
+  return replaceStep(steps, id, (step) => {
+    if (step.kind !== "email") return step;
+    const current = step.content[locale] ?? { subject: "", preview: "", blocks: [] };
+    const index = current.blocks.findIndex((b) => b.type === "paragraph");
+    const blocks =
+      index < 0
+        ? [{ type: "paragraph" as const, text: words.text }, ...current.blocks]
+        : current.blocks.map((b, i) => (i === index ? { ...b, text: words.text } : b));
+    return { ...step, content: { ...step.content, [locale]: { ...current, subject: words.subject, blocks } } };
+  });
+}
+
+/** A wait step with a new number of days (D767 slice 2). */
+export function withWaitDays(steps: readonly FlowStep[], id: string, days: number): FlowStep[] {
+  return replaceStep(steps, id, (step) => (step.kind === "wait" ? { ...step, hours: Math.round(days * 24) } : step));
+}
+
+/** A step's id not yet in the tree: the kind and the lowest free number (`email-2`). Pure. */
+export function freeStepId(steps: readonly FlowStep[], kind: FlowStep["kind"]): string {
+  const taken = new Set([...walk(steps)].map((s) => s.step.id));
+  for (let n = 1; ; n++) if (!taken.has(`${kind}-${n}`)) return `${kind}-${n}`;
+}
+
+/** A new step of a kind, with words to start from for an email (its subject and first paragraph, in `locale`). Pure. */
+export function newStep(steps: readonly FlowStep[], kind: "email" | "wait" | "if" | "end", locale: string, words: { subject: string; text: string }): FlowStep {
+  const id = freeStepId(steps, kind);
+  if (kind === "email") return { id, kind, content: { [locale]: { subject: words.subject, preview: "", blocks: [{ type: "paragraph", text: words.text }] } } };
+  if (kind === "wait") return { id, kind, hours: 24 };
+  if (kind === "if") return { id, kind, condition: { kind: "ordered_since_entry" }, then: [], else: [] };
+  return { id, kind };
+}
+
+/**
+ * The tree with `step` placed right after the step `afterId` in its own list, or first in a branch (`into`: the `if` and which branch).
+ * The same tree when no such place exists. Pure.
+ */
+export function insertStep(steps: readonly FlowStep[], step: FlowStep, place: { afterId: string } | { into: string; branch: "then" | "else" }): FlowStep[] {
+  const out: FlowStep[] = [];
+  for (const s of steps) {
+    if ("into" in place && s.id === place.into && s.kind === "if") {
+      out.push({ ...s, [place.branch]: [step, ...s[place.branch]] });
+      continue;
+    }
+    out.push(s.kind === "if" ? { ...s, then: insertStep(s.then, step, place), else: insertStep(s.else, step, place) } : s);
+    if ("afterId" in place && s.id === place.afterId) out.push(step);
+  }
+  return out;
+}
+
+/** The tree without one step (an `if` goes with both its branches). Pure. */
+export function removeStep(steps: readonly FlowStep[], id: string): FlowStep[] {
+  return steps
+    .filter((s) => s.id !== id)
+    .map((s) => (s.kind === "if" ? { ...s, then: removeStep(s.then, id), else: removeStep(s.else, id) } : s));
+}
+
+/** An `if` with a new condition. Pure. */
+export function withCondition(steps: readonly FlowStep[], id: string, condition: FlowCondition): FlowStep[] {
+  return replaceStep(steps, id, (step) => (step.kind === "if" ? { ...step, condition } : step));
+}

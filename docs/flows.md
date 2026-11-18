@@ -38,7 +38,11 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    listed for the platform's own check.
 2. **The story** (M3.3), built in parts. *Part a, 18 November 2026:* `/admin/{store}/flows` lists the flows and starts the welcome series
    (`welcomeSeries()`, `src/lib/flow-recipes.ts`); a flow's page reads it as sentences (`storyLines()`, `src/lib/flow-story.ts`) with each
-   email drawn as its subject and first words, Test and Switch on. *Next:* the words edited where they are and the canvas.
+   email drawn as its subject and first words, Test and Switch on. *Part b, the same day:* under each email, Change edits its subject and
+   words in its first language and the days of the wait before it (`withEmailWords()`, `withWaitDays()`), each save a new version switched
+   off until tested again. *Part c, the same day:* Customise opens the canvas (`canvas.tsx`): every step as a tree, a step of any kind
+   added after another or first in a branch, one removed (an `if` with both branches, said on its button), an `if`'s condition chosen
+   (`insertStep()`, `removeStep()`, `withCondition()`). *Next:* every language side by side.
    The whole of it: a flow read as sentences, the emails as pictures (*When someone joins, the same day: Welcome. Three days
    later, if they have not ordered: our best sellers*); *Customise* opens the canvas. One model, so a change in either shows in both.
 3. **Recipes** (M2.2, M3.1): today's automations as flows on the engine, their tests carried over, and the front page that starts

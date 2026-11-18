@@ -1,0 +1,1 @@
+create or replace function commerce.page_titles(p jsonb) returns jsonb language sql immutable set search_path to '' as $$ select coalesce(jsonb_object_agg(t.key, t.value ->> 'title') filter (where coalesce(t.value ->> 'title', '') <> ''), '{}'::jsonb) from jsonb_each(case when jsonb_typeof(p -> 'translations') = 'object' then p -> 'translations' else '{}'::jsonb end) t $$;

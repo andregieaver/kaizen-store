@@ -361,6 +361,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `plain`. Read both with `themeLayersFor(owner)`; a new reader that draws a store's rows passes the sections too. The core names
   are `CORE_SECTION_STYLES`, which every Kaizena theme defines.
 
+## A page's derived columns (bloat review step 2.16, `src/db/schema.ts` pages)
+
+- `commerce.pages` has three columns the database derives from `published` and nobody writes: `published_title`, `published_titles`
+  (each language's title) and `remembered_modal`. Menus (`publishedPageNames()`), the page index and the consent banner
+  (`usesRememberedModals()`) read them; a write that names one fails.
+
 ## Pages following the theme (D243, `docs/theme-phase-2.md` step 2, `src/server/theme-detach.ts`)
 
 - **Pages following the theme (D243, `docs/theme-phase-2.md` step 2, `src/server/theme-detach.ts`)**: *Let pages follow the theme*
@@ -1302,7 +1308,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   listeners (one click listener on `document`, `hashchange`, timers, `mouseout`), never inline handlers; the timer and exit intent
   open by themselves at most once per page view, never over another modal, never on working pages (`autoAllowed()`) or in the
   builder. Frequency (`shouldAutoOpen()`, `rememberClose()`) is stored as `kaizen_modal_{key}`, a `preferences` item in
-  `KNOWN_COOKIES`, written only after consent (`mayRemember()`), and declared by `usesRememberedModals()`. New interface text goes
+  `KNOWN_COOKIES`, written only after consent (`mayRemember()`), and declared by `usesRememberedModals()`, which reads the generated column
+  `remembered_modal`, whose expression must match the rule of `src/lib/page-modal.ts` (`src/db/commerce.test.ts` holds the two together);
+  changing the rule is a migration that drops and adds the column. New interface text goes
   in `m.modal`. A modal row that nothing in shows (`rowShows()` in `src/lib/page-content.ts`, the one rule of the site, a header's
   overlay and the builder: mostly a row whose only component is a newsletter or email form with no recipients) is left out of the
   page like any empty row, so its dialog is not there and no link or class can open it (D188): the canvas badge (`ModalBar`), the

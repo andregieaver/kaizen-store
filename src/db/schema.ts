@@ -9352,6 +9352,15 @@ export const pages = commerce.table(
     slug: text("slug").notNull(),
     draft: jsonb("draft").notNull(),
     published: jsonb("published"),
+    /** Derived by the database from 'published', never written (bloat review step 2.16). */
+    publishedTitle: text("published_title").generatedAlwaysAs((): ReturnType<typeof sql> => sql`published ->> 'title'`),
+    /** Derived by the database from 'published', never written (bloat review step 2.16). */
+    publishedTitles: jsonb("published_titles").generatedAlwaysAs((): ReturnType<typeof sql> => sql`commerce.page_titles(published)`),
+    /** Derived by the database from 'published', never written (bloat review step 2.16). */
+    rememberedModal: boolean("remembered_modal").generatedAlwaysAs(
+      (): ReturnType<typeof sql> =>
+        sql`coalesce(jsonb_path_exists(published, '$.rows[*].modal ? ((@.frequency == "session" || @.frequency == "days" || !exists(@.frequency)) && (@.triggers.exitIntent == true || exists(@.triggers.timer)))'), false)`,
+    ),
     /** When it was last published; null while it is not public. */
     publishedAt: timestamp("published_at", { withTimezone: true }),
     /** When it was first published, kept when it is published again or taken off: an article's date (D57). */
