@@ -136,7 +136,7 @@ commit as the fix.
 | 1.9 | Count statements: one counter, and the admin's five screens | AD-12 | M | review | 1.1 | Done | 17 Nov (0fe09cbe; D736): statement counter; five admin screens held (4, 33, 6, 5, 22); admin.render logged. Two faults fixed at review. |
 | 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | Done | 17 Nov, d1be6bc3, D746: idle tick 143/595 statements (1/20 stores). |
 | 1.11 | Hold the storefront's server side: statements per page, cached reads and render modes | SD-13, CA-16, GAP-page-model-s2 | M | review | 1.9, 0.1, 0.3, 1.1 | Done | 17 Nov, 1a636181, D747: product 12, cart 32 statements. |
-| 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | In progress | 18 Nov: commit 2 local; 514 tables mapped; 11 stops held; search reads 19 rows more with 19 stores. |
+| 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Done | 18 Nov, 3bc5d53b, D753: order 46 statements; 11 stops' tables; search +19 rows. |
 | 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | Done | 17 Nov (14db07a9; D744): eight database flags over two daily readings, on Usage and limits and in the briefing; migration live, advisors INFO. |
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
 | 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Done | 17 Nov (23a841e2; D722): the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not good at p75. |
@@ -327,6 +327,7 @@ Change log:
 - 17 Nov 2026: step 1.18 Done (27f215e7, D749): fourteen surface counts, the hot tables' indexes and triggers and a new store's rows held; a new job, table or tool needs an Idle cost: line.
 - 18 Nov 2026: step 1.17 Done (6f82079a, D751): unused code, copies and the admin's repeats held by three scans; a new item fails, a fall is a note.
 - 18 Nov 2026: step 1.3 Done (42c9b03d, D752): scripts, documents, stylesheets, wire bytes, late scripts and router requests held on real store pages.
+- 18 Nov 2026: step 1.12 Done (3bc5d53b, D753): one order's and one visit's writes, and the tables a shop-only store's eleven stops scan, held.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
