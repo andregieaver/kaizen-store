@@ -46,11 +46,13 @@ type State = {
   browser: Map<string, Record<string, string>>;
   /** The withdrawal page's texts, by language (`returnsTextsFor()`). */
   returns: Map<string, Record<string, string>>;
+  /** The bytes of translated text (keys and texts) the first read took, for the cold-start figure (`uiBytesAtStart()`). */
+  bytes: number;
 };
 
 function state(): State {
   const scope = globalThis as unknown as Record<string, State | undefined>;
-  return (scope[KEY] ??= { loaded: false, checkedAt: 0, stamp: null, used: false, inflight: null, versions: new Map(), browser: new Map(), returns: new Map() });
+  return (scope[KEY] ??= { loaded: false, checkedAt: 0, stamp: null, used: false, inflight: null, versions: new Map(), browser: new Map(), returns: new Map(), bytes: 0 });
 }
 
 /** Reads the given languages with one statement and registers makers for them; nothing is built until `t()` or `emailText()` reads a language. */
@@ -64,7 +66,9 @@ async function loadLanguages(langs: string[]): Promise<void> {
     readDb(),
   );
   const byLang = new Map<string, { ui: Map<string, string>; email: Map<string, string> }>(langs.map((lang) => [lang, { ui: new Map(), email: new Map() }]));
+  const atStart = !state().loaded;
   for (const row of rows) {
+    if (atStart) state().bytes += Buffer.byteLength(String(row.key)) + Buffer.byteLength(String(row.text));
     const texts = byLang.get(String(row.lang));
     if (texts) (String(row.key).startsWith("email:") ? texts.email : texts.ui).set(String(row.key), String(row.text));
   }
@@ -84,6 +88,7 @@ async function loadLanguages(langs: string[]): Promise<void> {
 /** Reads the version stamp and the languages' versions with one statement, then the languages that changed with a second; a failure leaves what there is (English where nothing is). */
 async function refresh(): Promise<void> {
   const s = state();
+  if (!s.loaded) s.bytes = 0;
   try {
     const rows = await typedRows(
       z.object({ stamp: col.text, lang: col.textOrNull, n: col.int.nullable(), v: col.textOrNull }),
@@ -126,6 +131,11 @@ async function refresh(): Promise<void> {
     s.checkedAt = Date.now();
     s.inflight = null;
   }
+}
+
+/** The bytes of translated text this instance read when it started (0 where no language is translated by AI). */
+export function uiBytesAtStart(): number {
+  return state().bytes;
 }
 
 /** Looks at the one-row stamp; the languages are read again only when it moved. */

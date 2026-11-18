@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/db/client";
@@ -9,6 +10,7 @@ import { pooled } from "@/lib/job-pool";
 
 import { flushCacheEvents, inJob } from "./cache-events";
 import { cronAuthorised } from "./cron-auth";
+import { noteFirstRequest } from "./instance-start";
 import { log } from "./log";
 import { textList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
@@ -171,6 +173,7 @@ export async function cronJobRows(): Promise<CronJobRow[]> {
  */
 export function trackedRoute(job: string, everySeconds: number, handler: (request: Request) => Promise<Response>) {
   return async (request: Request): Promise<Response> => {
+    noteFirstRequest("job", after);
     if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
     const response = await tracked(job, everySeconds, async () => {
       const answer = await handler(request);

@@ -1,7 +1,8 @@
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
 import { log } from "@/server/log";
+import { noteFirstRequest } from "@/server/instance-start";
 import { recordOwnSpeed } from "@/server/own-speed";
 
 /**
@@ -14,6 +15,7 @@ const answer = (status: number) => new Response(null, { status, headers: { "Cach
 
 export async function POST(request: Request) {
   await connection();
+  noteFirstRequest("beacon", after);
   try {
     if (!sameSite(request)) return answer(403);
     const declared = Number(request.headers.get("content-length") ?? 0);

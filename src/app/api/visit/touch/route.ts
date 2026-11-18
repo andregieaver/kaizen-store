@@ -1,7 +1,8 @@
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 
 import { recordTouch } from "@/server/analytics-visits";
 import { sameSite } from "@/lib/same-site";
+import { noteFirstRequest } from "@/server/instance-start";
 
 /**
  * A visitor's first visit in 30 days (D303 I3), from `TouchKeeper` while they allow statistics cookies: kept on today's visit by
@@ -9,6 +10,7 @@ import { sameSite } from "@/lib/same-site";
  */
 export async function POST(request: Request) {
   await connection();
+  noteFirstRequest("beacon", after);
   const quiet = new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   try {
     if (!sameSite(request)) return new Response(null, { status: 403, headers: { "Cache-Control": "no-store" } });

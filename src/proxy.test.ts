@@ -6,6 +6,7 @@ const recordNotFound = vi.fn();
 vi.mock("@/server/redirect-resolve", () => ({ storeRequestAnswer: (...args: unknown[]) => storeRequestAnswer(...args), privateGate: async () => null }));
 vi.mock("@/server/not-found", () => ({ recordNotFound: (...args: unknown[]) => recordNotFound(...args) }));
 vi.mock("@/server/holding", () => ({ holdingFor: async () => null }));
+vi.mock("@/server/instance-start", () => ({ noteFirstRequest: () => undefined }));
 vi.mock("@/server/experiments", () => ({ runningExperiments: async () => [], storeIdOfSlug: async () => null }));
 const siteStore = vi.fn(async (): Promise<string | null> => null);
 vi.mock("@/server/house-switch", () => ({ siteStore: () => siteStore() }));
