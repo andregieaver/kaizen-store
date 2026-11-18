@@ -41,7 +41,7 @@ import { brandOf } from "./brand";
 import { campaignFacts, emailMarket, findProductFacts } from "./broadcast-facts";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
-import { clickRef, keepClick } from "./email-clicks";
+import { clickRef, emailClicksPrune, keepClick } from "./email-clicks";
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
@@ -752,7 +752,9 @@ export async function broadcastReport(storeId: string, broadcast: Broadcast): Pr
 
 /** Daily: the recipients of sends that ended more than 90 days ago are removed, their figures kept on the broadcast (5.6). */
 export async function pruneBroadcastRecipients(): Promise<number> {
+  // Who pressed a broadcast's links goes 180 days after the press (M1.3, D754), in this same statement: the daily route's statement budget holds.
   const due = await db().execute<Row>(sql`
+    with clicks_gone as (${emailClicksPrune()})
     select id, store_id from commerce.broadcasts
     where status in ('sent', 'cancelled') and counts is null and finished_at < now() - make_interval(days => ${RECIPIENTS_KEEP_DAYS})
     limit 50
