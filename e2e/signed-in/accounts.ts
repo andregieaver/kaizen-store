@@ -14,3 +14,11 @@ export const READER = { email: "e2e-reader@example.com", name: "Rune Reader", st
 export const ADMIN = { email: "e2e-admin@example.com", name: "Pia Platform", state: "e2e/.auth/admin.json" } as const;
 /** A member who never signs in or acts: who may see their name is the Team page's to say. */
 export const QUIET = { email: "e2e-quiet@example.com", name: "Quentin Quiet" } as const;
+
+/**
+ * Two accounts that read the admin in Norwegian (`accounts.admin_locale = 'nb-NO'`, set by `auth.setup.ts` after they sign in through
+ * the English form). The owner has a store of their own, so no other spec's store changes; the admin runs Kaizena Flow like `ADMIN`.
+ */
+export const E2E_STORE_NB = "e2e-butikk";
+export const OWNER_NB = { email: "e2e-eier@example.com", name: "Nora Eier", state: "e2e/.auth/owner-nb.json" } as const;
+export const ADMIN_NB = { email: "e2e-admin-nb@example.com", name: "Per Plattform", state: "e2e/.auth/admin-nb.json" } as const;
