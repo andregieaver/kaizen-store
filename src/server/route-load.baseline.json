@@ -1,0 +1,64 @@
+{
+  "largestCycle": 23,
+  "entries": {
+    "proxy": 323,
+    "start-hook": 1,
+    "health": 10,
+    "beacon-visit": 114,
+    "beacon-touch": 114,
+    "beacon-speed": 128,
+    "beacon-own-speed": 116,
+    "beacon-recommendation-events": 110,
+    "shop-tiles": 320,
+    "store-layout": 594,
+    "store-home": 488,
+    "store-product": 886,
+    "admin-store-layout": 1068,
+    "admin-orders": 1076,
+    "platform-admin-layout": 1065,
+    "platform-admin-home": 1062,
+    "site-front-page": 488,
+    "docs-feedback": 282
+  },
+  "exceptions": {
+    "proxy": [
+      "src/lib/admin-messages/",
+      "src/server/ai.ts",
+      "src/server/auth.ts",
+      "src/server/pages.ts",
+      "src/server/seo.ts"
+    ],
+    "start-hook": [],
+    "health": [],
+    "beacon-visit": [
+      "src/lib/admin-messages/"
+    ],
+    "beacon-touch": [
+      "src/lib/admin-messages/"
+    ],
+    "beacon-speed": [
+      "src/lib/admin-messages/"
+    ],
+    "beacon-own-speed": [
+      "src/lib/admin-messages/"
+    ],
+    "beacon-recommendation-events": [
+      "src/lib/admin-messages/"
+    ],
+    "shop-tiles": [
+      "@supabase/supabase-js",
+      "src/lib/admin-messages/",
+      "src/server/auth.ts"
+    ],
+    "store-layout": [],
+    "store-home": [],
+    "store-product": [],
+    "admin-store-layout": [],
+    "admin-orders": [],
+    "platform-admin-layout": [],
+    "platform-admin-home": [],
+    "site-front-page": [],
+    "docs-feedback": []
+  },
+  "heavyHandlers": {}
+}
