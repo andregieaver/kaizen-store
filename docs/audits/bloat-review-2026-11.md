@@ -174,7 +174,7 @@ commit as the fix.
 | 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Open | |
 | 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | Open | |
 | 2.15 | Let tagged reads live until their tag is refreshed | SD-8, CA-10 | M | strong | 2.14, 1.11, 1.25 | Open | |
-| 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | In progress | Local: 2 migrations; pages names and modal statements read plain columns, plan names no document (explain test); built, e2e menus, cookies, store-pages pass. Needs production: advisors, D-row. |
+| 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | Done | 18 Nov, 64e5b620, D775: title, titles by language and remembered modal in generated columns. |
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | Open | |
 | 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | Open | |
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
@@ -336,6 +336,7 @@ Change log:
 - 18 Nov 2026: step 1.21 written up (D772): every build reports its peak; the free switches leave 6.8 GB, so Stage 2 (step 1.29) is needed.
 - 18 Nov 2026: step 1.29 commit 1 (D773): a manual job builds in CI and deploys a prebuilt preview; commit 2 waits for its trial and a deploy design.
 - 18 Nov 2026: step 2.1 Done (7742afff, D774): CLAUDE.md is a 10 KB core with a map of the rule files; the how-to loads by path, proved in a fresh session and a subagent.
+- 18 Nov 2026: step 2.16 Done (64e5b620, D775): a page's published title, titles by language and remembered-modal flag kept in generated columns.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
