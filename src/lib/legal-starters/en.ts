@@ -158,7 +158,7 @@ export const EN: StarterText = {
     "privacy.purpose.accounting": "to keep the accounts and records the law requires (legal obligation)",
     "privacy.purpose.service": "to answer your questions and complaints (performance of the contract, and our legitimate interest in giving good service)",
     "privacy.purpose.security": "to keep the store secure and prevent fraud and misuse (our legitimate interest)",
-    "privacy.purpose.marketing": "to send you marketing by email, only if you have agreed to it (consent)",
+    "privacy.purpose.marketing": "to send you marketing by email, only if you have agreed to it (consent), and to see which of its links you press, kept for 180 days (emails carry no tracking pixel, so whether you open one is not recorded)",
     "privacy.purpose.visits": "to count visits to the store without cookies, to see how it is used; we keep no IP address and no user agent (our legitimate interest)",
     // D656: hand-written, for legal review.
     "privacy.purpose.heatmaps": "to see, as totals per page and day, where visitors who allow statistics click, how far they scroll and how long parts of a page are on screen (heatmaps; your consent)",

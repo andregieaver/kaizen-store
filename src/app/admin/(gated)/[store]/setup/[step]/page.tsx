@@ -79,7 +79,7 @@ export default async function SetupStepPage({ params }: Props) {
         <SetupFrame
           {...frame}
           title={w.features.title}
-          intro={w.features.intro}
+          intro={<><span className="sm:hidden">{w.features.phoneIntro}</span><span className="max-sm:hidden">{w.features.intro}</span></>}
         >
           <FeaturesStep member={member} answered={progress.features} w={w} />
           {/* Or let the AI build the whole store (D409): the Dream Factory, for the store's owners. */}

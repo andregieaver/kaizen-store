@@ -25,6 +25,14 @@ export const redirectsEn = {
     atLeast: "Counts are at least what happened: a request answered from a cache is not seen.",
   },
   list: {
+    /** Round 47 (D755): what a phone shows. */
+    phone: {
+      lead: "Old addresses that lead to new ones. Kaizena Flow makes its own.",
+      addSub: "From an old address to a new one",
+      permanent: "Redirects are permanent: browsers remember them.",
+      open: "Open",
+      close: "Close",
+    },
     title: "Redirects",
     intro:
       "When an address on {store} moves, a redirect sends shoppers and search engines to the new one, in every country and language. Kaizena Flow makes one itself when a product, category or tag changes its address. Here you add your own, for example for an old shop's addresses, and see how often each is used.",

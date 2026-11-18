@@ -684,6 +684,16 @@ export const bookingsEn = {
     sentOn: "Sent to a page",
   },
   cartReminders: {
+    /** Round 47 (D755): what a phone shows. */
+    phone: {
+      lead: "Emails to shoppers who left a cart, linking back to it.",
+      offShort: "On, three go: after an hour, a day and three days.",
+      none: "None yet. No carts with an email either.",
+      noCarts: "No carts with an email yet.",
+      privacySub: "What to tell shoppers",
+      open: "Open",
+      close: "Close",
+    },
     title: "Cart reminders",
     description: "Emails to shoppers who typed their email at checkout but did not pay, with a link back to the same cart.",
     on: "Reminders are on",

@@ -280,6 +280,75 @@ describe("clicks", () => {
   });
 });
 
+describe("clicks per person (email plan M1.3, D754)", () => {
+  const clicksOf = async (id: string) =>
+    (await db().execute<Row>(sql`select subscriber_id, link from commerce.email_clicks where broadcast_id = ${id}::uuid order by clicked_at`)).map((r) => [
+      String(r.subscriber_id),
+      String(r.link),
+    ]);
+
+  it("keep a press as the subscriber's own only with their genuine reference while they are on the list", async () => {
+    vi.stubEnv("SETTINGS_ENCRYPTION_KEY", Buffer.alloc(32, 3).toString("base64"));
+    const { clickRef, clicksOf: exported, pruneEmailClicks } = await import("./email-clicks");
+    try {
+      const kari = await subscriber(storeId, `kari-click-${run}@example.com`, "subscribed");
+      const left = await subscriber(storeId, `left-click-${run}@example.com`, "subscribed");
+      const id = await draft("Clicks per person");
+      await bc.startBroadcast(storeId, owner, id);
+      // Each recipient's own links carry their reference.
+      expect(bc.clickUrl(id, "nb-NO.1", "no", kari)).toContain(`p=${encodeURIComponent(clickRef(id, kari)!)}`);
+
+      expect(await bc.recordClick(id, "nb-NO.1", "no", clickRef(id, kari))).toMatch(/\/products$/);
+      // A reference edited to name someone else, one for another broadcast, and none at all: counted per link, kept for nobody.
+      expect(await bc.recordClick(id, "nb-NO.1", "no", clickRef(id, kari)!.replace(kari, left))).toMatch(/\/products$/);
+      const other = await draft("Another");
+      expect(await bc.recordClick(id, "nb-NO.1", "no", clickRef(other, left))).toMatch(/\/products$/);
+      expect(await bc.recordClick(id, "nb-NO.1", "no")).toMatch(/\/products$/);
+      // Someone who left the list is counted per link and nothing more.
+      await db().execute(sql`update commerce.marketing_subscribers set status = 'unsubscribed', unsubscribed_at = now(), unsubscribe_source = 'link' where id = ${left}::uuid`);
+      await bc.recordClick(id, "nb-NO.1", "no", clickRef(id, left));
+      expect(await clicksOf(id)).toEqual([[kari, "nb-NO.1"]]);
+
+      const report = await bc.broadcastReport(storeId, (await bc.getBroadcast(storeId, id))!);
+      expect(report.people).toBe(1);
+      expect(report.links.find((l) => l.key === "nb-NO.1")).toMatchObject({ clicks: 5, people: 1 });
+
+      // In the person's export, by their address.
+      expect(await exported(storeId, [`kari-click-${run}@example.com`], null)).toEqual([{ broadcast: "Clicks per person", link: "nb-NO.1", clickedAt: expect.any(String) }]);
+
+      // Older than 180 days, it goes; the count per link stays.
+      await bc.recordClick(id, "nb-NO.1", "no", clickRef(id, kari));
+      await db().execute(sql`update commerce.email_clicks set clicked_at = now() - interval '181 days' where broadcast_id = ${id}::uuid and subscriber_id = ${kari}::uuid and clicked_at = (select min(clicked_at) from commerce.email_clicks where broadcast_id = ${id}::uuid)`);
+      expect(await pruneEmailClicks()).toBeGreaterThanOrEqual(1);
+      expect(await clicksOf(id)).toHaveLength(1);
+      expect((await bc.broadcastReport(storeId, (await bc.getBroadcast(storeId, id))!)).links.find((l) => l.key === "nb-NO.1")?.clicks).toBe(6);
+
+      // Erased with the person.
+      const erased = await eraseSubject(storeId, { email: `kari-click-${run}@example.com` }, { channel: "staff", accountId: owner });
+      expect(erased.ok).toBe(true);
+      expect(await clicksOf(id)).toEqual([]);
+      await bc.stopBroadcast(storeId, owner, id);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("carry no reference and keep nobody's press without the settings key", async () => {
+    vi.stubEnv("SETTINGS_ENCRYPTION_KEY", "");
+    try {
+      const pia = await subscriber(storeId, `pia-click-${run}@example.com`, "subscribed");
+      const id = await draft("No key");
+      await bc.startBroadcast(storeId, owner, id);
+      expect(bc.clickUrl(id, "nb-NO.1", "no", pia)).not.toContain("p=");
+      await bc.recordClick(id, "nb-NO.1", "no", `${pia}.${"a".repeat(22)}`);
+      expect(await clicksOf(id)).toEqual([]);
+      await bc.stopBroadcast(storeId, owner, id);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
+
 describe("stores", () => {
   it("never reach another's broadcasts or segments", async () => {
     const id = await draft("Mine");

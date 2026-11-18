@@ -38,6 +38,7 @@ export const setupNb: SetupMessages = {
     confirm: "Slå av det jeg tok bort. Ingenting slettes: slå det på igjen under Innstillinger, Funksjoner.",
     later: "Bonusprogrammet og vervekampanjen, og alt her, slås på og av senere under Innstillinger, Funksjoner.",
     tickToGoOn: "Kryss av for «Slå av det jeg tok bort» nedenfor for å gå videre, eller velg det du trenger.",
+    phoneIntro: "Endre det senere under Innstillinger, Funksjoner.",
   },
   answers: {
     goods: { label: "Varer som sendes", words: "Ting du sender med posten eller en transportør, eller som kundene henter." },

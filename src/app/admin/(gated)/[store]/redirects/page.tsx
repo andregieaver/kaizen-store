@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { RedirectForm } from "@/components/admin/redirects/redirect-form";
 import { RedirectTable } from "@/components/admin/redirects/redirect-table";
@@ -33,7 +34,12 @@ export default async function RedirectsPage({ params, searchParams }: Props) {
   const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
-      <RedirectsHead slug={store.slug} active="list" title={w.list.title} intro={fillWords(w.list.intro, { store: store.name })} words={w} />
+      <RedirectsHead slug={store.slug} active="list" title={w.list.title} intro={
+          <>
+            <span className="sm:hidden">{w.list.phone.lead}</span>
+            <span className="max-sm:hidden">{fillWords(w.list.intro, { store: store.name })}</span>
+          </>
+        } words={w} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -62,14 +68,25 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   };
   return (
     <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
-      <p className={`${card} !p-3 text-sm`}>{w.sentences.permanent}</p>
+      {/* Round 47 (D755): on a phone the warning is the page's last line, adding a redirect a row, and the import a row beside it. */}
+      <p className={`${card} !p-3 text-sm max-sm:hidden`}>{w.sentences.permanent}</p>
       {canWrite && (
         <section aria-labelledby="add-redirect" className="flex flex-col gap-2">
-          <h2 id="add-redirect" className="text-title text-ink">
+          <h2 id="add-redirect" className="text-title text-ink max-sm:sr-only">
             {l.add}
           </h2>
-          <RedirectForm actions={actions} />
-          <p className={hint}>
+          <PhoneRows>
+            <PhoneRow flat title={l.add} sub={l.phone.addSub} change={l.phone.open} done={l.phone.close}>
+              <RedirectForm actions={actions} />
+            </PhoneRow>
+            <Link href={redirectPaths(store.slug).import} className="flex min-h-14 items-center justify-between gap-3 bg-card px-4 py-2 sm:hidden">
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-body text-ink">{l.manyAtOnce}</span>
+                <span className="text-caption text-ink-2">{l.importLink}</span>
+              </span>
+            </Link>
+          </PhoneRows>
+          <p className={`${hint} max-sm:hidden`}>
             {l.manyAtOnce}{" "}
             <Link href={redirectPaths(store.slug).import} className="underline underline-offset-2">
               {l.importLink}
@@ -89,7 +106,13 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           </h2>
           <p className="text-sm text-muted">{manualCountWords(list.manual, list.limit, w, locale)}</p>
         </div>
-        <form method="get" action={base} className="flex flex-wrap items-end gap-2" role="search" aria-label={l.searchRegion}>
+        <form
+          method="get"
+          action={base}
+          className={`flex flex-wrap items-end gap-2 ${list.rows.length === 0 && q === "" && filter === "all" ? "max-sm:hidden" : ""}`}
+          role="search"
+          aria-label={l.searchRegion}
+        >
           <div className="flex min-w-48 flex-1 flex-col gap-1">
             <label htmlFor="redirect-q" className="text-sm font-medium">
               {l.searchLabel}
@@ -118,7 +141,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           )}
         </form>
         {list.rows.length === 0 ? (
-          <p className="rounded-panel bg-sunken p-6 text-center text-sm">{emptyListWords(q, filter, w)}</p>
+          <p className="rounded-panel bg-sunken p-6 text-center text-sm max-sm:bg-transparent max-sm:p-0 max-sm:text-left max-sm:text-muted">{emptyListWords(q, filter, w)}</p>
         ) : (
           <RedirectTable rows={list.rows} timeZone={store.timeZone} actions={actions} canWrite={canWrite} />
         )}
@@ -143,7 +166,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             )}
           </nav>
         )}
-        <p className={hint}>
+        <p className={`${hint} sm:hidden`}>{l.phone.permanent}</p>
+        <p className={`${hint} max-sm:hidden`}>
           {w.sentences.atLeast} {l.deletedKeepsWorking}
         </p>
       </section>

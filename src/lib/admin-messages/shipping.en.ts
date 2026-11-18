@@ -233,6 +233,15 @@ export const shippingEn = {
   },
   /** One country's zones (`ZonesView`). */
   zones: {
+    /** Round 48 (D756): what a phone shows. */
+    phone: {
+      lead: "Postal codes that cost more, or less, to send to.",
+      addSub: "A name and its codes, such as 8*, 9*",
+      rules: "How codes are matched",
+      rulesSub: "Codes, prefixes, the most specific wins",
+      open: "Open",
+      close: "Close",
+    },
     help: "Postal codes like 0150, or prefixes like 01* for every code starting with 01, separated by commas, spaces or lines. A code belongs to the zone with the most specific pattern; codes in no zone are Rest of country. At most {patterns} codes and {chars} characters a zone.",
     checkTitle: "Check a postal code",
     checkDescription: "Which zone a code in {market} falls in, and which methods have a rate there.",

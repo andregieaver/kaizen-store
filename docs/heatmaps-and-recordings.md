@@ -1438,11 +1438,11 @@ heatmaps go to many stores.
 |---|---|
 | Q1 | Is the existing cookieless visit beacon compatible with ekomloven § 3-15 as the EDPB reads Art. 5(3)? It reads the path and referrer and sends UTM tags. This was raised by this research, not by this feature. |
 | Q2 | May aggregate heatmaps share the Statistics choice with GA4 and A/B tests, or do they need a choice of their own? |
-| Q3 | Is a DPIA needed for every store that switches recordings on, or only for large or sensitive stores? Can our template stand in? |
+| Q3 | Is a DPIA needed for every store that switches recordings on, or only for large or sensitive stores? Can our template stand in? **Answered 18 November 2026 (the lawyer): yes, each store needs its own DPIA.** |
 | Q4 | Is deleting what the browser can name, plus Art. 11, enough for erasure and withdrawal with random ids? |
 | Q5 | Is a 365-day consent lifetime right for recordings? Clarity treats consent as valid for 9 months. |
-| Q6 | Are the owner's confirmations (no children, no sensitive goods) enough, or is a check needed? |
-| Q7 | Does showing the store's own text and catalogue pictures unmasked need to be documented as an "alternative measure" to the CNIL's M0? |
+| Q6 | Are the owner's confirmations (no children, no sensitive goods) enough, or is a check needed? **Answered 18 November 2026 (the lawyer): they are enough.** |
+| Q7 | Does showing the store's own text and catalogue pictures unmasked need to be documented as an "alternative measure" to the CNIL's M0? **Answered 18 November 2026 (the lawyer): documenting it is enough; the balanced default stays.** |
 
 ---
 

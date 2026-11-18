@@ -43,6 +43,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { LIMIT_KEYS } from "../lib/limits";
+import { EXTENSION_IDS, EXTENSION_SOURCES } from "../lib/extensions";
 import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
@@ -1940,6 +1941,11 @@ export const platformSettings = commerce.table(
      * payment form, or `hosted`, Stripe's checkout page (the fallback).
      */
     checkoutUi: text("checkout_ui").notNull().default("custom"),
+    /**
+     * When paid extensions started being sold (D748 step E5, `docs/extensions.md`): until then every account has every extension
+     * (`extensionState()`, source `legacy`), so the gates of step E3 hide nothing.
+     */
+    extensionsLaunchedAt: timestamp("extensions_launched_at", { withTimezone: true }),
     /** Reminders to store owners who started paying for a plan and did not finish (D33). */
     planReminders: boolean("plan_reminders").notNull().default(false),
     /** Kaizen's own header and footer (D42): logo and menus. Shape: `PlatformNavigation` in lib/navigation. */
@@ -2097,6 +2103,199 @@ export const planPrices = commerce.table(
       .on(t.planId, t.currency, t.interval)
       .where(sql`${t.active}`),
     index("plan_prices_plan_idx").on(t.planId),
+  ],
+);
+
+/**
+ * A paid extension (D748 step E2, `docs/extensions.md` 3 and 8.3): its id is fixed in code (`EXTENSION_IDS`, the gates name it), its words
+ * and whether it is also sold on its own are the platform admin's. Never deleted: an extension not offered is `active = false`.
+ */
+export const extensions = commerce.table(
+  "extensions",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** Also sold to an account without a plan (`docs/extensions.md` 7). */
+    standalone: boolean("standalone").notNull().default(false),
+    /** Needs a store's site (A/B testing): never standalone. */
+    storeOnly: boolean("store_only").notNull().default(false),
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("extensions_known", sql`${t.id} in (${sqlList(EXTENSION_IDS)})`),
+    check("extensions_name_present", sql`length(trim(${t.name})) > 0`),
+    check("extensions_standalone_needs_no_store", sql`not (${t.standalone} and ${t.storeOnly})`),
+    index("extensions_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * A size of an extension (D748 E2): what it includes (`allowances`, read by `readAllowances()`: contacts, emails per contact, AI-handled
+ * conversations, people; a key left out is unlimited). The smallest is what a bundle gives. Never deleted: a size not offered is inactive.
+ */
+export const extensionSizes = commerce.table(
+  "extension_sizes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+    label: text("label").notNull(),
+    allowances: jsonb("allowances").notNull().default({}),
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("extension_sizes_extension_id").on(t.extensionId, t.id),
+    check("extension_sizes_label_present", sql`length(trim(${t.label})) > 0`),
+    check("extension_sizes_allowances", sql`jsonb_typeof(${t.allowances}) = 'object'`),
+    index("extension_sizes_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/** A size's price in one currency and interval, excluding VAT. As `plan_prices`: never changed, a new amount is a new row. */
+export const extensionPrices = commerce.table(
+  "extension_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sizeId: uuid("size_id")
+      .notNull()
+      .references(() => extensionSizes.id),
+    currency: char("currency", { length: 3 }).notNull(),
+    interval: text("interval").notNull(),
+    amountMinor: money("amount_minor"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("extension_prices_interval", sql`${t.interval} in ('month', 'year')`),
+    check("extension_prices_amount", sql`${t.amountMinor} >= 0`),
+    uniqueIndex("extension_prices_one_active").on(t.sizeId, t.currency, t.interval).where(sql`${t.active}`),
+    index("extension_prices_size_idx").on(t.sizeId),
+  ],
+);
+
+/** Extensions sold together for less (D748 E2): each part at its smallest size. Never deleted: a bundle not offered is inactive. */
+export const extensionBundles = commerce.table(
+  "extension_bundles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("extension_bundles_name_present", sql`length(trim(${t.name})) > 0`),
+    index("extension_bundles_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/** Which extensions a bundle holds. */
+export const extensionBundleMembers = commerce.table(
+  "extension_bundle_members",
+  {
+    bundleId: uuid("bundle_id")
+      .notNull()
+      .references(() => extensionBundles.id, { onDelete: "cascade" }),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+  },
+  (t) => [primaryKey({ columns: [t.bundleId, t.extensionId] }), index("extension_bundle_members_extension_idx").on(t.extensionId)],
+);
+
+/** A bundle's price in one currency and interval, excluding VAT; never changed, as `plan_prices`. */
+export const extensionBundlePrices = commerce.table(
+  "extension_bundle_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bundleId: uuid("bundle_id")
+      .notNull()
+      .references(() => extensionBundles.id),
+    currency: char("currency", { length: 3 }).notNull(),
+    interval: text("interval").notNull(),
+    amountMinor: money("amount_minor"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("extension_bundle_prices_interval", sql`${t.interval} in ('month', 'year')`),
+    check("extension_bundle_prices_amount", sql`${t.amountMinor} >= 0`),
+    uniqueIndex("extension_bundle_prices_one_active").on(t.bundleId, t.currency, t.interval).where(sql`${t.active}`),
+    index("extension_bundle_prices_bundle_idx").on(t.bundleId),
+  ],
+);
+
+/** A plan includes an extension at one of its sizes, at no extra cost (D748 E2). */
+export const planExtensionGrants = commerce.table(
+  "plan_extension_grants",
+  {
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+    sizeId: uuid("size_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.planId, t.extensionId] }),
+    foreignKey({
+      name: "plan_extension_grants_size_fk",
+      columns: [t.extensionId, t.sizeId],
+      foreignColumns: [extensionSizes.extensionId, extensionSizes.id],
+    }),
+    index("plan_extension_grants_extension_idx").on(t.extensionId, t.sizeId),
+  ],
+);
+
+/**
+ * An account's own standing with an extension (D748 E2, read by `extensionState()`): bought on its own, in a bundle, or on trial, with when
+ * the trial ends, when it stopped being paid for and when its grace period ends. What a plan includes is not kept here.
+ */
+export const organisationExtensions = commerce.table(
+  "organisation_extensions",
+  {
+    organisationId: uuid("organisation_id")
+      .notNull()
+      .references(() => organisations.id),
+    extensionId: text("extension_id")
+      .notNull()
+      .references(() => extensions.id),
+    source: text("source").notNull(),
+    sizeId: uuid("size_id"),
+    bundleId: uuid("bundle_id").references(() => extensionBundles.id),
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    graceEndsAt: timestamp("grace_ends_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organisationId, t.extensionId] }),
+    foreignKey({
+      name: "organisation_extensions_size_fk",
+      columns: [t.extensionId, t.sizeId],
+      foreignColumns: [extensionSizes.extensionId, extensionSizes.id],
+    }),
+    index("organisation_extensions_extension_idx").on(t.extensionId, t.sizeId),
+    index("organisation_extensions_bundle_idx").on(t.bundleId),
+    check("organisation_extensions_source", sql`${t.source} in (${sqlList(EXTENSION_SOURCES)})`),
+    check("organisation_extensions_trial", sql`(${t.source} = 'trial') = (${t.trialEndsAt} is not null)`),
+    check("organisation_extensions_bundle", sql`(${t.source} = 'bundle') = (${t.bundleId} is not null)`),
   ],
 );
 
@@ -17170,6 +17369,40 @@ export const broadcastLinkClicks = commerce.table(
       foreignColumns: [broadcasts.storeId, broadcasts.id],
     }).onDelete("cascade"),
     check("broadcast_link_clicks_link", sql`${t.link} ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'`),
+  ],
+);
+
+/**
+ * Who pressed which link of a broadcast, and when (email plan M1.3, D754; the owner's decision M0.1 b): one row per press by a subscriber
+ * still on the list, found by the signed reference in their own links (`src/lib/email-clicks.ts`). Personal data: in the export's
+ * `marketing` section, deleted with the subscriber on erasure and 180 days after the press (`pruneEmailClicks()`). The counts per link
+ * (`broadcast_link_clicks`) are kept apart and stay. Never copied. No open is recorded: there is no pixel.
+ */
+export const emailClicks = commerce.table(
+  "email_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    subscriberId: uuid("subscriber_id").notNull(),
+    broadcastId: uuid("broadcast_id").notNull(),
+    link: text("link").notNull(),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      name: "email_clicks_subscriber_fk",
+      columns: [t.storeId, t.subscriberId],
+      foreignColumns: [marketingSubscribers.storeId, marketingSubscribers.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "email_clicks_broadcast_fk",
+      columns: [t.storeId, t.broadcastId],
+      foreignColumns: [broadcasts.storeId, broadcasts.id],
+    }).onDelete("cascade"),
+    index("email_clicks_subscriber_idx").on(t.storeId, t.subscriberId, t.clickedAt),
+    index("email_clicks_broadcast_idx").on(t.broadcastId, t.link),
+    index("email_clicks_clicked_idx").on(t.clickedAt),
+    check("email_clicks_link", sql`${t.link} ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'`),
   ],
 );
 

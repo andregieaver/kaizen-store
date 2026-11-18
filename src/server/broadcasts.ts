@@ -41,7 +41,9 @@ import { brandOf } from "./brand";
 import { campaignFacts, emailMarket, findProductFacts } from "./broadcast-facts";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
+import { clickRef, keepClick } from "./email-clicks";
 import { log } from "./log";
+import { col, typedRows } from "./typed-rows";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
 import { senderFor } from "./sending-domains";
@@ -197,6 +199,8 @@ function emailFor(
   token: string | null,
   facts: EmailFacts,
   moved = false,
+  /** The recipient's subscriber, whose own presses their links name (M1.3, D754); null for a test. */
+  subscriberId: string | null = null,
 ): Rendered | null {
   return marketingEmail({
     moved,
@@ -206,13 +210,18 @@ function emailFor(
     locale,
     marketCode,
     token,
-    link: token ? (key, _target, marketSlug) => clickUrl(broadcast.id, key, marketSlug) : undefined,
+    link: token ? (key, _target, marketSlug) => clickUrl(broadcast.id, key, marketSlug, subscriberId) : undefined,
   });
 }
 
-/** The click address of a link (5.5): it names only the broadcast, the link and the market. */
-export function clickUrl(broadcastId: string, key: string, marketSlug: string): string {
-  return `${siteUrl()}/api/marketing/c/${broadcastId}/${encodeURIComponent(key)}${marketSlug ? `?m=${encodeURIComponent(marketSlug)}` : ""}`;
+/**
+ * The click address of a link (5.5): the broadcast, the link and the market, and for a recipient their signed reference (`p`, M1.3, D754), so
+ * a press is kept as theirs while they are on the list.
+ */
+export function clickUrl(broadcastId: string, key: string, marketSlug: string, subscriberId: string | null = null): string {
+  const ref = subscriberId ? clickRef(broadcastId, subscriberId) : null;
+  const query = [marketSlug && `m=${encodeURIComponent(marketSlug)}`, ref && `p=${encodeURIComponent(ref)}`].filter(Boolean).join("&");
+  return `${siteUrl()}/api/marketing/c/${broadcastId}/${encodeURIComponent(key)}${query ? `?${query}` : ""}`;
 }
 
 /** A test to the staff member's own address, in a language they choose; it counts nowhere. */
@@ -549,7 +558,7 @@ async function sendBatch(
     if (!broadcasts.has(r.broadcastId)) broadcasts.set(r.broadcastId, await getBroadcast(r.storeId, r.broadcastId));
     const store = stores.get(r.storeId);
     const broadcast = broadcasts.get(r.broadcastId);
-    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId)) : null;
+    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId), r.subscriberId) : null;
     if (!store || !email) {
       await markRecipient(r, "failed", null);
       result.failed += 1;
@@ -650,8 +659,11 @@ async function finishDone(only: string | null): Promise<number> {
 // Clicks (5.5) and the report (5.6)
 // ---------------------------------------------------------------------------
 
-/** The address a link of a sent broadcast goes to, counting the press; null when there is no such link. Nothing of the person is kept. */
-export async function recordClick(broadcastId: string, key: string, marketSlug: string | null): Promise<string | null> {
+/**
+ * The address a link of a sent broadcast goes to, counting the press; null when there is no such link. With a genuine reference of a subscriber
+ * still on the list (`ref`, M1.3, D754) the press is kept as theirs too.
+ */
+export async function recordClick(broadcastId: string, key: string, marketSlug: string | null, ref: string | null = null): Promise<string | null> {
   if (!z.uuid().safeParse(broadcastId).success || key.length > 20) return null;
   const [row] = await db().execute<Row>(sql`
     select store_id, content from commerce.broadcasts where id = ${broadcastId}::uuid and status in ('sending', 'sent', 'cancelled')
@@ -668,12 +680,16 @@ export async function recordClick(broadcastId: string, key: string, marketSlug: 
     insert into commerce.broadcast_link_clicks (store_id, broadcast_id, link, clicks) values (${String(row.store_id)}::uuid, ${broadcastId}::uuid, ${key}, 1)
     on conflict (broadcast_id, link) do update set clicks = commerce.broadcast_link_clicks.clicks + 1
   `);
+  if (ref) await keepClick(String(row.store_id), broadcastId, key, ref);
   return resolverFor(store, market)(target);
 }
 
 export type BroadcastReport = {
   counts: BroadcastCounts & { logged: number };
-  links: { key: string; locale: string; label: string; url: string; clicks: number }[];
+  /** `people`: the subscribers on the list who pressed the link, kept 180 days (M1.3, D754). */
+  links: { key: string; locale: string; label: string; url: string; clicks: number; people: number }[];
+  /** The subscribers who pressed any of its links in the last 180 days (M1.3, D754). */
+  people: number;
   /** The figures are the ones frozen when the recipients were removed. */
   frozen: boolean;
 };
@@ -712,14 +728,26 @@ async function countRecipients(storeId: string, id: string): Promise<BroadcastCo
 }
 
 export async function broadcastReport(storeId: string, broadcast: Broadcast): Promise<BroadcastReport> {
-  const [[stored], clicks] = await Promise.all([
+  const [[stored], clicks, people] = await Promise.all([
     db().execute<Row>(sql`select counts from commerce.broadcasts where store_id = ${storeId}::uuid and id = ${broadcast.id}::uuid`),
     db().execute<Row>(sql`select link, clicks from commerce.broadcast_link_clicks where store_id = ${storeId}::uuid and broadcast_id = ${broadcast.id}::uuid`),
+    typedRows(
+      z.object({ link: col.textOrNull, people: col.int }),
+      sql`select link, count(distinct subscriber_id)::int as people from commerce.email_clicks
+           where store_id = ${storeId}::uuid and broadcast_id = ${broadcast.id}::uuid group by rollup (link)`,
+    ),
   ]);
   const frozen = Boolean(stored?.counts);
   const counts = frozen ? { ...emptyCounts(), logged: 0, ...(stored.counts as Partial<BroadcastCounts & { logged: number }>) } : await countRecipients(storeId, broadcast.id);
   const pressed = new Map(clicks.map((c) => [String(c.link), Number(c.clicks)]));
-  return { counts, frozen, links: linksOf(broadcast.content).map((link) => ({ ...link, clicks: pressed.get(link.key) ?? 0 })) };
+  const byLink = new Map(people.filter((p) => p.link !== null).map((p) => [p.link as string, p.people]));
+  const total = people.find((p) => p.link === null)?.people ?? 0;
+  return {
+    counts,
+    frozen,
+    people: total,
+    links: linksOf(broadcast.content).map((link) => ({ ...link, clicks: pressed.get(link.key) ?? 0, people: byLink.get(link.key) ?? 0 })),
+  };
 }
 
 /** Daily: the recipients of sends that ended more than 90 days ago are removed, their figures kept on the broadcast (5.6). */

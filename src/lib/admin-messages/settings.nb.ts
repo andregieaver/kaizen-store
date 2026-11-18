@@ -891,6 +891,19 @@ export const settingsNb: SettingsMessages = {
     },
   },
   privateMode: {
+    /** Round 48 (D756): what a phone shows. */
+    phone: {
+      lead: "Mens butikken er privat, ser besøkende bare en landingsside.",
+      noPassword: "Ingen: bare teamet ditt kommer inn",
+      hasPassword: "Satt: besøkende med det kommer inn",
+      signOutSub: "Be alle om passordet igjen",
+      landingSub: "Det besøkende ser imens",
+      previewSub: "Butikken uten passordet, i 12 timer",
+      choose: "Velg",
+      open: "Åpne",
+      change: "Endre",
+      done: "Ferdig",
+    },
     title: "Privat modus",
     description: "Mens butikken er privat, ser besøkende bare landingssiden. Bestillinger som allerede er lagt inn, beholder sidene sine.",
     statePrivate: "Privat: besøkende ser landingssiden din.",

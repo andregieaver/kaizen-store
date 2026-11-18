@@ -28,6 +28,10 @@ export const inventoryNb: InventoryMessages = {
     close: "Lukk",
     change: "Endre",
     done: "Ferdig",
+    suppliersLead: "De sender produktene dine til kundene, i ditt navn.",
+    addSupplierSub: "Et navn og hvor den sender fra",
+    waitSub: "{minutes} min, for en rask kansellering",
+    seller: "Du er selgeren: mva, fakturaer, angrerett og refusjoner er dine.",
   },
   pages: {
     list: {

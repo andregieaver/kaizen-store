@@ -21,6 +21,14 @@ export const redirectsNb: RedirectsMessages = {
     atLeast: "Tallene er minst det som skjedde: en forespørsel som ble besvart fra en hurtigbuffer, blir ikke sett.",
   },
   list: {
+    /** Round 47 (D755): what a phone shows. */
+    phone: {
+      lead: "Gamle adresser som leder til nye. Kaizena Flow lager sine egne.",
+      addSub: "Fra en gammel adresse til en ny",
+      permanent: "Videresendinger er permanente: nettlesere husker dem.",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "Omdirigeringer",
     intro:
       "Når en adresse hos {store} flytter, sender en omdirigering kunder og søkemotorer til den nye, i alle land og på alle språk. Kaizena Flow lager en selv når et produkt, en kategori eller et stikkord får ny adresse. Her legger du til dine egne, for eksempel for adressene til en gammel nettbutikk, og ser hvor ofte hver blir brukt.",
