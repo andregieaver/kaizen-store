@@ -365,7 +365,7 @@ async function enabledLifecycles(only?: string): Promise<Flow[]> {
       from commerce.automations a join commerce.stores s on s.id = a.store_id
       where a.enabled and a.kind <> 'back_in_stock' and commerce.store_is_active(a.store_id) and not (s.is_template or s.starter)
         -- Email automation is a paid extension (D748): a store whose account does not have it sends none of its flows.
-        and commerce.extension_on(a.store_id, 'email_automation')
+        and a.store_id in (select s2.id from commerce.stores s2 where commerce.extension_on(s2.id, 'email_automation'))
         and (${only ?? null}::uuid is null or a.store_id = ${only ?? null}::uuid)
       order by a.store_id, a.kind
     `,

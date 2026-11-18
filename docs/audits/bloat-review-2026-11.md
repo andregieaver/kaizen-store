@@ -132,7 +132,7 @@ commit as the fix.
 | 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | cheap | 0.9, 0.13, 0.1, 1.1 | In progress | 18 Nov, local: 10 screens held (en, nb); product editor en 431,540 / 246,302 words / 1,379,355 scripts; saves 311,274 and 1,122 B; named for the product only. |
 | 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1, 0.43 | In progress | 18 Nov, f101c479, D758: Orbit home 216,550 bytes; check after phase 2. |
 | 1.7 | Put a cart with products and the checkout's payment step into the measured set | GAP-shopper-browser-2 | M | strong | 1.3, 0.1 | Done | 18 Nov, 596444af, D759: cart and payment step 729,906 first scripts, second server with test keys. |
-| 1.8 | Hold what a server entry loads and carries | SG-14, SF-7, DP-6, AS-3, SG-16, GAP-server-s3 | M | review | 0.1, 0.4, 0.36, 1.1 | In progress | Local: cycle 23, 58+18 packages, trace median 62.2 MB, manifest 1,566 entries, 1,018 rules; cold loads printed, not held (30% wobble). |
+| 1.8 | Hold what a server entry loads and carries | SG-14, SF-7, DP-6, AS-3, SG-16, GAP-server-s3 | M | review | 0.1, 0.4, 0.36, 1.1 | Done | 18 Nov, c9c97d95, D766: proxy 323 files, median trace 62.2 MB, manifest 1,566 entries. |
 | 1.9 | Count statements: one counter, and the admin's five screens | AD-12 | M | review | 1.1 | Done | 17 Nov (0fe09cbe; D736): statement counter; five admin screens held (4, 33, 6, 5, 22); admin.render logged. Two faults fixed at review. |
 | 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | Done | 17 Nov, d1be6bc3, D746: idle tick 143/595 statements (1/20 stores). |
 | 1.11 | Hold the storefront's server side: statements per page, cached reads and render modes | SD-13, CA-16, GAP-page-model-s2 | M | review | 1.9, 0.1, 0.3, 1.1 | Done | 17 Nov, 1a636181, D747: product 12, cart 32 statements. |
@@ -329,6 +329,7 @@ Change log:
 - 18 Nov 2026: step 1.3 Done (42c9b03d, D752): scripts, documents, stylesheets, wire bytes, late scripts and router requests held on real store pages.
 - 18 Nov 2026: step 1.12 Done (3bc5d53b, D753): one order's and one visit's writes, and the tables a shop-only store's eleven stops scan, held.
 - 18 Nov 2026: step 1.7 Done (596444af, D759): a cart with two lines and the checkout's payment step measured on a second e2e server with test keys.
+- 18 Nov 2026: step 1.8 Done (c9c97d95, D766): what each server entry reaches, every package's reason, the traces beside a function and what a route loads at start held.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
