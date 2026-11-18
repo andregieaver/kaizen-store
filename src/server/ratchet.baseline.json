@@ -75,7 +75,7 @@
     "src/server/connect.ts": 10,
     "src/server/consents.ts": 2,
     "src/server/content-entries.ts": 1,
-    "src/server/content-grid.ts": 3,
+    "src/server/content-grid.ts": 2,
     "src/server/content-packs.ts": 8,
     "src/server/content-site.ts": 1,
     "src/server/content-types.ts": 1,
@@ -1698,7 +1698,6 @@
   "pageDocumentReads": {
     "src/server/accessibility.ts": 1,
     "src/server/blog-comments.ts": 1,
-    "src/server/content-grid.ts": 1,
     "src/server/content-site.ts": 1,
     "src/server/design-presets.ts": 3,
     "src/server/dream-factory.ts": 2,
