@@ -149,7 +149,8 @@ jobs:
   e2e:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 40: on 18 November the job took 24 and 26 minutes, and a runner 20 % slower ran out of 30 in the step after Playwright (CI #44383014848).
+    timeout-minutes: 40
     # Playwright's own image: Chromium, WebKit and every library they need are in it. Installing WebKit's on the runner
     # meant 181 packages (114 MB) from the Ubuntu mirror, which twice on 4 November 2026 came so slowly that the job ran
     # out of time before a test ran (CI #979, #981). Its tag is the pinned @playwright/test version
