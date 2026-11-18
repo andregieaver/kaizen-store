@@ -9,6 +9,7 @@ import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PageCards } from "@/components/admin/page-cards";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
+import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { fillWords, countWords } from "@/lib/admin-fill";
@@ -22,7 +23,7 @@ import { shopPartFeature } from "@/lib/store-parts";
 import type { Term } from "@/lib/taxonomy";
 import { latestHomeTake, homePageOffers } from "@/server/home-takes";
 import { memberCan, requirePageTypeAccess } from "@/server/permissions";
-import { listPages, type PageSummary } from "@/server/pages";
+import { countPages, listPages, pageTitles, type PageSummary } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { scheduleChips } from "@/server/page-schedules";
 import { isScheduledType } from "@/lib/page-schedules";
@@ -56,36 +57,58 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 type ListWords = WebsiteMessages["storePages"];
 type SharedWords = WebsiteMessages["list"];
 
+/** How many pages a list shows at a time (bloat review step 2.17), with the count and a pager as the Stores list has. */
+const PAGE_SIZE = 100;
+
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
   const gated = await requirePageTypeAccess((await params).store, type, "read");
   // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store } = gated;
-  const [pages, query] = await Promise.all([listPages(store.id, type), searchParams]);
+  const query = await searchParams;
+  const page = Math.max(1, Math.floor(Number(typeof query.page === "string" ? query.page : "1")) || 1);
+  const lang = adminLangOf(gated.account.adminLocale);
+  // What is scheduled for each page, article, header or footer, and what did not happen (D340), on the store's clock.
+  const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const writes = memberCan(gated, "website:write");
+  // Every read of the list at once: the hundred shown and their count; every page of the kind by title for what the list says of all of
+  // them (how many are live, the newest, the front page) and the own-page choices; and what each kind of list draws beside.
+  const [pages, total, every, context, comments, schedules, jobs, uses, terms, layoutChoice, offers, take] = await Promise.all([
+    listPages(store.id, type, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    countPages(store.id, type),
+    type === "page" || type === "article" ? pageTitles(store.id, type) : Promise.resolve([]),
+    storePageContext(store, type),
+    type === "article" ? commentCounts(store.id) : Promise.resolve(null),
+    isScheduledType(type) ? scheduleChips(store.id, type, adminText(lang, "schedules").chips, (iso) => clock.format(new Date(iso))) : Promise.resolve({}),
+    type === "page" || type === "article" ? runningPageJobs(store.id) : Promise.resolve([]),
+    type === "product_layout" ? layoutUses(store.id) : Promise.resolve(new Map<string, LayoutUse>()),
+    type === "product_layout" ? listTerms({ storeId: store.id, contentType: "product" }) : Promise.resolve([]),
+    type === "header" || type === "footer" ? siteLayoutChoice(store.id) : Promise.resolve(null),
+    type === "page" && writes ? homePageOffers() : Promise.resolve([]),
+    type === "page" && writes ? latestHomeTake(store.id) : Promise.resolve(null),
+  ]);
   const base = storePagesBase(store, type);
-  const context = await storePageContext(store, type);
   // Pages that have a place of their own (D112) are not offered for another.
   const roleIds = new Set(Object.values(store.pageRoles));
-  const lang = adminLangOf(gated.account.adminLocale);
   const blogWords = adminText(lang, "blog");
   const site = adminText(lang, "website");
   const w = site.storePages;
   const tw = w.types[type];
-  const waitingComments = type === "article" ? (await commentCounts(store.id)).pending : 0;
-  // What is scheduled for each page, article, header or footer, and what did not happen (D340), on the store's clock.
-  const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  const waitingComments = comments?.pending ?? 0;
   // The page list's sentence (D615): how many pages are live, and which one the shop opens on.
   // A working page of a store feature that is off (D178) is not offered; one already chosen stays, so it can be changed.
   const ownRoles = ROLE_GROUPS.flatMap((group) => group.roles).filter((role) => roleOffered(store, role));
   const ownCount = ownRoles.filter((role) => store.pageRoles[role]).length + (store.productsPageId ? 1 : 0);
-  const titleOf = (id: string | null) => (id ? (pages.find((p) => p.id === id)?.title || site.list.untitled) : null);
-  const live = pages.filter((p) => p.state !== "draft").length;
+  // The own-page choices offer every page of the kind, not only the hundred shown: a draft is offered only where it is chosen already.
+  const choices = every.map((p) => ({ id: p.id, title: p.title, state: p.live ? "published" : "draft" }));
+  const titleOf = (id: string | null) => (id ? (every.find((p) => p.id === id)?.title || site.list.untitled) : null);
+  const live = every.filter((p) => p.live).length;
   const newest = type === "article"
-    ? pages.filter((p) => p.state !== "draft" && p.publishedAt).sort((a, b) => b.publishedAt!.localeCompare(a.publishedAt!))[0]
+    ? every.filter((p) => p.live && p.publishedAt).sort((a, b) => b.publishedAt!.localeCompare(a.publishedAt!))[0]
     : undefined;
-  const frontPage = type === "page" ? pages.find((p) => p.id === store.frontPageId && p.state !== "draft") : undefined;
-  const schedules = isScheduledType(type) ? await scheduleChips(store.id, type, adminText(lang, "schedules").chips, (iso) => clock.format(new Date(iso))) : {};
+  const frontPage = type === "page" ? every.find((p) => p.id === store.frontPageId && p.live) : undefined;
+  const current = layoutChoice && (type === "header" || type === "footer") ? layoutChoice[type] : null;
   return (
     <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website", "schedules"])}>
     <div className="flex flex-col gap-6">
@@ -129,7 +152,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
                         new Date(newest.publishedAt!),
                       ),
                     })
-                  : pages.length === 0 && blogWords.list.firstSoon}
+                  : total === 0 && blogWords.list.firstSoon}
               </span>,
             ]}
           />
@@ -177,7 +200,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       {/* The AI's page work still going (PSI UX-01): builds and pictures, with a Stop for who may change the site. */}
       {(type === "page" || type === "article") && (
         <PageJobsPanel
-          jobs={await runningPageJobs(store.id)}
+          jobs={jobs}
           pagesBase={storePagesBase(store, "page")}
           articlesBase={storePagesBase(store, "article")}
           stop={memberCan(gated, "website:write") ? stopPageJobAction.bind(null, store.slug) : undefined}
@@ -223,14 +246,14 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <ProductLayoutsTable
           layouts={pages}
           adminBase={base}
-          uses={await layoutUses(store.id)}
-          terms={await listTerms({ storeId: store.id, contentType: "product" })}
+          uses={uses}
+          terms={terms}
           words={w.layouts}
           shared={site.list}
           locale={ADMIN_LANG_FACTS[lang].locale}
         />
       ) : type === "header" || type === "footer" ? (
-        <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(store.id))[type]} schedules={schedules} />
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={current} schedules={schedules} />
       ) : (
         <PagesTable
           pages={pages}
@@ -240,20 +263,21 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           duplicate={context.actions.duplicate}
         />
       )}
+      {total > pages.length && <ListPager words={w} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={pages.length} total={total} />}
       {(type === "header" || type === "footer") && (
         <SiteLayoutChoice
           type={type}
           layouts={pages}
-          current={(await siteLayoutChoice(store.id))[type]}
+          current={current}
           siteName={w.siteName}
           action={chooseStoreSiteLayoutAction.bind(null, store.slug, type)}
         />
       )}
       {/* A demo store's home page as the front page, and the store's own put back (docs/theme-showcase-phase-1.md step 4c). */}
-      {type === "page" && memberCan(gated, "website:write") && (
+      {type === "page" && writes && (
         <DemoHomePages
-          offers={await homePageOffers()}
-          take={await latestHomeTake(store.id)}
+          offers={offers}
+          take={take}
           editBase={base}
           use={useDemoHomeAction.bind(null, store.slug)}
           undo={undoDemoHomeAction.bind(null, store.slug)}
@@ -283,7 +307,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
                 words={w}
                 shared={site.list}
                 current={store.frontPageId}
-                pages={pages.filter((p) => p.id !== store.productsPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.frontPageId))}
+                pages={choices.filter((p) => p.id !== store.productsPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.frontPageId))}
               />
             </OwnPageRow>
             {/* A website (D178 step 5: the online shop off) has no All products page; one chosen keeps its place for when the shop is on. */}
@@ -294,7 +318,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
                   words={w}
                   shared={site.list}
                   current={store.productsPageId}
-                  pages={pages.filter((p) => p.id !== store.frontPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.productsPageId))}
+                  pages={choices.filter((p) => p.id !== store.frontPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.productsPageId))}
                 />
               </OwnPageRow>
             )}
@@ -306,7 +330,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
                   shared={site.list}
                   role={role}
                   current={store.pageRoles[role] ?? null}
-                  pages={pages.filter(
+                  pages={choices.filter(
                     (p) => p.id !== store.frontPageId && p.id !== store.productsPageId && (!roleIds.has(p.id) || p.id === store.pageRoles[role]) && (p.state !== "draft" || p.id === store.pageRoles[role]),
                   )}
                 />
@@ -570,6 +594,7 @@ function ProductLayoutsTable({
     </div>
   );
 }
+
 
 /** Whether a store's Special pages offer a place (D178): its working page's feature is on, or a page is chosen for it already. */
 function roleOffered(store: { features: readonly string[]; pageRoles: Partial<Record<string, string>> }, role: PageRole): boolean {

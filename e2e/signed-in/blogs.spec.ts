@@ -165,3 +165,26 @@ test("schedules an article's draft on the store's clock and cancels the schedule
   await again.getByRole("button", { name: "Cancel the schedule" }).click();
   await expect(again.getByRole("status")).toContainText("The schedule is cancelled");
 });
+
+test("shows the articles a hundred at a time, with how many there are and the next hundred (bloat review step 2.17)", async ({ page }) => {
+  const prefix = `e2e-paged-${run}`;
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pages (store_id, type, slug, draft)
+      select ${storeId}, 'article', ${prefix} || '-' || n, jsonb_build_object('title', 'E2E paged ' || n, 'slug', ${prefix} || '-' || n, 'thumbnail', null,
+        'seo', jsonb_build_object('title', '', 'description', ''), 'searchEngines', true, 'aiAssistants', true, 'categories', '[]'::jsonb, 'tags', '[]'::jsonb,
+        'rows', '[]'::jsonb)
+      from generate_series(1, 105) as n`;
+    await page.goto(`/admin/${E2E_STORE}/articles`);
+    await expect(page.getByText(/100 of 1[0-9]{2,}/)).toBeVisible();
+    await page.getByRole("link", { name: "Next 100" }).click();
+    await expect(page).toHaveURL(/[?&]page=2/);
+    // At least the five left of this run's own, beside the card that makes a new article.
+    await expect(page.getByRole("list", { name: "Your articles" }).getByRole("listitem")).not.toHaveCount(0);
+    expect(await page.getByRole("list", { name: "Your articles" }).getByRole("listitem").count()).toBeGreaterThanOrEqual(6);
+  } finally {
+    await sql`delete from commerce.pages where store_id = ${storeId} and type = 'article' and slug like ${`${prefix}-%`}`;
+    await sql.end();
+  }
+});

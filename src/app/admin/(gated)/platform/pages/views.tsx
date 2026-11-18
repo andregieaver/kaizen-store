@@ -4,12 +4,13 @@ import { connection } from "next/server";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagePlaceForm } from "@/components/admin/page-place-form";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
+import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformReader } from "@/server/auth";
-import { listPages } from "@/server/pages";
+import { countPages, listPages, pageTitles } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
@@ -42,6 +43,9 @@ import { typeWords } from "./type-words";
 
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
+/** How many pages a list shows at a time (bloat review step 2.17), with the count and a pager as a store's Pages list has. */
+const PAGE_SIZE = 100;
+
 
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
   // Per request: admin pages never read the database while the site is built.
@@ -51,15 +55,23 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const tw = typeWords(w, type);
   const copy = PAGE_TYPE_COPY[type];
   const base = `/admin/platform/${copy.segment}`;
-  const [all, query, roles, legal] = await Promise.all([
-    listPages(null, type),
-    searchParams,
-    type === "page" ? getPlatformPageRoles() : [],
-    type === "page" ? platformLegalOverview() : null,
+  const query = await searchParams;
+  const page = Math.max(1, Math.floor(Number(typeof query.page === "string" ? query.page : "1")) || 1);
+  // Every read of the list at once: the hundred shown and their count, every page by title for the places' choices, and what is beside.
+  const [all, total, every, roles, legal, platform, jobs, layoutChoice] = await Promise.all([
+    listPages(null, type, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    countPages(null, type),
+    type === "page" ? pageTitles(null, type) : Promise.resolve([]),
+    type === "page" ? getPlatformPageRoles() : Promise.resolve([]),
+    type === "page" ? platformLegalOverview() : Promise.resolve(null),
+    // Kaizena Flow's own data protection officer (D763), beside its legal pages: the platform account's.
+    type === "page" ? platformAccountId() : Promise.resolve(null),
+    type === "page" || type === "article" ? runningPageJobs(null) : Promise.resolve([]),
+    type === "header" || type === "footer" ? siteLayoutChoice(null) : Promise.resolve(null),
   ]);
-  // Kaizena Flow's own data protection officer (D763), beside its legal pages: the platform account's.
-  const platform = legal ? await platformAccountId() : null;
-  const officer = platform
+  const layoutCurrent = layoutChoice && (type === "header" || type === "footer") ? layoutChoice[type] : null;
+  const pagerWords = adminText(lang, "website").storePages;
+  const officer = legal && platform
     ? await Promise.all([storedChoice(platform, null), officerCandidates(platform, null), accountOfficer(platform)]).then(([choice, people, current]) => ({ choice, people, current }))
     : null;
   const pw = adminText(adminLangOf(admin.adminLocale), "privacyOfficer");
@@ -69,7 +81,11 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   // Pages that have a place of their own (D143) are not offered for another.
   const placedIds = new Set(roles.map(([, id]) => id));
   const roleOf = Object.fromEntries(roles.map(([role, id]) => [role, id]));
-  const offered = (role: PlatformRole) => pages.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
+  // Every page of the kind is offered, not only the hundred shown: a draft only where it is chosen already.
+  const choices = every.filter((p) => !themeStorePages.has(p.id)).map((p) => ({ id: p.id, title: p.title, state: p.live ? "published" : "draft" }));
+  // How many pages there are (the lead and the first page's card): every one of the kind, not only the hundred shown.
+  const count = type === "page" ? choices.length : total;
+  const offered = (role: PlatformRole) => choices.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
   return (
     <AdminTextScope texts={adminTexts(lang, ["website", "platformSite"])}>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -78,7 +94,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           meta={[
             legal &&
               fillWords(w.pages.leadJoin, {
-                pages: pages.length === 0 ? w.pages.leadNoPages : countWords(pages.length, w.pages.leadPages),
+                pages: count === 0 ? w.pages.leadNoPages : countWords(count, w.pages.leadPages),
                 legal: platformLegalLead(legal, adminText(lang, "platformLegal")),
               }),
           ]}
@@ -90,12 +106,12 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
               {w.pages.categories}
             </Link>
           )}
-          {type === "page" && pages.length > 0 && (
+          {type === "page" && count > 0 && (
             <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
               {w.pages.createAi}
             </Link>
           )}
-          {!(type === "page" && pages.length === 0) && (
+          {!(type === "page" && count === 0) && (
             <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
               {tw.new}
             </Link>
@@ -111,10 +127,10 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
 
       {/* The AI's page work on Kaizena Flow's own site still going (PSI UX-01), with a Stop. */}
       {(type === "page" || type === "article") && (
-        <PageJobsPanel jobs={await runningPageJobs(null)} pagesBase="/admin/platform/pages" articlesBase="/admin/platform/articles" stop={stopPlatformPageJobAction} />
+        <PageJobsPanel jobs={jobs} pagesBase="/admin/platform/pages" articlesBase="/admin/platform/articles" stop={stopPlatformPageJobAction} />
       )}
 
-      {pages.length === 0 && type === "page" ? (
+      {count === 0 && type === "page" ? (
         <section aria-labelledby="first-page" className={`flex flex-wrap items-center justify-between gap-4 p-6 ${CARD_CLASS}`}>
           <span className="flex max-w-xl flex-col gap-1">
             <h2 id="first-page" className="text-title text-ink">
@@ -136,7 +152,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           {tw.none}
         </p>
       ) : type === "header" || type === "footer" ? (
-        <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(null))[type]} />
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={layoutCurrent} />
       ) : (
         <PagesTable
           pages={pages}
@@ -146,6 +162,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
+      {total > all.length && <ListPager words={pagerWords} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={all.length} total={total} />}
       {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
       {officer && (
         <section className="flex max-w-xl flex-col gap-3" aria-labelledby="platform-officer" id="privacy-officer">
@@ -184,7 +201,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         <SiteLayoutChoice
           type={type}
           layouts={pages}
-          current={(await siteLayoutChoice(null))[type]}
+          current={layoutCurrent}
           siteName={w.pages.siteName}
           action={choosePlatformSiteLayoutAction.bind(null, type)}
         />
