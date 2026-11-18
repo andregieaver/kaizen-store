@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."pages" ADD COLUMN "published_title" text GENERATED ALWAYS AS (published ->> 'title') STORED;--> statement-breakpoint
+ALTER TABLE "commerce"."pages" ADD COLUMN "published_titles" jsonb GENERATED ALWAYS AS (commerce.page_titles(published)) STORED;--> statement-breakpoint
+ALTER TABLE "commerce"."pages" ADD COLUMN "remembered_modal" boolean GENERATED ALWAYS AS (coalesce(jsonb_path_exists(published, '$.rows[*].modal ? ((@.frequency == "session" || @.frequency == "days" || !exists(@.frequency)) && (@.triggers.exitIntent == true || exists(@.triggers.timer)))'), false)) STORED;

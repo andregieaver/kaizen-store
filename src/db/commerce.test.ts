@@ -8,6 +8,7 @@ import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS, pageBlockSchema } from "@/lib/page-content";
 import { templateContentSchema } from "@/lib/form-records-schema";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
+import { remembersClose, type RowModal } from "@/lib/page-modal";
 
 import surfaceBudget from "@/lib/surface-budget.baseline.json";
 
@@ -8831,5 +8832,73 @@ describe("cold starts (bloat review step 1.16)", () => {
     await insert("beacon", 120);
     await expect(insert("other", 120)).rejects.toThrow(/instance_starts_kind/);
     await expect(insert("beacon", -1)).rejects.toThrow(/instance_starts_values/);
+  });
+});
+
+describe("a page's title and flags are columns the database fills (bloat review step 2.16)", () => {
+  let n = 0;
+  const addPage = async (published: unknown): Promise<string> =>
+    (
+      await one<{ id: string }>(
+        "insert into commerce.pages (store_id, type, slug, draft, published, published_at) values ($1, 'page', $2, '{}', $3::jsonb, $4) returning id",
+        [store, `d216-${++n}`, published === null ? null : JSON.stringify(published), published === null ? null : new Date().toISOString()],
+      )
+    ).id;
+  const publish = (id: string, published: unknown) =>
+    db.query("update commerce.pages set published = $2::jsonb, published_at = now() where id = $1", [id, JSON.stringify(published)]);
+  const columns = (id: string) =>
+    one<{ published_title: string | null; published_titles: unknown; remembered_modal: boolean }>(
+      "select published_title, published_titles, remembered_modal from commerce.pages where id = $1",
+      [id],
+    );
+
+  it("follows an insert with a title and a translation that has none", async () => {
+    const id = await addPage({ title: "About", translations: { "nb-NO": { title: "Om oss" }, "sv-SE": {} }, rows: [] });
+    expect(await columns(id)).toEqual({ published_title: "About", published_titles: { "nb-NO": "Om oss" }, remembered_modal: false });
+  });
+
+  it("follows the remembered-modal rule when published changes", async () => {
+    const id = await addPage({ title: "M", rows: [] });
+    await publish(id, { title: "M", rows: [{ modal: { frequency: "days", triggers: { timer: 5 } } }] });
+    expect((await columns(id)).remembered_modal).toBe(true);
+    await publish(id, { title: "M", rows: [{ modal: { frequency: "always", triggers: { timer: 5 } } }] });
+    expect((await columns(id)).remembered_modal).toBe(false);
+    await publish(id, { title: "M", rows: [{ modal: { triggers: { exitIntent: true } } }] });
+    expect((await columns(id)).remembered_modal).toBe(true);
+  });
+
+  it("does not move when only the draft changes", async () => {
+    const id = await addPage({ title: "Kept", translations: { "nb-NO": { title: "Beholdt" } }, rows: [{ modal: { frequency: "session", triggers: { timer: 5 } } }] });
+    const before = await columns(id);
+    await db.query("update commerce.pages set draft = '{\"title\":\"Other\"}' where id = $1", [id]);
+    expect(await columns(id)).toEqual(before);
+  });
+
+  it("empties when a page is taken off", async () => {
+    const id = await addPage({ title: "Gone", translations: { "nb-NO": { title: "Borte" } }, rows: [{ modal: { frequency: "days", triggers: { timer: 5 } } }] });
+    await db.query("update commerce.pages set published = null, published_at = null where id = $1", [id]);
+    expect(await columns(id)).toEqual({ published_title: null, published_titles: {}, remembered_modal: false });
+  });
+
+  it("refuses a written value", async () => {
+    await expect(
+      db.query("insert into commerce.pages (store_id, type, slug, draft, published_title) values ($1, 'page', 'd216-written', '{}', 'x')", [store]),
+    ).rejects.toThrow(/generated column|non-DEFAULT/i);
+  });
+
+  it("agrees with remembersClose() on the sample modals", async () => {
+    const samples: [Omit<RowModal, "key" | "size"> , boolean][] = [
+      [{ triggers: { timer: { seconds: 5 }, button: true }, frequency: "session" }, true],
+      [{ triggers: { button: true }, frequency: "session" }, false],
+      [{ triggers: { exitIntent: true }, frequency: "days", days: 7 }, true],
+      [{ triggers: { timer: { seconds: 5 } }, frequency: "always" }, false],
+      [{ triggers: { className: "open-promo" }, frequency: "days", days: 7 }, false],
+    ] as never;
+    const id = await addPage({ title: "S", rows: [] });
+    for (const [sample, expected] of samples) {
+      const modal = { key: "m", size: "md", ...sample } as RowModal;
+      await publish(id, { title: "S", rows: [{ modal }] });
+      expect({ sql: (await columns(id)).remembered_modal, code: remembersClose(modal) }).toEqual({ sql: expected, code: expected });
+    }
   });
 });
