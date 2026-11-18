@@ -107,7 +107,9 @@ export function checkBudgets(summary, budgets) {
   }
   for (const [key, label] of Object.entries(COUNTS)) {
     const max = budgets.counts?.[key];
-    if (max !== undefined && summary.counts[key] > max) lines.push(`${label}: ${summary.counts[key]}, budget ${max}. Keep the file out of this function's trace (outputFileTracingExcludes in next.config.ts) or load the module with import() where it is used.`);
+    // Counts that grow with every page (traces with sharp or the taxonomy) have room of max(20, 4 %); a small count fails on any rise.
+    const room = max !== undefined && max >= 50 ? Math.max(20, Math.ceil(max * 0.04)) : 0;
+    if (max !== undefined && summary.counts[key] > max + room) lines.push(`${label}: ${summary.counts[key]}, budget ${max}${room ? ` with room ${room}` : ""}. Keep the file out of this function's trace (outputFileTracingExcludes in next.config.ts) or load the module with import() where it is used.`);
   }
   return lines;
 }

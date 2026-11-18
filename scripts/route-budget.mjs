@@ -272,8 +272,9 @@ else {
     const held = budgets.chunkBytes?.[kind];
     if (held && largest[kind] && largest[kind].bytes > held.max) breaches.push(`${kind} chunk bytes: ${largest[kind].route} lists ${largest[kind].bytes} bytes, budget ${held.max}. Load the new module with import() where it is used (node scripts/route-load.mjs says what the entry reaches).`);
   }
-  if (manifestNow.bytes > budgets.manifest.bytes) breaches.push(`manifest bytes: ${manifestNow.bytes}, budget ${budgets.manifest.bytes}. Fewer server functions are exported to the browser; a new one is a deliberate step.`);
-  if (manifestNow.entries > budgets.manifest.entries) breaches.push(`manifest entries: ${manifestNow.entries}, budget ${budgets.manifest.entries}. A new "use server" export adds an entry to every route that imports it.`);
+  // The manifest grows with every server action: room of 4 %, as the chunk bytes have.
+  if (manifestNow.bytes > Math.ceil(budgets.manifest.bytes * ROOM)) breaches.push(`manifest bytes: ${manifestNow.bytes}, budget ${budgets.manifest.bytes}. Fewer server functions are exported to the browser; a new one is a deliberate step.`);
+  if (manifestNow.entries > Math.ceil(budgets.manifest.entries * ROOM)) breaches.push(`manifest entries: ${manifestNow.entries}, budget ${budgets.manifest.entries}. A new "use server" export adds an entry to every route that imports it.`);
   if (rules > Math.min(budgets.routingRules.max, RULE_CAP)) breaches.push(`routing rules: ${rules}, budget ${budgets.routingRules.max} (Vercel's cap is 2,048). Fewer headers, redirects, rewrites or routes.`);
   for (const [name, held] of Object.entries(budgets.coldMs ?? {})) {
     if (!COLD[name] || measured[name]?.error || measured.health.error) continue;

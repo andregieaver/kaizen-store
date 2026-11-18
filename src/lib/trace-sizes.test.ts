@@ -60,4 +60,11 @@ describe("trace sizes (bloat review 1.8)", () => {
       "traces that carry sharp: 1 → 2",
     ]);
   });
+  it("gives a count that grows with every page room of max(20, 4 %), and a small count none", () => {
+    const at = (sharp: number, chromium: number) => ({ sizes: {}, counts: { sharp, chromium } }) as unknown as Parameters<typeof checkBudgets>[0];
+    const budgets = { sizesMb: {}, counts: { sharp: 776, chromium: 14 } };
+    expect(checkBudgets(at(808, 14), budgets)).toEqual([]);
+    expect(checkBudgets(at(809, 14), budgets).join()).toContain("with room 32");
+    expect(checkBudgets(at(776, 15), budgets).join()).toContain("budget 14.");
+  });
 });
