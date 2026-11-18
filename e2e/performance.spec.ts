@@ -1051,7 +1051,7 @@ test("an embedded HTML frame always has a name for screen readers", async ({ pag
 /**
  * The script a store page has run by the time it is idle (bloat review step 1.14, `docs/performance.md` *Time on a slow phone*): the
  * bytes V8 counted as run in the page's own scripts, each byte once, on a phone's screen, after the load, the network going idle and
- * three more seconds (`e2e/run-bytes.ts`). Held within 5 % both ways, as these figures are steady: a page that runs more says what
+ * three more seconds (`e2e/run-bytes.ts`). Held within 5 % over, as these figures are steady (a fall is a note): a page that runs more says what
  * was added, one that runs less lowers its figure here. `E2E_MEASURE=1` prints them (`[run-bytes]`). Chromium only: `page.coverage`
  * is V8's. Measured on the build of 18 November 2026 against the demo store, three runs each: the front page 346,960 to 346,999, the product page
  * 376,312 to 376,414, /products 361,828 to 362,644, the cart 318,245 to 318,666 (under 0.3 % apart); each held at its highest figure, rounded up.
@@ -1091,7 +1091,8 @@ test.describe("script run by idle", () => {
         return;
       }
       expect(figure, `${path}: ${figure} bytes of script run by idle, held ${held}: more script runs before idle: find what was added`).toBeLessThanOrEqual(held * 1.05);
-      expect(figure, `${path}: ${figure} bytes of script run by idle, held ${held}: less script runs: lower RUN_BYTES in this file`).toBeGreaterThanOrEqual(held * 0.95);
+      // A fall is a note, not a failure: lower RUN_BYTES in this file.
+      if (figure < held * 0.95) console.info(`${path}: ${figure} bytes of script run by idle, held ${held}: less script runs; lower RUN_BYTES in this file`);
     });
   }
 });

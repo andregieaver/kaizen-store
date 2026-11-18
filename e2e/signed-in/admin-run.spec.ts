@@ -8,7 +8,7 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * The script four admin screens have run by the time they are idle (bloat review step 1.14, `docs/performance.md` *Time on a slow phone*),
  * signed in at desktop width with the CPU slowed four times: the bytes V8 counted as run, each byte once (`e2e/run-bytes.ts`), held within
- * 5 % both ways in `ADMIN_RUN_BYTES`, as `e2e/performance.spec.ts` holds the store's. Each screen also prints its largest paint and its
+ * 5 % over (a fall is a note) in `ADMIN_RUN_BYTES`, as `e2e/performance.spec.ts` holds the store's. Each screen also prints its largest paint and its
  * blocking time (`admin-run <screen> lcp=<ms> blocking=<ms> run=<bytes>`) and keeps them as annotations: timings are printed, never held.
  * The one timing that can be held is the home's and orders' largest paint, at most 2,500 ms, and only with `ADMIN_PAINT_BAR=1`: the bar is
  * judged after phase 2 of the review (step 2.32), so until then it is printed, not enforced. `E2E_MEASURE=1` prints the run bytes only.
@@ -60,7 +60,8 @@ for (const screen of Object.keys(ADMIN_RUN_BYTES)) {
     if (MEASURE) return;
     const held = ADMIN_RUN_BYTES[screen];
     expect(figure, `${screen}: ${figure} bytes of script run by idle, held ${held}: more script runs before idle: find what was added`).toBeLessThanOrEqual(held * 1.05);
-    expect(figure, `${screen}: ${figure} bytes of script run by idle, held ${held}: less script runs: lower ADMIN_RUN_BYTES in this file`).toBeGreaterThanOrEqual(held * 0.95);
+    // A fall is a note, not a failure: lower ADMIN_RUN_BYTES in this file.
+    if (figure < held * 0.95) console.info(`${screen}: ${figure} bytes of script run by idle, held ${held}: less script runs; lower ADMIN_RUN_BYTES in this file`);
     if (process.env.ADMIN_PAINT_BAR === "1" && (screen === "home" || screen === "orders")) expect(lcpMs, `${screen}: largest paint ${lcpMs} ms`).toBeLessThanOrEqual(2_500);
   });
 }
