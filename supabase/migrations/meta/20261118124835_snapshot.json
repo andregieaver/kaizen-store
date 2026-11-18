@@ -1,6 +1,6 @@
 {
-  "id": "e76f3094-6277-4ff9-997a-4e0f37655e54",
-  "prevId": "c82ec49d-f7b5-49fa-a3e5-29582807ba84",
+  "id": "a957a22c-50a2-4b44-9f94-0f5e2c79cb9b",
+  "prevId": "cdda73b6-bf32-4b1b-b8eb-a045b8a9ee8c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -40277,6 +40277,101 @@
         "instagram_accounts_problem": {
           "name": "instagram_accounts_problem",
           "value": "\"commerce\".\"instagram_accounts\".\"problem\" is null or char_length(\"commerce\".\"instagram_accounts\".\"problem\") <= 300"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.instance_starts": {
+      "name": "instance_starts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "register_ms": {
+          "name": "register_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_ms": {
+          "name": "first_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rss_mb": {
+          "name": "rss_mb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ui_bytes": {
+          "name": "ui_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "instance_starts_day_idx": {
+          "name": "instance_starts_day_idx",
+          "columns": [
+            {
+              "expression": "day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "instance_starts_kind": {
+          "name": "instance_starts_kind",
+          "value": "\"commerce\".\"instance_starts\".\"kind\" in ('health', 'beacon', 'proxy', 'store', 'pay', 'site', 'admin', 'platform_admin', 'api', 'job')"
+        },
+        "instance_starts_values": {
+          "name": "instance_starts_values",
+          "value": "\"commerce\".\"instance_starts\".\"first_ms\" between 0 and 600000 and \"commerce\".\"instance_starts\".\"rss_mb\" between 0 and 100000 and \"commerce\".\"instance_starts\".\"ui_bytes\" >= 0\n        and (\"commerce\".\"instance_starts\".\"register_ms\" is null or \"commerce\".\"instance_starts\".\"register_ms\" between 0 and 600000)"
         }
       },
       "isRLSEnabled": false
