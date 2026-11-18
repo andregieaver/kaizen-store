@@ -701,6 +701,20 @@
       "when": 1794990127277,
       "tag": "20261118082207_extension_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1794993447513,
+      "tag": "20261118091727_bright_magik",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1794993456218,
+      "tag": "20261118091736_lead_activity_domain_events",
+      "breakpoints": true
     }
   ]
 }

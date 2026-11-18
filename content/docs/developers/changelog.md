@@ -9,12 +9,28 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.44 — 2026-11-18
+
+Six webhook topics and workflow triggers for activities, leads and domains (D757), for an owner's own endpoints and workflows; Zapier,
+Make and Slack keep the events they had. Apps that read customers may choose the activities' and the leads', apps that read settings the
+domains'.
+
+- `activity.created` and `activity.done` carry `activity`: its `id`, `kind` (`call`, `meeting` or `task`), `title`, `due_at`, `timed`,
+  `duration_minutes`, `done_at`, `assignee_id`, `done_by`, `customer_id`, `company_id`, `deal_id`, `created_at` and `admin_url`. Never its
+  note. Activities moved in from Pipedrive send none; marking one not done again sends nothing.
+- `lead.dismissed` and `lead.deal_made` carry `lead`: the decision's `id`, `decision` (`dismissed` or `deal`), `deal_id`, `customer_id`,
+  `requests` (what the person asked for in the 90 days before, newest first: each `kind`, `source`, `id` and `at`), `decided_by`,
+  `decided_at` and `admin_url`. Never the person's address, name or what they wrote.
+- `domain.failing` and `domain.recovered` carry `domain`: its `id`, `hostname`, `primary`, `language`, `market`, `serving` (what the daily
+  domain watch last knew: `ok`, `certificate` or `elsewhere`), `watched_at` and `admin_url`. Sent once when a connected domain stops
+  reaching the store, and once when it reaches it again; an answer the watch could not read changes neither.
 
 ## 1.43 — 2026-11-18
 

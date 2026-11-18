@@ -1,6 +1,6 @@
 {
-  "id": "2b38f41a-ca28-4e91-9e56-011e0a25a1b9",
-  "prevId": "10ef9cf9-6e83-4f7e-bf39-ee9011f53c23",
+  "id": "5ba03559-e4a5-493d-8f77-915de359eb24",
+  "prevId": "9d0da410-3da3-4077-9889-c93d31e5d93c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -100181,7 +100181,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'email.bounced', 'email.complained', 'broadcast.sent', 'marketing.paused', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'contract.sent', 'contract.signed', 'contract.declined', 'form.response', 'support.waiting', 'deal.created', 'deal.stage_changed', 'deal.won', 'deal.lost', 'subscriber.subscribed', 'subscriber.unsubscribed', 'conversation.ended', 'conversation.rated', 'review.published', 'checkout.abandoned', 'work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited', 'email.bounced', 'email.complained', 'broadcast.sent', 'marketing.paused', 'activity.created', 'activity.done', 'lead.dismissed', 'lead.deal_made', 'domain.failing', 'domain.recovered', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",

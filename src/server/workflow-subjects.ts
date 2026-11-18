@@ -73,6 +73,19 @@ function newerSubject(storeId: string, trigger: WorkflowTrigger) {
       return sql`select id from commerce.broadcasts where store_id = ${storeId}::uuid and status = 'sent' order by finished_at desc nulls last limit 1`;
     case "marketing.paused":
       return sql`select id from commerce.sending_pauses where store_id = ${storeId}::uuid limit 1`;
+    // Ecosystem plan E5.1 (D757).
+    case "activity.created":
+      return sql`select id from commerce.activities where store_id = ${storeId}::uuid order by created_at desc limit 1`;
+    case "activity.done":
+      return sql`select id from commerce.activities where store_id = ${storeId}::uuid and done_at is not null order by done_at desc limit 1`;
+    case "lead.dismissed":
+    case "lead.deal_made":
+      return sql`select id from commerce.lead_decisions where store_id = ${storeId}::uuid and decision = ${trigger === "lead.dismissed" ? "dismissed" : "deal"} order by decided_at desc limit 1`;
+    case "domain.failing":
+    case "domain.recovered":
+      return sql`select id from commerce.store_domains where store_id = ${storeId}::uuid and status = 'active'
+        and coalesce(checks -> 'watch' ->> 'known', checks -> 'watch' ->> 'serving') = any(${trigger === "domain.failing" ? "{certificate,elsewhere}" : "{ok}"}::text[])
+        order by checks -> 'watch' ->> 'at' desc nulls last limit 1`;
     default:
       return null;
   }
