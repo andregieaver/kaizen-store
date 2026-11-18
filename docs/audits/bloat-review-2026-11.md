@@ -161,7 +161,7 @@ commit as the fix.
 |---|---|---|---|---|---|---|---|
 | 2.1 | Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB | DC-1 | M | review | 1.1, 0.43, 0.41, 0.40 | Done | 18 Nov, 7742afff, D774: CLAUDE.md 10,102 bytes, 134 lines; both proofs of path loading passed. |
 | 2.2 | Send the store's layout once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, GAP-page-model-s6 | M | review | 0.1, 1.3 | Done | 18 Nov, b3a90442, D776: home 135,935 to 105,599 bytes; duplicate rows 27,226 to 1,768. |
-| 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | In progress | Local, 2 commits: three-row page kz-bp- and theme href 3 to 2; six-row page 115,290 to 110,759 bytes, part sheets 6 to 1; /om-oss 78,855; Orbit style text 17,224. |
+| 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Done | 18 Nov, d0aa131f, D777: breakpoint sheet once; six-row page's part sheets 6 to 1. |
 | 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | Open | |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | Open | |
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | Open | |
@@ -338,6 +338,7 @@ Change log:
 - 18 Nov 2026: step 2.1 Done (7742afff, D774): CLAUDE.md is a 10 KB core with a map of the rule files; the how-to loads by path, proved in a fresh session and a subagent.
 - 18 Nov 2026: step 2.16 Done (64e5b620, D775): a page's published title, titles by language and remembered-modal flag kept in generated columns.
 - 18 Nov 2026: step 2.2 Done (b3a90442, D776): a store page sends its layout once; the home's document 135,935 to 105,599 bytes.
+- 18 Nov 2026: step 2.3 Done (d0aa131f, D777): the breakpoint sheet is drawn once by the layout and a page's rows share one part stylesheet.
 - 18 Nov 2026: step 2.17 carried out locally in five commits (the Pages list in SQL with pageTitles(), pages of 100, the grid's and the
   feed's cards in SQL, the index for the static params and search picker, the pageDocuments list); waiting for review and the D-row.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
