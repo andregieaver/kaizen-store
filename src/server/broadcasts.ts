@@ -32,6 +32,7 @@ import { CLAIM_LABELS } from "@/lib/claims";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { describeRules, matches, SEGMENT_CAP } from "@/lib/segments";
+import type { OrderCredit } from "@/lib/order-credit";
 import { siteUrl } from "@/lib/site";
 
 import { limitFor, usageNow } from "./limits";
@@ -43,6 +44,7 @@ import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
 import { clickRef, emailClicksPrune, keepClick } from "./email-clicks";
 import { log } from "./log";
+import { sendCredit } from "./order-credit";
 import { col, typedRows } from "./typed-rows";
 import { emailPictureProblem, factsForEmail, marketingEmail, marketSlugFor, resolverFor, type MarketingEmail } from "./marketing-email";
 import { getSegment, segmentNames, segmentPeople } from "./segments";
@@ -686,6 +688,8 @@ export async function recordClick(broadcastId: string, key: string, marketSlug: 
 
 export type BroadcastReport = {
   counts: BroadcastCounts & { logged: number };
+  /** Paid orders placed within `ORDER_AFTER_DAYS` of its email, each credited to the latest message its buyer got (M1.4, D761). */
+  credit: OrderCredit;
   /** `people`: the subscribers on the list who pressed the link, kept 180 days (M1.3, D754). */
   links: { key: string; locale: string; label: string; url: string; clicks: number; people: number }[];
   /** The subscribers who pressed any of its links in the last 180 days (M1.3, D754). */
@@ -727,6 +731,10 @@ async function countRecipients(storeId: string, id: string): Promise<BroadcastCo
   };
 }
 
+/** The orders a broadcast's email is credited with (D761). */
+const broadcastCredit = (storeId: string, id: string, startedAt: string | null, finishedAt: string | null) =>
+  sendCredit(storeId, `broadcast:${id}`, startedAt, finishedAt);
+
 export async function broadcastReport(storeId: string, broadcast: Broadcast): Promise<BroadcastReport> {
   const [[stored], clicks, people] = await Promise.all([
     db().execute<Row>(sql`select counts from commerce.broadcasts where store_id = ${storeId}::uuid and id = ${broadcast.id}::uuid`),
@@ -738,12 +746,15 @@ export async function broadcastReport(storeId: string, broadcast: Broadcast): Pr
     ),
   ]);
   const frozen = Boolean(stored?.counts);
+  const kept = frozen ? (stored.counts as { credit?: OrderCredit }).credit : undefined;
+  const credit = kept ?? (await broadcastCredit(storeId, broadcast.id, broadcast.startedAt, broadcast.finishedAt));
   const counts = frozen ? { ...emptyCounts(), logged: 0, ...(stored.counts as Partial<BroadcastCounts & { logged: number }>) } : await countRecipients(storeId, broadcast.id);
   const pressed = new Map(clicks.map((c) => [String(c.link), Number(c.clicks)]));
   const byLink = new Map(people.filter((p) => p.link !== null).map((p) => [p.link as string, p.people]));
   const total = people.find((p) => p.link === null)?.people ?? 0;
   return {
     counts,
+    credit,
     frozen,
     people: total,
     links: linksOf(broadcast.content).map((link) => ({ ...link, clicks: pressed.get(link.key) ?? 0, people: byLink.get(link.key) ?? 0 })),
@@ -755,14 +766,16 @@ export async function pruneBroadcastRecipients(): Promise<number> {
   // Who pressed a broadcast's links goes 180 days after the press (M1.3, D754), in this same statement: the daily route's statement budget holds.
   const due = await db().execute<Row>(sql`
     with clicks_gone as (${emailClicksPrune()})
-    select id, store_id from commerce.broadcasts
+    select id, store_id, started_at, finished_at from commerce.broadcasts
     where status in ('sent', 'cancelled') and counts is null and finished_at < now() - make_interval(days => ${RECIPIENTS_KEEP_DAYS})
     limit 50
   `);
   for (const row of due) {
     const storeId = String(row.store_id);
     const id = String(row.id);
-    const counts = await countRecipients(storeId, id);
+    // Its orders and revenue are kept with its figures (M1.4, D761): the recipients they were found by are about to go.
+    const credit = await broadcastCredit(storeId, id, iso(row.started_at), iso(row.finished_at));
+    const counts = { ...(await countRecipients(storeId, id)), credit };
     await db().transaction(async (tx) => {
       await tx.execute(sql`update commerce.broadcasts set counts = ${JSON.stringify(counts)}::jsonb where id = ${id}::uuid`);
       await tx.execute(sql`delete from commerce.broadcast_recipients where broadcast_id = ${id}::uuid`);

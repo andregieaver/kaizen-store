@@ -19,6 +19,10 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
+import { Card } from "@/components/admin/ui";
+import { dayStart } from "@/server/analytics-sql";
+import { creditBySource, SOURCES } from "@/server/order-credit";
 import { storeHref, storeHome, storeOrigins } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { analyticsContext } from "@/server/analytics-context";
@@ -51,7 +55,7 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   const against = compare.previous ?? compare.lastYear;
 
   const model = query.model === "first" ? "first" : "last";
-  const [report, previous, discounts, spend, customers, campaigns] = await Promise.all([
+  const [report, previous, discounts, spend, customers, campaigns, messages] = await Promise.all([
     marketingReport(store, period, now),
     against && compare.mode !== "none" ? marketingReport(store, against, now) : Promise.resolve(null),
     discountsReport(store, period),
@@ -59,6 +63,8 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
     // The heaviest read of the page, and only one card needs it: the page is right without it.
     customersReport(store, period, settings, now).catch(() => null),
     campaignReport(store, period, model, now),
+    // M1.4 (D761): what the store's own emails and texts were followed by, by the one rule.
+    creditBySource(store.id, dayStart(store, period.from), dayStart(store, period.to)),
   ]);
   const start = storeHref(store.slug, storeHome(store.slug));
   const origins = storeOrigins(store.slug);
@@ -146,6 +152,32 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           limit={SPEND_LISTED}
           actions={{ add: addSpendAction.bind(null, store.slug), remove: deleteSpendAction.bind(null, store.slug) }}
         />
+        </PhoneRow>
+        <PhoneRow
+          opens="messages"
+          title={pw.messagesTitle}
+          sub={(() => {
+            const all = SOURCES.reduce((sum, src) => sum + messages[src].orders, 0);
+            return all === 0 ? pw.messagesSub.none : countWords(all, pw.messagesSub, { n: String(all) });
+          })()}
+          {...row}
+        >
+          <Card title={pw.messagesTitle} description={w.marketing.messages.lead} compact>
+            <dl className="flex flex-col" data-message-orders>
+              {SOURCES.map((src) => (
+                <div key={src} className="flex justify-between gap-4 border-b border-line py-2 last:border-b-0">
+                  <dt className="text-body text-ink-2">{w.marketing.messages.sources[src]}</dt>
+                  <dd className="text-right text-body-strong tabular-nums text-ink">
+                    {messages[src].orders === 0
+                      ? w.marketing.messages.none
+                      : `${countWords(messages[src].orders, w.marketing.messages.orders, { n: messages[src].orders.toLocaleString(locale) })} · ${Object.entries(messages[src].minor)
+                          .map(([cur, minor]) => formatMoney(minor, cur, locale))
+                          .join(" + ")}`}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
         </PhoneRow>
         <PhoneRow
           opens="discounts"
