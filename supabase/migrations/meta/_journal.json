@@ -659,6 +659,13 @@
       "when": 1794959921574,
       "tag": "20261117235841_organisations_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794969565750,
+      "tag": "20261118023925_ai_usage_turns",
+      "breakpoints": true
     }
   ]
 }

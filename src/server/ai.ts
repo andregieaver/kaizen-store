@@ -759,7 +759,14 @@ export async function streamWithTools(
   messages: ToolChatMessage[],
   tools: ToolDefinition[],
   onText: (delta: string) => void,
-  options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal; onTokens?: (tokens: number) => void } = {},
+  options: {
+    maxTokens?: number;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    onTokens?: (tokens: number) => void;
+    /** The round's tokens as usage records them, once per call (bloat review step 1.19): the turn's round log reads them. */
+    onUsage?: (usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }) => void;
+  } = {},
 ): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
   const textModel = connection.textModel;
   if (!textModel) throw new AiError("No text model is set.");
@@ -767,6 +774,11 @@ export async function streamWithTools(
     const answer = await streamWithToolsOnce(connection, messages, tools, onText, options);
     // The tokens the round used, in and out (reported, or estimated as usage records them), for a turn's ceiling (code review 0.8).
     options.onTokens?.((answer.amounts?.inputTokens ?? 0) + (answer.amounts?.outputTokens ?? 0));
+    options.onUsage?.({
+      inputTokens: answer.amounts?.inputTokens ?? 0,
+      outputTokens: answer.amounts?.outputTokens ?? 0,
+      cachedInputTokens: answer.amounts?.cachedInputTokens ?? 0,
+    });
     return answer;
   });
 }

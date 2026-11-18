@@ -825,6 +825,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const deadline = Date.now() + limits.deadlineMs;
   let tokens = 0;
   let stopped: TurnStop | null = null;
+  // Every round's usage row carries the turn and its round (bloat review step 1.19), so a turn's calls are read back together.
+  const turnId = crypto.randomUUID();
   try {
     for (let step = 0; step <= MAX_STEPS; step++) {
       if (input.signal?.aborted) throw new AiError("Stopped.");
@@ -839,7 +841,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
         break;
       }
       const last = round.kind === "last";
-      const answer = await streamWithTools(metered, messages, last ? [] : tools, (delta) => emit({ type: "text", delta }), {
+      const roundConnection = metered.usage ? { ...metered, usage: { ...metered.usage, turnId, round: step } } : metered;
+      const answer = await streamWithTools(roundConnection, messages, last ? [] : tools, (delta) => emit({ type: "text", delta }), {
         signal: input.signal,
         timeoutMs: round.timeoutMs,
         onTokens: (used) => {
