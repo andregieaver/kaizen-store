@@ -391,6 +391,9 @@ export const marketingNb: MarketingMessages = {
     presses: "Trykk på lenkene",
     pressesDescription: "Trykk teller hvert trykk, også e-postprogrammer som åpner lenker for å sjekke dem. Personer teller dem på listen din som trykket, lagret i 180 dager. Åpninger spores ikke.",
     pressedBy: "Personer på listen din som trykket på en lenke: {n}",
+    ordersAfter: "Bestillinger etter den",
+    ordersAfterContext: "{amount}, lagt inn innen en uke etter e-posten",
+    ordersAfterNone: "Betalte bestillinger lagt inn innen en uke etter e-posten",
     peopleColumn: "Personer",
     noLinks: "Det hadde ingen lenker.",
     link: "Lenke",
@@ -779,6 +782,7 @@ export const marketingNb: MarketingMessages = {
     stoppedBy: { staff: "Stoppet av deg", cap: "Stoppet ved månedens tak" },
     counts: { queued: "Venter", sent: "Sendt", delivered: "Levert", failed: "Feilet", skipped: "Ikke sendt" },
     cost: "Kostnad: {cost} {currency}",
+    ordersAfter: { none: "Ingen betalte bestillinger ennå innen en uke etter disse meldingene.", one: "Så {n} betalt bestilling innen en uke, {amount}.", many: "Så {n} betalte bestillinger innen en uke, {amount}." },
     ownerOnly: "Bare butikkens eier kobler til kontoen og endrer reglene.",
   },
   sendingGuard: {

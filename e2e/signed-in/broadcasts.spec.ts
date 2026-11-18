@@ -60,7 +60,7 @@ test("a broadcast is written, saved, tested and sent, and its page then says wha
   await expect(page.getByRole("list", { name: "Broadcasts" }).getByRole("link", { name: `Autumn ${RUN}` })).toBeVisible();
 });
 
-test("a sent broadcast's report says how many people on the list pressed each link, beside the presses (M1.3, D754)", async ({ page }) => {
+test("a sent broadcast's report says how many people on the list pressed each link and the orders after it (M1.3 and M1.4, D754, D761)", async ({ page }) => {
   const sql = testDb();
   let id = "";
   try {
@@ -69,21 +69,35 @@ test("a sent broadcast's report says how many people on the list pressed each li
     const [made] = await sql`
       insert into commerce.broadcasts (store_id, title, audience, content) values (${store.id}, ${`Winter ${RUN}`}, 'everyone', ${sql.json(content)}) returning id`;
     id = String(made.id);
-    // A broadcast moves draft → sending → sent, as its rules allow.
-    await sql`update commerce.broadcasts set status = 'sending', started_at = now(), recipient_count = 2 where id = ${id}`;
-    await sql`update commerce.broadcasts set status = 'sent', finished_at = now() where id = ${id}`;
-    const people = [];
+    const people: string[] = [];
     for (const who of ["ola", "kari"]) {
       const [s] = await sql`
         insert into commerce.marketing_subscribers (store_id, email, locale, status, source, consent_text, consented_at, token)
         values (${store.id}, ${`${who}-${RUN}@example.com`}, 'nb-NO', 'subscribed', 'form', 'Ja takk', now(), ${(who + RUN + "c".repeat(43)).slice(0, 43)}) returning id`;
       people.push(String(s.id));
     }
+    // A broadcast moves draft → sending → sent, and its recipients start queued while it sends, as the tables' rules allow. It went two days ago.
+    await sql`update commerce.broadcasts set status = 'sending', started_at = now() - interval '2 days', recipient_count = 2 where id = ${id}`;
+    for (const [i, who] of ["ola", "kari"].entries()) {
+      await sql`insert into commerce.broadcast_recipients (store_id, broadcast_id, subscriber_id, email, locale, market_code)
+        values (${store.id}, ${id}, ${people[i]}, ${`${who}-${RUN}@example.com`}, 'nb-NO', 'NO')`;
+      await sql`update commerce.broadcast_recipients set status = 'sent', sent_at = now() - interval '2 days' where broadcast_id = ${id} and subscriber_id = ${people[i]}`;
+    }
+    await sql`update commerce.broadcasts set status = 'sent', finished_at = now() - interval '2 days' where id = ${id}`;
     // Five presses, three of them by the two people on the list (Ola twice), two by mail apps that check links.
     await sql`insert into commerce.broadcast_link_clicks (store_id, broadcast_id, link, clicks) values (${store.id}, ${id}, 'nb-NO.0', 5)`;
     for (const subscriber of [people[0], people[0], people[1]]) {
       await sql`insert into commerce.email_clicks (store_id, subscriber_id, broadcast_id, link) values (${store.id}, ${subscriber}, ${id}, 'nb-NO.0')`;
     }
+    // Kari paid for an order a day after the email: it counts for this broadcast.
+    const [order] = await sql`
+      insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor,
+        total_minor, billing_address, shipping_address, placed_at)
+      values (${store.id}, ${`W${RUN}`}, 'NO', 'NOK', 'nb-NO', ${`kari-${RUN}@example.com`}, 'paid', 49900, 0, 0, 9980, 49900, '{}'::jsonb, '{"name":"Kari"}'::jsonb,
+        now() - interval '1 day')
+      returning id`;
+    await sql`insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${store.id}, ${order.id}, 'stripe', ${`cs_w${RUN}`}, 49900, 'NOK', 'captured')`;
   } finally {
     await sql.end();
   }
@@ -92,6 +106,14 @@ test("a sent broadcast's report says how many people on the list pressed each li
   const row = page.getByRole("row", { name: /Se vinteren/ });
   await expect(row.getByRole("cell").nth(2)).toHaveText("5");
   await expect(row.getByRole("cell").nth(3)).toHaveText("2");
-  await page.getByText("Presses on its links").scrollIntoViewIfNeeded();
-  await page.screenshot({ path: "test-results/broadcast-people.png", fullPage: true });
+  await expect(page.getByText("Orders after it")).toBeVisible();
+  await expect(page.getByText(/499[.,]00.*placed within a week of its email/)).toBeVisible();
+  await page.screenshot({ path: "test-results/broadcast-report.png", fullPage: true });
+
+  // Analytics → Marketing: the same order, under Broadcasts.
+  await page.goto(`/admin/${STORE}/analytics/marketing`);
+  const card = page.locator("[data-message-orders]");
+  await card.scrollIntoViewIfNeeded();
+  await expect(card).toContainText(/Broadcasts\s*[1-9]\d* orders?/);
+  await card.screenshot({ path: "test-results/marketing-messages.png" });
 });

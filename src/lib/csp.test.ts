@@ -202,7 +202,10 @@ describe("the recording player's policy (D656 8.6)", () => {
     expect(value).toContain("frame-ancestors 'self' https://themes.kaizenaflow.com");
     expect(value).toContain("img-src 'self' data: blob: https://abc.supabase.co");
     expect(value).toContain("font-src 'self' data: https://abc.supabase.co");
-    expect(value).not.toMatch(/script-src|style-src/);
-    expect(replayRouteHeaders(null)[0].headers[0].value).toBe("frame-ancestors 'self'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:");
+    expect(value).toContain("style-src 'self' 'unsafe-inline' https://abc.supabase.co");
+    expect(value).not.toMatch(/script-src/);
+    expect(replayRouteHeaders(null)[0].headers[0].value).toBe(
+      "frame-ancestors 'self'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'",
+    );
   });
 });

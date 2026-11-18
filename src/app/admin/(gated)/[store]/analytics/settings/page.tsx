@@ -73,6 +73,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
             mask: store.recordingMask,
             available: store.house || (await recordingsOpenNow()),
             privacyHref: `${base}/settings/legal`,
+            assessmentHref: `${base}/analytics/recordings/assessment`,
           }}
           actions={
             owner

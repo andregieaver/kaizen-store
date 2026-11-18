@@ -5,12 +5,14 @@ import { notFound } from "next/navigation";
 
 import { SmsCampaignEditor, SmsStopButton } from "@/components/admin/sms-views";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { formatMoney } from "@/lib/money";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { SMS_MESSAGE_STATUSES } from "@/lib/sms";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
+import { sendCredit } from "@/server/order-credit";
 import { getSmsCampaign, getSmsSettings } from "@/server/sms";
 
 import { deleteSmsCampaignAction, previewSmsCampaignAction, saveSmsCampaignAction, startSmsCampaignAction, stopSmsCampaignAction } from "../actions";
@@ -58,8 +60,11 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
     );
   }
 
-  const settings = await getSmsSettings(store.id);
+  const [settings, credit] = await Promise.all([getSmsSettings(store.id), sendCredit(store.id, `text:${campaign.id}`, campaign.startedAt, campaign.finishedAt)]);
   const money = (v: number) => v.toLocaleString(numbers, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const amount = Object.entries(credit.minor)
+    .map(([currency, minor]) => formatMoney(minor, currency, numbers))
+    .join(" + ");
   return (
     <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
     <div className="flex flex-col gap-6">
@@ -74,6 +79,10 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
           ))}
         </dl>
         <p className="mt-4 text-body">{fillWords(w.cost, { cost: money(campaign.cost), currency: settings.currency ?? "" })}</p>
+        {/* M1.4 (D761): each order credited once, to the latest email or text its buyer got before it. */}
+        <p className="text-body" data-sms-orders>
+          {credit.orders === 0 ? w.ordersAfter.none : countWords(credit.orders, w.ordersAfter, { n: credit.orders.toLocaleString(numbers), amount })}
+        </p>
         {campaign.stopReason && <p className="text-body text-muted">{w.stoppedBy[campaign.stopReason as "staff" | "cap"]}</p>}
         <p className="mt-4 max-w-sm whitespace-pre-line rounded-2xl rounded-bl-sm bg-card px-4 py-3 text-sm shadow-sm">{campaign.text}</p>
         {mayWrite && campaign.status === "sending" && (

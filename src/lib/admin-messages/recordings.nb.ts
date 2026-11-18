@@ -67,6 +67,8 @@ export const recordingsNb: RecordingsMessages = {
     sensitive: "Butikken min selger ikke helse-, religiøse, politiske eller andre sensitive varer",
     policy: "Personvernerklæringen min sier at besøk kan tas opp",
     policyLink: "Personvernerklæringen din",
+    assessment: "Jeg har gjort en vurdering av personvernkonsekvenser for butikken min",
+    assessmentLink: "Hent din, fylt ut fra butikken",
     share: "Hvor mange besøk som skal tas opp",
     hideAll: "Skjul all tekst i opptak",
     hideAllHint: "Hvert ord på siden skjules i opptak, ikke bare det besøkende skrev.",
@@ -78,6 +80,6 @@ export const recordingsNb: RecordingsMessages = {
     saved: "Lagret.",
     nowOn: "Opptak er på. Besøkende blir spurt om opptak.",
     nowOff: "Opptak er av. De som alt er laget, lagres til de 30 dagene er gått.",
-    confirmAll: "Bekreft de tre punktene før opptak starter.",
+    confirmAll: "Bekreft de fire punktene før opptak starter.",
   },
 };

@@ -17,7 +17,6 @@ import {
   followUpInput,
   isPickKind,
   LIFECYCLE_KINDS,
-  ORDER_AFTER_DAYS,
   PICKS_SHOWN,
   SENDS_KEEP_DAYS,
   stepKey,
@@ -32,6 +31,8 @@ import { broadcastContentSchema, sendProblems, type BroadcastContent } from "@/l
 
 import { limitFor, usageNow } from "./limits";
 import { PAID } from "./analytics-sql";
+import { orderCredit } from "./order-credit";
+import { creditOf } from "@/lib/order-credit";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
 import { log } from "./log";
@@ -275,35 +276,15 @@ export type AutomationStats = {
 /** A paid order as D152 counts it, still the person's (never restricted or anonymised), not cancelled. */
 const SOLD = sql`(${PAID} and o.status in ('paid', 'fulfilled', 'closed') and o.restricted_at is null and o.anonymised_at is null)`;
 
-const REVENUE_ROW = z.object({ kind: z.enum(LIFECYCLE_KINDS), currency: col.currency, orders: col.int, total: col.minor });
-
 /**
- * Orders after an automation's email (D4 of `docs/100-day-challenge.md`): each paid order its reader's address placed within
- * `ORDER_AFTER_DAYS` of an email sent in the last 30 days, counted once (for the latest email before it). An order the person would have
- * placed anyway counts too: the figure says what followed, not what the email caused.
+ * Orders after an automation's emails in the last 30 days, by the one rule for every message (D761, `orderCredit()`): a paid order placed
+ * within `ORDER_AFTER_DAYS` of the latest email or text that reached its buyer counts for that one, so an order after a cart reminder and
+ * a broadcast is counted once. An order the person would have placed anyway counts too: the figure says what followed, not what it caused.
  */
 async function automationRevenue(storeId: string): Promise<Record<LifecycleKind, AutomationRevenue>> {
-  const rows = await typedRows(
-    REVENUE_ROW,
-    sql`
-      select kind, currency, count(*)::int as orders, coalesce(sum(total_minor), 0)::bigint as total from (
-        select distinct on (o.id) s.kind, o.currency, o.total_minor
-        from commerce.automation_sends s
-        join commerce.marketing_subscribers m on m.store_id = s.store_id and m.id = s.subscriber_id
-        join commerce.orders o on o.store_id = s.store_id and lower(o.email) = lower(m.email)
-          and o.placed_at > s.created_at and o.placed_at <= s.created_at + make_interval(days => ${ORDER_AFTER_DAYS})
-        where s.store_id = ${storeId}::uuid and s.created_at > now() - interval '30 days' and s.outcome in ('sent', 'logged') and o.restricted_at is null and ${SOLD}
-        order by o.id, s.created_at desc
-      ) x
-      group by kind, currency
-    `,
-  );
-  const revenue = Object.fromEntries(LIFECYCLE_KINDS.map((k) => [k, { orders: 0, minor: {} }])) as Record<LifecycleKind, AutomationRevenue>;
-  for (const r of rows) {
-    revenue[r.kind].orders += r.orders;
-    revenue[r.kind].minor[r.currency] = r.total;
-  }
-  return revenue;
+  const now = new Date();
+  const credit = await orderCredit(storeId, new Date(now.getTime() - 30 * 86_400_000), now);
+  return Object.fromEntries(LIFECYCLE_KINDS.map((k) => [k, creditOf(credit, `automation:${k}`)])) as Record<LifecycleKind, AutomationRevenue>;
 }
 
 /** How many each kind sent in the last 30 days (6.6) and the orders after them, and how many back-in-stock requests wait, per store. */
