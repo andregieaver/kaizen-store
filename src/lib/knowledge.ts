@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DEFAULT_MIN_SIMILARITY } from "./ai-provider";
 import { entryTitle, type ContentType } from "./content-types";
 import { fieldShows, isEmptyValue, readField, valuesFor, type FieldData, type FieldType, type FieldWords } from "./custom-fields";
 import { fieldValueText } from "./field-tools";
@@ -11,6 +12,29 @@ import { publicRows } from "./visibility";
  * articles and knowledge-base documents are cut into passages of a few
  * paragraphs, found by keyword and by meaning when a visitor asks.
  */
+
+/**
+ * The knowledge search's relevance floor by meaning (ecosystem plan E5.4, D757). The meaning search orders a site's passages by pgvector's
+ * cosine distance to the question (`<=>`: 0 the same direction, 1 unrelated, 2 opposite; similarity is 1 − distance), and the nearest came
+ * back however far they were, so the chat leaned on unrelated text and a question nothing answers was never counted
+ * (`ChatReply.foundNothing`). A passage less like the question than the floor is now not found by meaning; the keyword search is not held
+ * to it. The floor is the site's own similarity limit (`ai_providers.min_similarity`, which product search, the media library and the docs'
+ * search already keep), because each model scores on its own scale: OpenAI's `text-embedding-3-small`, Kaizena Flow's own, put texts that
+ * fit at 0.33 to 0.55 and nonsense at 0.16 (D74, measured in production), while models such as `mistral-embed` score unrelated text far
+ * higher; Test on the AI pages shows a matching and an unrelated text's scores, and the limit belongs between them. This is the floor
+ * where a site has no limit that can be read: the one measured for Kaizena Flow's model.
+ */
+export const KNOWLEDGE_MIN_SIMILARITY = DEFAULT_MIN_SIMILARITY;
+
+/** The similarity a passage needs to be found by meaning: the site's own limit when it is one (0 to 1), else `KNOWLEDGE_MIN_SIMILARITY`. */
+export function knowledgeFloor(siteLimit: number | null | undefined): number {
+  return typeof siteLimit === "number" && Number.isFinite(siteLimit) && siteLimit >= 0 && siteLimit <= 1 ? siteLimit : KNOWLEDGE_MIN_SIMILARITY;
+}
+
+/** Whether a passage at this cosine distance (`<=>`) reaches the floor; a distance that is no number (a vector of zeros has none) never does. */
+export function reachesFloor(distance: number | null | undefined, floor: number): boolean {
+  return typeof distance === "number" && Number.isFinite(distance) && 1 - distance >= floor - 1e-9;
+}
 
 /** A passage's length: long enough to hold an answer, short enough to find it. */
 export const PASSAGE_MAX = 1200;

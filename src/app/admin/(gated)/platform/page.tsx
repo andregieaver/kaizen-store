@@ -63,6 +63,11 @@ export default async function PlatformOverviewPage() {
   if (o.stores.suspended > 0) attention.push({ text: countWords(o.stores.suspended, w.suspended), href: "/admin/platform/stores", action: w.openStores });
   if (o.stores.withoutPlan > 0) attention.push({ text: countWords(o.stores.withoutPlan, w.noPlan), href: "/admin/platform/stores", action: w.openStores });
   if (o.ai.failed > 0) attention.push({ text: countWords(o.ai.failed, w.aiFailed), href: "/admin/platform/ai/usage", action: w.seeAi });
+  // E5.4 (D757): what Kaizena Flow's own chat assistant could not answer, as a store's Home counts its own; visitors' words, so support reads them.
+  const questions = snapshot.questionsOpen ?? 0;
+  if (questions > 0 && platformCan(account, "support", "read")) {
+    attention.push({ text: countWords(questions, w.unansweredQuestions), href: "/admin/platform/chat/questions", action: w.answerQuestions });
+  }
   for (const alert of alerts) attention.push({ text: alertText(alert, lang), href: alert.href, action: w.review, urgent: alert.severity === "urgent" });
 
   // Kaizena Flow's own Home in the store's pattern (admin redesign round 1, step 3, D595): a greeting and one sentence, the one next step,

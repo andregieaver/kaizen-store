@@ -265,7 +265,11 @@ nothing listening is a domain that points away (`points_away`), and a time-out, 
 For a domain registered elsewhere, the registry's expiry and registrar (RDAP) are kept with it. The answer is kept in the connection's
 checks (`checks.watch`, the only thing the watch writes) and read for three days (`WATCH_FRESH_DAYS`) by `domainHealth()`: on this page,
 in `check_domain`, and by the analytics alert *A domain needs a look* (`domain-problem`, `docs/analytics.md`), which reads only what is
-kept and never asks the world on a page view. kaizenaflow.com itself is the platform's own domain, not a store's, and is not watched yet.
+kept and never asks the world on a page view. kaizenaflow.com itself is the platform's own domain, not a store's (no `store_domains` row:
+one would route it to a store), and is watched in the same run since E5.2 (D757): the site's host (`publicSiteHost()`, none where the site
+is not public on a domain of its own) is asked once a day like a store's domain, its registry always, and the answer is kept in
+`platform_settings.domain_watch`; the platform's home and briefing read it through the same `domainHealth()` with Kaizena Flow's store's
+own domain alert.
 
 ### 5.4 Moving DNS here (for a domain registered elsewhere)
 

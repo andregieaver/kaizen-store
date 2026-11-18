@@ -17,3 +17,19 @@ export function siteUrl(): string {
   if (!host) return "http://localhost:3000";
   return `https://${host.endsWith(".vercel.app") ? host : KAIZEN_HOST}`;
 }
+
+/**
+ * Kaizena Flow's own host as the world reaches it (`kaizenaflow.com`), for the domain watch (ecosystem plan E5.2, D757): null where the site
+ * is not public on a domain of its own, on plain http, with a port, at an address or a local name, or on a `vercel.app` address (Vercel's).
+ */
+export function publicSiteHost(origin: string = siteUrl()): string | null {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase();
+  if (url.protocol !== "https:" || url.port || !host.includes(".") || /^[\d.]+$/.test(host) || host.startsWith("[")) return null;
+  return host.endsWith(".vercel.app") || host.endsWith(".localhost") ? null : host;
+}

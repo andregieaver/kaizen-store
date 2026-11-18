@@ -2357,6 +2357,19 @@ describe("the languages of Kaizena Flow's own site (D312)", () => {
   });
 });
 
+describe("the domain watch's answer for Kaizena Flow's own host (ecosystem plan E5.2, D757)", () => {
+  it("is none until asked, then an object as a store domain's watch is, never another kind of value", async () => {
+    expect((await one<{ domain_watch: unknown }>("select domain_watch from commerce.platform_settings")).domain_watch).toBeNull();
+    for (const value of ['"ok"', "[]", "1", "null"]) {
+      await expect(db.query("update commerce.platform_settings set domain_watch = $1::jsonb", [value])).rejects.toThrow(/platform_settings_domain_watch/);
+    }
+    const watch = { at: "2026-11-18T08:00:00.000Z", serving: "certificate", expiresAt: null, registrar: null };
+    await db.query("update commerce.platform_settings set domain_watch = $1::jsonb", [JSON.stringify(watch)]);
+    expect((await one<{ domain_watch: unknown }>("select domain_watch from commerce.platform_settings")).domain_watch).toEqual(watch);
+    await db.query("update commerce.platform_settings set domain_watch = null");
+  });
+});
+
 describe("the AI manager (D103)", () => {
   it("keeps platform conversations without a store, thumbs on answers, and memories per account", async () => {
     const accountId = await createAccount("manager@example.com");

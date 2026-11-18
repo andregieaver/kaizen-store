@@ -1836,10 +1836,12 @@ and once only, and anonymising clears the email fields.
 
 - **The signal is code's, never the model's words.** A turn counts when the AI handed over with `could_not_help` (only with the AI
   first: `handoff_to_human` is offered there alone; a hand-over without a category is `could_not_help` by the tool's default), or when
-  every tool it used was `search_content` and none found a passage (`ChatReply.foundNothing`). The meaning search returns the nearest
-  passages whatever their distance, so with an embedding model the second fires only where the site's knowledge is empty in that
-  language; on a desk with support off (no hand-over) and an embedding model, few questions are kept. A relevance floor for the meaning
-  search, or the visitor's *Did we help? No*, would add a signal; neither is built.
+  every tool it used was `search_content` and none found a passage (`ChatReply.foundNothing`). The meaning search returned the nearest
+  passages whatever their distance, so with an embedding model the second fired only where the site's knowledge was empty in that
+  language. Since E5.4 (D757) it has a relevance floor: a passage less like the question than the site's own similarity limit (the one
+  product search keeps, set per model on the AI page, 0.3 where none can be read, as measured for `text-embedding-3-small` in D74) is
+  not found by meaning (`knowledgeFloor()`), so a question nothing answers comes back empty and is kept; the keyword search is not held
+  to it. The visitor's *Did we help? No* would add a signal; it is not built.
 - **Kept in `runSupportTurn()`, the one place every AI answer passes** (the site's chat, its chats on other websites, email, and
   owners asking Kaizena Flow from the admin), after the answer is stored; a failure is a log line with ids, never in the way.
 - **The platform's inbox opens a conversation from `?c=`**, as a store's does, so the questions' conversations link there.
@@ -1857,7 +1859,8 @@ and once only, and anonymising clears the email fields.
   and keeps it so; *Details* has the language, why it counted and its conversations (those whose transcript is still kept), and the
   tabs *Answered* and *Not for the assistant* (with *Put it back*). An answered question asked again by another conversation comes back
   open with its document. Home's attention counts the open ones (`heldCounts()` in `attention.ts`, one statement with the held blog
-  comments, kind `unanswered_questions`); the Support tab's number stays what customers wait on.
+  comments, kind `unanswered_questions`); the Support tab's number stays what customers wait on. The platform's Home counts its own
+  (E5.4, D757: `questionsOpen` of `platformSnapshot()`, in the figures' one statement), for those who read support, with *Answer*.
 - **Personal data**: in the register (`unanswered_questions`, purpose `support`); exported with the conversation whose words are kept
   (`questionsKept`), deleted with an erased person's conversations before they are anonymised (`forgetQuestionsOf()`), and by the
   retention run 90 days after last asked (rule `unanswered_questions`, `QUESTION_KEEP_DAYS`); never copied with a store.

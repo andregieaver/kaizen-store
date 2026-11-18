@@ -16,6 +16,7 @@ import {
   type PageFrustrationRow,
   type ProductRefundRow,
   type ReturningMonth,
+  type SignalSnapshot,
   type SpeedWindowRow,
 } from "@/lib/analytics-alerts";
 import {
@@ -420,7 +421,7 @@ async function costCoverage(store: Store, today: string, settings: StoredAnalyti
  * Per page, every visitor's heat totals (D656, tag `''`) over the last 7 complete days and the 28 before them: only pages with enough views
  * in the last 7 for the rule to read, at most 500. Daily totals only, never a visitor.
  */
-export async function pageFrustrationRows(store: Store, today: string): Promise<PageFrustrationRow[]> {
+export async function pageFrustrationRows(store: Pick<Store, "id">, today: string): Promise<PageFrustrationRow[]> {
   const recentFrom = addDays(today, -RECENT_DAYS);
   const from = addDays(today, -(RECENT_DAYS + BASELINE_DAYS));
   const rows = checkedRows(
@@ -463,7 +464,7 @@ const SPEED_WINDOWS = z.object({
  * Per kind of page and screen, the 75th percentile of each Core Web Vital (D336) over the last 7 store days, today included, and over the
  * 21 before them, worked out by the database (`percentile_disc`, the nearest rank `percentile75()` takes), so no sample is fetched.
  */
-export async function speedWindowRows(store: Store, now: Date): Promise<SpeedWindowRow[]> {
+export async function speedWindowRows(store: Pick<Store, "id" | "timeZone">, now: Date): Promise<SpeedWindowRow[]> {
   const { recentDays, beforeDays } = ALERT_RULES.slowPage;
   const to = storeDayKey(now, store.timeZone);
   const recent = sql`day > ${to}::date - ${recentDays}::int`;
@@ -494,13 +495,48 @@ export async function speedWindowRows(store: Store, now: Date): Promise<SpeedWin
 
 const DOMAIN_ROW = z.object({ hostname: col.text, status: z.enum(["pending", "active"]), is_primary: col.bool, age_days: col.int, checks: z.unknown() });
 
+type RegistrationFact = Awaited<ReturnType<typeof registrationFacts>>[number];
+const findingsOf = (facts: DomainFacts, now: Date): DomainAlertRow["findings"] => domainHealth(facts, now).map((f) => ({ code: f.code, severity: f.severity, values: f.values }));
+
 /**
- * The store's domains and what their health check finds (D315 `domainHealth()`) from what is kept, without asking the world: the
- * connection's last check and the daily watch's answer (`checks.watch`, `src/server/domain-watch.ts`, while fresh), and the registrations
- * with Kaizena Flow (expiry, renewal, the registrant's email); a domain registered elsewhere by the registry's expiry the watch kept. A
+ * One connected domain's row for the domain alert: what its health check finds (D315 `domainHealth()`) from what is kept, without asking the
+ * world: the connection's last check and the daily watch's answer (`checks.watch`, `src/server/domain-watch.ts`, while fresh), and its
+ * registration with Kaizena Flow (expiry, renewal, the registrant's email), or, registered elsewhere, the registry's expiry the watch kept.
+ * Kaizena Flow's own host is read so too, from the watch's answer kept for it (ecosystem plan E5.2, D757).
+ */
+export function domainAlertRow(
+  d: { hostname: string; status: "pending" | "active"; primary: boolean; ageDays: number; checks: unknown },
+  reg: RegistrationFact | undefined,
+  now: Date,
+): DomainAlertRow {
+  const checks = (d.checks && typeof d.checks === "object" ? d.checks : {}) as DomainChecks;
+  const watch = watchFresh(checks.watch, now) ? checks.watch : null;
+  const facts: DomainFacts = {
+    hostname: d.hostname,
+    apex: checks.apexName || apexOf(d.hostname),
+    connection: {
+      status: d.status,
+      isPrimary: d.primary,
+      txt: checks.txt,
+      misconfigured: checks.misconfigured,
+      problem: checks.problem,
+      serving: d.status === "active" ? servingOf(checks.watch, now) : null,
+    },
+    dnsHost: "unknown",
+    registration: reg
+      ? { withUs: true, registrar: "Kaizena Flow", expiresAt: reg.expiresAt, renews: reg.renews, contactVerified: reg.contactVerified }
+      : { withUs: false, registrar: watch?.registrar ?? null, expiresAt: watch?.expiresAt ?? null, renews: null, contactVerified: null },
+    email: null,
+    caa: null,
+  };
+  return { hostname: d.hostname, status: d.status, primary: d.primary, ageDays: d.ageDays, findings: findingsOf(facts, now) };
+}
+
+/**
+ * The store's domains and what their health check finds, each through `domainAlertRow()`, with the registrations with Kaizena Flow. A
  * registration the store holds and has not connected is a row of its own.
  */
-export async function domainAlertRows(store: Store, now: Date): Promise<DomainAlertRow[]> {
+export async function domainAlertRows(store: Pick<Store, "id">, now: Date): Promise<DomainAlertRow[]> {
   const [domains, registrations] = await Promise.all([
     typedRows(
       DOMAIN_ROW,
@@ -510,33 +546,11 @@ export async function domainAlertRows(store: Store, now: Date): Promise<DomainAl
     registrationFacts(store.id),
   ]);
   const byApex = new Map(registrations.map((r) => [r.apex, r]));
-  const findings = (facts: DomainFacts) => domainHealth(facts, now).map((f) => ({ code: f.code, severity: f.severity, values: f.values }));
-  const rows: DomainAlertRow[] = domains.map((d) => {
-    const checks = (d.checks && typeof d.checks === "object" ? d.checks : {}) as DomainChecks;
-    const apex = checks.apexName || apexOf(d.hostname);
-    const reg = byApex.get(apex);
-    const watch = watchFresh(checks.watch, now) ? checks.watch : null;
-    const facts: DomainFacts = {
-      hostname: d.hostname,
-      apex,
-      connection: {
-        status: d.status,
-        isPrimary: d.is_primary,
-        txt: checks.txt,
-        misconfigured: checks.misconfigured,
-        problem: checks.problem,
-        serving: d.status === "active" ? servingOf(checks.watch, now) : null,
-      },
-      dnsHost: "unknown",
-      registration: reg
-        ? { withUs: true, registrar: "Kaizena Flow", expiresAt: reg.expiresAt, renews: reg.renews, contactVerified: reg.contactVerified }
-        : { withUs: false, registrar: watch?.registrar ?? null, expiresAt: watch?.expiresAt ?? null, renews: null, contactVerified: null },
-      email: null,
-      caa: null,
-    };
-    return { hostname: d.hostname, status: d.status, primary: d.is_primary, ageDays: d.age_days, findings: findings(facts) };
-  });
-  const connected = new Set(domains.map((d) => (d.checks as DomainChecks | null)?.apexName || apexOf(d.hostname)));
+  const apexOfRow = (d: z.output<typeof DOMAIN_ROW>) => (d.checks as DomainChecks | null)?.apexName || apexOf(d.hostname);
+  const rows: DomainAlertRow[] = domains.map((d) =>
+    domainAlertRow({ hostname: d.hostname, status: d.status, primary: d.is_primary, ageDays: d.age_days, checks: d.checks }, byApex.get(apexOfRow(d)), now),
+  );
+  const connected = new Set(domains.map(apexOfRow));
   for (const reg of registrations) {
     if (connected.has(reg.apex)) continue;
     const facts: DomainFacts = {
@@ -548,9 +562,23 @@ export async function domainAlertRows(store: Store, now: Date): Promise<DomainAl
       email: null,
       caa: null,
     };
-    rows.push({ hostname: reg.apex, status: null, primary: false, ageDays: null, findings: findings(facts) });
+    rows.push({ hostname: reg.apex, status: null, primary: false, ageDays: null, findings: findingsOf(facts, now) });
   }
   return rows;
+}
+
+/**
+ * What a site measures besides sales, as the three rules of E4.2 read it (`SignalSnapshot`): its heat totals, its speed and its domains,
+ * each left out when it cannot be read. `alertSnapshotFor()` reads them so for a store, and the platform for Kaizena Flow's own store
+ * (ecosystem plan E5.2, D757). `today` is the store's.
+ */
+export async function signalSnapshotFor(store: Pick<Store, "id" | "timeZone" | "markets">, now: Date, today: string = todayIn(now, store.timeZone)): Promise<SignalSnapshot> {
+  const [pageFrustration, speed, domains] = await Promise.all([
+    safe("page behaviour", () => pageFrustrationRows(store, today)),
+    safe("speed", () => speedWindowRows(store, now)),
+    safe("domains", () => domainAlertRows(store, now)),
+  ]);
+  return { today, locale: store.markets[0]?.locale ?? "en", pageFrustration, speed, domains };
 }
 
 // ---------------------------------------------------------------------------
@@ -566,7 +594,7 @@ export async function alertSnapshotFor(store: Store, now: Date, options: History
   const history = options.history ?? dailyHistory(store, now, settings);
   const h = await history;
   const today = h.today;
-  const [productRefunds, channelCac, stockouts, checkout, creeping, targetMinor, costs, returningMonthly, pageFrustration, speed, domains] = await Promise.all([
+  const [productRefunds, channelCac, stockouts, checkout, creeping, targetMinor, costs, returningMonthly, signals] = await Promise.all([
     safe("refunds by product", () => productRefundRows(store, today)),
     safe("channels", () => channelCacRows(store, now, today)),
     safe("stock", async () => (await inventoryReport(store, now)).alerts),
@@ -575,14 +603,13 @@ export async function alertSnapshotFor(store: Store, now: Date, options: History
     safe("target", () => monthTargetMinor(store, today)),
     safe("costs", () => costCoverage(store, today, settings)),
     safe("returning customers", () => returningMonths(store, today)),
-    safe("page behaviour", () => pageFrustrationRows(store, today)),
-    safe("speed", () => speedWindowRows(store, now)),
-    safe("domains", () => domainAlertRows(store, now)),
+    signalSnapshotFor(store, now, today),
   ]);
+  const { pageFrustration, speed, domains } = signals;
   const daily: DailyPoint[] = h.days.map((d) => ({ day: d.day, orders: d.orders, checkoutOrders: d.checkoutOrders, revenueMinor: d.netRevenueMinor, sessions: d.sessions }));
   return {
     currency: h.currency,
-    locale: store.markets[0]?.locale ?? "en",
+    locale: signals.locale,
     today,
     dayShare: h.dayShare,
     daily,

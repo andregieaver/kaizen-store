@@ -341,6 +341,12 @@ export type AlertSnapshot = {
   domains?: readonly DomainAlertRow[] | null;
 };
 
+/**
+ * What the three rules that read what a site measures besides sales (E4.2, D729) need: its heat totals, its speed and its domains. Kaizena
+ * Flow's own store raises them for the platform too (`signalAlertsFor()`, ecosystem plan E5.2, D757).
+ */
+export type SignalSnapshot = Pick<AlertSnapshot, "today" | "locale" | "pageFrustration" | "speed" | "domains">;
+
 const SEVERITY_RANK: Record<AlertSeverity, number> = { urgent: 0, warning: 1, info: 2, good: 3 };
 
 /** The words of the alerts (`alertText` of the analytics catalogue); English unless given. */
@@ -778,7 +784,7 @@ function bestDayAlert(s: AlertSnapshot, days: DayMap, words: Words): Alert | nul
   };
 }
 
-function frustrationAlert(s: AlertSnapshot, words: Words): Alert | null {
+function frustrationAlert(s: SignalSnapshot, words: Words): Alert | null {
   const w = words.frustration;
   const r = ALERT_RULES.frustration;
   type Hit = { row: PageFrustrationRow; now: number; before: number; rise: number };
@@ -815,7 +821,7 @@ function frustrationAlert(s: AlertSnapshot, words: Words): Alert | null {
   };
 }
 
-function slowPageAlert(s: AlertSnapshot, words: Words): Alert | null {
+function slowPageAlert(s: SignalSnapshot, words: Words): Alert | null {
   const w = words.slowPage;
   const r = ALERT_RULES.slowPage;
   const locale = s.locale ?? "en";
@@ -865,7 +871,7 @@ function slowPageAlert(s: AlertSnapshot, words: Words): Alert | null {
 /** A domain's own setup findings: while it is waiting they are the owner's work in hand, said only once it has waited `minPendingDays`. */
 const SETUP_FINDINGS: ReadonlySet<string> = new Set(["not_pointed", "proof_missing"]);
 
-function domainAlert(s: AlertSnapshot, words: Words): Alert | null {
+function domainAlert(s: SignalSnapshot, words: Words): Alert | null {
   const w = words.domain;
   const r = ALERT_RULES.domain;
   type Hit = { row: DomainAlertRow; code: (typeof DOMAIN_ALERT_CODES)[number]; values: Readonly<Record<string, string | number>>; urgent: boolean };
@@ -957,4 +963,14 @@ export function alertsFor(snapshot: AlertSnapshot, words: Words = analyticsWords
     domainAlert(snapshot, words),
   ].filter((a): a is Alert => a !== null);
   return orderAlerts(found);
+}
+
+/**
+ * The same three rules as `alertsFor()` raises them, by the same code, on what a site measures besides sales (`SignalSnapshot`) alone:
+ * the platform's alerts and its briefing read Kaizena Flow's own store's so (ecosystem plan E5.2, D757), with kaizenaflow.com among its
+ * domains. Most pressing first.
+ */
+export function signalAlertsFor(snapshot: SignalSnapshot, words: Words = analyticsWords().alertText): Alert[] {
+  if (!isDay(snapshot.today)) throw new RangeError(`today is not a day: ${snapshot.today}`);
+  return orderAlerts([frustrationAlert(snapshot, words), slowPageAlert(snapshot, words), domainAlert(snapshot, words)].filter((a): a is Alert => a !== null));
 }
