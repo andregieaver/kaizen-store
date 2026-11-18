@@ -1,9 +1,8 @@
 # Rules: Admin, features and integrations
 
-The admin's rules, moved verbatim from CLAUDE.md on 30 October 2026 (consolidation 7) and split by area on 31 October 2026 (PSI
-CODE-05). CLAUDE.md keeps one line per rule under **Admin**; the rule is in full under the same words as a heading in one of these files.
-Read the rule of the part you change before changing it; a rule changes in its file, and its line in CLAUDE.md when its gist changes.
-`src/lib/rules-index.test.ts` fails when a line in CLAUDE.md has no heading here, or a heading here has no line in CLAUDE.md.
+The admin's rules in full, split by area. CLAUDE.md names these files in its map and keeps no line per rule: find a rule by searching
+the area's file for the path, component or table you change. Each heading is unique across the rule files, and every file here is in
+the list below (`src/lib/rules-index.test.ts`). A rule changes in its file.
 
 - [`platform.md`](platform.md): The admin's frame, accounts, security and the platform
 - [`ai.md`](ai.md): The AI manager, the autopilot and AI that builds

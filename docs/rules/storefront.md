@@ -1,8 +1,8 @@
 # Rules: Storefront
 
-Moved verbatim from CLAUDE.md on 30 October 2026 (consolidation 7), so the rulebook every session loads stays short. CLAUDE.md keeps one
-line per rule pointing here; each rule below is as it was, under that line as its heading. Read the rule of the part you change before
-changing it; a rule changes here, and its line in CLAUDE.md when its gist changes.
+The storefront's rules in full. CLAUDE.md names this file in its map and keeps no line per rule: find a rule by searching this file for
+the path, component or table you change, or list the rules with a search for lines that start with two hashes. Each heading is unique
+(`src/lib/rules-index.test.ts`). A rule changes here.
 
 ## Kaizen is multi-tenant (`docs/platform.md`)
 

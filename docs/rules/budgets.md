@@ -58,7 +58,7 @@ The server's measure 7, refreshes and store draws, is held by Platform, Usage an
 `node scripts/docs-ratchet.mjs --check` and src/lib/docs-budget.scan.test.ts hold, against src/lib/docs-budget.baseline.json:
 
 - CLAUDE.md's bytes and lines, and the bytes loaded in every session (CLAUDE.md, its imports, unpathed .claude/rules files), are
-  reported; what is held is the part outside the Storefront and Admin index (above), since a new rule adds its index line.
+  reported in the baseline; CLAUDE.md's own ceiling is written in the test (below).
 - No new import in CLAUDE.md, and no .claude/rules file without a paths list.
 - Lines over 500 characters: none in CLAUDE.md; counts that only fall in the rules, the decisions' prose and the living docs.
 - Table rows over 500 characters, per file, which only fall (not docs/decisions.md, whose rows the 4,000-byte rule holds).
@@ -70,11 +70,10 @@ The server's measure 7, refreshes and store draws, is held by Platform, Usage an
 
 ## CLAUDE.md
 
-The bytes of CLAUDE.md outside its Storefront and Admin sections only fall: src/lib/docs-budget.scan.test.ts fails when they rise
-above src/lib/docs-budget.baseline.json (key claudeOutsideIndex).
-Inside the two sections a new rule adds one line, at most 200 characters, that equals the start of its heading in docs/rules
-(src/lib/rules-index.test.ts pairs them).
-When the figure falls, lower the baseline in the same change: the test says so.
+CLAUDE.md is a core with a map of the rule files (bloat review step 2.1): src/lib/docs-budget.scan.test.ts fails when it passes
+15,000 bytes or 200 lines. The two numbers are written in the test, not in the baseline, so no script raises them; they never rise.
+A new rule gets a heading in its area's file under docs/rules and no line in CLAUDE.md: src/lib/rules-index.test.ts holds every
+heading unique and the map naming every rule file.
 
 ## Decisions and the rules' names (step 0.41)
 
