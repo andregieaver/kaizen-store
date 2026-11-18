@@ -1842,6 +1842,7 @@
         "product_market_texts",
         "product_media",
         "product_passports",
+        "product_terms",
         "product_translations",
         "product_variants",
         "products",
