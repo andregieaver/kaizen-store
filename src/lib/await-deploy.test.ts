@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { challengePagesFrom, deployVerdict, pageLine, pageProblems, secondsSince, SMOKE_CHECKS, smokePages, smokeProblems } from "../../scripts/await-deploy.mjs";
+import { buildLines, challengePagesFrom, deployVerdict, pageLine, pageProblems, secondsSince, SMOKE_CHECKS, smokePages, smokeProblems } from "../../scripts/await-deploy.mjs";
 
 /** CI's wait for production to run a pushed commit (D389): the commit itself, or a later deployment that includes it, is live. */
 describe("deployVerdict", () => {
@@ -88,5 +88,17 @@ describe("secondsSince", () => {
     expect(secondsSince(undefined, 1_000)).toBeNull();
     expect(secondsSince("not a time", 1_000)).toBeNull();
     expect(secondsSince(5_000, 1_000)).toBeNull();
+  });
+});
+
+describe("buildLines (step 1.21)", () => {
+  it("gives one line naming the build's figures and its ceiling", () => {
+    const line = buildLines({ seconds: 263, peakKb: 5662310, machineKb: 8388608, history: [] });
+    expect(line).toMatch(/^Build: 263 s, peak 5\.4 GB of 8\.0 GB; ceiling 6\.0 GB/);
+  });
+
+  it("says so when the deployment reports no build", () => {
+    expect(buildLines(null)).toBe("This deployment reports no build figures.");
+    expect(buildLines({ seconds: 5, peakKb: 0, machineKb: 0, history: [] })).toBe("This deployment reports no build figures.");
   });
 });

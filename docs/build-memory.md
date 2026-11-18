@@ -42,10 +42,12 @@ What held the memory, measured without the cap:
 
 ## Watch
 
+- No paid build machine, plan or add-on is used, now or later (the owner, bloat review step 1.21). If the build needs room: the two
+  source-map switches below, then the build in CI deployed prebuilt (step 1.29).
 - **A type error can now reach production** without failing the deploy, when a push has no migration (those deploy before the checks finish). CI's `static` job still goes red.
 - **The margin was about 0.8 GB on 28 October** (about 1 to 1.7 GB since D709, below). If the build grows past it:
   - cut what the compile holds;
-  - or build in CI and deploy the built output (bloat review step 1.21's free way). The owner has ruled out paid services, so the 16 GB build machine is not an option.
+  - or build in CI and deploy the built output (bloat review step 1.29, the free way).
 - **Vercel environment variables:** a `NODE_OPTIONS` set there overrides none of this, but a large heap set there would let the compile hold more.
 - **11 November 2026: the margin was crossed once.** Vercel's build of `f5c1ec8` (D555) was killed for memory while collecting page data
   with one worker; the same commit built when the deploy hook was asked again a few minutes later. On 17 November it happened twice
@@ -56,8 +58,19 @@ What held the memory, measured without the cap:
   (`node scripts/ci-budgets-check.mjs --suggest`); the build's peak memory is read by hand from Vercel's log and written under the next heading.
 - **Source-map switches, 18 November 2026 (step 1.20, measured below).** The peak with `serverSourceMaps: false` was 6.8 GB under the 8 GB cap against 7.6 to 7.8 GB without it
   (two runs); `enablePrerenderSourceMaps: false` alone gained nothing (7.9 GB). The first stays, on Vercel only; the second is not kept.
-  If the peak with a switch is 6.0 GB or less, the build has a quarter of the machine free and step 1.21's change can wait; nothing is paid for either way: the 16 GB machine is not an option, and step 1.21's free way is to build in CI and deploy the built output.
-  At 6.8 GB the peak is above 6.0 GB, so step 1.21's change does not wait.
+  If the peak with a switch is 6.0 GB or less, the build has a quarter of the machine free; nothing is paid for either way, and the free
+  way past that is to build in CI and deploy the built output (step 1.29). At 6.8 GB the peak is above 6.0 GB, so that step does not wait.
+
+### What every build reports
+
+A production build ends by writing `build-stats.json` in the repository root (`scripts/next-build.mjs`, step 1.21): the commit, the build's
+seconds, its peak memory, the build machine's memory and the peaks of the ten builds before it (numbers and a commit hash only; the file is
+git-ignored). The peak is read as in the `Build:` line: the container's own peak where the kernel keeps one, else the machine's memory in
+use, sampled each second. The ten earlier peaks are read from production's `/api/health` when a production build starts, so no store is
+needed. `next.config.ts` traces the file with the health route, so `/api/health` carries it as `build` (public, numbers only), and the
+wait for the deploy (`scripts/await-deploy.mjs`) prints the build's line against its ceiling in the run's summary under
+`### Production build`. The ceiling is the median of the last ten production builds plus 10%, never above 75% of the machine
+(`scripts/lib/build-stats.mjs`); until a later commit turns it on, a build above it is only printed.
 
 ## Measured again, 17 November 2026 (D709)
 
@@ -85,7 +98,7 @@ logs (`log.ts`'s `errorStack`) were, and stay, positions in the built chunks. Of
 **The margin is about 1.0 to 1.7 GB** against 8 GB (peaks of 6.3 to 7.0 GB). At the rate the code grew over these three weeks the
 compile gains about 0.5 GB a week, so this buys **two to three weeks, not a lasting answer.** There is no other large, safe cut left
 in the configuration: what remains is the compile of the code itself. The owner has ruled out a paid build machine, so the lasting
-answer is bloat review step 1.21's free way: build in CI and deploy the built output. After it, the one-worker and no-source-map
+answer is bloat review step 1.29's free way: build in CI and deploy the built output. After it, the one-worker and no-source-map
 settings can stay or go, and this note should say which.
 
 ## Measured again, 18 November 2026 (bloat review step 1.20)

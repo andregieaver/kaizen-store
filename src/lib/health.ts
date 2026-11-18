@@ -23,6 +23,12 @@ export type HealthReport = {
   /** Whether Resend is set up to send (never the key), and to report deliveries back. */
   email: "ok" | "not_set" | "unrecognised";
   emailEvents: "ok" | "not_set" | "unrecognised";
+  /**
+   * The build that made this deployment: its seconds, its peak memory and the machine's, and the peaks of the ten builds before it
+   * (numbers only, no secret; `scripts/next-build.mjs` writes them, `scripts/await-deploy.mjs` judges them). Left out when the build left none
+   * (the report's other cases stay as they were; the wait reads a missing `build` as "no figures").
+   */
+  build?: { seconds: number; peakKb: number; machineKb: number; history: number[] } | null;
 };
 
 export type DatabaseConnectionKind =
@@ -76,10 +82,13 @@ export async function checkHealth(
     emailEnv?: Record<string, string | undefined>;
     region?: string;
     commit?: string;
+    build?: HealthReport["build"] | null;
+    buildCommit?: string | null;
   } = {},
 ): Promise<HealthReport> {
   const region = deps.region ?? process.env.VERCEL_REGION ?? "local";
-  const commit = deps.commit ?? process.env.VERCEL_GIT_COMMIT_SHA ?? null;
+  // A prebuilt deployment has no VERCEL_GIT_COMMIT_SHA: the build wrote the commit itself.
+  const commit = deps.commit ?? process.env.VERCEL_GIT_COMMIT_SHA ?? deps.buildCommit ?? null;
 
   const [supabase, database] = await Promise.all([
     checkSupabase(deps.fetch ?? fetch, deps.env ?? publicEnv),
@@ -97,6 +106,26 @@ export async function checkHealth(
     uploadKey: uploadKeyKind(deps.uploadKey ?? process.env.SUPABASE_SECRET_KEY),
     email: emailSetup(deps.emailEnv ?? process.env),
     emailEvents: emailEventsSetup(deps.emailEnv ?? process.env),
+    ...(deps.build ? { build: deps.build } : {}),
+  };
+}
+
+/** What `build-stats.json` says: the build's figures and its commit; nothing when the text is not an object with seconds above 0 and a peak. */
+export function readBuildStats(text: string): { build: NonNullable<HealthReport["build"]> | null; commit: string | null } {
+  const none = { build: null, commit: null };
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return none;
+  }
+  if (!data || typeof data !== "object") return none;
+  const d = data as Record<string, unknown>;
+  if (typeof d.seconds !== "number" || !(d.seconds > 0) || typeof d.peakKb !== "number") return none;
+  const history = (Array.isArray(d.history) ? d.history : []).filter((n): n is number => typeof n === "number" && Number.isFinite(n)).slice(-10);
+  return {
+    build: { seconds: d.seconds, peakKb: d.peakKb, machineKb: typeof d.machineKb === "number" ? d.machineKb : 0, history },
+    commit: typeof d.commit === "string" && /^[0-9a-f]{7,64}$/i.test(d.commit) ? d.commit : null,
   };
 }
 

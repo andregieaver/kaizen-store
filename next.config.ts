@@ -55,6 +55,8 @@ const nextConfig: NextConfig = {
   // Chromium (the cookie scan, D58; the page replicator, D150) is read from disk, not
   // imported, so the trace needs telling; only the routes that launch it carry it.
   outputFileTracingIncludes: {
+    // The build writes this file when it ends (scripts/next-build.mjs: seconds, peak memory, the ten builds before) and the health route reads it.
+    "/api/health": ["./build-stats.json"],
     // Playwright also reads browsers.json and package.json at run time. The globs name
     // pnpm's own folders: a file under a linked folder would turn the link into a folder.
     "/api/cron/cookie-scan": CHROMIUM_FILES,
