@@ -186,6 +186,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   automations: never("A store's automations write to its own list (D298); a copy starts with none switched on."),
   automation_steps: never("An automation's follow-ups (D653) go with its automations, which are not copied."),
   automation_sends: never("Which automation emails went to whom (D298): people's data."),
+  email_clicks: never("Who pressed a broadcast's links (D754): people's data."),
   customer_product_views: never("What a signed-in subscriber looked at (D691): people's data."),
   stock_requests: never("Shoppers' back-in-stock requests (D298): people's data."),
   segments: never("Segments name the store's own customer groups and tags (D296); a copy starts without them."),

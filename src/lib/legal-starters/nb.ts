@@ -154,7 +154,7 @@ export const NB: StarterText = {
     "privacy.purpose.accounting": "å føre regnskapet og oppbevare dokumentasjonen som loven krever (rettslig forpliktelse)",
     "privacy.purpose.service": "å svare på spørsmål og klager fra deg (oppfyllelse av avtalen, og vår berettigede interesse i å gi god service)",
     "privacy.purpose.security": "å holde butikken sikker og forhindre svindel og misbruk (vår berettigede interesse)",
-    "privacy.purpose.marketing": "å sende deg markedsføring på e-post, bare hvis du har sagt ja til det (samtykke)",
+    "privacy.purpose.marketing": "å sende deg markedsføring på e-post, bare hvis du har sagt ja til det (samtykke), og å se hvilke lenker i den du trykker på, lagret i 180 dager (e-postene har ingen sporingspiksel, så om du åpner en blir ikke registrert)",
     "privacy.purpose.visits": "å telle besøk i butikken uten informasjonskapsler, for å se hvordan den brukes; vi lagrer ingen IP-adresse og ingen nettleseridentifikator (vår berettigede interesse)",
     // D656: hand-written, for legal review.
     "privacy.purpose.heatmaps": "å se, som summer per side og dag, hvor besøkende som tillater statistikk klikker, hvor langt de ruller og hvor lenge deler av en side er på skjermen (varmekart; ditt samtykke)",

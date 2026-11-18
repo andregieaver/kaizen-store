@@ -180,6 +180,7 @@
     "src/db/schema.ts#dutyRates",
     "src/db/schema.ts#ecbReferenceRates",
     "src/db/schema.ts#einvoiceSends",
+    "src/db/schema.ts#emailClicks",
     "src/db/schema.ts#emailFiling",
     "src/db/schema.ts#emailOptOuts",
     "src/db/schema.ts#emailTemplates",

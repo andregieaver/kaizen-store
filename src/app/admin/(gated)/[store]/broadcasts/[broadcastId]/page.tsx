@@ -185,12 +185,15 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
         {report.links.length === 0 ? (
           <p className="text-body text-muted">{wb.noLinks}</p>
         ) : (
-          <table className="w-full text-body">
+          <>
+            {report.people > 0 && <p className="mb-3 text-body text-ink">{fillWords(wb.pressedBy, { n: n(report.people) })}</p>}
+            <table className="w-full text-body">
             <thead>
               <tr className="text-left text-caption text-muted">
                 <th className="py-1 font-normal">{wb.link}</th>
                 <th className="py-1 font-normal">{w.common.language}</th>
                 <th className="py-1 text-right font-normal">{wb.pressesColumn}</th>
+                <th className="py-1 pl-4 text-right font-normal">{wb.peopleColumn}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -202,10 +205,12 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
                   </td>
                   <td className="py-2 text-ink-2">{l.locale}</td>
                   <td className="py-2 text-right tabular-nums text-ink">{n(l.clicks)}</td>
+                  <td className="py-2 pl-4 text-right tabular-nums text-ink">{n(l.people)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </>
         )}
       </Card>
     </div>

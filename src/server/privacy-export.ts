@@ -55,6 +55,7 @@ import { notifyOwners } from "./privacy-notices";
 import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } from "./privacy-subject";
 
 import { retentionRules } from "./retention";
+import { clicksOf } from "./email-clicks";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
 import { questionsOfConversations } from "./unanswered-questions";
@@ -1209,7 +1210,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerContracts, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerContracts, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews, emailClicks] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1229,6 +1230,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     commentsOf(s.storeId, s.addresses),
     loadSmsNumbers(s),
     loadProductViews(s),
+    clicksOf(s.storeId, s.addresses, s.customerId),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -1268,6 +1270,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     customerActivities,
     signupCodes,
     broadcasts,
+    emailClicks,
     automations,
     stockRequests,
     productViews,
