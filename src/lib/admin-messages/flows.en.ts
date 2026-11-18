@@ -1,0 +1,40 @@
+/**
+ * The owner's words for flows (D767, `docs/flows.md`): the list, a flow read as a story, Test and Switch on. Server-only (`SERVER_AREAS`).
+ */
+export const flowsEn = {
+  title: "Flows",
+  lead: "A flow sends emails one after another to each person, from the moment something happens, and stops when they reach the goal.",
+  empty: "No flows yet. Start with a welcome series: three emails, ready to read and change.",
+  startWelcome: "Start a welcome series",
+  open: "Open",
+  statuses: { on: "On", off: "Off" },
+  untested: "Test it before switching it on.",
+  test: "Test it",
+  tested: "Tested on {person}: {emails}.",
+  testedNobody: "Tested with nobody on your list yet: {emails}.",
+  ends: { goal: "It stops at the goal.", done: "Then it ends." },
+  switchOn: "Switch on",
+  switchOff: "Switch off",
+  switchedOn: "On. New people go through it from now.",
+  switchedOff: "Off. Nobody new goes into it; those already in it finish.",
+  emailLabel: "Email",
+  story: {
+    triggers: {
+      "subscriber.subscribed": "When someone joins your list:",
+      "order.paid": "When someone pays for an order:",
+      "checkout.abandoned": "When someone leaves their checkout:",
+    },
+    sameDay: "the same day",
+    after: { hours: { one: "an hour later", many: "{n} hours later" }, days: { one: "a day later", many: "{n} days later" } },
+    conditions: {
+      ordered: { yes: "if they have ordered", no: "if they have not ordered" },
+      clicked: { yes: "if they pressed a link", no: "if they did not press a link" },
+      segment: { yes: "if they are in {segment}", no: "if they are not in {segment}" },
+    },
+    goal: "It stops when they order.",
+    ends: "Then it ends.",
+  },
+  problems: { untested: "Test the flow before switching it on.", missing: "That flow is not this store's." },
+};
+
+export type FlowsMessages = typeof flowsEn;

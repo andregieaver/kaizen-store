@@ -350,6 +350,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Produktfeeder",
     keywords: ["produktfeed", "google shopping", "merchant center", "meta-katalog", "facebook-butikk", "instagram shopping", "tiktok-katalog", "pinterest-katalog", "xml-feed", "csv-feed"],
   },
+  "store:flows": { title: "Forløp", keywords: ["forløp", "sekvens", "serie", "velkomstserie", "e-postserie", "slå på"] },
+  "store:flow": { title: "Forløp", keywords: ["forløp", "fortelling", "test", "slå på"] },
   "store:email-automation": { title: "E-postautomatisering", keywords: ["e-postautomatisering", "automatisering", "test-e-post", "slå på"] },
   "store:email-follow-up": { title: "Andre eller tredje e-post", keywords: ["andre e-post", "tredje e-post", "neste e-post", "oppfølging"] },
   "store:text-message.new": { title: "Ny SMS", keywords: ["ny sms", "skriv sms", "sms-utsendelse"] },

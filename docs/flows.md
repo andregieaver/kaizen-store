@@ -36,7 +36,10 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
 1. **The engine core.** The tree, `checkFlow()` and `advance()` pure and tested; the two tables; entering from the log and moving on in
    the every-minute job; a test that walks the newest person through the flow and sends nothing. No screen yet, beyond a store's flows
    listed for the platform's own check.
-2. **The story** (M3.3): a flow read as sentences, the emails as pictures (*When someone joins, the same day: Welcome. Three days
+2. **The story** (M3.3), built in parts. *Part a, 18 November 2026:* `/admin/{store}/flows` lists the flows and starts the welcome series
+   (`welcomeSeries()`, `src/lib/flow-recipes.ts`); a flow's page reads it as sentences (`storyLines()`, `src/lib/flow-story.ts`) with each
+   email drawn as its subject and first words, Test and Switch on. *Next:* the words edited where they are and the canvas.
+   The whole of it: a flow read as sentences, the emails as pictures (*When someone joins, the same day: Welcome. Three days
    later, if they have not ordered: our best sellers*); *Customise* opens the canvas. One model, so a change in either shows in both.
 3. **Recipes** (M2.2, M3.1): today's automations as flows on the engine, their tests carried over, and the front page that starts
    from a goal.

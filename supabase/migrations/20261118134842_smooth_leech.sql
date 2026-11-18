@@ -1,0 +1,2 @@
+CREATE INDEX "flow_run_steps_run_idx" ON "commerce"."flow_run_steps" USING btree ("store_id","run_id");--> statement-breakpoint
+CREATE INDEX "flow_versions_flow_idx" ON "commerce"."flow_versions" USING btree ("store_id","flow_id");

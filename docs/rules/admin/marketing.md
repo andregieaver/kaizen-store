@@ -182,6 +182,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   back to the shared address. The card sits on Settings, Notifications (`settings:write`) and on Platform, Emails (`settings`). Adding a
   domain needs Resend's key to have full access; a sending-only key is refused in plain words.
 
+## Flows (D767, `docs/flows.md`, `src/lib/flows.ts` pure, `src/server/flows.ts`, `/admin/{store}/flows`)
+
+- **Flows (D767, `docs/flows.md`, `src/lib/flows.ts` pure, `src/server/flows.ts`, `/admin/{store}/flows`)**: a flow is a trigger, a tree of steps
+  (email, wait, if, end) and goals, checked by `checkFlow()` and walked by `advance()`, both pure; every save is a version in
+  `flow_versions`, switched off until that version is tested (`testFlow()` walks the newest subscriber and sends nothing). People enter
+  only from the event log (reader `flows`), once per event and never twice at once (`flow_runs`), and the every-minute marketing job
+  moves each due run on one step a turn (`tickFlows()`, one read while no flow is on); an email goes through the sending guard, the
+  plan's room, quiet hours and the contact policy, a held one never later. The owner reads a flow as a story (`storyLines()`), never as
+  a tree. Runs are personal data: exported, erased, gone 90 days after they end.
+
 ## The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
 
 - **The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)**: a store's marketing email

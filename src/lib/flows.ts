@@ -51,6 +51,7 @@ export const flowInputSchema = z.object({
   steps: z.array(flowStepSchema),
   goals: z.array(z.object({ kind: z.literal("ordered") })).max(1),
 });
+export type FlowInput = z.infer<typeof flowInputSchema>;
 
 /** Every step of a tree, depth first, with its depth. */
 function* walk(steps: readonly FlowStep[], depth = 1): Generator<{ step: FlowStep; depth: number }> {

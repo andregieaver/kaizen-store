@@ -8578,6 +8578,7 @@ export const flowVersions = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.flowId, t.version] }),
+    index("flow_versions_flow_idx").on(t.storeId, t.flowId),
     foreignKey({ name: "flow_versions_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
   ],
 );
@@ -8636,6 +8637,7 @@ export const flowRunSteps = commerce.table(
   (t) => [
     primaryKey({ columns: [t.runId, t.stepId] }),
     index("flow_run_steps_store_idx").on(t.storeId, t.createdAt),
+    index("flow_run_steps_run_idx").on(t.storeId, t.runId),
     foreignKey({ name: "flow_run_steps_run_fk", columns: [t.storeId, t.runId], foreignColumns: [flowRuns.storeId, flowRuns.id] }).onDelete("cascade"),
     check("flow_run_steps_outcome", sql`${t.outcome} in ('sent', 'logged', 'failed', 'suppressed')`),
     check("flow_run_steps_reason", sql`${t.suppressedReason} is null or ${t.suppressedReason} in ('cap', 'spacing', 'room', 'paused')`),

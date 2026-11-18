@@ -22,7 +22,7 @@ const STORE = join(ROOT, "src/app/admin/(gated)/[store]");
 const EXTENSION_FOLDERS: Record<ExtensionId, readonly string[]> = {
   ab_testing: ["experiments"],
   support_desk: ["support"],
-  email_automation: ["broadcasts", "automations", "segments"],
+  email_automation: ["broadcasts", "automations", "segments", "flows"],
   work: ["settings/books"],
   deals: ["deals", "leads", "analytics/sales"],
 };
