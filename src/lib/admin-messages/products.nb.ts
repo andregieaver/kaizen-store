@@ -347,6 +347,16 @@ export const productsNb: ProductsMessages = {
     priceHistory: "En pris som ble endret, står i produktets prishistorikk.",
   },
   importPage: {
+    /** Round 49 (D762): what a phone shows. */
+    phone: {
+      lead: "Fra vår fil eller Shopifys, sjekket før noe endres.",
+      hint: "Opptil {max}. Ingenting endres før du har sett sjekken.",
+      rules: "Slik leses filen",
+      rulesSub: "Adresser, SKU-er, priser, bilder",
+      kept: "Filen din slettes {days} dager etter importen; hentede bilder blir.",
+      open: "Åpne",
+      close: "Lukk",
+    },
     back: "Produkter",
     title: "Importer produkter",
     intro:

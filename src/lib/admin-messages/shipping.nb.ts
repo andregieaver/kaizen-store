@@ -250,6 +250,17 @@ export const shippingNb: ShippingMessages = {
     add: "Legg til sone",
   },
   profiles: {
+    /** Round 49 (D762): what a phone shows. */
+    phone: {
+      lead: "Produkter som sendes annerledes, får egne priser.",
+      generalSub: "alle produkter som ikke er i en annen profil",
+      addSub: "Store, skjøre eller kalde: et navn og produktene",
+      sum: "En handlekurv med produkter fra flere profiler betaler summen av prisene.",
+      open: "Åpne",
+      close: "Lukk",
+      change: "Endre",
+      done: "Ferdig",
+    },
     general: "Generelt",
     generalDescription: "Alle produkter som ikke er i noen annen profil. Fraktmetodene priser dem i Generelt-blokkene sine.",
     products: { one: "{n} produkt.", many: "{n} produkter." },

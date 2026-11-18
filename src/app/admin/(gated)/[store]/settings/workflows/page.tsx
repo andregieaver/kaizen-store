@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PhoneRow } from "@/components/admin/phone-row";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AdminLink, Card, PageHeader } from "@/components/admin/ui";
 import { NewWorkflow, WorkflowCard, type WorkflowActions, type WorkflowView } from "@/components/admin/workflows";
@@ -71,7 +72,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
   return (
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={<>{w.description}</>} />
+        <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         {moved.length > 0 && (
           <Card title={movedWords.title}>
             <p role="status" className="text-body text-ink">
@@ -84,10 +85,15 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
             </p>
           </Card>
         )}
+        {/* Round 49 (D762): on a phone the workflows come first and a new one is a row under them that opens the form. */}
         {canWrite && (
-          <Card title={w.make}>
-            <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} segments={segmentChoices} />
-          </Card>
+          <div className="max-sm:order-1 max-sm:overflow-hidden max-sm:rounded-card">
+            <PhoneRow flat last title={w.make} sub={w.phone.makeSub} change={w.phone.open} done={w.phone.close}>
+              <Card title={w.make}>
+                <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} segments={segmentChoices} />
+              </Card>
+            </PhoneRow>
+          </div>
         )}
         {views.length === 0 ? (
           <p className="text-sm text-muted">{w.none}</p>
@@ -105,7 +111,8 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
             />
           ))
         )}
-        <p className="text-sm text-muted">{w.limits}</p>
+        <p className="text-sm text-muted max-sm:order-2 sm:hidden">{w.phone.limits}</p>
+        <p className="text-sm text-muted max-sm:hidden">{w.limits}</p>
       </div>
     </AdminTextScope>
   );

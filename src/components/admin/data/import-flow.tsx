@@ -34,6 +34,7 @@ export function ImportUpload({
   register: (input: { path: string; name: string }) => Promise<Registered>;
 }) {
   const w = useAdminText("products").upload;
+  const pw = useAdminText("products").importPage.phone;
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -86,7 +87,9 @@ export function ImportUpload({
           {w.label}
         </label>
         <input id="import-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
-        <p className={hint}>{fillWords(w.hint, { max: formatBytes(IMPORT_MAX_BYTES) })}</p>
+        {/* Round 49 (D762): one line on a phone. */}
+        <p className={`${hint} sm:hidden`}>{fillWords(pw.hint, { max: formatBytes(IMPORT_MAX_BYTES) })}</p>
+        <p className={`${hint} max-sm:hidden`}>{fillWords(w.hint, { max: formatBytes(IMPORT_MAX_BYTES) })}</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={send} disabled={working} className={primary}>
