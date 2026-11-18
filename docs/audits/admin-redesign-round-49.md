@@ -19,7 +19,7 @@ Below 640 px wide, each page changes as described here. From 640 px it is as bef
 - **The workflows come first,** or the line saying there are none.
 - **New workflow is a row under them** (*When, only if, then*) that opens the whole form. CSS `order` moves it on a phone only.
 - **The limits are one line.**
-- Kaizena Flow's own workflows are not on this page: the platform has none of its own yet (`docs/platform-parity.md`).
+- Kaizena Flow's own workflows (`/admin/platform/workflows`, D516) change the same way, in the same change.
 
 ## Shipping profiles (`ProfilesView`)
 
@@ -44,7 +44,7 @@ Below 640 px wide, each page changes as described here. From 640 px it is as bef
 ## Platform
 
 - Kaizena Flow sells plans, not goods: it has no shipping profiles or product imports.
-- Kaizena Flow has no workflows of its own yet. That gap is not new: this round only changes how a store's page reads on a phone.
+- Kaizena Flow's own Workflows page (D516) gets the same rows: its workflows first, a new one as a row. Its limits keep their own words.
 
 ## Tests
 
