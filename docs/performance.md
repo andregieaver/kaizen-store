@@ -397,26 +397,39 @@ component's own imports are left out):
 
 | Entry | Files reached | Forbidden modules it reaches today |
 |---|---|---|
-| proxy | 323 | admin-messages, ai.ts, auth.ts, pages.ts, seo.ts |
+| proxy | 325 | admin-messages, ai.ts, auth.ts, pages.ts, seo.ts |
 | start hook | 1 | none |
-| health | 10 | none |
-| beacon-visit | 114 | admin-messages |
-| beacon-touch | 114 | admin-messages |
-| beacon-speed | 128 | admin-messages |
-| beacon-own-speed | 116 | admin-messages |
-| beacon-recommendation-events | 110 | admin-messages |
+| health | 13 | none |
+| beacon-visit | 116 | admin-messages |
+| beacon-touch | 116 | admin-messages |
+| beacon-speed | 130 | admin-messages |
+| beacon-own-speed | 118 | admin-messages |
+| beacon-recommendation-events | 112 | admin-messages |
 | shop-tiles | 320 | supabase-js, admin-messages, auth.ts |
-| store-layout | 594 | none |
+| store-layout | 596 | none |
 | store-home | 488 | none |
 | store-product | 886 | none |
-| admin-store-layout | 1,068 | none |
-| admin-orders | 1,076 | none |
-| platform-admin-layout | 1,065 | none |
-| platform-admin-home | 1,062 | none |
+| admin-store-layout | 1,070 | none |
+| admin-orders | 1,078 | none |
+| platform-admin-layout | 1,067 | none |
+| platform-admin-home | 1,064 | none |
 | site-front-page | 488 | none |
 | docs-feedback | 282 | none |
 
-The largest import cycle in `src/server` is 23 files, and no route handler reaches over 1,500 files.
+The largest import cycle in `src/server` is 23 files, and one route handler reaches over 1,500 files: the reminders job
+(1,502, with its reason in `src/server/route-load.baseline.json`). The cold-start helper (step 1.16) added two files to each entry
+that reaches it, three to health, which now reaches the log.
+
+## Cold starts in production (bloat review step 1.16)
+
+Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the
+instance was started for, the milliseconds to the end of `register()` and to its first answer, its memory and the bytes of
+translated text read at start. Platform, Usage and limits, under `#cold-starts`, shows cold starts a day with the median and the
+95th percentile by kind, against three lines: the proxy within 150 ms of the health check's median, a store page within 400 ms and
+an admin page within 600 ms. Rows go after 30 days. Next's own loading of its route list is not in these figures;
+`scripts/route-budget.mjs` times it on every build. A kind is recorded where its first request of an instance reaches it: the
+`store` kind only on a store with several markets (its per-request part is the country hint), and Kaizena Flow's own pages (`site`)
+are not recorded by this step.
 
 The megabytes traced beside a function (`node scripts/trace-sizes.mjs`, after `pnpm build`; 883 traces):
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
+import { ColdStartsCard } from "@/components/admin/cold-starts-card";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -19,6 +20,7 @@ import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
 import { cacheEventsWeek, type CacheEventRow } from "@/server/cache-events";
 import { cronJobRows } from "@/server/cron-runs";
+import { coldStartReport } from "@/server/instance-starts";
 import { ownSpeedReport } from "@/server/own-speed";
 import { currentFlags } from "@/server/platform-flags";
 import { adminFromDublin } from "@/server/status";
@@ -46,7 +48,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen, flagged, cacheWeek] = await Promise.all([
+  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen, flagged, cacheWeek, coldStarts] = await Promise.all([
     platformUsage(month),
     databaseGlance(),
     drainConnected(),
@@ -58,6 +60,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
     recordingsOpenNow(),
     currentFlags(),
     cacheEventsWeek(),
+    coldStartReport(),
   ]);
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
@@ -210,6 +213,10 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           words={w.speed}
           speed={adminText(lang, "analytics").speed}
         />
+      </div>
+      {/* How long a fresh server instance took to its first answer, by kind (bloat review step 1.16). */}
+      <div id="cold-starts">
+        <ColdStartsCard rows={coldStarts.rows} words={w.coldStarts} locale={locale} />
       </div>
       {/* The admin timed from Dublin by the status checks (PSI PERF-02). */}
       <Card title={w.dublin.title} compact>

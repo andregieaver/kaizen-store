@@ -448,6 +448,7 @@ export const platformNb: PlatformMessages = {
       database_flag: { one: "1 ting å se på under Bruk og grenser.", many: "{n} ting å se på under Bruk og grenser." },
       admin_slow: "Adminpanelet er tregt: {kind} på {screen}, {metric} {value} ved 75-persentilen over 28 dager.",
       house_signal: "Kaizena Flows nettsted: {text}",
+      ui_text_large: "Hver serverinstans leser {size} oversatt tekst når den starter.",
     },
     asked: { one: "1 ba om en butikk", many: "{n} ba om en butikk" },
     opened: { one: "1 butikk åpnet", many: "{n} butikker åpnet" },

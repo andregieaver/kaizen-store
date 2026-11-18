@@ -452,6 +452,7 @@ export const platformEn = {
       database_flag: { one: "1 thing to look at under Usage and limits.", many: "{n} things to look at under Usage and limits." },
       admin_slow: "The admin is slow: {kind} on a {screen}, {metric} {value} at the 75th percentile over 28 days.",
       house_signal: "Kaizena Flow's site: {text}",
+      ui_text_large: "Every server instance reads {size} of translated text when it starts.",
     },
     asked: { one: "1 asked for a store", many: "{n} asked for a store" },
     opened: { one: "1 store opened", many: "{n} stores opened" },

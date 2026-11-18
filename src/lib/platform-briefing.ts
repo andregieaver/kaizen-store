@@ -7,6 +7,7 @@
 import { ADMIN_LANG_FACTS, ADMIN_LANGS, type AdminLang } from "./admin-lang";
 import { signalAlertsFor, type SignalSnapshot } from "./analytics-alerts";
 import { analyticsWordsIn } from "./analytics-words";
+import { UI_BYTES_ALERT } from "./instance-start";
 import type { SpeedRow } from "./speed";
 
 export const TARGET_METRICS = ["mrr", "sales", "paying", "new_stores"] as const;
@@ -76,9 +77,11 @@ export type PlatformSnapshot = {
   house?: { slug: string; siteHost: string | null; signals: SignalSnapshot } | null;
   /** Questions Kaizena Flow's own chat assistant could not answer, still open (ecosystem plan E5.4, D757): the home's attention counts them. */
   questionsOpen?: number;
+  /** The most translated text any instance read at start on the last day with a start (bloat review step 1.16); the briefing says when it is over 1 MB. */
+  uiBytesAtStart?: number;
 };
 
-export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag" | "house_signal";
+export type AlertId = "requests_old" | "late_payments" | "mrr_down" | "target_behind" | "trials_ending" | "admin_slow" | "database_flag" | "house_signal" | "ui_text_large";
 export type PlatformAlert = {
   id: AlertId;
   severity: "urgent" | "warning" | "info";
@@ -152,6 +155,9 @@ export function platformAlertsFor(s: PlatformSnapshot): PlatformAlert[] {
     alerts.push({ id: "database_flag", severity: "warning", values: { n: s.flags.length, first: s.flags[0].id }, href: "/admin/platform/capacity" });
   }
   alerts.push(...houseSignalAlerts(s.house));
+  if (s.uiBytesAtStart !== undefined && s.uiBytesAtStart > UI_BYTES_ALERT) {
+    alerts.push({ id: "ui_text_large", severity: "info", values: { bytes: s.uiBytesAtStart }, href: "/admin/platform/capacity#cold-starts" });
+  }
   const order = { urgent: 0, warning: 1, info: 2 } as const;
   return alerts.sort((a, b) => order[a.severity] - order[b.severity]);
 }

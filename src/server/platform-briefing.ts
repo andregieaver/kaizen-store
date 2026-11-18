@@ -11,6 +11,7 @@ import { CAPACITY_WORDS } from "@/lib/admin-words/capacity";
 import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { renderEmail } from "@/lib/email-layout";
 import { formatMoney } from "@/lib/money";
+import { formatUsage } from "@/lib/usage-format";
 import {
   briefingDue,
   isBriefingKind,
@@ -33,6 +34,7 @@ import { publicSiteHost, siteUrl } from "@/lib/site";
 import { domainAlertRow, signalSnapshotFor } from "./analytics-insights";
 import { audit, platformCan, type Account } from "./auth";
 import { sendEmail } from "./email";
+import { latestUiBytes } from "./instance-starts";
 import { log } from "./log";
 import { owned } from "./owned";
 import { ownSpeedReport } from "./own-speed";
@@ -134,7 +136,7 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
           -- E5.2 (D757): what the domain watch last found of kaizenaflow.com.
           (select p.domain_watch from commerce.platform_settings p) as site_watch`,
   );
-  const [analytics, moved, sales, figures, targets, speed, flagged, house] = await Promise.all([
+  const [analytics, moved, sales, figures, targets, speed, flagged, house, uiBytesAtStart] = await Promise.all([
     planAnalytics(30),
     typedRows(
       z.object({ currency: col.currency, month_moved: col.minor, week_moved: col.minor }),
@@ -158,6 +160,8 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
     currentFlags(now),
     // The figures' failure is the snapshot's own; the site's row then reads no watch.
     options.house ? houseSignals(now, figuresRead.then((f) => f?.site_watch ?? null, () => null)) : Promise.resolve(null),
+    // Translated text read at start (bloat review step 1.16): a read that fails leaves the briefing without its line.
+    latestUiBytes().catch(() => 0),
   ]);
   const live = analytics.live;
   const mrr = live.mrr.map((m) => {
@@ -192,6 +196,7 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
     flags: (flagged?.flags ?? []).map((f) => ({ id: f.id, subject: f.subject })),
     house,
     questionsOpen: figures?.questions_open ?? 0,
+    uiBytesAtStart,
   };
 }
 
@@ -256,6 +261,7 @@ export function alertText(alert: PlatformAlert, lang: AdminLang): string {
       value: speedValueText(v.metric as SpeedMetric, Number(v.value), locale),
     });
   }
+  if (alert.id === "ui_text_large") return fillWords(w.ui_text_large, { size: formatUsage("storage_bytes", Number(v.bytes), locale) });
   if (alert.id === "database_flag") return countWords(Number(v.n), w.database_flag);
   if (alert.id === "house_signal") return fillWords(w.house_signal, { text: alert.text?.[lang] ?? alert.text?.en ?? "" });
   return countWords(Number(v.n), w.trials_ending);
