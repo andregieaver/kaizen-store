@@ -87,7 +87,7 @@ describe("making a test on one screen (D660)", () => {
     counting: true,
     days: 30,
     consentShare: 0.6,
-    baselines: { orders: 0.02, cart: 0.09, checkout: 0.04 },
+    baselines: { orders: 0.02, cart: 0.09, checkout: 0.04, signup: null },
     targets: { [pages[0].id]: { visitsPerDay: 250, basis: "landing" as const }, [pages[1].id]: { visitsPerDay: 0.5, basis: "landing" as const } },
   };
 

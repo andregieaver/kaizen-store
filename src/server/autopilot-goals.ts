@@ -13,8 +13,9 @@ import {
   targetFromInput,
   targetProgress,
   type GoalFigures,
+  type GoalScopeKind,
   type GoalTarget,
-  type GoalTargetInput,
+  type GoalTargetTyped,
   type TargetProgress,
 } from "@/lib/autopilot-goals";
 import { mainCurrency } from "@/lib/markets";
@@ -26,6 +27,7 @@ import { getAnalyticsSettings } from "./analytics-settings";
 import { periodTotals } from "./analytics-totals";
 import { audit } from "./auth";
 import { isDemoProduct } from "./demo-content";
+import { houseSignupRate } from "./house-signups";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -66,6 +68,9 @@ const fail = (message: string): never => {
 /** The activity log's area: a store's AI settings, or the platform's. */
 export const auditArea = (scope: { store: Store | null }) => ({ area: scope.store ? ("settings" as const) : ("platform" as const) });
 
+/** What a scope's goals may measure: a store's, Kaizena Flow's own store's (its sign-ups too, D757), or Kaizena Flow's. */
+export const scopeKind = (store: Store | null): GoalScopeKind => (store ? (store.house ? "house" : "store") : "platform");
+
 const inScope = (scope: GoalScope) => (scope.store ? sql`store_id = ${scope.store.id}::uuid` : sql`store_id is null`);
 
 function toGoal(row: GoalRow): Goal {
@@ -85,14 +90,17 @@ export async function getGoal(scope: GoalScope, id: string): Promise<Goal | null
   return row ? toGoal(row) : null;
 }
 
-export type GoalInput = { goal?: string; title: string; vision?: string; targets: GoalTargetInput[]; due_on?: string };
+export type GoalInput = { goal?: string; title: string; vision?: string; targets: GoalTargetTyped[]; due_on?: string };
 
-/** Makes a goal, or changes one by its id: the targets typed by the model made into stored ones (amounts in the main currency). */
+/**
+ * Makes a goal, or changes one by its id: the targets typed by the model (or a person on the Autopilot page's Goals) made into stored ones
+ * (amounts in the main currency).
+ */
 export async function setGoal(scope: GoalScope, input: GoalInput): Promise<Goal> {
   const currency = scope.store ? mainCurrency(scope.store) : null;
   const targets: GoalTarget[] = [];
   for (const typed of input.targets) {
-    const made = targetFromInput(typed, scope.store ? "store" : "platform", currency, parsePrice);
+    const made = targetFromInput(typed, scopeKind(scope.store), currency, parsePrice);
     if (!made.ok) return fail(made.problem);
     targets.push(made.target);
   }
@@ -145,13 +153,24 @@ const COUNT = z.object({ n: col.int });
 /** The figures every goal of a scope is measured against, read once. */
 export async function goalFigures(store: Store | null, now = new Date(), sinceDays: readonly string[] = []): Promise<GoalFigures> {
   const missing: GoalFigures["missing"] = {};
+  // Kaizena Flow's sign-ups per visit (D757), for its own goals and its own store's: its store serves its site (D484) and counts its visits.
+  const signups = async (): Promise<number | null> => {
+    if (store && !store.house) {
+      missing.signup_rate_30d = "Only Kaizena Flow's own store counts sign-ups to Kaizena Flow.";
+      return null;
+    }
+    const rate = await houseSignupRate(now, store ?? undefined);
+    if (rate.percent === null) missing.signup_rate_30d = rate.missing;
+    return rate.percent;
+  };
   if (!store) {
-    const [pages, stores] = await Promise.all([
+    const [pages, stores, signupRate30d] = await Promise.all([
       typedRow(COUNT, sql`select count(*)::int as n from commerce.pages where store_id is null and type = 'page' and published is not null`),
       typedRow(
         COUNT,
         sql`select count(*)::int as n from commerce.stores s where s.status = 'active' and s.setup_completed_at is not null and not (s.is_template or s.starter)`,
       ),
+      signups(),
     ]);
     return {
       revenue30d: null,
@@ -166,15 +185,17 @@ export async function goalFigures(store: Store | null, now = new Date(), sinceDa
       contribution30d: null,
       margin30d: null,
       since: {},
+      signupRate30d,
       missing,
     };
   }
   const today = todayIn(now, store.timeZone);
   const settings = await getAnalyticsSettings(store.id);
-  const [totals, products, pages] = await Promise.all([
+  const [totals, products, pages, signupRate30d] = await Promise.all([
     periodTotals(store, customPeriod(addDays(today, -29), today), settings),
     typedRow(COUNT, sql`select count(*)::int as n from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'active' and not ${isDemoProduct(sql`p`)}`),
     typedRow(COUNT, sql`select count(*)::int as n from commerce.pages where store_id = ${store.id}::uuid and type = 'page' and published is not null`),
+    signups(),
   ]);
   const t = totals.totals;
   let revenue30d: number | null = t.revenueMinor - t.refundsMinor;
@@ -228,6 +249,7 @@ export async function goalFigures(store: Store | null, now = new Date(), sinceDa
     contribution30d,
     margin30d,
     since,
+    signupRate30d,
     missing,
   };
 }

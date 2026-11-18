@@ -1,9 +1,11 @@
 import "server-only";
 
 import type { FormState } from "@/components/admin/action-form";
+import { adminLangOf } from "@/lib/admin-lang";
+import { HOUSE_AUTOPILOT_WORDS } from "@/lib/admin-words/house-autopilot";
 import { AUTONOMY_AREAS, AUTONOMY_LEVELS, PLAN_STARTS, type AutonomyLevel, type PlanStarts } from "@/lib/autopilot-autonomy";
 
-import { dropGoal } from "./autopilot-goals";
+import { dropGoal, setGoal } from "./autopilot-goals";
 import { answerQuestion, pausePlan, startPlanNow, stopPlan, type PlanActor } from "./autopilot-plans";
 import { saveAutonomy } from "./autopilot-settings";
 import { cancelFollowUp } from "./follow-ups";
@@ -79,6 +81,21 @@ export function dropGoalFrom(p: Principal, form: FormData): Promise<FormState> {
 }
 
 const number = (value: string): number | null => (value === "" ? null : Number(value.replace(",", ".")));
+
+/**
+ * *Set this goal* on the Goals tab (ecosystem plan E5.3, D757): Kaizena Flow's sign-ups per 100 visits to its site, on Kaizena Flow's own
+ * Autopilot or its own store's, named in the person's admin language. The AI manager's `set_goal` cannot set it until the agents' eval is
+ * recorded with it (`HELD_GOAL_TARGETS`); `setGoal()` refuses it anywhere else.
+ */
+export function setSignupGoalFrom(p: Principal, form: FormData): Promise<FormState> {
+  return guarded("set_signup_goal", async () => {
+    const words = HOUSE_AUTOPILOT_WORDS[adminLangOf(p.account.adminLocale ?? null)].signups;
+    const percent = number(text(form, "percent"));
+    if (percent === null || !Number.isFinite(percent) || percent <= 0 || percent > 100) return refused(words.invalid);
+    await setGoal(p, { title: words.goalTitle, targets: [{ kind: "signup_rate_30d", percent: Math.round(percent * 100) / 100 }] });
+    return ok;
+  });
+}
 
 /** The settings form read into `saveAutonomy()`'s input: the switch, a level per area, the limits and keeping going (D328). */
 export function saveSettings(p: Principal, form: FormData): Promise<FormState> {

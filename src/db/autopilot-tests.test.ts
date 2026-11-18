@@ -95,3 +95,25 @@ describe("the autopilot's tests of its page changes (E4.1, D729)", () => {
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.autopilot_tests where experiment_id = $1", [id])).n).toBe(0);
   });
 });
+
+describe("Kaizena Flow's own site tested on its sign-ups (E5.3, D757)", () => {
+  const withGoal = async (pageId: string, storeId: string, goal: string) =>
+    (await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'Test', $2, $3) returning id", [storeId, pageId, goal])).id;
+  const keepAs = (experimentId: string, pageId: string, storeId: string, goal: string) =>
+    db.query("insert into commerce.autopilot_tests (store_id, experiment_id, page_id, account_id, goal, days) values ($1, $2, $3, $4, $5, 14)", [storeId, experimentId, pageId, account, goal]);
+
+  it("counts sign-ups on Kaizena Flow's own store alone", async () => {
+    const house = (await one<{ id: string | null }>("select commerce.house_store() as id")).id;
+    expect(house).not.toBeNull();
+    const own = await page(house!);
+    await expect(keepAs(await withGoal(own, house!, "signup"), own, house!, "signup")).resolves.toBeTruthy();
+    const theirs = await page();
+    await expect(keepAs(await withGoal(theirs, store, "signup"), theirs, store, "signup")).rejects.toThrow(/autopilot_tests\.signup/);
+  });
+
+  it("always counts its own test's goal", async () => {
+    const p = await page();
+    await expect(keepAs(await withGoal(p, store, "checkout"), p, store, "cart")).rejects.toThrow(/autopilot_tests\.goal/);
+    await expect(keepAs(await withGoal(p, store, "checkout"), p, store, "checkout")).resolves.toBeTruthy();
+  });
+});

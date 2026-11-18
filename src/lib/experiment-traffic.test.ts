@@ -6,7 +6,7 @@ const facts = (over: Partial<TrafficFacts> = {}): TrafficFacts => ({
   counting: true,
   days: 30,
   consentShare: 0.6,
-  baselines: { orders: 0.02, cart: 0.09, checkout: 0.04 },
+  baselines: { orders: 0.02, cart: 0.09, checkout: 0.04, signup: null },
   targets: { front: { visitsPerDay: 250, basis: "landing" }, quiet: { visitsPerDay: 4, basis: "landing" }, unknown: { visitsPerDay: null, basis: null } },
   ...over,
 });
@@ -33,7 +33,7 @@ describe("the store's own traffic", () => {
 
   it("gives no estimate it cannot ground: a click, a form, revenue, or a rate nobody has", () => {
     for (const goal of ["click", "form", "revenue"] as const) expect(goalEstimate({ facts: facts(), targetId: "front", goal, trafficShare: 1, versions: 2 })).toBeNull();
-    expect(goalEstimate({ facts: facts({ baselines: { orders: null, cart: 0.09, checkout: 0.04 } }), targetId: "front", goal: "orders", trafficShare: 1, versions: 2 })).toBeNull();
+    expect(goalEstimate({ facts: facts({ baselines: { orders: null, cart: 0.09, checkout: 0.04, signup: null } }), targetId: "front", goal: "orders", trafficShare: 1, versions: 2 })).toBeNull();
   });
 
   it("starts a busy page from orders and a quiet one from the cart, which answers sooner", () => {
@@ -41,6 +41,8 @@ describe("the store's own traffic", () => {
     expect(recommendedGoal(facts(), "front")).toBe("cart");
     // Nothing counted: orders, the plain default.
     expect(recommendedGoal(facts({ counting: false }), "front")).toBe("orders");
+    // Kaizena Flow's own store sells nothing: its sign-ups per visit (E5.3, D757).
+    expect(recommendedGoal(facts({ baselines: { orders: null, cart: null, checkout: null, signup: 0.03 } }), "front")).toBe("signup");
   });
 
   it("names the smallest change a quiet page could find within six weeks", () => {

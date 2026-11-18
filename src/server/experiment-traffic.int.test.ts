@@ -87,7 +87,7 @@ describe("experimentTraffic", () => {
     expect(facts.targets.layout).toEqual({ visitsPerDay: 3, basis: "product_viewers" });
     expect(facts.targets.account).toEqual({ visitsPerDay: null, basis: null });
     // Two visits in ten reached checkout; no cart or paid order was made.
-    expect(facts.baselines).toEqual({ orders: null, cart: null, checkout: 0.2 });
+    expect(facts.baselines).toEqual({ orders: null, cart: null, checkout: 0.2, signup: null });
     expect(eligiblePerDay(facts, "header")).toBeCloseTo(6);
     const estimate = goalEstimate({ facts, targetId: "header", goal: "checkout", trafficShare: 1, versions: 2 });
     expect(estimate?.days).toBeGreaterThan(14);

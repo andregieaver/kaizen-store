@@ -18643,7 +18643,10 @@ export const autopilotTests = commerce.table(
     pageId: uuid("page_id").notNull(),
     /** In whose name the autopilot made the change and the store decides the test: the plan's maker, read again before each decision. */
     accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
-    /** The counted goal (`orders`, `cart`, `checkout`) and the days the test was sized for at the store's traffic, at most 21 (`AUTOPILOT_TEST_MAX_DAYS`). */
+    /**
+     * The counted goal (`orders`, `cart`, `checkout`; `signup` on Kaizena Flow's own store alone, E5.3, D757, a rule of the database) and the
+     * days the test was sized for at the store's traffic, at most 21 (`AUTOPILOT_TEST_MAX_DAYS`).
+     */
     goal: text("goal").notNull(),
     days: integer("days").notNull(),
     /** Null while undecided; `applied` (the change went live), `asked` (kept for the owner's yes), `kept` (the page stays as it was), `left` (a person decides). */
@@ -18664,7 +18667,7 @@ export const autopilotTests = commerce.table(
     index("autopilot_tests_account_idx").on(t.accountId),
     index("autopilot_tests_approval_idx").on(t.approvalId),
     index("autopilot_tests_conversation_idx").on(t.conversationId),
-    check("autopilot_tests_goal", sql`${t.goal} in ('orders', 'cart', 'checkout')`),
+    check("autopilot_tests_goal", sql`${t.goal} in ('orders', 'cart', 'checkout', 'signup')`),
     check("autopilot_tests_days", sql`${t.days} between 1 and 90`),
     check("autopilot_tests_outcome", sql`${t.outcome} is null or ${t.outcome} in ('applied', 'asked', 'kept', 'left')`),
     check("autopilot_tests_decided", sql`(${t.outcome} is null) = (${t.decidedAt} is null)`),

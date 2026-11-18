@@ -277,11 +277,14 @@ the platform principal (`store_id` null), with the targets and checks that make 
   | `stores` | open stores that are real businesses (`not (is_template or starter)`) | no | yes |
   | `contribution_30d`, `margin_30d` | contribution profit and its share of net sales, last 30 store days (`derive()`); not measured under 30 % cost coverage (D606) | yes | no |
   | `revenue_since`, `contribution_since` | net sales and contribution profit added up from a first day (D606) | yes | no |
+  | `signup_rate_30d` | sign-ups to Kaizena Flow per 100 visits to its site, the 30 whole days before today (`houseSignupRate()`, E5.3, D757) | Kaizena Flow's own store only | yes |
 
   A figure that cannot be known (no rate for a currency, no visits counted) is *not measured* with the reason, never 0 and never met.
   A goal is `met` when every target is met; the code marks it, the model never does.
 - Tools (manager tools, so the platform has them too; ungated: goals are staff-only data): `set_goal` (make or change one, by id),
-  `list_goals` (each with its progress written by code), `drop_goal`. At most five active goals per store.
+  `list_goals` (each with its progress written by code), `drop_goal`. At most five active goals per store. `set_goal` offers
+  `TOOL_GOAL_TARGETS`: a kind in `HELD_GOAL_TARGETS` (`signup_rate_30d`) is held out of its schema until the agents' eval is recorded with it
+  (D391), and until then is set on the Autopilot page's Goals (*More sign-ups to Kaizena Flow*, below in 17).
 
 ### 7.2 Plans and steps (B1)
 
@@ -1197,11 +1200,25 @@ test soon enough, and goes live only when the test answers for it. Built so (`sr
   left*, *… waits for your yes*, *… is live*, *{page} stays as it was*, each opening the test; the daily digest and weekly report carry the same
   lines (*Tested before going live*), never given to the model that writes the weekly note. The A/B tests list marks the test *By the autopilot*
   and its page says how the store decides it; at *Do it and tell me* a notice says what was decided (`test_decided`).
-- **Kaizena Flow's own site.** Served from its house store (D484), whose autopilot is a store's: the same path reaches kaizenaflow.com. Its pages
-  sell no goods, so no counted goal has a rate there and every publish goes live as before; counting the house store's sign-ups per visit
-  (`signup`, D712) in `experimentTraffic()` and `chooseTest()` is the next step.
+- **Kaizena Flow's own site (ecosystem plan E5.3, D757).** Served from its house store (D484), whose autopilot is a store's: the same path
+  reaches kaizenaflow.com, tested on its **sign-ups per visit**. A sign-up is the sign-up form sent (an `access_requests` row with its terms
+  accepted, never a sandbox kept or a drill), counted on the house store's own day against the visits its site counted
+  (`src/server/house-signups.ts`). `experimentTraffic()` gives the house store that rate as `signup` (`COUNTED_GOALS`) and no order, cart or
+  checkout rate, as it sells nothing; `chooseTest()` sizes the test from it the same way (21 days at most, a change of a fifth), and the test's
+  goal is `signup` (D712's goal, refused on any other store; `autopilot_tests.goal` may be `signup` on the house store alone, and every row
+  counts its own test's goal, rules of the database). **Guardrails for a site with no orders:** the orders and payments guardrails see nothing
+  there, so a sign-up test's change goes live by itself only once its speed guardrail has watched every version through its minimum and
+  found none clearly slower (`GUARDRAILS_TO_CLEAR`, `testAction()`): while it still watches the test waits, at its end it keeps the page, and
+  while the store does not count visits (speed *off*) the page is kept; a version clearly slower stops the test as on any store. The goal:
+  `signup_rate_30d` (7.1) on Kaizena Flow's own Autopilot (`/admin/platform/assistant/autopilot`) and its store's. Its Goals tab offers it
+  while no active goal aims at it: *More sign-ups to Kaizena Flow*, today's share in words, a field holding a fifth more and *Set this goal*.
+  The platform's page also lists the house store's tests on Decisions and, in Settings where a store has the switch, says the site's tests
+  are its store's with *Open its settings* (the house store's autopilot, `?tab=settings`): the platform's own autopilot edits no page of the
+  site while the store serves it (`SITE_IN_STORE`).
 
 Tests: `src/lib/autopilot-tests.test.ts` (the goal and days, the decision, the lines), `src/db/autopilot-tests.test.ts` (the table's rules),
 `src/lib/autopilot-report.test.ts` and `src/components/admin/autopilot/autopilot-page.test.ts` (the lines and the switch),
 `src/server/autopilot-tests.int.test.ts` (a busy page tested instead of published, nothing stacked, the model kept off the test, a quiet page, the
-switch off and a person publishing as before, the watch, the winner kept for a yes and made live on it or at once, a worse change keeping the page).
+switch off and a person publishing as before, the watch, the winner kept for a yes and made live on it or at once, a worse change keeping the page),
+`src/server/house-autopilot-tests.int.test.ts` (Kaizena Flow's sign-ups per visit counted, its page's change tested on them, the goal set on its
+store and refused on another).

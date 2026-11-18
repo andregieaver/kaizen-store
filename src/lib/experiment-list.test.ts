@@ -42,7 +42,7 @@ const facts = (targets: TrafficFacts["targets"], counting = true): TrafficFacts 
   counting,
   days: 30,
   consentShare: 0.6,
-  baselines: { orders: 0.02, cart: 0.09, checkout: 0.04 },
+  baselines: { orders: 0.02, cart: 0.09, checkout: 0.04, signup: null },
   targets,
 });
 

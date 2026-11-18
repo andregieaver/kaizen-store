@@ -8,6 +8,7 @@ import type { TrafficFacts } from "@/lib/experiment-traffic";
 
 import { funnelCounts } from "./analytics-traffic-data";
 import type { TestableTarget } from "./experiment-admin";
+import { houseSignups } from "./house-signups";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -17,6 +18,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * viewed a product (a product layout), or reached the cart or checkout (a working page's part); the share of cookie choices that accepted
  * statistics, since only they take part; and the store's own funnel rates, the goals' rates today. A page's visits are those that began on it,
  * so the figure is at least what the page sees: the estimate errs long, never short. Nothing is counted while the store does not count visits.
+ * Kaizena Flow's own store sells nothing: its rate is its sign-ups per visit (`houseSignups()`, ecosystem plan E5.3, D757).
  */
 export async function experimentTraffic(store: Store, targets: readonly TestableTarget[], now = new Date()): Promise<TrafficFacts> {
   const consent = await typedRow(
@@ -31,14 +33,14 @@ export async function experimentTraffic(store: Store, targets: readonly Testable
     counting: false,
     days: 0,
     consentShare,
-    baselines: { orders: null, cart: null, checkout: null },
+    baselines: { orders: null, cart: null, checkout: null, signup: null },
     targets: Object.fromEntries(targets.map((t) => [t.id, { visitsPerDay: null, basis: null }])),
   };
   if (!store.visitCounting) return none;
 
   const today = todayIn(now, store.timeZone);
   const range = { from: addDays(today, -30), to: today };
-  const [totals, slugs, funnel] = await Promise.all([
+  const [totals, slugs, funnel, signups] = await Promise.all([
     typedRow(
       z.object({ days: col.int, visits: col.int, front: col.int, products: col.int, product_viewers: col.int, checkout: col.int }),
       sql`
@@ -62,6 +64,7 @@ export async function experimentTraffic(store: Store, targets: readonly Testable
       `,
     ),
     funnelCounts(store, range),
+    houseSignups(store, range),
   ]);
   if (!totals || totals.visits === 0) return { ...none, counting: true };
 
@@ -87,7 +90,10 @@ export async function experimentTraffic(store: Store, targets: readonly Testable
     counting: true,
     days: totals.days,
     consentShare,
-    baselines: { orders: rate(n(funnel.purchases)), cart: rate(n(funnel.carts)), checkout: rate(n(funnel.checkouts)) },
+    // Kaizena Flow's own store is a website, its shop off: what it can be tested on is its sign-ups alone, whatever a stray cart says.
+    baselines: store.house
+      ? { orders: null, cart: null, checkout: null, signup: rate(signups) }
+      : { orders: rate(n(funnel.purchases)), cart: rate(n(funnel.carts)), checkout: rate(n(funnel.checkouts)), signup: null },
     targets: Object.fromEntries(targets.map((t) => [t.id, of(t)])),
   };
 }

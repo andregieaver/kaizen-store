@@ -1,7 +1,8 @@
 import { countWords, fillWords } from "./admin-fill";
-import { COUNTED_GOALS, goalEstimate, type CountedGoal, type TrafficFacts } from "./experiment-traffic";
+import type { Guardrail, GuardrailState } from "./experiment-guardrails";
+import { COUNTED_GOALS, goalEstimate, isCountedGoal, type CountedGoal, type TrafficFacts } from "./experiment-traffic";
 import type { VerdictKind } from "./experiment-results";
-import type { ExperimentStatus } from "./experiments";
+import { isGoal, type ExperimentStatus } from "./experiments";
 
 /**
  * The autopilot tests its page changes first (ecosystem plan E4.1, D729): when it would publish a change to a live page by itself and the
@@ -29,7 +30,8 @@ export type NotTested = "off" | "not_live" | "not_testable" | "no_room" | "not_c
 /**
  * The goal a test of the target counts and how long it takes at today's traffic, or why there is none soon enough: orders when they answer
  * within `AUTOPILOT_TEST_MAX_DAYS`, else the counted goal that answers soonest within it (adding to the cart has a higher rate, so a smaller
- * store learns sooner from it). Two versions, everyone who accepts statistics cookies.
+ * store learns sooner from it). Two versions, everyone who accepts statistics cookies. Kaizena Flow's own store sells nothing, so its only
+ * counted goal is its sign-ups per visit (ecosystem plan E5.3, D757), sized from its own sign-up rate the same way.
  */
 export function chooseTest(facts: TrafficFacts, targetId: string, maxDays = AUTOPILOT_TEST_MAX_DAYS): TestChoice | { none: "not_counted" | "too_slow" } {
   const estimates = COUNTED_GOALS.map((goal) => ({ goal, estimate: goalEstimate({ facts, targetId, goal, trafficShare: 1, versions: 2, relativeChange: AUTOPILOT_TEST_CHANGE }) }));
@@ -45,8 +47,21 @@ export function chooseTest(facts: TrafficFacts, targetId: string, maxDays = AUTO
 export type TestAction = "wait" | "apply" | "keep" | "leave";
 
 /**
+ * The guardrails that must have found the change fine before it goes live by itself, by the goal its test counts. A store that sells gives
+ * the orders and payments guardrails something to see, and any of them stops a harmful version as it finds one. A site that sells nothing
+ * (Kaizena Flow's own, its goal sign-ups, ecosystem plan E5.3, D757) gives them nothing, so its speed guardrail must have watched every
+ * version through its minimum of page loads and found none clearly slower: without it, nothing but the goal would have watched the change.
+ */
+export const GUARDRAILS_TO_CLEAR: Record<CountedGoal, readonly Guardrail[]> = { orders: [], cart: [], checkout: [], signup: ["speed"] };
+
+/** The guardrails a test counting `goal` must clear; none for a goal the store does not count (a test made before E5.3 is one of the three). */
+export const guardrailsToClear = (goal: string | null | undefined): readonly Guardrail[] => (isGoal(goal) && isCountedGoal(goal) ? GUARDRAILS_TO_CLEAR[goal] : []);
+
+/**
  * The store's decision on a test the autopilot started, by code from its verdict (`verdictOf()`), never by a model:
- * - a version that is clearly better (`better`, version B) goes live, within the owner's levels (`apply`), unless a guardrail stopped the test;
+ * - a version that is clearly better (`better`, version B) goes live, within the owner's levels (`apply`), unless a guardrail stopped the test,
+ *   and once the guardrails its goal must clear (`GUARDRAILS_TO_CLEAR`) found it fine: while one still watches, the test waits for it, and one
+ *   that cannot watch (speed while the store does not count visits) keeps the page;
  * - a change that is clearly worse, a test its guardrail stopped, a broken split, or a test whose time is up without an answer for the change keeps
  *   the page as it was (`keep`): the change did not earn its place, and keeping what was live is what the watch's rollback does too;
  * - a test a person stopped is theirs to decide (`leave`);
@@ -59,6 +74,9 @@ export function testAction(input: {
   best: string | null;
   /** A guardrail finds the version clearly harms orders, speed or payments at checkout (`experimentResults().harmed`). */
   harmed?: boolean;
+  /** The goal the test counts (`autopilot_tests.goal`), and its guardrails' states (`experimentResults().guardrails`). */
+  goal?: string | null;
+  guardrails?: readonly { kind: Guardrail; state: GuardrailState }[];
   plannedEnd: string | null;
   now: Date;
 }): TestAction {
@@ -67,9 +85,15 @@ export function testAction(input: {
   if (status === "stopped" && input.stopReason === "person") return "leave";
   // A guardrail stopped it, or would at its next look: the change harms what keeps the store safe (orders, speed, payments), whatever its goal says.
   if ((status === "stopped" && input.stopReason === "guardrail") || input.harmed) return "keep";
-  if (verdict === "better" && input.best === "b") return "apply";
-  if (status === "stopped" || verdict === "worse" || verdict === "broken") return "keep";
   const ended = input.plannedEnd !== null && input.now.getTime() >= Date.parse(input.plannedEnd);
+  if (verdict === "better" && input.best === "b") {
+    const unclear = guardrailsToClear(input.goal)
+      .map((kind) => input.guardrails?.find((g) => g.kind === kind)?.state ?? "off")
+      .find((state) => state !== "fine");
+    if (unclear === undefined) return "apply";
+    return unclear === "watching" && status === "running" && !ended ? "wait" : "keep";
+  }
+  if (status === "stopped" || verdict === "worse" || verdict === "broken") return "keep";
   return ended ? "keep" : "wait";
 }
 
