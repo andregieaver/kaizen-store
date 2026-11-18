@@ -154,7 +154,7 @@ export const SV: StarterText = {
     "privacy.purpose.accounting": "att föra bokföring och spara de underlag som lagen kräver (rättslig förpliktelse)",
     "privacy.purpose.service": "att svara på dina frågor och reklamationer (fullgörande av avtalet, och vårt berättigade intresse av att ge god service)",
     "privacy.purpose.security": "att hålla butiken säker och förebygga bedrägeri och missbruk (vårt berättigade intresse)",
-    "privacy.purpose.marketing": "att skicka marknadsföring med e-post, bara om du har tackat ja till det (samtycke)",
+    "privacy.purpose.marketing": "att skicka marknadsföring med e-post, bara om du har tackat ja till det (samtycke), och att se vilka av dess länkar du trycker på, sparat i 180 dagar (e-posten har ingen spårningspixel, så om du öppnar ett registreras inte)",
     "privacy.purpose.visits": "att räkna besök i butiken utan cookies, för att se hur den används; vi sparar ingen IP-adress och ingen webbläsaridentifierare (vårt berättigade intresse)",
     // D656: hand-written, for legal review.
     "privacy.purpose.heatmaps": "att se, som summor per sida och dag, var besökare som tillåter statistik klickar, hur långt de scrollar och hur länge delar av en sida syns på skärmen (värmekartor; ditt samtycke)",

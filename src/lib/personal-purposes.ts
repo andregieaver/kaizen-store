@@ -254,6 +254,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   customer_tags: "marketing",
   broadcast_recipients: "marketing",
   automation_sends: "marketing",
+  email_clicks: "marketing",
   product_reviews: "contributions",
   review_pictures: "contributions",
   "storage:review-pictures": "contributions",

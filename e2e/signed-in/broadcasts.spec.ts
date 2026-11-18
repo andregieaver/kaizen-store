@@ -59,3 +59,39 @@ test("a broadcast is written, saved, tested and sent, and its page then says wha
   await page.goto(`/admin/${STORE}/broadcasts`);
   await expect(page.getByRole("list", { name: "Broadcasts" }).getByRole("link", { name: `Autumn ${RUN}` })).toBeVisible();
 });
+
+test("a sent broadcast's report says how many people on the list pressed each link, beside the presses (M1.3, D754)", async ({ page }) => {
+  const sql = testDb();
+  let id = "";
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
+    const content = { "nb-NO": { subject: "Vinter", preview: "", blocks: [{ type: "button", text: "Se vinteren", url: "/products" }] } };
+    const [made] = await sql`
+      insert into commerce.broadcasts (store_id, title, audience, content) values (${store.id}, ${`Winter ${RUN}`}, 'everyone', ${sql.json(content)}) returning id`;
+    id = String(made.id);
+    // A broadcast moves draft → sending → sent, as its rules allow.
+    await sql`update commerce.broadcasts set status = 'sending', started_at = now(), recipient_count = 2 where id = ${id}`;
+    await sql`update commerce.broadcasts set status = 'sent', finished_at = now() where id = ${id}`;
+    const people = [];
+    for (const who of ["ola", "kari"]) {
+      const [s] = await sql`
+        insert into commerce.marketing_subscribers (store_id, email, locale, status, source, consent_text, consented_at, token)
+        values (${store.id}, ${`${who}-${RUN}@example.com`}, 'nb-NO', 'subscribed', 'form', 'Ja takk', now(), ${(who + RUN + "c".repeat(43)).slice(0, 43)}) returning id`;
+      people.push(String(s.id));
+    }
+    // Five presses, three of them by the two people on the list (Ola twice), two by mail apps that check links.
+    await sql`insert into commerce.broadcast_link_clicks (store_id, broadcast_id, link, clicks) values (${store.id}, ${id}, 'nb-NO.0', 5)`;
+    for (const subscriber of [people[0], people[0], people[1]]) {
+      await sql`insert into commerce.email_clicks (store_id, subscriber_id, broadcast_id, link) values (${store.id}, ${subscriber}, ${id}, 'nb-NO.0')`;
+    }
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/${STORE}/broadcasts/${id}`);
+  await expect(page.getByText("People on your list who pressed a link: 2")).toBeVisible();
+  const row = page.getByRole("row", { name: /Se vinteren/ });
+  await expect(row.getByRole("cell").nth(2)).toHaveText("5");
+  await expect(row.getByRole("cell").nth(3)).toHaveText("2");
+  await page.getByText("Presses on its links").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/broadcast-people.png", fullPage: true });
+});

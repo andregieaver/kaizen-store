@@ -146,6 +146,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            where r.store_id = ${sid}::uuid and (r.email = any(${addresses}) or lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as broadcast_recipients,
         (select count(*) from commerce.automation_sends x join commerce.marketing_subscribers m on m.store_id = x.store_id and m.id = x.subscriber_id
            where x.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as automation_sends,
+        (select count(*) from commerce.email_clicks c join commerce.marketing_subscribers m on m.store_id = c.store_id and m.id = c.subscriber_id
+           where c.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as email_clicks,
         (select count(*) from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid))::int as stock_requests,
         (select count(*) from commerce.customer_product_views where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as customer_product_views,
         (select count(*) from commerce.review_requests where store_id = ${sid}::uuid and order_id = any(${orderIds}))::int as review_requests,
@@ -225,6 +227,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       customer_tags: n(c.customer_tags),
       signup_incentives: n(c.signup_incentives),
       broadcast_recipients: n(c.broadcast_recipients),
+      email_clicks: n(c.email_clicks),
       automation_sends: n(c.automation_sends),
       stock_requests: n(c.stock_requests),
       customer_product_views: n(c.customer_product_views),
@@ -894,6 +897,11 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`delete from commerce.signup_incentives where store_id = ${sid}::uuid and email = any(${addresses})`);
   // The broadcasts sent to the person (D297): their addresses go (the subscriber's own go with it below too); the broadcasts' figures stay.
   await tx.execute(sql`delete from commerce.broadcast_recipients where store_id = ${sid}::uuid and email = any(${addresses})`);
+  // Who pressed a broadcast's links (D754): the person's presses go (they would go with the subscriber too); the counts per link stay.
+  await tx.execute(sql`
+    delete from commerce.email_clicks c using commerce.marketing_subscribers m
+    where c.store_id = ${sid}::uuid and m.store_id = c.store_id and m.id = c.subscriber_id and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid)
+  `);
   // The automation emails sent to the person and their back-in-stock requests (D298).
   await tx.execute(sql`
     delete from commerce.automation_sends x using commerce.marketing_subscribers m
