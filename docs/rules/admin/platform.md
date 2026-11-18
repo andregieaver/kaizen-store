@@ -238,6 +238,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   The screen also shows the day's difference of the stored daily reading of production and eight flags (`src/lib/platform-flags.ts`, read
   from the stored rows by `src/server/platform-flags.ts`, never from a statistics view); the two written exception lists live in that
   file with a reason per entry, at most five and three; and a flag is also a line in the platform's morning briefing (`database_flag`).
+  The page's *Style text owners add* card is a reading taken on demand (`?reading=styles`, `styleReading()` in `src/server/style-reading.ts`,
+  pure parts in `src/lib/style-reading.ts`): one statement, no page document leaves the database; its lines (10 KB median, 20 KB a store,
+  half of pages with motion) are in `docs/performance.md`.
 
 ## The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)
 

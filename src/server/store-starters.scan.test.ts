@@ -87,6 +87,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/store-trial.ts": "real",
   "src/server/store-copy.ts": "real",
   "src/server/storefront-api.ts": "real",
+  // The style text owners add (step 1.23): the stores a customer owns, Kaizena Flow's store as any.
+  "src/server/style-reading.ts": "real",
   "src/server/stores.ts": "both",
   "src/server/support-platform.ts": "real",
   // Premium themes (D286): only a real store keeps a theme it had as given when the theme gets its first price.
@@ -244,6 +246,7 @@ const HOUSE_COUNTS: Record<string, string> = {
   "src/server/experiments.ts": "The proxy's store for A/B tests: Kaizena Flow tests its own pages (step 5).",
   "src/server/platform-unit-tests.ts": AS_ANY_STORE,
   "src/server/store-features.ts": "Deals open for it as a pilot, as for any store (D464).",
+  "src/server/style-reading.ts": "The style text its own store adds is read as any store's (step 1.23); Kaizena Flow's site is the row besides.",
   "src/server/vat-admin.ts": "A country its market is in is in use, as any store's.",
   "src/server/wordpress.ts": AS_ANY_STORE,
 };

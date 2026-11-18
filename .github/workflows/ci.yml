@@ -199,6 +199,12 @@ jobs:
       # gate, so a new cookies() or headers() read in a shared part fails here and not in a visitor's first load.
       - name: What is static
         run: node scripts/timed.mjs render-modes -- node scripts/render-modes.mjs >> "$GITHUB_STEP_SUMMARY"
+      # Whose classes the one stylesheet holds (bloat review step 1.23): it fails above the two lines in the script, and its table is the summary.
+      - name: Whose classes the stylesheet holds
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/timed.mjs stylesheet-audiences -- node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs | tee -a "$GITHUB_STEP_SUMMARY"
       # WebKit too: the shopper's pages also run in Safari's engine (playwright.config.ts, the webkit project; PSI UX-12).
       # The image has both browsers, so this finds them and does nothing; were the pinned version ever ahead of the
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).

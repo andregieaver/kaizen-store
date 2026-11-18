@@ -4,10 +4,12 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
-import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
+import type { CapacityMessages } from "@/lib/admin-messages/capacity.en";
+import { styleOver, styleSummary, type StyleRow } from "@/lib/style-reading";
 import { formatUsage } from "@/lib/usage-format";
 import { USAGE_METRIC_IDS, type UsageMetric } from "@/lib/usage-metrics";
 import { shiftMonth, usageMonth } from "@/lib/usage-month";
@@ -20,6 +22,7 @@ import { cronJobRows } from "@/server/cron-runs";
 import { ownSpeedReport } from "@/server/own-speed";
 import { currentFlags } from "@/server/platform-flags";
 import { adminFromDublin } from "@/server/status";
+import { styleReading } from "@/server/style-reading";
 import { cronHealth } from "@/lib/cron-health";
 import { COSTLY_ALLOWED, WHOLE_READ_ALLOWED } from "@/lib/platform-flags";
 
@@ -36,6 +39,8 @@ const BASE = "/admin/platform/capacity";
 export default async function PlatformCapacityPage({ searchParams }: PageProps<"/admin/platform/capacity">) {
   const admin = await requirePlatformReader();
   const query = await searchParams;
+  // The style text owners add is a reading taken on demand (bloat review step 1.23), so the ordinary view sends no statement for it.
+  const reading = query.reading === "styles" ? await styleReading() : null;
   const month = usageMonth(query.month);
   const sort = USAGE_METRIC_IDS.find((m) => m === query.sort) ?? null;
   const lang = adminLangOf(admin.adminLocale);
@@ -84,6 +89,13 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           {fillWords(w.platform.connections, { n: glance.active })} · {fillWords(w.platform.size, { size: formatUsage("storage_bytes", glance.bytes, locale) })}
         </p>
         {!drain && <p className="mt-2 text-body text-muted">{w.platform.drainOff}</p>}
+      </Card>
+      <Card title={w.platform.styles.title} description={w.platform.styles.description} compact>
+        {reading === null ? (
+          <ButtonLink href={`${BASE}?month=${month}&reading=styles`} prefetch={false}>{w.platform.styles.take}</ButtonLink>
+        ) : (
+          <StylesReading reading={reading} words={w.platform.styles} kaizen={w.platform.kaizen} locale={locale} />
+        )}
       </Card>
       <PlatformFlagsCard
         flags={flagged?.flags ?? []}
@@ -277,6 +289,36 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           </table>
         </div>
       </Card>
+    </div>
+  );
+}
+
+const kilobytes = (bytes: number, locale: string) =>
+  new Intl.NumberFormat(locale, { style: "unit", unit: "kilobyte", maximumFractionDigits: 1 }).format(bytes / 1000);
+
+/** The reading of the style text each store adds to every document: the summary, the lines it has passed and a row for each store. */
+function StylesReading({ reading, words, kaizen, locale }: { reading: StyleRow[]; words: CapacityMessages["platform"]["styles"]; kaizen: string; locale: string }) {
+  const summary = styleSummary(reading);
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-body text-ink-2">
+        {fillWords(words.summary, { median: kilobytes(summary.medianBytes, locale), over: summary.over, share: summary.motionShare === null ? "" : Math.round(summary.motionShare * 100) })}
+        {summary.motionShare === null ? ` ${words.noPages}` : ""}
+      </p>
+      {summary.triggers.map((trigger) => (
+        <p key={trigger} className="text-body text-danger-text">{words.triggers[trigger]}</p>
+      ))}
+      <List label={words.title}>
+        {reading.map((row) => (
+          <ListRow key={row.storeId ?? "kaizen"}>
+            <RowLead title={row.name ?? kaizen} sub={words.store} />
+            {styleOver(row) ? <Chip signal="warning">{words.over}</Chip> : null}
+            <RowFact sub={words.bytes}>{kilobytes(row.cssBytes, locale)}</RowFact>
+            <RowFact sub={words.pages}>{row.pages}</RowFact>
+            <RowFact sub={words.motion}>{row.motionPages}</RowFact>
+          </ListRow>
+        ))}
+      </List>
     </div>
   );
 }

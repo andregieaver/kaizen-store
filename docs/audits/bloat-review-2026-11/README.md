@@ -73,6 +73,7 @@ node docs/audits/bloat-review-2026-11/scripts/flight.mjs saved.html        # byt
 node docs/audits/bloat-review-2026-11/scripts/route.mjs "/s/[store]/[market]"   # a route's first-load client chunks and bytes
 node docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs [dir]        # prerendered entries whose resume data keeps a page list (default .next/server/app)
 node docs/audits/bloat-review-2026-11/scripts/words-in-entries.mjs "<a sentence from a catalogue file>"   # which built chunks and entries hold it
+node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs [--json]   # step 1.23: after the build, the bytes each audience alone names in the site's sheet; fails above 25,000 raw or 4,200 Brotli of classes no store page can draw (17,000 and 2,000 from step 2.11), and, once the admin has its own sheet, on any admin-only class
 node docs/audits/bloat-review-2026-11/scripts/cut-simulation.mjs <page> [--cut from=>to] [--drop x] [--show N] [--dir <analyzer export>]   # needs `next analyze --output`
 
 node docs/audits/bloat-review-2026-11/scripts/handed.mjs                   # three admin screens: words handed to the browser against words their client parts name (12 Nov: product editor 204116, order 163851, customer 140715 bytes)
