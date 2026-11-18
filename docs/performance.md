@@ -133,7 +133,7 @@ chunks (`route.mjs`) from 223,068 to 216,992.
   - the stylesheets of three routes, raw and Brotli, within 4 % (the store home 217,830 raw, 28,866 Brotli), the store home's style text (at
     most 6,000 characters; 4,365) and its breakpoint sheets (at most 4; 4);
   - five pages on a phone from a cold cache until the network has been quiet for three seconds: bytes on the wire within 4 % (the front page
-    351,687), the late script files and their bytes exactly (the front page 3 files, 61,416 bytes), the page's own calls, no other host;
+    351,687), the late script files (one more fails) and their bytes with room of max(2,000, 2 %) (the front page 3 files, 61,416 bytes), the page's own calls, no other host;
   - no zod, lightbox or checkout form in the front page's scripts; no language's whole interface text; the first grid's and the first
     row's pictures eager and the next ones lazy; a blurred background from its small copy; an embedded frame named.
 - `e2e/prefetch.spec.ts` holds a table of five pages' router requests on a phone, each the measured count plus 2 (the front page 21, a product page
