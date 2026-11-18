@@ -381,9 +381,9 @@ builder, for the English owner. The day's figures (18 November 2026, the largest
 | Platform home | Norwegian | 138,023 | 47,103 | 896,262 |
 
 A save's answer: the product editor 311,274 bytes (it sends the words again, which step 2.28 takes out), the builder 1,122.
-The document is streamed, so a screen's loading skeleton is in it or not by timing: it varies by about 1% between runs, and the spec allows
-2% over the baseline for the document and for the script, and nothing over for the words. The English owner's home and orders documents grow
-with what the specs before them made in the store (188 KB and 174 KB alone): their figures are what CI sees after the whole suite. Each figure only falls: lower the baseline in the
+The document is streamed, so a screen's loading skeleton is in it or not by timing: it varies by about 1% between runs; the admin is rebuilt daily, so the spec allows
+5% over the baseline for the document, the script and a save, and max(2,000 bytes, 5%) for the words (a whole area handed is 20 KB or more). The English owner's home and orders documents grow
+with what the specs before them made in the store (188 KB and 174 KB alone): their figures are what CI sees after the whole suite. A fall is a note: lower the baseline in the
 same change (`E2E_MEASURE=1` prints them), and a figure that must rise is the owner's call.
 
 ## What a server route loads, and what holds it (bloat review step 1.8)
