@@ -549,7 +549,7 @@ other specs do not touch this store). Characters for the document, payload, main
 
 | Page | Document | Payload | Main | Style text | Identical rows | Stylesheets | Font files | Pictures at 3x | Router requests |
 |---|---|---|---|---|---|---|---|---|---|
-| Home `/s/e2e-orbit/no` | 216,550 | 154,157 | 22,855 | 17,224 | 0 | 3: 217,830 + 584 + 576 | 2, 75,740 | 142,903, none too wide | 21 |
+| Home `/s/e2e-orbit/no` | 216,550 | 154,157 | 22,855 | 17,224 | 0 | 3: 217,830 + 584 + 576 | 2, 75,740 | 142,903 on 4G (the test pins it; CI's runner reads as 3G, where two more tiles load: 223,837), none too wide | 21 |
 | Product `/p/andromeda` | 177,126 | 124,513 | 10,533 | 11,376 | 0 | | | | |
 | Listing `/products` | 192,183 | 136,556 | 10,444 | 11,373 | 0 | | | | |
 | About `/about` | 153,134 | 112,645 | 4,833 | 12,709 | 0 | | | | |

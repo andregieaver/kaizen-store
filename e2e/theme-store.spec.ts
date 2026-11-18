@@ -117,7 +117,11 @@ test("a theme's page shows the theme large on its own content, its presets as sw
 
 test("the full-screen preview has a slim bar: back, presets, Home or A product, computer or phone, and Use this theme (D275)", async ({ page }) => {
   await page.goto(`/themes/${SLUG}?preset=coast`);
-  await page.getByRole("link", { name: /^Preview/ }).click();
+  // The page is prerendered on the theme's own look and reads `?preset=` once in the browser (`ThemePreviewStage`), about 300 ms after load
+  // here: the button follows the address before it is pressed, so a press on a busy machine cannot land on the own look's link first.
+  const preview = page.getByRole("link", { name: /^Preview/ });
+  await expect(preview).toHaveAttribute("href", `/themes/${SLUG}/preview?preset=coast`);
+  await preview.click();
   await expect(page).toHaveURL(new RegExp(`/themes/${SLUG}/preview\\?preset=coast$`));
   // No site header or footer: only the bar and the store under it.
   await expect(page.locator("footer")).toHaveCount(0);
