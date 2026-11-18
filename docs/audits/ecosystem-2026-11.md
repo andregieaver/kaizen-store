@@ -72,5 +72,16 @@ behaviour joins pages, never people.
 | E4.5 | Split tests of broadcasts and email automations | L | Moved to M2.5 of `email-marketing-2026-11.md` (D720) |
 | E4.6 | Owners nurtured from trial to plan through the house store | M | Moved to M4.5 of `email-marketing-2026-11.md` (D720) |
 
+## Phase 5: what phases 3 and 4 left (D757)
+
+| Id | Step | Size | Status |
+|---|---|---|---|
+| E5.1 | The lead, activity and domain-problem events E3.2 left, on the log and offered to webhooks and workflows | M | Open |
+| E5.2 | The house store's frustration, slow-page and domain alerts in the platform's alerts and morning briefing, and kaizenaflow.com itself in the domain watch (E4.2's platform step) | S | Open |
+| E5.3 | The house store's sign-ups per visit as a goal, so the autopilot can test kaizenaflow.com's pages (E4.1's platform step) | M | Open |
+| E5.4 | A relevance floor for the knowledge base's meaning search, so a question nothing answers is counted; the open questions counted on the platform's Home (E4.3's next) | S | Open |
+
+E3.6's email engagement is M2.4 of `email-marketing-2026-11.md`; E1.5's one desk is step 6 of `docs/platform-parity-plan.md`.
+
 Every step that changes a prompt or a tool's description needs a new run of the agents' eval on Platform → AI and its recording
 committed; every store step names its platform step in the same decision.

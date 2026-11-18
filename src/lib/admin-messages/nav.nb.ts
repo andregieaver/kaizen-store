@@ -392,6 +392,9 @@ export const NAV_NB: Record<string, string> = {
   Editor: "Redigering",
   "Plan features": "Funksjoner i planene",
   "Plan analytics": "Abonnementsanalyse",
+  Extensions: "Utvidelser",
+  "The paid extensions: their sizes and prices, the bundles, and what each plan includes.":
+    "De betalte utvidelsene: størrelsene og prisene, pakkene, og hva hvert abonnement gir.",
   "Access requests": "Forespørsler om tilgang",
   "Search test": "Søketest",
   "VAT rates": "Mva-satser",
