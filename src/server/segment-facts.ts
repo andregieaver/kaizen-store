@@ -182,7 +182,7 @@ async function featuresOn(storeId: string) {
   const row = await typedRow(
     z.object({ sales: col.bool, reviews: col.bool, subscriptions: col.bool, boxes: col.bool }),
     sql`
-      select commerce.feature_on(${storeId}::uuid, 'sales') as sales, commerce.feature_on(${storeId}::uuid, 'reviews') as reviews,
+      select (commerce.feature_on(${storeId}::uuid, 'sales') and commerce.extension_on(${storeId}::uuid, 'deals')) as sales, commerce.feature_on(${storeId}::uuid, 'reviews') as reviews,
         commerce.feature_on(${storeId}::uuid, 'subscriptions') as subscriptions, commerce.feature_on(${storeId}::uuid, 'boxes') as boxes
     `,
   );

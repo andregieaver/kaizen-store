@@ -7,12 +7,12 @@ import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { adminText } from "@/lib/admin-text";
-import { featureOn } from "@/lib/store-features";
 import { featureOffText } from "@/lib/feature-labels";
 import { createActivity, deleteActivity, setActivityDone, updateActivity, type ActivityResult } from "@/server/activities";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import type { Membership } from "@/server/auth";
 import { checkPermission } from "@/server/permissions";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * Activities' actions (S3, D468), on a deal's, a person's and a company's page and on the store's home: each checks the member may change
@@ -27,7 +27,7 @@ async function writer(storeSlug: string): Promise<{ member: Membership; w: Words
   const member = await checkPermission(storeSlug, "customers:write", "deals");
   if (!member) return { refused: adminText(await actionAdminLang(), "deals").activities.problems.forbidden };
   const lang = adminLangOf(member.account.adminLocale);
-  if (!featureOn(member.store, "sales")) return { refused: featureOffText("sales", adminText(lang, "common").features) };
+  if (!dealsOn(member.store)) return { refused: featureOffText("sales", adminText(lang, "common").features) };
   return { member, w: adminText(lang, "deals").activities };
 }
 

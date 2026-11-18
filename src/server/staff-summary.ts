@@ -69,7 +69,7 @@ export async function staffSummaryFigures(store: Store, period: { from: string; 
           where o.store_id = ${store.id}::uuid and o.copied_from is null and o.archived_at is null
             and o.status = 'paid' and ${PHYSICAL_SQL} and o.delivery_method = 'ship') as to_send,
         (select count(*)::int from commerce.stock_alerts a where a.store_id = ${store.id}::uuid and a.state = 'low') as low_stock,
-        (select d.mode from commerce.support_settings d where d.store_id = ${store.id}::uuid) as desk_mode,
+        (select case when commerce.extension_on(d.store_id, 'support_desk') then d.mode else 'off' end from commerce.support_settings d where d.store_id = ${store.id}::uuid) as desk_mode,
         (select count(*)::int from commerce.support_conversations c
           where c.store_id = ${store.id}::uuid and c.status = 'open' and c.handler = 'queue') as support_waiting
     `),

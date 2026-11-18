@@ -17,7 +17,7 @@ export async function deskReplyTo(storeId: string, env: Record<string, string | 
   if (!domain) return null;
   const desk = await typedRow(
     z.object({ mode: col.text, form_messages: col.textOrNull, email_key: col.textOrNull }),
-    sql`select mode, form_messages, email_key from commerce.support_settings where store_id = ${storeId}::uuid`,
+    sql`select case when commerce.extension_on(store_id, 'support_desk') then mode else 'off' end as mode, form_messages, email_key from commerce.support_settings where store_id = ${storeId}::uuid`,
   );
   if (!desk || !desk.email_key) return null;
   return deskTakesReplies({ mode: desk.mode, formMessages: desk.form_messages, emailKey: desk.email_key }) ? deskAddress(desk.email_key, domain) : null;

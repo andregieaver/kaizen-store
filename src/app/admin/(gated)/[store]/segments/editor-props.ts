@@ -10,6 +10,7 @@ import { rfmGroups } from "@/server/analytics-customers-data";
 import { boughtChoices, storeTags } from "@/server/segments";
 import { smsOffered } from "@/server/sms";
 import type { Store } from "@/server/stores";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * What the rule builder chooses from: the store's own groups, tags, countries and languages (named in the admin's language), its products and
@@ -24,7 +25,7 @@ export async function editorChoices(store: Store, lang: AdminLang = "en") {
   const languages = [...new Set(store.localization.keptLocales.map((l) => l.slice(0, 2).toLowerCase()))];
   const offer: ConditionOffer = {
     rfmReady: rfm.ready,
-    deals: featureOn(store, "sales"),
+    deals: dealsOn(store),
     reviews: featureOn(store, "reviews"),
     subscriptions: featureOn(store, "subscriptions") || featureOn(store, "boxes"),
     sms,

@@ -457,7 +457,11 @@ export async function runBroadcasts(options: { only?: string; deadline?: number;
 
 async function startDue(result: RunResult) {
   const due = await db().execute<Row>(sql`
-    select id, store_id from commerce.broadcasts where status = 'scheduled' and scheduled_for <= now() order by scheduled_for limit 10
+    select id, store_id from commerce.broadcasts
+     where status = 'scheduled' and scheduled_for <= now()
+       -- A store whose account does not have Email automation (D748) starts nothing; its broadcast waits, scheduled.
+       and commerce.extension_on(store_id, 'email_automation')
+     order by scheduled_for limit 10
   `);
   for (const row of due) {
     const started = await startBroadcast(String(row.store_id), null, String(row.id)).catch(() => ({ ok: false as const, problem: "It could not be started." }));
@@ -490,6 +494,8 @@ async function claim(only: string | null, limit: number): Promise<Claimed[]> {
         ${only ? sql`and r.broadcast_id = ${only}::uuid` : sql``}
         -- A store whose marketing email the sending guard holds (D730): its recipients wait, queued, until it resumes.
         and not exists (select 1 from commerce.sending_pauses p where p.store_id = r.store_id and p.resumed_at is null)
+        -- And one whose account does not have Email automation (D748): asked once per sending broadcast, never per recipient.
+        and b.id not in (select b2.id from commerce.broadcasts b2 where b2.status = 'sending' and not commerce.extension_on(b2.store_id, 'email_automation'))
       order by b.started_at, r.created_at, r.subscriber_id
       limit ${limit}
       for update of r skip locked

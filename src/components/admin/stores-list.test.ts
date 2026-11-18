@@ -9,8 +9,8 @@ import type { StoreSummary } from "@/server/auth";
 import { StoresList } from "./stores-list";
 
 const stores: StoreSummary[] = [
-  { slug: "kaffe", name: "Kaffe & Co", role: "owner", workOn: false },
-  { slug: "te", name: "Te", role: "admin", workOn: false },
+  { slug: "kaffe", name: "Kaffe & Co", role: "owner", workOn: false, workExtension: true },
+  { slug: "te", name: "Te", role: "admin", workOn: false, workExtension: true },
 ];
 
 const html = (props: Record<string, unknown>) =>

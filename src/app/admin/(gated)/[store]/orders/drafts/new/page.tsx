@@ -7,7 +7,6 @@ import { draftMarketOptions } from "@/lib/draft-markets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getDeal } from "@/server/deals";
 import { draftCustomerDetails } from "@/server/draft-orders";
-import { featureOn } from "@/lib/store-features";
 import { fillWords } from "@/lib/drafts-words";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -15,6 +14,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { createDraftAction } from "../actions";
+import { dealsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "New draft order" };
 
@@ -33,7 +33,7 @@ export default async function NewDraftPage({ params, searchParams }: PageProps<"
   const uuid = (value: unknown) => (typeof value === "string" && z.uuid().safeParse(value).success ? value : undefined);
   const [customer, deal] = await Promise.all([
     uuid(search.customer) && memberCan(member, "customers:read") ? draftCustomerDetails(store.id, uuid(search.customer)!) : null,
-    uuid(search.deal) && featureOn(store, "sales") && memberCan(member, "customers:read") ? getDeal(store, uuid(search.deal)!) : null,
+    uuid(search.deal) && dealsOn(store) && memberCan(member, "customers:read") ? getDeal(store, uuid(search.deal)!) : null,
   ]);
   const forWhom = [customer ? customer.shippingAddress.name || customer.email : null, deal ? fillWords(w.forDeal, { title: deal.title }) : null].filter(Boolean).join(" · ");
   return (

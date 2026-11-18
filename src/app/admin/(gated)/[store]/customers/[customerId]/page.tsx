@@ -56,6 +56,7 @@ import { Mail } from "lucide-react";
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
 import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction } from "./actions";
+import { dealsOn } from "@/lib/extensions";
 
 /** How many orders a customer's page shows on a phone before *All orders* (round 20). */
 const PHONE_ORDERS = 5;
@@ -127,7 +128,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const subscriptionsOn = featureOn(store, "subscriptions");
   const locale = store.markets[0]?.locale ?? "nb-NO";
   // Deals (S2, D464): the person's, while Deals is on.
-  const salesOn = featureOn(store, "sales") && customer.customerId !== null;
+  const salesOn = dealsOn(store) && customer.customerId !== null;
   const deals = salesOn && customer.customerId ? await listDeals(store, { customerId: customer.customerId }) : [];
   const dealWords = adminText(lang, "deals");
   const [activities, team] =

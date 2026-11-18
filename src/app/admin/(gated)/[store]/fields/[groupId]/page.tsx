@@ -19,6 +19,7 @@ import { deleteFieldGroupAction, saveFieldGroupAction } from "../actions";
 import { editorTerms, roleOptions, storeLanguages } from "../data";
 import { featureOn } from "@/lib/store-features";
 import { PageHeader } from "@/components/admin/ui";
+import { dealsOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Group of custom fields" };
 
@@ -47,7 +48,7 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
           languages={storeLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
           currencies={moneyCurrencies(store)}
           sellsToBusinesses={featureOn(store, "business")}
-          salesOn={featureOn(store, "sales")}
+          salesOn={dealsOn(store)}
           save={saveFieldGroupAction.bind(null, store.slug)}
           base={base}
           actions={

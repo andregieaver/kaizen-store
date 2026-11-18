@@ -37,6 +37,10 @@ type Row = Record<string, unknown>;
  */
 
 /** Refreshed when a test starts, stops or changes: the pages that show a test's marker are drawn again. */
+/**
+ * The cache tag of a store's tests. Every storefront read of running tests also asks `commerce.extension_on(store, 'ab_testing')` (D748): while
+ * the account does not have A/B testing, visitors see the original; `refreshExtensionFacts()` refreshes this tag with the store's.
+ */
 export const experimentsTag = (storeId: string) => `experiments:${storeId}`;
 
 /** The slug of a variant's page (type `variant`, which has no address on the site): a key, not a place. */
@@ -93,7 +97,7 @@ export function runningExperiments(storeId: string): Promise<RunningExperiment[]
          from commerce.experiment_variants v where v.experiment_id = e.id) as variants
       from commerce.experiments e
       join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
-      where e.store_id = ${storeId}::uuid and e.status = 'running'
+      where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
     `);
     return rows.map(
       (r): RunningExperiment => ({
@@ -143,7 +147,7 @@ export async function experimentOfPage(storeId: string, pageId: string): Promise
       (select jsonb_agg(jsonb_build_object('key', v.key, 'has_page', v.page_id is not null) order by v.key)
        from commerce.experiment_variants v where v.experiment_id = e.id) as variants
     from commerce.experiments e
-    where e.store_id = ${storeId}::uuid and e.target_page_id = ${pageId}::uuid and e.status = 'running'
+    where e.store_id = ${storeId}::uuid and e.target_page_id = ${pageId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
       and commerce.page_place(e.store_id, e.target_page_id) is null
   `);
   if (!row) return null;
@@ -169,7 +173,7 @@ export async function pageGoalTests(storeId: string, pageId: string): Promise<st
     z.object({ id: col.uuid }),
     sql`
       select e.id from commerce.experiments e
-      where e.store_id = ${storeId}::uuid and e.status = 'running' and e.primary_goal = 'page' and e.goal_params ->> 'page' = ${pageId}
+      where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing') and e.primary_goal = 'page' and e.goal_params ->> 'page' = ${pageId}
       order by e.id
     `,
     readDb(),
@@ -182,7 +186,7 @@ export async function storeHasExperiments(storeId: string): Promise<boolean> {
   "use cache";
   cacheLife("hours");
   cacheTag(experimentsTag(storeId));
-  const [row] = await readDb().execute<Row>(sql`select 1 as one from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' limit 1`);
+  const [row] = await readDb().execute<Row>(sql`select 1 as one from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' and commerce.extension_on(store_id, 'ab_testing') limit 1`);
   return Boolean(row);
 }
 
@@ -210,7 +214,7 @@ export async function siteTests(storeId: string): Promise<SiteTest[]> {
       commerce.page_place(e.store_id, e.target_page_id) as target_role,
       (select jsonb_agg(jsonb_build_object('key', v.key, 'pageId', v.page_id) order by v.key) from commerce.experiment_variants v where v.experiment_id = e.id and v.page_id is not null) as versions
     from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
-    where e.store_id = ${storeId}::uuid and e.status = 'running'
+    where e.store_id = ${storeId}::uuid and e.status = 'running' and commerce.extension_on(e.store_id, 'ab_testing')
       and (p.type in ('header', 'footer', 'product_layout')
         or commerce.page_place(e.store_id, e.target_page_id) = any(${`{${TESTED_PLACES.join(",")}}`}::text[]))
     order by e.id
@@ -261,7 +265,7 @@ export async function runningExperimentIds(storeId: string): Promise<string[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(experimentsTag(storeId));
-  const rows = await readDb().execute<Row>(sql`select id from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' order by id`);
+  const rows = await readDb().execute<Row>(sql`select id from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' and commerce.extension_on(store_id, 'ab_testing') order by id`);
   return rows.map((r) => String(r.id));
 }
 

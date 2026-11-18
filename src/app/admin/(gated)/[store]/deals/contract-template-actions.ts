@@ -8,10 +8,10 @@ import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { featureOffText } from "@/lib/feature-labels";
-import { featureOn } from "@/lib/store-features";
 import type { Membership } from "@/server/auth";
 import { archiveTemplate, createTemplate, saveTemplate } from "@/server/contracts";
 import { storeAction } from "@/server/store-action";
+import { dealsOn } from "@/lib/extensions";
 
 /**
  * Contract templates' actions (D695 step 2): each through `storeAction()` with `customers:write`, Deals on, answered in the member's
@@ -22,7 +22,7 @@ const uuid = z.uuid();
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
 const wordsOf = (member: Membership) => adminText(adminLangOf(member.account.adminLocale), "deals").templates;
 const offFor = (member: Membership): string | null =>
-  featureOn(member.store, "sales") ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
+  dealsOn(member.store) ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
 
 export async function newTemplateAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.template_create", answer: failed }, async (member) => {

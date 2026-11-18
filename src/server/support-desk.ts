@@ -136,6 +136,8 @@ export async function ownerDesks(account: Account): Promise<StaffDesk[]> {
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id
       and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
+      -- The combined inbox holds only the desks of stores whose account has the AI support desk (D748).
+      and commerce.extension_on(s.id, 'support_desk')
     left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
     order by lower(s.name), s.slug
