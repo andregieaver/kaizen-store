@@ -61,14 +61,24 @@ export function CartLinkShell({
       </Link>
     );
   }
-  return (
-    <Link
-      href={marketPath(storeSlug, market.slug, "/cart")}
-      className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5"
-    >
+  const inner = (
+    <>
       <Icon name="bag" />
       {badge}
       <span className="sr-only">{name}</span>
-    </Link>
+    </>
+  );
+  const href = marketPath(storeSlug, market.slug, "/cart");
+  // Drawn twice, one shown at a time: a router link under 768 px (the intercepted drawer) and a plain anchor from 768 px, which is never in view
+  // on a phone and so never fetched ahead, and is not in the accessibility tree while hidden (D64, bloat review step 2.2).
+  return (
+    <>
+      <Link href={href} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5 md:hidden">
+        {inner}
+      </Link>
+      <a href={href} className="relative hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex">
+        {inner}
+      </a>
+    </>
   );
 }

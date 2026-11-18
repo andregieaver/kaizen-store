@@ -60,7 +60,7 @@ test("a store's own header and footer show its parts, and the header lies over a
   const top = page.locator("[data-header-wrap]");
   const bar = page.locator(".site-header");
   await expect(bar.getByRole("heading", { name: "Velkommen inn" })).toBeVisible();
-  await expect(bar.locator("a[href$='/cart']")).toHaveCount(1);
+  await expect(bar.locator("a[href$='/cart']:visible")).toHaveCount(1);
   await expect(page.locator(".site-footer").getByRole("link", { name: "Informasjonskapsler" })).toBeVisible();
   await expect(page.locator(".site-footer address")).toContainText("Siris Butikk");
 

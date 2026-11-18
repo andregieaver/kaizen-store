@@ -668,6 +668,7 @@ the path, component or table you change, or list the rules with a search for lin
   the slide-out cart (D64): the market layout's `@drawer` slot intercepts
   `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
   it on any other page, and larger screens load the cart page instead.
+  The header's cart link is drawn twice, a router link shown under 768 px and a plain anchor shown from 768 px, so a larger screen loads the cart page at once and never fetches the drawer (bloat review step 2.2).
   Stores can open it on adding (`stores.open_cart_on_add`, `useOpenCartAfterAdd()`).
   Its totals come from `cartSummary()` (`src/server/cart-summary.ts`), which
   must agree with what `placeOrder()` charges; `checkout-kinds.int.test.ts`
