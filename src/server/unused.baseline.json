@@ -256,6 +256,7 @@
     "src/db/schema.ts#orderTags",
     "src/db/schema.ts#orderTerms",
     "src/db/schema.ts#orderViews",
+    "src/db/schema.ts#organisationMembers",
     "src/db/schema.ts#ownSpeedSamples",
     "src/db/schema.ts#pageAiJobs",
     "src/db/schema.ts#pageHeatDays",
