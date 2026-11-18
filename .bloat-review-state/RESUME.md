@@ -256,3 +256,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-c executor ad71c22b5537655ce (Sonnet): 1.17 commit 3 (decisions in run/kz-c-1173-13.md) then 1.3.
 - kz-b executor a0af61e90e526b47e (Opus): 1.12 commit 2.
 - ee708312 CI failure = other session (api-contract D438, eval replay D391), not ours.
+
+## 18 Nov ~00:45 UTC
+- 1.18 Done D749 (d96e9596f).
+- 1.17 c3 + 1.3 (7 commits) pushed 6f82079a5; CI watched (bash b07e911b2). If green: claim D for 1.17 and 1.3, write up both Done. Owner to decide deleting src/lib/nav-labels.ts and signature-themes.ts (in unused baseline).
+- kz-c executor a7b0e59a44cd73ab3 (Opus): 1.6 then 1.7.
+- kz-b executor a0af61e90e526b47e (Opus): 1.12 commit 2, still running.
+- Main failures not ours: api-contract, eval replay, personal-data.nb + personal-purposes (organisations table).
