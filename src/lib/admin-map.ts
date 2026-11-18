@@ -1279,6 +1279,9 @@ const PAGES: readonly AdminPage[] = [
   platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
     keywords: ["compare plans", "features", "what is included", "tiers"],
   }),
+  platform("plan-extensions", "/plans/extensions", "Extensions", "Platform", "The paid extensions (D748): each one's words and whether it is also sold without a store, its sizes with what they include and their prices in every currency, the bundles, and what each plan includes at no extra cost.", {
+    keywords: ["extensions", "add-ons", "addons", "bundles", "a/b testing", "support desk", "email automation", "work", "deals", "pricing"],
+  }),
   platform("plan-analytics", "/plans/analytics", "Plan analytics", "Platform", "What the stores' plans earn every month in live and test payments, how that moved (started, upgraded, downgraded, paused, resumed, cancelled), the way from an application to a paying store, and each plan's stores; what Kaizena Flow sold by month with its VAT, its own Stripe payouts, and the books that hold its money.", {
     keywords: ["mrr", "monthly recurring revenue", "churn", "revenue", "funnel", "conversion", "trials", "sales", "vat", "payouts", "books"],
   }),
@@ -1589,6 +1592,8 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   // The questions the chat assistant could not answer (ecosystem plan E4.3, D729): named in the AI's map once the eval is recorded with it.
   "store:chat.questions",
   "platform:chat.questions",
+  // The paid extensions' catalogue (D748 step E2): named in the AI's map once the eval is recorded with it.
+  "platform:plan-extensions",
 ]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */

@@ -1,6 +1,6 @@
 {
-  "id": "4c543cb6-fe6f-4781-b2e6-027b719e49b3",
-  "prevId": "2b7ebfeb-a63b-4f24-aff6-cbd70862ff8d",
+  "id": "10ef9cf9-6e83-4f7e-bf39-ee9011f53c23",
+  "prevId": "32973e69-d466-49cc-b940-6b1b293fb434",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -34380,6 +34380,699 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.extension_bundle_members": {
+      "name": "extension_bundle_members",
+      "schema": "commerce",
+      "columns": {
+        "bundle_id": {
+          "name": "bundle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extension_id": {
+          "name": "extension_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "extension_bundle_members_extension_idx": {
+          "name": "extension_bundle_members_extension_idx",
+          "columns": [
+            {
+              "expression": "extension_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "extension_bundle_members_bundle_id_extension_bundles_id_fk": {
+          "name": "extension_bundle_members_bundle_id_extension_bundles_id_fk",
+          "tableFrom": "extension_bundle_members",
+          "columnsFrom": [
+            "bundle_id"
+          ],
+          "tableTo": "extension_bundles",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "extension_bundle_members_extension_id_extensions_id_fk": {
+          "name": "extension_bundle_members_extension_id_extensions_id_fk",
+          "tableFrom": "extension_bundle_members",
+          "columnsFrom": [
+            "extension_id"
+          ],
+          "tableTo": "extensions",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "extension_bundle_members_bundle_id_extension_id_pk": {
+          "name": "extension_bundle_members_bundle_id_extension_id_pk",
+          "columns": [
+            "bundle_id",
+            "extension_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "commerce.extension_bundle_prices": {
+      "name": "extension_bundle_prices",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bundle_id": {
+          "name": "bundle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval": {
+          "name": "interval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "extension_bundle_prices_one_active": {
+          "name": "extension_bundle_prices_one_active",
+          "columns": [
+            {
+              "expression": "bundle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "currency",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "interval",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"extension_bundle_prices\".\"active\"",
+          "concurrently": false
+        },
+        "extension_bundle_prices_bundle_idx": {
+          "name": "extension_bundle_prices_bundle_idx",
+          "columns": [
+            {
+              "expression": "bundle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "extension_bundle_prices_bundle_id_extension_bundles_id_fk": {
+          "name": "extension_bundle_prices_bundle_id_extension_bundles_id_fk",
+          "tableFrom": "extension_bundle_prices",
+          "columnsFrom": [
+            "bundle_id"
+          ],
+          "tableTo": "extension_bundles",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "extension_bundle_prices_interval": {
+          "name": "extension_bundle_prices_interval",
+          "value": "\"commerce\".\"extension_bundle_prices\".\"interval\" in ('month', 'year')"
+        },
+        "extension_bundle_prices_amount": {
+          "name": "extension_bundle_prices_amount",
+          "value": "\"commerce\".\"extension_bundle_prices\".\"amount_minor\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.extension_bundles": {
+      "name": "extension_bundles",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "extension_bundles_updated_by_idx": {
+          "name": "extension_bundles_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "extension_bundles_updated_by_accounts_id_fk": {
+          "name": "extension_bundles_updated_by_accounts_id_fk",
+          "tableFrom": "extension_bundles",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "extension_bundles_name_present": {
+          "name": "extension_bundles_name_present",
+          "value": "length(trim(\"commerce\".\"extension_bundles\".\"name\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.extension_prices": {
+      "name": "extension_prices",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "size_id": {
+          "name": "size_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval": {
+          "name": "interval",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "extension_prices_one_active": {
+          "name": "extension_prices_one_active",
+          "columns": [
+            {
+              "expression": "size_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "currency",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "interval",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"extension_prices\".\"active\"",
+          "concurrently": false
+        },
+        "extension_prices_size_idx": {
+          "name": "extension_prices_size_idx",
+          "columns": [
+            {
+              "expression": "size_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "extension_prices_size_id_extension_sizes_id_fk": {
+          "name": "extension_prices_size_id_extension_sizes_id_fk",
+          "tableFrom": "extension_prices",
+          "columnsFrom": [
+            "size_id"
+          ],
+          "tableTo": "extension_sizes",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "extension_prices_interval": {
+          "name": "extension_prices_interval",
+          "value": "\"commerce\".\"extension_prices\".\"interval\" in ('month', 'year')"
+        },
+        "extension_prices_amount": {
+          "name": "extension_prices_amount",
+          "value": "\"commerce\".\"extension_prices\".\"amount_minor\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.extension_sizes": {
+      "name": "extension_sizes",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "extension_id": {
+          "name": "extension_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allowances": {
+          "name": "allowances",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "extension_sizes_updated_by_idx": {
+          "name": "extension_sizes_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "extension_sizes_extension_id_extensions_id_fk": {
+          "name": "extension_sizes_extension_id_extensions_id_fk",
+          "tableFrom": "extension_sizes",
+          "columnsFrom": [
+            "extension_id"
+          ],
+          "tableTo": "extensions",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "extension_sizes_updated_by_accounts_id_fk": {
+          "name": "extension_sizes_updated_by_accounts_id_fk",
+          "tableFrom": "extension_sizes",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "extension_sizes_extension_id": {
+          "name": "extension_sizes_extension_id",
+          "columns": [
+            "extension_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "extension_sizes_label_present": {
+          "name": "extension_sizes_label_present",
+          "value": "length(trim(\"commerce\".\"extension_sizes\".\"label\")) > 0"
+        },
+        "extension_sizes_allowances": {
+          "name": "extension_sizes_allowances",
+          "value": "jsonb_typeof(\"commerce\".\"extension_sizes\".\"allowances\") = 'object'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.extensions": {
+      "name": "extensions",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "standalone": {
+          "name": "standalone",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "store_only": {
+          "name": "store_only",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "extensions_updated_by_idx": {
+          "name": "extensions_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "extensions_updated_by_accounts_id_fk": {
+          "name": "extensions_updated_by_accounts_id_fk",
+          "tableFrom": "extensions",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "extensions_known": {
+          "name": "extensions_known",
+          "value": "\"commerce\".\"extensions\".\"id\" in ('ab_testing', 'support_desk', 'email_automation', 'work', 'deals')"
+        },
+        "extensions_name_present": {
+          "name": "extensions_name_present",
+          "value": "length(trim(\"commerce\".\"extensions\".\"name\")) > 0"
+        },
+        "extensions_standalone_needs_no_store": {
+          "name": "extensions_standalone_needs_no_store",
+          "value": "not (\"commerce\".\"extensions\".\"standalone\" and \"commerce\".\"extensions\".\"store_only\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.feed_settings": {
       "name": "feed_settings",
       "schema": "commerce",
@@ -52395,6 +53088,198 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.organisation_extensions": {
+      "name": "organisation_extensions",
+      "schema": "commerce",
+      "columns": {
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extension_id": {
+          "name": "extension_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size_id": {
+          "name": "size_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bundle_id": {
+          "name": "bundle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trial_ends_at": {
+          "name": "trial_ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grace_ends_at": {
+          "name": "grace_ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "organisation_extensions_extension_idx": {
+          "name": "organisation_extensions_extension_idx",
+          "columns": [
+            {
+              "expression": "extension_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "size_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "organisation_extensions_bundle_idx": {
+          "name": "organisation_extensions_bundle_idx",
+          "columns": [
+            {
+              "expression": "bundle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "organisation_extensions_organisation_id_organisations_id_fk": {
+          "name": "organisation_extensions_organisation_id_organisations_id_fk",
+          "tableFrom": "organisation_extensions",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "tableTo": "organisations",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "organisation_extensions_extension_id_extensions_id_fk": {
+          "name": "organisation_extensions_extension_id_extensions_id_fk",
+          "tableFrom": "organisation_extensions",
+          "columnsFrom": [
+            "extension_id"
+          ],
+          "tableTo": "extensions",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "organisation_extensions_bundle_id_extension_bundles_id_fk": {
+          "name": "organisation_extensions_bundle_id_extension_bundles_id_fk",
+          "tableFrom": "organisation_extensions",
+          "columnsFrom": [
+            "bundle_id"
+          ],
+          "tableTo": "extension_bundles",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "organisation_extensions_size_fk": {
+          "name": "organisation_extensions_size_fk",
+          "tableFrom": "organisation_extensions",
+          "columnsFrom": [
+            "extension_id",
+            "size_id"
+          ],
+          "tableTo": "extension_sizes",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "extension_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "organisation_extensions_organisation_id_extension_id_pk": {
+          "name": "organisation_extensions_organisation_id_extension_id_pk",
+          "columns": [
+            "organisation_id",
+            "extension_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "organisation_extensions_source": {
+          "name": "organisation_extensions_source",
+          "value": "\"commerce\".\"organisation_extensions\".\"source\" in ('bought', 'bundle', 'trial')"
+        },
+        "organisation_extensions_trial": {
+          "name": "organisation_extensions_trial",
+          "value": "(\"commerce\".\"organisation_extensions\".\"source\" = 'trial') = (\"commerce\".\"organisation_extensions\".\"trial_ends_at\" is not null)"
+        },
+        "organisation_extensions_bundle": {
+          "name": "organisation_extensions_bundle",
+          "value": "(\"commerce\".\"organisation_extensions\".\"source\" = 'bundle') = (\"commerce\".\"organisation_extensions\".\"bundle_id\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.organisation_members": {
       "name": "organisation_members",
       "schema": "commerce",
@@ -56744,6 +57629,119 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.plan_extension_grants": {
+      "name": "plan_extension_grants",
+      "schema": "commerce",
+      "columns": {
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extension_id": {
+          "name": "extension_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size_id": {
+          "name": "size_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "plan_extension_grants_extension_idx": {
+          "name": "plan_extension_grants_extension_idx",
+          "columns": [
+            {
+              "expression": "extension_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "size_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "plan_extension_grants_plan_id_plans_id_fk": {
+          "name": "plan_extension_grants_plan_id_plans_id_fk",
+          "tableFrom": "plan_extension_grants",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "tableTo": "plans",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "plan_extension_grants_extension_id_extensions_id_fk": {
+          "name": "plan_extension_grants_extension_id_extensions_id_fk",
+          "tableFrom": "plan_extension_grants",
+          "columnsFrom": [
+            "extension_id"
+          ],
+          "tableTo": "extensions",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "plan_extension_grants_size_fk": {
+          "name": "plan_extension_grants_size_fk",
+          "tableFrom": "plan_extension_grants",
+          "columnsFrom": [
+            "extension_id",
+            "size_id"
+          ],
+          "tableTo": "extension_sizes",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "extension_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "plan_extension_grants_plan_id_extension_id_pk": {
+          "name": "plan_extension_grants_plan_id_extension_id_pk",
+          "columns": [
+            "plan_id",
+            "extension_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "commerce.plan_feature_grants": {
       "name": "plan_feature_grants",
       "schema": "commerce",
@@ -59330,6 +60328,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'custom'"
+        },
+        "extensions_launched_at": {
+          "name": "extensions_launched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "plan_reminders": {
           "name": "plan_reminders",

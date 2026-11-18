@@ -39,7 +39,12 @@ export default async function PlansPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title={w.title}
-          description={<>{w.description}{" "}<Link href="/admin/platform/plans/features" className="underline">{w.sayIncludes}</Link>.</>}
+          description={
+            <>
+              {w.description}{" "}<Link href="/admin/platform/plans/features" className="underline">{w.sayIncludes}</Link>.{" "}
+              <Link href="/admin/platform/plans/extensions" className="underline">{w.extensions}</Link>.
+            </>
+          }
         />
         <ActionForm action={syncPlansAction} successMessage={w.synced} className="flex flex-col items-end gap-1">
           <SubmitButton disabled={modes.length === 0}>{w.sync}</SubmitButton>
