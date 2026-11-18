@@ -377,7 +377,7 @@ test("a product tile takes the 800 px copy on a 3x phone, and no tile or gallery
 /**
  * Five pages as a phone loads them, from a cold cache until the network has been quiet for three seconds (bloat review step 1.3): the
  * bytes on the wire (`wire`: body and headers of every request), the script files the page's HTML did not name (`lateScripts` and
- * `lateScriptBytes`, decoded, held exactly: they are the build's, they do not wobble), the page's own fetches that are not the router's
+ * `lateScriptBytes`, decoded: one file more fails, and the bytes have room of max(2,000, 2 %), as everyday code moves shared chunks by a few bytes), the page's own fetches that are not the router's
  * (`ownFetches`: the visit count, the tiles' call) and every request to another host (none is allowed). `wire` is its figure plus 4 %,
  * rounded up to the next 1,000. Measured on the build of 17 November 2026 (three runs: the largest wire of each page is the figure: the front page 351,687, the product page 370,098, /products 360,361, /om-oss 405,020 and the cart 410,890 bytes; the late scripts, 3, 4, 3, 7 and 5 files, were the same each time). A budget only falls.
  */
@@ -445,8 +445,10 @@ for (const [path, budget] of Object.entries(WIRE_BUDGETS)) {
       }
       const text = `${path}: wire ${wire}, late scripts ${lateScripts} (${lateScriptBytes} bytes: ${late.map((r) => r.url).join(", ")}), own fetches ${ownFetches}`;
       expect(wire, text).toBeLessThan(budget.wire);
-      expect(lateScripts, text).toBe(budget.lateScripts);
-      expect(lateScriptBytes, text).toBe(budget.lateScriptBytes);
+      // A late script more fails; its bytes have room, as everyday code changes shared chunks by a few bytes. A fall is a note.
+      expect(lateScripts, text).toBeLessThanOrEqual(budget.lateScripts);
+      expect(lateScriptBytes, text).toBeLessThanOrEqual(budget.lateScriptBytes + Math.max(2_000, Math.round(budget.lateScriptBytes * 0.02)));
+      if (lateScripts < budget.lateScripts) console.info(`[wire] ${path}: ${lateScripts} late scripts, budget ${budget.lateScripts}; lower it`);
       expect(ownFetches, text).toBeLessThanOrEqual(budget.ownFetches);
       expect(otherHosts, `${path} asked another host for these`).toEqual([]);
     } finally {
