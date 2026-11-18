@@ -314,3 +314,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.1 pushed 7742afff8 (CLAUDE.md 10,102 B / 134 lines; .claude/rules/{database,e2e,server,ai-prompts}.md path-scoped). Proof session session_01URyFZRsijVpXS4FvhWCa1j created; send_later trig_01XebSgBUTb3Ctv5dyinGBbr at 15:32 to read it. Expected quote: "A migration reaches production only through CI, and a change to a hot table follows the rules below." Then D-row 2.1, archive session.
 - kz-b: 2.16 executor (Sonnet). kz-c: 2.2 executor abbce2dc1145d5b3c.
 - Hold 2.36-2.39 (AI rounds/tools) until owner can record eval; pair with 1.19 c4-5.
+- 18 Nov 15:45: 2.1 Done D774 (both proofs passed: fresh session + subagent quoted database.md). Proof sessions archived.
