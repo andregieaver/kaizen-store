@@ -127,7 +127,7 @@ commit as the fix.
 |---|---|---|---|---|---|---|---|
 | 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | Done | 17 Nov (64b35c61; D719): every budget in docs/rules/budgets.md; the written rules held by docs-ratchet; Markdown pushes run the Docs budget workflow. |
 | 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | Done | 17 Nov (9c029e2e; D733): 589 routes and eight markers held in CI; only growth fails; CI's first run matched the local baseline. |
-| 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | In progress | Local 1-7: scripts 614,339 home; docs 134,151; css 217,830; wire 351,687; router 19; ratchet 61/41. |
+| 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Done | 18 Nov, 42c9b03d, D752: home scripts 614 KB, wire 352 KB, 19 router requests. |
 | 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | Done | 17 Nov (15485362; D726): admin client modules walked; zod reach 145, catalogue imports 36 and 68 unread keys held; shop never imports admin words. |
 | 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | cheap | 0.9, 0.13, 0.1, 1.1 | Open | |
 | 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1, 0.43 | Open | |
@@ -141,7 +141,7 @@ commit as the fix.
 | 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
 | 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Done | 17 Nov (23a841e2; D722): the beacon tells the builder from the product editor; the briefing names an admin screen kind with 100+ loads not good at p75. |
 | 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
-| 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | In progress | Local 1-3: admin 233/163; copies 4108/630; unused 21, test-only 855. |
+| 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | Done | 18 Nov, 6f82079a, D751: 21 unused exports, copies 4,108 lines, 38 twins, admin 233/163/468. |
 | 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 | Done | 17 Nov, 27f215e7, D749: jobs 83, tables 519, tools 294; new store 8 rows. |
 | 1.19 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3, GAP-ai-s2, GAP-ai-s3 | M | strong | 0.1, 1.1, 0.21 | Open | |
 | 1.20 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1, GAP-build-s1 | M | review | 0.38, 1.8, 1.11, 1.1 | Open | |
@@ -325,6 +325,8 @@ Change log:
 - 17 Nov 2026: step 1.10 Done (d1be6bc3, D746): scheduled work and two cold frames counted with 1 and 20 stores, statements exact and rows read with a tenth of room.
 - 17 Nov 2026: step 1.11 Done (1a636181, D747): cached reads, render modes and store pages' statements held in CI; a gain is a note.
 - 17 Nov 2026: step 1.18 Done (27f215e7, D749): fourteen surface counts, the hot tables' indexes and triggers and a new store's rows held; a new job, table or tool needs an Idle cost: line.
+- 18 Nov 2026: step 1.17 Done (6f82079a, D751): unused code, copies and the admin's repeats held by three scans; a new item fails, a fall is a note.
+- 18 Nov 2026: step 1.3 Done (42c9b03d, D752): scripts, documents, stylesheets, wire bytes, late scripts and router requests held on real store pages.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 
