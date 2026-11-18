@@ -31,6 +31,13 @@ What held the memory, measured without the cap:
   - no Turbopack build cache;
   - one worker;
   - no source maps (D709, 17 November 2026, measured below; `serverSourceMaps` too since step 1.20, 18 November 2026).
+- The source-map switches step 1.21 weighed, from the rows of step 1.20 below: `serverSourceMaps: false` is on for Vercel (peak 6.8 GB under the 8 GB cap,
+  from 7.6 to 7.8 GB without it); `enablePrerenderSourceMaps: false` gained nothing (7.9 GB) and is not set. `serverSourceMaps` was already in
+  `next.config.ts` (step 1.20), so commit 2 of step 1.21 adds no switch to it.
+
+Stage 2 is needed.
+Peak with the switches: 6.8 GB; step 1.29 builds in CI and deploys the prebuilt output.
+
 - `pnpm build` is `scripts/next-build.mjs`: `next build` with a 7 GB heap everywhere except Vercel.
 - `src/app/globals.css` points Tailwind at the code under `src`: without `src/data`, tests (`*.test.ts`, `*.test.tsx`, `src/test`), the interface texts (`src/lib/messages`, `src/lib/admin-messages`) and `src/db`, and without any SQL.
   - The CSS lost 37 selectors, all of them words in docs, e2e selectors or numbers in the taxonomy's JSON. No class the app uses was lost.
