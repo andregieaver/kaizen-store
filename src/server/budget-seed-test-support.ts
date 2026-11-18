@@ -247,6 +247,14 @@ export async function removeSeed(run: string): Promise<void> {
     await tx`delete from commerce.deals where customer_id in ${customers}`;
     await tx`delete from commerce.house_customer_links where customer_id in ${customers} or account_id in ${accounts} or request_id in ${requests}`;
     await tx`delete from commerce.customers where email like ${emails}`;
+    // Each owner's organisation (the organisations migration of 17 November): its members first, then the organisation once no store is in it.
+    const organisations = await tx<{ id: string }[]>`select distinct organisation_id as id from commerce.organisation_members where account_id in ${accounts}`;
+    await tx`delete from commerce.organisation_members where account_id in ${accounts}`;
+    for (const { id } of organisations) {
+      await tx`delete from commerce.organisations o where o.id = ${id}::uuid and not o.platform
+        and not exists (select 1 from commerce.stores s where s.organisation_id = o.id)
+        and not exists (select 1 from commerce.organisation_members m where m.organisation_id = o.id)`;
+    }
     await tx`delete from commerce.accounts where email like ${emails}`;
     await tx`delete from commerce.access_requests where email like ${emails}`;
   });
