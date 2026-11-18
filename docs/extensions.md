@@ -243,7 +243,7 @@ Each step leaves production working and changes nothing an owner sees until step
 
 | Step | What | Done when |
 |---|---|---|
-| E1 | **Organisations**: tables, `stores.organisation_id`, one organisation per owner backfilled, membership; screens unchanged | Every store has an organisation |
+| E1 | **Organisations**: tables, `stores.organisation_id`, one organisation per owner backfilled, membership; screens unchanged | Every store has an organisation. **Built 18 November 2026**: `commerce.place_store()` places every store at commit, whichever way it was made; an account is named after its first store, never after a person |
 | E2 | **The catalogue and entitlement**: extension tables, `extensionState()`, the platform always `platform`, every existing account `active` under a temporary source `legacy`; the platform admin's editor beside plans | Prices and grants editable; nothing hidden yet |
 | E3 | **Gates**: every route, card, tool, MCP tool, webhook topic, API route and cron job tagged with its extension; scan test | An account without an extension sees none of it (tried on a test account) |
 | E4 | **Account billing**: one subscription per account with items, the store limit, usage across the account, the fee per account plan; existing stores moved to the highest plan | Every paying store billed through its account |

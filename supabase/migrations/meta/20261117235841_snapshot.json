@@ -1,6 +1,6 @@
 {
-  "id": "2bddaa18-9a4b-40e5-8d86-acb5008ae104",
-  "prevId": "b87b2e47-a529-49d7-bf6d-408d5a40a16d",
+  "id": "f149313c-5a15-44dd-a484-693a0785835a",
+  "prevId": "7b1ac5e7-42cf-4902-9883-893f727a8afd",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -52178,6 +52178,172 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.organisation_members": {
+      "name": "organisation_members",
+      "schema": "commerce",
+      "columns": {
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "organisation_members_account_idx": {
+          "name": "organisation_members_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "organisation_members_organisation_id_organisations_id_fk": {
+          "name": "organisation_members_organisation_id_organisations_id_fk",
+          "tableFrom": "organisation_members",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "tableTo": "organisations",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "organisation_members_account_id_accounts_id_fk": {
+          "name": "organisation_members_account_id_accounts_id_fk",
+          "tableFrom": "organisation_members",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "organisation_members_organisation_id_account_id_pk": {
+          "name": "organisation_members_organisation_id_account_id_pk",
+          "columns": [
+            "organisation_id",
+            "account_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "organisation_members_role": {
+          "name": "organisation_members_role",
+          "value": "\"commerce\".\"organisation_members\".\"role\" in ('owner', 'member')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.organisations": {
+      "name": "organisations",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "platform": {
+          "name": "platform",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "organisations_one_platform": {
+          "name": "organisations_one_platform",
+          "columns": [
+            {
+              "expression": "platform",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"organisations\".\"platform\"",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "organisations_name_present": {
+          "name": "organisations_name_present",
+          "value": "length(trim(\"commerce\".\"organisations\".\"name\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.own_speed_samples": {
       "name": "own_speed_samples",
       "schema": "commerce",
@@ -83894,6 +84060,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "starter_copy_of": {
           "name": "starter_copy_of",
           "type": "uuid",
@@ -84333,6 +84505,21 @@
           "method": "btree",
           "concurrently": false
         },
+        "stores_organisation_idx": {
+          "name": "stores_organisation_idx",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
         "stores_country_idx": {
           "name": "stores_country_idx",
           "columns": [
@@ -84441,6 +84628,20 @@
             "made_from_starter"
           ],
           "tableTo": "store_starters",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "stores_organisation_id_organisations_id_fk": {
+          "name": "stores_organisation_id_organisations_id_fk",
+          "tableFrom": "stores",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "tableTo": "organisations",
           "schemaTo": "commerce",
           "columnsTo": [
             "id"

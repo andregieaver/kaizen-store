@@ -534,6 +534,49 @@ export const accounts = commerce.table(
   ],
 );
 
+/**
+ * An account as billing sees it (D748 step E1, `docs/extensions.md` 8.1): an organisation that owns stores, and later the plan and the
+ * extensions. People are members; the screens say "account", never "organisation". Every store belongs to one, placed by the database
+ * (`commerce.place_store()`): Kaizena Flow's own stores (the template, store templates and their copies, sandboxes, the house store) in the
+ * platform's, every other in its creator's. Named after the store that brought it, never after a person. Not a store's business
+ * (`stores.organisation_number` is that).
+ */
+export const organisations = commerce.table(
+  "organisations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** Kaizena Flow's own: holds the platform's stores, is never billed, has every extension. At most one, made by `commerce.platform_organisation()`. */
+    platform: boolean("platform").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("organisations_name_present", sql`length(trim(${t.name})) > 0`),
+    uniqueIndex("organisations_one_platform").on(t.platform).where(sql`${t.platform}`),
+  ],
+);
+
+/** Who belongs to an organisation (D748 E1): its `owner`, who alone buys for it, and `member`s. Roles in each store stay `store_members` (P5). */
+export const organisationMembers = commerce.table(
+  "organisation_members",
+  {
+    organisationId: uuid("organisation_id")
+      .notNull()
+      .references(() => organisations.id),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    role: text("role").notNull().default("member"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organisationId, t.accountId] }),
+    index("organisation_members_account_idx").on(t.accountId),
+    check("organisation_members_role", sql`${t.role} in ('owner', 'member')`),
+  ],
+);
+
 /** Someone asking to join the beta (docs/platform.md, P3). */
 export const accessRequests = commerce.table(
   "access_requests",
@@ -692,6 +735,8 @@ export const stores = commerce.table(
     house: boolean("house").notNull().default(false),
     /** The store template this store was made from (D175), for the platform's counts; nothing behaves differently by it. */
     madeFromStarter: uuid("made_from_starter").references((): AnyPgColumn => storeStarters.id),
+    /** The account that owns the store (D748 E1, `docs/extensions.md` 8.1), set by the database (`commerce.place_store()`). */
+    organisationId: uuid("organisation_id").references((): AnyPgColumn => organisations.id),
     /**
      * A store template's frozen published copy (D177, docs/store-templates.md section 4): made by `commerce.freeze_starter()` when the
      * template is published, what new stores are copied from (`commerce.starter_source()`) and what owners preview. Always `starter`, never
@@ -932,6 +977,7 @@ export const stores = commerce.table(
     uniqueIndex("stores_one_house_idx").on(t.house).where(sql`${t.house}`),
     check("stores_house_real", sql`not (${t.house} and (${t.isTemplate} or ${t.starter} or ${t.sandbox}))`),
     index("stores_created_by_idx").on(t.createdBy),
+    index("stores_organisation_idx").on(t.organisationId),
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
     index("stores_products_page_idx").on(t.id, t.productsPageId),
