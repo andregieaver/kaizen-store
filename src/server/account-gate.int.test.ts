@@ -8,6 +8,7 @@ import { addMember, auditRows, fakeAuthState, fakeSupabase, linkAuthUser, makeAc
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {} }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "accept-language": "en" }) }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new Error(`REDIRECT:${url}`);
@@ -21,6 +22,7 @@ const auth = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => auth.client }));
 
 const a = await import("./auth");
+const { admit } = await import("./sign-in");
 
 type Row = Record<string, unknown>;
 
@@ -149,6 +151,49 @@ describe("getAccount() and the second step", () => {
     await db().execute(sql`update commerce.accounts set two_step_since = now() where id = ${store.account.id}::uuid`);
     signIn({ sub: authUser, factors: [] });
     expect(await a.getAccount()).not.toBeNull();
+  });
+});
+
+describe("admit() reconciles the two-step mirror from the Auth server (bloat review step 2.33)", () => {
+  /** An account linked to its own Auth user, signed in at aal1 with what the stand-in server holds. */
+  async function signedInAccount(label: string, mirror: boolean, overrides: Parameters<typeof fakeAuthState>[0] = {}) {
+    const account = await makeAccount(label);
+    const sub = await linkAuthUser(account.id);
+    if (mirror) await db().execute(sql`update commerce.accounts set two_step_since = now() where id = ${account.id}::uuid`);
+    signIn({ sub, ...overrides });
+    const user = { id: sub, email: account.email } as unknown as Parameters<typeof admit>[1];
+    return { account, user };
+  }
+  const mirrorOf = async (accountId: string) => {
+    const [row] = await db().execute<Row>(sql`select two_step_since from commerce.accounts where id = ${accountId}::uuid`);
+    return row.two_step_since;
+  };
+
+  it("sets the mirror when the server holds a verified factor and the mirror is empty", async () => {
+    const { account, user } = await signedInAccount("admit-on", false, { factors: [factor] });
+    expect(await admit(auth.client as Parameters<typeof admit>[0], user)).toBe("admitted");
+    expect(await mirrorOf(account.id)).not.toBeNull();
+    expect(state.calls).toContain("getUser");
+  });
+
+  it("clears the mirror when the server holds no factor", async () => {
+    const { account, user } = await signedInAccount("admit-off", true, { factors: [] });
+    expect(await admit(auth.client as Parameters<typeof admit>[0], user)).toBe("admitted");
+    expect(await mirrorOf(account.id)).toBeNull();
+  });
+
+  it("signs the person out and refuses when the Auth server cannot be asked (fail closed)", async () => {
+    const { account, user } = await signedInAccount("admit-down", false, { factors: [factor], userError: true });
+    expect(await admit(auth.client as Parameters<typeof admit>[0], user)).toBe("no-access");
+    expect(state.calls).toContain("signOut");
+    expect(await mirrorOf(account.id)).toBeNull();
+  });
+
+  it("never takes the cookie's copy: a factor claimed there while the server holds none leaves the mirror empty", async () => {
+    const { account, user } = await signedInAccount("admit-cookie", false, { factors: [], cookieFactors: [factor] });
+    expect(await admit(auth.client as Parameters<typeof admit>[0], user)).toBe("admitted");
+    expect(await mirrorOf(account.id)).toBeNull();
+    expect(state.calls).not.toContain("getSession");
   });
 });
 

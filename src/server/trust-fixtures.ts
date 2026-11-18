@@ -112,6 +112,10 @@ export function fakeSupabase(state: FakeAuthState) {
         // The cookie's copy may differ from the server's: the server's is what this returns.
         return state.sub ? ok({ user: { id: state.sub, factors: state.factors } }) : fail("no session");
       },
+      async signOut() {
+        state.calls.push("signOut");
+        return { error: null };
+      },
       mfa: {
         async enroll(params: { factorType: string; friendlyName?: string }) {
           state.calls.push("enroll");

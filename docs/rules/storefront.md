@@ -39,6 +39,9 @@ the path, component or table you change, or list the rules with a search for lin
   query takes a store id; never query a store-owned table without it.
   A store's address by its id is `storeSlugOf()` (`src/server/stores.ts`, cached
   under `storeIdTag(id)`); never write the lookup by hand (`store-slug.scan.test.ts`).
+  The store layout (`src/app/s/[store]/[market]/layout.tsx`) awaits one Promise.all before `<html>` (the header, the footer and the text
+  styles) and nothing inside its JSX; the standard footer (`StoreFooter`) reads the legal links itself, so a footer of the store's own reads
+  none (bloat review step 2.18).
 
 ## Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
 
@@ -696,7 +699,10 @@ the path, component or table you change, or list the rules with a search for lin
   directly in a layout. Choices are logged in `commerce.consents` (12 months)
   through `/api/consent`; the Cookies page lists what the site sets.
   `siteCookies()` adds what the latest scan found that Kaizen knows or the
-  owner described (`cookie_notes`), so the banner follows the scan. The scan
+  owner described (`cookie_notes`), so the banner follows the scan.
+  `siteCookies()` reads one site-facts statement (`siteFacts()`, `src/server/site-facts.ts`, bloat review step 2.18) that carries the tags
+  of the readers it folds (cookies, chat, pages, affiliate, recommendations, experiments; referrals and Kaizena Flow's navigation for the
+  platform); a new optional feature the banner must know about adds a field there and its tag, not a new read. The scan
   (`src/lib/cookie-scan.ts`, no database, tested in e2e against a small
   site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
   only module that loads Chromium; keep it out of other routes' imports.

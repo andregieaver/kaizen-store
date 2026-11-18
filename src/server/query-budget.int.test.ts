@@ -281,9 +281,11 @@ async function storeFrame(slug: string, market: string): Promise<void> {
   if (!shop) throw new Error(`no shop ${slug}/${market}`);
   const { store, ab } = shop;
   const afterSale = featureOn(store, "shop") || (await afterSaleOpenCached(store.id));
-  await Promise.all([siteLayoutForVisitor(store.id, "header", ab), siteLayoutForVisitor(store.id, "footer", ab), legalLinksFor(store, shop.market, afterSale)]);
-  await textStylesCssFor(store.id);
+  // One wave before <html> (bloat review step 2.18); the standard footer reads the legal links itself, a footer of the store's own none.
+  const [, footer] = await Promise.all([siteLayoutForVisitor(store.id, "header", ab), siteLayoutForVisitor(store.id, "footer", ab), textStylesCssFor(store.id)]);
+  if (!footer.layout) await legalLinksFor(store, shop.market, afterSale);
 }
+
 
 /** Kaizena Flow's frame: what `PlatformRoot` (`src/app/(platform)/layout.tsx`) awaits, then the consent banner's cookies. */
 async function platformFrame(): Promise<void> {
@@ -339,6 +341,12 @@ function parts(group: Group): void {
 
     it("frame.store", async () => check("frame.store", await count(group, "frame.store", () => storeFrame("demo", "no"))), T);
     it("frame.platform", async () => check("frame.platform", await count(group, "frame.platform", () => platformFrame())), T);
+    // The consent banner's cookies for the demo store (`MarketExtras`, in its own boundary): one site-facts statement (bloat review step 2.18).
+    it("siteCookies.store", async () => {
+      const demo = await getStore("demo");
+      if (!demo) throw new Error("no store demo");
+      check("siteCookies.store", await count(group, "siteCookies.store", () => siteCookies(demo.id, demo.tracking)));
+    }, T);
   });
 }
 

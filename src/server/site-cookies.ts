@@ -1,60 +1,26 @@
 import "server-only";
 
-import { getPlatformLangs } from "./platform-navigation";
 import { sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
 
 import type { ListedCookie } from "@/components/consent/cookie-policy";
 import { db, readDb } from "@/db/client";
 import { OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type ConsentExtra, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
 import { declaredCookies, type KnownCookie } from "@/lib/known-cookies";
 import { trackingSchema } from "@/lib/cookie-consent-schema";
-import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
+import { cookieNoteInput, reviewFindings, type CookieNote } from "@/lib/cookie-scan";
 import { codeCategories, type CustomCode } from "@/lib/custom-code";
 import { customCodeInput } from "@/lib/custom-code-schema";
 import { featureOn } from "@/lib/store-features";
 
-import { affiliateSite } from "./affiliates";
 import { audit, type Account } from "./auth";
-import { storeHasExperiments } from "./experiments";
-import { getRecommendSettings } from "./recommend-settings";
-import { getChatAgent } from "./chat-agent";
-import { usesRememberedModals } from "./page-modals";
-import { referralPublicSettings } from "./referrals";
 import { refreshStoreById } from "./stores";
 import { owned } from "./owned";
+import { cookiesTag, siteFacts } from "./site-facts";
 
 type Row = Record<string, unknown>;
 
 /** Revalidate after a site's scan finishes or its notes change. */
-export const cookiesTag = (storeId: string | null) => `cookies:${storeId ?? "kaizen"}`;
-
-/** The features a store keeps on (D178), cached with the cookie list: a switch refreshes `cookiesTag` (`refreshFeatureTags()`). */
-async function storeFeatures(storeId: string): Promise<{ features: string[]; visitCounting: boolean; heatmaps: boolean; recordings: boolean }> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(cookiesTag(storeId));
-  const [row] = await readDb().execute<Row>(sql`select features, visit_counting, heatmaps, recordings from commerce.stores where id = ${storeId}::uuid`);
-  return {
-    features: ((row?.features ?? []) as unknown[]).map(String),
-    visitCounting: Boolean(row?.visit_counting),
-    heatmaps: Boolean(row?.heatmaps),
-    recordings: Boolean(row?.recordings),
-  };
-}
-
-/** A site's latest finished scan and the owner's notes, cached until either changes. */
-async function siteFindings(storeId: string | null): Promise<{ items: ScannedItem[]; notes: CookieNote[] }> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(cookiesTag(storeId));
-  const [scan] = await readDb().execute<Row>(sql`
-    select items from commerce.cookie_scans
-    where coalesce(store_id, '00000000-0000-0000-0000-000000000000'::uuid) = coalesce(${storeId}::uuid, '00000000-0000-0000-0000-000000000000'::uuid) and status = 'done'
-    order by finished_at desc limit 1
-  `);
-  return { items: parseScannedItems(scan?.items), notes: await readNotes(storeId) };
-}
+export { cookiesTag };
 
 async function readNotes(storeId: string | null): Promise<CookieNote[]> {
   const rows = await readDb().execute<Row>(sql`
@@ -92,9 +58,10 @@ export async function siteCookies(
   options: { buyers?: boolean; colorMode?: boolean; privateStore?: boolean } = {},
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[]; extras: ConsentExtra[] }> {
   const listed = new Map<string, ListedCookie>();
+  // What the site's optional features are, in one statement that carries every one of their tags (`siteFacts()`, bloat review step 2.18).
+  const facts = await siteFacts(storeId);
   // A cookie of a store feature that is off (D178) is not the site's while it is: left out, even when an earlier scan found it.
-  const facts = storeId === null ? null : await storeFeatures(storeId);
-  const features = facts?.features ?? null;
+  const features = facts.features;
   const offFeature = (cookie: KnownCookie) => Boolean(cookie.feature && features && !featureOn(features, cookie.feature));
   const list = (cookie: KnownCookie) => {
     const { name, provider, category, days, purpose, storage } = cookie;
@@ -102,34 +69,33 @@ export async function siteCookies(
     if (!listed.has(name)) listed.set(name, { name, provider, category, days, purpose, ...(storage ? { kind: `${storage}Storage` as const } : {}) });
   };
   // The chat agent keeps its conversation in the tab while it is on (D81).
-  const chat = (await getChatAgent(storeId))?.enabled ?? false;
+  const chat = facts.chat;
   // Pop-ups that remember being closed keep it in the browser, as a preference (D121).
-  const modals = await usesRememberedModals(storeId);
+  const modals = facts.modals;
   // Kaizen's referral link is kept in a cookie, as marketing, while its program is on (D131): the banner asks for it.
-  const referral = storeId === null ? await referralPublicSettings() : null;
+  const referral = facts.referral;
   // A store with a referral program keeps the link a visitor opened, as marketing, once they allow it (D131).
-  const site = storeId === null ? null : await affiliateSite(storeId);
+  const site = facts.affiliate;
   // A creator's link (D386) is the same cookie, kept while either programme works.
   const affiliate = site?.capture ?? false;
   // A store with recommendations on keeps what a visitor did in this tab, to suggest products (D139).
-  const recommendations = storeId === null ? false : (await getRecommendSettings(storeId)).enabled;
+  const recommendations = facts.recommendations;
   // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
-  const experiments = storeId === null ? false : await storeHasExperiments(storeId);
+  const experiments = facts.experiments;
   // Kaizena Flow's own site in more than one language remembers a closed language suggestion, as a preference (D312); a store with Several
   // languages on remembers a language a visitor chose in its switcher, for its front door (D479).
-  const languages = storeId === null ? (await getPlatformLangs()).length > 1 : Boolean(features && featureOn(features, "languages"));
+  const languages = storeId === null ? facts.platformLangs > 1 : Boolean(features && featureOn(features, "languages"));
   // A store that counts visits and already asks about statistics keeps a visitor's first visit in 30 days once they allow it (D303 I3).
   // Heatmaps run under statistics and recordings ask a purpose of their own (D656): the banner asks for them while they are on.
-  const heatmaps = Boolean(facts?.heatmaps);
-  const recordings = Boolean(facts?.recordings);
-  const touch = Boolean(facts?.visitCounting) && (toolCategories(tracking).includes("statistics") || experiments);
+  const heatmaps = facts.heatmaps;
+  const recordings = facts.recordings;
+  const touch = facts.visitCounting && (toolCategories(tracking).includes("statistics") || experiments);
   declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, recordings, languages, touch })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.captureDays } : cookie))
     .forEach(list);
 
-  const { items, notes } = await siteFindings(storeId);
-  for (const item of reviewFindings(items, notes)) {
+  for (const item of reviewFindings(facts.scanItems, facts.notes)) {
     if (item.note) {
       const key = `${item.kind}|${item.name}`;
       if (!listed.has(key)) {

@@ -63,13 +63,16 @@ async function shopOf(slug: string, market: string): Promise<Shop> {
   return shop;
 }
 
-/** `src/app/s/[store]/[market]/layout.tsx` (`MarketLayout`): the shop, after-sale for a website, the header, footer and legal links, the text styles. */
+/**
+ * `src/app/s/[store]/[market]/layout.tsx` (`MarketLayout`): the shop, after-sale for a website, then one wave of the header, footer and text
+ * styles; the standard footer (`StoreFooter`) reads the legal links itself, a footer of the store's own none (bloat review step 2.18).
+ */
 export async function frame(slug: string, market: string): Promise<void> {
   const shop = await shopOf(slug, market);
   const { store, ab } = shop;
   const afterSale = featureOn(store, "shop") || (await afterSaleOpenCached(store.id));
-  await Promise.all([siteLayoutForVisitor(store.id, "header", ab), siteLayoutForVisitor(store.id, "footer", ab), legalLinksFor(store, shop.market, afterSale)]);
-  await textStylesCssFor(store.id);
+  const [, footer] = await Promise.all([siteLayoutForVisitor(store.id, "header", ab), siteLayoutForVisitor(store.id, "footer", ab), textStylesCssFor(store.id)]);
+  if (!footer.layout) await legalLinksFor(store, shop.market, afterSale);
 }
 
 /** `src/app/s/[store]/[market]/page.tsx` (`load()` and `MarketHome`): the chosen front page or its test, then the products and campaigns. */

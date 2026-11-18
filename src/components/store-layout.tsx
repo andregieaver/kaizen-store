@@ -16,6 +16,7 @@ import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type Me
 import { marketHome, marketLink, marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
+import { legalLinksFor } from "@/server/legal-links";
 import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
@@ -41,9 +42,6 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
  */
 
 type Props = { store: Store; market: Market };
-
-/** A published legal page of the store (wave 1, 1e): what `legalLinksFor()` finds. */
-type LegalLink = { role: string; title: string; href: string };
 
 /** A store's menu by id (D85): its items, or none. */
 export function storeMenu(store: Store, id: string | null | undefined): MenuEntry[] {
@@ -466,16 +464,22 @@ export function WithdrawalStrip({ store, market }: Props) {
  * Who sells (required on every page of a web shop, by e-commerce and
  * consumer law), the footer menu and the countries.
  */
-export function StoreFooter({
+export async function StoreFooter({
   store,
   market,
-  legal: legalPages = [],
+  afterSale,
   withdrawal = true,
 }: Props & {
-  legal?: LegalLink[];
+  /**
+   * Whether an order can still be withdrawn from or returned (always while the online shop is on, D178 step 5): the published legal pages
+   * the store needs are then read here and listed (wave 1, 1e), so a store with a footer of its own never reads them (bloat review step
+   * 2.18). Left out (the admin's previews), no legal page is listed.
+   */
+  afterSale?: boolean;
   /** Whether the withdrawal link is drawn: always while the online shop is on, else while after-sale is open (D178 step 5). */
   withdrawal?: boolean;
 }) {
+  const legalPages = afterSale === undefined ? [] : await legalLinksFor(store, market, afterSale);
   const m = t(market.lang);
   const footer = storeMenu(store, store.footerMenuId);
   const details = store.details;

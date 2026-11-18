@@ -32,7 +32,6 @@ import { afterSaleOpenCached } from "@/server/after-sale";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveAfterSaleShop, resolveShop } from "@/server/shop";
-import { legalLinksFor } from "@/server/legal-links";
 import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text-read";
 
@@ -123,11 +122,12 @@ export default async function MarketLayout({ children, params }: Props) {
   const afterSale = selling || (await afterSaleOpenCached(store.id));
   const withdrawal = showsWithdrawalLink(store, afterSale);
   // The store's own header and footer built in the page builder (D80), else the standard ones; the visitor's version of them while one is under an A/B test (D148).
-  const [header, footer, legalLinks] = await Promise.all([
+  // Every read the frame needs, in one wave before <html>; nothing is awaited inside the JSX (bloat review step 2.18). The published legal
+  // pages are read by the standard footer itself (`StoreFooter`), so a footer of the store's own reads none.
+  const [header, footer, textStyles] = await Promise.all([
     siteLayoutForVisitor(store.id, "header", ab),
     siteLayoutForVisitor(store.id, "footer", ab),
-    // The published legal pages, listed in the standard footer (wave 1, 1e), as far as the store needs them (D178 step 5).
-    legalLinksFor(store, market, afterSale),
+    textStylesCssFor(store.id),
   ]);
   const headerLayout = header.layout;
   const footerLayout = footer.layout;
@@ -166,7 +166,7 @@ export default async function MarketLayout({ children, params }: Props) {
         {/* The store's own fonts (D59) and theme (D60). */}
         <StoreThemeStyles store={store} />
         {/* The site's text styles (D393), after the theme and before the owner's own CSS, which can still say otherwise. */}
-        <CustomCss css={await textStylesCssFor(store.id)} name={`text-styles-${store.id}`} />
+        <CustomCss css={textStyles} name={`text-styles-${store.id}`} />
         {/* The owner's own CSS for every page, and the header's and footer's (D100), after the theme. */}
         <CustomCss css={store.customCss} name={`store-${store.id}`} />
         <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
@@ -197,7 +197,7 @@ export default async function MarketLayout({ children, params }: Props) {
         {footerLayout ? (
           <StoreSiteFooter store={store} market={market} layout={footerLayout} withdrawal={withdrawal} />
         ) : (
-          <StoreFooter store={store} market={market} legal={legalLinks} withdrawal={withdrawal} />
+          <StoreFooter store={store} market={market} afterSale={afterSale} withdrawal={withdrawal} />
         )}
         {/* The withdrawal function is always reachable (D153): a footer of the store's own without its link gets the standard one. */}
         {withdrawal && footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}

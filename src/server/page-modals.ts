@@ -27,10 +27,13 @@ export async function usesRememberedModals(storeId: string | null): Promise<bool
 
 /** The statement behind usesRememberedModals(), apart so a test can explain it (bloat review step 2.16). */
 export function modalsQuery(storeId: string | null) {
-  return sql`
-    select exists (
+  return sql`select ${rememberedModalExists(storeId)} as found`;
+}
+
+/** Whether the site has such a modal, as an expression: usesRememberedModals() and the site's facts (`siteFacts()`) ask it the same way. */
+export function rememberedModalExists(storeId: string | null) {
+  return sql`exists (
       select 1 from commerce.pages
       where ${owned(storeId)} and remembered_modal
-    ) as found
-  `;
+    )`;
 }

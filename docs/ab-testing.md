@@ -340,6 +340,9 @@ market's own route and by `/products`, and their own addresses redirect there. S
 page's address. Unlike a working page they hold no shop component (their listings read the same catalogue in every version), so a version may
 be the whole page, which is what an owner means by "test my front page".
 
+- **One cached read of running tests** (bloat review step 2.18): `experimentOfPage()`, `pageGoalTests()`, `storeHasExperiments()`,
+  `siteTests()` and `runningExperimentIds()` are filters over `runningTests()` (`src/server/experiments.ts`), one statement per store cached
+  under `experimentsTag(store)`; `siteVersionContent()` reads a version's page on its own.
 - **One notion of a place** (`commerce.page_place(store, page)`, migration `ab_front_pages`): the page role (D112, D113), else `front` or
   `products`, else null. Every query that asked "what place is this page chosen for" (`runningExperiments()`, `siteTests()`,
   `experimentOfPage()`, the admin's lists and the platform's view) asks it, and `TESTED_PLACES` (`src/lib/ab-site.ts`: the working roles and
@@ -596,7 +599,7 @@ Migration `20261117121405_sticky_gateway` (the goal `page` added to the two goal
   store, once each, in the version they saw. The page is one of `goalDestinations()` (the store's published pages, its front page and its All
   products page; never the page under test, never a working page), kept in `goal_params.page` and checked by `createExperiment()`,
   `updateDraft()` (which now keeps the page through a draft's other changes) and the start checks. Counting: a page that a running test names
-  draws `AbPageGoal` (`PageGoal`, from the cached `pageGoalTests()`; nothing on a page no test counts), which sends the page to
+  draws `AbPageGoal` (`PageGoal`, from `pageGoalTests()`, a filter over the cached `runningTests()`; nothing on a page no test counts), which sends the page to
   `/api/ab/event`; `recordPageGoal()` keeps one event per visitor only when the visitor was exposed before, so opening the page first counts
   nothing. On the new-test form it is one of the goals behind *More goals* (and the one there on Kaizena Flow's own store), with *Which page
   should they go on to?*. Like a click or a form it has no rate the store counts, so how long it takes is the owner's own figures.

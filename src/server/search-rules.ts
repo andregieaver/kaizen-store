@@ -10,6 +10,7 @@ import { RULES_MAX, readRule, type RuleAction, type RuleMatch, type RuleProblem,
 import { audit } from "./auth";
 import { inTerms } from "./product-conditions";
 import { addressContextOf } from "./redirect-live";
+import { perRequest } from "./request-memo";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -43,17 +44,22 @@ const asRule = (row: z.infer<typeof RULE>): SearchRule => ({
   position: row.position,
 });
 
-/** The store's rules, in its order (position, then as saved): one small read per search. */
-export async function rulesOf(storeId: string): Promise<SearchRule[]> {
-  const rows = await typedRows(
-    RULE,
-    sql`
-      select id, action, product_id, term_id, target, queries, match, position from commerce.search_rules
-      where store_id = ${storeId}::uuid order by position, created_at, id
-    `,
-    readDb(),
-  );
-  return rows.map(asRule);
+/**
+ * The store's rules, in its order (position, then as saved): one small read per search. The search page's redirect and the results ask in
+ * the same request, and share the read (`perRequest()`, bloat review step 2.18); outside a render each call reads.
+ */
+export function rulesOf(storeId: string): Promise<SearchRule[]> {
+  return perRequest(`search-rules:${storeId}`, async () => {
+    const rows = await typedRows(
+      RULE,
+      sql`
+        select id, action, product_id, term_id, target, queries, match, position from commerce.search_rules
+        where store_id = ${storeId}::uuid order by position, created_at, id
+      `,
+      readDb(),
+    );
+    return rows.map(asRule);
+  });
 }
 
 /** Which of `ids` are in each of `termIds`, as the catalogue reads a category or tag (`inTerms()`: rules-filled collections too). */

@@ -218,25 +218,7 @@
       "DOCS_GUIDE_TAG, AI_TAG"
     ]
   },
-  "src/server/experiments.ts#experimentOfPage": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
-    ]
-  },
-  "src/server/experiments.ts#pageGoalTests": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
-    ]
-  },
-  "src/server/experiments.ts#storeHasExperiments": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
-    ]
-  },
-  "src/server/experiments.ts#siteTests": {
+  "src/server/experiments.ts#runningTests": {
     "life": "\"hours\"",
     "tags": [
       "experimentsTag(storeId)"
@@ -246,12 +228,6 @@
     "life": "\"hours\"",
     "tags": [
       "experimentsTag(storeId), `pages:${storeId}`"
-    ]
-  },
-  "src/server/experiments.ts#runningExperimentIds": {
-    "life": "\"hours\"",
-    "tags": [
-      "experimentsTag(storeId)"
     ]
   },
   "src/server/field-tiles.ts#shownFieldsForItems": {
@@ -477,16 +453,11 @@
       "pagesTag(storeId)"
     ]
   },
-  "src/server/site-cookies.ts#storeFeatures": {
+  "src/server/site-facts.ts#siteFacts": {
     "life": "\"hours\"",
     "tags": [
-      "cookiesTag(storeId)"
-    ]
-  },
-  "src/server/site-cookies.ts#siteFindings": {
-    "life": "\"hours\"",
-    "tags": [
-      "cookiesTag(storeId)"
+      "cookiesTag(null), chatTag(null), pagesTag(null), REFERRALS_TAG, PLATFORM_NAVIGATION_TAG",
+      "cookiesTag(storeId), chatTag(storeId), pagesTag(storeId), affiliateTag(storeId), recommendTag(storeId), experimentsTag(storeId)"
     ]
   },
   "src/server/site-layouts.ts#siteLayoutFor": {
