@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page, type Response } from "@playwright/test";
 
 import { testDb } from "../db";
 
@@ -257,4 +257,100 @@ test.describe("what a signed-in screen is handed", () => {
       }
     });
   }
+});
+
+/**
+ * What a save answers with (the English owner only): the bytes of the response to the server action that saves the product editor
+ * and the page builder, recorded in the baseline (`saves`) and held to 2 %. The smallest real change is one more character in the
+ * title; the title is set back and saved again, so the store is left as it was. A save that makes more than one action request is
+ * measured by the one that carries the changed title (the builder's title also asks for a preview and a follow-up).
+ */
+test.describe("what a save answers with", () => {
+  test.setTimeout(90_000);
+  /**
+   * Presses Save and returns the bytes of the answer to the save's own server action: the action request that carries the changed
+   * title (a builder's title also makes a preview action and a follow-up, which do not).
+   */
+  async function saveAnswer(page: Page, press: () => Promise<void>, changed: string): Promise<number> {
+    const answers: number[] = [];
+    const onResponse = (response: Response) => {
+      const request = response.request();
+      if (request.method() !== "POST" || request.headers()["next-action"] === undefined) return;
+      if (!(request.postData() ?? "").includes(changed)) return;
+      void response.body().then((body) => void answers.push(body.length), () => undefined);
+    };
+    page.on("response", onResponse);
+    try {
+      // A press before the screen has hydrated does nothing (the typed words are put back too): change and press again until it answers.
+      await expect(async () => {
+        await press();
+        await expect.poll(() => answers.length, { timeout: 6000 }).toBeGreaterThan(0);
+      }).toPass({ timeout: 40_000 });
+      await page.waitForTimeout(1000);
+      return Math.max(...answers);
+    } finally {
+      page.off("response", onResponse);
+    }
+  }
+
+  function check(name: "product" | "builder", answer: number) {
+    if (MEASURE) {
+      console.log(`[save] ${name} ${answer}`);
+      return;
+    }
+    const held = baseline.saves[name];
+    expect(answer, `the ${name} save's answer is ${answer} bytes, baseline ${held}; lower the baseline in the same change when a figure falls: E2E_MEASURE=1 prints them`).toBeLessThanOrEqual(held * 1.02);
+  }
+
+  test("the product editor's save", async ({ page }) => {
+    const { product } = await idsOf(E2E_STORE);
+    await page.goto(`/admin/${E2E_STORE}/products/${product}`);
+    const title = page.getByLabel("Title", { exact: true });
+    const before = await title.inputValue();
+    try {
+      const answer = await saveAnswer(
+        page,
+        async () => {
+          await title.fill(`${before}x`);
+          await page.getByRole("button", { name: "Save", exact: true }).first().click();
+        },
+        `${before}x`,
+      );
+      await expect(page.getByText("Saved.").first()).toBeVisible();
+      check("product", answer);
+    } finally {
+      await title.fill(before);
+      await page.getByRole("button", { name: "Save", exact: true }).first().click();
+      await expect(page.getByText("Saved.").first()).toBeVisible();
+    }
+    await page.reload();
+    await expect(page.getByLabel("Title", { exact: true })).toHaveValue(before);
+  });
+
+  test("the builder's save", async ({ page }) => {
+    const { page: pageId } = await idsOf(E2E_STORE);
+    await page.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
+    await expect(page.locator("[data-editor-bar]")).toBeVisible();
+    const title = page.getByLabel("Title", { exact: true });
+    const before = await title.inputValue();
+    const saved = page.getByRole("status").filter({ hasText: "Draft saved." });
+    try {
+      const answer = await saveAnswer(
+        page,
+        async () => {
+          await title.fill(`${before}x`);
+          await page.getByRole("button", { name: "Save draft" }).click();
+        },
+        `${before}x`,
+      );
+      await expect(saved).toBeVisible();
+      check("builder", answer);
+    } finally {
+      await title.fill(before);
+      await page.getByRole("button", { name: "Save draft" }).click();
+      await expect(saved).toBeVisible();
+    }
+    await page.reload();
+    await expect(page.getByLabel("Title", { exact: true })).toHaveValue(before);
+  });
 });
