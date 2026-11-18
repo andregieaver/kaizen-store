@@ -270,7 +270,9 @@ tools (`TOOL_EXTENSIONS`). The second part takes the account's level, cross-link
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
   Advisors: no new warning (INFO only: RLS on, no policy, on both new tables).
-- E2: `20261118080146_extensions`, `20261118080153_extensions_catalogue`.
+- E2: `20261118080146_extensions`, `20261118080153_extensions_catalogue`, applied by CI 18 November 2026 08:53 UTC; 5 extensions, 8 sizes,
+  32 prices (EUR, NOK), 2 bundles and the grants of Grow, Advanced and Plus. Advisors: no new warning (INFO only: RLS on, no policy; new
+  indexes not yet used).
 - E3, first part: `20261118082207_extension_facts`.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
