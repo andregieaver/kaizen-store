@@ -157,10 +157,15 @@ None of these is a decision. For the owner, with a lawyer:
 
 ## 8. Sign-off
 
+Signed on 18 November 2026 from the review note sent to the lawyer. The lawyer's answers: **Q3**, each store that records needs its own
+DPIA (this document is offered as its template); **Q6**, the owner's confirmations are enough; **Q7**, documenting the balanced default
+as the alternative measure to M0 is enough. Left unanswered in that review, and still open: Datatilsynet's list (section 1),
+necessity (section 5), consultation and prior consultation (section 6), and whether a data protection officer is required.
+
 | Role | Name | Date | Decision |
 |---|---|---|---|
-| Owner of Kaizena Flow | [[Add]] | | |
-| Lawyer | [[Add]] | | |
+| Owner of Kaizena Flow | André Giæver | 18 November 2026 | Accepted |
+| Lawyer | Stig Brenner | 18 November 2026 | Accepted |
 | Data protection officer, if one is appointed | [[Add: whether one is required]] | | |
 
 Review this assessment when what is recorded or masked changes, when the player is built (step 11), before recordings open to stores,
