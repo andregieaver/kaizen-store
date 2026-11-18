@@ -159,7 +159,7 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 2.1 | Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB | DC-1 | M | review | 1.1, 0.43, 0.41, 0.40 | In progress | 18 Nov, local: CLAUDE.md 46,605 to 10,102 bytes, 474 to 134 lines; map and .claude/rules how-to; the two loading proofs wait for main. |
+| 2.1 | Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB | DC-1 | M | review | 1.1, 0.43, 0.41, 0.40 | Done | 18 Nov, 7742afff, D774: CLAUDE.md 10,102 bytes, 134 lines; both proofs of path loading passed. |
 | 2.2 | Send the store's layout once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, GAP-page-model-s6 | M | review | 0.1, 1.3 | Open | |
 | 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Open | |
 | 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | Open | |
@@ -335,6 +335,7 @@ Change log:
 - 18 Nov 2026: step 1.23 written up (D770): the stylesheet's audiences held in CI, the style text owners write read on Usage and limits; In progress until the first production reading.
 - 18 Nov 2026: step 1.21 written up (D772): every build reports its peak; the free switches leave 6.8 GB, so Stage 2 (step 1.29) is needed.
 - 18 Nov 2026: step 1.29 commit 1 (D773): a manual job builds in CI and deploys a prebuilt preview; commit 2 waits for its trial and a deploy design.
+- 18 Nov 2026: step 2.1 Done (7742afff, D774): CLAUDE.md is a 10 KB core with a map of the rule files; the how-to loads by path, proved in a fresh session and a subagent.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
