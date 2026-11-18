@@ -19,11 +19,16 @@
  * Then `SMOKE_PAGES` are requested, one after the other and each twice, and each must answer 200: the job, not a visitor, pays the
  * first draw of these pages, and the log shows each one's status, bytes and cache headers.
  *
- * It reads nothing secret and prints only commits, paths and statuses.
+ * Once production runs it, the build's own figures from the same answer (`build`: seconds, peak memory, the machine's, the ten builds
+ * before; bloat review step 1.21) are printed against their ceiling, and go to $GITHUB_STEP_SUMMARY. This does not fail the job yet.
+ *
+ * It reads nothing secret and prints only commits, paths, statuses and numbers.
  */
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+
+import { buildVerdict } from "./lib/build-stats.mjs";
 
 /** What a health answer says of the commit: `live` (it, or a later one that includes it), else `waiting`. */
 export function deployVerdict(expected, reported, includes) {
@@ -155,13 +160,22 @@ async function pageResults(url, pages) {
   return results;
 }
 
-async function reportedCommit(url) {
+/** The line the run's summary gets for the build a deployment reports: its seconds and peak against the ceiling, or that it reports none. */
+export function buildLines(build) {
+  if (!build || typeof build !== "object" || typeof build.peakKb !== "number" || typeof build.machineKb !== "number" || build.machineKb <= 0) {
+    return "This deployment reports no build figures.";
+  }
+  const history = Array.isArray(build.history) ? build.history.filter((n) => typeof n === "number") : [];
+  return buildVerdict({ peakKb: build.peakKb, machineKb: build.machineKb, history, seconds: build.seconds }).line;
+}
+
+async function reportedHealth(url) {
   try {
     const response = await fetch(`${url}/api/health`, { headers: { "Cache-Control": "no-store" }, signal: AbortSignal.timeout(15_000) });
     const body = await response.json();
-    return typeof body.commit === "string" ? body.commit : null;
+    return { commit: typeof body.commit === "string" ? body.commit : null, build: body.build && typeof body.build === "object" ? body.build : null };
   } catch {
-    return null;
+    return { commit: null, build: null };
   }
 }
 
@@ -177,8 +191,10 @@ async function main() {
   const includes = includesWith(process.cwd());
   const until = Date.now() + waitSeconds * 1000;
   let last = null;
+  let health = { commit: null, build: null };
   while (Date.now() < until) {
-    last = await reportedCommit(url);
+    health = await reportedHealth(url);
+    last = health.commit;
     if (deployVerdict(expected, last, includes) === "live") {
       console.log(last === expected ? `Production runs ${expected}.` : `Production runs ${last}, which includes ${expected}.`);
       // From the push (or, without PUSHED_AT, from the start of this job) to the commit being live.
@@ -187,6 +203,15 @@ async function main() {
       if (process.env.GITHUB_STEP_SUMMARY) {
         try {
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Push to live: ${toLive} s\n`);
+        } catch {
+          // A convenience: the deploy check never fails for it.
+        }
+      }
+      const buildLine = buildLines(health.build);
+      console.log(buildLine);
+      if (process.env.GITHUB_STEP_SUMMARY && health.build) {
+        try {
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Production build\n\n${buildLine}\n`);
         } catch {
           // A convenience: the deploy check never fails for it.
         }

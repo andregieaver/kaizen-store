@@ -4,6 +4,7 @@ import {
   checkHealth,
   describeDatabaseUrl,
   errorCode,
+  readBuildStats,
   sharedPoolerHost,
 } from "./health";
 
@@ -128,6 +129,38 @@ describe("checkHealth", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("the build's figures (step 1.21)", () => {
+  const stubs = { fetch: okFetch(), env, countActiveMarkets: async () => 4, region: "dub1" };
+
+  it("reports the build that made the deployment", async () => {
+    const build = { seconds: 263, peakKb: 5000000, machineKb: 8388608, history: [1] };
+    const report = await checkHealth({ ...stubs, commit: "abc", build });
+    expect(report.build).toEqual(build);
+  });
+
+  it("takes the commit the build wrote when the deployment has none of its own (prebuilt)", async () => {
+    const before = process.env.VERCEL_GIT_COMMIT_SHA;
+    delete process.env.VERCEL_GIT_COMMIT_SHA;
+    try {
+      const report = await checkHealth({ ...stubs, buildCommit: "abc" });
+      expect(report.commit).toBe("abc");
+    } finally {
+      if (before !== undefined) process.env.VERCEL_GIT_COMMIT_SHA = before;
+    }
+  });
+
+  it("reads build-stats.json, and nothing from a file with no finished build", () => {
+    expect(readBuildStats("not json").build).toBeNull();
+    expect(readBuildStats('{"seconds":0,"peakKb":0}').build).toBeNull();
+    expect(readBuildStats("").commit).toBeNull();
+    const history = Array.from({ length: 12 }, (_, i) => 1000 + i);
+    const read = readBuildStats(JSON.stringify({ commit: "abc1234", seconds: 200, peakKb: 5000000, machineKb: 8388608, history: [...history, "x"] }));
+    expect(read.commit).toBe("abc1234");
+    expect(read.build).toMatchObject({ seconds: 200, peakKb: 5000000, machineKb: 8388608 });
+    expect(read.build?.history).toEqual(history.slice(-10));
   });
 });
 

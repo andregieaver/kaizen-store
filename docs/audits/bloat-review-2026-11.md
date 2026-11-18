@@ -145,7 +145,7 @@ commit as the fix.
 | 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 | Done | 17 Nov, 27f215e7, D749: jobs 83, tables 519, tools 294; new store 8 rows. |
 | 1.19 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3, GAP-ai-s2, GAP-ai-s3 | M | strong | 0.1, 1.1, 0.21 | In progress | 18 Nov, 998a3d1c, D760: manager round 173,480; commits 4-5 need the owner's eval run. |
 | 1.20 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1, GAP-build-s1 | M | review | 0.38, 1.8, 1.11, 1.1 | In progress | 18 Nov, 6b13dddd, D769: every check timed; ceilings after ten runs; build 6.8 GB without server maps. |
-| 1.21 | Give the production build room with the free switches, and fail a run before it runs out | GAP-build-2, GAP-build-s3 | S | review | 1.20 | Open | |
+| 1.21 | Give the production build room with the free switches, and fail a run before it runs out | GAP-build-2, GAP-build-s3 | S | review | 1.20 | In progress | 18 Nov, 83947ed8, D772: build reports its peak; 6.8 GB with the switches, Stage 2 needed; commit 3 later. |
 | 1.22 | Watch the scheduler from outside, and run the daily job once | CR-12, GAP-scheduled-2 | S | review | 0.25 | In progress | 17 Nov: pushed (8976b6ae). The watcher runs only once CRON_SECRET is set in Vercel (not set: Vercel's cron calls answer 401); the daily job is pg_cron's alone. |
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | In progress | 18 Nov, 222eb50c, D770: 23,289 bytes no store page draws (held 25,000); first reading to take. |
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Done | 17 Nov (a0c1757f; D723): session-load.mjs measures what a session loads (1 of 20 samples); files over 100 KB (17) and 2,000 lines (12) only fall. |
@@ -153,7 +153,7 @@ commit as the fix.
 | 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Done | 17 Nov (da36c66c; D716): first scripts held by name per page; browser words held at 34,360 B (owner's rule, 0.43). |
 | 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Done | 17 Nov (9d9ad9b5; D717): 229 hand-down sites counted; 12.7 MB handed, 3.9 MB named; 63 hand an area nothing reads. |
-| 1.29 | Only if the free switches are not enough: build in CI and deploy the prebuilt output |  | M | strong | 1.21, 0.38, 1.20 | Open | |
+| 1.29 | Only if the free switches are not enough: build in CI and deploy the prebuilt output |  | M | strong | 1.21, 0.38, 1.20 | In progress | 18 Nov, efe24bc8, D773: manual prebuilt preview job; commit 2 waits for the trial, secrets and a deploy design. |
 
 **Phase 2: Load on demand**
 
@@ -333,6 +333,8 @@ Change log:
 - 18 Nov 2026: step 1.5 Done (8118e66e, D768): five signed-in screens in English and Norwegian, their document, words handed and script, and two saves' answers held.
 - 18 Nov 2026: step 1.20 written up (D769): every CI check timed, the build's peak memory printed; In progress until ten runs set the ceilings.
 - 18 Nov 2026: step 1.23 written up (D770): the stylesheet's audiences held in CI, the style text owners write read on Usage and limits; In progress until the first production reading.
+- 18 Nov 2026: step 1.21 written up (D772): every build reports its peak; the free switches leave 6.8 GB, so Stage 2 (step 1.29) is needed.
+- 18 Nov 2026: step 1.29 commit 1 (D773): a manual job builds in CI and deploys a prebuilt preview; commit 2 waits for its trial and a deploy design.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 

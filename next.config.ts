@@ -36,6 +36,11 @@ const HARFBUZZ_FILES = ["./node_modules/.pnpm/harfbuzzjs@*/node_modules/harfbuzz
  * before it lets go. Each setting that reads this was measured under an 8 GB cap (`docs/build-memory.md`).
  */
 const ON_VERCEL = Boolean(process.env.VERCEL);
+/**
+ * Vercel's own 8 GB machine. `vercel build` sets VERCEL on a GitHub runner too (bloat review step 1.29: the production build made in CI and
+ * deployed prebuilt), and the runner has room, so the limits that only save memory follow the machine; what the deployment holds does not.
+ */
+const TIGHT_MACHINE = ON_VERCEL && !process.env.GITHUB_ACTIONS;
 
 /** The build skips its own type check on Vercel (memory, D378) and in CI's browser jobs, which set SKIP_BUILD_TYPECHECK: CI's `static` job and the quick gate run `pnpm typecheck` on the same project on every push (bloat review step 0.38). A local `pnpm build` checks as ever. */
 const SKIP_TYPECHECK = ON_VERCEL || process.env.SKIP_BUILD_TYPECHECK === "1";
@@ -55,6 +60,8 @@ const nextConfig: NextConfig = {
   // Chromium (the cookie scan, D58; the page replicator, D150) is read from disk, not
   // imported, so the trace needs telling; only the routes that launch it carry it.
   outputFileTracingIncludes: {
+    // The build writes this file when it ends (scripts/next-build.mjs: seconds, peak memory, the ten builds before) and the health route reads it.
+    "/api/health": ["./build-stats.json"],
     // Playwright also reads browsers.json and package.json at run time. The globs name
     // pnpm's own folders: a file under a linked folder would turn the link into a folder.
     "/api/cron/cookie-scan": CHROMIUM_FILES,
@@ -91,9 +98,10 @@ const nextConfig: NextConfig = {
     // without --enable-source-maps; Next turns them on only for its debug prerender) and the browser's were never made.
     // And without the server bundle's source maps (`serverSourceMaps`, step 1.20): under an 8 GB cap the build peaked at 7.6 to 7.8 GB with
     // them and 6.8 GB without, on 18 November 2026 (docs/build-memory.md). `enablePrerenderSourceMaps: false` gained nothing and is not set.
-    ...(ON_VERCEL
-      ? { turbopackFileSystemCacheForBuild: false, cpus: 1, turbopackSourceMaps: false, turbopackInputSourceMaps: false, serverSourceMaps: false }
-      : {}),
+    // The cache and the one worker only save memory, so they follow the machine that builds (`TIGHT_MACHINE`, step 1.29); the source maps
+    // stay off for every Vercel deployment, wherever it is built, so what production runs and logs is the same as before.
+    ...(TIGHT_MACHINE ? { turbopackFileSystemCacheForBuild: false, cpus: 1 } : {}),
+    ...(ON_VERCEL ? { turbopackSourceMaps: false, turbopackInputSourceMaps: false, serverSourceMaps: false } : {}),
     // Market pages each have their own root layout, so the 404 page is global.
     globalNotFound: true,
     // Product pictures are uploaded through a server action. The browser

@@ -31,6 +31,13 @@ What held the memory, measured without the cap:
   - no Turbopack build cache;
   - one worker;
   - no source maps (D709, 17 November 2026, measured below; `serverSourceMaps` too since step 1.20, 18 November 2026).
+- The source-map switches step 1.21 weighed, from the rows of step 1.20 below: `serverSourceMaps: false` is on for Vercel (peak 6.8 GB under the 8 GB cap,
+  from 7.6 to 7.8 GB without it); `enablePrerenderSourceMaps: false` gained nothing (7.9 GB) and is not set. `serverSourceMaps` was already in
+  `next.config.ts` (step 1.20), so commit 2 of step 1.21 adds no switch to it.
+
+Stage 2 is needed.
+Peak with the switches: 6.8 GB; step 1.29 builds in CI and deploys the prebuilt output.
+
 - `pnpm build` is `scripts/next-build.mjs`: `next build` with a 7 GB heap everywhere except Vercel.
 - `src/app/globals.css` points Tailwind at the code under `src`: without `src/data`, tests (`*.test.ts`, `*.test.tsx`, `src/test`), the interface texts (`src/lib/messages`, `src/lib/admin-messages`) and `src/db`, and without any SQL.
   - The CSS lost 37 selectors, all of them words in docs, e2e selectors or numbers in the taxonomy's JSON. No class the app uses was lost.
@@ -42,10 +49,12 @@ What held the memory, measured without the cap:
 
 ## Watch
 
+- No paid build machine, plan or add-on is used, now or later (the owner, bloat review step 1.21). If the build needs room: the two
+  source-map switches below, then the build in CI deployed prebuilt (step 1.29).
 - **A type error can now reach production** without failing the deploy, when a push has no migration (those deploy before the checks finish). CI's `static` job still goes red.
 - **The margin was about 0.8 GB on 28 October** (about 1 to 1.7 GB since D709, below). If the build grows past it:
   - cut what the compile holds;
-  - or build in CI and deploy the built output (bloat review step 1.21's free way). The owner has ruled out paid services, so the 16 GB build machine is not an option.
+  - or build in CI and deploy the built output (bloat review step 1.29, the free way).
 - **Vercel environment variables:** a `NODE_OPTIONS` set there overrides none of this, but a large heap set there would let the compile hold more.
 - **11 November 2026: the margin was crossed once.** Vercel's build of `f5c1ec8` (D555) was killed for memory while collecting page data
   with one worker; the same commit built when the deploy hook was asked again a few minutes later. On 17 November it happened twice
@@ -56,8 +65,32 @@ What held the memory, measured without the cap:
   (`node scripts/ci-budgets-check.mjs --suggest`); the build's peak memory is read by hand from Vercel's log and written under the next heading.
 - **Source-map switches, 18 November 2026 (step 1.20, measured below).** The peak with `serverSourceMaps: false` was 6.8 GB under the 8 GB cap against 7.6 to 7.8 GB without it
   (two runs); `enablePrerenderSourceMaps: false` alone gained nothing (7.9 GB). The first stays, on Vercel only; the second is not kept.
-  If the peak with a switch is 6.0 GB or less, the build has a quarter of the machine free and step 1.21's change can wait; nothing is paid for either way: the 16 GB machine is not an option, and step 1.21's free way is to build in CI and deploy the built output.
-  At 6.8 GB the peak is above 6.0 GB, so step 1.21's change does not wait.
+  If the peak with a switch is 6.0 GB or less, the build has a quarter of the machine free; nothing is paid for either way, and the free
+  way past that is to build in CI and deploy the built output (step 1.29). At 6.8 GB the peak is above 6.0 GB, so that step does not wait.
+
+### What every build reports
+
+A production build ends by writing `build-stats.json` in the repository root (`scripts/next-build.mjs`, step 1.21): the commit, the build's
+seconds, its peak memory, the build machine's memory and the peaks of the ten builds before it (numbers and a commit hash only; the file is
+git-ignored). The peak is read as in the `Build:` line: the container's own peak where the kernel keeps one, else the machine's memory in
+use, sampled each second. The ten earlier peaks are read from production's `/api/health` when a production build starts, so no store is
+needed. `next.config.ts` traces the file with the health route, so `/api/health` carries it as `build` (public, numbers only), and the
+wait for the deploy (`scripts/await-deploy.mjs`) prints the build's line against its ceiling in the run's summary under
+`### Production build`. The ceiling is the median of the last ten production builds plus 10%, never above 75% of the machine
+(`scripts/lib/build-stats.mjs`); until a later commit turns it on, a build above it is only printed.
+
+## Stage 2: the build in CI (bloat review step 1.29)
+
+The repository is public (GitHub's API, 18 November 2026), so Actions minutes on GitHub's standard runners are not metered. `vercel build`
+sets `VERCEL` on a GitHub runner too, so `next.config.ts` keys the memory limits on `TIGHT_MACHINE` (Vercel's own machine: `VERCEL` without
+`GITHUB_ACTIONS`): the Turbopack cache and the one worker stay there only. The type check stays off and the source maps stay off for every
+Vercel deployment, wherever it is built, so what production runs and logs does not change. `scripts/next-build.mjs` keeps its 7 GB heap on a
+runner.
+
+The manual job `prebuilt-trial` (*Actions, CI, Run workflow*, `prebuilt_trial` on) prints the runner's cores and memory, builds the commit
+with `vercel build` and deploys it prebuilt as a preview, and puts the preview's `/api/health` in the summary. It needs the secrets
+`VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. It passes when that answer reports the run's commit (from `build-stats.json`) and
+`build.peakKb` is at most 75% of `build.machineKb`. Not run yet (18 November 2026): the runner's figures and the result go here.
 
 ## Measured again, 17 November 2026 (D709)
 
@@ -85,7 +118,7 @@ logs (`log.ts`'s `errorStack`) were, and stay, positions in the built chunks. Of
 **The margin is about 1.0 to 1.7 GB** against 8 GB (peaks of 6.3 to 7.0 GB). At the rate the code grew over these three weeks the
 compile gains about 0.5 GB a week, so this buys **two to three weeks, not a lasting answer.** There is no other large, safe cut left
 in the configuration: what remains is the compile of the code itself. The owner has ruled out a paid build machine, so the lasting
-answer is bloat review step 1.21's free way: build in CI and deploy the built output. After it, the one-worker and no-source-map
+answer is bloat review step 1.29's free way: build in CI and deploy the built output. After it, the one-worker and no-source-map
 settings can stay or go, and this note should say which.
 
 ## Measured again, 18 November 2026 (bloat review step 1.20)
