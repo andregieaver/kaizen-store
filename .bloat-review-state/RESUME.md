@@ -292,3 +292,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-c: 1.16 executor ad87efeeb4a13f40e. kz-b: 1.23 executor a2909d9fc60a5e371.
 - Stray file /c1-checks.log at container root (executor's unset var); rm denied: tell owner (harmless, container).
 - Prod: 6 of 24 AI calls report cached tokens (provider reports them).
+- 18 Nov ~15: 1.23 pushed 222eb50c2 (audiences held at today+room: 25,000 raw / 4,200 br; step 2.11 back to 17,000/2,000; postcss devDep). Needs: first style-text reading on production (Take the reading on /admin/platform/capacity?reading=styles), D-row. kz-b: 1.14 executor. kz-c: 1.16.
