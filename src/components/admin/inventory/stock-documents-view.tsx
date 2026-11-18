@@ -74,8 +74,12 @@ export function NewStockDocument({
   initial?: { supplier: string; lines: Line[] };
 }) {
   const w = useAdminText("inventory").documents;
+  const pw = useAdminText("inventory").phone;
   const router = useRouter();
   const { pending, message, run } = useRunner();
+  // Round 46 (D750): on a phone an order shows its supplier and lines; the rest waits behind More about the order. Every field is sent either way.
+  const [more, setMore] = useState(false);
+  const rest = kind === "order" && !more ? "max-sm:hidden" : "";
   const [origin, setOrigin] = useState(places[0]?.id ?? "");
   const [destination, setDestination] = useState(places[1]?.id ?? places[0]?.id ?? "");
   const [supplier, setSupplier] = useState(initial?.supplier ?? "");
@@ -123,7 +127,8 @@ export function NewStockDocument({
         submit();
       }}
     >
-      <h2 className="text-title text-ink">{kind === "transfer" ? w.newTransfer : w.newOrder}</h2>
+      {/* An order's heading is the phone row's title there (round 46, D750); still read out. */}
+      <h2 className={`text-title text-ink ${kind === "order" ? "max-sm:sr-only" : ""}`}>{kind === "transfer" ? w.newTransfer : w.newOrder}</h2>
       <div className="flex flex-wrap items-end gap-3">
         {kind === "order" && (
           <>
@@ -133,13 +138,13 @@ export function NewStockDocument({
               </label>
               <input id={id("supplier")} value={supplier} maxLength={120} onChange={(e) => setSupplier(e.target.value)} className={`${field} w-64`} />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className={`flex flex-col gap-1 ${rest}`}>
               <label htmlFor={id("reference")} className="text-sm font-medium">
                 {w.reference}
               </label>
               <input id={id("reference")} value={reference} maxLength={60} onChange={(e) => setReference(e.target.value)} className={`${field} w-48`} />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className={`flex flex-col gap-1 ${rest}`}>
               <label htmlFor={id("currency")} className="text-sm font-medium">
                 {w.currency}
               </label>
@@ -167,7 +172,7 @@ export function NewStockDocument({
             </select>
           </div>
         )}
-        <div className="flex flex-col gap-1">
+        <div className={`flex flex-col gap-1 ${rest}`}>
           <label htmlFor={id("destination")} className="text-sm font-medium">
             {kind === "transfer" ? w.to : w.arrivesAt}
           </label>
@@ -180,7 +185,7 @@ export function NewStockDocument({
           </select>
         </div>
         {kind === "order" && (
-          <div className="flex flex-col gap-1">
+          <div className={`flex flex-col gap-1 ${rest}`}>
             <label htmlFor={id("expected")} className="text-sm font-medium">
               {w.expected}
             </label>
@@ -221,18 +226,27 @@ export function NewStockDocument({
           <button type="button" disabled={lines.length >= DOCUMENT_LINES_MAX} onClick={() => setLines([...lines, blankLine()])} className={secondary}>
             {w.addLine}
           </button>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className={`flex flex-col gap-1 text-sm ${rest}`}>
             <span className="font-medium">{w.fromFile}</span>
             <input type="file" accept=".csv,text/csv" onChange={(e) => void fromFile(e.target.files?.[0])} className="text-sm" />
           </label>
         </div>
-        <p className={hint}>{fillWords(w.fromFileHint, { cost: kind === "order" ? w.fromFileCost : "" })}</p>
+        <p className={`${hint} ${rest}`}>{fillWords(w.fromFileHint, { cost: kind === "order" ? w.fromFileCost : "" })}</p>
         <div role="status" aria-live="polite">
           {fileMessage && <p className="text-sm">{fileMessage}</p>}
         </div>
       </fieldset>
-      {kind === "order" && <p className={hint}>{fillWords(w.costNote, { currency: mainCurrency })}</p>}
-      <div className="flex flex-col gap-1">
+      {kind === "order" && <p className={`${hint} ${rest}`}>{fillWords(w.costNote, { currency: mainCurrency })}</p>}
+      {kind === "order" && (
+        <button type="button" aria-expanded={more} onClick={() => setMore((open) => !open)} className="flex min-h-14 items-center justify-between gap-3 border-y border-line py-2 text-left sm:hidden">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-body text-ink">{pw.more}</span>
+            <span className="text-caption text-ink-2">{pw.moreSub}</span>
+          </span>
+          <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{more ? pw.close : pw.open}</span>
+        </button>
+      )}
+      <div className={`flex flex-col gap-1 ${rest}`}>
         <label htmlFor={id("note")} className="text-sm font-medium">
           {w.note}
         </label>
@@ -267,10 +281,19 @@ export type DocumentRow = {
 /** The list of a store's transfers or purchase orders, newest first, each opening its own page. */
 export function StockDocumentList({ kind, rows }: { kind: Kind; rows: DocumentRow[] }) {
   const w = useAdminText("inventory").documents;
+  const pw = useAdminText("inventory").phone;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const states = kind === "transfer" ? w.transferStates : w.orderStates;
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
-  if (rows.length === 0) return <p className="max-w-3xl text-sm text-muted">{kind === "transfer" ? w.noTransfers : w.noOrders}</p>;
+  if (rows.length === 0)
+    return kind === "transfer" ? (
+      <p className="max-w-3xl text-sm text-muted">{w.noTransfers}</p>
+    ) : (
+      <>
+        <p className="text-sm text-muted sm:hidden">{pw.noOrders}</p>
+        <p className="max-w-3xl text-sm text-muted max-sm:hidden">{w.noOrders}</p>
+      </>
+    );
   return (
     <div className={tableShell}>
       <table className="w-full text-sm">

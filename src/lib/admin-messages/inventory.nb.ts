@@ -8,6 +8,27 @@ export const inventoryNb: InventoryMessages = {
     nav: "Lager",
     tabs: { list: "Lager", history: "Historikk", locations: "Lagersteder", transfers: "Overføringer", purchase_orders: "Innkjøpsordrer", suppliers: "Leverandører", import: "Import", export: "Eksport" },
   },
+  /** Round 46 (D750): the words a phone shows on Import, Purchase orders and History. */
+  phone: {
+    importLead: "Sett lager fra en opptalt fil, sjekket før noe endres.",
+    importHint: "Trenger kolonnene sku og on_hand. Ingenting endres før du har sett sjekken.",
+    rules: "Slik leses filen",
+    rulesSub: "Kolonner, årsaker, hva som hoppes over",
+    importKept: "Filen din slettes {days} dager etter importen; historikken blir.",
+    ordersLead: "Det du kjøper; telt inn øker det lageret og setter kostprisen.",
+    noOrders: "Ingen innkjøpsordrer ennå.",
+    newOrderSub: "En leverandør, linjene og hva de kostet",
+    more: "Mer om ordren",
+    moreSub: "Referanse, valuta, ankomst, linjer fra en fil, et notat",
+    historyLead: "Hver endring av et lagernivå, tatt vare på i {months} måneder.",
+    filter: "Filter",
+    everything: "Alle SKU-er, lagersteder og årsaker, når som helst",
+    historyKept: "Endres aldri: en feil endring rettes med en ny.",
+    open: "Åpne",
+    close: "Lukk",
+    change: "Endre",
+    done: "Ferdig",
+  },
   pages: {
     list: {
       title: "Lager",

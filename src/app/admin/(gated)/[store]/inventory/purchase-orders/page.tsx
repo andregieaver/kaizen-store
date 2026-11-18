@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { requireFeature } from "@/components/admin/feature-off";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { NewStockDocument, StockDocumentList } from "@/components/admin/inventory/stock-documents-view";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -29,10 +30,17 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Props
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.purchaseOrders;
+  const all = adminText(lang, "inventory");
+  const w = all.pages.purchaseOrders;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="purchase_orders" title={w.title} intro={w.intro} lang={lang} />
+      <InventoryHead
+        slug={store.slug}
+        active="purchase_orders"
+        title={w.title}
+        intro={<><span className="sm:hidden">{all.phone.ordersLead}</span><span className="max-sm:hidden">{w.intro}</span></>}
+        lang={lang}
+      />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} reorder={(await searchParams).reorder === "1"} />
       </Suspense>
@@ -47,7 +55,9 @@ async function Body({ storeSlug, reorder }: { storeSlug: string; reorder: boolea
   // *Prepare reorder* from the briefing (D416): the form filled in from what is running out, saved only when the person presses Create.
   const [orders, locations, draft] = await Promise.all([listPurchaseOrders(store.id), listLocations(store.id), reorder && mayWrite ? reorderDraft(store) : Promise.resolve(null)]);
   const lang = adminLangOf(member.account.adminLocale);
-  const rw = adminText(lang, "inventory").pages.purchaseOrders.reorder;
+  const iw = adminText(lang, "inventory");
+  const rw = iw.pages.purchaseOrders.reorder;
+  const pw = iw.phone;
   const noCost = draft ? draft.lines.filter((l) => l.unitCost === "").length : 0;
   const base = inventoryPaths(store.slug).purchase_orders;
   const places = locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }));
@@ -78,7 +88,10 @@ async function Body({ storeSlug, reorder }: { storeSlug: string; reorder: boolea
             createdAt: o.createdAt,
           }))}
         />
+        {/* Round 46 (D750): on a phone a new order is a row that opens the form; a prepared reorder opens it. */}
         {mayWrite && places.length > 0 && (
+          <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow flat last defaultOpen={draft !== null} title={iw.documents.newOrder} sub={pw.newOrderSub} change={pw.open} done={pw.close}>
           <NewStockDocument
             key={draft ? "reorder" : "blank"}
             initial={draft && draft.lines.length > 0 ? { supplier: draft.supplier, lines: draft.lines.map((l) => ({ sku: l.sku, quantity: l.quantity, unitCost: l.unitCost })) } : undefined}
@@ -89,6 +102,8 @@ async function Body({ storeSlug, reorder }: { storeSlug: string; reorder: boolea
             documentBase={base}
             create={createPurchaseOrderAction.bind(null, store.slug)}
           />
+          </PhoneRow>
+          </div>
         )}
       </div>
     </AdminTextScope>

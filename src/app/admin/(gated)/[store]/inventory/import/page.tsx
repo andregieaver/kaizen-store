@@ -8,6 +8,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { StockUpload } from "@/components/admin/inventory/stock-import-flow";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -38,10 +39,17 @@ export default async function StockImportPage({ params }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.import;
+  const all = adminText(lang, "inventory");
+  const w = all.pages.import;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="import" title={w.title} intro={w.intro} lang={lang} />
+      <InventoryHead
+        slug={store.slug}
+        active="import"
+        title={w.title}
+        intro={<><span className="sm:hidden">{all.phone.importLead}</span><span className="max-sm:hidden">{w.intro}</span></>}
+        lang={lang}
+      />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -58,8 +66,10 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const base = inventoryPaths(store.slug).import;
   const lang = adminLangOf(member.account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "inventory").import;
+  const t = adminText(lang, "inventory");
+  const w = t.import;
   const r = w.rules;
+  const pw = t.phone;
   return (
     <>
       {open ? (
@@ -77,6 +87,9 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           <StockUpload slug={store.slug} start={startStockUploadAction.bind(null, store.slug)} register={registerStockUploadAction.bind(null, store.slug)} />
         </AdminTextScope>
       )}
+      {/* Round 46 (D750): on a phone how the file is read is a row; the rules open under it. From 640 px the card is as before. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={pw.rules} sub={pw.rulesSub} change={pw.open} done={pw.close}>
       <Notice title={w.rulesTitle}>
         <ul className="list-disc pl-5">
           <li>{r.find}</li>
@@ -97,6 +110,8 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </li>
         </ul>
       </Notice>
+      </PhoneRow>
+      </div>
       {jobs.length > 0 && (
         <section aria-labelledby="recent-stock-imports" className="flex flex-col gap-2">
           <h2 id="recent-stock-imports" className="text-title text-ink">
@@ -139,7 +154,8 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         </section>
       )}
-      <p className={`${hint} ${card} !p-3`}>{fillWords(w.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+      <p className={`${hint} px-0.5 sm:hidden`}>{fillWords(pw.importKept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+      <p className={`${hint} ${card} !p-3 max-sm:hidden`}>{fillWords(w.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
     </>
   );
 }

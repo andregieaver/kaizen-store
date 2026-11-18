@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { card, field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
+import { PhoneRow } from "@/components/admin/phone-row";
+import { momentShort } from "@/lib/data-admin";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -37,9 +39,19 @@ export function HistoryView({
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const base = `/admin/${slug}/inventory/history`;
   const filtered = Boolean(query.sku || query.variant || query.location || query.reason || query.from || query.to);
+  const pw = t.phone;
+  // Round 46 (D750): on a phone the filters are one row saying what is chosen, and each change is a line.
+  const chosen = [
+    query.sku,
+    query.location ? locations.find((l) => l.id === query.location)?.name : null,
+    query.reason ? reasonIn(query.reason, t) : null,
+    query.from || query.to ? `${query.from ?? "…"} – ${query.to ?? "…"}` : null,
+  ].filter(Boolean);
   const keep = { sku: query.sku, variant: query.variant, location: query.location, reason: query.reason, from: query.from, to: query.to };
   return (
     <div className="flex flex-col gap-4">
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={pw.filter} sub={chosen.length > 0 ? chosen.join(", ") : pw.everything} change={pw.change} done={pw.done}>
       <form method="get" action={base} className={`${card} flex flex-wrap items-end gap-3`} role="search" aria-label={w.filter}>
         {query.variant && <input type="hidden" name="variant" value={query.variant} />}
         <div className="flex flex-col gap-1">
@@ -96,12 +108,31 @@ export function HistoryView({
           </Link>
         )}
       </form>
+      </PhoneRow>
+      </div>
       {query.variant && <p className={hint}>{w.oneVariant}</p>}
 
       {rows.length === 0 ? (
         <p className="rounded-panel bg-sunken p-6 text-center text-sm">{filtered ? w.noMatch : w.nothingYet}</p>
       ) : (
-        <div className={tableShell}>
+        <>
+        <ul role="list" aria-label={w.caption} className="divide-y divide-line rounded-panel bg-card px-4 sm:hidden">
+          {rows.map((r) => (
+            <li key={r.id} className="flex min-h-14 items-center justify-between gap-3 py-2">
+              <span className="min-w-0">
+                <span className="block truncate text-body text-ink">
+                  {r.title}
+                  {Object.values(r.options).length > 0 ? ` · ${Object.values(r.options).join(" / ")}` : ""}
+                </span>
+                <span className="block text-caption text-ink-2">
+                  {[momentShort(r.createdAt, timeZone, locale), r.location, reasonIn(r.reason, t).toLowerCase()].join(" · ")}
+                </span>
+              </span>
+              <span className="shrink-0 text-body tabular-nums text-ink">{deltaIn(r.delta, locale)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className={`${tableShell} max-sm:hidden`}>
           <table className="w-full text-sm">
             <caption className="sr-only">{w.caption}</caption>
             <thead>
@@ -175,6 +206,7 @@ export function HistoryView({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <nav aria-label={w.pages} className="flex flex-wrap items-center gap-3 text-sm">
@@ -189,7 +221,8 @@ export function HistoryView({
           </Link>
         )}
       </nav>
-      <p className={hint}>
+      <p className={`${hint} sm:hidden`}>{pw.historyKept}</p>
+      <p className={`${hint} max-sm:hidden`}>
         {fillWords(w.kept, { months: INVENTORY_RETENTION_MONTHS })}
       </p>
     </div>

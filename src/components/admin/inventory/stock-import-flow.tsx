@@ -34,6 +34,7 @@ export function StockUpload({
 }) {
   const router = useRouter();
   const w = useAdminText("inventory").import.upload;
+  const pw = useAdminText("inventory").phone;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const formatBytes = (n: number) => bytesIn(n, locale);
   const input = useRef<HTMLInputElement>(null);
@@ -87,7 +88,9 @@ export function StockUpload({
           {w.fileLabel}
         </label>
         <input id="stock-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
-        <p className={hint}>
+        {/* Round 46 (D750): on a phone the two columns needed and the check in one line; every column from 640 px. */}
+        <p className={`${hint} sm:hidden`}>{pw.importHint}</p>
+        <p className={`${hint} max-sm:hidden`}>
           {fillWords(w.hintStart, { size: formatBytes(IMPORT_MAX_BYTES), rows: numberIn(INVENTORY_FILE_ROWS_MAX, locale) })} <strong>{"sku"}</strong> {w.hintAnd} <strong>{"on_hand"}</strong> {w.hintCounted} <strong>{"location"}</strong>,{" "}
           <strong>{"on_hand_was"}</strong>, <strong>{"reason"}</strong>, <strong>{"note"}</strong>, <strong>{"stock_policy"}</strong>, <strong>{"backorder_days"}</strong> {w.hintAnd} <strong>{"low_stock_threshold"}</strong>. {w.hintEnd}
         </p>

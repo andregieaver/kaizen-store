@@ -29,10 +29,16 @@ export default async function StockHistoryPage({ params, searchParams }: Props) 
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.history;
+  const all = adminText(lang, "inventory");
+  const w = all.pages.history;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="history" title={w.title} intro={fillWords(w.intro, { months: INVENTORY_RETENTION_MONTHS })} lang={lang} />
+      <InventoryHead slug={store.slug} active="history" title={w.title} intro={
+          <>
+            <span className="sm:hidden">{fillWords(all.phone.historyLead, { months: INVENTORY_RETENTION_MONTHS })}</span>
+            <span className="max-sm:hidden">{fillWords(w.intro, { months: INVENTORY_RETENTION_MONTHS })}</span>
+          </>
+        } lang={lang} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
