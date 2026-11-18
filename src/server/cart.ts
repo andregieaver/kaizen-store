@@ -26,6 +26,7 @@ import { getCustomer } from "./customers";
 import { LIST_PRICED, STORE_AUDIENCE, offeredTo, plansOffered } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { refreshTag } from "./refresh";
+import { perRequest } from "./request-memo";
 import { storeTag } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
@@ -542,17 +543,19 @@ export async function setCartVatNumber(
 
 /** Units in the cart, for the header. */
 export async function getCartCount(shop: Shop): Promise<number> {
-  const cartId = await readCartId(shop);
-  if (!cartId) return 0;
-  const row = await typedRow(z.object({ count: col.int }), sql`
-    select coalesce(sum(case when cl.starts_at is null then cl.quantity else 1 end), 0)::int as count
-    from commerce.cart_lines cl
-    join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
-    where c.store_id = ${shop.storeId}::uuid and c.id = ${cartId}::uuid
-      and c.market_code = ${shop.market.code}
-      and c.status = 'open' and c.expires_at > now()
-  `);
-  return Number(row?.count ?? 0);
+  return perRequest("cart-count:" + shop.storeId + ":" + shop.market.code, async () => {
+    const cartId = await readCartId(shop);
+    if (!cartId) return 0;
+    const row = await typedRow(z.object({ count: col.int }), sql`
+      select coalesce(sum(case when cl.starts_at is null then cl.quantity else 1 end), 0)::int as count
+      from commerce.cart_lines cl
+      join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
+      where c.store_id = ${shop.storeId}::uuid and c.id = ${cartId}::uuid
+        and c.market_code = ${shop.market.code}
+        and c.status = 'open' and c.expires_at > now()
+    `);
+    return Number(row?.count ?? 0);
+  });
 }
 
 /** Whether the shopper has chosen to buy for a business (B2B). */

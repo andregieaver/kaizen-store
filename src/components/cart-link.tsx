@@ -4,7 +4,6 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { getCartCount } from "@/server/cart";
-import { perRequest } from "@/server/request-memo";
 
 import { Icon } from "./icons";
 
@@ -24,8 +23,8 @@ export async function CartLink({
   market: Market;
   variant?: "header" | "bar";
 }) {
-  // The header's link and the phone bar's share one count for a render; `getCartCount()` itself is never memoised, as actions call it after a change.
-  const count = await perRequest(`cart-count:${storeId}:${market.slug}`, () => getCartCount({ storeId, market }));
+  // The header's link and the phone bar's share one count for a render: `getCartCount()` shares it per request (step 2.2).
+  const count = await getCartCount({ storeId, market });
   return <CartLinkShell storeSlug={storeSlug} market={market} variant={variant} count={count} />;
 }
 
