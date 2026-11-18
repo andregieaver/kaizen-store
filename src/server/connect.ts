@@ -13,6 +13,7 @@ import { audit, type Account, type Membership } from "./auth";
 import type { SaveResult } from "./settings";
 import { createPlatformWebhooks, platformStripe, type WebhookKind } from "./stripe";
 import { log } from "./log";
+import { perRequest } from "./request-memo";
 
 type Row = Record<string, unknown>;
 
@@ -474,8 +475,10 @@ export type CheckoutUi = "custom" | "hosted";
 
 /** Where shoppers pay: Kaizen's own checkout page, or Stripe's page as a fallback. */
 export async function getCheckoutUi(): Promise<CheckoutUi> {
-  const [row] = await db().execute<Row>(sql`select checkout_ui from commerce.platform_settings`);
-  return row?.checkout_ui === "hosted" ? "hosted" : "custom";
+  return perRequest("checkout-ui", async () => {
+    const [row] = await db().execute<Row>(sql`select checkout_ui from commerce.platform_settings`);
+    return row?.checkout_ui === "hosted" ? "hosted" : "custom";
+  });
 }
 
 export async function setCheckoutUi(account: Account, ui: CheckoutUi): Promise<SaveResult> {

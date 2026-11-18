@@ -26,6 +26,7 @@ import { shownRegistrationNumbers, type ShownRegistration } from "./producer-reg
 import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./product-conditions";
+import { perRequest } from "./request-memo";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -574,7 +575,7 @@ async function standardOf(category: unknown, attributes: unknown, locale: string
  */
 export async function getVariantStock(storeId: string, variantIds: string[]): Promise<Map<string, VariantStock>> {
   await connection();
-  return variantStockOf(db(), storeId, variantIds);
+  return perRequest("variant-stock:" + storeId + ":" + [...variantIds].sort().join(","), () => variantStockOf(db(), storeId, variantIds));
 }
 
 /** The same read for a caller already in a request or a transaction (the cart, the chat agent, the WordPress routes). */
