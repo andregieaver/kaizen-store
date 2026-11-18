@@ -57,6 +57,7 @@ const PACKAGES: Record<string, { why: string; loads: Loads }> = {
   "pdf-lib": { why: "Builds and edits PDFs: contracts and documents (contract-seal.ts).", loads: "server" },
   pg: { why: "The pooled Postgres driver of the app (db/client.ts).", loads: "server" },
   "playwright-core": { why: "Drives Chromium for page looks, map shots, replication and scripts.", loads: "server" },
+  postcss: { why: "Parses the built stylesheet in stylesheet-audiences.mjs.", loads: "build" },
   postgres: { why: "The direct Postgres connection of migrations and scripts (store-hosts-build.ts, scripts/).", loads: "server" },
   "qrcode-generator": { why: "QR codes for a product passport (qr.ts).", loads: "server" },
   react: { why: "The UI library.", loads: "both" },
