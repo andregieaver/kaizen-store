@@ -13,6 +13,7 @@ vi.mock("@/lib/supabase/mailer", () => ({ emailSignInLink: async () => false }))
 
 const assistant = await import("./owner-assistant");
 const stores = await import("./stores");
+const { roundStats } = await import("./ai-round-stats");
 
 type Row = Record<string, unknown>;
 
@@ -31,6 +32,8 @@ beforeAll(async () => {
     insert into commerce.access_requests (email, name, store_name) values (${`turns-${run}@example.com`}, 'Kari', 'Turns') returning id
   `);
   await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`turns-${run}`}, 'Turns', null)`);
+  // The figures of Platform → AI → Usage are the platform's: only this file's turns are counted (the tests run one file at a time).
+  await db().execute(sql`delete from commerce.ai_usage where feature in ('ai_manager', 'analytics_question')`);
   const store = (await stores.getStore(`turns-${run}`))!;
   const [account] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`turns-${run}@example.com`}`);
   member = { account: { id: String(account.id), email: String(account.email), name: "Kari", platformAdmin: false }, store, role: "owner" } as Membership;
@@ -97,5 +100,29 @@ describe("the AI manager's rounds in the usage table (bloat review step 1.19)", 
     expect(rows.map((r) => Number(r.input_tokens))).toEqual([1000, 1000, 1000]);
     // The rounds after the report are the figures' question's (D346), and they carry the turn too.
     expect(rows.map((r) => String(r.feature))).toEqual(["ai_manager", "analytics_question", "analytics_question"]);
+    expect(rows.every((r) => r.round !== null)).toBe(true);
+  });
+
+  it("marks the round that called load_tools, and works out the screen's figures from the rows", async () => {
+    fakeModel(calls("load_tools", { areas: ["marketing"] }, usage(0)), calls("list_orders", {}, usage(800)), says("Here are the latest orders.", usage(800)));
+    await turn("Show me the latest orders and my discount codes.");
+    const [loaded] = await db().execute<Row>(sql`
+      select count(distinct turn_id)::int as turns, count(*) filter (where loaded_tools)::int as loading, min(round) filter (where loaded_tools) as round
+      from commerce.ai_usage where store_id = ${member.store.id}::uuid and kind = 'text'
+    `);
+    expect(loaded).toMatchObject({ turns: 2, loading: 1, round: 0 });
+
+    const stats = await roundStats(30);
+    expect(stats.manager).toMatchObject({ calls: 6, turns: 2, turnCallsP50: 3, turnInputP50: 3000, inputP50: 1000, inputP90: 1000, outputP50: 50 });
+    expect(stats.manager.cachedShareAfterFirst).toBeCloseTo(0.8);
+    expect(stats.manager.cachedShare).toBeCloseTo(3200 / 6000);
+    // One turn of the two had a round that called load_tools.
+    expect(stats.manager.loadShare! * stats.manager.turns).toBeCloseTo(1);
+    expect(stats.byFeature).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ feature: "ai_manager", calls: 4, inputP50: 1000 }),
+        expect.objectContaining({ feature: "analytics_question", calls: 2, outputP90: 50 }),
+      ]),
+    );
   });
 });

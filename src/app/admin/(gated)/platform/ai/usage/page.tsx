@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PeriodLinks, UsageReport } from "@/components/admin/usage-report";
-import { usagePeriod } from "@/lib/ai-usage";
+import { featureWords, usagePeriod } from "@/lib/ai-usage";
 import { requirePlatformReader } from "@/server/auth";
+import { roundStats, type RoundStats } from "@/server/ai-round-stats";
 import { usageByDay, usageRows } from "@/server/ai-usage";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "AI usage" };
 
@@ -24,7 +25,8 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
   const w = adminText(lang, "platformTools").usage;
   const { period } = await searchParams;
   const chosen = usagePeriod(typeof period === "string" ? period : undefined);
-  const [rows, days] = await Promise.all([usageRows({ days: chosen.days }), usageByDay({ days: chosen.days })]);
+  const [rows, days, stats] = await Promise.all([usageRows({ days: chosen.days }), usageByDay({ days: chosen.days }), roundStats(30)]);
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
@@ -34,7 +36,62 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
         />
         <PeriodLinks base="/admin/platform/ai/usage" period={chosen.id} words={w} />
       </div>
-      <UsageReport rows={rows} days={days} scope="platform" words={w} locale={ADMIN_LANG_FACTS[lang].locale} />
+      <TokensPerCall stats={stats} words={w.perCall} locale={locale} />
+      <UsageReport rows={rows} days={days} scope="platform" words={w} locale={locale} />
     </div>
+  );
+}
+
+type PerCallWords = AdminAreaMessages["platformTools"]["usage"]["perCall"];
+
+/**
+ * Tokens per call (bloat review step 1.19): a row per feature with the median and 90th percentile of a call's input and output, and the AI
+ * manager's turns: the median input and calls per turn, the share read from the provider's cache and the share of turns that loaded tools.
+ */
+function TokensPerCall({ stats, words: w, locale }: { stats: RoundStats; words: PerCallWords; locale: string }) {
+  const count = (value: number | null) => (value === null ? "–" : Math.round(value).toLocaleString(locale));
+  const share = (value: number | null) => (value === null ? "–" : value.toLocaleString(locale, { style: "percent", maximumFractionDigits: 0 }));
+  const m = stats.manager;
+  return (
+    <Card title={w.title} description={w.intro}>
+      {stats.byFeature.length === 0 ? (
+        <p className="text-body text-muted">{w.empty}</p>
+      ) : (
+        <div className="flex flex-col gap-6">
+          <List label={w.title}>
+            {stats.byFeature.map((f) => (
+              <ListRow key={f.feature}>
+                <RowLead title={featureWords(f.feature)} sub={fillWords(w.calls, { count: count(f.calls) })} />
+                <RowFact sub={w.input}>{fillWords(w.medianAnd90, { median: count(f.inputP50), p90: count(f.inputP90) })}</RowFact>
+                <RowFact sub={w.output}>{fillWords(w.medianAnd90, { median: count(f.outputP50), p90: count(f.outputP90) })}</RowFact>
+              </ListRow>
+            ))}
+          </List>
+          {m.turns > 0 && (
+            <div className="flex flex-col gap-2">
+              <h3 className="text-body-strong text-ink">
+                {w.manager} · {fillWords(w.turns, { count: count(m.turns) })}
+              </h3>
+              <List label={w.manager}>
+                {(
+                  [
+                    [w.turnInput, count(m.turnInputP50)],
+                    [w.callsPerTurn, count(m.turnCallsP50)],
+                    [w.cachedShare, share(m.cachedShare)],
+                    [w.cachedAfterFirst, share(m.cachedShareAfterFirst)],
+                    [w.loadShare, share(m.loadShare)],
+                  ] as const
+                ).map(([label, value]) => (
+                  <ListRow key={label}>
+                    <RowLead title={label} />
+                    <RowAmount>{value}</RowAmount>
+                  </ListRow>
+                ))}
+              </List>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }

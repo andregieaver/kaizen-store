@@ -842,12 +842,32 @@ export async function runTurn(input: TurnInput): Promise<void> {
       }
       const last = round.kind === "last";
       const roundConnection = metered.usage ? { ...metered, usage: { ...metered.usage, turnId, round: step } } : metered;
-      const answer = await streamWithTools(roundConnection, messages, last ? [] : tools, (delta) => emit({ type: "text", delta }), {
+      const sent = last ? [] : tools;
+      const calledLoad = (calls: { function: { name: string } }[]) => calls.some((c) => c.function.name === LOAD_TOOLS);
+      let roundUsage = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0 };
+      const answer = await streamWithTools(roundConnection, messages, sent, (delta) => emit({ type: "text", delta }), {
         signal: input.signal,
         timeoutMs: round.timeoutMs,
         onTokens: (used) => {
           tokens += used;
         },
+        onUsage: (usage) => {
+          roundUsage = usage;
+        },
+        // The round's row says whether it called load_tools (bloat review step 1.19), for the share of turns that load tools.
+        usageOf: (reply) => ({ loadedTools: calledLoad(reply.toolCalls) }),
+      });
+      // One line per round (bloat review step 1.19): numbers and one flag, never text, a tool's name or a person's id (D400).
+      log("info", "ai_manager.round", {
+        step,
+        tools: sent.length,
+        toolChars: JSON.stringify(sent).length,
+        promptChars: String(messages[0].content ?? "").length,
+        messageChars: messages.slice(1).reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0), 0),
+        inputTokens: roundUsage.inputTokens,
+        outputTokens: roundUsage.outputTokens,
+        cachedTokens: roundUsage.cachedInputTokens,
+        loaded: calledLoad(answer.toolCalls),
       });
       if (answer.toolCalls.length === 0 || last) {
         reply = answer.content ?? "";

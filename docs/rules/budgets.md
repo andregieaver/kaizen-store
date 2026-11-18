@@ -161,3 +161,12 @@ and e2e/prefetch.spec.ts (router requests of five pages) hold figures in CI's e2
 `E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts` prints each figure.
 Two counts in src/server/ratchet.baseline.json hold the statements that read a whole page document (pageDocumentReads)
 and the places that refresh a store's whole pages tag (pagesTagRefreshes); `node scripts/ratchet.mjs` lowers them.
+
+### Every agent's round (step 1.19)
+
+src/server/ai-round.scan.test.ts draws every agent's round (src/server/ai-round.ts) and holds it to src/server/ai-round.baseline.json. A change
+that raises a round raises the baseline in the same commit (`node scripts/ai-round.mjs --first`), with its reason in the commit message; a
+new tool over 2,500 characters is split, or the commit says why it is kept whole. A change to which tools a round sends needs a new eval run
+on Platform → AI and its recording committed, as a prompt change does. A changed output limit or reasoning effort is a decision: update the
+baseline and docs/decisions.md. Each AI manager round is a row of commerce.ai_usage with its turn, round, cached input tokens and whether it
+called load_tools, and a log line `ai_manager.round` (numbers only); Platform → AI → Usage shows tokens per call from those rows.

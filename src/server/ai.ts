@@ -471,7 +471,13 @@ export class AiError extends Error {
 }
 
 /** What a call used, in a form to record (D106). */
-type Metered<T> = { value: T; amounts?: Partial<UsageAmounts>; estimated?: boolean };
+type Metered<T> = {
+  value: T;
+  amounts?: Partial<UsageAmounts>;
+  estimated?: boolean;
+  /** What the answer adds to the row's context (bloat review step 1.19: the round called `load_tools`). */
+  context?: Pick<UsageContext, "loadedTools">;
+};
 
 /**
  * Runs a call to a model and records it as usage (D106): once, however
@@ -490,7 +496,7 @@ async function metered<T>(connection: AiConnection, meter: { kind: AiKind; provi
     await recordUsage(context, { ...event, failed: true });
     throw error;
   }
-  await recordUsage(context, { ...event, amounts: result.amounts, estimated: result.estimated });
+  await recordUsage(result.context ? { ...context, ...result.context } : context, { ...event, amounts: result.amounts, estimated: result.estimated });
   return result.value;
 }
 
@@ -766,6 +772,8 @@ export async function streamWithTools(
     onTokens?: (tokens: number) => void;
     /** The round's tokens as usage records them, once per call (bloat review step 1.19): the turn's round log reads them. */
     onUsage?: (usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }) => void;
+    /** What the answer adds to its usage row's context, worked out from the answer once it is whole. */
+    usageOf?: (answer: { content: string | null; toolCalls: ToolCall[] }) => Pick<UsageContext, "loadedTools">;
   } = {},
 ): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
   const textModel = connection.textModel;
@@ -779,7 +787,7 @@ export async function streamWithTools(
       outputTokens: answer.amounts?.outputTokens ?? 0,
       cachedInputTokens: answer.amounts?.cachedInputTokens ?? 0,
     });
-    return answer;
+    return options.usageOf ? { ...answer, context: options.usageOf(answer.value) } : answer;
   });
 }
 
