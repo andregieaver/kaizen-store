@@ -175,6 +175,24 @@ function rulesOf(text) {
   return rules.map((rule) => ({ heading: rule.heading, bytes: Buffer.byteLength(`${rule.lines.join("\n")}\n`) }));
 }
 
+/** The patterns of the paths list in a .claude/rules file's front matter, as hasPathsList() reads it; [] when there is none. */
+export function pathsList(text) {
+  if (!hasPathsList(text)) return [];
+  const lines = text.split("\n");
+  const front = lines.slice(1, lines.indexOf("---", 1));
+  const at = front.findIndex((line) => /^paths:/.test(line));
+  const unquote = (s) => s.trim().replace(/^["']|["']$/g, "");
+  const inline = /^paths:\s*\[(.*)\]\s*$/.exec(front[at]);
+  if (inline) return inline[1].split(",").map(unquote).filter(Boolean);
+  const out = [];
+  for (const line of front.slice(at + 1)) {
+    const item = /^\s+-\s+(\S.*)$/.exec(line);
+    if (!item) break;
+    out.push(unquote(item[1]));
+  }
+  return out;
+}
+
 function hasPathsList(text) {
   const lines = text.split("\n");
   if (lines[0].trim() !== "---") return false;

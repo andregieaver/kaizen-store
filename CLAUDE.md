@@ -54,11 +54,8 @@ from it. Locally, point `DATABASE_URL` at an empty Postgres and run
 In a sandbox with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH` instead
 of running `playwright install`.
 
-The admin as signed-in people see it is tested in `e2e/signed-in/` (D234): only with `E2E_SIGNED_IN=1`, in a build whose
-`NEXT_PUBLIC_SUPABASE_URL` is the Auth stand-in `e2e/fixtures/auth-stub.mjs` (`http://127.0.0.1:3912`, any publishable
-key), as CI's `signed-in` job does; `auth.setup.ts` signs an owner and a Read-only member in through the real form and keeps
-their browser states (`test.use({ storageState: OWNER.state })`); a platform admin (`ADMIN`, D254) signs in through the real two-step page, the stand-in checking a code from `e2e/fixtures/totp.mjs`. Never add a bypass to the app's sign-in for a test: the
-stand-in is the only fake, and only it is told it is one.
+The admin as signed-in people see it is tested in `e2e/signed-in/` (D234, how: `.claude/rules/e2e.md`). Never add a bypass to the
+app's sign-in for a test: the stand-in (`e2e/fixtures/auth-stub.mjs`) is the only fake, and only it is told it is one.
 
 ## Database
 
@@ -67,21 +64,14 @@ stand-in is the only fake, and only it is told it is one.
   through `db()` in `src/db/client.ts` (needs `DATABASE_URL`).
 - Migrations are generated into `supabase/migrations`. Rules Drizzle cannot
   express (functions, triggers, reference data) go in a custom migration:
-  `pnpm exec drizzle-kit generate --custom --name <name>`. Only the newest snapshot in `supabase/migrations/meta` is kept (D532): `pnpm db:generate` prunes
-  them, and after a custom migration run `node scripts/prune-snapshots.mjs`.
-- The folder starts with a baseline (D572, `docs/ci-migrations.md`): four files made by `scripts/squash-migrations.mjs` from the 789 up to
-  11 November 2026, which are kept in `supabase/archive/`; never edit a baseline. Squash again each quarter.
+  `pnpm exec drizzle-kit generate --custom --name <name>`.
 - New migrations reach production through CI (`docs/ci-migrations.md`): push the file with the change; the
   `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand
   first**: CI would apply the file again. After the deploy, check the security and performance advisors
   (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration
   versions). A migration must keep the code that is still running working until the deploy finishes (add,
-  never rename or drop in the same change). On the hot tables (orders, order_lines, visits, products, product_variants, customers,
-  carts, cart_lines) an index is built `concurrently` in a file whose first line is `-- kaizen:no-transaction`, and a constraint is added
-  `not valid` and validated later (D569, `docs/ci-migrations.md`; `migration-safety.scan.test.ts`).
-- In production a statement may run 15 s and wait 5 s for a lock (the `postgres` role's limits, code review 1.5); a job that needs longer
-  calls `longerTimeout(tx, seconds)` inside its transaction (`src/db/client.ts`, `set local`, never a plain `set` through the pooler).
+  never rename or drop in the same change).
 - `src/db/commerce.test.ts` applies every migration to PGlite and tests the
   invariants. Add a test with any new rule.
 - Money is integer minor units plus an ISO 4217 code (`src/lib/money.ts`).
@@ -92,6 +82,8 @@ stand-in is the only fake, and only it is told it is one.
   `accommodation`, `exempt`; reduced rates in `commerce.vat_rates`, falling
   back to the standard rate); shipping takes the standard rate. Never read
   `countries.standard_vat_rate` for a product.
+- Baselines, snapshots, indexes on the hot tables and statement limits: `.claude/rules/database.md`, loaded when
+  you open `src/db` or `supabase`. Read it before writing a migration.
 
 ## Rules by area
 
@@ -107,6 +99,7 @@ Each part's rules are in full in these files. Read the rule of a part before cha
 - Find a rule: search `docs/rules` for the file's path, the component's name or the table's name (`rg -n "cart.ts" docs/rules`).
 - List an area's rules: `rg -n "^## " docs/rules/admin/commerce.md`.
 - Read one rule: from its heading's line to the next heading, not the whole file.
+- How-to that loads by folder: `.claude/rules/` (`database.md`, `e2e.md`, `server.md`, `ai-prompts.md`).
 
 ## Conventions
 
@@ -125,38 +118,14 @@ Each part's rules are in full in these files. Read the rule of a part before cha
 - Environment variables are validated in `src/lib/env.ts` (the two public ones in `src/lib/public-env.ts`, without zod, for the browser) when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.
-- New reads, and every read that carries money, describe their row with `col` and go through `typedRows()`/`typedRow()`
-  (`src/server/typed-rows.ts`: each row checked with zod; a `bigint` sum is `col.minor`, a `char(3)` code `col.currency`; a row of
-  another shape throws `RowShapeError`, naming the column, never the value; rows another runner fetched, such as analytics'
-  `setBased()`, through `checkedRows()`); `coalesce()` a sum that may meet no rows. A writer of `commerce.stores` refreshes the store's
-  tag itself (`refreshTag(storeTag(slug))`, `refreshStoreById()`; `store-writers.scan.test.ts`), which does nothing outside Next. Older
-  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first); unchecked reads and `as unknown as`
-  only fall (`ratchet.scan.test.ts`, code review 1.2).
-  A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the ratchet lets the count
-  of those that do not, per file, only fall (code review 1.3).
-  A read of a store's or the platform's rows filters with `owned(storeId)` (`src/server/owned.ts`), never `store_id is not distinct from`: the
-  ratchet counts that wording per file and only lets it fall (D622).
 - Every budget (baseline file, scan test, script) has a row in `docs/rules/budgets.md`; its numbers only fall.
-- New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
-  person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
-  inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):
-  each run is kept in `commerce.cron_jobs`, a job that throws is logged and the others finish, and the platform home and
-  Usage and limits say which job is late or failing (`src/lib/cron-health.ts`); `cron-routes.scan.test.ts` holds new routes to it.
+- Typed rows, the code ratchet, logs and cron jobs: `.claude/rules/server.md`, loaded when you open `src/server` or `src/app/api`. The eval and
+  prompt versions: `.claude/rules/ai-prompts.md`.
 - AI features must stay grounded: the model never states a price, stock level or
   product it was not given by a tool; arithmetic happens in code; model output is
   rendered as text, never as HTML. Every system prompt carries the rule in
   `src/lib/prompt-safety.ts` (`UNTRUSTED_TEXT`, or `RULES_STAND` where the input is
   meant to steer); `prompt-safety.scan.test.ts` fails for a new prompt without it.
-  The agents' safety eval (`src/lib/agent-eval.ts`, run by `src/server/agent-eval.ts` from Platform → AI, kept per model in
-  `commerce.ai_eval_runs`) plays the shopper chat and the AI manager with their real prompts and tools on scripted tool answers that
-  hide instructions; run it after changing a prompt, a tool's description or the platform's model, and add a case with any new way
-  outside text reaches a prompt (`agent-eval.test.ts` checks every tool a case names exists). Prompts are versioned (D391,
-  `src/server/prompt-versions.ts`: each drawn with fixed inputs and hashed; a new agent's prompt gets a fixed drawing there and a version
-  in `promptVersions()`), kept with every answer and eval run; CI replays the recording of a real run kept as
-  `src/data/agent-eval-recording.json` (`agent-eval-replay.int.test.ts`), so a changed prompt or a new case needs a new run on
-  Platform → AI and its recording committed. The AI manager's conversations go after the retention rule's period or the owner's own
-  (`stores.assistant_keep_months`, `pruneAssistantConversations()`); the chat's notice says when an AI reads tone or summarises
-  (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
 - A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
 - Working plans in `docs/audits/`: `psi-followups.md` (Open), `code-review-2026-11.md`, `bloat-review-2026-11.md` and

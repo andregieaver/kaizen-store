@@ -71,7 +71,9 @@ The server's measure 7, refreshes and store draws, is held by Platform, Usage an
 ## CLAUDE.md
 
 CLAUDE.md is a core with a map of the rule files (bloat review step 2.1): src/lib/docs-budget.scan.test.ts fails when it passes
-15,000 bytes or 200 lines. The two numbers are written in the test, not in the baseline, so no script raises them; they never rise.
+10,500 bytes or 160 lines. The two numbers are written in the test, not in the baseline, so no script raises them; they never rise.
+The how-to that left it is in .claude/rules, loaded by path: the same test fails when a file there has no paths list, names a path
+no file matches, or when the moved how-to is written back into CLAUDE.md.
 A new rule gets a heading in its area's file under docs/rules and no line in CLAUDE.md: src/lib/rules-index.test.ts holds every
 heading unique and the map naming every rule file.
 

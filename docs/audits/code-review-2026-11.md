@@ -68,7 +68,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.7 | Squash to a baseline | FD3 | M | Done | 11 Nov 2026, D572; see Notes below |
 | 1.8 | Give the build room, and deploy what was checked | FH10 | M | Open | CI's browser builds no longer type-check (bloat step 0.38, 16 Nov 2026, commit 1 of that step); the type check stays in static and the gate. Bloat 1.20: serverSourceMaps off, -0.8 GB at the 8 GB cap. |
 | 1.9 | Test what gets owners paid | FH9 | M | Open | |
-| 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Open | |
+| 1.10 | Make the written rules cheap to read | FH4, FH5 | M | In progress | 18 Nov: CLAUDE.md's half by bloat step 2.1 (10,102 bytes, a map of the rule files); the decisions split waits on bloat step 2.40. |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
 | 1.12 | Build the admin kit | FS4 | L | Open | |
 | 1.13 | One way to search and page a list | FS2 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026 (Products and Customers not yet: the redesign changed those screens); the shared kit and the rest remain. |
@@ -176,6 +176,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 14 November 2026: bloat step 0.19: the platform's Stores list reads and shows 100 a page with a count (the Stores part of 2.10); 1.13 and 2.10 stay Open (the shared ListSearch and Pager are not built). The Products list's notice no longer reads the whole editor context. The customers aggregate is not yet bounded: round 3 of the redesign rewrote that statement.
 - 15 November 2026: bloat step 0.26: 13 duplicate indexes dropped (orders 34 to 32; four concurrently on orders, order_lines and visits), and `src/db/index-duplicates.test.ts` fails on the next one. Step 3.15 stays Open.
 - 16 November 2026: notes moved out of the table into Notes on the steps; a row is at most 300 characters (bloat review step 0.41).
+- 18 November 2026: bloat review step 2.1: CLAUDE.md keeps a map of the rule files, its how-to in `.claude/rules`; step 1.10 In progress (decisions split waits on 2.40); question 5 answered.
 
 **Notes on the steps**
 
@@ -726,7 +727,8 @@ language, and little else. The point of this phase is that nothing above comes b
    another name before step 0.11 ships.
 4. **Ctrl/Cmd+K (FN1).** It moves from the AI manager to *Go to*, as the audit proposed. People who learned the old key need a hint.
 5. **`CLAUDE.md` (FH5).** It is the owner's instruction file. Trimming it to the six area files changes what every session loads and
-   what `rules-index.test.ts` checks.
+   what `rules-index.test.ts` checks. *Answered 12 November 2026: yes to both halves (a map of the rule files, and the how-to loaded
+   by folder); done by bloat review step 2.1.*
 6. **Retention periods (FD8).** How long processed webhook events, guest carts and experiment events are kept is a privacy decision,
    and the privacy text must say the same.
 7. **Builder drafts (FB5).** Recover from the browser, or save the draft automatically on the server.
