@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.43 — 2026-11-18
+
+Two more kinds of question for a form in the owner MCP (D738).
+
+- `change_form`'s `questions[].kind` also takes `hidden` (never asked: it keeps a part of the page's address, such as a campaign) and
+  `file` (one picture or PDF the visitor attaches).
+- A question takes an optional `param`: the part of the address a hidden question keeps, such as `utm_campaign` (the default) or `code`.
+
 ## 1.42 — 2026-11-17
 
 Four webhook topics and workflow triggers about the store's email (D730, D732).
