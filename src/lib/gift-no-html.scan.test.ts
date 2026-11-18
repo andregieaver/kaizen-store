@@ -36,7 +36,7 @@ describe("the gift message is never turned into markup", () => {
 
   it("finds the places that draw or carry it, so the scan cannot go stale", () => {
     const names = touching.map((file) => relative(SRC, file).replaceAll("\\", "/"));
-    for (const expected of ["components/gift-note.tsx", "app/s/[store]/[market]/cart/cart-gift.tsx", "lib/gift.ts", "server/shopper-emails.ts", "components/admin/orders/packing-slip-view.tsx"]) {
+    for (const expected of ["components/gift-note.tsx", "app/s/[store]/[market]/(shop)/cart/cart-gift.tsx", "lib/gift.ts", "server/shopper-emails.ts", "components/admin/orders/packing-slip-view.tsx"]) {
       expect(names, expected).toContain(expected);
     }
   });

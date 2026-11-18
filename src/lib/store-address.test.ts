@@ -274,7 +274,7 @@ describe("the store's own files beside its markets", () => {
 
 describe("the market's routes", () => {
   it("are the folders of the market route", () => {
-    const dir = join(process.cwd(), "src/app/s/[store]/[market]");
+    const dir = join(process.cwd(), "src/app/s/[store]/[market]/(shop)");
     const folders = readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory() && /^[a-z]/.test(name));
     expect([...MARKET_ROUTES].sort()).toEqual(folders.sort());
   });

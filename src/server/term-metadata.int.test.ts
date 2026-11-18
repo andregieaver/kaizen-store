@@ -9,7 +9,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NEXT_NOT_FOUND"); }, permanentRedirect: () => { throw new Error("NEXT_REDIRECT"); }, redirect: () => { throw new Error("NEXT_REDIRECT"); } }));
 
-const { termMetadata } = await import("@/app/s/[store]/[market]/term-listing");
+const { termMetadata } = await import("@/app/s/[store]/[market]/(shop)/term-listing");
 
 /**
  * The category's page as search engines and shares meet it (wave 2, second run, D168, `docs/wave-2-redirects.md` 2.4.1, 6.3 S3): the SEO title and description of

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition, type InputHTMLAttributes, type ReactNode } from "react";
 
-import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
+import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 import { payHeld, type TermsDisplay } from "@/lib/checkout-terms";
 import type { AnswerInput, ShownField } from "@/lib/checkout-rules";
 import type { AddressChoice } from "@/lib/customer-addresses";

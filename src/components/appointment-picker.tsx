@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition, type ReactNode } from "react";
 
-import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
-import { appointmentWeekAction } from "@/app/s/[store]/[market]/p/actions";
+import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
+import { appointmentWeekAction } from "@/app/s/[store]/[market]/(shop)/p/actions";
 import { addDays, type SlotWeek } from "@/lib/booking-slots";
 import type { ChangeOutcome } from "@/server/booking-changes";
 

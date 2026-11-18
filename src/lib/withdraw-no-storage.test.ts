@@ -12,7 +12,7 @@ import { placeOfPath } from "./visit-record";
  * that adds one has to come here and decide (and then list it in `KNOWN_COOKIES`).
  */
 
-const ROOTS = ["src/app/s/[store]/[market]/withdraw", "src/app/s/[store]/[market]/returns", "src/components/withdraw", "src/lib/withdraw-form.ts"];
+const ROOTS = ["src/app/s/[store]/[market]/(shop)/withdraw", "src/app/s/[store]/[market]/(shop)/returns", "src/components/withdraw", "src/lib/withdraw-form.ts"];
 
 function files(path: string): string[] {
   if (statSync(path).isFile()) return [path];

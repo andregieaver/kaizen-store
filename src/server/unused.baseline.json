@@ -25,7 +25,7 @@
   "testOnlyExports": [
     "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts#saveInvoiceHeaderAction",
     "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts#saveInvoiceLinesAction",
-    "src/app/s/[store]/[market]/cart/bonus.ts#readCartBonus",
+    "src/app/s/[store]/[market]/(shop)/cart/bonus.ts#readCartBonus",
     "src/components/admin/admin-text-later.ts#LATER_AREAS",
     "src/components/admin/admin-text-later.ts#settledEnglish",
     "src/components/admin/analytics/customers-view.tsx#SEGMENT_COPY",

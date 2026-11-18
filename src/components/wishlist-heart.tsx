@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { toggleWishlistAction } from "@/app/s/[store]/[market]/wishlist/actions";
+import { toggleWishlistAction } from "@/app/s/[store]/[market]/(shop)/wishlist/actions";
 
 /**
  * The shopper's saved products (D34), fetched once per page for every

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition, type ReactNode } from "react";
 
-import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
-import { rangeDatesAction, rentalTimesAction, type RentalTimeChoice } from "@/app/s/[store]/[market]/p/actions";
+import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
+import { rangeDatesAction, rentalTimesAction, type RentalTimeChoice } from "@/app/s/[store]/[market]/(shop)/p/actions";
 import { rangeCount, rangeOpen, type RangeCalendar, type RangeKind, type RentalPeriod } from "@/lib/booking-ranges";
 import { bookingPrice, type Season } from "@/lib/booking-prices";
 import { addDays, zonedTime } from "@/lib/booking-slots";

@@ -227,8 +227,8 @@
         "src/components/admin/orders/order-edit-editor.tsx",
         "src/components/admin/orders/order-edit-card.tsx",
         "src/components/admin/orders/order-edit-summary.tsx",
-        "src/app/s/[store]/[market]/account/change/[token]/page.tsx",
-        "src/app/s/[store]/[market]/account/change/[token]/change-view.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/change/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/change/[token]/change-view.tsx",
         "src/components/documents/order-document-view.tsx",
         "supabase/archive/20261111172838/20261006235336_fulfilment_rules.sql",
         "src/server/order-change-tools.ts"
@@ -246,7 +246,7 @@
         "src/server/order-edit-money-review.int.test.ts",
         "src/server/analytics-edits.int.test.ts",
         "src/components/admin/orders/fulfilment-views.test.ts",
-        "src/app/s/[store]/[market]/account/change/[token]/change-view.test.ts",
+        "src/app/s/[store]/[market]/(shop)/account/change/[token]/change-view.test.ts",
         "src/components/documents/order-document-view-edit.test.ts",
         "e2e/order-change.spec.ts",
         "src/server/order-change-tools.int.test.ts"
@@ -423,8 +423,8 @@
         "src/server/order-admin.ts",
         "src/app/admin/(gated)/[store]/orders/drafts/page.tsx",
         "src/app/admin/(gated)/[store]/orders/drafts/actions.ts",
-        "src/app/s/[store]/[market]/account/pay/[token]/page.tsx",
-        "src/app/s/[store]/[market]/account/pay/[token]/pay-view.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/pay/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/pay/[token]/pay-view.tsx",
         "src/components/admin/drafts/draft-editor.tsx",
         "src/components/admin/drafts/draft-send.tsx",
         "supabase/archive/20261111172838/20261006151839_orders_ops.sql",
@@ -444,7 +444,7 @@
         "src/db/orders-ops.test.ts",
         "src/db/invoice-parity.test.ts",
         "src/components/admin/drafts/drafts-views.test.ts",
-        "src/app/s/[store]/[market]/account/pay/[token]/pay-view.test.ts",
+        "src/app/s/[store]/[market]/(shop)/account/pay/[token]/pay-view.test.ts",
         "e2e/draft-pay.spec.ts"
       ],
       "untested": false
@@ -936,7 +936,7 @@
         "src/components/admin/orders/handover-panel.tsx",
         "src/components/admin/shipping/pickup-view.tsx",
         "src/components/delivery-choice.tsx",
-        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx"
+        "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx"
       ],
       "tests": [
         "src/server/pickup.int.test.ts",
@@ -1199,8 +1199,8 @@
         "supabase/archive/20261111172838/20261015001113_notifications_rules.sql",
         "src/server/carrier-tracking.ts",
         "src/server/order-delivery.ts",
-        "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
-        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx",
         "src/server/fulfilment.ts",
         "src/server/support-tools.ts",
         "src/lib/bring.ts",
@@ -1222,7 +1222,7 @@
         "src/server/returns.int.test.ts",
         "src/server/fulfilment.int.test.ts",
         "src/server/support-tools.int.test.ts",
-        "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts"
+        "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.test.ts"
       ],
       "untested": false
     },
@@ -1451,9 +1451,9 @@
       "files": [
         "src/server/withdrawals.ts",
         "src/lib/withdrawal.ts",
-        "src/app/s/[store]/[market]/withdraw/page.tsx",
-        "src/app/s/[store]/[market]/withdraw/actions.ts",
-        "src/app/s/[store]/[market]/withdraw/withdraw-flow.tsx",
+        "src/app/s/[store]/[market]/(shop)/withdraw/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/withdraw/actions.ts",
+        "src/app/s/[store]/[market]/(shop)/withdraw/withdraw-flow.tsx",
         "src/components/withdraw/withdraw-parts.tsx",
         "src/components/withdraw/order-returns.tsx",
         "src/server/return-emails.ts",
@@ -1462,7 +1462,7 @@
       ],
       "tests": [
         "src/server/returns.int.test.ts",
-        "src/app/s/[store]/[market]/withdraw/actions.int.test.ts",
+        "src/app/s/[store]/[market]/(shop)/withdraw/actions.int.test.ts",
         "src/server/returns-security.int.test.ts",
         "src/lib/withdrawal.test.ts",
         "src/lib/withdraw-form.test.ts",
@@ -1594,7 +1594,7 @@
         "src/components/admin/returns/step-forms.tsx",
         "src/app/admin/(gated)/[store]/returns/[returnId]/label-actions.ts",
         "src/app/admin/(gated)/[store]/returns/[returnId]/label/route.ts",
-        "src/app/s/[store]/[market]/returns/[token]/label/route.ts",
+        "src/app/s/[store]/[market]/(shop)/returns/[token]/label/route.ts",
         "src/components/withdraw/return-status-view.tsx",
         "src/lib/return-services.ts",
         "src/server/carrier-label.ts"
@@ -1604,7 +1604,7 @@
         "src/lib/return-label.test.ts",
         "src/lib/bring-returns.test.ts",
         "src/lib/return-refund.test.ts",
-        "src/app/s/[store]/[market]/returns/[token]/label/route.test.ts",
+        "src/app/s/[store]/[market]/(shop)/returns/[token]/label/route.test.ts",
         "src/components/admin/returns/exchange-views.test.ts",
         "src/components/withdraw/return-status-view.test.ts",
         "e2e/return-label.spec.ts",
@@ -1671,8 +1671,8 @@
         "src/app/admin/(gated)/[store]/returns/[returnId]/exchange-actions.ts",
         "src/components/admin/returns/exchange-builder.tsx",
         "src/components/admin/returns/exchange-card.tsx",
-        "src/app/s/[store]/[market]/account/exchange/[token]/page.tsx",
-        "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/exchange/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/exchange/[token]/exchange-view.tsx",
         "supabase/archive/20261111172838/20261015050012_exchanges.sql",
         "supabase/archive/20261111172838/20261015050226_exchanges_rules.sql",
         "supabase/archive/20261111172838/20261015083910_exchanges_bonus_base.sql",
@@ -1689,7 +1689,7 @@
         "src/lib/order-numbers.test.ts",
         "src/db/invoice-parity.test.ts",
         "src/components/admin/returns/exchange-views.test.ts",
-        "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.test.ts",
+        "src/app/s/[store]/[market]/(shop)/account/exchange/[token]/exchange-view.test.ts",
         "e2e/exchange.spec.ts",
         "e2e/signed-in/admin-exchange.spec.ts",
         "src/server/order-change-tools.int.test.ts",
@@ -2038,15 +2038,15 @@
     ],
     "evidence": {
       "files": [
-        "src/app/s/[store]/[market]/order/[orderId]/page.tsx",
-        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
-        "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
-        "src/app/s/[store]/[market]/account/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/order/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/page.tsx",
         "src/server/orders.ts",
         "src/components/withdraw/order-returns.tsx"
       ],
       "tests": [
-        "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts",
+        "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.test.ts",
         "src/server/checkout-kinds.int.test.ts",
         "src/server/checkout-stripe.int.test.ts",
         "src/components/withdraw/withdraw-parts.test.ts"
@@ -2093,8 +2093,8 @@
         "src/app/admin/(gated)/[store]/invoices/page.tsx",
         "src/app/admin/(gated)/[store]/settings/invoices/page.tsx",
         "src/app/api/cron/document-pdfs/route.ts",
-        "src/app/s/[store]/[market]/account/documents/[token]/page.tsx",
-        "src/app/s/[store]/[market]/account/documents/[token]/pdf/route.ts",
+        "src/app/s/[store]/[market]/(shop)/account/documents/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/documents/[token]/pdf/route.ts",
         "src/components/documents/order-document-view.tsx",
         "src/components/documents/order-documents.tsx",
         "src/lib/credit-allocation.ts",
@@ -2207,8 +2207,8 @@
         "src/server/returns.ts",
         "src/components/documents/order-document-view.tsx",
         "src/components/documents/order-documents.tsx",
-        "src/app/s/[store]/[market]/account/documents/[token]/page.tsx",
-        "src/app/s/[store]/[market]/account/documents/[token]/pdf/route.ts",
+        "src/app/s/[store]/[market]/(shop)/account/documents/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/documents/[token]/pdf/route.ts",
         "src/app/admin/(gated)/[store]/invoices/page.tsx",
         "src/app/admin/(gated)/[store]/invoices/actions.ts",
         "src/app/admin/(gated)/[store]/settings/invoices/page.tsx",
@@ -2290,8 +2290,8 @@
         "src/server/packing-slips.ts",
         "src/server/shopper-emails.ts",
         "src/server/order-settings.ts",
-        "src/app/s/[store]/[market]/cart/cart-gift.tsx",
-        "src/app/s/[store]/[market]/cart/actions.ts",
+        "src/app/s/[store]/[market]/(shop)/cart/cart-gift.tsx",
+        "src/app/s/[store]/[market]/(shop)/cart/actions.ts",
         "src/components/admin/orders/gift-card.tsx",
         "src/components/admin/orders/packing-slip-view.tsx",
         "supabase/archive/20261111172838/20261006151839_orders_ops.sql",
@@ -2308,7 +2308,7 @@
         "src/components/admin/orders/packing-slip-views.test.ts",
         "src/components/admin/orders/order-page-views.test.ts",
         "src/components/gift-note.test.ts",
-        "src/app/s/[store]/[market]/cart/cart-gift.test.ts",
+        "src/app/s/[store]/[market]/(shop)/cart/cart-gift.test.ts",
         "e2e/gift.spec.ts"
       ],
       "untested": false

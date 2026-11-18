@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { AccountSection, SignInForm } from "@/app/s/[store]/[market]/account/account-section";
+import { AccountSection, SignInForm } from "@/app/s/[store]/[market]/(shop)/account/account-section";
 import {
   CartCheckout,
   CartCode,
@@ -10,7 +10,7 @@ import {
   CartGift,
   CartLines,
   CartSummary,
-} from "@/app/s/[store]/[market]/cart/cart-contents";
+} from "@/app/s/[store]/[market]/(shop)/cart/cart-contents";
 import {
   Checkout,
   CheckoutBack,
@@ -21,9 +21,9 @@ import {
   CheckoutPayment,
   CheckoutTerms,
   CheckoutTotals,
-} from "@/app/s/[store]/[market]/checkout/checkout-section";
-import { CookiesSection } from "@/app/s/[store]/[market]/cookies/cookies-section";
-import { DeliveriesSection } from "@/app/s/[store]/[market]/deliveries/deliveries-section";
+} from "@/app/s/[store]/[market]/(shop)/checkout/checkout-section";
+import { CookiesSection } from "@/app/s/[store]/[market]/(shop)/cookies/cookies-section";
+import { DeliveriesSection } from "@/app/s/[store]/[market]/(shop)/deliveries/deliveries-section";
 import {
   OrderAccount,
   OrderAddress,
@@ -38,10 +38,10 @@ import {
   OrderSubscription,
   OrderTerms,
   OrderTotals,
-} from "@/app/s/[store]/[market]/order/[orderId]/order-section";
-import { SubscriptionSection } from "@/app/s/[store]/[market]/subscription/[token]/subscription-section";
-import { TermListing } from "@/app/s/[store]/[market]/term-listing";
-import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-section";
+} from "@/app/s/[store]/[market]/(shop)/order/[orderId]/order-section";
+import { SubscriptionSection } from "@/app/s/[store]/[market]/(shop)/subscription/[token]/subscription-section";
+import { TermListing } from "@/app/s/[store]/[market]/(shop)/term-listing";
+import { WishlistSection } from "@/app/s/[store]/[market]/(shop)/wishlist/wishlist-section";
 import { PrivateSection } from "@/app/s/[store]/private/[market]/private-section";
 import { CartUpsell } from "@/components/cart-upsell";
 import { CartSavedNote, FreeShippingNote } from "@/components/shop-notes";

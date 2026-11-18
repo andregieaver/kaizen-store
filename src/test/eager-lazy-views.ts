@@ -43,9 +43,9 @@ vi.mock("@/components/lazy/shop", async () => ({
   SubscriptionContentsForm: await pick(() => import("@/components/subscription-contents-form"), "SubscriptionContentsForm"),
   WishlistView: await pick(() => import("@/components/wishlist-view"), "WishlistView"),
   BonusCreditsForm: await pick(() => import("@/components/bonus-credits-form"), "BonusCreditsForm"),
-  DeliverySetupForm: await pick(() => import("@/app/s/[store]/[market]/deliveries/delivery-forms"), "DeliverySetupForm"),
-  DeliveryAddressForm: await pick(() => import("@/app/s/[store]/[market]/deliveries/delivery-forms"), "DeliveryAddressForm"),
-  ConfirmButton: await pick(() => import("@/app/s/[store]/[market]/deliveries/delivery-forms"), "ConfirmButton"),
+  DeliverySetupForm: await pick(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms"), "DeliverySetupForm"),
+  DeliveryAddressForm: await pick(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms"), "DeliveryAddressForm"),
+  ConfirmButton: await pick(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms"), "ConfirmButton"),
 }));
 
 vi.mock("@/components/lazy/extras", async () => ({

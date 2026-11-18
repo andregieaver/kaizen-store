@@ -13,7 +13,7 @@ import {
   removeItemsAction,
   setItemAction,
   updateListAction,
-} from "@/app/s/[store]/[market]/wishlist/actions";
+} from "@/app/s/[store]/[market]/(shop)/wishlist/actions";
 
 export type WishlistItemView = {
   id: string;

@@ -256,7 +256,7 @@ describe.skipIf(WRITE)("the visitor's scripts", () => {
 
   it("the product page's parts reach no cart form", () => {
     const reached = [...reach(join(SRC, "components/product-parts.tsx")).keys()].map(rel);
-    for (const form of ["app/s/[store]/[market]/cart/cart-contents", "components/checkout-button", "app/s/[store]/[market]/cart/cart-gift"]) {
+    for (const form of ["app/s/[store]/[market]/(shop)/cart/cart-contents", "components/checkout-button", "app/s/[store]/[market]/(shop)/cart/cart-gift"]) {
       expect(reached, form).not.toContain(form);
     }
   });

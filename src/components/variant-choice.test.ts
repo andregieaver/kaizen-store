@@ -3,8 +3,8 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 // The server actions are not called while drawing.
-vi.mock("@/app/s/[store]/[market]/cart/actions", () => ({ addToCart: async () => ({ status: "idle" }) }));
-vi.mock("@/app/s/[store]/[market]/deliveries/actions", () => ({ addToDeliveryAction: async () => ({ status: "idle" }) }));
+vi.mock("@/app/s/[store]/[market]/(shop)/cart/actions", () => ({ addToCart: async () => ({ status: "idle" }) }));
+vi.mock("@/app/s/[store]/[market]/(shop)/deliveries/actions", () => ({ addToDeliveryAction: async () => ({ status: "idle" }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }), usePathname: () => "/" }));
 
 import { VariantPurchase, type OfferedVariant } from "./variant-choice";

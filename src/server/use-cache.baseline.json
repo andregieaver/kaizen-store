@@ -5,7 +5,7 @@
       "redirectsTag(store.id), catalogTag(store.id)"
     ]
   },
-  "src/app/s/[store]/[market]/term-listing.tsx#pictureAlt": {
+  "src/app/s/[store]/[market]/(shop)/term-listing.tsx#pictureAlt": {
     "life": "\"hours\"",
     "tags": [
       "CATALOG_TAG, catalogTag(storeId)"

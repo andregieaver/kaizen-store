@@ -326,7 +326,7 @@
         "src/app/admin/(gated)/[store]/cart-reminders/page.tsx",
         "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx",
         "src/app/api/cron/cart-reminders/route.ts",
-        "src/app/s/[store]/[market]/unsubscribe/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/unsubscribe/[token]/page.tsx",
         "src/server/checkout.ts",
         "src/server/stripe-webhooks.ts"
       ],
@@ -433,7 +433,7 @@
         "src/lib/marketing-consent.ts",
         "src/server/marketing-subscribers.ts",
         "src/app/admin/(gated)/[store]/subscribers/page.tsx",
-        "src/app/s/[store]/[market]/account/news/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/news/[token]/page.tsx",
         "src/server/discounts.ts",
         "src/server/segments.ts",
         "src/components/admin/block-fields.tsx"
@@ -569,7 +569,7 @@
         "src/server/cart-summary.ts",
         "src/server/checkout.ts",
         "src/server/campaign-notices.ts",
-        "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+        "src/app/s/[store]/[market]/(shop)/cart/cart-contents.tsx",
         "supabase/archive/20261111172838/20261021090105_campaigns_depth.sql",
         "src/lib/discounts.ts",
         "src/server/discounts.ts",
@@ -950,7 +950,7 @@
     "evidence": {
       "files": [
         "src/app/admin/(gated)/[store]/bonus/page.tsx",
-        "src/app/s/[store]/[market]/account/bonus/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/bonus/page.tsx",
         "src/components/admin/bonus-overview.tsx",
         "src/components/admin/bonus-rewards-card.tsx",
         "src/components/admin/bonus-settings-form.tsx",
@@ -1036,7 +1036,7 @@
         "src/lib/affiliate-capture.ts",
         "src/components/affiliate-capture.tsx",
         "src/components/referrals-account-view.tsx",
-        "src/app/s/[store]/[market]/account/referrals/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/referrals/page.tsx",
         "src/app/admin/(gated)/[store]/affiliates/page.tsx"
       ],
       "tests": [
@@ -1087,12 +1087,12 @@
         "src/lib/affiliate-admin.ts",
         "src/components/admin/affiliate-overview.tsx",
         "src/app/admin/(gated)/[store]/affiliates/page.tsx",
-        "src/app/s/[store]/[market]/account/referrals/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/referrals/page.tsx",
         "src/lib/creators.ts",
         "src/server/creators.ts",
         "src/components/admin/creators-admin.tsx",
         "src/app/admin/(gated)/[store]/creators/page.tsx",
-        "src/app/s/[store]/[market]/account/creator/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/creator/page.tsx",
         "supabase/archive/20261111172838/20261029024021_creators_rules.sql"
       ],
       "tests": [
@@ -1336,7 +1336,7 @@
         "src/lib/reviews.ts",
         "src/components/product-reviews.tsx",
         "src/app/admin/(gated)/[store]/reviews/page.tsx",
-        "src/app/s/[store]/[market]/account/reviews/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/reviews/page.tsx",
         "supabase/archive/20261111172838/20261021220512_product_reviews_rules.sql",
         "src/server/review-requests.ts",
         "src/server/review-import.ts",
@@ -1410,8 +1410,8 @@
         "src/components/wishlist-heart.tsx",
         "src/components/wishlist-view.tsx",
         "src/components/admin/wishlist-admin.tsx",
-        "src/app/s/[store]/[market]/wishlist/page.tsx",
-        "src/app/s/[store]/[market]/wishlist/actions.ts",
+        "src/app/s/[store]/[market]/(shop)/wishlist/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/wishlist/actions.ts",
         "src/app/admin/(gated)/[store]/wishlists/page.tsx"
       ],
       "tests": [
@@ -1461,7 +1461,7 @@
         "src/components/variant-choice.tsx",
         "src/components/product-parts.tsx",
         "src/app/api/stock-requests/route.ts",
-        "src/app/s/[store]/[market]/account/stock/[token]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/stock/[token]/page.tsx",
         "src/server/automations.ts",
         "src/app/admin/(gated)/[store]/automations/page.tsx",
         "src/server/marketing-tools.ts"
@@ -1526,15 +1526,15 @@
     "evidence": {
       "files": [
         "src/server/customers.ts",
-        "src/app/s/[store]/[market]/account/page.tsx",
-        "src/app/s/[store]/[market]/account/account-section.tsx",
-        "src/app/s/[store]/[market]/account/actions.ts",
-        "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/account-section.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/actions.ts",
+        "src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx",
         "src/components/withdraw/order-returns.tsx",
         "src/server/customer-addresses.ts",
-        "src/app/s/[store]/[market]/account/addresses/page.tsx",
-        "src/app/s/[store]/[market]/account/orders/page.tsx",
-        "src/app/s/[store]/[market]/account/privacy/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/addresses/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/orders/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/account/privacy/page.tsx",
         "src/server/privacy-shopper.ts",
         "src/lib/google-sign-in.ts",
         "src/server/google-sign-in.ts",
@@ -1546,7 +1546,7 @@
         "src/server/customers.int.test.ts",
         "e2e/account.spec.ts",
         "e2e/withdrawal.spec.ts",
-        "src/app/s/[store]/[market]/withdraw/actions.int.test.ts",
+        "src/app/s/[store]/[market]/(shop)/withdraw/actions.int.test.ts",
         "src/server/customer-addresses.int.test.ts",
         "src/server/account-orders.int.test.ts",
         "src/server/privacy-shopper.int.test.ts",

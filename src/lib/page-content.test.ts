@@ -738,7 +738,7 @@ describe("article addresses (D57)", () => {
 describe("a store's reserved addresses (D53)", () => {
   it("cover every route inside a store's market", async () => {
     const { readdir } = await import("node:fs/promises");
-    const entries = await readdir(new URL("../app/s/[store]/[market]/", import.meta.url), { withFileTypes: true });
+    const entries = await readdir(new URL("../app/s/[store]/[market]/(shop)/", import.meta.url), { withFileTypes: true });
     const routes = entries.filter((e) => e.isDirectory() && !/^[[(@]/.test(e.name)).map((e) => e.name);
     expect(routes.length).toBeGreaterThan(5);
     for (const route of routes) expect(RESERVED_STORE_PAGE_SLUGS, route).toContain(route);

@@ -88,13 +88,13 @@ describe("the redirect and report modules", () => {
 describe("the store's routes", () => {
   it("ask `missOrRedirect()` where they would give a 404 for a missing page, product, category, tag or article", () => {
     for (const route of [
-      "src/app/s/[store]/[market]/[slug]/store-page-view.tsx",
-      "src/app/s/[store]/[market]/p/[handle]/page.tsx",
-      "src/app/s/[store]/[market]/term-listing.tsx",
+      "src/app/s/[store]/[market]/(shop)/[slug]/store-page-view.tsx",
+      "src/app/s/[store]/[market]/(shop)/p/[handle]/page.tsx",
+      "src/app/s/[store]/[market]/(shop)/term-listing.tsx",
       // Articles in every blog (D341): the first blog's at /blog/{slug} and the others' at /blogs/{handle}/{slug} share this view.
-      "src/app/s/[store]/[market]/blog/article-page.tsx",
-      "src/app/s/[store]/[market]/blog/blog-listing.tsx",
-      "src/app/s/[store]/[market]/[...rest]/page.tsx",
+      "src/app/s/[store]/[market]/(shop)/blog/article-page.tsx",
+      "src/app/s/[store]/[market]/(shop)/blog/blog-listing.tsx",
+      "src/app/s/[store]/[market]/(shop)/[...rest]/page.tsx",
     ]) {
       const text = read(route);
       expect(text, route).toContain("missOrRedirect(");
@@ -104,7 +104,7 @@ describe("the store's routes", () => {
 
   it("are not reached by a pay route: the lookup is imported by none of /cart, /checkout and /order", () => {
     for (const dir of ["cart", "checkout", "order"]) {
-      const base = join(root, "src/app/s/[store]/[market]", dir);
+      const base = join(root, "src/app/s/[store]/[market]/(shop)", dir);
       const inDir: string[] = [];
       const collect = (d: string) => {
         for (const name of readdirSync(d)) {

@@ -9,11 +9,11 @@ import { describe, expect, it } from "vitest";
  */
 const ROOT = process.cwd();
 const FILES = [
-  "src/app/s/[store]/[market]/account/exchange/[token]",
-  "src/app/s/[store]/[market]/returns/[token]",
+  "src/app/s/[store]/[market]/(shop)/account/exchange/[token]",
+  "src/app/s/[store]/[market]/(shop)/returns/[token]",
   "src/components/exchange",
   "src/components/withdraw/return-status-view.tsx",
-  "src/app/s/[store]/[market]/withdraw/withdraw-flow.tsx",
+  "src/app/s/[store]/[market]/(shop)/withdraw/withdraw-flow.tsx",
 ];
 
 function sources(path: string): string[] {
@@ -39,11 +39,11 @@ describe("exchanges and return labels for shoppers set nothing in the browser (D
   });
 
   it("the exchange page and the label route are never indexed and pass no referrer", () => {
-    const page = readFileSync(join(ROOT, "src/app/s/[store]/[market]/account/exchange/[token]/page.tsx"), "utf8");
+    const page = readFileSync(join(ROOT, "src/app/s/[store]/[market]/(shop)/account/exchange/[token]/page.tsx"), "utf8");
     expect(page).toMatch(/robots: \{ index: false, follow: false \}/);
     expect(page).toMatch(/referrer: "no-referrer"/);
     expect(page).toContain("<PayRouteGuard");
-    const route = readFileSync(join(ROOT, "src/app/s/[store]/[market]/returns/[token]/label/route.ts"), "utf8");
+    const route = readFileSync(join(ROOT, "src/app/s/[store]/[market]/(shop)/returns/[token]/label/route.ts"), "utf8");
     expect(route).toContain('"X-Robots-Tag": "noindex"');
     expect(route).toContain('"Referrer-Policy": "no-referrer"');
     expect(route).toContain('"Cache-Control": "no-store"');

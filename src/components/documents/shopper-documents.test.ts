@@ -13,8 +13,8 @@ const FILES = [
   "src/components/documents/order-document-view.tsx",
   "src/components/documents/order-documents.tsx",
   "src/components/documents/document-print-button.tsx",
-  "src/app/s/[store]/[market]/account/documents/[token]/page.tsx",
-  "src/app/s/[store]/[market]/account/documents/[token]/pdf/route.ts",
+  "src/app/s/[store]/[market]/(shop)/account/documents/[token]/page.tsx",
+  "src/app/s/[store]/[market]/(shop)/account/documents/[token]/pdf/route.ts",
 ];
 const source = (file: string) => readFileSync(path.join(root, file), "utf8");
 

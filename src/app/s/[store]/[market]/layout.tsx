@@ -101,7 +101,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function MarketLayout({ children, drawer, params }: Props) {
+export default async function MarketLayout({ children, params }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
   // A country, language or currency the store no longer offers (D178) is still drawn here: its page moves to one offered (`marketMoved()`), or,
   // for what a shopper already bought (an order, a withdrawal, a document), opens as it was bought (`resolveAfterSaleShop()`).
@@ -213,8 +213,6 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         <Suspense fallback={null}>
           <StoreMenu store={store} market={market} header={headerLayout?.content} />
         </Suspense>
-        {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
-        {drawer}
         {/*
           What other sites' code can come in through (wave 1, 1e): the store's assistant, referral capture, the business popup, and the
           consent banner with the tracking tools and the owner's own code it loads. Not drawn on the cart, checkout and order, where a

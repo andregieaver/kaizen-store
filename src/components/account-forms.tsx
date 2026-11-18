@@ -7,7 +7,7 @@ import {
   setPasswordAction,
   signOutAction,
   type AccountFormState,
-} from "@/app/s/[store]/[market]/account/actions";
+} from "@/app/s/[store]/[market]/(shop)/account/actions";
 
 const input = "min-h-11 w-full rounded-md border border-border bg-background px-3";
 const label = "flex flex-col gap-1 text-sm font-medium";

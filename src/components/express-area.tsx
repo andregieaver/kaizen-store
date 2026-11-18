@@ -2,7 +2,7 @@
 
 import { useState, type ComponentType } from "react";
 
-import { expressCheckoutAction, type ExpressState } from "@/app/s/[store]/[market]/cart/actions";
+import { expressCheckoutAction, type ExpressState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 import type { CheckoutAppearance } from "@/lib/checkout-appearance";
 import type { TermsDisplay } from "@/lib/checkout-terms";
 

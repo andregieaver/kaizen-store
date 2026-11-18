@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
-import { addToDeliveryAction, type AddToDeliveryState } from "@/app/s/[store]/[market]/deliveries/actions";
+import { addToDeliveryAction, type AddToDeliveryState } from "@/app/s/[store]/[market]/(shop)/deliveries/actions";
 import { useKeepFocus } from "./keep-focus";
 
 export type AddToDeliveryLabels = {

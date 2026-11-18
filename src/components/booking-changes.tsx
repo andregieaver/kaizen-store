@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 
-import { cancelOwnBookingAction, moveOwnBookingAction } from "@/app/s/[store]/[market]/order/booking-actions";
-import { appointmentWeekAction } from "@/app/s/[store]/[market]/p/actions";
+import { cancelOwnBookingAction, moveOwnBookingAction } from "@/app/s/[store]/[market]/(shop)/order/booking-actions";
+import { appointmentWeekAction } from "@/app/s/[store]/[market]/(shop)/p/actions";
 import type { SlotWeek } from "@/lib/booking-slots";
 
 import { AppointmentPicker, type AppointmentPickerLabels } from "./appointment-picker";

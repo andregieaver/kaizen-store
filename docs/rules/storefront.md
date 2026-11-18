@@ -665,7 +665,7 @@ the path, component or table you change, or list the rules with a search for lin
   cookie. Adding checks live stock and caps the quantity; stock is only held
   once checkout starts. Mutations are server actions that call `refresh()`.
   Its contents (`cart/cart-contents.tsx`) are the cart page and, on phones,
-  the slide-out cart (D64): the market layout's `@drawer` slot intercepts
+  the slide-out cart (D64): the `@drawer` slot of the `(shop)` route group (`src/app/s/[store]/[market]/(shop)/layout.tsx`, one level under the market layout, because a slot on a root layout makes Next draw the layout twice) intercepts
   `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
   it on any other page, and larger screens load the cart page instead.
   The header's cart link is drawn twice, a router link shown under 768 px and a plain anchor shown from 768 px, so a larger screen loads the cart page at once and never fetches the drawer (bloat review step 2.2).

@@ -3245,7 +3245,7 @@
       ]
     },
     {
-      "file": "src/app/s/[store]/[market]/account/account-section.tsx",
+      "file": "src/app/s/[store]/[market]/(shop)/account/account-section.tsx",
       "surface": "other",
       "kind": "module",
       "legacy": "owner",
@@ -3258,7 +3258,7 @@
       ]
     },
     {
-      "file": "src/app/s/[store]/[market]/account/company/actions.ts",
+      "file": "src/app/s/[store]/[market]/(shop)/account/company/actions.ts",
       "surface": "other",
       "kind": "module",
       "legacy": "owner",
@@ -3271,7 +3271,7 @@
       ]
     },
     {
-      "file": "src/app/s/[store]/[market]/account/company/page.tsx",
+      "file": "src/app/s/[store]/[market]/(shop)/account/company/page.tsx",
       "surface": "other",
       "kind": "module",
       "legacy": "owner",

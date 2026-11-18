@@ -12,7 +12,7 @@ import {
   type RegisterState,
   type ResetState,
   type SignInState,
-} from "@/app/s/[store]/[market]/account/actions";
+} from "@/app/s/[store]/[market]/(shop)/account/actions";
 
 import { AffiliateField } from "./affiliate-field";
 

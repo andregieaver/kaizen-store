@@ -306,7 +306,7 @@ function scratchEntry(body: string): string {
 describe("public paths to a model", () => {
   it("finds the public entries to walk", () => {
     const names = ENTRIES.map(rel);
-    for (const name of ["app/api/chat/route.ts", "app/s/[store]/[market]/search/page.tsx", "app/(platform)/report/actions.ts", "proxy.ts"]) expect(names).toContain(name);
+    for (const name of ["app/api/chat/route.ts", "app/s/[store]/[market]/(shop)/search/page.tsx", "app/(platform)/report/actions.ts", "proxy.ts"]) expect(names).toContain(name);
     expect(names.some((name) => name.startsWith("app/admin/") || name.startsWith("app/api/cron/"))).toBe(false);
   });
 

@@ -11,9 +11,9 @@ import {
 } from "@stripe/react-stripe-js/checkout";
 import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
-import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
-import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, checkoutSmsAction, deliveryReadyAction, saveCheckoutContactAction } from "@/app/s/[store]/[market]/checkout/actions";
-import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
+import { checkoutAccountAction } from "@/app/s/[store]/[market]/(shop)/account/actions";
+import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, checkoutSmsAction, deliveryReadyAction, saveCheckoutContactAction } from "@/app/s/[store]/[market]/(shop)/checkout/actions";
+import { recordTermsAction } from "@/app/s/[store]/[market]/(shop)/checkout/terms-actions";
 import { stripeAppearance, stripeFonts, type CheckoutAppearance } from "@/lib/checkout-appearance";
 import { cleanContact, type CheckoutContactSettings, type ContactProblem } from "@/lib/checkout-contact";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";

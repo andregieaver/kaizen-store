@@ -134,7 +134,7 @@ describe("the tick", () => {
 
 describe("where the sentence is drawn", () => {
   it("is by the pay button unless the page holds the terms piece, so never twice and never not at all", () => {
-    const section = readFileSync(join(process.cwd(), "src/app/s/[store]/[market]/checkout/checkout-section.tsx"), "utf8");
+    const section = readFileSync(join(process.cwd(), "src/app/s/[store]/[market]/(shop)/checkout/checkout-section.tsx"), "utf8");
     // The payment form draws it itself while `drawTerms` is true, and the piece draws it on its own.
     expect(section).toMatch(/termsSlot=\{drawTerms \? termsNode\(/);
     expect(section).toMatch(/export async function CheckoutTerms\(/);

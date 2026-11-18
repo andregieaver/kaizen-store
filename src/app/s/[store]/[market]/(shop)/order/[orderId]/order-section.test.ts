@@ -38,7 +38,7 @@ vi.mock("@/server/shipment-tracking", () => ({
     return trackingNow.value;
   },
 }));
-vi.mock("@/app/s/[store]/[market]/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
+vi.mock("@/app/s/[store]/[market]/(shop)/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
 vi.mock("@/components/own-bookings", () => ({ OwnBookings: () => null }));
 vi.mock("@/components/account-sign-in", () => ({ PasswordReset: () => null }));
 vi.mock("@/components/refresh-while", () => ({ RefreshOnce: () => null, RefreshWhile: () => null }));

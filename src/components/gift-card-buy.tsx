@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useId, useState } from "react";
 
-import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
+import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 import { GIFT_CARD_SEND_DAYS_MAX, addDays, type GiftCardField, type GiftCardProblem } from "@/lib/gift-card-line";
 import { GIFT_MESSAGE_MAX, GIFT_NAME_MAX } from "@/lib/order-limits";
 import type { BrowserMessages } from "@/lib/messages/en-browser";

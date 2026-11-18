@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
+import { checkoutSignInAction } from "@/app/s/[store]/[market]/(shop)/account/actions";
 import { BackorderOrderLine } from "@/components/backorder-note";
 import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";

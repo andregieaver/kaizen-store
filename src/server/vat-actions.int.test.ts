@@ -64,7 +64,7 @@ vi.stubGlobal("fetch", async () => {
 
 const taxActions = await import("../app/admin/(gated)/[store]/settings/tax/actions");
 const platformActions = await import("../app/admin/(gated)/platform/vat/actions");
-const cartActions = await import("../app/s/[store]/[market]/cart/actions");
+const cartActions = await import("../app/s/[store]/[market]/(shop)/cart/actions");
 const { changeLine } = await import("./cart");
 
 const run = Date.now().toString(36);
