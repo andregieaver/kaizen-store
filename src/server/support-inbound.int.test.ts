@@ -135,6 +135,27 @@ describe("email into the desk", () => {
     expect(await messages(c.id)).toHaveLength(2);
   });
 
+  it("continues the conversation an email to the desk's own address names in its headers, only from the conversation's address (D332)", async () => {
+    const first = await receive(deskAddress, "liv@example.com");
+    const firstId = `<${String(first.row.provider_id)}@mail.example.com>`;
+    // Written to the support address again from the thread, not to the reply address: its headers name the conversation.
+    const again = await receive(deskAddress, "Liv <liv@example.com>", {
+      subject: "Re: Where is my parcel?",
+      text: "Still waiting.",
+      headers: { "In-Reply-To": "<answer-1@resend.dev>", References: `${firstId} <answer-1@resend.dev>` },
+    });
+    expect(again.row.conversation_id).toBe(first.row.conversation_id);
+    expect((await messages(first.row.conversation_id)).map((m) => m.body)).toEqual(["Where is my parcel?\n\nHello, order 1001 has not come.", "Still waiting."]);
+
+    // Someone else quoting the same ids gets a conversation of their own, never a stranger's.
+    const other = await receive(deskAddress, "mallory@example.com", { headers: { References: firstId } });
+    expect(other.row.conversation_id).not.toBe(first.row.conversation_id);
+    // A new email that answers nothing starts a new conversation, as before.
+    const fresh = await receive(deskAddress, "liv@example.com", { subject: "Another question" });
+    expect(fresh.row.conversation_id).not.toBe(first.row.conversation_id);
+    expect(await messages(first.row.conversation_id)).toHaveLength(2);
+  });
+
   it("refuses machines and failing DMARC, and takes an email Resend sends twice once", async () => {
     expect((await receive(deskAddress, "kari@example.com", { headers: { "Auto-Submitted": "auto-replied" } })).row).toMatchObject({ status: "refused", reason: "auto_submitted" });
     expect((await receive(deskAddress, "kari@example.com", { authentication: { dmarc: "fail" } })).row).toMatchObject({ status: "refused", reason: "dmarc_fail" });

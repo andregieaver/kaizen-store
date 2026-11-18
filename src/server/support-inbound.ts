@@ -24,6 +24,7 @@ import {
   inboundDomain,
   messageIdOf,
   messageOf,
+  referencedIds,
   routeOf,
   type Headers,
 } from "@/lib/inbound-email";
@@ -47,6 +48,7 @@ import type { SupportCustomer } from "./support-tools";
 import { autonomyFor } from "./autopilot-settings";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { owned } from "./owned";
+import { textList } from "./sql-arrays";
 import { z } from "zod";
 import { normaliseEmail } from "@/lib/email-address";
 
@@ -328,7 +330,9 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   if (Number(counts?.desk ?? 0) >= INBOUND_PER_DESK_DAY) return refused("desk_limit");
 
   const messageId = messageIdOf(email.message_id ?? (row.message_id ? String(row.message_id) : headerOf(headers, "message-id")));
-  const thread = row.conversation_id ? await existingThread(desk, String(row.conversation_id), from) : null;
+  // A reply address names its conversation; an email to the desk's own address may still continue one by its headers (D332).
+  const named = row.conversation_id ? String(row.conversation_id) : await threadOfHeaders(desk, from, referencedIds(headers));
+  const thread = named ? await existingThread(desk, named, from) : null;
   const message = messageOf({ text: email.text ?? null, html: email.html ?? null, subject: email.subject ?? (row.subject ? String(row.subject) : null) }, { withSubject: thread === null });
   if (!message.body) return refused("empty");
 
@@ -383,6 +387,35 @@ async function existingThread(desk: Desk, conversationId: string, from: string):
     if (error instanceof SupportError) return null;
     throw error;
   }
+}
+
+/**
+ * The conversation an email to the desk's own address continues, by the message ids its `In-Reply-To` and `References` name (D332): a
+ * conversation by email from the same address whose latest customer message, or any email received for it in the last
+ * `INBOUND_KEEP_DAYS`, has one of those ids. Null when none does; `existingThread()` then decides as for a reply address (the sender,
+ * open or reopenable, not full). Without it, a person who wrote to the support address again from the thread, or whose mail app
+ * ignored Reply-To, started a new conversation each time.
+ */
+async function threadOfHeaders(desk: Desk, from: string, ids: string[]): Promise<string | null> {
+  if (ids.length === 0) return null;
+  const found = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`
+      select c.id from commerce.support_conversations c
+      where ${owned(desk.storeId, sql`c.store_id`)} and c.source = 'email' and c.anonymised_at is null
+        and lower(c.contact_email) = ${from}
+        and (
+          c.email_message_id = any(${textList(ids)})
+          or c.id in (
+            select e.conversation_id from commerce.support_inbound_emails e
+            where ${owned(desk.storeId, sql`e.store_id`)} and e.conversation_id is not null and e.message_id = any(${textList(ids)})
+          )
+        )
+      order by c.created_at desc
+      limit 1
+    `,
+  );
+  return found?.id ?? null;
 }
 
 /** A new conversation by email: in the store's own language, the sender as its contact, never tied to a customer. */
