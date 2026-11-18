@@ -147,9 +147,8 @@ runs nothing.
   A value the old shape could not hold is left for the schema to refuse, as before. `responsive.test.ts` holds, for
   every alignment (64), every grid's columns, every row layout with every switch, and the phone switches, that the
   value at 375, 800, 1100 and 1400 px is the same read the old way and from the upgraded settings.
-- **The part stylesheet** (`src/lib/part-css.ts`, drawn by `PartStyles` in `src/components/part-styles.tsx` beside every
-  row `PageRowView` draws — pages, articles, headers, footers, product layouts, modals, working pages and Kaizen's pages —
-  and by `CanvasPartStyles` in the builder; the breakpoint classes are not part of it: see below): `rowStyle()`, `rowGridStyle()`, `columnStyle()`, `blockStyle()`,
+- **The part stylesheet** (`src/lib/part-css.ts`, drawn by `PartStyles` in `src/components/part-styles.tsx`, once for all the rows that `PageRowView` draws in an article, a header or a footer (`ArticleStyles`: pages, articles,
+  headers, footers, product layouts, modals, working pages and Kaizen's pages), and by `CanvasPartStyles` in the builder; the breakpoint classes are not part of it: see below): `rowStyle()`, `rowGridStyle()`, `columnStyle()`, `blockStyle()`,
   `gridListStyle()`, `partRules()`, `renderPartCss()`. Each element keeps `kz-{id}` (the stable hook for owners) and
   gets a class named by a hash of what its rules say (`kzr-…`), so the same id on two pages (a copy, an A/B version, a
   page kept hidden after client navigation) never takes the other's rules. To keep the cascade exactly as it was, what

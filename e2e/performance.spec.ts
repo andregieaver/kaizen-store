@@ -98,7 +98,7 @@ for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
 /**
  * The document a page sends and what is in it (bloat review step 1.3): `document` is the characters of the HTML, `payload` the characters
  * of the inline scripts that carry the page's data to the browser (`self.__next_f.push(`), `main` the characters from the first `<main` to
- * the last `</main>`. Six pages, the last a six-row page made from Orbit's home. The home's document (112,000) and /om-oss (payload 53,000, main 2,500) were set when the layout began to be sent once (bloat review step 2.2: the home 135,935 bytes before, 105,599 after, on one machine's data); /om-oss's document fell from 82,000 to 80,000 when the breakpoint sheet began to be drawn once per document (step 2.3: 78,849 measured). Each budget is its figure plus 5 %, rounded up to the next
+ * the last `</main>`. Six pages, the last a six-row page made from Orbit's home. The home's document (112,000) and /om-oss (payload 53,000, main 2,500) were set when the layout began to be sent once (bloat review step 2.2: the home 135,935 bytes before, 105,599 after, on one machine's data); /om-oss's document fell from 82,000 to 80,000 when the breakpoint sheet began to be drawn once per document (step 2.3: 78,855 measured), and the six-row page's from 154,500 to 116,500 and its payload from 109,500 to 72,500 when its rows began to share one part sheet (step 2.3: 115,290 before, 110,759 after, payload 71,474 before and 68,946 after, on one machine's data). Each budget is its figure plus 5 %, rounded up to the next
  * 500, measured on the build of 17 November 2026 (the home 134,151 and its payload 93,017, the product page 138,003, /products 153,070 and 107,040, Kaizena Flow's front page 39,827, the six-row page 147,059). In CI's e2e job the specs before this one add to the demo
  * store, so the home's main and /products are set from CI's run of 18 November (the home's main 12,173; /products 163,817, 113,030 and 9,957). A budget only falls.
  */
@@ -164,7 +164,7 @@ const DOCUMENT_BUDGETS: Record<string, { document: number; payload: number; main
   "/s/demo/no/p/demo-keramikkopp": { document: 145_000, payload: 95_500, main: 4_000 },
   "/s/demo/no/products": { document: 172_500, payload: 119_000, main: 10_500 },
   "/": { document: 42_000, payload: 25_500, main: 1_500 },
-  "six-row page": { document: 154_500, payload: 109_500, main: 18_000 },
+  "six-row page": { document: 116_500, payload: 72_500, main: 18_000 },
 };
 
 test.describe("a page's document and its payload stay within their budgets", () => {
@@ -187,9 +187,20 @@ test.describe("a page's document and its payload stay within their budgets", () 
         continue;
       }
       expect(copies.htmlElements, address).toBe(1);
-      // The six-row page repeats its own sections' rows (10,825 bytes measured, none of them the layout): its bound is its own.
-      expect(copies.duplicateBytes, address).toBeLessThan(address === sixRows ? 12_000 : 3_000);
+      // The six-row page repeated its own sections' rows (10,825 bytes) until its rows shared one part sheet (bloat review step 2.3: 217).
+      expect(copies.duplicateBytes, address).toBeLessThan(3_000);
     }
+  });
+
+  test("a page's rows share one part stylesheet each for the header, the page and the footer", async ({ page }) => {
+    // Bloat review step 2.3: the part rules of an article's rows are one sheet (`ArticleStyles`), not one per row.
+    const html = await (await page.request.get(sixRows)).text();
+    const sheets = new Set(html.match(/kz-parts-[0-9a-z]+/g) ?? []);
+    if (MEASURE) {
+      console.log(`[part-sheets] six-row page ${sheets.size}`);
+      return;
+    }
+    expect(sheets.size, [...sheets].join(" ")).toBeLessThanOrEqual(3);
   });
 
   for (const [key, budget] of Object.entries(DOCUMENT_BUDGETS)) {
