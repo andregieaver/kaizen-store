@@ -317,3 +317,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 18 Nov 15:45: 2.1 Done D774 (both proofs passed: fresh session + subagent quoted database.md). Proof sessions archived.
 - 2.16 pushed 64e5b620d (3 generated columns on pages, 1,373 rows/9 MB prod). Watch CI; after release: advisors, D-row (migrations 20261118152833, 20261118152842). kz-b: 2.17 executor next.
 - 2.16 Done D775 (released 64e5b620d, advisors INFO, 1,331 titled). kz-b: 2.17 (Opus) aac37d0a03296251b. kz-c: 2.2 abbce2dc1145d5b3c.
+- 2.2 pushed b3a90442c (home 135,935->105,599 bytes; layout once; dup bound 3,000 in review). CI watched b9p03rley. Then D-row 2.2 (refines D64). kz-c: 2.3 next.
+- 2.2 deployed (prod b3a90442c); its e2e was cut by 30-min job limit on a slow runner after 699 passed. e2e timeout -> 40 (982c8fd73), CI watched; then 2.2 D-row.
