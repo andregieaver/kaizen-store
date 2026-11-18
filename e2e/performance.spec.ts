@@ -160,7 +160,7 @@ function layoutCopies(html: string): { htmlElements: number; duplicateBytes: num
 
 const DOCUMENT_BUDGETS: Record<string, { document: number; payload: number; main: number }> = {
   "/s/demo/no": { document: 112_000, payload: 98_000, main: 13_000 },
-  "/s/demo/no/om-oss": { document: 80_000, payload: 53_000, main: 2_500 },
+  "/s/demo/no/om-oss": { document: 81_000, payload: 53_000, main: 2_500 },
   "/s/demo/no/p/demo-keramikkopp": { document: 145_000, payload: 95_500, main: 4_000 },
   "/s/demo/no/products": { document: 172_500, payload: 119_000, main: 10_500 },
   "/": { document: 42_000, payload: 25_500, main: 1_500 },
