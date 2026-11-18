@@ -8,6 +8,7 @@ import { PAYMENT_CAPABILITIES } from "../src/lib/payment-methods";
 import { ORBIT_PACK, orbitHomePage } from "../src/lib/signature/orbit";
 
 import { storePageRows, testDb, testStore } from "./db";
+import { mergedRunBytes, runBytes } from "./run-bytes";
 
 /**
  * What a visitor's page loads first (D211, `docs/performance.md`): held here in the real build, as numbers a Lighthouse score
@@ -1045,4 +1046,53 @@ test("an embedded HTML frame always has a name for screen readers", async ({ pag
   ]);
   await page.goto(url);
   await expect(page.locator("iframe")).toHaveAttribute("title", "Innebygd innhold");
+});
+
+/**
+ * The script a store page has run by the time it is idle (bloat review step 1.14, `docs/performance.md` *Time on a slow phone*): the
+ * bytes V8 counted as run in the page's own scripts, each byte once, on a phone's screen, after the load, the network going idle and
+ * three more seconds (`e2e/run-bytes.ts`). Held within 5 % over, as these figures are steady (a fall is a note): a page that runs more says what
+ * was added, one that runs less lowers its figure here. `E2E_MEASURE=1` prints them (`[run-bytes]`). Chromium only: `page.coverage`
+ * is V8's. Measured on the build of 18 November 2026 against the demo store, three runs each: the front page 346,960 to 346,999, the product page
+ * 376,312 to 376,414, /products 361,828 to 362,644, the cart 318,245 to 318,666 (under 0.3 % apart); each held at its highest figure, rounded up.
+ * The specs before this one in CI add to the demo store: a listing's figure there that is over 5 % is read from CI's run, with the cause said.
+ */
+const RUN_BYTES: Record<string, number> = {
+  "/s/demo/no": 347_000,
+  "/s/demo/no/p/demo-keramikkopp": 376_400,
+  "/s/demo/no/products": 362_600,
+  "/s/demo/no/cart": 318_600,
+};
+
+test.describe("script run by idle", () => {
+  test.skip(({ browserName }) => browserName !== "chromium", "page.coverage is Chromium's");
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test("two overlapping ranges are counted once, and a range that did not run inside one that did is not counted", () => {
+    expect(
+      mergedRunBytes(30, [
+        { startOffset: 0, endOffset: 10, count: 1 },
+        { startOffset: 5, endOffset: 20, count: 1 },
+      ]),
+    ).toBe(20);
+    expect(
+      mergedRunBytes(30, [
+        { startOffset: 0, endOffset: 30, count: 1 },
+        { startOffset: 10, endOffset: 15, count: 0 },
+      ]),
+    ).toBe(25);
+  });
+
+  for (const [path, held] of Object.entries(RUN_BYTES)) {
+    test(`${path} runs the script it has held`, async ({ page }) => {
+      const { runBytes: figure } = await runBytes(page, path);
+      if (MEASURE) {
+        console.log(`[run-bytes] ${path} ${figure}`);
+        return;
+      }
+      expect(figure, `${path}: ${figure} bytes of script run by idle, held ${held}: more script runs before idle: find what was added`).toBeLessThanOrEqual(held * 1.05);
+      // A fall is a note, not a failure: lower RUN_BYTES in this file.
+      if (figure < held * 0.95) console.info(`${path}: ${figure} bytes of script run by idle, held ${held}: less script runs; lower RUN_BYTES in this file`);
+    });
+  }
 });

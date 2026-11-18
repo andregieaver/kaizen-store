@@ -14,6 +14,10 @@
 // For each page: a cold browser (empty cache) against a warm server; every response's bytes as transferred (the server gzips)
 // and decoded; which scripts and styles were actually run or matched by the time the page was idle (V8 and CSS coverage);
 // what the document is made of (markup, inline RSC payload, inline styles); and what the page asks for after it has loaded.
+// With {"slow":true} in the JSON argument (bloat review step 1.14), eight pages (store-home, store-product, store-products, store-cart-empty
+// on a phone; admin-home, admin-orders, admin-product-editor, admin-page-builder signed in, on a desktop) are loaded once more with the
+// CPU slowed four times, and each of their records gets a `slow` key: { cpu, blockingMs (long tasks over 50 ms, the excess summed),
+// lcpMs, runBytes (the script bytes run by idle) }, the figures `e2e/run-bytes.ts` holds. Without it the output is as it was.
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
@@ -32,6 +36,9 @@ const DESK = { viewport: { width: 1440, height: 900 } };
 const args = JSON.parse(process.argv[3] ?? "{}");
 const product = args.product, pageId = args.pageId;
 const themedProduct = args.themedProduct ?? "andromeda", themedPage = args.themedPage ?? "about";
+
+const SLOW = new Set(["store-home", "store-product", "store-products", "store-cart-empty", "admin-home", "admin-orders", "admin-product-editor", "admin-page-builder"]);
+const SLOW_CPU = 4;
 
 const PAGES = [
   // The demo store, as a shopper on a phone.
@@ -108,7 +115,7 @@ const kindOf = (type, url) => {
   return "other";
 };
 
-async function measure(browser, spec) {
+async function measure(browser, spec, slow = false) {
   const context = await browser.newContext({
     viewport: spec.viewport,
     isMobile: spec.isMobile,
@@ -132,6 +139,17 @@ async function measure(browser, spec) {
   cdp.on("Network.loadingFinished", (e) => { const r = requests.get(e.requestId); if (r) r.transfer = e.encodedDataLength; });
   page.on("load", () => { loadedAt = Date.now(); });
 
+  if (slow) {
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: SLOW_CPU });
+    await page.addInitScript(() => {
+      window.__long = [];
+      window.__lcp = 0;
+      try {
+        new PerformanceObserver((list) => { for (const entry of list.getEntries()) window.__long.push(entry.duration); }).observe({ type: "longtask", buffered: true });
+        new PerformanceObserver((list) => { for (const entry of list.getEntries()) window.__lcp = entry.startTime; }).observe({ type: "largest-contentful-paint", buffered: true });
+      } catch {}
+    });
+  }
   await page.coverage.startJSCoverage({ resetOnNavigation: false });
   await page.coverage.startCSSCoverage({ resetOnNavigation: false });
   const response = await page.goto(BASE + spec.path, { waitUntil: "load", timeout: 60_000 });
@@ -176,6 +194,7 @@ async function measure(browser, spec) {
     };
   });
   const finalUrl = page.url();
+  const timing = slow ? await page.evaluate(() => ({ long: window.__long ?? [], lcp: window.__lcp ?? 0 })) : null;
   await context.close();
 
   // The document as the server sent it.
@@ -203,7 +222,12 @@ async function measure(browser, spec) {
   const firstScripts = list.filter((r) => r.kind === "script" && firstScriptUrls.some((u) => r.url.endsWith(u) || r.url.includes(u)));
   const afterLoad = list.filter((r) => r.afterLoad).map((r) => ({ kind: r.kind, method: r.method, url: r.url.replace(BASE, "").slice(0, 160), status: r.status, transfer: r.transfer, decoded: r.decoded }));
 
+  const slowFigures = timing
+    ? { cpu: SLOW_CPU, blockingMs: Math.round(timing.long.reduce((n, d) => n + Math.max(0, d - 50), 0)), lcpMs: Math.round(timing.lcp), runBytes: scriptTotals.used }
+    : undefined;
+
   return {
+    ...(slowFigures ? { slowRun: slowFigures } : {}),
     name: spec.name, group: spec.group, path: spec.path, finalUrl: finalUrl.replace(BASE, ""), status: response.status(), viewport: spec.viewport.width,
     document: {
       raw: html.length, gzip: gzipSync(html).length,
@@ -231,6 +255,12 @@ for (const spec of PAGES) {
     await fetch(BASE + spec.path, { redirect: "manual" }).catch(() => {});
     if (spec.state) await measure(browser, spec).catch(() => {});
     const result = await measure(browser, spec);
+    if (args.slow && SLOW.has(spec.name)) {
+      // Again with the CPU slowed: only its blocking time, largest paint and the script run by idle are kept, as `slow`.
+      const again = await measure(browser, spec, true);
+      result.slow = again.slowRun;
+      console.log(`${"".padEnd(26)} slow x${SLOW_CPU}: blocking ${again.slowRun.blockingMs} ms, largest paint ${again.slowRun.lcpMs} ms, script run ${again.slowRun.runBytes} bytes`);
+    }
     results.push(result);
     console.log(`${spec.name.padEnd(26)} ${String(result.status).padEnd(4)} doc ${(result.document.raw / 1024).toFixed(0).padStart(5)} KB  transfer ${(result.requests.transfer / 1024).toFixed(0).padStart(5)} KB  scripts ${(result.scriptCoverage.total / 1024).toFixed(0).padStart(5)} KB raw, ${(result.scriptCoverage.unusedShare * 100).toFixed(0)}% unused  requests ${result.requests.total}`);
   } catch (error) {
