@@ -11,17 +11,14 @@ import { describe, expect, it } from "vitest";
 const ROOT = process.cwd();
 const CALL = /listPublishedPages\(/;
 
-/** The files that may name it: the definition, the sitemaps and llms.txt, the blog feed, the platform's page and blog routes, the admin's search page. */
-const ALLOWED = [
-  "src/server/pages.ts",
-  "src/server/seo.ts",
-  "src/server/blogs.ts",
-  "src/components/platform-routes/page.tsx",
-  "src/components/platform-routes/blog.tsx",
-  "src/app/admin/(gated)/[store]/search/page.tsx",
-].sort();
+/**
+ * The files that may name it: the definition, and the sitemaps and llms.txt, which read the pictures and the words of every page (bloat
+ * review step 2.17: the blog feed reads articleCards(), the platform's static params and the admin's search page the index).
+ */
+const ALLOWED = ["src/server/pages.ts", "src/server/seo.ts"].sort();
 
-const MAX_LINES = 14;
+/** The definition, and in seo.ts its four readers' two lines each and one comment (step 2.17; 14 after step 0.24). */
+const MAX_LINES = 10;
 const MESSAGE = "one page: publishedPageById(); addresses and titles: publishedPageIndex(); the whole list only where every document is drawn or read";
 
 function sources(dir: string): string[] {
@@ -43,7 +40,7 @@ describe("the published-page list", () => {
     expect([...new Set(hits.map((hit) => hit.path))].sort(), MESSAGE).toEqual(ALLOWED);
   });
 
-  it("is named on at most 14 lines", () => {
+  it("is named on at most 10 lines", () => {
     expect(hits.length, MESSAGE).toBeLessThanOrEqual(MAX_LINES);
   });
 

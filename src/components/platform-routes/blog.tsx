@@ -10,7 +10,7 @@ import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/plat
 import { platformText } from "@/lib/platform-text";
 import { siteUrl } from "@/lib/site";
 import { articleJsonLd } from "@/lib/structured-data";
-import { findPublishedPage, listPublishedPages } from "@/server/pages";
+import { findPublishedPage, publishedPageIndex } from "@/server/pages";
 import { languageMeta } from "@/server/platform-lang-meta";
 import { platformPageForRole } from "@/server/platform-roles";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
@@ -42,7 +42,7 @@ export async function BlogRoute({ lang, searchParams }: { lang: PlatformLang; se
  * first visit and then cached until the next change.
  */
 export async function articleStaticParams() {
-  const articles = await listPublishedPages(null, "article");
+  const articles = await publishedPageIndex(null, "article");
   // Cache Components needs at least one entry; "_" simply renders a 404.
   return articles.length > 0 ? articles.map((article) => ({ slug: article.slug })) : [{ slug: "_" }];
 }

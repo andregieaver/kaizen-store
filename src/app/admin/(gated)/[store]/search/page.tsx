@@ -5,7 +5,7 @@ import Link from "next/link";
 import { requireFeature } from "@/components/admin/feature-off";
 import { aiFor } from "@/server/ai";
 import { listProductChoices } from "@/server/discounts";
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageIndex } from "@/server/pages";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { SEARCH_LOG_DAYS, searchStats } from "@/server/search";
 import { listRules } from "@/server/search-rules";
@@ -48,7 +48,7 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
     listRules(store.id, locale),
     listProductChoices(store.id, locale),
     siteTerms(store.id, "product"),
-    listPublishedPages(store.id),
+    publishedPageIndex(store.id),
   ]);
   const asked = await searchParams;
   const one = (value: string | string[] | undefined) => (typeof value === "string" ? value.slice(0, 100) : null);
@@ -168,7 +168,7 @@ export default async function SearchStatsPage({ params, searchParams }: PageProp
         products={products}
         terms={terms.map((term) => ({ id: term.id, name: term.name, kind: term.kind }))}
         pages={[
-          ...pages.map((page) => ({ path: `/${page.slug}`, label: page.content.title })),
+          ...pages.map((page) => ({ path: `/${page.slug}`, label: page.title })),
           ...terms.map((term) => ({ path: `/${term.kind}/${term.slug}`, label: fillWords(term.kind === "tag" ? w.rules.tag : w.rules.category, { name: term.name }) })),
         ]}
         canWrite={canWrite}

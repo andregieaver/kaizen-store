@@ -746,9 +746,9 @@ const published = (row: Row, content: PageContent): PublishedPage => ({
 });
 
 /**
- * Every published page with its whole document: only for readers that draw or read every document (the sitemaps, llms.txt, the blog
- * feed, the platform's page and blog routes, the admin's search page). One page: publishedPageById(). Addresses and titles:
- * publishedPageIndex().
+ * Every published page with its whole document: only for readers that read every document, the sitemaps (the pictures in each page) and
+ * llms.txt (each page's words in a language). One page: publishedPageById(). Addresses and titles: publishedPageIndex(). Cards with an
+ * excerpt: articleCards() and a grid's pageCards() (bloat review step 2.17).
  */
 export async function listPublishedPages(owner: PageOwner = null, type: PageType = "page"): Promise<PublishedPage[]> {
   "use cache";
@@ -960,6 +960,36 @@ export function articleInBlog(blog: Pick<Blog, "id" | "main">): SQL {
 /** Whether a page (`commerce.pages p`) is listed in a country (D338): it names none, or that one. The same rule as `pageInMarket()`. */
 export function pageInMarketSql(country: string): SQL {
   return sql`(coalesce(jsonb_array_length(p.published -> 'markets'), 0) = 0 or (p.published -> 'markets') ? ${country}::text)`;
+}
+
+/**
+ * A store's published articles as cards in a language, newest first, at most `limit` (bloat review step 2.17): what a blog's feed shows,
+ * read in SQL, with a blog's own and a country's own (D338) chosen there too. A document is read only for a card with neither excerpt nor
+ * search description, for the start of its words (300 characters).
+ */
+export async function articleCards(
+  storeId: string,
+  locale: string,
+  limit: number,
+  { blog, market }: { blog?: Pick<Blog, "id" | "main">; market?: string } = {},
+): Promise<PageCard[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(storeId));
+  const rows = await typedRows(
+    pageCardRow,
+    sql`
+      select ${pageCardColumns(locale)}
+      from commerce.pages p
+      where ${owned(storeId, sql`p.store_id`)} and p.type = 'article' and p.published_at is not null
+        and ${blog ? articleInBlog(blog) : sql`true`}
+        and ${market ? pageInMarketSql(market) : sql`true`}
+      order by coalesce(p.first_published_at, p.published_at) desc, p.slug
+      limit ${limit}
+    `,
+    readDb(),
+  );
+  return pageCards(storeId, rows, locale, 300);
 }
 
 /** The published page at an address, or where a page that was there went, or null. */
