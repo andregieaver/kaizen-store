@@ -596,3 +596,80 @@ describe("one page and the index of the published pages (step 0.24)", () => {
     await check(null, "own", storeId);
   });
 });
+
+describe("titles and the modal flag come from columns (bloat review step 2.16)", () => {
+  let storeId: string;
+  const modals = import("./page-modals");
+
+  beforeAll(async () => {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.stores (slug, name, country) values (${`cols-${run}`}, 'Columns store', 'SE') returning id
+    `);
+    storeId = String(row.id);
+    // Norwegian is one of the store's other languages, so a page's Norwegian title is kept.
+    await db().execute(sql`
+      insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
+      select ${storeId}::uuid, code, currency, default_locale, locales, true
+      from commerce.countries where code in ('NO', 'SE')
+    `);
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.page_redirects where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid`);
+  });
+
+  /** A row that opens a modal by itself on a timer, shown at the given frequency. */
+  const timedModal = (frequency: "days" | "always") => ({
+    id: "row-m",
+    type: "row",
+    layout: "1",
+    columns: [{ id: "column-m", blocks: [] }],
+    modal: { key: "m", size: "md", triggers: { timer: { seconds: 5 } }, frequency, days: 7 },
+  });
+
+  it("names pages in the shopper's language, else their own title", async () => {
+    await saved(
+      await pages.savePage(admin, storeId, null, content(`about-${run}`, { title: "About", translations: { "nb-NO": { title: "Om oss" } } }), { publish: true }),
+    );
+    await saved(await pages.savePage(admin, storeId, null, content(`plain-${run}`, { title: "Plain" }), { publish: true }));
+    const nb = new Map(await pages.publishedPageNames(storeId, "nb-NO"));
+    expect(nb.get(`about-${run}`)?.title).toBe("Om oss");
+    expect(nb.get(`plain-${run}`)?.title).toBe("Plain");
+    expect(new Map(await pages.publishedPageNames(storeId, null)).get(`about-${run}`)?.title).toBe("About");
+  });
+
+  it("knows whether a site has a modal that remembers a close, as pages are published and taken off", async () => {
+    const { usesRememberedModals } = await modals;
+    expect(await usesRememberedModals(storeId)).toBe(false);
+    const id = await saved(
+      await pages.savePage(admin, storeId, null, content(`modal-${run}`, { rows: [...oneRow([]), timedModal("days")] as PageContent["rows"] }), { publish: true }),
+    );
+    expect(await usesRememberedModals(storeId)).toBe(true);
+    await pages.unpublishPage(admin, storeId, id);
+    expect(await usesRememberedModals(storeId)).toBe(false);
+  });
+
+  it("explains neither statement as reading a page document", async () => {
+    const { modalsQuery } = await modals;
+    const { PgDialect } = await import("drizzle-orm/pg-core");
+    const dialect = new PgDialect();
+    for (const statement of [pages.namesQuery(storeId, "nb-NO", "page"), modalsQuery(storeId)]) {
+      const { sql: text, params } = dialect.sqlToQuery(statement);
+      const plan = await explain(text, params);
+      // Neither statement digs in a page document: no JSON operator or function on published or draft. (A nested loop's inner index
+      // scan lists every column of the row in its Output line whatever is read, so the bare words are not tested.)
+      for (const line of plan.split("\n")) {
+        expect(line).not.toMatch(/jsonb_path_exists|page_titles\(|\b(published|draft)\b(?!_)\s*(->|#>|\))/);
+      }
+      expect(plan).toMatch(/published_title|remembered_modal/);
+    }
+  });
+});
+
+/** The plan text of a statement, with its parameters filled in as literals. */
+async function explain(text: string, params: unknown[]): Promise<string> {
+  const filled = text.replace(/\$(\d+)/g, (_, n: string) => `'${String(params[Number(n) - 1]).replace(/'/g, "''")}'`);
+  const rows = await db().execute<Row>(sql.raw(`explain (verbose, format text) ${filled}`));
+  return rows.map((r) => String(r["QUERY PLAN"])).join("\n");
+}
