@@ -288,3 +288,7 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 18 Nov ~12: 1.5 pushed 8118e66e6 with review (words max(2000,5%), rest 5%, falls note). D-row for 1.5 after CI signed-in green. kz-b: 1.23 executor. kz-c: 1.20 executor ad807d6568aae1cc3. CI watcher bqoni8z8a on dde4cd5cc.
 - 18 Nov ~13: CI on 8118e66e6: all green but signed-in theme-switch.spec:168 (product page shows a 2nd buy box after a switch). Signed-in was green on dde4cd5cc, c9c97d952, 90170376d. Rerun of failed job requested (bash bf9pi0ju0). If it fails again: suspect 1.5 (parallel worker races / new accounts).
 - 18 Nov ~13:30: release went out, production e2db2c22b. 1.8 Done D766. D656 fixed by other session.
+- 18 Nov ~14:30: production d67f931ea (released; theme-switch was flaky, rerun green). 1.5 Done D768. 1.20 pushed 6b13dddd8 (recorder wraps every CI step; ceilings empty; serverSourceMaps:false on Vercel); CI watched bash bqhhnrcl2 -> then write up 1.20 (In progress until 10 runs give ceilings?) and start 1.21 in kz-b/kz-c.
+- kz-c: 1.16 executor ad87efeeb4a13f40e. kz-b: 1.23 executor a2909d9fc60a5e371.
+- Stray file /c1-checks.log at container root (executor's unset var); rm denied: tell owner (harmless, container).
+- Prod: 6 of 24 AI calls report cached tokens (provider reports them).

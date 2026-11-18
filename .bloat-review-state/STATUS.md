@@ -1,4 +1,4 @@
-# Where the reviewers stand (2026-11-18 11:34 UTC)
+# Where the reviewers stand (2026-11-18 12:11 UTC)
 
 | Area | Read (audit) | Challenged (verify) | Planned |
 |---|---|---|---|
