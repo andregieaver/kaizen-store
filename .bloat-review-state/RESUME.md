@@ -299,3 +299,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 18 Nov ~18: 1.16 pushed 55c06e74d (migration instance_starts; D771 with Idle cost; surface raised; sub-reminders +1 statement). CI watched. After release: advisors, 1.16 stays In progress (week of production).
 - 1.21 c1-2 in kz-b rebased (health route merged with 1.16's noteFirstRequest), checks pass, NOT pushed: push after 1.16 releases. c3 later session. build-memory.md says Stage 2 needed -> 1.29 (strong) next.
 - Owner told how to set CRON_SECRET (any long random value; Vercel prod; separate from Vault kaizen_cron_secret).
+- 18 Nov ~19: CI on 1.16 failed: instrumentation chunk 730>444 and platformHome 30>29 (both 1.16's, accepted in 6458e7409; instrumentation max 2000). Watching 6458e7409 (release of instance_starts migration). Then push 1.21 (kz-b), then advisors + 1.16. kz-c: 1.29 executor abcfb4feda97fe056 (Opus).
