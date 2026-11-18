@@ -73,7 +73,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   transaction still running, so an event that commits late is never skipped; a claim keeps two runners of one reader apart. The events of
   E3.2 (deals, the email list, support conversations ended or rated, a review published, `checkout.abandoned` from the cart reminders job
   once a cart, Work's clients and invoices) are endpoint topics and workflow triggers; imports send none (`commerce.deal_importing`, the
-  `shopify`/`woocommerce` sources, `imported_from`).
+  `shopify`/`woocommerce` sources, `imported_from`). So are those of E5.1 (D757), each queued by a trigger where its row changes:
+  `activity.created`/`activity.done` (`commerce.activities`; Pipedrive's activities send none, under the same flag), `lead.dismissed`/
+  `lead.deal_made` (a new decision in `commerce.lead_decisions`: a lead has no row of its own, its requests' events mark its arrival) and
+  `domain.failing`/`domain.recovered` (a connected domain's last known answer from the domain watch, `checks.watch.known`, which the database
+  keeps through answers the watch could not read, so a turn is one event).
 
 ## The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
 

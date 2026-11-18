@@ -441,7 +441,147 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const sending_pause = await sendingPauseData(store.id, store.slug, subjectId);
     return sending_pause && { sending_pause };
   }
+  // Ecosystem plan E5.1 (D757).
+  if (event.startsWith("activity.")) {
+    const activity = await activityData(store.id, store.slug, subjectId);
+    return activity && { activity };
+  }
+  if (event.startsWith("lead.")) {
+    const lead = await leadData(store.id, store.slug, subjectId);
+    return lead && { lead };
+  }
+  if (event.startsWith("domain.")) {
+    const domain = await domainData(store.id, store.slug, subjectId);
+    return domain && { domain };
+  }
   return null;
+}
+
+/**
+ * A call, a meeting or a task (ecosystem plan E5.1, D757, `activity.*`): when, for whom and about whom, as ids. Never its note. It opens on
+ * its deal's page, or its customer's or company's, or Home's *Today*.
+ */
+async function activityData(storeId: string, storeSlug: string, activityId: string): Promise<WebhookSubject<"activity"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      kind: z.enum(["call", "meeting", "task"]),
+      title: col.text,
+      due_at: col.timestamp,
+      timed: col.bool,
+      duration_minutes: col.int.nullable(),
+      done_at: col.timestampOrNull,
+      assignee_id: col.uuid.nullable(),
+      done_by: col.uuid.nullable(),
+      customer_id: col.uuid.nullable(),
+      company_id: col.uuid.nullable(),
+      deal_id: col.uuid.nullable(),
+      created_at: col.timestamp,
+    }),
+    sql`
+      select id, kind, title, due_at, timed, duration_minutes, done_at, assignee_id, done_by, customer_id, company_id, deal_id, created_at
+      from commerce.activities where store_id = ${storeId}::uuid and id = ${activityId}::uuid
+    `,
+  );
+  if (!row) return null;
+  const base = `${siteUrl()}/admin/${storeSlug}`;
+  return {
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    due_at: row.due_at,
+    timed: row.timed,
+    duration_minutes: row.duration_minutes,
+    done_at: row.done_at,
+    assignee_id: row.assignee_id,
+    done_by: row.done_by,
+    customer_id: row.customer_id,
+    company_id: row.company_id,
+    deal_id: row.deal_id,
+    created_at: row.created_at,
+    admin_url: row.deal_id
+      ? `${base}/deals/${row.deal_id}`
+      : row.customer_id
+        ? `${base}/customers/${row.customer_id}`
+        : row.company_id
+          ? `${base}/companies/${row.company_id}`
+          : base,
+  };
+}
+
+/**
+ * Staff's decision about a lead (ecosystem plan E5.1, D757, `lead.*`): dismissed, or made a deal of, with the deal, the store's customer of
+ * the address and what the person asked for, as ids. Never the address, a name or what they wrote.
+ */
+async function leadData(storeId: string, storeSlug: string, decisionId: string): Promise<WebhookSubject<"lead"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      email: col.text,
+      decision: z.enum(["dismissed", "deal"]),
+      deal_id: col.uuid.nullable(),
+      customer_id: col.uuid.nullable(),
+      decided_by: col.uuid.nullable(),
+      decided_at: col.timestamp,
+    }),
+    sql`
+      select ld.id, ld.email, ld.decision, ld.deal_id, ld.decided_by, ld.decided_at,
+        coalesce(
+          (select dl.customer_id from commerce.deals dl where dl.store_id = ld.store_id and dl.id = ld.deal_id),
+          (select c.id from commerce.customers c where c.store_id = ld.store_id and lower(c.email) = ld.email and c.copied_from is null
+            order by c.created_at limit 1)
+        ) as customer_id
+      from commerce.lead_decisions ld where ld.store_id = ${storeId}::uuid and ld.id = ${decisionId}::uuid
+    `,
+  );
+  if (!row) return null;
+  const { leadRequestsOf } = await import("./leads");
+  return {
+    id: row.id,
+    decision: row.decision,
+    deal_id: row.deal_id,
+    customer_id: row.customer_id,
+    requests: await leadRequestsOf(storeId, row.email, row.decided_at),
+    decided_by: row.decided_by,
+    decided_at: row.decided_at,
+    admin_url: row.deal_id ? `${siteUrl()}/admin/${storeSlug}/deals/${row.deal_id}` : `${siteUrl()}/admin/${storeSlug}/leads`,
+  };
+}
+
+/**
+ * One of the store's connected domains as the daily domain watch last knew it (ecosystem plan E5.1, D757, `domain.*`; E4.2): whether it
+ * reaches the store, and when it was asked.
+ */
+async function domainData(storeId: string, storeSlug: string, domainId: string): Promise<WebhookSubject<"domain"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      hostname: col.text,
+      is_primary: col.bool,
+      language: col.textOrNull,
+      market: col.textOrNull,
+      serving: col.textOrNull,
+      watched_at: col.textOrNull,
+    }),
+    sql`
+      select id, hostname, is_primary, language, trim(market) as market,
+        coalesce(checks -> 'watch' ->> 'known', checks -> 'watch' ->> 'serving') as serving, checks -> 'watch' ->> 'at' as watched_at
+      from commerce.store_domains where store_id = ${storeId}::uuid and id = ${domainId}::uuid
+    `,
+  );
+  if (!row) return null;
+  const serving = row.serving === "ok" || row.serving === "certificate" || row.serving === "elsewhere" ? row.serving : null;
+  const at = row.watched_at ? Date.parse(row.watched_at) : Number.NaN;
+  return {
+    id: row.id,
+    hostname: row.hostname,
+    primary: row.is_primary,
+    language: row.language,
+    market: row.market,
+    serving,
+    watched_at: Number.isNaN(at) ? null : new Date(at).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/settings/domains`,
+  };
 }
 
 /** One of the store's emails that bounced or was marked as spam (email plan M1.2, D732, `email.*`): which, to whom and why. Never its words. */

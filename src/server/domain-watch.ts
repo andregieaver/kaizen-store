@@ -26,6 +26,8 @@ import { col, typedRows } from "./typed-rows";
  * What it found is written into the connection's checks (`store_domains.checks.watch`), the only thing it changes, and only there: the
  * Domains page's health (`hostHealth()`) and the domain alert (`domainAlertRows()`) read it through `domainHealth()`, while it is fresh
  * (`WATCH_FRESH_DAYS`). Only public addresses are asked, at the address that was looked up (as the page replicator does), with a time limit.
+ * The database's triggers on that write keep the last known answer beside it (`watch.known`) and queue `domain.failing` or
+ * `domain.recovered` when it turns (ecosystem plan E5.1, D757), in the same statement.
  */
 
 /** Domains asked in one run, and at once. */

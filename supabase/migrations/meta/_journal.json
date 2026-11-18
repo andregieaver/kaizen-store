@@ -680,6 +680,20 @@
       "when": 1794987738458,
       "tag": "20261118074218_email_clicks_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794990267905,
+      "tag": "20261118082427_sharp_spencer_smythe",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794990278393,
+      "tag": "20261118082438_lead_activity_domain_events",
+      "breakpoints": true
     }
   ]
 }

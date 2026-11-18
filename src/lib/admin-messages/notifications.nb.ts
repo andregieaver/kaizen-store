@@ -711,6 +711,12 @@ export const notificationsNb: NotificationsMessages = {
       "email.complained": { label: "E-post merket som søppelpost", hint: "En kunde merket en av butikkens e-poster som søppelpost. De er meldt av e-postlisten." },
       "broadcast.sent": { label: "Nyhetsbrev sendt", hint: "Et nyhetsbrev er ferdig sendt: hvor mange det skulle til, og hvor mange som ble sendt, hoppet over eller feilet." },
       "marketing.paused": { label: "Markedsførings-e-post satt på pause", hint: "For mange av de siste markedsførings-e-postene kom i retur eller ble merket som søppelpost, så nyhetsbrev og automatiseringer holdes tilbake til en eier starter dem igjen." },
+      "activity.created": { label: "Aktivitet lagt til", hint: "En samtale, et møte eller en oppgave ble lagt til, av en person eller AI-lederen, om en kunde, et firma eller en avtale. Aktiviteter flyttet inn fra et annet CRM sender ingen. Aldri notatet." },
+      "activity.done": { label: "Aktivitet utført", hint: "En samtale, et møte eller en oppgave ble merket som utført, eller lagt til som utført. Å merke den som ikke utført igjen sender ingenting." },
+      "lead.dismissed": { label: "Lead avvist", hint: "Noen avviste en lead i leads-innboksen: personen forsvinner derfra til de ber om noe igjen. Hva de ba om, som id-er; aldri adressen eller det de skrev." },
+      "lead.deal_made": { label: "Avtale laget av en lead", hint: "Noen laget en avtale av en lead: personen ble kunde om de ikke var det, og en avtale om dem ble åpnet. Hva de ba om, som id-er; aldri adressen eller det de skrev." },
+      "domain.failing": { label: "Domenet svikter", hint: "Et av butikkens tilkoblede domener når ikke butikken lenger, slik den daglige domenesjekken fant: sertifikatet svikter, eller domenet peker et annet sted eller ingen steder. Sendt én gang, til det virker igjen." },
+      "domain.recovered": { label: "Domenet virker igjen", hint: "Et tilkoblet domene som sviktet, når butikken igjen, slik den daglige domenesjekken fant." },
       "support.waiting": {
         label: "Noen venter i kundeservice",
         hint: "En kunde har ventet på en person i kundeservicechatten så lenge innstillingene for kundeservice sier: hvor mange som venter nå, og en lenke til innboksen. Aldri hvem de er eller hva de skrev.",
@@ -1156,6 +1162,13 @@ export const notificationsNb: NotificationsMessages = {
       "work_invoice.total": "Fakturaens total (i valutaen)",
       "work_invoice.currency": "Fakturaens valuta",
       "work_invoice.status": "Fakturaens status",
+      // Økosystemplanen E5.1 (D757).
+      "activity.kind": "Type aktivitet",
+      "activity.title": "Aktivitetens tittel",
+      "lead.requests.kind": "Hva de ba om",
+      "domain.serving": "Hva domenesjekken fant",
+      "domain.primary": "Butikkens hovedadresse (ja eller nei)",
+      "domain.hostname": "Domene",
       // Kaizena Flows egne hendelser (D516).
       "request.store_name": "Butikken det er bedt om",
       "request.language": "Språket i forespørselen",
@@ -1188,6 +1201,10 @@ export const notificationsNb: NotificationsMessages = {
       "order.source": { checkout: "Kassen", draft: "Et ordreutkast", subscription: "En fornyet abonnementsbetaling", delivery: "En levering av en abonnementsboks" },
       "order.seller": { store: "Butikken", host: "En vert" },
       "order.risk": { normal: "Normal", elevated: "Forhøyet", highest: "Høyest", none: "Ikke vurdert" },
+      // Økosystemplanen E5.1 (D757).
+      "activity.kind": { call: "En samtale", meeting: "Et møte", task: "En oppgave" },
+      "lead.requests.kind": { quote: "Et tilbud", question: "Et spørsmål", chat: "En chat", subscriber: "Å bli med på e-postlisten" },
+      "domain.serving": { ok: "Det når butikken", certificate: "Sertifikatet svikter", elsewhere: "Det peker et annet sted" },
     },
     yesNo: { yes: "Ja", no: "Nei" },
     listHint: "Verdier med komma mellom",

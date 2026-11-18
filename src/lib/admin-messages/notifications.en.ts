@@ -876,6 +876,13 @@ export const notificationsEn = {
       "work_invoice.total": "Invoice total (in its currency)",
       "work_invoice.currency": "Invoice currency",
       "work_invoice.status": "Invoice status",
+      // Ecosystem plan E5.1 (D757).
+      "activity.kind": "Activity kind",
+      "activity.title": "Activity title",
+      "lead.requests.kind": "What they asked for",
+      "domain.serving": "What the domain watch found",
+      "domain.primary": "The store's main address (yes or no)",
+      "domain.hostname": "Domain",
       // Kaizena Flow's own events (D516).
       "request.store_name": "Store asked for",
       "request.language": "Language of the request",
@@ -909,6 +916,10 @@ export const notificationsEn = {
       "order.source": { checkout: "The checkout", draft: "A draft order", subscription: "A subscription renewal", delivery: "A subscription box delivery" },
       "order.seller": { store: "The store", host: "A host" },
       "order.risk": { normal: "Normal", elevated: "Elevated", highest: "Highest", none: "Not assessed" },
+      // Ecosystem plan E5.1 (D757).
+      "activity.kind": { call: "A call", meeting: "A meeting", task: "A task" },
+      "lead.requests.kind": { quote: "A quote", question: "A question", chat: "A chat", subscriber: "Joining the email list" },
+      "domain.serving": { ok: "It reaches the store", certificate: "Its certificate fails", elsewhere: "It points elsewhere" },
     } as Record<string, Record<string, string>>,
     yesNo: { yes: "Yes", no: "No" },
     listHint: "Values with commas between",

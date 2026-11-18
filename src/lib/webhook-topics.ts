@@ -1,7 +1,9 @@
 import { z } from "zod";
 
+import { ACTIVITY_KINDS } from "./activities";
 import { DISCOUNT_KINDS } from "./discounts";
 import { APP_EVENTS, EVENTS, isServiceEvent, type AppEvent, type IntegrationEvent } from "./integrations";
+import { LEAD_KINDS, LEAD_SOURCES } from "./leads";
 import { SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "./marketing-consent";
 import { DELIVERIES, PRODUCT_KINDS } from "./product-input";
 import { VAT_KINDS } from "./vat-treatment";
@@ -244,6 +246,55 @@ export const WEBHOOK_SUBJECTS = {
     paused_at: when,
     admin_url: adminUrl,
   }),
+  // Ecosystem plan E5.1 (D757): who and what as ids, as a deal's are. Never an activity's note, a lead's address or what they wrote.
+  activity: z.object({
+    id,
+    kind: z.enum(ACTIVITY_KINDS).describe("A call, a meeting or a task."),
+    title: z.string().describe("What staff called it."),
+    due_at: when.describe("When it is due; the start of the store's day when no time was given (`timed` false)."),
+    timed: z.boolean(),
+    duration_minutes: z.int().nullable().describe("A meeting's length."),
+    done_at: when.nullable(),
+    assignee_id: id.nullable().describe("The staff member who does it."),
+    done_by: id.nullable().describe("The staff member who marked it done."),
+    customer_id: id.nullable(),
+    company_id: id.nullable(),
+    deal_id: id.nullable(),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
+  lead: z.object({
+    id: id.describe("The decision's id: one per person and store, the latest decision."),
+    decision: z.enum(["dismissed", "deal"]).describe("Set aside, or made a deal of."),
+    deal_id: id.nullable().describe("The deal made of the lead."),
+    customer_id: id.nullable().describe("The store's customer with the lead's address, when there is one: always, once a deal is made."),
+    requests: z
+      .array(
+        z.object({
+          kind: z.enum(LEAD_KINDS).describe("What they asked for: a quote, a question (a form or the email form), a chat, or to join the email list."),
+          source: z.enum(LEAD_SOURCES).describe("Where it is kept: a draft order, a form's response, a support conversation or a subscriber."),
+          id: id.describe("That record's id."),
+          at: when,
+        }),
+      )
+      .describe("What the person asked for in the 90 days before the decision, newest first, as ids."),
+    decided_by: id.nullable().describe("The staff member who decided."),
+    decided_at: when,
+    admin_url: adminUrl,
+  }),
+  domain: z.object({
+    id,
+    hostname: z.string(),
+    primary: z.boolean().describe("The store's main address."),
+    language: z.string().nullable().describe("The language it is the store's address for, when it is one language's."),
+    market: z.string().nullable().describe("The country it is the store's address for, when it is one country's."),
+    serving: z
+      .enum(["ok", "certificate", "elsewhere"])
+      .nullable()
+      .describe("What the daily watch last knew of the domain: it reaches the store (ok), its certificate fails, or it points elsewhere or at nothing; null before it knew."),
+    watched_at: when.nullable().describe("When the watch last asked it."),
+    admin_url: adminUrl,
+  }),
   erasure: z.object({
     customer_id: id.describe("The account that was erased. Nothing else about the person is sent, now or later."),
   }),
@@ -484,6 +535,12 @@ const SUBJECT_OF: Record<IntegrationEvent | AppEvent, WebhookSubjectName> = {
   "email.complained": "email",
   "broadcast.sent": "broadcast",
   "marketing.paused": "sending_pause",
+  "activity.created": "activity",
+  "activity.done": "activity",
+  "lead.dismissed": "lead",
+  "lead.deal_made": "lead",
+  "domain.failing": "domain",
+  "domain.recovered": "domain",
   "app.uninstalled": "installation",
   "store.erase_requested": "installation",
 };
@@ -521,6 +578,10 @@ export const SUBJECT_READ_AREA: Partial<Record<WebhookSubjectName, string>> = {
   email: "customers",
   broadcast: "marketing",
   sending_pause: "marketing",
+  // Ecosystem plan E5.1 (D757): activities and leads are read with customers, as deals are; a domain with the store's settings.
+  activity: "customers",
+  lead: "customers",
+  domain: "settings",
 };
 
 /**

@@ -347,6 +347,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `activityViews()`/`whenText()` in the store's zone. The person it is for is told once on their devices when a timed one is due (the
   dispatcher's `activities` job, claimed by `notified_at`). A deal's activities go with it; a person's or a company's lose the link; a merge
   moves them; an erasure deletes those about the person alone and takes the person off the rest. Audited as `activity.*` with ids only.
+  Added and done are events (`activity.created`, `activity.done`, ecosystem plan E5.1, D757), queued by the table's trigger; the note is
+  never in a payload.
 
 ## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
 
@@ -359,7 +361,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   where it is kept (`leadSourcePath()`): a quote request's draft, a chat's or a form message's conversation in the support inbox, a form's
   responses (a message D705 kept that the inbox did not take), a subscriber; only for a viewer who may open that page. A form's message is
   read from `form_responses`, never `form_submissions` (which keeps no address of a message, only the limits' counts). Leads have no owner
-  yet: that needs a column.
+  yet: that needs a column. Each decision is an event (`lead.dismissed`, `lead.deal_made`, ecosystem plan E5.1, D757), its payload the
+  decision with the person's requests as ids (`leadRequestsOf()`), never their address or words.
 
 ## Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)
 
