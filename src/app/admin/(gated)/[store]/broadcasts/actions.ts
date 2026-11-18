@@ -38,7 +38,7 @@ type Problem = { ok: false; problem: string };
 const uuid = z.uuid();
 
 async function writer(storeSlug: string) {
-  const member = await checkPermission(storeSlug, "marketing:write");
+  const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
   if (!member) return null;
   const store = await storeById(member.store.id);
   return store ? { member, store, w: adminText(adminLangOf(member.account.adminLocale), "marketing").problems } : null;
@@ -107,21 +107,21 @@ export async function scheduleBroadcastAction(storeSlug: string, id: string, whe
 }
 
 export async function unscheduleBroadcastAction(storeSlug: string, id: string): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   if (!uuid.safeParse(id).success) return;
   await unscheduleBroadcast(member.store.id, member.account.id, id);
   refresh();
 }
 
 export async function stopBroadcastAction(storeSlug: string, id: string): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   if (!uuid.safeParse(id).success) return;
   await stopBroadcast(member.store.id, member.account.id, id);
   refresh();
 }
 
 export async function deleteBroadcastAction(storeSlug: string, id: string): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   if (!uuid.safeParse(id).success) return;
   await deleteBroadcast(member.store.id, member.account.id, id);
   redirect(`/admin/${member.store.slug}/broadcasts`);
@@ -149,14 +149,14 @@ export async function findBroadcastFactsAction(storeSlug: string, words: string)
 
 /** A picture for an email, kept in the store's media library (D88); the browser sends a JPEG. */
 export async function uploadBroadcastPictureAction(storeSlug: string, data: FormData): Promise<UploadResult> {
-  const member = await checkPermission(storeSlug, "marketing:write");
+  const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
   if (!member) return noAccess();
   return uploadToLibrary({ storeId: member.store.id, accountId: member.account.id }, data);
 }
 
 /** Saves a broadcast's words as one of the store's own templates (D368), then opens a new broadcast from it. */
 export async function saveAsTemplateAction(storeSlug: string, id: string, form: FormData): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   if (!uuid.safeParse(id).success) return;
   const saved = await saveAsTemplate(member.store.id, member.account.id, id, String(form.get("title") ?? ""));
   if (saved.ok) redirect(`/admin/${member.store.slug}/broadcasts/new?from=${saved.id}`);
@@ -165,7 +165,7 @@ export async function saveAsTemplateAction(storeSlug: string, id: string, form: 
 
 /** Deletes one of the store's own templates (D368). */
 export async function deleteTemplateAction(storeSlug: string, id: string): Promise<void> {
-  const member = await requirePermission(storeSlug, "marketing:write");
+  const member = await requirePermission(storeSlug, "marketing:write", "email_automation");
   await deleteOwnTemplate(member.store.id, member.account.id, id);
   refresh();
 }

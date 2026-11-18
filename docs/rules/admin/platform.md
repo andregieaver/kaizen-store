@@ -192,7 +192,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   is never changed in place: `replacePrices()` switches the old row off and adds a new one, as for plans; the editor shows every currency
   the plans or the catalogue have a price in (`extensionCurrencies()`), so a save never drops a price it did not show. An account's standing is
   `extensionState()` over `organisationExtensionStandings()`: the platform always; every account until `platform_settings.extensions_launched_at`;
-  then its plan's grants (any of its stores on a plan), then its own `organisation_extensions` row. Read per request, never cached.
+  then its plan's grants (any of its stores on a plan), then its own `organisation_extensions` row. The store read carries the facts (`Store.extensionFacts`); what works is read against the clock (`storeExtensionsOn()`).
+- The gates (E3): a page, item or tool of an extension carries `extension` (navigation, `ADMIN_PAGES`, `TOOL_EXTENSIONS`); every page under an
+  extension's folders calls `requireExtension(member, id)` and every action or route there passes the extension to `checkPermission()`,
+  `requirePermission()` or `storeAction()` (`extension-gates.scan.test.ts`). A job asks `commerce.extension_on(store, id)`. A writer of an
+  account's extension rows, a plan's grants or the launch date calls `refreshExtensionFacts()` after it commits.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

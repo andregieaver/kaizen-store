@@ -11,6 +11,7 @@ import { listReplies } from "@/server/support-replies";
 import { PageHeader } from "@/components/admin/ui";
 
 import { deleteReplyAction, saveReplyAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Saved replies" };
 
@@ -20,6 +21,8 @@ export default async function SupportRepliesPage({
 }: PageProps<"/admin/[store]/support/replies">) {
   const { store: slug } = await params;
   const member = await requirePermission(slug, "support:read");
+  const notInAccount = requireExtension(member, "support_desk");
+  if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
   const t = adminText(lang, "support");

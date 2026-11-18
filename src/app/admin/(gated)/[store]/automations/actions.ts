@@ -21,7 +21,7 @@ import { storeById } from "@/server/shopper-emails";
 type Problem = { ok: false; problem: string };
 
 async function writer(storeSlug: string) {
-  const member = await checkPermission(storeSlug, "marketing:write");
+  const member = await checkPermission(storeSlug, "marketing:write", "email_automation");
   if (!member) return null;
   const store = await storeById(member.store.id);
   return store ? { member, store, w: adminText(adminLangOf(member.account.adminLocale), "marketing").problems } : null;

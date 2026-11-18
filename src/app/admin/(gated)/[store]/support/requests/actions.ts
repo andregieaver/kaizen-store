@@ -23,7 +23,7 @@ export async function decideRequestAction(
   form: FormData,
 ): Promise<FormState> {
   const w = adminText(await actionAdminLang(), "support").problems;
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   const decision = form.get("decision");
   if (decision !== "done" && decision !== "declined")

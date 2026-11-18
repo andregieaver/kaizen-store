@@ -15,6 +15,7 @@ import { getTemplate } from "@/server/contracts";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { archiveTemplateAction, saveTemplateAction } from "../../contract-template-actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Contract template" };
 
@@ -27,6 +28,8 @@ const PREVIEW_CSS = CONTRACT_CSS.replace(/@page\s*\{[^}]*\}/, "");
 export default async function ContractTemplatePage({ params }: PageProps<"/admin/[store]/deals/contract-templates/[templateId]">) {
   const { store: slug, templateId } = await params;
   const member = await requirePermission(slug, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   if (!z.uuid().safeParse(templateId).success) notFound();

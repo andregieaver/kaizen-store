@@ -15,6 +15,7 @@ import { settingsForEdit } from "@/server/support-settings";
 import { PageHeader } from "@/components/admin/ui";
 
 import { saveSupportSettingsAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Support settings" };
 
@@ -24,6 +25,8 @@ export default async function SupportSettingsPage({
 }: PageProps<"/admin/[store]/support/settings">) {
   const { store: slug } = await params;
   const member = await requirePermission(slug, "support:read");
+  const notInAccount = requireExtension(member, "support_desk");
+  if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
   const t = adminText(lang, "support");

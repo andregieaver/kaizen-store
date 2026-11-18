@@ -20,6 +20,19 @@ export const commonEn = {
     signOut: "Sign out",
   },
   /** A store feature's name (D178, `STORE_FEATURES`), what it needs in a sentence, and what a page says while it is off (`FeatureOff`, D312 A8). */
+  /** A page or part of a paid extension the account does not have (D748 E3, `ExtensionOff`). */
+  extensions: {
+    off: "{name} is not part of this account",
+    hidden: "It is an extension: its pages, links and tools are here once the account has it. Nothing kept in it is lost.",
+    onlyOwner: "The account's owner decides which extensions it has.",
+    names: {
+      ab_testing: "A/B testing",
+      support_desk: "AI support desk",
+      email_automation: "Email automation",
+      work: "Work",
+      deals: "Deals and contracts",
+    },
+  },
   features: {
     labels: {
       shop: "Online shop",

@@ -13,6 +13,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 
 import { createDealAction, searchWhoAction } from "../actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "New deal" };
 
@@ -24,6 +25,8 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
  */
 export default async function NewDealPage({ params, searchParams }: PageProps<"/admin/[store]/deals/new">) {
   const member = await requirePermission((await params).store, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   if (!memberCan(member, "customers:write")) notFound();

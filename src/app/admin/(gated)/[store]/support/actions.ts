@@ -16,7 +16,7 @@ export async function supportPresenceAction(
   slug: string,
   status: "online" | "away",
 ): Promise<{ ok: boolean }> {
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member || (status !== "online" && status !== "away"))
     return { ok: false };
   const staff = memberDesk(member);
@@ -29,7 +29,7 @@ export async function supportPartnerAction(
   slug: string,
   on: boolean,
 ): Promise<{ ok: boolean }> {
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member || typeof on !== "boolean") return { ok: false };
   const staff = memberDesk(member);
   await setAgentPartner([staff.desk], staff.account.id, on);
@@ -39,7 +39,7 @@ export async function supportPartnerAction(
 export async function supportHeartbeatAction(
   slug: string,
 ): Promise<{ ok: boolean }> {
-  const member = await checkPermission(slug, "support:read");
+  const member = await checkPermission(slug, "support:read", "support_desk");
   if (!member) return { ok: false };
   const staff = memberDesk(member);
   await heartbeat([staff.desk], staff.account.id);
@@ -53,7 +53,7 @@ export async function supportActAction(
   raw: unknown,
 ): Promise<AgentActResult> {
   const w = adminText(await actionAdminLang(), "support").problems;
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { ok: false, problem: w.noAccess };
   const act = readAct(raw);
   if (!act) return { ok: false, problem: w.cannot };

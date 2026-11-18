@@ -694,6 +694,13 @@
       "when": 1794988913083,
       "tag": "20261118080153_extensions_catalogue",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1794990127277,
+      "tag": "20261118082207_extension_facts",
+      "breakpoints": true
     }
   ]
 }

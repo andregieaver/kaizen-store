@@ -17,6 +17,7 @@ import { evaluateSegment, getSegment, segmentNames, segmentUses } from "@/server
 
 import { deleteSegmentAction, previewSegmentAction, saveSegmentAction } from "../actions";
 import { editorChoices } from "../editor-props";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Segment" };
 
@@ -29,6 +30,8 @@ export default async function SegmentPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   const page = Math.max(0, Math.floor(Number(typeof query.page === "string" ? query.page : 0)) || 0);
   const member = await requirePermission(slug, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const segment = await getSegment(store.id, segmentId);
   if (!segment) notFound();

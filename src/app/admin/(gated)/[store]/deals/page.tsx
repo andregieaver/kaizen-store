@@ -20,6 +20,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 
 import { placeDealAction } from "./actions";
 import { filingAddressOf } from "@/server/email-filing";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Deals" };
 
@@ -32,6 +33,8 @@ const CLOSED_DAYS = 90;
  */
 export default async function DealsPage({ params, searchParams }: PageProps<"/admin/[store]/deals">) {
   const member = await requirePermission((await params).store, "customers:read");
+  const notInAccount = requireExtension(member, "deals");
+  if (notInAccount) return notInAccount;
   const off = requireFeature(member, "sales");
   if (off) return off;
   const { store } = member;

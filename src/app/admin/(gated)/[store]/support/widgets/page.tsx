@@ -11,6 +11,7 @@ import { memberDesk } from "@/server/support-desk";
 import { listWidgets } from "@/server/support-widgets";
 
 import { createWidgetAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Website chat" };
 
@@ -18,6 +19,8 @@ export const metadata: Metadata = { title: "Website chat" };
 export default async function SupportWidgetsPage({ params }: PageProps<"/admin/[store]/support/widgets">) {
   const { store: slug } = await params;
   const member = await requirePermission(slug, "support:read");
+  const notInAccount = requireExtension(member, "support_desk");
+  if (notInAccount) return notInAccount;
   const staff = memberDesk(member);
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "support").widgets;

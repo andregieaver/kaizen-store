@@ -28,6 +28,7 @@ import { getFieldData } from "@/server/custom-fields";
 
 import { storePageContext, storePagesBase } from "./context";
 import { saveStagedPageAction } from "./staging-actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
 const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules", "storeParts", "backdrops", "animation"] as const;
@@ -130,6 +131,9 @@ export async function StoreNewPageView({ type, params, searchParams }: { type: P
   // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
+  // A test version of a page is part of A/B testing (D748 E3): hidden while the account does not have it.
+  const notInAccount = type === "variant" ? requireExtension(gated, "ab_testing") : null;
+  if (notInAccount) return notInAccount;
   const { store, account } = gated;
   const lang = adminLangOf(account.adminLocale);
   const [saved, terms, gridTerms, query] = await Promise.all([
@@ -168,6 +172,9 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
+  // A test version of a page is part of A/B testing (D748 E3): hidden while the account does not have it.
+  const notInAccount = type === "variant" ? requireExtension(gated, "ab_testing") : null;
+  if (notInAccount) return notInAccount;
   const { store, account } = gated;
   const [found, query, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,

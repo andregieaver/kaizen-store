@@ -13,6 +13,7 @@ import { sendingHealth } from "@/server/sending-guard";
 import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
 
 import { resumeSendingAction } from "../marketing/actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Broadcasts" };
 
@@ -30,6 +31,8 @@ const SIGNAL: Record<BroadcastStatus, "neutral" | "insight" | "warning" | "posit
 /** The store's broadcasts (wave 5 unit C, D297): emails written once and sent to the people who want them, newest first. */
 export default async function BroadcastsPage({ params }: PageProps<"/admin/[store]/broadcasts">) {
   const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const [broadcasts, counts, health] = await Promise.all([listBroadcasts(store.id), subscriberCounts(store.id), sendingHealth(store.id)]);
   const people = counts.subscribed;

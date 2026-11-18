@@ -16,7 +16,7 @@ export async function saveReplyAction(
   form: FormData,
 ): Promise<FormState> {
   const w = adminText(await actionAdminLang(), "support").problems;
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   const result = await saveReply(memberDesk(member), Object.fromEntries(form));
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -31,7 +31,7 @@ export async function deleteReplyAction(
   form: FormData,
 ): Promise<FormState> {
   const w = adminText(await actionAdminLang(), "support").problems;
-  const member = await checkPermission(slug, "support:write");
+  const member = await checkPermission(slug, "support:write", "support_desk");
   if (!member) return { status: "error", messages: [w.noAccess] };
   if (!(await deleteReply(memberDesk(member), String(form.get("id") ?? ""))))
     return { status: "error", messages: [w.replyGone] };

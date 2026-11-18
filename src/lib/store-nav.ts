@@ -4,6 +4,7 @@
  * sidebar; Home has none. Website and Settings open on a page of cards (their hub), the others on their main page.
  */
 
+import { EXTENSION_IDS, storeExtensionsOn, type ExtensionId } from "./extensions";
 import type { NavIconName } from "@/components/admin/nav-icons";
 
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
@@ -12,7 +13,11 @@ import { requirementMet, type FeatureRequirement, type FeatureSource } from "./s
  * What the navigation is filtered by: the store's features (D178), as kept (`store.features`); a page or section behind a feature is offered
  * only while it is on (`requirementMet()`: kept on with everything it needs).
  */
-export type StoreFlags = FeatureSource & { house?: boolean };
+export type StoreFlags = FeatureSource & {
+  house?: boolean;
+  /** The account's paid-extension facts (D748 E3, `Store.extensionFacts`): a page or section behind an extension is offered only while it works. */
+  extensionFacts?: unknown;
+};
 
 /**
  * A page in a sidebar: its address after the store's, its label, and a line on what it is for (the hub's card). `feature` is the store
@@ -29,6 +34,8 @@ export type StoreItem = {
   basic?: boolean;
   exact?: boolean;
   feature?: FeatureRequirement;
+  /** The paid extension (D748) it is part of: offered only while the account has it; the same as its `ADMIN_PAGES` entry's (a test holds them). */
+  extension?: ExtensionId;
   /** A page only a customer's store has: left out for Kaizena Flow's own store (D466), which has no plan and is never closed. */
   customer?: true;
   /** A page that is not what its section's tab stands for (Custom fields under Products): the tab never opens on it, and a section with only
@@ -50,6 +57,8 @@ export type StoreSection = {
   hub: boolean;
   intro: string;
   feature?: FeatureRequirement;
+  /** The paid extension (D748) the whole section is part of. */
+  extension?: ExtensionId;
   groups: StoreGroup[];
 };
 
@@ -123,9 +132,9 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop", icon: "users-round" }),
           item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop", icon: "banknote" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business", icon: "building", basic: true }),
-          item("/deals", "Deals", "What each customer or company may buy, on a board from the first talk to won or lost.", { feature: "sales", icon: "handshake", basic: true }),
+          item("/deals", "Deals", "What each customer or company may buy, on a board from the first talk to won or lost.", { extension: "deals", feature: "sales", icon: "handshake", basic: true }),
           // The leads inbox, a tab of Deals before (ecosystem plan E2.8, D713): its own page, so it is found and its address is its own.
-          item("/leads", "Leads", "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.", { feature: "sales", icon: "user-plus", basic: true }),
+          item("/leads", "Leads", "People who asked for something and are not customers yet: what they asked, a deal of those worth following up.", { extension: "deals", feature: "sales", icon: "user-plus", basic: true }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop", icon: "heart" }),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { icon: "shield-check", basic: true }),
         ],
@@ -152,13 +161,13 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Email",
         items: [
-          item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.", { icon: "send", basic: true }),
-          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.", { icon: "mail-check" }),
+          item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.", { extension: "email_automation", icon: "send", basic: true }),
+          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.", { extension: "email_automation", icon: "mail-check" }),
           item("/text-messages", "Text messages", "Offers by text message to the numbers that asked for them at checkout, in their daytime.", { icon: "message-text" }),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
           item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),
           // Who a message goes to, not a group with a discount (Customer groups): ecosystem plan E3.7, D718.
-          item("/segments", "Segments", "Who gets an email or a text message, chosen by rules on what people did and counted again as you open them.", { icon: "chart-pie" }),
+          item("/segments", "Segments", "Who gets an email or a text message, chosen by rules on what people did and counted again as you open them.", { extension: "email_automation", icon: "chart-pie" }),
         ],
       },
       {
@@ -181,7 +190,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "On the site",
         items: [
           item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop", icon: "thumbs-up" }),
-          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better.", { icon: "flask" }),
+          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better.", { extension: "ab_testing", icon: "flask" }),
         ],
       },
     ],
@@ -219,7 +228,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/analytics/products", "Product analytics", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop", icon: "tag" }),
           item("/analytics/inventory", "Inventory analytics", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop", icon: "warehouse" }),
           item("/analytics/marketing", "Marketing analytics", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop", icon: "megaphone" }),
-          item("/analytics/sales", "Sales", "Deals: what they may bring and when, how they move from stage to stage, who won and lost, and how long a deal takes to win.", { feature: "sales", icon: "handshake" }),
+          item("/analytics/sales", "Sales", "Deals: what they may bring and when, how they move from stage to stage, who won and lost, and how long a deal takes to win.", { extension: "deals", feature: "sales", icon: "handshake" }),
         ],
       },
       {
@@ -308,14 +317,14 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Support",
         items: [
-          item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said.", { icon: "inbox", basic: true }),
-          item("/support/requests", "Requests", "What the chat assistant passed to your team (a refund, cancelling an order, a new address, an exception): decide each, and the customer is told.", { icon: "clipboard-check", basic: true }),
+          item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said.", { extension: "support_desk", icon: "inbox", basic: true }),
+          item("/support/requests", "Requests", "What the chat assistant passed to your team (a refund, cancelling an order, a new address, an exception): decide each, and the customer is told.", { extension: "support_desk", icon: "clipboard-check", basic: true }),
           // Support's own names (ecosystem plan E3.7, D718): Reports are Analytics', Settings the store's.
-          item("/support/reports", "Support reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { icon: "chart-column" }),
-          item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.", { icon: "message-text" }),
+          item("/support/reports", "Support reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { extension: "support_desk", icon: "chart-column" }),
+          item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.", { extension: "support_desk", icon: "message-text" }),
           item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from.", { icon: "bot" }),
-          item("/support/widgets", "Website chat", "The chat on your other websites: widgets with their own look, each with a tag to paste on one or several sites.", { icon: "globe", basic: true }),
-          item("/support/settings", "Support settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { icon: "settings-2" }),
+          item("/support/widgets", "Website chat", "The chat on your other websites: widgets with their own look, each with a tag to paste on one or several sites.", { extension: "support_desk", icon: "globe", basic: true }),
+          item("/support/settings", "Support settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { extension: "support_desk", icon: "settings-2" }),
         ],
       },
     ],
@@ -332,7 +341,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Store",
         items: [
           item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show.", { icon: "store", basic: true }),
-          item("/settings/books", "Books", "Your own books, kept from your invoices and credit notes as you issue them: the trial balance, what waits, and locking a period.", { icon: "book-open" }),
+          item("/settings/books", "Books", "Your own books, kept from your invoices and credit notes as you issue them: the trial balance, what waits, and locking a period.", { extension: "work", icon: "book-open" }),
           item("/settings/domains", "Domains", "The addresses the store is reached at.", { icon: "link", basic: true }),
           item("/settings/moving", "Moving in", "Bring a shop over from Shopify: connect it, check its old links, and import the rest.", { icon: "import" }),
           item("/settings/countries", "Countries", "The countries the store sells to, and its own country.", { icon: "map", basic: true }),
@@ -408,12 +417,13 @@ export type CanOpen = (path: string) => boolean;
  * a section and a hub's card with none left are not drawn. `STORE_SECTIONS` itself stays whole: `sectionOf()` and the permissions read it.
  */
 export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSection[] {
-  const on = (feature?: FeatureRequirement) => requirementMet(flags, feature);
+  const working = new Set<ExtensionId>(Array.isArray(flags) ? EXTENSION_IDS : storeExtensionsOn(flags as { extensionFacts?: unknown }));
+  const on = (part: { feature?: FeatureRequirement; extension?: ExtensionId }) => requirementMet(flags, part.feature) && (!part.extension || working.has(part.extension));
   const house = !Array.isArray(flags) && (flags as { house?: boolean }).house === true;
   const open = (path: string) => !canOpen || canOpen(path);
-  return STORE_SECTIONS.filter((s) => on(s.feature))
+  return STORE_SECTIONS.filter((s) => on(s))
     .map((s) => {
-      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
+      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
       // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
       // A page that is aside (Custom fields under Products) is never where a tab leads: a website's Products tab would open on Custom fields.
       const left = groups.flatMap((g) => g.items.filter((i) => !i.aside).map((i) => i.path));

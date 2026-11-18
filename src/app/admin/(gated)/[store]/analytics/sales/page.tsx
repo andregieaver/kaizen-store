@@ -9,6 +9,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
 import { salesReport } from "@/server/sales-reports";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Sales analytics" };
 
@@ -21,6 +22,8 @@ export default async function AnalyticsSalesPage({ params, searchParams }: PageP
   const ctx = await analyticsContext((await params).store, query);
   const off = requireFeature(ctx, "sales");
   if (off) return off;
+  const notInAccount = requireExtension(ctx, "deals");
+  if (notInAccount) return notInAccount;
   const { store, now } = ctx;
   const one = (value: string | string[] | undefined) => (typeof value === "string" ? value : null);
   const report = await salesReport(store.id, {

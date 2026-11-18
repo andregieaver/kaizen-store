@@ -24,7 +24,7 @@ type Words = DealsMessages["activities"];
 
 /** The member, when they may change customers and Deals is on; else the reason, in their words. */
 async function writer(storeSlug: string): Promise<{ member: Membership; w: Words } | { refused: string }> {
-  const member = await checkPermission(storeSlug, "customers:write");
+  const member = await checkPermission(storeSlug, "customers:write", "deals");
   if (!member) return { refused: adminText(await actionAdminLang(), "deals").activities.problems.forbidden };
   const lang = adminLangOf(member.account.adminLocale);
   if (!featureOn(member.store, "sales")) return { refused: featureOffText("sales", adminText(lang, "common").features) };

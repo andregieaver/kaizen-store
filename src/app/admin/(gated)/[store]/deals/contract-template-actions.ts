@@ -25,7 +25,7 @@ const offFor = (member: Membership): string | null =>
   featureOn(member.store, "sales") ? null : featureOffText("sales", adminText(adminLangOf(member.account.adminLocale), "common").features);
 
 export async function newTemplateAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.template_create", answer: failed }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.template_create", answer: failed }, async (member) => {
     const off = offFor(member);
     if (off) return failed(off);
     const made = await createTemplate(member, form.get("language") === "en" ? "en" : "nb");
@@ -38,7 +38,7 @@ export type TemplateSaveInput = { name: string; language: string; blocks: unknow
 
 export async function saveTemplateAction(storeSlug: string, templateId: string, input: TemplateSaveInput): Promise<{ ok: boolean; messages: string[] }> {
   const answer = (message: string) => ({ ok: false, messages: [message] });
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.template_save", answer }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.template_save", answer }, async (member) => {
     const off = offFor(member);
     if (off) return answer(off);
     const w = wordsOf(member);
@@ -52,7 +52,7 @@ export async function saveTemplateAction(storeSlug: string, templateId: string, 
 
 export async function archiveTemplateAction(storeSlug: string, templateId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const answer = (message: string) => ({ ok: false as const, problems: [message] });
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.template_archive", answer }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.template_archive", answer }, async (member) => {
     const done = await archiveTemplate(member, templateId);
     if (!done.ok) return answer(wordsOf(member).problems[done.problem]);
     redirect(`/admin/${member.store.slug}/deals/contract-templates`);

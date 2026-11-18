@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/money";
 import type { SegmentRules } from "@/lib/segments";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { evaluateSegment } from "@/server/segments";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Customers of a type" };
 
@@ -32,6 +33,8 @@ const groupOf = (raw: string): RfmSegment | null => {
 export default async function RfmGroupPage({ params, searchParams }: PageProps<"/admin/[store]/segments/rfm/[group]">) {
   const { store: slug, group: raw } = await params;
   const member = await requirePermission(slug, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   // It lists people: for staff who may read customers too, as a segment's own list is.
   const group = groupOf(raw);
   if (!group || !memberCan(member, "customers:read")) notFound();

@@ -7,6 +7,7 @@ import { reportOfResult } from "@/lib/report-link";
 import { assistantLanguageLines } from "@/lib/assistant-lang";
 
 import { db } from "@/db/client";
+import { storeExtensionsOn } from "@/lib/extensions";
 import { adminMapText, matchPath, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { skillsText } from "@/lib/assistant-skills";
 import { toolKey } from "@/lib/owner-tool-permissions";
@@ -371,6 +372,7 @@ export function siteFlags(p: Principal): SiteFlags {
   const holder = holderOfPrincipal(p);
   return {
     features: effectiveFeatures(p.store),
+    extensions: storeExtensionsOn(p.store),
     work: p.store.workOn,
     owner: holder ? can(holder, "owner") : false,
     // Only the pages their role can open are offered (a store's pages by their place in the navigation; the account's own are everyone's).

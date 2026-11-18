@@ -11,6 +11,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 
 import { previewSegmentAction, saveSegmentAction } from "../actions";
 import { editorChoices } from "../editor-props";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "New segment" };
 
@@ -18,6 +19,8 @@ export const metadata: Metadata = { title: "New segment" };
 export default async function NewSegmentPage({ params, searchParams }: PageProps<"/admin/[store]/segments/new">) {
   const query = await searchParams;
   const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "marketing");

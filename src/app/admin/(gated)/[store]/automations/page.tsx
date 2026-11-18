@@ -18,6 +18,7 @@ import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guar
 import { resumeSendingAction } from "../marketing/actions";
 
 import { switchAutomationAction } from "./actions";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Email automations" };
 
@@ -27,6 +28,8 @@ export const metadata: Metadata = { title: "Email automations" };
  */
 export default async function AutomationsPage({ params }: PageProps<"/admin/[store]/automations">) {
   const member = await requirePermission((await params).store, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const base = `/admin/${store.slug}/automations`;
   const mayWrite = memberCan(member, "marketing:write");

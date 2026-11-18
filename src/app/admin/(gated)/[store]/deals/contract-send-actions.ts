@@ -21,7 +21,7 @@ import { storeAction } from "@/server/store-action";
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
 
 export async function sendContractAction(storeSlug: string, contractId: string): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "customers:write", action: "contract.send", answer: failed }, async (member) => {
+  return storeAction({ store: storeSlug, key: "customers:write", extension: "deals", action: "contract.send", answer: failed }, async (member) => {
     const lang = adminLangOf(member.account.adminLocale);
     if (!featureOn(member.store, "sales")) return failed(featureOffText("sales", adminText(lang, "common").features));
     const w = adminText(lang, "deals").contracts;

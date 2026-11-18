@@ -29,6 +29,7 @@ import {
   uploadBroadcastPictureAction,
 } from "../actions";
 import { broadcastChoices } from "../editor-props";
+import { requireExtension } from "@/components/admin/extension-off";
 
 export const metadata: Metadata = { title: "Broadcast" };
 
@@ -39,6 +40,8 @@ export const metadata: Metadata = { title: "Broadcast" };
 export default async function BroadcastPage({ params }: PageProps<"/admin/[store]/broadcasts/[broadcastId]">) {
   const { store: slug, broadcastId } = await params;
   const member = await requirePermission(slug, "marketing:read");
+  const notInAccount = requireExtension(member, "email_automation");
+  if (notInAccount) return notInAccount;
   const { store } = member;
   const broadcast = await getBroadcast(store.id, broadcastId);
   if (!broadcast) notFound();

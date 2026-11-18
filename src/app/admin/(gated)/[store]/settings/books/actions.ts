@@ -81,7 +81,7 @@ export async function openBooksEarlierAction(storeSlug: string, _state: FormStat
 
 /** *Lock*: nothing dated on or before the day is posted after it. */
 export async function lockBooksAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.lock", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.lock", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const through = String(form.get("through") ?? "").trim();
     const locked = await lockLedgerThrough(member, through || null);
@@ -93,7 +93,7 @@ export async function lockBooksAction(storeSlug: string, _state: FormState, form
 
 /** *Post the entry*: an entry typed by hand (step 3b), in the series of entries by hand or of the opening balance. */
 export async function postEntryAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.post", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.post", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const text = (name: string) => String(form.get(name) ?? "");
     const rows = Array.from({ length: HAND_ROWS }, (_, i) => ({ account: text(`account_${i}`), debit: text(`debit_${i}`), credit: text(`credit_${i}`), vatCode: text(`vat_${i}`) }));
@@ -110,7 +110,7 @@ export async function postEntryAction(storeSlug: string, _state: FormState, form
 
 /** *Reverse*: an entry turned back by one with its lines' signs turned, on its own day while that is open, else today. */
 export async function reverseEntryAction(storeSlug: string, entryId: string): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.reverse", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.reverse", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const reversed = await reverseLedgerEntry(member, entryId, todayIn(new Date(), member.store.timeZone));
     if (!reversed.ok) return { status: "error", messages: [w.journal.problems[reversed.problem] ?? w.hand.problems.other] };
@@ -140,7 +140,7 @@ export async function openingFromTripletexAction(storeSlug: string): Promise<For
 
 /** *Upload the statement*: the bank's file read into the books (B4, D486), its lines kept once and matched to the books. */
 export async function uploadBankStatementAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.bank_statement", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.bank_statement", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) return { status: "error", messages: [w.bank.problems.empty], fields: { file: w.bank.problems.empty } };
@@ -168,7 +168,7 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
  * (D487; the button says which, `line:invoice`), *Post it* posts the bank's own fee or interest (D488; the button names the line).
  */
 export async function payFromBankAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.pay_from_bank", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.pay_from_bank", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     // *Post the purchase* (D490): the line's receipt, what it was and its VAT rate, in the fields named after the line.
@@ -247,7 +247,7 @@ export type ReceiptReadResult =
  * whether its total is the bank's amount, for the form to show. Nothing is kept or posted here; the owner posts.
  */
 export async function readReceiptAction(storeSlug: string, form: FormData): Promise<ReceiptReadResult> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.read_receipt", answer: readRefused }, async (member) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.read_receipt", answer: readRefused }, async (member) => {
     const lineId = String(form.get("line") ?? "");
     const file = form.get("receipt");
     if (!/^[0-9a-f-]{36}$/i.test(lineId) || !(file instanceof File) || file.size === 0 || file.size > VOUCHER_BYTES) return { ok: false, reason: "unread" };
@@ -262,7 +262,7 @@ export async function readReceiptAction(storeSlug: string, form: FormData): Prom
 
 /** *Add the bill* (D492): a supplier's invoice with its file, posted against what the store owes, waiting until the bank shows it paid. */
 export async function addBillAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.add_bill", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.add_bill", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const p = w.bills.problems;
     const field = (name: string, words: string): FormState => ({ status: "error", messages: [words], fields: { [name]: words } });
@@ -327,7 +327,7 @@ export type BillReadResult =
 
 /** A bill read by the store's model as the owner chooses its file (D493): its fields for the form to show. Nothing is kept or posted here. */
 export async function readBillAction(storeSlug: string, form: FormData): Promise<BillReadResult> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.read_bill", answer: billRefused }, async (member) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.read_bill", answer: billRefused }, async (member) => {
     const file = form.get("bill");
     if (!(file instanceof File) || file.size === 0 || file.size > VOUCHER_BYTES) return { ok: false, reason: "not_readable" };
     const book = await openBookOf(member.store.id);
@@ -354,7 +354,7 @@ export async function readBillAction(storeSlug: string, form: FormData): Promise
 
 /** *Your VAT terms* (D496): two months, or a year where Skatteetaten has allowed it; the owner's to say. */
 export async function setVatTermAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.vat_term", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.vat_term", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const book = await openBookOf(member.store.id);
     if (!book) return { status: "error", messages: [w.problems.forbidden] };
@@ -373,7 +373,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * says which one is changed.
  */
 export async function saveRecurringCostAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.recurring_save", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.recurring_save", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const book = await openBookOf(member.store.id);
     if (!book) return { status: "error", messages: [w.bills.problems.book] };
@@ -413,7 +413,7 @@ export async function saveRecurringCostAction(storeSlug: string, _state: FormSta
  * usual VAT, every month, from its first charge; the owner changes what is not so.
  */
 export async function recurringPressAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.recurring_press", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.recurring_press", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const today = todayIn(new Date(), member.store.timeZone);
     const ended = form.get("end");
@@ -442,7 +442,7 @@ export async function recurringPressAction(storeSlug: string, _state: FormState,
 
 /** *Not for the books* (D504): a document of the books' inbox set aside, the button naming which. */
 export async function dismissInboxAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.inbox_dismiss", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.inbox_dismiss", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const id = String(form.get("dismiss") ?? "");
     if (!UUID.test(id) || !(await dismissInboxDocument(member, id))) return { status: "error", messages: [w.inbox.problems.gone] };
@@ -456,7 +456,7 @@ export async function dismissInboxAction(storeSlug: string, _state: FormState, f
  * all nought removes it.
  */
 export async function saveBudgetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.budget", answer: failed }, async (member, lang): Promise<FormState> => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.budget", answer: failed }, async (member, lang): Promise<FormState> => {
     const w = adminText(lang, "books");
     const book = await openBookOf(member.store.id);
     if (!book) return { status: "error", messages: [w.bills.problems.book] };
@@ -476,7 +476,7 @@ export async function saveBudgetAction(storeSlug: string, _state: FormState, for
 
 /** *Close {year}* or *Reopen {year}* (D506): the year-end's two presses, the button naming the year (`close`, `reopen`). */
 export async function yearEndAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.year_end", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.year_end", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const closing = form.get("close");
     const reopening = form.get("reopen");
@@ -498,7 +498,7 @@ export async function yearEndAction(storeSlug: string, _state: FormState, form: 
 
 /** *Add* under the threshold watch (D514): one of the owner's own thresholds, an amount over twelve months in the books' currency and what they will do before it. */
 export async function addThresholdAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.threshold_add", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.threshold_add", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     const book = await openBookOf(member.store.id);
     if (!book) return { status: "error", messages: [w.bills.problems.book] };
@@ -513,7 +513,7 @@ export async function addThresholdAction(storeSlug: string, _state: FormState, f
 
 /** *Remove* beside one of the owner's own thresholds (D514). */
 export async function removeThresholdAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.threshold_remove", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", extension: "work", action: "books.threshold_remove", answer: failed }, async (member, lang) => {
     const w = adminText(lang, "books");
     if (!(await removeOwnThreshold(member, String(form.get("id") ?? "")))) return { status: "error", messages: [w.watch.problems.gone] };
     refresh();

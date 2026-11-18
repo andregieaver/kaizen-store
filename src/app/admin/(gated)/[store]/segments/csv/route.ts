@@ -7,6 +7,7 @@ import { sameSite } from "@/lib/same-site";
 import { log } from "@/server/log";
 import { checkOwnerRole } from "@/server/permissions";
 import { getSegment, segmentCsv } from "@/server/segments";
+import { storeExtensionOn } from "@/lib/extensions";
 
 /**
  * Everyone in a segment, or in one customer type from analytics, as a CSV (D380): a POST from the page's own button, for the owner only (the
@@ -16,7 +17,7 @@ import { getSegment, segmentCsv } from "@/server/segments";
 export async function POST(request: NextRequest, { params }: RouteContext<"/admin/[store]/segments/csv">) {
   const { store: slug } = await params;
   const member = await checkOwnerRole(slug);
-  if (!member) return new NextResponse("Not found", { status: 404 });
+  if (!member || !storeExtensionOn(member.store, "email_automation")) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   const form = await request.formData().catch(() => null);
   const segmentId = String(form?.get("segment") ?? "");
