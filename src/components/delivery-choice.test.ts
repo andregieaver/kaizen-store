@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 // The server actions are not called while drawing.
-vi.mock("@/app/s/[store]/[market]/checkout/actions", () => ({
+vi.mock("@/app/s/[store]/[market]/(shop)/checkout/actions", () => ({
   chooseDeliveryAction: async () => ({ problem: null }),
   lookUpDeliveryAction: async () => ({ options: null, problem: null }),
 }));

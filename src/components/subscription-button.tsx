@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import {
   changeMySubscription,
   type SubscriptionActionState,
-} from "@/app/s/[store]/[market]/subscription/[token]/actions";
+} from "@/app/s/[store]/[market]/(shop)/subscription/[token]/actions";
 
 /**
  * One change to a subscription (D25, D29): cancel or keep it, pause for

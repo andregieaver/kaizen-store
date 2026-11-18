@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
-import { suggestAction } from "@/app/s/[store]/[market]/search/actions";
+import { suggestAction } from "@/app/s/[store]/[market]/(shop)/search/actions";
 import type { Suggestion } from "@/server/search";
 
 import { Icon } from "./icons";

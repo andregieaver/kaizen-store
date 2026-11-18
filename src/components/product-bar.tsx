@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 
-import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
+import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 import { withoutVat, type StoreAudience } from "@/lib/b2b";
 import { formatMoney, type PriceDecimals } from "@/lib/money";
 import { withWords, type PriceWords } from "@/lib/price-words";

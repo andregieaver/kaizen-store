@@ -2,8 +2,8 @@
 
 import { useActionState, useId, useState } from "react";
 
-import type { WishState } from "@/app/s/[store]/[market]/returns/[token]/actions";
-import { sendExchangeWishAction } from "@/app/s/[store]/[market]/returns/[token]/actions";
+import type { WishState } from "@/app/s/[store]/[market]/(shop)/returns/[token]/actions";
+import { sendExchangeWishAction } from "@/app/s/[store]/[market]/(shop)/returns/[token]/actions";
 import { browserText } from "@/lib/browser-text";
 import { cleanExchangeWish, EXCHANGE_WISH_LINES, EXCHANGE_WISH_NOTE_MAX } from "@/lib/exchange-input-browser";
 

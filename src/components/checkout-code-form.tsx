@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { checkoutCodeAction, type CheckoutCodeState } from "@/app/s/[store]/[market]/checkout/actions";
+import { checkoutCodeAction, type CheckoutCodeState } from "@/app/s/[store]/[market]/(shop)/checkout/actions";
 
 /**
  * The discount codes in the checkout's summary (D38, D299 E2): each code on

@@ -6,7 +6,7 @@ import {
   chooseDeliveryAction,
   lookUpDeliveryAction,
   type DeliveryLookup,
-} from "@/app/s/[store]/[market]/checkout/actions";
+} from "@/app/s/[store]/[market]/(shop)/checkout/actions";
 import { withoutVat } from "@/lib/b2b";
 import type { DeliveryKind } from "@/lib/delivery-options";
 import type { ShownDeliveryOption, ShownDeliveryOptions } from "@/lib/delivery-words";

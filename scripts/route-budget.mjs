@@ -52,7 +52,7 @@ const BEACONS = new Set(["/api/visit/route", "/api/visit/touch/route", "/api/vis
 function kindOf(key) {
   if (BEACONS.has(key)) return "beacon";
   if (key.startsWith("/api/")) return "api";
-  if (/^\/s\/\[store\]\/\[market\]\/(?:cart|checkout|account)\//.test(key)) return "pay";
+  if (/^\/s\/\[store\]\/\[market\]\/(?:\(shop\)\/)?(?:cart|checkout|account)\//.test(key)) return "pay";
   if (key.startsWith("/s/[store]/[market]/")) return "store";
   if (key.startsWith("/(platform") || key.startsWith("/(docs")) return "site";
   if (key.startsWith("/admin/(gated)/platform/")) return "admin-platform";
@@ -144,8 +144,8 @@ const COLD = {
   visit: { label: "/api/visit", args: ["cold-load-route.cjs", app("api/visit/route.js")], read: (json) => json.total_ms, bar: "beacon" },
   proxy: { label: "the proxy", args: ["cold-load-proxy.cjs"], read: (json) => (json.ok ? json.ms : undefined), bar: "proxy" },
   "start-hook": { label: "the start hook", args: ["cold-load-start-hook.cjs"], read: (json) => (json.ok ? json.ms : undefined), bar: null },
-  "store-home": { label: "the store home", args: ["cold-load-page.cjs", app("s/[store]/[market]/page.js")], read: (json) => (json.ok ? json.ms : undefined), bar: "storePage" },
-  "store-product": { label: "the product page", args: ["cold-load-page.cjs", app("s/[store]/[market]/p/[handle]/page.js")], read: (json) => (json.ok ? json.ms : undefined), bar: "storePage" },
+  "store-home": { label: "the store home", args: ["cold-load-page.cjs", app("s/[store]/[market]/(shop)/page.js")], read: (json) => (json.ok ? json.ms : undefined), bar: "storePage" },
+  "store-product": { label: "the product page", args: ["cold-load-page.cjs", app("s/[store]/[market]/(shop)/p/[handle]/page.js")], read: (json) => (json.ok ? json.ms : undefined), bar: "storePage" },
   "admin-orders": { label: "the admin's orders page", args: ["cold-load-page.cjs", app("admin/(gated)/[store]/orders/page.js")], read: (json) => (json.ok ? json.ms : undefined), bar: "adminPage" },
 };
 

@@ -6,7 +6,7 @@ import { useActionState, useEffect, useRef } from "react";
 import type { QuantityRule } from "@/lib/quantity-rules";
 import { trackShop } from "@/lib/shop-events";
 
-import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
+import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 
 import { AffiliateField } from "./affiliate-field";
 import { RecommendField } from "./recommend-field";

@@ -17,6 +17,24 @@ async function openCart(page: Page, link: Locator) {
   await expect(page.getByRole("button", { name: "Oppdater" })).toHaveCount(0);
 }
 
+test("on a wide screen the header's cart link loads the cart page at once, and nothing fetches it ahead", async ({ page }) => {
+  const seen: { url: string; rsc: boolean; doc: boolean }[] = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    seen.push({ url, rsc: request.headers()["rsc"] === "1" || url.includes("_rsc="), doc: request.resourceType() === "document" });
+  });
+  const isCart = (entry: { url: string }) => new URL(entry.url).pathname.endsWith("/cart");
+  await page.goto("/s/demo/no/p/demo-keramikkopp");
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(2000);
+  expect(seen.filter(isCart)).toHaveLength(0);
+  seen.length = 0;
+  await page.locator("header").getByRole("link", { name: /handlekurv/i }).first().click();
+  await page.waitForURL(/\/cart$/);
+  expect(seen.filter((entry) => entry.doc && isCart(entry))).toHaveLength(1);
+  expect(seen.filter((entry) => entry.rsc && isCart(entry))).toHaveLength(0);
+});
+
 test("add to cart, change quantity within stock, and remove", async ({ page }) => {
   await page.goto("/s/demo/no/p/demo-keramikkopp");
 

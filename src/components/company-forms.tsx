@@ -2,9 +2,9 @@
 
 import { useActionState, type ReactNode } from "react";
 
-import type { InviteState } from "@/app/s/[store]/[market]/account/company/actions";
-import { inviteEmployeesAction } from "@/app/s/[store]/[market]/account/company/actions";
-import { acceptInviteAction, type AcceptState } from "@/app/s/[store]/[market]/account/company/invite/[token]/actions";
+import type { InviteState } from "@/app/s/[store]/[market]/(shop)/account/company/actions";
+import { inviteEmployeesAction } from "@/app/s/[store]/[market]/(shop)/account/company/actions";
+import { acceptInviteAction, type AcceptState } from "@/app/s/[store]/[market]/(shop)/account/company/invite/[token]/actions";
 
 const input = "min-h-11 w-full rounded-md border border-border bg-background px-3";
 const secondary = "min-h-11 rounded-button border border-border px-5 disabled:opacity-40";

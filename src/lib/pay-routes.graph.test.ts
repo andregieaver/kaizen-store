@@ -13,6 +13,7 @@ import { FORBIDDEN_ON_PAY_ROUTES, importsForbidden } from "./pay-routes";
  */
 const SRC = join(process.cwd(), "src");
 const MARKET = join(SRC, "app/s/[store]/[market]");
+const SHOP = join(MARKET, "(shop)");
 
 /** Every source file of the storefront that links somewhere. */
 function sources(dir: string, found: string[] = []): string[] {
@@ -119,7 +120,7 @@ describe("the import graph of the pay routes", () => {
   ];
 
   it.each(pages)("%s reaches none of them", (page) => {
-    expect(forbiddenFrom(join(MARKET, page), stop)).toEqual([]);
+    expect(forbiddenFrom(join(SHOP, page), stop)).toEqual([]);
   });
 });
 
@@ -139,7 +140,7 @@ describe("entering a pay route", () => {
   it("is, from the cart's button, a full page load", () => {
     const button = readFileSync(join(SRC, "components/checkout-button.tsx"), "utf8");
     expect(button).toMatch(/window\.location\.assign\(to\)/);
-    const action = readFileSync(join(MARKET, "cart/actions.ts"), "utf8");
+    const action = readFileSync(join(SHOP, "cart/actions.ts"), "utf8");
     // The action hands back where to go; it does not redirect through the router.
     expect(action).not.toMatch(/redirect\(result\.url\)/);
     expect(action).toMatch(/to: result\.url/);
@@ -147,7 +148,7 @@ describe("entering a pay route", () => {
 
   it("is guarded on each of the three pages, and the layout watches where the document has been", () => {
     for (const page of ["cart/page.tsx", "checkout/page.tsx", "order/[orderId]/page.tsx"]) {
-      expect(readFileSync(join(MARKET, page), "utf8"), page).toMatch(/<PayRouteGuard store=\{store\.slug\} \/>/);
+      expect(readFileSync(join(SHOP, page), "utf8"), page).toMatch(/<PayRouteGuard store=\{store\.slug\} \/>/);
     }
     expect(readFileSync(join(MARKET, "layout.tsx"), "utf8")).toMatch(/<PayDocumentWatcher \/>/);
   });
@@ -166,13 +167,13 @@ describe("the gift box and the pay link", () => {
   };
 
   it.each(["cart/cart-gift.tsx", "account/pay/[token]/pay-form.tsx"])("%s reaches no zod, no server-only module and no server code", (entry) => {
-    const imports = importedBy(join(MARKET, entry));
+    const imports = importedBy(join(SHOP, entry));
     const offenders = imports.filter(({ specifier }) => specifier === "zod" || specifier === "server-only" || specifier.startsWith("@/server/") || specifier.startsWith("@/db/"));
     expect(offenders).toEqual([]);
   });
 
   it("the gift box keeps its checks in the pure gift module, the one the server runs", () => {
-    const imports = importedBy(join(MARKET, "cart/cart-gift.tsx")).map((i) => i.specifier);
+    const imports = importedBy(join(SHOP, "cart/cart-gift.tsx")).map((i) => i.specifier);
     expect(imports).toContain("@/lib/gift");
   });
 
@@ -182,11 +183,11 @@ describe("the gift box and the pay link", () => {
   });
 
   it.each(["account/pay/[token]/page.tsx", "account/pay/[token]/pay-view.tsx", "account/pay/[token]/pay-form.tsx"])("%s reaches none of the forbidden extras", (page) => {
-    expect(forbiddenFrom(join(MARKET, page), stop)).toEqual([]);
+    expect(forbiddenFrom(join(SHOP, page), stop)).toEqual([]);
   });
 
   it("the pay link's page is guarded like a pay route, is not indexed and is not passed on as a referrer", () => {
-    const page = readFileSync(join(MARKET, "account/pay/[token]/page.tsx"), "utf8");
+    const page = readFileSync(join(SHOP, "account/pay/[token]/page.tsx"), "utf8");
     expect(page).toMatch(/<PayRouteGuard store=\{store\.slug\} \/>/);
     expect(page).toMatch(/robots: \{ index: false, follow: false \}/);
     expect(page).toMatch(/referrer: "no-referrer"/);
@@ -206,17 +207,17 @@ describe("the change pay link and the order's parcels", () => {
   };
 
   it("the change page's button reaches no zod, no server-only module and no server code", () => {
-    const imports = importedBy(join(MARKET, "account/change/[token]/change-form.tsx"));
+    const imports = importedBy(join(SHOP, "account/change/[token]/change-form.tsx"));
     const offenders = imports.filter(({ specifier }) => specifier === "zod" || specifier === "server-only" || specifier.startsWith("@/server/") || specifier.startsWith("@/db/"));
     expect(offenders).toEqual([]);
   });
 
   it.each(["account/change/[token]/page.tsx", "account/change/[token]/change-view.tsx", "account/change/[token]/change-form.tsx"])("%s reaches none of the forbidden extras", (page) => {
-    expect(forbiddenFrom(join(MARKET, page), stop)).toEqual([]);
+    expect(forbiddenFrom(join(SHOP, page), stop)).toEqual([]);
   });
 
   it("the change page is guarded like a pay route, is not indexed and is not passed on as a referrer", () => {
-    const page = readFileSync(join(MARKET, "account/change/[token]/page.tsx"), "utf8");
+    const page = readFileSync(join(SHOP, "account/change/[token]/page.tsx"), "utf8");
     expect(page).toMatch(/<PayRouteGuard store=\{store\.slug\} \/>/);
     expect(page).toMatch(/robots: \{ index: false, follow: false \}/);
     expect(page).toMatch(/referrer: "no-referrer"/);
@@ -228,7 +229,7 @@ describe("the change pay link and the order's parcels", () => {
     expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
     expect(forbiddenFrom(entry, stop)).toEqual([]);
     // And the order page draws it.
-    expect(readFileSync(join(MARKET, "order/[orderId]/order-section.tsx"), "utf8")).toMatch(/<OrderShipments /);
+    expect(readFileSync(join(SHOP, "order/[orderId]/order-section.tsx"), "utf8")).toMatch(/<OrderShipments /);
   });
 
   it("the parcel's tracking (D238 2.7) imports no zod and no server code as values, holds no script, and reaches none of the forbidden extras", () => {

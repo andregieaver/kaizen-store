@@ -80,7 +80,7 @@
       "components/wishlist-heart": "in first scripts on 2026-11 (bloat review step 1.27)"
     },
     "listing": {
-      "app/s/[store]/[market]/cart/cart-gift": "in first scripts on 2026-11 (bloat review step 1.27)",
+      "app/s/[store]/[market]/(shop)/cart/cart-gift": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/account-sign-in": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/add-to-cart": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/booking-changes": "in first scripts on 2026-11 (bloat review step 1.27)",
@@ -120,7 +120,7 @@
       "components/wishlist-heart": "in first scripts on 2026-11 (bloat review step 1.27)"
     },
     "cart": {
-      "app/s/[store]/[market]/cart/cart-gift": "in first scripts on 2026-11 (bloat review step 1.27)",
+      "app/s/[store]/[market]/(shop)/cart/cart-gift": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/account-sign-in": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/add-to-cart": "in first scripts on 2026-11 (bloat review step 1.27)",
       "components/booking-changes": "in first scripts on 2026-11 (bloat review step 1.27)",

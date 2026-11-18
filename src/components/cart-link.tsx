@@ -4,7 +4,6 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { getCartCount } from "@/server/cart";
-import { perRequest } from "@/server/request-memo";
 
 import { Icon } from "./icons";
 
@@ -24,8 +23,8 @@ export async function CartLink({
   market: Market;
   variant?: "header" | "bar";
 }) {
-  // The header's link and the phone bar's share one count for a render; `getCartCount()` itself is never memoised, as actions call it after a change.
-  const count = await perRequest(`cart-count:${storeId}:${market.slug}`, () => getCartCount({ storeId, market }));
+  // The header's link and the phone bar's share one count for a render: `getCartCount()` shares it per request (step 2.2).
+  const count = await getCartCount({ storeId, market });
   return <CartLinkShell storeSlug={storeSlug} market={market} variant={variant} count={count} />;
 }
 
@@ -62,14 +61,24 @@ export function CartLinkShell({
       </Link>
     );
   }
-  return (
-    <Link
-      href={marketPath(storeSlug, market.slug, "/cart")}
-      className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5"
-    >
+  const inner = (
+    <>
       <Icon name="bag" />
       {badge}
       <span className="sr-only">{name}</span>
-    </Link>
+    </>
+  );
+  const href = marketPath(storeSlug, market.slug, "/cart");
+  // Drawn twice, one shown at a time: a router link under 768 px (the intercepted drawer) and a plain anchor from 768 px, which is never in view
+  // on a phone and so never fetched ahead, and is not in the accessibility tree while hidden (D64, bloat review step 2.2).
+  return (
+    <>
+      <Link href={href} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5 md:hidden">
+        {inner}
+      </Link>
+      <a href={href} className="relative hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex">
+        {inner}
+      </a>
+    </>
   );
 }

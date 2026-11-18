@@ -29,9 +29,9 @@ export const SubscriptionButton = lazyView(dynamic(() => import("../subscription
 export const SubscriptionContentsForm = lazyView(dynamic(() => import("../subscription-contents-form").then((m) => m.SubscriptionContentsForm)));
 export const WishlistView = lazyView(dynamic(() => import("../wishlist-view").then((m) => m.WishlistView)));
 export const BonusCreditsForm = lazyView(dynamic(() => import("../bonus-credits-form").then((m) => m.BonusCreditsForm)));
-export const DeliverySetupForm = lazyView(dynamic(() => import("@/app/s/[store]/[market]/deliveries/delivery-forms").then((m) => m.DeliverySetupForm)));
-export const DeliveryAddressForm = lazyView(dynamic(() => import("@/app/s/[store]/[market]/deliveries/delivery-forms").then((m) => m.DeliveryAddressForm)));
-export const ConfirmButton = lazyView(dynamic(() => import("@/app/s/[store]/[market]/deliveries/delivery-forms").then((m) => m.ConfirmButton)));
+export const DeliverySetupForm = lazyView(dynamic(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms").then((m) => m.DeliverySetupForm)));
+export const DeliveryAddressForm = lazyView(dynamic(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms").then((m) => m.DeliveryAddressForm)));
+export const ConfirmButton = lazyView(dynamic(() => import("@/app/s/[store]/[market]/(shop)/deliveries/delivery-forms").then((m) => m.ConfirmButton)));
 export const RangePicker = lazyView(dynamic(() => import("../range-picker").then((m) => m.RangePicker)));
 export const AppointmentPicker = lazyView(dynamic(() => import("../appointment-picker").then((m) => m.AppointmentPicker)));
 export const GiftCardBuy = lazyView(dynamic(() => import("../gift-card-buy").then((m) => m.GiftCardBuy)));

@@ -140,8 +140,8 @@
         "src/lib/taxonomy.ts",
         "src/server/taxonomy.ts",
         "src/components/admin/terms.tsx",
-        "src/app/s/[store]/[market]/term-listing.tsx",
-        "src/app/s/[store]/[market]/category/[slug]/page.tsx",
+        "src/app/s/[store]/[market]/(shop)/term-listing.tsx",
+        "src/app/s/[store]/[market]/(shop)/category/[slug]/page.tsx",
         "src/lib/page-roles.ts",
         "src/db/schema.ts",
         "src/lib/term-texts.ts",
@@ -339,7 +339,7 @@
         "src/server/products.ts",
         "src/server/orders.ts",
         "src/server/order-admin.ts",
-        "src/app/s/[store]/[market]/download/[token]/route.ts"
+        "src/app/s/[store]/[market]/(shop)/download/[token]/route.ts"
       ],
       "tests": [
         "src/server/checkout.int.test.ts",
@@ -652,7 +652,7 @@
         "src/server/content-tools.ts",
         "src/components/admin/content-type-editor.tsx",
         "src/components/admin/entry-editor.tsx",
-        "src/app/s/[store]/[market]/[slug]/entry-page-view.tsx",
+        "src/app/s/[store]/[market]/(shop)/[slug]/entry-page-view.tsx",
         "src/server/entry-targets.ts",
         "supabase/archive/20261111172838/20261027001040_content_types_sql.sql",
         "supabase/archive/20261111172838/20261027024913_entry_pages_sql.sql"
@@ -720,7 +720,7 @@
         "src/lib/term-seo.ts",
         "src/server/taxonomy.ts",
         "src/server/store-translate.ts",
-        "src/app/s/[store]/[market]/term-listing.tsx"
+        "src/app/s/[store]/[market]/(shop)/term-listing.tsx"
       ],
       "tests": [
         "src/server/seo.int.test.ts",
@@ -1210,7 +1210,7 @@
         "src/server/company-locations.ts",
         "src/server/company-approvals.ts",
         "src/app/admin/(gated)/[store]/companies/[companyId]/locations-card.tsx",
-        "src/app/s/[store]/[market]/cart/company-purchase.tsx",
+        "src/app/s/[store]/[market]/(shop)/cart/company-purchase.tsx",
         "src/components/company-buying.tsx"
       ],
       "tests": [
@@ -1275,7 +1275,7 @@
         "src/server/price-lists.ts",
         "src/server/product-conditions.ts",
         "src/app/admin/(gated)/[store]/price-lists/[listId]/page.tsx",
-        "src/app/s/[store]/[market]/account/catalogue/page.tsx"
+        "src/app/s/[store]/[market]/(shop)/account/catalogue/page.tsx"
       ],
       "tests": [
         "src/lib/customer-tiers.test.ts",
@@ -1569,7 +1569,7 @@
         "src/server/search.ts",
         "src/server/analytics-search-data.ts",
         "src/app/admin/(gated)/[store]/search/page.tsx",
-        "src/app/s/[store]/[market]/search/go/route.ts"
+        "src/app/s/[store]/[market]/(shop)/search/go/route.ts"
       ],
       "tests": [
         "src/server/search.int.test.ts",

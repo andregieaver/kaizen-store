@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { applyCodeAction, removeCodeAction, type CodeState } from "@/app/s/[store]/[market]/cart/actions";
+import { applyCodeAction, removeCodeAction, type CodeState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 
 /**
  * The cart's discount codes (D31, D299 E2): each code on the cart with a way

@@ -11,12 +11,12 @@
       "max": 11018273
     },
     "store": {
-      "route": "/s/[store]/[market]/search/page",
+      "route": "/s/[store]/[market]/(shop)/search/page",
       "bytes": 11077742,
       "max": 11520852
     },
     "pay": {
-      "route": "/s/[store]/[market]/cart/page",
+      "route": "/s/[store]/[market]/(shop)/cart/page",
       "bytes": 11078224,
       "max": 11521353
     },

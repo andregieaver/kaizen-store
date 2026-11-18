@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { CartContents } from "@/app/s/[store]/[market]/cart/cart-contents";
+import { CartContents } from "@/app/s/[store]/[market]/(shop)/cart/cart-contents";
 import { CartDrawer } from "@/components/cart-drawer";
 import { DrawerBackground } from "@/components/drawer-background";
 import { surfaceClass } from "@/lib/background-surface";

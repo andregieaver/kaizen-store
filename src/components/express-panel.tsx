@@ -4,9 +4,9 @@ import { loadStripe, type StripeElementLocale } from "@stripe/stripe-js";
 import { CheckoutElementsProvider, ExpressCheckoutElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout";
 import { useMemo, useRef, useState } from "react";
 
-import { deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
-import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
-import type { ExpressState } from "@/app/s/[store]/[market]/cart/actions";
+import { deliveryReadyAction } from "@/app/s/[store]/[market]/(shop)/checkout/actions";
+import { recordTermsAction } from "@/app/s/[store]/[market]/(shop)/checkout/terms-actions";
+import type { ExpressState } from "@/app/s/[store]/[market]/(shop)/cart/actions";
 import { stripeAppearance, stripeFonts, type CheckoutAppearance } from "@/lib/checkout-appearance";
 import { payHeld, payStep } from "@/lib/checkout-terms";
 

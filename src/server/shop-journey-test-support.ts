@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-import { cartView } from "@/app/s/[store]/[market]/cart/cart-view";
+import { cartView } from "@/app/s/[store]/[market]/(shop)/cart/cart-view";
 import { t } from "@/lib/i18n";
 import { parseListingParams } from "@/lib/listing-filters";
 import type { OrderListInput } from "@/lib/order-list";
