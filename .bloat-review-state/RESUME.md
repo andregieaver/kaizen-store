@@ -326,3 +326,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.17 written up (In progress; week's pg_stat_statements + list look).
 - 2.13 pushed 23d3b5425 (product page 12->1 statements; buy facts cached; product_terms kept). After CI: D-row; follow-up: getProduct()'s hosts/product_market_texts/selling_plans reads.
 - 18 Nov ~23: CI on 2.13 failed at route-budget (manifest 11,911,903 > 11,406,364+4%, other session's new server actions). Accepted today's figure 8f1ba1e75; CI watched bil83qa9x (Playwright for 2.13). kz-b 2.18 af99a51a962e605a6, kz-c 2.33 a08563e3a7a090c4c.
+- 2.18 pushed 38759d010 (frame.platform 17->11, cookie-scan 14->7, siteCookies 1, experiments 6->2 cached). After CI: D-row. kz-b free.
+- 2.33 c1 pushed 00d7bddd8 (migration two_step_mirror_reconcile; sign-in reconciles mirror, fails closed). c2 STOPPED: trusting empty mirror lets enrolled-unmirrored accounts skip 2FA and Auth-down case; needs prod count 0 + owner decision. back-in-stock e2e fixed 4cc84650a (two stores, buy facts cached). Disk cleaned to 9.6G. kz-c: 2.42.
+- 2.42 c1 REJECTED in review: ts7 devDep's tsc bin shadowed TS6 (gate would run TS7, 11 TS7-only errors). Executor a40c9e4b402c83c2f resumed to redo via pnpm dlx typescript@7.0.2 in trial step only. Main typechecks clean (00d7bddd8).
