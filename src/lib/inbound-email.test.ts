@@ -11,9 +11,11 @@ import {
   inboundDomain,
   messageIdOf,
   messageOf,
+  referencedIds,
   replyAddress,
   replyOnly,
   routeOf,
+  THREAD_IDS_MAX,
 } from "./inbound-email";
 import { MESSAGE_MAX } from "./support-rules";
 
@@ -109,5 +111,30 @@ describe("subjects and threads", () => {
     expect(messageIdOf("abc@mail.example.com")).toBe("<abc@mail.example.com>");
     expect(messageIdOf("<abc@mail.example.com>")).toBe("<abc@mail.example.com>");
     expect(messageIdOf("bad\r\nheader: injected")).toBeNull();
+  });
+});
+
+describe("which conversation a reply continues", () => {
+  it("reads In-Reply-To first, then References from the newest back, without repeats", () => {
+    expect(
+      referencedIds({
+        "In-Reply-To": "<answer-2@resend.dev>",
+        References: "<first@mail.example.com> <answer-1@resend.dev>\r\n <second@mail.example.com> <answer-2@resend.dev>",
+      }),
+    ).toEqual(["<answer-2@resend.dev>", "<second@mail.example.com>", "<answer-1@resend.dev>", "<first@mail.example.com>"]);
+  });
+
+  it("finds the headers whatever their case, and nothing in an email that answers no one", () => {
+    expect(referencedIds({ "in-reply-to": "<a@x.example>" })).toEqual(["<a@x.example>"]);
+    expect(referencedIds({ references: ["<a@x.example>", "<b@x.example>"] })).toEqual(["<b@x.example>", "<a@x.example>"]);
+    expect(referencedIds({})).toEqual([]);
+    expect(referencedIds({ "In-Reply-To": "not an id" })).toEqual([]);
+  });
+
+  it("looks at no more than THREAD_IDS_MAX ids", () => {
+    const many = Array.from({ length: 50 }, (_, i) => `<m${i}@x.example>`).join(" ");
+    const ids = referencedIds({ References: many });
+    expect(ids).toHaveLength(THREAD_IDS_MAX);
+    expect(ids[0]).toBe("<m49@x.example>");
   });
 });
