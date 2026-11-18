@@ -319,6 +319,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   platform_integration_deliveries: "platform_applicants",
   abandoned_plan_checkouts: "platform_applicants",
   accessibility_settings: "platform_service",
+  privacy_officers: "platform_service",
   assistant_memories: "platform_service",
   assistant_messages: "platform_service",
   assistant_notices: "platform_service",

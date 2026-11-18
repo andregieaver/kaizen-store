@@ -285,6 +285,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     OWN +
     " Slettes 30 dager etter hendelsen, som butikkenes; når forespørselen tømmes (oppbevaringsregelen eller kontoens egen sletting), tømmes innholdet i alle hendelser om den med en gang.",
   accessibility_settings: "Butikkens egen kontakt for tilgjengelighetserklæringen. " + OWN,
+  privacy_officers: "Personvernombudet kontoen eller butikken oppgir (D763): vises i personvernerklæringen slik loven krever; slettes med butikken eller kontoen, eller når eieren endrer det. " + OWN,
   assistant_memories:
     "KI-assistentens minne om en ansatt; en oppbevaringstid er opp til eieren av KI-assistenten (docs/wave-1g-gdpr.md avsnitt 7); slettes når personen sletter sin egen konto (D377). Personen laster ned minnene sine som en fil fra minnesiden og sletter noen av dem eller alle; et minne beholder aldri kontaktopplysninger eller numre som identifiserer noen (`NEVER_KEPT`), og et minne som navngir en kunde, slettes når kundens opplysninger slettes (PSI AGT-07).",
   assistant_messages:

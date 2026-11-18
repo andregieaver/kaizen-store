@@ -148,6 +148,7 @@ export const DA: StarterText = {
     "privacy.controller.2": "Butikken kører på platformen Kaizena Flow. Platformen behandler personoplysninger på vores vegne, som vores databehandler.",
     "h.privacy.contact": "Kontakt",
     "privacy.contact.1": "Spørgsmål om dine personoplysninger: {email}. Telefon: {phone}.",
+    "privacy.contact.officer": "Vores databeskyttelsesrådgiver: {officer}.",
     "h.privacy.purposes_basis": "Hvad vi bruger oplysningerne til",
     "privacy.purposes.1": "Vi bruger personoplysninger til disse formål, hvert på det retlige grundlag, der er angivet:",
     "privacy.purpose.orders": "at modtage, tage betaling for, levere og følge op på dine bestillinger, og at bekræfte og sende dig det, du har købt (opfyldelse af aftalen)",

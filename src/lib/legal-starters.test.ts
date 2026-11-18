@@ -78,6 +78,8 @@ const VARIANTS: Record<string, LegalFacts> = {
   noShow: assembleLegalFacts(input({ noShowFee: true })),
   // The browse email is on (D691).
   browse: assembleLegalFacts(input({ browseEmails: true })),
+  // A data protection officer is named (D763).
+  officer: { ...FULL, privacyOfficer: { name: "Ola Ombud", email: "dpo@example.no" } },
   empty: assembleLegalFacts(
     input({
       store: { name: "", legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: null, audience: "consumers", visitCounting: false, modules: [], tracking: {} },
@@ -602,5 +604,18 @@ describe("heatmaps and recordings in the legal facts (D656)", () => {
     delete before.recordings;
     expect(off).toEqual(assembleLegalFacts(input({ store: before })));
     expect(FULL).toMatchObject({ heatmaps: true, sessionRecordings: true });
+  });
+});
+
+describe("the privacy statement's data protection officer (D763)", () => {
+  it("names the officer under Contact only when one is named", () => {
+    const text = (facts: typeof FULL) =>
+      legalStarterSections("privacy", "en", facts)
+        .flatMap((s) => s.blocks)
+        .map((b) => ("p" in b ? b.p : b.ul.join(" ")))
+        .join("\n");
+    expect(text({ ...FULL, privacyOfficer: { name: "Ola Ombud", email: "dpo@example.no" } })).toContain("Our data protection officer: Ola Ombud, dpo@example.no.");
+    expect(text({ ...FULL, privacyOfficer: { name: null, email: "dpo@example.no" } })).toContain("Our data protection officer: dpo@example.no.");
+    expect(text(FULL)).not.toContain("data protection officer");
   });
 });
