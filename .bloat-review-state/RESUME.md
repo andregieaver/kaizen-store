@@ -274,3 +274,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-c executor a92b7eae36e9a74e8 (Opus): 1.7 commit 2+, option (b) second server with dummy test keys.
 - 18 Nov: CI on 1e7d19649: shop-journey product scanned product_terms in shard 2 (planner stats); added to list in 3bc5d53b5, CI watched bash bfi33jang. If green: write up 1.12 Done (claim D).
 - 18 Nov: 1.12 Done D753 (afb07cae5). e2e red since 873efcd84 (1.6): Orbit picture bytes 223,837 vs 150,500 and theme-store.spec:118 preset lost; sent to kz-c executor a92b7eae36e9a74e8 to fix first, it reports via SendMessage. Blocks migration pushes (1.19 c2).
+- 18 Nov: 1.6 e2e fix pushed f101c4791 (pin 4G for lazy-load distance; theme-store waits for preset href). CI watched bash bb1n9q0in. Product note for owner: Preview pressed <300ms after load ignores ?preset (ThemePreviewStage reads it in browser).
