@@ -320,3 +320,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.2 pushed b3a90442c (home 135,935->105,599 bytes; layout once; dup bound 3,000 in review). CI watched b9p03rley. Then D-row 2.2 (refines D64). kz-c: 2.3 next.
 - 2.2 deployed (prod b3a90442c); its e2e was cut by 30-min job limit on a slow runner after 699 passed. e2e timeout -> 40 (982c8fd73), CI watched; then 2.2 D-row.
 - 2.2 Done D776 (CI green 982c8fd73). Running: kz-c 2.3 a8ccb1047468c0235, kz-b 2.17 aac37d0a03296251b.
+- 2.3 pushed d0aa131fc (om-oss doc 81,000 in review), CI watched by1g4hxf5; then D-row. kz-c: 2.13 next.
+- 2.17 pushed 135226258 (lists paged 100, grids cards from SQL, pageDocuments 17 + pageDocumentsOneRow 33). After CI: D-row; screenshot of pager not taken.
+- 2.3 Done D777 (5347e33a7). 2.17 CI watched ba6mv6bum (prod already 135226258). kz-b 2.18 af99a51a962e605a6 (Opus), kz-c 2.13 a3405673ece3f95a7.
