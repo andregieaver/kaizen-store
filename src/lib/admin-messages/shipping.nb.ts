@@ -221,6 +221,15 @@ export const shippingNb: ShippingMessages = {
     },
   },
   zones: {
+    /** Round 48 (D756): what a phone shows. */
+    phone: {
+      lead: "Postnumre som koster mer, eller mindre, å sende til.",
+      addSub: "Et navn og numrene, som 8*, 9*",
+      rules: "Slik leses numrene",
+      rulesSub: "Numre, prefikser, det mest presise vinner",
+      open: "Åpne",
+      close: "Lukk",
+    },
     help: "Postnumre som 0150, eller prefikser som 01* for alle postnumre som begynner på 01, skilt med komma, mellomrom eller linjer. Et postnummer hører til sonen med det mest presise mønsteret; postnumre som ikke er i noen sone, er Resten av landet. Høyst {patterns} postnumre og {chars} tegn per sone.",
     checkTitle: "Sjekk et postnummer",
     checkDescription: "Hvilken sone et postnummer i {market} er i, og hvilke fraktmetoder som har en pris der.",

@@ -6,6 +6,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { requireFeature } from "@/components/admin/feature-off";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { DropShipWaitForm, SupplierFormCard } from "@/components/admin/inventory/suppliers-view";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -33,10 +34,17 @@ export default async function SuppliersPage({ params }: Props) {
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
-  const w = adminText(lang, "inventory").pages.suppliers;
+  const all = adminText(lang, "inventory");
+  const w = all.pages.suppliers;
   return (
     <div className="flex flex-col gap-6">
-      <InventoryHead slug={store.slug} active="suppliers" title={w.title} intro={w.intro} lang={lang} />
+      <InventoryHead
+        slug={store.slug}
+        active="suppliers"
+        title={w.title}
+        intro={<><span className="sm:hidden">{all.phone.suppliersLead}</span><span className="max-sm:hidden">{w.intro}</span></>}
+        lang={lang}
+      />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -48,7 +56,10 @@ async function Body({ storeSlug }: { storeSlug: string }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
-  const w = adminText(lang, "inventory").suppliers;
+  const t = adminText(lang, "inventory");
+  const w = t.suppliers;
+  const pw = t.phone;
+  const write = memberCan(member, "products:write");
   const [suppliers, performance, wait] = await Promise.all([listDropShipSuppliers(store.id), supplierPerformance(store.id), dropShipWait(store.id)]);
   const perf = new Map(performance.map((p) => [p.supplierId, p]));
   const base = inventoryPaths(store.slug).suppliers;
@@ -58,7 +69,21 @@ async function Body({ storeSlug }: { storeSlug: string }) {
         {suppliers.length === 0 ? (
           <p className="max-w-3xl text-sm text-muted">{w.none}</p>
         ) : (
-          <div className={tableShell}>
+          <>
+          {/* Round 48 (D756): on a phone each supplier is a line: where it ships from, how fast, how many products. */}
+          <ul role="list" aria-label={w.caption} className="divide-y divide-line rounded-panel bg-card px-4 sm:hidden">
+            {suppliers.map((s) => (
+              <li key={s.id} className="flex min-h-14 flex-col justify-center gap-0.5 py-2">
+                <Link href={`${base}/${s.id}`} className="text-body text-ink underline underline-offset-2">
+                  {s.name}
+                </Link>
+                <span className="text-caption text-ink-2">
+                  {[countryName(s.shipsFrom), countWords(s.dispatchDays, w.days), countWords(s.variants, w.variants)].join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className={`${tableShell} max-sm:hidden`}>
             <table className="w-full text-sm">
               <caption className="sr-only">{w.caption}</caption>
               <thead>
@@ -96,8 +121,12 @@ async function Body({ storeSlug }: { storeSlug: string }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
-        {memberCan(member, "products:write") && (
+        {/* On a phone adding a supplier and the wait are rows of one card. */}
+        {write && (
+          <PhoneRows>
+          <PhoneRow flat last={suppliers.length === 0} title={w.addTitle} sub={pw.addSupplierSub} change={pw.open} done={pw.close}>
           <SupplierFormCard
             id={null}
             countries={supplierCountries()}
@@ -105,9 +134,16 @@ async function Body({ storeSlug }: { storeSlug: string }) {
             save={saveSupplierAction.bind(null, store.slug)}
             supplierBase={base}
           />
+          </PhoneRow>
+          {suppliers.length > 0 && (
+            <PhoneRow flat last title={w.waitTitle} sub={fillWords(pw.waitSub, { minutes: wait })} change={pw.change} done={pw.done}>
+              <DropShipWaitForm minutes={wait} save={saveWaitAction.bind(null, store.slug)} />
+            </PhoneRow>
+          )}
+          </PhoneRows>
         )}
-        {memberCan(member, "products:write") && suppliers.length > 0 && <DropShipWaitForm minutes={wait} save={saveWaitAction.bind(null, store.slug)} />}
-        <p className={`${hint} max-w-3xl`}>{w.seller}</p>
+        <p className={`${hint} max-w-3xl sm:hidden`}>{pw.seller}</p>
+        <p className={`${hint} max-w-3xl max-sm:hidden`}>{w.seller}</p>
       </div>
     </AdminTextScope>
   );

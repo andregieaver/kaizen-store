@@ -903,6 +903,19 @@ export const settingsEn = {
   },
   /** Customs and duties (wave 7 unit I, D343): who pays duties and import VAT in each country the goods cross a customs border into. */
   privateMode: {
+    /** Round 48 (D756): what a phone shows. */
+    phone: {
+      lead: "While private, visitors see only a landing page.",
+      noPassword: "None: only your team can come in",
+      hasPassword: "Set: visitors with it can come in",
+      signOutSub: "Ask everyone for the password again",
+      landingSub: "What visitors see meanwhile",
+      previewSub: "The store without the password, 12 hours",
+      choose: "Choose",
+      open: "Open",
+      change: "Change",
+      done: "Done",
+    },
     title: "Private mode",
     description: "While the store is private, visitors see only its landing page. Orders already placed keep their pages.",
     statePrivate: "Private: visitors see your landing page.",

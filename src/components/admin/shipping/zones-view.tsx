@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Card } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { shippingEn, type ShippingMessages } from "@/lib/admin-messages/shipping.en";
@@ -41,7 +42,8 @@ export function ZonesView({
   return (
     <div className="flex flex-col gap-6">
       {check && (
-      <Card title={w.checkTitle} description={fillWords(w.checkDescription, { market: market.name })}>
+      // Round 48 (D756): on a phone the cards' explanations wait: how codes match is a row, and adding a zone a row that opens the form.
+      <Card title={w.checkTitle} description={<span className="max-sm:hidden">{fillWords(w.checkDescription, { market: market.name })}</span>}>
         <ActionForm action={check} className="flex flex-wrap items-end gap-3" successMessage="">
           <label className="flex flex-col gap-1 text-sm">
             {w.postalCode}
@@ -52,7 +54,7 @@ export function ZonesView({
       </Card>
       )}
 
-      <Card title={fillWords(w.title, { market: market.name })} count={zones.length} description={help}>
+      <Card title={fillWords(w.title, { market: market.name })} count={zones.length} description={<span className="max-sm:hidden">{help}</span>}>
         {zones.length === 0 ? (
           <p className="text-sm text-muted">{fillWords(w.empty, { market: market.name })}</p>
         ) : (
@@ -86,12 +88,19 @@ export function ZonesView({
             ))}
           </ul>
         )}
+        <div className="mt-2 border-t border-line sm:hidden">
+          <PhoneRow inset last title={w.phone.rules} sub={w.phone.rulesSub} change={w.phone.open} done={w.phone.close}>
+            <p className="text-sm text-muted">{help}</p>
+          </PhoneRow>
+        </div>
       </Card>
 
       {canWrite &&
         (zones.length >= ZONES_MAX ? (
           <p className="text-sm text-muted">{fillWords(w.full, { market: market.name, max: ZONES_MAX })}</p>
         ) : (
+          <div className="max-sm:overflow-hidden max-sm:rounded-card">
+          <PhoneRow flat last title={w.addTitle} sub={w.phone.addSub} change={w.phone.open} done={w.phone.close}>
           <Card title={w.addTitle} description={w.addDescription}>
             <ActionForm action={save(null)} className="flex flex-col gap-3">
               <label className="flex flex-col gap-1 text-sm">
@@ -107,6 +116,8 @@ export function ZonesView({
               </div>
             </ActionForm>
           </Card>
+          </PhoneRow>
+          </div>
         ))}
     </div>
   );

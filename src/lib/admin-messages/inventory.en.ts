@@ -38,6 +38,10 @@ export const inventoryEn = {
     close: "Close",
     change: "Change",
     done: "Done",
+    suppliersLead: "They send your products to your customers, in your name.",
+    addSupplierSub: "A name and where it ships from",
+    waitSub: "{minutes} min, for a quick cancellation",
+    seller: "You are the seller: VAT, invoices, withdrawals and refunds are yours.",
   },
   pages: {
     list: {

@@ -30,7 +30,7 @@ export default async function ShippingZonesPage({ params, searchParams }: PagePr
       <PageHeader
         back={{ href: base, label: all.pages.back }}
         title={all.pages.zonesTitle}
-        description={all.pages.zonesDescription}
+        description={<><span className="sm:hidden">{all.zones.phone.lead}</span><span className="max-sm:hidden">{all.pages.zonesDescription}</span></>}
       />
       {market && (
         <>
