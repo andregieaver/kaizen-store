@@ -14,6 +14,7 @@ A number rises only where its row says so, with a decision.
 | src/server/ratchet.baseline.json | src/server/ratchet.scan.test.ts | node scripts/ratchet.mjs | unchecked reads, casts through unknown, switched-off any rules, writes by id without the store |
 | src/server/ratchet.baseline.json, key adminRepeats | src/server/ratchet.scan.test.ts | node scripts/ratchet.mjs (--first accepts a rise, shown in the diff) | the admin's action files off the wrapper, tables, native selects, literal Europe/Oslo and confirm( calls |
 | src/lib/copies.baseline.json | src/lib/copies.scan.test.ts | node scripts/copies.mjs lowers; --write --reason "…" accepts a copy made on purpose | exact copies across and inside files, near copies, twin pairs (each with its reason), helpers identical in three files |
+| src/server/unused.baseline.json | src/server/unused.scan.test.ts | node scripts/unused.mjs lowers; --write --first adds an export (shown in the diff); a reason is written by hand | exports nothing imports (by name), exports only tests use (by count, only falls), tests-only files, public files and API routes nothing names, each with its reason |
 | src/lib/surface-budget.baseline.json | src/lib/surface-budget.scan.test.ts and the new-store case in src/db/commerce.test.ts | node scripts/surface-budget.mjs lowers; --raise D<n> raises, and only when decision D<n> has an 'Idle cost:' line | 14 surface counts, the hot tables' indexes and triggers, a new store's rows, the twins kept on purpose |
 | src/lib/admin-strings.baseline.json | src/lib/admin-strings.scan.test.ts | UPDATE_ADMIN_STRINGS=1 pnpm exec vitest run src/lib/admin-strings.scan.test.ts | English written into admin markup, per file |
 | src/lib/permissions.baseline.json | src/lib/permissions.scan.test.ts and src/lib/permissions.matrix.test.ts | never rewritten (the oracle from before roles; scripts/permission-baseline.mjs made it once) | what each admin entry point asked for before roles |
@@ -139,3 +140,11 @@ push (`src/lib/ci-once.scan.test.ts`).
 `pending`. It stays right only while no lint rule reads more than one file (`src/lib/ci-once.scan.test.ts`).
 
 A push of tests alone (`*.test.ts`, `e2e/**`, `src/test/**`) is checked but not deployed (`scripts/deploy-needed.mjs`).
+
+## The visitor's pages
+
+e2e/performance.spec.ts (first scripts, documents, stylesheets, wire bytes and late scripts of the visitor's pages)
+and e2e/prefetch.spec.ts (router requests of five pages) hold figures in CI's e2e job. They only fall.
+`E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts` prints each figure.
+Two counts in src/server/ratchet.baseline.json hold the statements that read a whole page document (pageDocumentReads)
+and the places that refresh a store's whole pages tag (pagesTagRefreshes); `node scripts/ratchet.mjs` lowers them.

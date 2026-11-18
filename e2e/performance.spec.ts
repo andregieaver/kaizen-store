@@ -1,4 +1,9 @@
+import { brotliCompressSync } from "node:zlib";
+
 import { expect, test, type Page } from "@playwright/test";
+
+import { parsePageContent } from "../src/lib/page-content";
+import { ORBIT_PACK, orbitHomePage } from "../src/lib/signature/orbit";
 
 import { storePageRows, testDb, testStore } from "./db";
 
@@ -7,22 +12,36 @@ import { storePageRows, testDb, testStore } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). Counted here, every `script[src]` of the page, Next's `nomodule` polyfills (112,541 bytes, in the page twice) included: 834,571 on 14 November 2026 after bloat review step 0.16 (the carousel's controls load where a carousel is drawn), which is 609,885 without them. Measured plus 3 % would be 860,000, above the step's ceiling of 615,000 without the polyfills, so the ceiling: 615,000 + 225,082, rounded down. */
-const FIRST_SCRIPTS_MAX = 840_000;
-
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
 
-/** The scripts the page's HTML asks for, each fetched as the browser would, with its text. */
-async function firstScripts(page: Page): Promise<{ url: string; text: string }[]> {
-  const urls = await page.locator("script[src]").evaluateAll((els) => els.map((el) => (el as HTMLScriptElement).src));
-  return Promise.all(urls.map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
+/** `E2E_MEASURE=1` prints every figure the budgets below are set from (`[first-scripts]`, `[document]`, `[stylesheet]`, `[wire]`) and holds none. */
+const MEASURE = process.env.E2E_MEASURE === "1";
+
+/**
+ * The scripts the page's HTML asks for, as the server sends it, each fetched with its text, each file once: every `<script src>` tag
+ * but a `nomodule` one (Next's polyfills, 225,082 bytes twice over, which no browser that runs the page loads), never what the page has
+ * loaded by the time it is looked at, which grows with what it does after (bloat review step 1.3, as `e2e/signed-in/admin-scripts.spec.ts`).
+ */
+function scriptAddresses(html: string): string[] {
+  return [
+    ...new Set(
+      [...html.matchAll(/<script\b[^>]*>/g)]
+        .map((match) => match[0])
+        .filter((tag) => !/\snomodule\b/i.test(tag))
+        .map((tag) => /\ssrc="([^"]+)"/.exec(tag)?.[1])
+        .filter((src): src is string => Boolean(src))
+        .map((src) => new URL(src.replaceAll("&amp;", "&"), base).href),
+    ),
+  ];
 }
 
-test("the front page's first scripts stay within their budget, without zod or the lightbox", async ({ page }) => {
-  await page.goto("/s/demo/no");
-  const scripts = await firstScripts(page);
-  const total = scripts.reduce((sum, script) => sum + script.text.length, 0);
-  expect(total, `first scripts: ${total} bytes`).toBeLessThan(FIRST_SCRIPTS_MAX);
+async function firstScripts(page: Page, address: string): Promise<{ url: string; text: string }[]> {
+  const html = await (await page.request.get(address)).text();
+  return Promise.all(scriptAddresses(html).map(async (url) => ({ url, text: await (await page.request.get(url)).text() })));
+}
+
+test("the front page's first scripts carry no zod, no lightbox and no checkout form", async ({ page }) => {
+  const scripts = await firstScripts(page, "/s/demo/no");
   // zod's own messages: a schema in the visitor's scripts (`storefront-bundle.scan.test.ts` holds the imports; this, the build).
   expect(scripts.filter((script) => /invalid_type|ZodError/.test(script.text)).map((s) => s.url)).toEqual([]);
   // A part the page does not draw is not in its first scripts: the gallery's lightbox, the checkout's payment form.
@@ -36,36 +55,148 @@ test("the front page's first scripts stay within their budget, without zod or th
 });
 
 /**
- * Every other route a visitor or a person signing in meets first, each under its own first-scripts budget (PSI PERF-11), raw as above.
- * Measured on the build of 30 October 2026, after the signed-out pages stopped loading the admin's whole English text through
- * `ActionForm`, `PasswordField` and the sign-in panels (2.0 to 2.1 MB each before): the product page 993 KB, Kaizena Flow's front page
- * 827 KB, sign-up 840 KB, status 837 KB, sign-in 714 KB, forgot password 713 KB. About 5 % of room; a change that passes one is a
- * regression to look at, not a number to raise.
+ * Every route a visitor or a person signing in meets first has its own first-scripts budget (PSI PERF-11; bloat review step 1.3), raw
+ * (before compression): the text of the files the server's HTML names, no `nomodule` file, each file once. The eight store routes
+ * (`/s/...`) are set to their figure plus 3 %, the six others to plus 4 %, each rounded up to the next 1,000. Measured on the build of
+ * 17 November 2026: the front page 614,339, the product page 662,244, the other store routes 729,906 each, Kaizena Flow's front page
+ * 608,377, sign-up 626,891, status 617,496, sign-in 487,166, forgot password 486,102, the docs page 498,519. A budget only falls: a change that lowers a figure by more than its room lowers the budget in the same change, and one
+ * that needs a budget raised says why in docs/decisions.md.
  */
 const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
-  // 879,873 on 14 November 2026 after bloat review step 0.16 (655,190 without the two `nomodule` polyfills counted here, 225,082;
-  // 778,503 without them before the step). Measured plus 3 % would be 907,000, above the step's ceiling of 670,000 without the
-  // polyfills, so the ceiling: 670,000 + 225,082, rounded down. No product picker is kept in first scripts (the range and appointment pickers, the
-  // gift card and the quote request load with the page that draws them, `lazy/shop.tsx`).
-  "/s/demo/no/p/demo-keramikkopp": 895_000,
-  "/": 870_000,
-  "/sign-up": 880_000,
-  "/status": 880_000,
-  "/admin/sign-in": 750_000,
-  "/admin/forgot-password": 750_000,
-  // A docs page (D442, D336): its frame's few parts, the search's dialog and the AI guide's button; the guide's panel loads only when
-  // opened (D444, `e2e/docs.spec.ts`). 606 KB on 4 November 2026.
-  "/docs/owners/getting-started/create-your-store": 640_000,
+  "/s/demo/no": 633_000,
+  "/s/demo/no/p/demo-keramikkopp": 683_000,
+  "/s/demo/no/om-oss": 633_000,
+  "/s/demo/no/category/belysning": 752_000,
+  "/s/demo/no/search?q=lampe": 752_000,
+  "/s/demo/no/cart": 752_000,
+  "/s/demo/no/checkout": 752_000,
+  "/s/demo/no/account": 752_000,
+  "/": 633_000,
+  "/sign-up": 652_000,
+  "/status": 643_000,
+  "/admin/sign-in": 507_000,
+  "/admin/forgot-password": 506_000,
+  "/docs/owners/getting-started/create-your-store": 519_000,
 };
 
 for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {
   test(`${path}'s first scripts stay within their budget`, async ({ page }) => {
-    await page.goto(path);
-    const scripts = await firstScripts(page);
+    const scripts = await firstScripts(page, path);
     const total = scripts.reduce((sum, script) => sum + script.text.length, 0);
+    if (MEASURE) {
+      console.log(`[first-scripts] ${path} ${total}`);
+      return;
+    }
     expect(total, `${path} first scripts: ${total} bytes`).toBeLessThan(max);
   });
 }
+
+/**
+ * The document a page sends and what is in it (bloat review step 1.3): `document` is the characters of the HTML, `payload` the characters
+ * of the inline scripts that carry the page's data to the browser (`self.__next_f.push(`), `main` the characters from the first `<main` to
+ * the last `</main>`. Five pages, the last a six-row page made from Orbit's home. Each budget is its figure plus 5 %, rounded up to the next
+ * 500, measured on the build of 17 November 2026 (the home 134,151 and its payload 93,017, the product page 138,003, /products 153,070 and 107,040, Kaizena Flow's front page 39,827, the six-row page 147,059). A budget only falls.
+ */
+async function documentOf(page: Page, address: string): Promise<{ document: number; payload: number; main: number }> {
+  const html = await (await page.request.get(address)).text();
+  const payload = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)]
+    .map((match) => match[1])
+    .filter((text) => text.startsWith("(self.__next_f=self.__next_f||[]).push(") || text.startsWith("self.__next_f.push("))
+    .reduce((sum, text) => sum + text.length, 0);
+  const from = html.indexOf("<main");
+  const to = html.lastIndexOf("</main>");
+  return { document: html.length, payload, main: from >= 0 && to > from ? to + "</main>".length - from : 0 };
+}
+
+const DOCUMENT_BUDGETS: Record<string, { document: number; payload: number; main: number }> = {
+  "/s/demo/no": { document: 141_000, payload: 98_000, main: 11_000 },
+  "/s/demo/no/p/demo-keramikkopp": { document: 145_000, payload: 95_500, main: 4_000 },
+  "/s/demo/no/products": { document: 161_000, payload: 112_500, main: 9_000 },
+  "/": { document: 42_000, payload: 25_500, main: 1_500 },
+  "six-row page": { document: 154_500, payload: 109_500, main: 18_000 },
+};
+
+test.describe("a page's document and its payload stay within their budgets", () => {
+  let sixRows = "";
+  test.beforeAll(async () => {
+    const content = parsePageContent(orbitHomePage(ORBIT_PACK, () => null));
+    expect(content).not.toBeNull();
+    expect(content!.rows).toHaveLength(6);
+    sixRows = await storePageRows("ytelse-seks-rader", content!.rows as never);
+  });
+
+  for (const [key, budget] of Object.entries(DOCUMENT_BUDGETS)) {
+    test(key, async ({ page }) => {
+      const measured = await documentOf(page, key === "six-row page" ? sixRows : key);
+      if (MEASURE) {
+        console.log(`[document] ${key} ${measured.document} ${measured.payload} ${measured.main}`);
+        return;
+      }
+      const text = `${key}: ${JSON.stringify(measured)}`;
+      expect(measured.document, text).toBeLessThan(budget.document);
+      expect(measured.payload, text).toBeLessThan(budget.payload);
+      expect(measured.main, text).toBeLessThan(budget.main);
+    });
+  }
+});
+
+/**
+ * The stylesheets a page links (bloat review step 1.3): every `<link>` whose `rel` is stylesheet and whose `href` is under `/_next/static/`
+ * (the fonts' route is not counted), each fetched once; `raw` is the sum of the bodies' bytes, `brotli` the sum of what Brotli makes of
+ * each. Each budget is its figure plus 4 %, rounded up to the next 500, measured on the build of 17 November 2026 (the store home and Kaizena Flow's front page, one file each: 217,830 raw and 28,866 Brotli, 183,124 raw on the review's build of 12 November; the admin's sign-in, two files: 238,913 raw and 32,362 Brotli).
+ * A budget only falls.
+ */
+async function stylesheetsOf(page: Page, address: string): Promise<{ raw: number; brotli: number; files: number }> {
+  const html = await (await page.request.get(address)).text();
+  const hrefs = [
+    ...new Set(
+      [...html.matchAll(/<link\b[^>]*>/g)]
+        .map((match) => match[0])
+        .filter((tag) => /\srel="stylesheet"/.test(tag))
+        .map((tag) => /\shref="([^"]+)"/.exec(tag)?.[1])
+        .filter((href): href is string => Boolean(href) && href!.startsWith("/_next/static/"))
+        .map((href) => new URL(href.replaceAll("&amp;", "&"), base).href),
+    ),
+  ];
+  const bodies = await Promise.all(hrefs.map(async (href) => (await page.request.get(href)).body()));
+  return {
+    raw: bodies.reduce((sum, body) => sum + Buffer.byteLength(body), 0),
+    brotli: bodies.reduce((sum, body) => sum + brotliCompressSync(body).length, 0),
+    files: hrefs.length,
+  };
+}
+
+const STYLESHEET_BUDGETS: Record<string, { raw: number; brotli: number }> = {
+  "/s/demo/no": { raw: 227_000, brotli: 30_500 },
+  "/": { raw: 227_000, brotli: 30_500 },
+  "/admin/sign-in": { raw: 248_500, brotli: 34_000 },
+};
+
+for (const [path, budget] of Object.entries(STYLESHEET_BUDGETS)) {
+  test(`${path}'s stylesheets stay within their budget, raw and Brotli`, async ({ page }) => {
+    const measured = await stylesheetsOf(page, path);
+    if (MEASURE) {
+      console.log(`[stylesheet] ${path} ${measured.raw} ${measured.brotli} ${measured.files} files`);
+      return;
+    }
+    const text = `${path}: ${JSON.stringify(measured)}`;
+    expect(measured.files, text).toBeGreaterThanOrEqual(1);
+    expect(measured.raw, text).toBeLessThan(budget.raw);
+    expect(measured.brotli, text).toBeLessThan(budget.brotli);
+  });
+}
+
+test("the store home's style text and breakpoint sheets stay few", async ({ page }) => {
+  const html = await (await page.request.get("/s/demo/no")).text();
+  const styleText = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].reduce((sum, match) => sum + match[1].length, 0);
+  const breakpointSheets = html.split("kz-bp-").length - 1;
+  if (MEASURE) {
+    console.log(`[style-text] /s/demo/no ${styleText} ${breakpointSheets}`);
+    return;
+  }
+  expect(styleText, "characters inside <style> elements").toBeLessThanOrEqual(6_000);
+  expect(breakpointSheets, "occurrences of kz-bp-").toBeLessThanOrEqual(4);
+});
 
 test("a page's scripts carry the texts its client components read, never a language's whole interface text (D212)", async ({ page }) => {
   // Each language's words for a store's summary, which only its whole module holds (the server's and the admin's).
@@ -243,17 +374,98 @@ test("a product tile takes the 800 px copy on a 3x phone, and no tile or gallery
 });
 
 /**
+ * Five pages as a phone loads them, from a cold cache until the network has been quiet for three seconds (bloat review step 1.3): the
+ * bytes on the wire (`wire`: body and headers of every request), the script files the page's HTML did not name (`lateScripts` and
+ * `lateScriptBytes`, decoded, held exactly: they are the build's, they do not wobble), the page's own fetches that are not the router's
+ * (`ownFetches`: the visit count, the tiles' call) and every request to another host (none is allowed). `wire` is its figure plus 4 %,
+ * rounded up to the next 1,000. Measured on the build of 17 November 2026 (three runs: the largest wire of each page is the figure: the front page 351,687, the product page 370,098, /products 360,361, /om-oss 405,020 and the cart 410,890 bytes; the late scripts, 3, 4, 3, 7 and 5 files, were the same each time). A budget only falls.
+ */
+const WIRE_BUDGETS: Record<string, { wire: number; lateScripts: number; lateScriptBytes: number; ownFetches: number }> = {
+  "/s/demo/no": { wire: 366_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 0 },
+  "/s/demo/no/p/demo-keramikkopp": { wire: 385_000, lateScripts: 4, lateScriptBytes: 65_979, ownFetches: 0 },
+  "/s/demo/no/products": { wire: 375_000, lateScripts: 3, lateScriptBytes: 61_416, ownFetches: 0 },
+  "/s/demo/no/om-oss": { wire: 422_000, lateScripts: 7, lateScriptBytes: 197_608, ownFetches: 0 },
+  "/s/demo/no/cart": { wire: 428_000, lateScripts: 5, lateScriptBytes: 81_954, ownFetches: 0 },
+};
+
+const QUIET_MS = 3_000;
+
+for (const [path, budget] of Object.entries(WIRE_BUDGETS)) {
+  test(`${path} on a phone: bytes on the wire, late scripts and the page's own calls stay within their budgets`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    try {
+      const firstTags = new Set(scriptAddresses(await (await context.request.get(path)).text()).map((url) => url.split("#")[0]));
+      const requests: Promise<{ url: string; type: string; bytes: number; router: boolean; bodyLength: number }>[] = [];
+      const last: string[] = [];
+      let moved = Date.now();
+      page.on("request", (request) => {
+        moved = Date.now();
+        last.push(request.url());
+      });
+      page.on("requestfinished", (request) => {
+        moved = Date.now();
+        requests.push(
+          (async () => {
+            const headers = await request.allHeaders();
+            const sizes = await request.sizes();
+            const type = request.resourceType();
+            const bodyLength = type === "script" ? ((await (await request.response())?.body().catch(() => null))?.length ?? 0) : 0;
+            return {
+              url: request.url(),
+              type,
+              bytes: sizes.responseBodySize + sizes.responseHeadersSize,
+              router: "next-router-prefetch" in headers || "next-router-segment-prefetch" in headers || "rsc" in headers,
+              bodyLength,
+            };
+          })().catch(() => ({ url: request.url(), type: "", bytes: 0, router: false, bodyLength: 0 })),
+        );
+      });
+      page.on("requestfailed", () => {
+        moved = Date.now();
+      });
+      await page.goto(path, { waitUntil: "load" });
+      const giveUp = Date.now() + 30_000;
+      while (Date.now() - moved < QUIET_MS) {
+        if (Date.now() > giveUp) throw new Error(`${path}: the page never went quiet; the last requests: ${last.slice(-5).join(", ")}`);
+        await page.waitForTimeout(250);
+      }
+      const seen = await Promise.all(requests);
+      const wire = seen.reduce((sum, r) => sum + r.bytes, 0);
+      const late = seen.filter((r) => r.type === "script" && !firstTags.has(r.url.split("#")[0]));
+      const lateScripts = late.length;
+      const lateScriptBytes = late.reduce((sum, r) => sum + r.bodyLength, 0);
+      const otherHosts = seen.filter((r) => new URL(r.url).host !== new URL(base).host && !r.url.startsWith("data:") && !r.url.startsWith("blob:")).map((r) => r.url);
+      const ownFetches = seen.filter((r) => (r.type === "fetch" || r.type === "xhr") && !r.router).length;
+      if (MEASURE) {
+        console.log(`[wire] ${path} ${wire} ${lateScripts} ${lateScriptBytes} ${ownFetches} ${otherHosts.length}`);
+        return;
+      }
+      const text = `${path}: wire ${wire}, late scripts ${lateScripts} (${lateScriptBytes} bytes: ${late.map((r) => r.url).join(", ")}), own fetches ${ownFetches}`;
+      expect(wire, text).toBeLessThan(budget.wire);
+      expect(lateScripts, text).toBe(budget.lateScripts);
+      expect(lateScriptBytes, text).toBe(budget.lateScriptBytes);
+      expect(ownFetches, text).toBeLessThanOrEqual(budget.ownFetches);
+      expect(otherHosts, `${path} asked another host for these`).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+/**
  * The demo store's front page and a product page as a phone loads them (D336): the bytes sent over the wire, the largest picture and
  * the time to the page's first byte, each under its budget. Bytes are as transferred (compressed), counted from every response the
  * page asked for until two seconds after it loaded; the first load is cold (its bytes are the weight), and the first byte is the
  * median of the three loads after it. Measured on the build of 2026-10-27: the front page 311 KB, the product page 331 KB, the largest
- * picture about 1 KB (the demo's pictures are drawings), the first byte under 10 ms. The budgets leave room for ordinary growth and a
+ * picture about 1 KB (the demo's pictures are drawings), the first byte under 10 ms. The weight is the page's wire budget above (one number per page; this load waits two seconds, the other until three quiet ones). The budgets leave room for ordinary growth and a
  * slower runner: a change that passes one is a regression to look at, not a number to raise.
  */
 const SPEED_BUDGETS = {
-  "/s/demo/no": { weight: 450_000, largestPicture: 200_000, firstByteMs: 250 },
-  "/s/demo/no/p/demo-keramikkopp": { weight: 450_000, largestPicture: 200_000, firstByteMs: 250 },
-} as const;
+  "/s/demo/no": { weight: WIRE_BUDGETS["/s/demo/no"].wire, largestPicture: 200_000, firstByteMs: 250 },
+  "/s/demo/no/p/demo-keramikkopp": { weight: WIRE_BUDGETS["/s/demo/no/p/demo-keramikkopp"].wire, largestPicture: 200_000, firstByteMs: 250 },
+};
 
 for (const [path, budget] of Object.entries(SPEED_BUDGETS)) {
   test(`${path} stays within its page weight, largest picture and first byte budget`, async ({ browser }) => {

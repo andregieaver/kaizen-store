@@ -18,6 +18,27 @@ export const inventoryEn = {
     nav: "Inventory",
     tabs: { list: "Inventory", history: "History", locations: "Locations", transfers: "Transfers", purchase_orders: "Purchase orders", suppliers: "Suppliers", import: "Import", export: "Export" },
   },
+  /** Round 46 (D750): the words a phone shows on Import, Purchase orders and History. */
+  phone: {
+    importLead: "Set stock from a counted file, checked before anything changes.",
+    importHint: "Needs the columns sku and on_hand. Nothing changes until you have seen the check.",
+    rules: "How the file is read",
+    rulesSub: "Columns, reasons, what is skipped",
+    importKept: "Your file is deleted {days} days after the import; the history stays.",
+    ordersLead: "What you buy; counted in, it adds stock and sets the cost.",
+    noOrders: "No purchase orders yet.",
+    newOrderSub: "A supplier, its lines and their cost",
+    more: "More about the order",
+    moreSub: "Reference, currency, arrival, lines from a file, a note",
+    historyLead: "Every change of a stock level, kept {months} months.",
+    filter: "Filter",
+    everything: "Every SKU, location and reason, any time",
+    historyKept: "Never edited: a wrong change is corrected by a new one.",
+    open: "Open",
+    close: "Close",
+    change: "Change",
+    done: "Done",
+  },
   pages: {
     list: {
       title: "Inventory",

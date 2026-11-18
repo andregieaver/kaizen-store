@@ -125,9 +125,22 @@ chunks (`route.mjs`) from 223,068 to 216,992.
 - `pnpm perf` builds nothing: after `pnpm build` it starts the app and runs Lighthouse on the demo store's front page, or on any
   address given (`pnpm perf https://kaizenalabs.com/`), for a phone and a computer, and lists the scores, the measures and the
   largest scripts; `--min=90` fails below a score.
-- `e2e/performance.spec.ts` holds what does not wobble: the demo front page's first scripts under a byte budget, without zod, the
-  lightbox, the checkout's payment form, the admin's words, the cookie catalogue's purposes or the filter's dialog; no language's whole interface text; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
-  background from its small copy; an embedded frame named.
+- `e2e/performance.spec.ts` holds what does not wobble, in the real build, with `E2E_MEASURE=1` printing every figure (17 November 2026):
+  - first scripts of 8 store routes (the files the server's HTML names, no `nomodule` tag, each file once), within 3 %: the front page
+    614,339 bytes, the product page 662,244, the other six store routes 729,906 or the front page's; six other routes within 4 %;
+  - the document, its payload and its main element for five pages (the front page 134,151 characters, 93,017 of payload), one a six-row page
+    made from Orbit's home, within 5 %;
+  - the stylesheets of three routes, raw and Brotli, within 4 % (the store home 217,830 raw, 28,866 Brotli), the store home's style text (at
+    most 6,000 characters; 4,365) and its breakpoint sheets (at most 4; 4);
+  - five pages on a phone from a cold cache until the network has been quiet for three seconds: bytes on the wire within 4 % (the front page
+    351,687), the late script files and their bytes exactly (the front page 3 files, 61,416 bytes), the page's own calls, no other host;
+  - no zod, lightbox or checkout form in the front page's scripts; no language's whole interface text; the first grid's and the first
+    row's pictures eager and the next ones lazy; a blurred background from its small copy; an embedded frame named.
+- `e2e/prefetch.spec.ts` holds a table of five pages' router requests on a phone, each the measured count plus 2 (the front page 21, a product page
+  20, a listing 22, the cart 22, the front door 0).
+- A budget only falls: a change that lowers a figure by more than its room lowers the budget in the same change, and a change that needs one
+  raised says why in docs/decisions.md.
+- These run in CI's full checks, which report beside the deploy of a push without a migration (D526), not before it.
 
 - A store page's first scripts are held by name in `src/lib/storefront-bundle.baseline.json` (the client modules the server code of the
   layout, a built page, the product page, a listing and the cart imports); a new one needs a lazy stand-in in `src/components/lazy` or a
@@ -175,7 +188,7 @@ document. Blocking each in turn: without the fonts 93 (largest paint 2.9 s), wit
 ## First scripts per route (PSI PERF-11, 30 October 2026)
 
 Every route a visitor or a person signing in meets first has its own first-scripts budget in `e2e/performance.spec.ts`
-(`FIRST_SCRIPTS_BUDGETS`, raw bytes, about 5 % above the build measured). Measuring them found Kaizena Flow's sign-up and status pages
+(`FIRST_SCRIPTS_BUDGETS`, raw bytes; see Checking: a store route within 3 % of the build measured, the others 4 %). Measuring them found Kaizena Flow's sign-up and status pages
 and the admin's sign-in and forgot-password pages loading 2.0 to 2.1 MB: `ActionForm`'s submit button read one word through
 `useAdminText()`, whose English fallback holds every area of the admin's catalogue. A part shown outside the signed-in admin reads its
 words through `src/components/admin/admin-text-context.tsx` (`useCommonText()`, `useSignInText()`, and `AdminTextProvider`, which carries no

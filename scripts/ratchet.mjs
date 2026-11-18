@@ -33,6 +33,8 @@ if (before && !process.argv.includes("--first")) {
   for (const [file, n] of Object.entries(now.untypedReads)) if (n > (before.untypedReads[file] ?? 0)) raised.push(`${file}: ${before.untypedReads[file] ?? 0} → ${n} unchecked reads`);
   for (const [file, n] of Object.entries(now.byIdWrites)) if (n > (before.byIdWrites?.[file] ?? 0)) raised.push(`${file}: ${before.byIdWrites?.[file] ?? 0} → ${n} writes by id without the store`);
   if (before.notDistinctStore) for (const [file, n] of Object.entries(now.notDistinctStore)) if (n > (before.notDistinctStore[file] ?? 0)) raised.push(`${file}: ${before.notDistinctStore[file] ?? 0} → ${n} uses of store_id is not distinct from`);
+  if (before.pageDocumentReads) for (const [file, n] of Object.entries(now.pageDocumentReads)) if (n > (before.pageDocumentReads[file] ?? 0)) raised.push(`${file}: ${before.pageDocumentReads[file] ?? 0} → ${n} reads of a whole page document`);
+  if (before.pagesTagRefreshes) for (const [file, n] of Object.entries(now.pagesTagRefreshes)) if (n > (before.pagesTagRefreshes[file] ?? 0)) raised.push(`${file}: ${before.pagesTagRefreshes[file] ?? 0} → ${n} refreshes of a store's whole pages tag`);
   if (now.unknownCasts > before.unknownCasts) raised.push(`as unknown as: ${before.unknownCasts} → ${now.unknownCasts}`);
   if (now.anySuppressed > before.anySuppressed) raised.push(`suppressed any: ${before.anySuppressed} → ${now.anySuppressed}`);
   if (now.filesOver100Kb > (before.filesOver100Kb ?? now.filesOver100Kb)) raised.push(`source files over 100 KB: ${before.filesOver100Kb} → ${now.filesOver100Kb}; split the file or move code out`);
@@ -54,5 +56,5 @@ console.log(
     `${sum(now.byIdWrites)} writes by id without the store in ${Object.keys(now.byIdWrites).length} files, ${now.unknownCasts} as unknown as, ` +
     `${now.anySuppressed} suppressed any, ${now.filesOver100Kb} files over 100 KB, ${now.filesOver2000Lines} over 2,000 lines, ` +
     `${sum(now.notDistinctStore)} store_id is not distinct from in ${Object.keys(now.notDistinctStore).length} files; ` +
-    `admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
+    `${sum(now.pageDocumentReads)} whole page documents read in ${Object.keys(now.pageDocumentReads).length} files, ${sum(now.pagesTagRefreshes)} refreshes of a store's whole pages tag in ${Object.keys(now.pagesTagRefreshes).length} files; admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
 );

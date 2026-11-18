@@ -14,13 +14,22 @@ export const UNKNOWN_CAST = /\bas unknown as\b/g;
 /** A store filter an index cannot serve (`store_id is not distinct from`, step 0.23): filter with `owned(storeId)` (`src/server/owned.ts`). */
 export const NOT_DISTINCT_STORE = /store_id\s+is\s+not\s+distinct\s+from/gi;
 export const ANY_SUPPRESSED = /eslint-disable(?:-next-line|-line)?[^\n]*no-explicit-any/g;
+/**
+ * A statement that selects the column `draft` or `published`, a page's whole document, from `commerce.pages` (bloat review step 1.3): a list reads
+ * the columns it shows, or one page by its id. `published_at`, `published is not null` and `published -> 'x'` do not count.
+ */
+export const PAGE_DOCUMENT_READ =
+  /\bselect\b(?:(?!`|\bselect\b)[\s\S])*?(?<![\w.])(?:\w+\.)?(?:draft|published)\b(?!_|\s+is\b|\s*->)(?:(?!`|\bselect\b)[\s\S])*?\bfrom\s+commerce\.pages\b/gi;
+/** A place that makes every built page of a store stale: refresh the page's own tag instead. */
+export const PAGES_TAG_REFRESH = /\b(?:refreshTag|refreshTagNow|invalidate|revalidateTag|updateTag)\(\s*pagesTag\(/g;
 
 /** A source file over this many bytes, or over this many lines, is counted (bloat review step 1.24). */
 export const BIG_FILE_BYTES = 100_000;
 export const LONG_FILE_LINES = 2_000;
 
 /** Tests, and what only tests use, are not held to it. */
-const NOT_COUNTED = /(\.test\.tsx?$|^src\/test\/|fixture\.ts$|test-support\.ts$)/;
+export const TEST_SUPPORT = /(fixtures?|test-support|testing|test-helper|test-days)\.tsx?$/;
+const NOT_COUNTED = new RegExp(`(\\.test\\.tsx?$|^src/test/|${TEST_SUPPORT.source})`);
 
 function sources(root, dir) {
   return readdirSync(path.join(root, dir)).flatMap((name) => {
@@ -108,6 +117,10 @@ export function ratchetCounts(root) {
   const byIdWrites = {};
   /** @type {Record<string, number>} */
   const notDistinctStore = {};
+  /** @type {Record<string, number>} */
+  const pageDocumentReads = {};
+  /** @type {Record<string, number>} */
+  const pagesTagRefreshes = {};
   const tables = storeTables(root);
   let unknownCasts = 0;
   let anySuppressed = 0;
@@ -121,10 +134,14 @@ export function ratchetCounts(root) {
     if (writes > 0) byIdWrites[file] = writes;
     const notDistinct = count(text, NOT_DISTINCT_STORE);
     if (notDistinct > 0) notDistinctStore[file] = notDistinct;
+    const documents = count(text, PAGE_DOCUMENT_READ);
+    if (documents > 0) pageDocumentReads[file] = documents;
+    const refreshes = count(text, PAGES_TAG_REFRESH);
+    if (refreshes > 0) pagesTagRefreshes[file] = refreshes;
     if (Buffer.byteLength(text) > BIG_FILE_BYTES) filesOver100Kb++;
     if (text.split("\n").length > LONG_FILE_LINES) filesOver2000Lines++;
     unknownCasts += count(text, UNKNOWN_CAST);
     anySuppressed += count(text, ANY_SUPPRESSED);
   }
-  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, adminRepeats: adminRepeats(root) };
+  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, pageDocumentReads, pagesTagRefreshes, adminRepeats: adminRepeats(root) };
 }

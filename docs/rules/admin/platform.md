@@ -178,6 +178,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   change after; `completePlanCheckout()` records it on return), and create
   more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
 
+## Accounts that own stores (D748, `docs/extensions.md`)
+
+- **Accounts that own stores (D748, `docs/extensions.md`)**: plans, billing and paid extensions move from the store to the account that
+  owns it, `commerce.organisations` (built in steps E1 to E11; E1 is built). Every store has `stores.organisation_id`, set by the database
+  when its transaction commits (`commerce.place_store()`, deferred triggers on `stores` and on owners in `store_members`): Kaizena Flow's own
+  stores (template, store templates, sandboxes, the house store) in the one `platform` organisation, every other in the organisation its
+  creator owns (`commerce.account_organisation()`, made on first need, named after the store, never after a person). A sandbox kept by its
+  visitor moves to theirs; a placed store otherwise stays. No code writes `organisation_id` by hand, and the screens say "account", never
+  "organisation". `src/db/organisations.test.ts` holds the rules.
+
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 
 - **Free trials and their end (D420, `src/server/store-trial.ts`)**: self-serve sign-up and every Dream Factory run give a store

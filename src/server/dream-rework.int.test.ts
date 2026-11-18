@@ -9,6 +9,9 @@ import type { TurnInput } from "./owner-assistant";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
+// Google Fonts is outside the database: the stand-in's new look would fetch Playfair Display, and a failed fetch in CI (run 1559) made the
+// look step try again, a fifth turn where four are held.
+vi.mock("./fonts", async (original) => ({ ...(await original<typeof import("./fonts")>()), installFonts: async () => ({ ok: true }) }));
 
 const { passMembership } = await import("./auth");
 const { advanceDreamRuns, agreeReworkPlan, applyRework, askReworkChange, keptChanges, latestDreamRun, startDreamRework, startDreamRun, stopDreamRun } = await import("./dream-factory");

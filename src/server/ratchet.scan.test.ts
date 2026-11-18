@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, CONFIRM_CALL, OSLO_ZONE, SELECT_TAG, TABLE_TAG, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ANY_SUPPRESSED, CONFIRM_CALL, OSLO_ZONE, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import baseline from "./ratchet.baseline.json";
 
 /**
@@ -18,11 +18,15 @@ const now = ratchetCounts(process.cwd()) as {
   untypedReads: Record<string, number>;
   byIdWrites: Record<string, number>;
   notDistinctStore: Record<string, number>;
+  pageDocumentReads: Record<string, number>;
+  pagesTagRefreshes: Record<string, number>;
   adminRepeats: Record<string, number>;
 };
 const recorded: Record<string, number> = baseline.untypedReads;
 const recordedWrites: Record<string, number> = baseline.byIdWrites;
 const recordedNotDistinct: Record<string, number> = baseline.notDistinctStore;
+const recordedDocuments: Record<string, number> = baseline.pageDocumentReads;
+const recordedRefreshes: Record<string, number> = baseline.pagesTagRefreshes;
 const recordedRepeats: Record<string, number> = baseline.adminRepeats;
 
 /** What to do instead, per count (bloat review step 1.17). A repeat made on purpose is accepted by `node scripts/ratchet.mjs --first`, shown in the diff. */
@@ -54,6 +58,17 @@ describe("the ratchet (code review 1.2)", () => {
       .filter(([file, n]) => n > (recordedNotDistinct[file] ?? 0))
       .map(([file, n]) => `${file}: ${n} uses of store_id is not distinct from, baseline ${recordedNotDistinct[file] ?? 0}. Filter with owned(storeId) (src/server/owned.ts); lower the baseline with node scripts/ratchet.mjs when a count falls.`);
     expect(raised).toEqual([]);
+  });
+
+  it("adds no read of a whole page document and no refresh of a store's whole pages tag (bloat review 1.3)", () => {
+    const documents = Object.entries(now.pageDocumentReads)
+      .filter(([file, n]) => n > (recordedDocuments[file] ?? 0))
+      .map(([file, n]) => `${file}: ${n} reads of a whole page document, baseline ${recordedDocuments[file] ?? 0}. Read the columns the list shows, or one page by its id (docs/performance.md).`);
+    const refreshes = Object.entries(now.pagesTagRefreshes)
+      .filter(([file, n]) => n > (recordedRefreshes[file] ?? 0))
+      .map(([file, n]) => `${file}: ${n} refreshes of a store's whole pages tag, baseline ${recordedRefreshes[file] ?? 0}. Refresh the page's own tag, not every page of the store.`);
+    expect(documents).toEqual([]);
+    expect(refreshes).toEqual([]);
   });
 
   it("adds no hand-made repeat in the admin (bloat review 1.17)", () => {
@@ -94,6 +109,12 @@ describe("the ratchet (code review 1.2)", () => {
     const repeatsFell = Object.entries(recordedRepeats)
       .filter(([key, n]) => (now.adminRepeats[key] ?? 0) < n)
       .map(([key, n]) => `admin ${key}: ${now.adminRepeats[key] ?? 0}, baseline ${n}`);
+    // The same for the two counts of step 1.3 (a note, never a failure: code is removed every day).
+    const pagesFell = [
+      ...Object.entries(recordedDocuments).filter(([file, n]) => (now.pageDocumentReads[file] ?? 0) < n).map(([file, n]) => `${file}: ${now.pageDocumentReads[file] ?? 0} whole page document reads, baseline ${n}`),
+      ...Object.entries(recordedRefreshes).filter(([file, n]) => (now.pagesTagRefreshes[file] ?? 0) < n).map(([file, n]) => `${file}: ${now.pagesTagRefreshes[file] ?? 0} whole pages tag refreshes, baseline ${n}`),
+    ];
+    if (pagesFell.length > 0) console.info(`ratchet: fell, lower with node scripts/ratchet.mjs: ${pagesFell.join("; ")}`);
     if (repeatsFell.length > 0) console.info(`ratchet: fell, lower with node scripts/ratchet.mjs: ${repeatsFell.join("; ")}`);
     expect(lower).toEqual([]);
   });
@@ -106,6 +127,14 @@ describe("the ratchet (code review 1.2)", () => {
     expect(n("where a.store_id is not distinct from ${x}::uuid and store_id\n  IS NOT DISTINCT FROM ${y}", NOT_DISTINCT_STORE)).toBe(2);
     expect(n("where ${owned(storeId)} and p.account_id is not distinct from ${a}::uuid", NOT_DISTINCT_STORE)).toBe(0);
     expect(n("// eslint-disable-next-line @typescript-eslint/no-explicit-any", ANY_SUPPRESSED)).toBe(1);
+    // A whole page document: the column draft or published read from commerce.pages (bloat review step 1.3).
+    expect(n("select id, draft from commerce.pages where id = 1", PAGE_DOCUMENT_READ)).toBe(1);
+    expect(n("select p.published from commerce.pages p", PAGE_DOCUMENT_READ)).toBe(1);
+    expect(n("select id, published_at from commerce.pages", PAGE_DOCUMENT_READ)).toBe(0);
+    expect(n("select id from commerce.pages where published is not null", PAGE_DOCUMENT_READ)).toBe(0);
+    expect(n("select published -> 'title' from commerce.pages", PAGE_DOCUMENT_READ)).toBe(0);
+    expect(n("refreshTag(pagesTag(store.id))", PAGES_TAG_REFRESH)).toBe(1);
+    expect(n("cacheTag(pagesTag(owner))", PAGES_TAG_REFRESH)).toBe(0);
     // A file is long past 2,000 lines, not at 2,000; big past 100,000 bytes.
     const lines = (k: number) => Array.from({ length: k }, () => "x").join("\n");
     expect(lines(2_001).split("\n").length > LONG_FILE_LINES).toBe(true);

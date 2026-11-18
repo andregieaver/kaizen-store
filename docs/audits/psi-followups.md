@@ -203,6 +203,7 @@ A new deferred item goes here and moves to its dated section when it is ticked.
       functions' region (Dublin) to its last byte and keeps the time in `status_checks.duration_ms` (never a reason to call the
       website down); Platform → Usage and limits shows the median and slowest 5 % over 7 days (`adminFromDublin()`).
       The first-scripts budgets cover every route since 17 November 2026 (`scripts/bundle-budget.mjs`).
+      Tightened and widened 18 November 2026: 8 store routes within 3%, documents, stylesheets and requests held (bloat review step 1.3).
 - [x] **SEC-02** Leaked-password protection is on (Supabase Auth, the owner, 25 October 2026), and the admin's password sign-in has
       its own limit per email: 10 wrong tries in 15 minutes stop it for that address, counted alike for every address under a keyed
       hash (`src/server/sign-in-limit.ts`); a sign-in link still works.

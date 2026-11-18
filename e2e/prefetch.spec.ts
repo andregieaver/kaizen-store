@@ -7,9 +7,21 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  * carries `_rsc=` or a `.segments` path.
  */
 // Measured before step 0.12: the phone home page read to the footer made 47 prefetches, 24 of them for other views (other languages, currencies and countries);
-// the /s/demo front door 12; Kaizena Flow's front page 2 /admin answers, 6 admin scripts and the admin's stylesheet. Budgets only fall (step 0.14 adds its cases
-// to this file and step 1.3 makes one table of them).
-const BUDGETS = { phoneHomePrefetches: 23, frontDoorPrefetches: 0 };
+// the /s/demo front door 12; Kaizena Flow's front page 2 /admin answers, 6 admin scripts and the admin's stylesheet. Budgets only fall.
+/**
+ * One budget per page (bloat review step 1.3): the router requests (`watch()`'s prefetches) a phone makes loading the page, reading to the footer, and
+ * waiting until no router request has started for three seconds. Each is the measured count plus 2 (counts wobble by one or two with what is in view),
+ * or the number step 0.12 set where that is stricter (the home page's 23, the front door's 0). `E2E_MEASURE=1` prints `[router] path count`.
+ * Measured on the build of 17 November 2026: the front page 19, a product page 18, a listing 20, the cart 20, the front door 0.
+ */
+const ROUTER_REQUESTS: Record<string, number> = {
+  "/s/demo/no": 21,
+  "/s/demo/no/p/demo-keramikkopp": 20,
+  "/s/demo/no/products": 22,
+  "/s/demo/no/cart": 22,
+  "/s/demo": 0,
+};
+const MEASURE = process.env.E2E_MEASURE === "1";
 const PAGES = ["/", "/s/demo", "/s/demo/no", "/s/demo/no/cart"];
 const PREFETCH_HEADERS = ["next-router-prefetch", "next-router-segment-prefetch"];
 
@@ -21,21 +33,24 @@ function watch(page: Page) {
   const requests: Promise<Seen>[] = [];
   const stylesheets: Sheet[] = [];
   let loaded = false;
+  let lastPrefetchAt = Date.now();
   page.on("load", () => {
     loaded = true;
   });
   page.on("request", (request) => {
     requests.push(
-      request.allHeaders().then((headers) => ({
-        path: new URL(request.url()).pathname,
-        prefetch: PREFETCH_HEADERS.some((name) => name in headers),
-        segment: headers["next-router-segment-prefetch"] ?? "",
-      })),
+      request.allHeaders().then((headers) => {
+        const prefetch = PREFETCH_HEADERS.some((name) => name in headers);
+        if (prefetch) lastPrefetchAt = Date.now();
+        return { path: new URL(request.url()).pathname, prefetch, segment: headers["next-router-segment-prefetch"] ?? "" };
+      }),
     );
     if (request.resourceType() === "stylesheet") stylesheets.push({ url: request.url(), afterLoad: loaded });
   });
   return {
     stylesheets,
+    /** Milliseconds since a router request last started. */
+    quietFor: () => Date.now() - lastPrefetchAt,
     all: () => Promise.all(requests),
     prefetches: async () => (await Promise.all(requests)).filter((seen) => seen.prefetch).map((seen) => seen.path),
     /** The same router prefetches with their segment header, for a report of what repeats. */
@@ -66,6 +81,31 @@ function marketOf(path: string): string {
   return (path.split("/")[3] ?? "").replace(/\.(segments|rsc)$/, "");
 }
 
+for (const [path, budget] of Object.entries(ROUTER_REQUESTS)) {
+  test(`${path} makes at most ${budget} router requests on a phone, and goes quiet`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    const { context, page } = await phone(browser);
+    try {
+      const seen = watch(page);
+      await page.goto(path);
+      await readToFooter(page);
+      const giveUp = Date.now() + 30_000;
+      while (seen.quietFor() < 3_000) {
+        if (Date.now() > giveUp) throw new Error(`${path}: the router never went quiet; most recent: ${(await seen.prefetches()).slice(-5).join(", ")}`);
+        await page.waitForTimeout(250);
+      }
+      const prefetches = await seen.prefetches();
+      if (MEASURE) {
+        console.log(`[router] ${path} ${prefetches.length}`);
+        return;
+      }
+      expect(prefetches.length, `router requests of ${path}:\n${prefetches.join("\n")}`).toBeLessThanOrEqual(budget);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 test("no other view is fetched ahead", async ({ browser }) => {
   test.setTimeout(120_000);
   const { context, page } = await phone(browser);
@@ -76,7 +116,7 @@ test("no other view is fetched ahead", async ({ browser }) => {
     const prefetches = await seen.prefetches();
     const others = prefetches.filter((path) => path.startsWith("/s/demo/") && marketOf(path) !== "no");
     expect(others, `prefetches for other views:\n${others.join("\n")}`).toEqual([]);
-    expect(prefetches.length, `all prefetches:\n${prefetches.join("\n")}`).toBeLessThanOrEqual(BUDGETS.phoneHomePrefetches);
+    expect(prefetches.length, `all prefetches:\n${prefetches.join("\n")}`).toBeLessThanOrEqual(ROUTER_REQUESTS["/s/demo/no"]);
   } finally {
     await context.close();
   }
@@ -89,7 +129,7 @@ test("the front door asks for nothing ahead", async ({ browser }) => {
     await page.goto("/s/demo");
     await page.waitForTimeout(3000);
     const prefetches = await seen.prefetches();
-    expect(prefetches, `front door prefetches:\n${prefetches.join("\n")}`).toHaveLength(BUDGETS.frontDoorPrefetches);
+    expect(prefetches, `front door prefetches:\n${prefetches.join("\n")}`).toHaveLength(ROUTER_REQUESTS["/s/demo"]);
   } finally {
     await context.close();
   }
