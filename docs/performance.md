@@ -534,6 +534,31 @@ A hole is a boundary that is not in the prerendered file (it streams at request 
 the country header, `searchParams`, stock, sign-in. The rule in one sentence: a new `cookies()`, `headers()` or `connection()` in a layout
 or a shared part moves every page under it to per-request, and `scripts/render-modes.mjs` says so in CI.
 
+## A store on a launch theme (bloat review step 1.6)
+
+The twelve measured store pages are the bare template: no font file, one-row pages, pictures of about 1 KB. CI's e2e job therefore seeds
+a store that wears Orbit whole before the build (`pnpm seed:themed`, `e2e/seed/themed-store.seed.ts`): the content packs and launch
+themes synced, Orbit's own content photographed and published, and a demo store made from them (`createDemoStore()`, `publishDemoStore()`)
+at `e2e-orbit`. Two things CI cannot reach are fixtures: the two families' latin files (`e2e/fixtures/fonts`, Unbounded and Manrope, OFL)
+are installed through the real `installFont()`, and the theme's art is resized with sharp into `public/e2e-orbit/` (1,600, 800 and 480
+px, never committed) and kept in the media library as an upload would leave it; each photograph Orbit's pack needs is its slot's art.
+`e2e/performance.spec.ts` (describe *a store on a launch theme*) holds the figures below, each its first measure plus 5 %.
+
+Measured on the build of 18 November 2026, on a fresh seed and again after the whole end-to-end suite had run (the same figures: the
+other specs do not touch this store). Characters for the document, payload, main and style text; bytes for the rest.
+
+| Page | Document | Payload | Main | Style text | Identical rows | Stylesheets | Font files | Pictures at 3x | Router requests |
+|---|---|---|---|---|---|---|---|---|---|
+| Home `/s/e2e-orbit/no` | 216,550 | 154,157 | 22,855 | 17,224 | 0 | 3: 217,830 + 584 + 576 | 2, 75,740 | 142,903, none too wide | 21 |
+| Product `/p/andromeda` | 177,126 | 124,513 | 10,533 | 11,376 | 0 | | | | |
+| Listing `/products` | 192,183 | 136,556 | 10,444 | 11,373 | 0 | | | | |
+| About `/about` | 153,134 | 112,645 | 4,833 | 12,709 | 0 | | | | |
+
+Both font files are preloaded, in the response's `Link` header (`FontPreloads`). Orbit's home as stored is 11,384 bytes, over the
+review's bar of 11,100 (its six pictures carry the test server's full address), and is held at 11,400. The first request after the
+server starts streams the product page in another order, tens of characters apart; later runs are identical. After phase 2 these pages are
+judged against the bare store's bars (`docs/rules/budgets.md`).
+
 ## Server budgets (bloat review step 1.11)
 
 `scripts/server-budget.mjs` is the one home of a store page's statement count: on the built app it counts the statements of the demo

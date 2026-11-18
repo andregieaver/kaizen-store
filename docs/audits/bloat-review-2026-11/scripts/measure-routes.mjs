@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // Measures what real pages of the production build send to a browser (bloat review, 11 Nov 2026).
-//   node measure-routes.mjs <outDir>
+//   node measure-routes.mjs <outDir> '{"product":"…","pageId":"…","themedProduct":"…","themedPage":"…"}'
+// product and pageId: a product id and a page id of e2e-shop, for the admin's editors. themedProduct and themedPage: the handle of a
+// product and the slug of a built page of e2e-orbit, the store on the Orbit theme that `pnpm seed:themed` makes before the build
+// (bloat review step 1.6; its first product and its about page: andromeda and about on 18 November 2026).
 // For each page: a cold browser (empty cache) against a warm server; every response's bytes as transferred (the server gzips)
 // and decoded; which scripts and styles were actually run or matched by the time the page was idle (V8 and CSS coverage);
 // what the document is made of (markup, inline RSC payload, inline styles); and what the page asks for after it has loaded.
@@ -21,6 +24,7 @@ const DESK = { viewport: { width: 1440, height: 900 } };
 
 const args = JSON.parse(process.argv[3] ?? "{}");
 const product = args.product, pageId = args.pageId;
+const themedProduct = args.themedProduct ?? "andromeda", themedPage = args.themedPage ?? "about";
 
 const PAGES = [
   // The demo store, as a shopper on a phone.
@@ -36,6 +40,11 @@ const PAGES = [
   { name: "store-checkout-empty", group: "storefront", path: "/s/demo/no/checkout", ...PHONE },
   { name: "store-account", group: "storefront", path: "/s/demo/no/account", ...PHONE },
   { name: "store-wishlist", group: "storefront", path: "/s/demo/no/wishlist", ...PHONE },
+  // A store on a launch theme (e2e-orbit, bloat review step 1.6), as a shopper on a phone.
+  { name: "themed-home", group: "storefront", path: "/s/e2e-orbit/no", ...PHONE },
+  { name: "themed-product", group: "storefront", path: `/s/e2e-orbit/no/p/${themedProduct}`, ...PHONE },
+  { name: "themed-products", group: "storefront", path: "/s/e2e-orbit/no/products", ...PHONE },
+  { name: "themed-page", group: "storefront", path: `/s/e2e-orbit/no/${themedPage}`, ...PHONE },
   // Kaizena Flow's own site.
   { name: "site-home", group: "site", path: "/", ...PHONE },
   { name: "site-blog-post", group: "site", path: "/blog/welcome", ...PHONE },

@@ -37,7 +37,7 @@ Run from the repository root. They were written for this review on one machine; 
 pnpm build                                    # as CI's signed-in job builds it
 pnpm start --port 3000 &                      # with e2e/fixtures/auth-stub.mjs beside it, for the admin pages
 E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in-setup   # saves e2e/.auth/owner.json and admin.json
-node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs out '{"product":"<a product id of e2e-shop>","pageId":"<a page id of e2e-shop>"}'
+node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs out '{"product":"<a product id of e2e-shop>","pageId":"<a page id of e2e-shop>","themedProduct":"andromeda","themedPage":"about"}'   # themed*: a product handle and a page slug of e2e-orbit (pnpm seed:themed before the build, step 1.6)
 node docs/audits/bloat-review-2026-11/scripts/routes-table.mjs out      # routes.json to routes.md
 node docs/audits/bloat-review-2026-11/scripts/storm.mjs "http://localhost:3000/s/demo/no/search?q=lampe" 8 phone
 

@@ -119,6 +119,17 @@ src/server/use-cache.scan.test.ts lists every cached read's `cacheLife()` and `c
 fails, and the rewrite's diff shows it in review; a new or removed read is only noted), asks each to have both unless NO_LIFE or NO_TAG names it with a reason, and holds that no file under
 src/app/admin/(gated)/[store] refreshes a tag that names no store but the five in PLATFORM_TAG_FROM_STORE. The three lists only shrink.
 
+### A store on a launch theme (step 1.6)
+
+CI's e2e job seeds e2e-orbit before the build (`pnpm seed:themed`, e2e/seed/themed-store.seed.ts): a demo store wearing Orbit
+whole, made by the platform's own functions, with two font families and its photographs in three sizes as fixtures.
+e2e/performance.spec.ts holds four of its pages (the home, its first product, the listing and the about page): the document, its
+payload and main, the style text and the identical rows of each; on the home also each stylesheet's bytes (a new sheet fails),
+at most 2 font files and 80 KB, each preloaded, no picture more than 1.5 times too wide on a 3x phone and the pictures' bytes,
+the router requests after load (the count plus 2), and the home as stored. Each figure is its first measure plus 5 %.
+A first figure is not the end: after phase 2 the themed pages are judged against the bare store's bars (router requests, the
+page's own calls, duplicate rows, late scripts), and step 4.5's table lists each figure beside its bar.
+
 ## Searches
 
 Default searches (ripgrep and the tools built on it) skip docs/shopify-parity.md, docs/wave-10-notes, docs/ab-testing-spike,

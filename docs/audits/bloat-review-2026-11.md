@@ -130,7 +130,7 @@ commit as the fix.
 | 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Done | 18 Nov, 42c9b03d, D752: home scripts 614 KB, wire 352 KB, 19 router requests. |
 | 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | Done | 17 Nov (15485362; D726): admin client modules walked; zod reach 145, catalogue imports 36 and 68 unread keys held; shop never imports admin words. |
 | 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | cheap | 0.9, 0.13, 0.1, 1.1 | Open | |
-| 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1, 0.43 | In progress | 18 Nov local: seed makes e2e-orbit; fonts 75,740 B |
+| 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1, 0.43 | In progress | 18 Nov: home 216,550, fonts 75,740 B, router 21; first figures held; judged after phase 2 |
 | 1.7 | Put a cart with products and the checkout's payment step into the measured set | GAP-shopper-browser-2 | M | strong | 1.3, 0.1 | Open | |
 | 1.8 | Hold what a server entry loads and carries | SG-14, SF-7, DP-6, AS-3, SG-16, GAP-server-s3 | M | review | 0.1, 0.4, 0.36, 1.1 | Open | |
 | 1.9 | Count statements: one counter, and the admin's five screens | AD-12 | M | review | 1.1 | Done | 17 Nov (0fe09cbe; D736): statement counter; five admin screens held (4, 33, 6, 5, 22); admin.render logged. Two faults fixed at review. |
