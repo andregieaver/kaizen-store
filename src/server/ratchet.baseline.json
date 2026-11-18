@@ -879,12 +879,12 @@
         "rowsRead": 0
       },
       "frame.platform": {
-        "statements": 17,
-        "rowsRead": 47
+        "statements": 11,
+        "rowsRead": 45
       },
       "frame.store": {
         "statements": 5,
-        "rowsRead": 66
+        "rowsRead": 58
       },
       "route.autopilot": {
         "statements": 26,
@@ -895,7 +895,7 @@
         "rowsRead": 4
       },
       "route.cookie-scan": {
-        "statements": 14,
+        "statements": 7,
         "rowsRead": 64
       },
       "route.dream-factory": {
@@ -929,6 +929,10 @@
       "route.usage": {
         "statements": 22,
         "rowsRead": 13
+      },
+      "siteCookies.store": {
+        "statements": 1,
+        "rowsRead": 14
       }
     },
     "twenty": {
@@ -1245,8 +1249,8 @@
         "rowsRead": 0
       },
       "frame.platform": {
-        "statements": 17,
-        "rowsRead": 329
+        "statements": 11,
+        "rowsRead": 287
       },
       "frame.store": {
         "statements": 5,
@@ -1261,8 +1265,8 @@
         "rowsRead": 8403
       },
       "route.cookie-scan": {
-        "statements": 14,
-        "rowsRead": 810
+        "statements": 7,
+        "rowsRead": 793
       },
       "route.dream-factory": {
         "statements": 4,
@@ -1295,6 +1299,10 @@
       "route.usage": {
         "statements": 22,
         "rowsRead": 223
+      },
+      "siteCookies.store": {
+        "statements": 1,
+        "rowsRead": 96
       }
     },
     "growth": {
@@ -1612,7 +1620,7 @@
       },
       "frame.platform": {
         "statements": 0,
-        "rowsRead": 282
+        "rowsRead": 242
       },
       "frame.store": {
         "statements": 0,
@@ -1628,7 +1636,7 @@
       },
       "route.cookie-scan": {
         "statements": 0,
-        "rowsRead": 746
+        "rowsRead": 729
       },
       "route.dream-factory": {
         "statements": 0,
@@ -1661,6 +1669,10 @@
       "route.usage": {
         "statements": 0,
         "rowsRead": 210
+      },
+      "siteCookies.store": {
+        "statements": 0,
+        "rowsRead": 82
       }
     }
   },

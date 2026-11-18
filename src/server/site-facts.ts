@@ -88,10 +88,10 @@ export async function siteFacts(storeId: string | null): Promise<SiteFacts> {
     FACTS,
     sql`
       select
-        ${store ? sql`(select features from commerce.stores where id = ${store})` : sql`null::text[]`} as features,
-        ${store ? sql`coalesce((select visit_counting from commerce.stores where id = ${store}), false)` : sql`false`} as visit_counting,
-        ${store ? sql`coalesce((select heatmaps from commerce.stores where id = ${store}), false)` : sql`false`} as heatmaps,
-        ${store ? sql`coalesce((select recordings from commerce.stores where id = ${store}), false)` : sql`false`} as recordings,
+        ${store ? sql`st.features` : sql`null::text[]`} as features,
+        ${store ? sql`coalesce(st.visit_counting, false)` : sql`false`} as visit_counting,
+        ${store ? sql`coalesce(st.heatmaps, false)` : sql`false`} as heatmaps,
+        ${store ? sql`coalesce(st.recordings, false)` : sql`false`} as recordings,
         exists (select 1 from commerce.chat_agents where ${owned(storeId)} and enabled) as chat,
         ${rememberedModalExists(storeId)} as modals,
         ${store ? sql`null::jsonb` : sql`(select jsonb_build_object('enabled', r.enabled, 'cookieDays', r.cookie_days) from commerce.referral_program() r)`} as referral,
@@ -106,9 +106,13 @@ export async function siteFacts(storeId: string | null): Promise<SiteFacts> {
             : sql`false`
         } as experiments,
         ${store ? sql`null::text[]` : sql`(select locales from commerce.platform_settings limit 1)`} as locales,
-        (select items from commerce.cookie_scans where ${owned(storeId)} and status = 'done' order by finished_at desc limit 1) as scan_items,
+        (select items from commerce.cookie_scans
+         where coalesce(store_id, '00000000-0000-0000-0000-000000000000'::uuid) = coalesce(${storeId}::uuid, '00000000-0000-0000-0000-000000000000'::uuid) and status = 'done'
+         order by finished_at desc limit 1) as scan_items,
         (select coalesce(jsonb_agg(jsonb_build_object('kind', kind, 'name', name, 'domain', domain, 'category', category, 'provider', provider, 'purpose', purpose) order by name), '[]'::jsonb)
          from commerce.cookie_notes where ${owned(storeId)}) as notes
+      from (select 1) one
+      ${store ? sql`left join commerce.stores st on st.id = ${store}` : sql``}
     `,
     readDb(),
   );
