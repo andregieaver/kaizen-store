@@ -26,8 +26,10 @@ import { subscriberCounts } from "@/server/marketing-subscribers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { sendingHealth } from "@/server/sending-guard";
 import { noticeState, SendingGuardNotice } from "@/components/admin/sending-guard-notice";
+import { ContactPolicyCard } from "@/components/admin/contact-policy-card";
+import { getContactPolicy } from "@/server/contact-policy";
 
-import { resumeSendingAction } from "./actions";
+import { contactPolicyAction, resumeSendingAction } from "./actions";
 import { storeExtensionOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Marketing" };
@@ -52,7 +54,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   // A/B tests and email automation are paid extensions (D748): their parts of the hub are there only while the account has them.
   const abOn = storeExtensionOn(store, "ab_testing");
   const emailOn = storeExtensionOn(store, "email_automation");
-  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests, health] = await Promise.all([
+  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests, health, policy] = await Promise.all([
     getAutomations(store),
     automationStats(store.id),
     shop ? getCartReminderSettings(store.id) : Promise.resolve(null),
@@ -62,6 +64,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
     shop ? bestSellerByCount(store.id) : Promise.resolve(null),
     abOn ? listedTests(store, { words: ex, numberLocale: ADMIN_LANG_FACTS[lang].locale }) : Promise.resolve([]),
     sendingHealth(store.id),
+    getContactPolicy(store.id),
   ]);
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
 
@@ -221,6 +224,13 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
           </AdminLink>
         </section>
       </div>
+
+      {/* One contact policy across email and texts (D764): the sentence, and its settings under Change. */}
+      <ContactPolicyCard
+        policy={policy}
+        words={adminText(lang, "marketing").contactPolicy}
+        action={memberCan(member, "marketing:write") ? contactPolicyAction.bind(null, store.slug) : null}
+      />
 
       <section aria-labelledby="tools" className={`flex flex-col gap-3 px-5.5 py-4.5 ${CARD_CLASS}`}>
         <h2 id="tools" className="text-body-strong text-ink">

@@ -30,6 +30,9 @@ import {
 import { broadcastContentSchema, sendProblems, type BroadcastContent } from "@/lib/broadcasts";
 
 import { limitFor, usageNow } from "./limits";
+import { FIRST_KINDS, policyVerdict, type ContactPolicy, type PolicyReason } from "@/lib/contact-policy";
+import { nextSendTime } from "@/lib/sms";
+import { getContactPolicy, recentContacts } from "./contact-policy";
 import { PAID } from "./analytics-sql";
 import { orderCredit } from "./order-credit";
 import { creditOf } from "@/lib/order-credit";
@@ -609,11 +612,19 @@ export async function runAutomations(options: { only?: string; deadline?: number
   const stores = new Map<string, EmailStore | null>();
   const rooms = new Map<string, number>();
 
-  const outcomeOf = (storeId: string, key: string, outcome: SendOutcome | "suppressed") =>
-    db().execute(sql`update commerce.automation_sends set outcome = ${outcome} where store_id = ${storeId}::uuid and key = ${key}`);
+  const outcomeOf = (storeId: string, key: string, outcome: SendOutcome | "suppressed", reason: PolicyReason | null = null) =>
+    db().execute(sql`update commerce.automation_sends set outcome = ${outcome}, suppressed_reason = ${reason} where store_id = ${storeId}::uuid and key = ${key}`);
+  const policies = new Map<string, ContactPolicy>();
 
   /** One email to one person: the row first (a key is never sent twice, even by two runs at once), the plan's room, the reader's products, then the send. */
   async function sendOne(flow: Flow, store: EmailStore, content: BroadcastContent, step: number, due: Due): Promise<void> {
+    // Quiet hours (D764): outside the reader's daytime nothing is claimed, so a later run sends it once their day begins.
+    if (!policies.has(flow.storeId)) policies.set(flow.storeId, await getContactPolicy(flow.storeId));
+    const policy = policies.get(flow.storeId)!;
+    if (policy.quietHours && nextSendTime(now, due.marketCode ?? store.markets[0]?.code ?? "NO").getTime() > now.getTime()) {
+      result.skipped++;
+      return;
+    }
     const key = stepKey(due.firstKey, step);
     const [claimed] = await db().execute<Row>(sql`
       insert into commerce.automation_sends (store_id, key, kind, subscriber_id, order_id, step)
@@ -633,6 +644,17 @@ export async function runAutomations(options: { only?: string; deadline?: number
       await outcomeOf(flow.storeId, key, "suppressed");
       result.skipped++;
       return;
+    }
+    // The contact policy (D764): a welcome goes whatever came before; any other kind is held when the week's cap is reached or the last
+    // message was too recent, recorded as suppressed with its reason and never sent later.
+    if (!FIRST_KINDS.has(flow.kind)) {
+      const [sent] = await recentContacts(flow.storeId, [{ email: due.email, customerId: null }], now);
+      const reason = policyVerdict(sent, now, policy, "normal");
+      if (reason) {
+        await outcomeOf(flow.storeId, key, "suppressed", reason);
+        result.skipped++;
+        return;
+      }
     }
     // A cross-sell or restock email goes only with products for this reader (D653); without any, it never goes.
     let words = content;

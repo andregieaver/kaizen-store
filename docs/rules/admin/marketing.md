@@ -164,7 +164,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   press with a genuine one by a subscriber still on the list is kept as theirs (`email_clicks`, only through `keepClick()`: export,
   erasure, 180 days, said in the privacy notice); never add an open pixel. Orders after any message (a broadcast, an automation
   email, a text) are counted only through `orderCredit()`/`creditOrders()` (D761): each paid order once, for the latest message
-  its buyer got in the 7 days before it, so no screen counts an order twice. AI words are suggestions only, through `findClaims()`
+  its buyer got in the 7 days before it, so no screen counts an order twice. Every marketing message (broadcast, automation email,
+  text) asks the contact policy first (D764, `policyVerdict()` with `recentContacts()`, `src/server/contact-policy.ts`): a held one
+  is suppressed or skipped with `cap` or `spacing`, never sent later; a welcome, a cart reminder and back in stock always go, and
+  automation emails wait for the reader's daytime while quiet hours are on. AI words are suggestions only, through `findClaims()`
   (feature `marketing_email`). Recipients are personal data (export, erasure, pruned 90 days after a send with its figures kept).
 
 ## A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)

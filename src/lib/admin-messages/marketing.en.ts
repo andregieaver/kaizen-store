@@ -807,6 +807,21 @@ export const marketingEn = {
     ownerOnly: "Only the store's owner connects the account and changes its rules.",
   },
   /** The sending guard (D730): what the Marketing pages say while marketing email is held, or close to it. */
+  /** One contact policy across email and texts (D764). */
+  contactPolicy: {
+    title: "How often people hear from you",
+    summary: "Each person gets at most {perWeek} marketing messages a week, at least {hours} hours apart{quiet}.",
+    summaryNoSpacing: "Each person gets at most {perWeek} marketing messages a week{quiet}.",
+    quietTail: ", and automation emails only in their daytime",
+    note: "Emails and texts count together. A welcome email, a cart reminder and back in stock always go; order emails never count.",
+    change: "Change",
+    perWeek: "At most this many a week",
+    spacing: "At least this many hours apart",
+    quiet: "Send automation emails only between 9 and 20 in the reader's own time",
+    save: "Save",
+    saved: "Saved.",
+    readOnly: "Only someone who may change marketing can change this.",
+  },
   sendingGuard: {
     pausedTitle: "Your marketing email is paused",
     pausedBounces: "{bounced} of {sent} recent marketing emails bounced back ({rate}), so Kaizena Flow held your newsletters and automations on {date}. Order emails go on as before.",

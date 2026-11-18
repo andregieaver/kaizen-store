@@ -1,5 +1,8 @@
 import "server-only";
 
+import { policyVerdict, type ContactPolicy } from "@/lib/contact-policy";
+import { getContactPolicy, recentContacts } from "./contact-policy";
+
 import { randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
@@ -733,9 +736,11 @@ export async function runSms(options: { storeId?: string; deadline?: number; fet
       token: col.text,
       status: z.enum(["pending", "subscribed", "unsubscribed"]),
       store_name: col.text,
+      email: col.textOrNull,
+      customer_id: z.string().nullable(),
     }),
     sql`
-      select m.id, m.store_id, m.campaign_id, c.text, s.phone, s.locale, s.token, s.status, st.name as store_name
+      select m.id, m.store_id, m.campaign_id, c.text, s.phone, s.locale, s.token, s.status, st.name as store_name, s.email, s.customer_id
       from commerce.sms_messages m
       join commerce.sms_campaigns c on c.store_id = m.store_id and c.id = m.campaign_id and c.status = 'sending'
       join commerce.sms_subscribers s on s.store_id = m.store_id and s.id = m.subscriber_id
@@ -746,6 +751,7 @@ export async function runSms(options: { storeId?: string; deadline?: number; fet
     `,
   );
   const settings = new Map<string, { row: SettingsRow; creds: Credentials | null; spent: number } | null>();
+  const policies = new Map<string, ContactPolicy>();
   for (const m of due) {
     if (Date.now() > deadline) break;
     if (!settings.has(m.store_id)) {
@@ -763,6 +769,15 @@ export async function runSms(options: { storeId?: string; deadline?: number; fet
     }
     if (m.status !== "subscribed") {
       await db().execute(sql`update commerce.sms_messages set status = 'skipped', error = 'stopped' where store_id = ${m.store_id}::uuid and id = ${m.id}::uuid and status = 'queued'`);
+      result.skipped++;
+      continue;
+    }
+    // The contact policy (D764): a text counts with the person's emails, and is not sent (`cap` or `spacing`) when it would break it.
+    if (!policies.has(m.store_id)) policies.set(m.store_id, await getContactPolicy(m.store_id));
+    const [recent] = await recentContacts(m.store_id, [{ email: m.email, customerId: m.customer_id }], options.now ?? new Date());
+    const held = policyVerdict(recent, options.now ?? new Date(), policies.get(m.store_id)!, "normal");
+    if (held) {
+      await db().execute(sql`update commerce.sms_messages set status = 'skipped', error = ${held} where store_id = ${m.store_id}::uuid and id = ${m.id}::uuid and status = 'queued'`);
       result.skipped++;
       continue;
     }
