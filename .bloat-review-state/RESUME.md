@@ -315,3 +315,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-b: 2.16 executor (Sonnet). kz-c: 2.2 executor abbce2dc1145d5b3c.
 - Hold 2.36-2.39 (AI rounds/tools) until owner can record eval; pair with 1.19 c4-5.
 - 18 Nov 15:45: 2.1 Done D774 (both proofs passed: fresh session + subagent quoted database.md). Proof sessions archived.
+- 2.16 pushed 64e5b620d (3 generated columns on pages, 1,373 rows/9 MB prod). Watch CI; after release: advisors, D-row (migrations 20261118152833, 20261118152842). kz-b: 2.17 executor next.
+- 2.16 Done D775 (released 64e5b620d, advisors INFO, 1,331 titled). kz-b: 2.17 (Opus) aac37d0a03296251b. kz-c: 2.2 abbce2dc1145d5b3c.
