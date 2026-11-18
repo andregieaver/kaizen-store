@@ -187,6 +187,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   creator owns (`commerce.account_organisation()`, made on first need, named after the store, never after a person). A sandbox kept by its
   visitor moves to theirs; a placed store otherwise stays. No code writes `organisation_id` by hand, and the screens say "account", never
   "organisation". `src/db/organisations.test.ts` holds the rules.
+- The catalogue (E2, `src/lib/extensions.ts` pure, `src/server/extensions.ts`, Platform → Plans → Extensions): the extension ids are fixed in
+  `EXTENSION_IDS` (the database checks them); words, sizes with allowances (`ALLOWANCES_OF`), prices, bundles and plan grants are rows. A price
+  is never changed in place: `replacePrices()` switches the old row off and adds a new one, as for plans; the editor shows every currency
+  the plans or the catalogue have a price in (`extensionCurrencies()`), so a save never drops a price it did not show. An account's standing is
+  `extensionState()` over `organisationExtensionStandings()`: the platform always; every account until `platform_settings.extensions_launched_at`;
+  then its plan's grants (any of its stores on a plan), then its own `organisation_extensions` row. Read per request, never cached.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

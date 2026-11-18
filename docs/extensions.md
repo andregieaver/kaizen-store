@@ -166,8 +166,9 @@ or repeating invoices, contracts cannot be sent for signing). Subscribing again 
 
 - `extensions` (id, words, standalone or not, store-only or not), `extension_prices` (per currency, interval and size, with
   allowances; never edited in place, as `plan_prices`), `extension_bundles` with `extension_bundle_members` and their prices,
-  `plan_extension_grants` (a plan includes an extension at a size), `organisation_extensions` (state, source, trial and grace ends,
-  the price paid, the founding price if locked).
+  `plan_extension_grants` (a plan includes an extension at a size), `organisation_extensions` (source `bought`, `bundle` or `trial`, the size,
+  the bundle, when the trial ends, when payment ended and when the grace period ends; the price paid and a locked founding price come with
+  E4 and E6). What a plan includes is never a row of its own: it follows the plan.
 - `cheapestCover(wanted, plan, catalogue)` (pure, `src/lib/extension-cover.ts`): the cheapest set of bundles and single
   extensions that covers what the owner picked, after what the plan already includes. The checkout shows its answer ("The
   Customers bundle is €17 less than these three"); the AI manager quotes the same function; nobody pays for what the plan
@@ -244,7 +245,7 @@ Each step leaves production working and changes nothing an owner sees until step
 | Step | What | Done when |
 |---|---|---|
 | E1 | **Organisations**: tables, `stores.organisation_id`, one organisation per owner backfilled, membership; screens unchanged | Every store has an organisation. **Built 18 November 2026**: `commerce.place_store()` places every store at commit, whichever way it was made; an account is named after its first store, never after a person |
-| E2 | **The catalogue and entitlement**: extension tables, `extensionState()`, the platform always `platform`, every existing account `active` under a temporary source `legacy`; the platform admin's editor beside plans | Prices and grants editable; nothing hidden yet |
+| E2 | **The catalogue and entitlement**: extension tables, `extensionState()`, the platform always `platform`, every account `active` (`legacy`) until launch; the platform admin's editor beside plans | Prices and grants editable; nothing hidden yet. **Built 18 November 2026** (below) |
 | E3 | **Gates**: every route, card, tool, MCP tool, webhook topic, API route and cron job tagged with its extension; scan test | An account without an extension sees none of it (tried on a test account) |
 | E4 | **Account billing**: one subscription per account with items, the store limit, usage across the account, the fee per account plan; existing stores moved to the highest plan | Every paying store billed through its account |
 | E5 | **Trials, grace, read-only, markers**; the Extensions page; existing accounts' `legacy` turned into 60-day trials with reminders | Launch day for extensions |
@@ -254,6 +255,10 @@ Each step leaves production working and changes nothing an owner sees until step
 | E9 | **The AI manager**: suggestions (section 6) and price tuning on both sides (section 9), with eval cases and a new recording | Run on Platform → AI |
 | E10 | **Email**: account sending domains, SES in Ireland for bulk, the send allowance | A standalone account sends from its own domain |
 | E11 | **Metering**: AI-handled conversations, extra people, contacts, reported to Stripe | Use beyond allowances is billed |
+
+**E2 as built.** `legacy` is not a row but `platform_settings.extensions_launched_at` (null until E5), so an account made before launch has
+every extension too; E5 sets it and turns what each account already uses into its 60-day trials. Platform → Plans → Extensions edits
+words, sizes, allowances, prices in every currency the plans or the catalogue use (`extensionCurrencies()`), bundles and plan grants.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 

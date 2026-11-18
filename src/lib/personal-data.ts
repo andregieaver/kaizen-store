@@ -316,6 +316,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  extensions: "Kaizena Flow's paid extensions (D748): their names and lines are Kaizena Flow's words, and the account that last saved one (an id); no person's data.",
+  extension_bundles: "Kaizena Flow's bundles of extensions (D748): their names and lines are Kaizena Flow's words, and the account that last saved one (an id); no person's data.",
   docs_index:
     "The docs' search index (D443): the parts of Kaizena Flow's own articles and the items of its API contracts, written from the repository; no person's data.",
   docs_search_misses:

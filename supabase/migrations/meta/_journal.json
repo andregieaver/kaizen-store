@@ -659,6 +659,20 @@
       "when": 1794959921574,
       "tag": "20261117235841_organisations_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794986521784,
+      "tag": "20261118072201_extensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1794986523135,
+      "tag": "20261118072203_extensions_catalogue",
+      "breakpoints": true
     }
   ]
 }
