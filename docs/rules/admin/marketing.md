@@ -189,8 +189,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `flow_versions`, switched off until that version is tested (`testFlow()` walks the newest subscriber and sends nothing). People enter
   only from the event log (reader `flows`), once per event and never twice at once (`flow_runs`), and the every-minute marketing job
   moves each due run on one step a turn (`tickFlows()`, one read while no flow is on); an email goes through the sending guard, the
-  plan's room, quiet hours and the contact policy, a held one never later. The owner reads a flow as a story (`storyLines()`), never as
-  a tree. Runs are personal data: exported, erased, gone 90 days after they end.
+  plan's room, quiet hours and the contact policy, a held one never later. The owner reads a flow as a story (`storyLines()`); the tree is
+  one step away, under Customise (`canvas.tsx`). Runs are personal data: exported, erased, gone 90 days after they end.
 
 ## The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
 

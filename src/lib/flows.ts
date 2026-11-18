@@ -187,3 +187,47 @@ export function withEmailWords(steps: readonly FlowStep[], id: string, locale: s
 export function withWaitDays(steps: readonly FlowStep[], id: string, days: number): FlowStep[] {
   return replaceStep(steps, id, (step) => (step.kind === "wait" ? { ...step, hours: Math.round(days * 24) } : step));
 }
+
+/** A step's id not yet in the tree: the kind and the lowest free number (`email-2`). Pure. */
+export function freeStepId(steps: readonly FlowStep[], kind: FlowStep["kind"]): string {
+  const taken = new Set([...walk(steps)].map((s) => s.step.id));
+  for (let n = 1; ; n++) if (!taken.has(`${kind}-${n}`)) return `${kind}-${n}`;
+}
+
+/** A new step of a kind, with words to start from for an email (its subject and first paragraph, in `locale`). Pure. */
+export function newStep(steps: readonly FlowStep[], kind: "email" | "wait" | "if" | "end", locale: string, words: { subject: string; text: string }): FlowStep {
+  const id = freeStepId(steps, kind);
+  if (kind === "email") return { id, kind, content: { [locale]: { subject: words.subject, preview: "", blocks: [{ type: "paragraph", text: words.text }] } } };
+  if (kind === "wait") return { id, kind, hours: 24 };
+  if (kind === "if") return { id, kind, condition: { kind: "ordered_since_entry" }, then: [], else: [] };
+  return { id, kind };
+}
+
+/**
+ * The tree with `step` placed right after the step `afterId` in its own list, or first in a branch (`into`: the `if` and which branch).
+ * The same tree when no such place exists. Pure.
+ */
+export function insertStep(steps: readonly FlowStep[], step: FlowStep, place: { afterId: string } | { into: string; branch: "then" | "else" }): FlowStep[] {
+  const out: FlowStep[] = [];
+  for (const s of steps) {
+    if ("into" in place && s.id === place.into && s.kind === "if") {
+      out.push({ ...s, [place.branch]: [step, ...s[place.branch]] });
+      continue;
+    }
+    out.push(s.kind === "if" ? { ...s, then: insertStep(s.then, step, place), else: insertStep(s.else, step, place) } : s);
+    if ("afterId" in place && s.id === place.afterId) out.push(step);
+  }
+  return out;
+}
+
+/** The tree without one step (an `if` goes with both its branches). Pure. */
+export function removeStep(steps: readonly FlowStep[], id: string): FlowStep[] {
+  return steps
+    .filter((s) => s.id !== id)
+    .map((s) => (s.kind === "if" ? { ...s, then: removeStep(s.then, id), else: removeStep(s.else, id) } : s));
+}
+
+/** An `if` with a new condition. Pure. */
+export function withCondition(steps: readonly FlowStep[], id: string, condition: FlowCondition): FlowStep[] {
+  return replaceStep(steps, id, (step) => (step.kind === "if" ? { ...step, condition } : step));
+}

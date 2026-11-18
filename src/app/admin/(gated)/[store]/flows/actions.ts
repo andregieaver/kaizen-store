@@ -6,8 +6,9 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { welcomeSeries } from "@/lib/flow-recipes";
-import { withEmailWords, withWaitDays } from "@/lib/flows";
+import { insertStep, newStep, removeStep, withCondition, withEmailWords, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
+import { listSegments } from "@/server/segments";
 import { storeAction } from "@/server/store-action";
 
 /**
@@ -87,5 +88,59 @@ export async function changeFlowWaitAction(storeSlug: string, flowId: string, st
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
+  });
+}
+
+type Place = { afterId: string } | { into: string; branch: "then" | "else" };
+type Flow = NonNullable<Awaited<ReturnType<typeof getFlow>>>;
+
+/** Saves the flow's tree after one change from the canvas (D767 slice 2): a new version, switched off until tested again. Null: refused. */
+async function saveTree(storeSlug: string, flowId: string, change: (flow: Flow, storeId: string) => Promise<FlowStep[] | null> | FlowStep[] | null): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
+    const w = adminText(lang, "flows");
+    const flow = await getFlow(member.store.id, flowId);
+    if (!flow) return refusal(w.problems.missing);
+    const steps = await change(flow, member.store.id);
+    if (!steps) return refusal(w.problems.step);
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, steps, goals: flow.goals });
+    if (!saved.ok) return refusal(saved.problem);
+    refresh();
+    return { status: "ok", messages: [w.savedTestAgain] };
+  });
+}
+
+const KINDS = ["email", "wait", "if", "end"] as const;
+
+/** Adds a step of the kind chosen at a place of the tree; a new email starts with words in the flow's first language. */
+export async function addFlowStepAction(
+  storeSlug: string,
+  flowId: string,
+  place: Place,
+  locale: string,
+  words: { subject: string; text: string },
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const kind = KINDS.find((k) => k === form.get("kind"));
+  return saveTree(storeSlug, flowId, (flow) => (kind ? insertStep(flow.steps, newStep(flow.steps, kind, locale, words), place) : null));
+}
+
+/** Removes one step (an `if` with both its branches). */
+export async function removeFlowStepAction(storeSlug: string, flowId: string, stepId: string): Promise<FormState> {
+  return saveTree(storeSlug, flowId, (flow) => removeStep(flow.steps, stepId));
+}
+
+/** Sets an `if`'s condition: `ordered`, `clicked`, or `segment:{id}` of one of the store's own segments. */
+export async function changeFlowConditionAction(storeSlug: string, flowId: string, stepId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const value = String(form.get("condition") ?? "");
+  return saveTree(storeSlug, flowId, async (flow, storeId) => {
+    let condition: FlowCondition | null = null;
+    if (value === "ordered") condition = { kind: "ordered_since_entry" };
+    else if (value === "clicked") condition = { kind: "clicked_flow_email" };
+    else if (value.startsWith("segment:")) {
+      const segmentId = value.slice("segment:".length);
+      if ((await listSegments(storeId)).some((s) => s.id === segmentId)) condition = { kind: "in_segment", segmentId };
+    }
+    return condition ? withCondition(flow.steps, stepId, condition) : null;
   });
 }

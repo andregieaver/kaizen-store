@@ -81,3 +81,28 @@ test("an email's words and its wait are changed where they are, and the flow wai
   await page.getByLabel("Email: Our favourites").getByText("Change", { exact: true }).click();
   await page.screenshot({ path: "test-results/flow-change.png", fullPage: true });
 });
+
+test("under Customise, a step is added in a branch and removed, and the story follows", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
+  const canvas = page.locator("[data-flow-canvas]");
+  await canvas.getByText("Customise", { exact: true }).click();
+  await expect(canvas.locator("[data-canvas-step=if]")).toHaveCount(1);
+  const no = canvas.locator("[data-canvas-branch=else]").first();
+  await no.getByRole("group", { name: "First when no" }).first().getByRole("button", { name: "Email" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toBeVisible();
+  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+  await page.getByRole("group", { name: "Change the condition to" }).getByRole("button", { name: "if they pressed a link" }).click();
+  await expect(page.locator("[data-flow-story]")).toContainText("5 days later, if they did not press a link");
+  await page.reload();
+  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+  await page.screenshot({ path: "test-results/flow-canvas.png", fullPage: true });
+
+  // The email's own row: its Remove, not the branch's that holds it. Gone from the story is the answer.
+  const row = page.locator("[data-canvas-row]").filter({ has: page.getByText("Email: A new email", { exact: true }) });
+  await row.getByRole("button", { name: "Remove" }).click();
+  await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toHaveCount(0);
+  await expect(page.locator("[data-canvas-step=if]")).toHaveCount(1);
+});

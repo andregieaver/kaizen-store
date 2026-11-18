@@ -12,6 +12,7 @@ import { getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
+import { FlowCanvas } from "./canvas";
 import { changeFlowEmailAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
 
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
@@ -33,7 +34,7 @@ function emailsOf(steps: readonly FlowStep[], into = new Map<string, Extract<Flo
 /**
  * One flow as the owner reads it (D767 slice 2, email plan M3.3): what starts it, then each email as a sentence (*3 days later, if they have
  * not ordered*) with the email itself drawn as a small picture of its subject and first words. Test it, then switch it on; Homer needs
- * nothing else. Editing the words and the canvas (Customise) come next in slice 2.
+ * nothing else. Change edits an email where it is; Customise opens the canvas (`canvas.tsx`), every step as a tree.
  */
 export default async function FlowPage({ params }: PageProps<"/admin/[store]/flows/[flowId]">) {
   const { store: slug, flowId } = await params;
@@ -45,10 +46,12 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
   const w = adminText(lang, "flows");
   const flow = await getFlow(store.id, flowId);
   if (!flow) notFound();
-  const segments = new Map((await listSegments(store.id)).map((s) => [s.id, s.name]));
+  const segmentList = (await listSegments(store.id)).map((s) => ({ id: s.id, name: s.name }));
+  const segments = new Map(segmentList.map((s) => [s.id, s.name]));
   const lines = storyLines(flow.steps, w.story, (id) => segments.get(id) ?? "?");
   const emails = emailsOf(flow.steps);
   const mayWrite = memberCan(member, "marketing:write");
+  const firstLocale = Object.keys([...emails.values()][0]?.content ?? {})[0] ?? store.localization.locales[0] ?? "en-GB";
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -115,6 +118,7 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
           <p className="text-caption text-muted">{w.story.ends}</p>
         </div>
       </Card>
+      {mayWrite && <FlowCanvas steps={flow.steps} storeSlug={store.slug} flowId={flow.id} locale={firstLocale} w={w} segments={segmentList} />}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">
           {!flow.enabled && !flow.tested && <p className="w-full text-body text-ink-2">{w.untested}</p>}
