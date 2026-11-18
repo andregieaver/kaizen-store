@@ -148,6 +148,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            where x.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as automation_sends,
         (select count(*) from commerce.email_clicks c join commerce.marketing_subscribers m on m.store_id = c.store_id and m.id = c.subscriber_id
            where c.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as email_clicks,
+        (select count(*) from commerce.flow_runs r join commerce.marketing_subscribers m on m.store_id = r.store_id and m.id = r.subscriber_id
+           where r.store_id = ${sid}::uuid and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid))::int as flow_runs,
         (select count(*) from commerce.stock_requests where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid))::int as stock_requests,
         (select count(*) from commerce.customer_product_views where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as customer_product_views,
         (select count(*) from commerce.review_requests where store_id = ${sid}::uuid and order_id = any(${orderIds}))::int as review_requests,
@@ -228,6 +230,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       signup_incentives: n(c.signup_incentives),
       broadcast_recipients: n(c.broadcast_recipients),
       email_clicks: n(c.email_clicks),
+      flow_runs: n(c.flow_runs),
       automation_sends: n(c.automation_sends),
       stock_requests: n(c.stock_requests),
       customer_product_views: n(c.customer_product_views),
@@ -901,6 +904,11 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`
     delete from commerce.email_clicks c using commerce.marketing_subscribers m
     where c.store_id = ${sid}::uuid and m.store_id = c.store_id and m.id = c.subscriber_id and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid)
+  `);
+  // The person's ways through flows (D767), with what each step did for them.
+  await tx.execute(sql`
+    delete from commerce.flow_runs r using commerce.marketing_subscribers m
+    where r.store_id = ${sid}::uuid and m.store_id = r.store_id and m.id = r.subscriber_id and (lower(m.email) = any(${addresses}) or m.customer_id = ${cid}::uuid)
   `);
   // The automation emails sent to the person and their back-in-stock requests (D298).
   await tx.execute(sql`

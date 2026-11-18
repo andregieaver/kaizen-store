@@ -124,6 +124,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "marketing.sending_": "marketing",
   // The contact policy changed (D764): its two numbers.
   "marketing.contact_policy": "marketing",
+  // A flow saved, switched on or off (D767): its id and version.
+  "marketing.flow_": "marketing",
   // The ad platforms' server connections (D303 I2): which platform and what it sends, never a token.
   "marketing.ad_connection_": "marketing",
   // An ad account connected for its budgets, its limit and the budgets changed in it (D585).

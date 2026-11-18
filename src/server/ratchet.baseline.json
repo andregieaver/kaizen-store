@@ -891,7 +891,7 @@
         "rowsRead": 42
       },
       "route.broadcasts": {
-        "statements": 16,
+        "statements": 17,
         "rowsRead": 4
       },
       "route.cookie-scan": {
@@ -1257,7 +1257,7 @@
         "rowsRead": 33
       },
       "route.broadcasts": {
-        "statements": 116,
+        "statements": 117,
         "rowsRead": 8403
       },
       "route.cookie-scan": {
