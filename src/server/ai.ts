@@ -697,6 +697,10 @@ export type ToolCall = { id: string; type: "function"; function: { name: string;
 /** A tool the model may call: its name, what it does, and its arguments as JSON Schema. */
 export type ToolDefinition = { name: string; description: string; parameters: Record<string, unknown> };
 
+/** The output limit of a round with tools when the caller gives none: `chatWithTools()`'s and `streamWithTools()`'s (bloat review step 1.19). */
+export const CHAT_TOOLS_MAX_TOKENS = 800;
+export const STREAM_TOOLS_MAX_TOKENS = 1200;
+
 /** One step of a conversation with tools: the model's text, or the tools it asks for. */
 export async function chatWithTools(
   connection: AiConnection,
@@ -715,7 +719,7 @@ async function chatWithToolsOnce(
   tools: ToolDefinition[],
   options: { maxTokens?: number; timeoutMs?: number },
 ): Promise<Metered<{ content: string | null; toolCalls: ToolCall[] }>> {
-  const limit = options.maxTokens ?? 800;
+  const limit = options.maxTokens ?? CHAT_TOOLS_MAX_TOKENS;
   const json = await post(
     connection,
     "/chat/completions",
@@ -777,7 +781,7 @@ async function streamWithToolsOnce(
   onText: (delta: string) => void,
   options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal },
 ): Promise<Metered<{ content: string | null; toolCalls: ToolCall[] }>> {
-  const limit = options.maxTokens ?? 1200;
+  const limit = options.maxTokens ?? STREAM_TOOLS_MAX_TOKENS;
   const timeout = AbortSignal.timeout(options.timeoutMs ?? 60_000);
   let response: Response;
   try {

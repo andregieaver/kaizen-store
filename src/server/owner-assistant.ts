@@ -77,7 +77,7 @@ import { PROMPT_DAY, promptHash } from "./prompt-versions";
 type Row = Record<string, unknown>;
 
 /** What the model is told in a turn the autopilot runs for a plan's step (D309): nobody is there, and the step's brief is its whole job. */
-const AUTOPILOT_LINES = [
+export const AUTOPILOT_LINES = [
   "You are working on your own now, as the store's autopilot, on one step of a plan the person started. Nobody is reading along.",
   "- Do the step's brief with the tools you have, and nothing beyond it. Facts only from your tools, as always.",
   "- Changes that need the owner's yes are kept for them as usual; say which are waiting. Never pretend something was done.",
@@ -86,7 +86,7 @@ const AUTOPILOT_LINES = [
 ].join("\n");
 
 /** What the model is told in a review of a goal (D328): nobody is there, it may only look and plan, and one plan at most. */
-const REVIEW_LINES = [
+export const REVIEW_LINES = [
   "You are working on your own now, as the store's autopilot, reviewing one of the owner's goals. Nobody is reading along.",
   "- You can look with read-only tools and make a plan; you cannot change anything yourself in this turn. Facts only from your tools, as always.",
   "- Make at most one plan, for this goal, with the steps that move it forward most from where the figures say it stands. Prefer small plans that finish within days.",
@@ -537,6 +537,15 @@ export function fixedPrincipal(account: Pick<Account, "id">): Principal {
   return { account: { id: account.id, email: "eval@example.invalid", name: "", platformAdmin: false, adminLocale: "en" } as Account, store, role: "owner" };
 }
 
+/**
+ * The AI manager's prompt for a platform admin (store null) drawn as `fixedManagerPrompt()` draws a store owner's: no name, a fixed day, no
+ * memories (bloat review step 1.19, `ai-round.ts`). Not part of the prompt version.
+ */
+export function fixedPlatformPrompt(account: Pick<Account, "id"> = { id: "00000000-0000-4000-8000-000000000000" }): string {
+  const principal: Principal = { account: { id: account.id, email: "eval@example.invalid", name: "", platformAdmin: true, adminLocale: "en" } as Account, store: null };
+  return managerPrompt(principal, { now: PROMPT_DAY });
+}
+
 let managerVersion: string | null = null;
 
 /**
@@ -608,6 +617,32 @@ export type AutopilotTurn = {
   settings: AutonomySettings;
   told: string[];
 };
+
+/**
+ * The tools one round of a turn sends (D333), pure: an autopilot turn's `allowed` tools alone; else the offered store tools `chooseTools()`
+ * picks beside the manager's own and the owner's app tools, and `load_tools` when some are held back. `runTurn()` calls it every round, and
+ * the drawing of the agents' rounds (`ai-round.ts`, bloat review step 1.19) calls it with fixed inputs, so the two never differ.
+ */
+export function roundTools(input: {
+  offered: readonly OwnerTool[];
+  managerTools: readonly ToolDefinition[];
+  appDefinitions: readonly ToolDefinition[];
+  used: readonly string[];
+  wanted: readonly ToolArea[];
+  pageArea: ToolArea | null;
+  allowed: ReadonlySet<string> | null;
+}): ToolDefinition[] {
+  const { offered, managerTools, appDefinitions, used, wanted, pageArea, allowed } = input;
+  if (allowed) return [...offered, ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition);
+  const choice = chooseTools(
+    offered.map((t) => ({ name: t.name, area: toolArea(t.name, toolKey(t.name)) })),
+    managerTools.length + appDefinitions.length + 1,
+    { used, wanted, pageArea },
+  );
+  const chosen = new Set(choice.names);
+  const load = loadToolsDefinition(choice.heldBack);
+  return [...offered.filter((t) => chosen.has(t.name)).map(toolDefinition), ...managerTools, ...appDefinitions, ...(load ? [load] : [])];
+}
 
 /**
  * Whether today's turns have reached the limit: per store, or per platform admin. The autopilot's turns (in its own conversations) count
@@ -750,17 +785,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
     ...(withLife ? [ASK_KAIZEN_LIFE] : []),
     ...(withHandoffs ? HANDOFF_TOOLS : []),
   ];
-  const toolsNow = (): ToolDefinition[] => {
-    if (allowed) return [...offered, ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition);
-    const choice = chooseTools(
-      offered.map((t) => ({ name: t.name, area: toolArea(t.name, toolKey(t.name)) })),
-      managerTools.length + appDefinitions.length + 1,
-      { used, wanted, pageArea },
-    );
-    const chosen = new Set(choice.names);
-    const load = loadToolsDefinition(choice.heldBack);
-    return [...offered.filter((t) => chosen.has(t.name)).map(toolDefinition), ...managerTools, ...appDefinitions, ...(load ? [load] : [])];
-  };
+  const toolsNow = (): ToolDefinition[] => roundTools({ offered, managerTools, appDefinitions, used, wanted, pageArea, allowed });
   let tools = toolsNow();
   const loadTools = (raw: string): Record<string, unknown> => {
     const areas = readLoadTools(raw);
