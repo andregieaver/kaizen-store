@@ -1,83 +1,69 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { baselineFiles, docsCounts, docsFallen, docsProblems, NEVER_SENTENCES, staleNames, TRACKERS, unnamedBaselines } from "../../scripts/lib/docs-count.mjs";
+import {
+  baselineFiles,
+  docsCounts,
+  docsFallen,
+  docsProblems,
+  NEVER_SENTENCES,
+  pathsList,
+  staleNames,
+  TRACKERS,
+  unnamedBaselines,
+} from "../../scripts/lib/docs-count.mjs";
 import { staleRuleNames } from "../../scripts/lib/rule-names.mjs";
 import baseline from "./docs-budget.baseline.json";
 
 /**
- * CLAUDE.md is loaded by every session, so its core is held at its size (bloat review step 0.43, `docs/rules/budgets.md`): the bytes
- * outside its Storefront and Admin index only fall, an index line is at most 200 characters, and prose cannot be added inside the
- * index to get round that. Step 1.1 of `docs/audits/bloat-review-2026-11.md` adds the repository's other numbers to the baseline file,
- * and step 2.1 replaces the first case when the index leaves CLAUDE.md.
+ * CLAUDE.md is loaded by every session, so it is a core with a map of the rule files (bloat review step 2.1, `docs/rules/budgets.md`):
+ * its ceiling (10,500 bytes and 160 lines) is written here, not in the baseline, so no script can raise it; the how-to it points at
+ * loads by path from `.claude/rules`. Step 1.1 of `docs/audits/bloat-review-2026-11.md` holds the other written numbers in the baseline.
  */
-const root = process.cwd();
-const text = readFileSync(path.join(root, "CLAUDE.md"), "utf8");
-
-const START = "\n## Storefront\n";
-const END = "\n## Conventions\n";
-
-function bounds(doc: string): { start: number; end: number } {
-  const start = doc.indexOf(START);
-  const end = doc.indexOf(END);
-  if (start < 0 || end < 0 || end < start) throw new Error("CLAUDE.md has no Storefront or Conventions section");
-  return { start, end };
-}
-
-/** The bytes of CLAUDE.md outside its Storefront and Admin index. */
-function outsideIndex(doc: string): number {
-  const { start, end } = bounds(doc);
-  return Buffer.byteLength(doc.slice(0, start)) + Buffer.byteLength(doc.slice(end));
-}
-
-/** The rule lines of the index. */
-function indexLines(doc: string): string[] {
-  const { start, end } = bounds(doc);
-  return doc
-    .slice(start, end)
-    .split("\n")
-    .filter((line) => line.startsWith("- "));
-}
-
-describe("CLAUDE.md's core is held at its size (bloat review step 0.43)", () => {
-  const now = outsideIndex(text);
-
-  it("CLAUDE.md outside its index does not grow", () => {
-    expect(
-      now,
-      `CLAUDE.md outside its Storefront and Admin index grew from ${baseline.claudeOutsideIndex} to ${now} bytes. Put the sentence in docs/rules/budgets.md or in the rule's own file under docs/rules.`,
-    ).toBeLessThanOrEqual(baseline.claudeOutsideIndex);
+describe("CLAUDE.md is a core (bloat review step 2.1)", () => {
+  it("CLAUDE.md stays a core", () => {
+    const { claude } = docsCounts(process.cwd());
+    const hint = "CLAUDE.md is the core every session loads: put the text in the rule file of its area (docs/rules), not here.";
+    expect(claude.bytes, hint).toBeLessThanOrEqual(10500);
+    expect(claude.lines, hint).toBeLessThanOrEqual(160);
   });
 
-  it("the baseline is as low as the file", () => {
-    expect(baseline.claudeOutsideIndex, `CLAUDE.md shrank: set claudeOutsideIndex in src/lib/docs-budget.baseline.json to ${now} in this change.`).toBe(now);
+  const root = process.cwd();
+  const rulesDir = path.join(root, ".claude/rules");
+  const ruleFiles = existsSync(rulesDir) ? readdirSync(rulesDir).filter((f) => f.endsWith(".md")) : [];
+
+  /** True when at least one file on disk matches the pattern (a folder's '/**', a '*' in the file name, or a plain path). */
+  const matches = (pattern: string): boolean => {
+    if (pattern.endsWith("/**")) {
+      const dir = path.join(root, pattern.slice(0, -3));
+      return existsSync(dir) && statSync(dir).isDirectory() && readdirSync(dir).length > 0;
+    }
+    const name = path.posix.basename(pattern);
+    if (name.includes("*")) {
+      const dir = path.join(root, path.posix.dirname(pattern));
+      const re = new RegExp(`^${name.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*")}$`);
+      return existsSync(dir) && readdirSync(dir).some((f) => re.test(f));
+    }
+    return existsSync(path.join(root, pattern));
+  };
+
+  it("every file in .claude/rules loads by path, and each path exists", () => {
+    for (const file of ruleFiles) {
+      const paths = pathsList(readFileSync(path.join(rulesDir, file), "utf8"));
+      expect(paths, `.claude/rules/${file} has no paths list, so it loads in every session.`).not.toEqual([]);
+      expect(paths.filter((pattern) => !matches(pattern)), `.claude/rules/${file} names a path no file matches.`).toEqual([]);
+    }
   });
 
-  it("an index line is at most 200 characters", () => {
-    expect(indexLines(text).filter((line) => [...line].length > 200)).toEqual([]);
-  });
-
-  it("the index holds only rule lines and its two introductions", () => {
-    const { start, end } = bounds(text);
-    const prose = text
-      .slice(start, end)
-      .split("\n")
-      .filter((line) => line.trim() !== "" && !line.startsWith("- ") && !line.startsWith("## "));
-    expect(prose).toHaveLength(2);
-  });
-
-  it("would notice a sentence added outside the index", () => {
-    const planted = text.replace(END, `${END}- A planted sentence of forty bytes or so.\n`);
-    expect(outsideIndex(planted)).toBeGreaterThan(baseline.claudeOutsideIndex);
-  });
-
-  it("does not count a new rule's index line", () => {
-    const planted = text.replace("\n\n## Admin\n", "\n- A new rule (D999, `src/lib/new-rule.ts`)\n\n## Admin\n");
-    expect(planted).not.toBe(text);
-    expect(outsideIndex(planted)).toBe(outsideIndex(text));
+  it("the how-to that left CLAUDE.md is in a rule file", () => {
+    const howTo = ruleFiles.map((file) => readFileSync(path.join(rulesDir, file), "utf8")).join("\n");
+    const claudeText = readFileSync(path.join(root, "CLAUDE.md"), "utf8");
+    const moved = ["longerTimeout(tx, seconds)", "E2E_SIGNED_IN=1", "typedRows()", "trackedRoute()", "agent-eval-recording.json"];
+    expect(moved.filter((s) => !howTo.includes(s))).toEqual([]);
+    expect(moved.filter((s) => claudeText.includes(s))).toEqual([]);
   });
 });
 

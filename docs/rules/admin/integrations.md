@@ -1,7 +1,7 @@
 # Rules: Data in and out, APIs and integrations
 
 Part of the admin's rules (`docs/rules/admin/README.md`), moved verbatim from `docs/rules/admin.md` on 31 October 2026 (PSI CODE-05).
-CLAUDE.md keeps one line per rule pointing here; each rule is under that line as its heading.
+CLAUDE.md names this file in its map; find a rule by searching for the path, component or table you change.
 
 ## Data in and out (wave 2, D165, `docs/wave-2-data.md`)
 

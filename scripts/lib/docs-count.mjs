@@ -175,6 +175,24 @@ function rulesOf(text) {
   return rules.map((rule) => ({ heading: rule.heading, bytes: Buffer.byteLength(`${rule.lines.join("\n")}\n`) }));
 }
 
+/** The patterns of the paths list in a .claude/rules file's front matter, as hasPathsList() reads it; [] when there is none. */
+export function pathsList(text) {
+  if (!hasPathsList(text)) return [];
+  const lines = text.split("\n");
+  const front = lines.slice(1, lines.indexOf("---", 1));
+  const at = front.findIndex((line) => /^paths:/.test(line));
+  const unquote = (s) => s.trim().replace(/^["']|["']$/g, "");
+  const inline = /^paths:\s*\[(.*)\]\s*$/.exec(front[at]);
+  if (inline) return inline[1].split(",").map(unquote).filter(Boolean);
+  const out = [];
+  for (const line of front.slice(at + 1)) {
+    const item = /^\s+-\s+(\S.*)$/.exec(line);
+    if (!item) break;
+    out.push(unquote(item[1]));
+  }
+  return out;
+}
+
 function hasPathsList(text) {
   const lines = text.split("\n");
   if (lines[0].trim() !== "---") return false;
@@ -364,9 +382,8 @@ export function docsProblems(counts, baseline) {
   const rise = (name, now, was, hint) => {
     if (now > was) problems.push(`${name} rose from ${was} to ${now}. ${hint}`);
   };
-  // CLAUDE.md's whole size and the bytes loaded are reported, not held: its Storefront and Admin index grows by one line with every new
-  // rule until step 2.1 moves it, and the bytes outside the index are held by src/lib/docs-budget.scan.test.ts (step 0.43).
-  // Reviewed 17 November 2026: holding the whole file would fail every new rule's index line.
+  // CLAUDE.md's size is held by its ceiling in src/lib/docs-budget.scan.test.ts (10,500 bytes and 160 lines, step 2.1), not here: its
+  // feature index moved to the rule files' map, so a new rule adds no line to it.
   if (JSON.stringify(counts.imports) !== JSON.stringify(baseline.imports)) {
     problems.push("CLAUDE.md imports a new file: it loads in every session. Move the text to docs/rules.");
   }

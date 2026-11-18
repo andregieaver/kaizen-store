@@ -1,7 +1,7 @@
 # Rules: The admin's frame, accounts, security and the platform
 
 Part of the admin's rules (`docs/rules/admin/README.md`), moved verbatim from `docs/rules/admin.md` on 31 October 2026 (PSI CODE-05).
-CLAUDE.md keeps one line per rule pointing here; each rule is under that line as its heading.
+CLAUDE.md names this file in its map; find a rule by searching for the path, component or table you change.
 
 ## The admin's three levels (D107, `docs/admin-navigation.md`)
 

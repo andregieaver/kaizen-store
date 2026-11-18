@@ -1,7 +1,7 @@
 # Rules: The website, the builder and themes
 
 Part of the admin's rules (`docs/rules/admin/README.md`), moved verbatim from `docs/rules/admin.md` on 31 October 2026 (PSI CODE-05).
-CLAUDE.md keeps one line per rule pointing here; each rule is under that line as its heading.
+CLAUDE.md names this file in its map; find a rule by searching for the path, component or table you change.
 
 ## Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
 

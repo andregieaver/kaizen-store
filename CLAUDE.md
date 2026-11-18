@@ -54,11 +54,8 @@ from it. Locally, point `DATABASE_URL` at an empty Postgres and run
 In a sandbox with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH` instead
 of running `playwright install`.
 
-The admin as signed-in people see it is tested in `e2e/signed-in/` (D234): only with `E2E_SIGNED_IN=1`, in a build whose
-`NEXT_PUBLIC_SUPABASE_URL` is the Auth stand-in `e2e/fixtures/auth-stub.mjs` (`http://127.0.0.1:3912`, any publishable
-key), as CI's `signed-in` job does; `auth.setup.ts` signs an owner and a Read-only member in through the real form and keeps
-their browser states (`test.use({ storageState: OWNER.state })`); a platform admin (`ADMIN`, D254) signs in through the real two-step page, the stand-in checking a code from `e2e/fixtures/totp.mjs`. Never add a bypass to the app's sign-in for a test: the
-stand-in is the only fake, and only it is told it is one.
+The admin as signed-in people see it is tested in `e2e/signed-in/` (D234, how: `.claude/rules/e2e.md`). Never add a bypass to the
+app's sign-in for a test: the stand-in (`e2e/fixtures/auth-stub.mjs`) is the only fake, and only it is told it is one.
 
 ## Database
 
@@ -67,21 +64,14 @@ stand-in is the only fake, and only it is told it is one.
   through `db()` in `src/db/client.ts` (needs `DATABASE_URL`).
 - Migrations are generated into `supabase/migrations`. Rules Drizzle cannot
   express (functions, triggers, reference data) go in a custom migration:
-  `pnpm exec drizzle-kit generate --custom --name <name>`. Only the newest snapshot in `supabase/migrations/meta` is kept (D532): `pnpm db:generate` prunes
-  them, and after a custom migration run `node scripts/prune-snapshots.mjs`.
-- The folder starts with a baseline (D572, `docs/ci-migrations.md`): four files made by `scripts/squash-migrations.mjs` from the 789 up to
-  11 November 2026, which are kept in `supabase/archive/`; never edit a baseline. Squash again each quarter.
+  `pnpm exec drizzle-kit generate --custom --name <name>`.
 - New migrations reach production through CI (`docs/ci-migrations.md`): push the file with the change; the
   `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand
   first**: CI would apply the file again. After the deploy, check the security and performance advisors
   (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration
   versions). A migration must keep the code that is still running working until the deploy finishes (add,
-  never rename or drop in the same change). On the hot tables (orders, order_lines, visits, products, product_variants, customers,
-  carts, cart_lines) an index is built `concurrently` in a file whose first line is `-- kaizen:no-transaction`, and a constraint is added
-  `not valid` and validated later (D569, `docs/ci-migrations.md`; `migration-safety.scan.test.ts`).
-- In production a statement may run 15 s and wait 5 s for a lock (the `postgres` role's limits, code review 1.5); a job that needs longer
-  calls `longerTimeout(tx, seconds)` inside its transaction (`src/db/client.ts`, `set local`, never a plain `set` through the pooler).
+  never rename or drop in the same change).
 - `src/db/commerce.test.ts` applies every migration to PGlite and tests the
   invariants. Add a test with any new rule.
 - Money is integer minor units plus an ISO 4217 code (`src/lib/money.ts`).
@@ -92,330 +82,24 @@ stand-in is the only fake, and only it is told it is one.
   `accommodation`, `exempt`; reduced rates in `commerce.vat_rates`, falling
   back to the standard rate); shipping takes the standard rate. Never read
   `countries.standard_vat_rate` for a product.
+- Baselines, snapshots, indexes on the hot tables and statement limits: `.claude/rules/database.md`, loaded when
+  you open `src/db` or `supabase`. Read it before writing a migration.
 
-## Storefront
+## Rules by area
 
-Each rule is in full in `docs/rules/storefront.md` under the same words; read it before changing that part.
+Each part's rules are in full in these files. Read the rule of a part before changing it.
 
-- Kaizen is multi-tenant (`docs/platform.md`)
-- Stores and their markets come from the database (`getStore()`, cached per store; `resolveShop()` for URL params)
-- Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
-- Language and currency are apart from the country (D109; offered only while Several languages and Several currencies are on, D178 step 4)
-- The language a visitor sees first, the language switcher and the currency with the language (D479, `src/lib/language-rule.ts`, `src/lib/language-switch.ts`, `LanguageLinks`)
-- Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag `catalog` and `catalog:{storeId}`); stock is read per request inside…
-- Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`)
-- Search merchandising (wave 6 unit F, D324, `docs/wave-6-catalogue.md` Unit F)
-- Videos and 3D in the product gallery (wave 6 unit G, D325, `docs/wave-6-catalogue.md` Unit G, `src/lib/product-media.ts`)
-- Content types (wave 6 unit H, D326, `docs/wave-6-catalogue.md` Unit H)
-- A standard product taxonomy (wave 6 unit I, D327, `docs/wave-6-catalogue.md` Unit I)
-- Speed (wave 7 unit B, D336, `docs/analytics.md` Speed, `src/lib/picture-sizes.ts`, `src/lib/speed.ts`, `src/server/analytics-speed.ts`)
-- Heatmaps and recordings: what the storefront sends (D656, `docs/heatmaps-and-recordings.md`, `src/components/signals/`, `src/server/page-heat.ts`, `src/server/recordings.ts`)
-- Each country's own (wave 7 unit D, D338, `docs/wave-7-storefront.md` D)
-- Private mode (wave 7 unit E, D339, `docs/wave-7-storefront.md` E)
-- What is sold where (wave 7 unit A1, D335, `docs/wave-7-storefront.md` A.1)
-- Producer responsibility (wave 7 unit H, D342, `docs/wave-7-storefront.md` H as built)
-- Customs and duties (wave 7 unit I, D343, `docs/wave-7-storefront.md` I as built)
-- Prices worked out per country (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2)
-- Blogs in depth (wave 7 unit G, D341, `docs/wave-7-storefront.md` G)
-- Themes from outside (wave 7 unit J, D344, `docs/wave-7-storefront.md` J)
-- By the clock, and links to share (wave 7 unit F, D340, `docs/wave-7-storefront.md` F as built)
-- Sorting and filtering listings (D78, `src/lib/listing-filters.ts`, `src/server/listing.ts`, `FilterDialog`, `ProductListing`)
-- A model that sees pictures (D163, `src/lib/ai-vision.ts`, `src/server/ai-vision.ts`, `ai_providers.vision_model`, the *Model that sees pictures*…
-- AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`)
-- AI product texts (D76, `src/lib/product-writing.ts`, `src/server/product-writer.ts`, `AiWriter`)
-- The chat agent (D81, `src/lib/chat.ts`, `src/server/chat-agent.ts`, `src/server/knowledge.ts`, `ChatWidget`)
-- Support (D216, `docs/support.md`, built in steps; §11 says what each step found)
-- Chat widgets on the owner's own websites (D582, D583, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`…
-- Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
-- Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`, a themed select-only combobox with pictures), never a native…
-- The template store's product pages are prerendered at build time, so their content is plain HTML; stock and add-to-cart stream in and need JavaScript
-- The cart (`src/server/cart.ts`) is per store and market, identified by an httpOnly cookie
-- Payment credentials and payment-method switches are store settings edited in the admin, never environment variables (decision D15)
-- Cookie consent (D58, `src/lib/cookie-consent.ts`)
-
-## Admin
-
-Each rule is in full under the same words in one file of `docs/rules/admin/` by area (`README.md` there says which: the admin's frame and the platform, AI, commerce, marketing, the website, integrations); read it before changing that part.
-
-- The admin's three levels (D107, `docs/admin-navigation.md`)
-- The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
-- Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
-- `/admin` has its own root layout
-- `/admin` lists the account's stores; `/admin/{store}/…` is one store
-- Sign-up and setup (`docs/platform.md`)
-- Products (`/admin/{store}/products`)
-- Checkout (`src/server/checkout.ts`, decision D16)
-- Order numbers (D141, `src/lib/order-numbers.ts`, `src/server/order-numbers.ts`) are one sequence per store, without gaps, as some countries require
-- Shipping is one flat rate per market (`commerce.shipping_rates`), optionally free above a basket value; a store with a carrier connected can also…
-- `src/server/*.int.test.ts` are integration tests against a real database (`pnpm test:int`, after `scripts/db-setup.mjs --seed`); CI runs them
-- Forms use `ActionForm`, which keeps what was typed when validation fails
-- Server actions run through `storeAction()` / `platformAction()` (code review 1.4, `src/server/store-action.ts`): guard, language, one logged failure as a plain line
-- Stripe Connect (`src/server/connect.ts`, `src/server/stripe.ts`)
-- Plans and billing (`src/server/billing.ts`, decision D18)
-- Accounts that own stores (D748, `docs/extensions.md`)
-- Free trials and their end (D420, `src/server/store-trial.ts`)
-- Usage and limits (D314, `docs/capacity.md`; the cells of phase 5 are a proposal in `docs/cells.md`)
-- Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a store; decisions D42, D53)
-- Forms as their own records, kept responses and form templates (D705, D738, `docs/forms.md`; F1 to F6 built, its AI tools live)
-- Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…
-- The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`, `AiManagerLauncher`)
-- The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
-- The AI manager's team and plan tools (PSI AGT-01, D318, `src/server/staff-tools.ts`, `src/server/billing-tools.ts`)
-- The AI manager's order changes and exchanges (PSI AGT-01, D318, `src/server/order-change-tools.ts`, `src/server/exchange-tools.ts`)
-- The AI manager's Work tools (PSI AGT-01, D318, `src/server/work-tools.ts`)
-- The AI manager's tools for the newer screens (PSI AGT-01, `src/server/screen-tools.ts`)
-- The AI manager's quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`)
-- The AI manager's contract tools (D695 step 4, `src/lib/contract-tools.ts`, `src/server/contract-tools.ts`)
-- The AI manager's checkout questions (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`)
-- The AI manager's CRM tools (ecosystem plan E2.5, D713, `src/lib/crm-tools.ts`, `src/server/crm-tools.ts`)
-- The AI manager's follow-ups (PSI AGT-04, D318, `src/lib/follow-ups.ts`, `src/server/follow-ups.ts`, `src/server/follow-up-runner.ts`)
-- The AI manager's notices and saved skills (wave 8 unit F, D350)
-- AI in the builder and a store from one description (wave 8 unit G, D351)
-- The autopilot's goals, plans and loop (D309, `docs/ai-autopilot.md` 7; built)
-- The AI manager's design tools (D308, `docs/ai-autopilot.md` 6.1, `src/lib/design-tools.ts` pure, `src/server/design-tools.ts`)
-- The agent's eyes (D310, `docs/ai-autopilot.md` 9, `src/lib/page-look.ts` pure, `src/lib/page-look-shoot.ts`, `src/server/page-looks.ts`)
-- Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)
-- The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)
-- The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)
-- The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
-- The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
-- Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`, `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)
-- Watch and roll back the autopilot's changes (D628, `docs/100-day-challenge.md` F4, `src/lib/autopilot-watch.ts` pure, `src/server/autopilot-watch.ts`)
-- The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
-- Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
-- Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)
-- The AI manager's catalogue tools (D308, `docs/ai-autopilot.md` 3, `src/lib/product-tools.ts` pure, `src/server/product-tools.ts`)
-- The AI manager's website tools (D308, `docs/ai-autopilot.md` 4.1, `src/lib/site-tools.ts` pure, `src/server/site-tools.ts`)
-- The AI manager's setup tools (D308, `docs/ai-autopilot.md` 5.1, `src/lib/setup-tools.ts` pure, `src/server/setup-tools.ts`)
-- Store analytics (D152, `docs/analytics.md`, `/admin/{store}/analytics/…`, store section Analytics)
-- Heatmaps and recordings: the owner's screens (D656, `docs/heatmaps-and-recordings.md`, `src/server/page-heat-read.ts`, `src/server/recordings-read.ts`, `src/lib/replay-sanitize.ts`)
-- Reports (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` 3, `docs/analytics.md` Reports)
-- Withdrawals and returns (D153, `docs/returns.md`, `/s/{store}/{market}/withdraw`, `/admin/{store}/returns`)
-- The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)
-- Custom grid items and the carousel (D155, `docs/content-grid-custom-items.md`, `src/lib/custom-grid.ts`, `src/lib/custom-picture.ts`,…
-- Tax profile and VAT engine (D157, `docs/wave-1a-tax.md`, `src/lib/vat.ts`, `src/lib/vat-treatment.ts`, `src/lib/ioss.ts`,…
-- Legal pages and terms at checkout (D158, `docs/wave-1-trust.md`)
-- Accessibility (D158)
-- Pay routes (D158, `docs/pci.md`)
-- Checkout branding (wave 7 unit C, D337, `docs/wave-7-storefront.md` C)
-- Staff security (D158)
-- Permissions (D158)
-- The platform's team and its roles (C1, D471, D510, `src/lib/platform-access.ts`, `src/server/platform-team.ts`)
-- The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)
-- Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)
-- Kaizena Flow's sign-ups and paid plans as ad conversions (C2, D523, `src/lib/platform-ad-conversions.ts`, `src/server/platform-ad-conversions.ts`)
-- Timed plan prices (C5, D524, `src/lib/plan-campaigns.ts`, `src/server/platform-discounts.ts`)
-- Audit log (D158)
-- Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`)
-- Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`, `unit-price-editor.ts`)
-- VAT, OSS and IOSS reports (D161, `docs/wave-1c-reports.md`, `/admin/{store}/analytics/tax?view=vat|oss|ioss`, `src/lib/tax-*.ts`, `oss-return.ts`,…
-- Personal data (D162, `docs/wave-1g-gdpr.md`)
-- Data in and out (wave 2, D165, `docs/wave-2-data.md`)
-- Redirects and the 404 report (wave 2, D168, `docs/wave-2-redirects.md`)
-- The WordPress plugin (D169, `docs/wordpress-plugin.md`, `wordpress-plugin/kaizen-store/`, `public/downloads/kaizen-store-wordpress.zip`)
-- Closing a store (D171, `docs/store-closure.md`)
-- Store features (D178, `docs/store-features.md`, `src/lib/store-features.ts`, `src/server/store-features.ts`, `/admin/{store}/settings/features`)
-- Inventory (wave 3, D172, `docs/wave-3-inventory.md`)
-- Drop shipping (D550, D482, `docs/drop-shipping.md`, `src/lib/drop-shipping.ts`, `src/server/suppliers.ts`)
-- Environmental claims (D552, `src/lib/green-claims.ts`, `src/server/green-claims.ts`, `/admin/{store}/products/claims`)
-- Digital Product Passports (D554, `src/lib/product-passport.ts`, `src/server/product-passports.ts`, `/passport/{id}`)
-- Orders: list, tags, archive, drafts, gift (wave 3, D173, `docs/wave-3-orders.md`)
-- Request a quote and price on request (D431, `src/lib/quotes.ts`, `src/server/quote-requests.ts`, `src/lib/product-question.ts`, `src/server/product-questions.ts`)
-- Fulfilment and order editing (wave 3, D174, `docs/wave-3-fulfilment.md`)
-- Shipping methods, pickup and local delivery (wave 3, D237, `docs/wave-3-shipping-methods.md`)
-- Customer notifications, tracking and staff alerts (wave 3, D238, `docs/wave-3-notifications.md`)
-- Exchanges and return labels (wave 3, D239, `docs/wave-3-exchanges.md`)
-- Payment facts, risk and disputes (wave 4 unit A, D288, `docs/wave-4-payments.md` 3, `src/lib/payment-facts.ts`, `src/server/payment-facts.ts`,…
-- Authorise now, capture later (wave 4 unit B, D289, `docs/wave-4-payments.md` 4, `src/lib/capture.ts`, `src/server/payment-capture.ts`)
-- Live and revenue after a search (wave 8 unit C, D347, `docs/analytics.md` Live)
-- Targets, alert emails and the briefing (wave 8 unit D, D348, `docs/analytics.md` Alerts, targets, forecast)
-- Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)
-- The chargeback assistant and customers who return a lot (D417, `src/lib/dispute-evidence.ts`, `src/server/dispute-evidence.ts`)
-- What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)
-- Campaigns and first visits (wave 5 unit I3, D303, `docs/wave-5-marketing.md` 12.4)
-- Payouts and real fees (wave 4 unit C, D290, `docs/wave-4-payments.md` 5, `src/lib/payouts.ts`, `src/server/payouts.ts`,…
-- Payment methods per country (wave 4 unit D, D291, `docs/wave-4-payments.md` 6, `src/lib/payment-methods.ts`, `src/server/payment-methods.ts`)
-- Live drills (D406, `docs/consolidation.md`, `src/lib/live-drills.ts`, `src/server/live-drills.ts`)
-- Express checkout and wallets (wave 10 unit J, D373, `src/lib/express-checkout.ts`, `src/server/express-checkout.ts`)
-- Payment providers (wave 4 unit E, D292, `docs/wave-4-payments.md` 7, `src/lib/payment-providers.ts`, `src/server/payment-providers/`,…
-- Payment terms for company accounts (wave 4 unit F, D293, `docs/wave-4-payments.md` 8, `src/lib/payment-terms.ts`, `src/server/payment-terms.ts`)
-- The subscriber list (wave 5 unit A, D295, `docs/wave-5-marketing.md` 3, `src/lib/marketing-consent.ts`, `src/server/marketing-subscribers.ts`)
-- Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
-- Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)
-- SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
-- A store's own sending domain (D727, `src/lib/sending-domains.ts`, `src/server/sending-domains.ts`, `SendingDomainCard`)
-- Flows (D767, `docs/flows.md`, `src/lib/flows.ts` pure, `src/server/flows.ts`, `/admin/{store}/flows`)
-- The sending guard (D730, `src/lib/sending-guard.ts`, `src/server/sending-guard.ts`, `SendingGuardNotice`)
-- Marketing email from the store's own facts (wave 8 unit H, D352, `src/server/broadcast-facts.ts`)
-- Email automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6, `src/lib/automations.ts`, `src/server/automations.ts`,…
-- Discounts in depth (wave 5 unit E, D299, `docs/wave-5-marketing.md` 7, `src/lib/discounts.ts`, `src/server/discounts.ts`)
-- Gift cards (wave 5 unit F, D300, `docs/wave-5-marketing.md` 8, built in steps; F1 the model, F2 selling, F3 spending, F4 the owner's screens and…
-- Owed to customers (wave 11 unit B, D381)
-- Product reviews (wave 5 unit G, D301, `docs/wave-5-marketing.md` 9, built in steps; G1 writing, G2 checking and showing)
-- Shopping agents (wave 8 unit I, D353, `src/lib/shopping-agents.ts`, `src/server/shopping-agents.ts`)
-- Events to an owner's own endpoints (wave 9 unit A, D354, `src/lib/webhook-signature.ts`, `src/server/webhook-endpoints.ts`)
-- The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
-- Kaizena Flow's own API (D518, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)
-- Checkout rules and questions (wave 9 unit D, D357, `src/lib/checkout-rules.ts`, `src/server/checkout-rules.ts`)
-- Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)
-- Self-serve sign-up (wave 9 unit F, D359, `src/server/self-signup.ts`)
-- The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)
-- Watching the Dream Factory build (D419, `src/lib/dream-showcase.ts`, `src/server/dream-showcase.ts`, `src/components/admin/dream/dream-showcase.tsx`)
-- Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
-- The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)
-- The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
-- Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)
-- The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)
-- A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)
-- Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)
-- Refund to store credit and customer accounts (wave 10 units A and B, D364, D365, `docs/wave-10-must-haves.md`)
-- Customers in the admin (wave 10 unit C, D366, `src/server/customer-staff.ts`, `src/server/customer-merge.ts`, `src/server/customer-import.ts`)
-- A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)
-- Deals and pipelines (S2, D464, `src/lib/deals.ts`, `src/server/deals.ts`, `DealBoard`)
-- Sales reports (S6, D520, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
-- Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)
-- A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
-- Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)
-- Moving in from Pipedrive (S7, D477, `src/lib/pipedrive.ts`, `src/server/pipedrive.ts`, `src/server/pipedrive-client.ts`)
-- Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
-- Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
-- Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)
-- Fiken (D460, `docs/fiken.md`, `src/lib/fiken*.ts`, `src/server/fiken.ts`, `src/server/fiken-client.ts`, `src/server/fiken-sync.ts`)
-- Changing the business behind a store (B8, D473, `src/lib/business-change.ts`, `src/server/business-change.ts`)
-- Our own ledger (B2, D478, `src/lib/ledger.ts`, `src/server/ledger.ts`, `src/data/ledger/no-saft.json`)
-- The VAT return (B5, D496, `src/lib/vat-return.ts`, `src/server/vat-return.ts`)
-- SAF-T Financial (B5, D497, `src/lib/saft.ts`, `src/server/saft.ts`)
-- Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)
-- Subscriptions (D503, `src/lib/recurring-costs.ts`, `src/server/recurring-costs.ts`, `RecurringCostsCard`)
-- Receipts by email (D504, `src/lib/books-inbox.ts`, `src/server/books-inbox.ts`, `BooksInboxCard`)
-- Budget and forecast (D505, `src/lib/budget.ts`, `src/server/budget.ts`, `BudgetCard`)
-- The year-end (D506, `src/lib/year-end.ts`, `src/server/year-end.ts`, `YearEndCard`)
-- Kaizena Flow's own money in the books (C3 step 2, D508, `src/lib/platform-books.ts`, `src/server/platform-books.ts`)
-- Accountants (B6, D512, `src/lib/books-clients.ts`, `src/server/books-clients.ts`, `ROLE_TEMPLATES.accountant`)
-- The threshold watch (D514, `src/lib/turnover-watch.ts`, `src/server/turnover-watch.ts`, `TurnoverWatchCard`)
-- eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)
-- E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
-- Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
-- Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)
-- Leaving (wave 10 unit P, D377)
-- Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
-- Ad budgets in the owner's own ad account (D585, `docs/agent-spending.md`, `src/lib/ad-budgets.ts`, `src/server/ad-accounts.ts`)
-- Product feeds (wave 5 unit H, D302, `docs/wave-5-marketing.md` 13, `src/lib/feeds.ts` pure, `src/server/feeds.ts`, `src/server/feed-settings.ts`)
-- Saved addresses (wave 5 unit J1, D304, `docs/wave-5-marketing.md` 11.1, `src/lib/customer-addresses.ts`, `src/server/customer-addresses.ts`)
-- Themes, one concept (D273, `docs/themes-unified.md`, `src/lib/theme-admin-paths.ts`)
-- Store templates (D175, D177, `docs/store-templates.md`, `src/lib/store-starters.ts`, `src/server/store-starters.ts`,…
-- Design profiles (D176, D177, `docs/design-profiles.md`, `src/lib/design-presets.ts`, `src/server/design-presets.ts`, `/admin/platform/themes`)
-- Themes and the theme library (D241, `docs/theme-phase-1.md`, phase 1 of `docs/theme-store.md`)
-- Section styles (D242, `docs/theme-phase-2.md` step 1, `src/lib/section-styles.ts`)
-- Pages following the theme (D243, `docs/theme-phase-2.md` step 2, `src/server/theme-detach.ts`)
-- Trying a theme (D244, `docs/theme-phase-2.md` step 3)
-- Theme updates (D245, `docs/theme-phase-2.md` step 4, `src/lib/theme-update.ts`)
-- Theme checks and launch themes (D246, `docs/theme-phase-2.md` step 5)
-- The theme store (D247, `docs/theme-phase-3.md`, phase 3 of `docs/theme-store.md`)
-- Kaizena Flow's own site on themes (D251, `docs/theme-phase-4.md`)
-- Theme presets (D256, `docs/theme-showcase.md`, `docs/theme-showcase-phase-1.md`)
-- Content packs (D257, `docs/theme-showcase-phase-1.md` step 2)
-- A theme's own content (D275, `docs/themes-content-and-demo-stores.md`; replaces D258's showcase per look)
-- Demo stores (D277, `docs/themes-content-and-demo-stores.md` section 4, `src/server/demo-stores.ts`, `src/lib/demo-stores.ts`)
-- Starting from a preset (D259, `docs/theme-showcase-phase-1.md` step 4)
-- A new store's demo content (D260, `docs/theme-showcase-phase-1.md` step 4b, `src/server/demo-content.ts`, `src/lib/demo-content.ts`)
-- A demo store's home page (D261, `docs/theme-showcase-phase-1.md` step 4c, `src/server/home-takes.ts`)
-- Theme photographs (D264, `docs/theme-showcase-phase-2.md` step 1)
-- Premium themes (D286, `docs/theme-prices.md`, `src/lib/theme-prices.ts`, `src/server/theme-prices.ts`)
-- Signature themes (D267, D269, D281, D287, `docs/signature-themes.md`; Orbit, Atelier, Arcade, Botanica, Kinetic, Meridian)
-- Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, D519 and D521, `docs/assistants-together.md`)
-- Templates (D125, `src/lib/templates.ts`, `src/lib/template-content.ts`, `src/server/templates.ts`, `TemplatesTab`/`TemplatesModal`)
-- Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatePreviewDialog`,…
-- Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`,…
-- Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
-- The bonus program (D130, `docs/bonus.md`, `src/lib/bonus.ts`, `src/server/bonus.ts`, SQL `commerce.bonus_*`)
-- The affiliate program (D131, `docs/referrals.md`, `docs/affiliates.md`)
-- Kaizen's plans on its own pages (D142, `src/lib/plan-offer.ts` pure, `src/server/public-plans.ts`, `PlansView`/`PlansSection`, block `plans`)
-- Kaizen's own front page, blog and 404 page (D143, `src/lib/platform-roles.ts`, `src/server/platform-roles.ts`, `commerce.platform_page_roles`,…
-- The plan comparison (D132, `src/lib/plan-features.ts`, `src/server/plan-features.ts`, `PlanFeatureTable`, `/admin/platform/plans/features`)
-- Shipping carriers (D133, `docs/shipping-carriers.md`, `src/lib/shipping-carriers.ts`, `src/server/shipping-carriers.ts`,…
-- Posten / Bring (D134, `src/lib/bring.ts`, `src/server/carriers/bring.ts`, `src/server/bring-shipping.ts`)
-- Delivery options at checkout (D135, `src/lib/delivery-options.ts`, `src/server/delivery-options.ts`, `src/server/delivery-choice.ts`,…
-- PostNord (D136, `src/lib/postnord.ts`, `src/server/carriers/postnord.ts`)
-- Porterbuddy (D137, `src/lib/porterbuddy.ts`, `src/server/carriers/porterbuddy.ts`, `src/server/porterbuddy-shipping.ts`)
-- Helthjem (D138, `src/lib/helthjem.ts`, `src/server/carriers/helthjem.ts`, `src/server/helthjem-shipping.ts`)
-- Instabox, DHL Express and UPS (D458, `src/lib/{instabox,dhl,ups}.ts`, `src/server/carriers/{instabox,dhl,ups}.ts`, `src/server/carrier-delivery-booking.ts`)
-- DHL Paket, nShift, PostNord's booking, collection, cancelling and return labels (D459, `src/server/carrier-cancel.ts`, `src/lib/carrier-collection.ts`, `src/lib/return-services.ts`)
-- Product recommendations (D139, `docs/recommendations.md`, `src/lib/recommendations.ts` pure, `src/server/recommend.ts` engine,…
-- A/B tests of pages (D148, `docs/ab-testing.md`, `src/lib/experiments.ts`, `src/server/experiments.ts`, `experiment-admin.ts`,…
-- Responsive editing (D179, `docs/responsive-editing.md`, phases 1 to 4 built)
-- The settings panel (D631, `SettingsTabs` and `src/components/admin/settings-panel-parts.tsx`, `src/lib/settings-memory.ts`, `src/lib/settings-summary.ts`, `src/lib/style-copy.ts`)
-- Theme elements, content width and resizing (D182, `docs/theme-elements.md`)
-- The Theme tab and the site (D195)
-- Themes on every row, rows that meet, shadows, sidebars and the rail (D262)
-- Saved colours and gradients (D183, `docs/theme-elements.md`)
-- Lines of columns in a row (D187)
-- Nested columns (D294, `ColumnsBlock` in `src/lib/page-content.ts`)
-- Editing words where they are (D191, D192, D193)
-- Undo, redo and versions (D305), CSS on the live site (D306)
-- Dual page (D412, `docs/dual-page.md`, `src/lib/dual-page.ts`, `DualPageEditor`, `DualFrame`)
-- The page builder's sandbox (D457, `docs/builder-sandbox.md`, `src/lib/sandbox.ts`, `src/server/sandbox.ts`, `/admin/try`)
-- Find and replace (D307)
-- Before and after (D413, `src/components/before-after-slider.tsx`, `BeforeAfterBlock` in `src/lib/page-content.ts`)
-- Remove background on picture fields (D413, `RemoveBackgroundButton`, `PictureEditorProvider`, `editLibraryPicture()`)
-- Timeline (D414, `src/components/timeline-view.tsx`, `TimelineBlock` in `src/lib/page-content.ts`)
-- Icon list descriptions (D414, `IconListItem.description`)
-- Dual heading (D425, `HeadingBlock.second`, `isDualHeading()`)
-- Table component (D194, `src/components/table-view.tsx`, `src/lib/table-edit.ts`)
-- Brands (D204, `src/components/brands-view.tsx`, `src/components/brands-carousel.tsx`, `src/lib/brands.ts`)
-- Hover timing, button hover effects and logo colours (D206, `src/lib/hover-timing.ts`, `src/components/admin/hover-fields.tsx`)
-- Menu hover and active (D207, `src/lib/menu-hover.ts`, `src/components/menu-glide.tsx`, `MenuHoverFields`)
-- Components in an FAQ's answers (D208)
-- Gallery (D209, `src/lib/gallery.ts`, `src/components/gallery-view.tsx`, `src/components/gallery-lightbox.tsx`)
-- What a visitor loads (D211, `docs/performance.md`)
-- Compressing pictures and videos (D213, `docs/media-compression.md`)
-- A video that plays once, and uploads that arrive (D536, `src/lib/video-play.ts`, `src/lib/upload-retry.ts`)
-- An animation, and a logo that is one (D538, `src/lib/animation.ts`, `src/lib/animation-make.ts`, `src/components/animation-view.tsx`)
-- Icon list gradient (D199)
-- Text styles (D393, `docs/text-styles.md`, `src/lib/text-styles.ts`, `src/server/text-styles.ts`, `src/components/admin/text-styles.tsx`)
-- Layers over a background, backdrops and the hue (D534, `src/lib/background-layers.ts`, `src/lib/backdrops.ts`, `src/lib/hue.ts`)
-- Text on a part's own background (D390, `src/lib/background-surface.ts`)
-- Text colour (D180, `docs/text-colour.md`)
-- Duplicating pages (D126, `src/lib/page-duplicate.ts`, `src/server/page-duplicate.ts`, `DuplicateButton`)
-- Stock and Add to cart on product tiles (D557, `src/lib/shop-tiles.ts`, `src/server/shop-tiles.ts`, `TileShop`, `/api/shop/tiles`)
-- Basket notes: free shipping and you saved (D558, `src/lib/shop-notes.ts`, `src/server/shop-notes.ts`, `src/components/shop-notes.tsx`)
-- Goes well with: upsells from the cart (D559, `recommendForCart()`, `src/components/cart-upsell.tsx`)
-- An Instagram feed (D560, `src/lib/instagram.ts`, `src/server/instagram.ts`, `InstagramBlock`, `InstagramSection`)
-- A countdown timer and animated stats (D561, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`)
-- Combined listings (D566, `docs/combined-listings.md`, `src/server/product-groups.ts`, `/admin/{store}/products/{id}/listing`)
-- Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`, `src/server/product-layouts.ts`)
-- Custom fields (D118, `docs/custom-fields.md`, `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`)
-- Modals (D121, `src/lib/page-modal.ts`, `src/components/page-modal.tsx`, `ModalFields`)
-- Work (D122, D123, `docs/work.md`, module `work` switched on per store in the owner's Work settings, at the store OWNER's level
-- Headers and footers (D80, `src/lib/site-layout.ts`, `src/components/site-parts.tsx`, `src/server/site-layouts.ts`)
-- Design themes (D60, `src/lib/theme.ts`, `src/server/themes.ts`)
-- Fonts (D59, `src/lib/fonts.ts`, `src/server/fonts.ts`)
-- Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`)
-- Campaigns (D114, `src/lib/campaigns.ts`, `src/server/campaigns.ts`, `/admin/{store}/campaigns` under Sales)
-- Customer groups and company accounts (D108, `src/lib/customer-tiers.ts`, `src/server/customer-tiers.ts`, `src/server/companies.ts`)
-- B2B in depth (wave 6 unit C, D321, `docs/wave-6-catalogue.md` C.4 to C.6)
-- Bundles (wave 6 unit D, D322, `docs/wave-6-catalogue.md` D.1 to D.6)
-- Quantity rules (wave 6 unit E1, D323, `docs/wave-6-catalogue.md` E.1, `src/lib/quantity-rules.ts`)
-- Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`)
-- Bookings (D65, `docs/bookings.md`)
-- Hosts (D71, `src/server/hosts.ts`)
-- Demo products
-- Kaizena Flow's own site in more than one language (D312, `docs/platform-admin-i18n.md`, `src/lib/platform-lang.ts`)
-- The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)
-- Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made in the browser by `squareIcon()`), linked by `siteIcons()` in every…
-- Menus (D85, `commerce.menus`, `src/server/menus.ts`, `MenuEditor`)
-- The theme store's pages (D285, `src/lib/theme-store-parts.ts`, `src/components/theme-store-section.tsx`, `src/components/theme-page-parts.tsx`)
-- Pictures by prompt (D283, `src/lib/picture-direction.ts`, `src/server/picture-maker.ts`, `src/server/picture-route.ts`, `picture-maker.tsx`)
-- Pictures made and edited in the library (wave 8 unit E, D349, `src/lib/picture-edit.ts`, `src/server/picture-editor.ts`)
-- The media library (D88, `src/server/media-library.ts`, `MediaLibrary`)
-- Kaizen's own header and footer (`/admin/platform/navigation`) use the store's `NavigationEditor` (logos, icon, which menus, and business details);…
-- Profile pictures (D97, `src/server/avatars.ts`, `src/lib/avatar.ts`, `src/lib/gravatar.ts`)
-- Light and dark (D99, `src/lib/color-mode.ts`)
-- Owners' own CSS (D100, `src/lib/custom-css.ts`, `CssPanel`)
-- Slack (D101, `src/lib/slack.ts`, `src/server/slack.ts`)
-- Kaizena Flow's own integrations (D465, `docs/platform-parity.md`, `src/lib/platform-integrations.ts`, `src/server/platform-integrations.ts`)
-- Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,…
-- Secrets in the database (Kaizen's webhook secrets, old per-store keys) are encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and…
+- `docs/rules/storefront.md`: stores as shoppers see them (stores and markets, languages, catalogue reads, search, prices, the cart, consent).
+- `docs/rules/admin/platform.md`: the admin's frame, accounts, security and the platform (`/admin/platform`).
+- `docs/rules/admin/ai.md`: the AI manager, the autopilot and AI that builds.
+- `docs/rules/admin/commerce.md`: orders, payments, tax, shipping and selling.
+- `docs/rules/admin/marketing.md`: customers, marketing and analytics.
+- `docs/rules/admin/website.md`: the website, the builder, themes and the docs portal.
+- `docs/rules/admin/integrations.md`: data in and out, APIs and integrations.
+- Find a rule: search `docs/rules` for the file's path, the component's name or the table's name (`rg -n "cart.ts" docs/rules`).
+- List an area's rules: `rg -n "^## " docs/rules/admin/commerce.md`.
+- Read one rule: from its heading's line to the next heading, not the whole file.
+- How-to that loads by folder: `.claude/rules/` (`database.md`, `e2e.md`, `server.md`, `ai-prompts.md`).
 
 ## Conventions
 
@@ -434,38 +118,14 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Environment variables are validated in `src/lib/env.ts` (the two public ones in `src/lib/public-env.ts`, without zod, for the browser) when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.
-- New reads, and every read that carries money, describe their row with `col` and go through `typedRows()`/`typedRow()`
-  (`src/server/typed-rows.ts`: each row checked with zod; a `bigint` sum is `col.minor`, a `char(3)` code `col.currency`; a row of
-  another shape throws `RowShapeError`, naming the column, never the value; rows another runner fetched, such as analytics'
-  `setBased()`, through `checkedRows()`); `coalesce()` a sum that may meet no rows. A writer of `commerce.stores` refreshes the store's
-  tag itself (`refreshTag(storeTag(slug))`, `refreshStoreById()`; `store-writers.scan.test.ts`), which does nothing outside Next. Older
-  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first); unchecked reads and `as unknown as`
-  only fall (`ratchet.scan.test.ts`, code review 1.2).
-  A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the ratchet lets the count
-  of those that do not, per file, only fall (code review 1.3).
-  A read of a store's or the platform's rows filters with `owned(storeId)` (`src/server/owned.ts`), never `store_id is not distinct from`: the
-  ratchet counts that wording per file and only lets it fall (D622).
 - Every budget (baseline file, scan test, script) has a row in `docs/rules/budgets.md`; its numbers only fall.
-- New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
-  person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
-  inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):
-  each run is kept in `commerce.cron_jobs`, a job that throws is logged and the others finish, and the platform home and
-  Usage and limits say which job is late or failing (`src/lib/cron-health.ts`); `cron-routes.scan.test.ts` holds new routes to it.
+- Typed rows, the code ratchet, logs and cron jobs: `.claude/rules/server.md`, loaded when you open `src/server` or `src/app/api`. The eval and
+  prompt versions: `.claude/rules/ai-prompts.md`.
 - AI features must stay grounded: the model never states a price, stock level or
   product it was not given by a tool; arithmetic happens in code; model output is
   rendered as text, never as HTML. Every system prompt carries the rule in
   `src/lib/prompt-safety.ts` (`UNTRUSTED_TEXT`, or `RULES_STAND` where the input is
   meant to steer); `prompt-safety.scan.test.ts` fails for a new prompt without it.
-  The agents' safety eval (`src/lib/agent-eval.ts`, run by `src/server/agent-eval.ts` from Platform → AI, kept per model in
-  `commerce.ai_eval_runs`) plays the shopper chat and the AI manager with their real prompts and tools on scripted tool answers that
-  hide instructions; run it after changing a prompt, a tool's description or the platform's model, and add a case with any new way
-  outside text reaches a prompt (`agent-eval.test.ts` checks every tool a case names exists). Prompts are versioned (D391,
-  `src/server/prompt-versions.ts`: each drawn with fixed inputs and hashed; a new agent's prompt gets a fixed drawing there and a version
-  in `promptVersions()`), kept with every answer and eval run; CI replays the recording of a real run kept as
-  `src/data/agent-eval-recording.json` (`agent-eval-replay.int.test.ts`), so a changed prompt or a new case needs a new run on
-  Platform → AI and its recording committed. The AI manager's conversations go after the retention rule's period or the owner's own
-  (`stores.assistant_keep_months`, `pruneAssistantConversations()`); the chat's notice says when an AI reads tone or summarises
-  (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
 - A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
 - Working plans in `docs/audits/`: `psi-followups.md` (Open), `code-review-2026-11.md`, `bloat-review-2026-11.md` and
