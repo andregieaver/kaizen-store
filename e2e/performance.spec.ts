@@ -533,7 +533,7 @@ for (const [path, budget] of Object.entries(SPEED_BUDGETS)) {
  * Measured on the build of 18 November 2026 (four runs): the home 216,550 / 154,157 / 22,855, style text 17,224; the product page 177,126
  * / 124,513 / 10,533 and 11,376; the listing 192,183 / 136,556 / 10,444 and 11,373; the about page 153,134 / 112,645 / 4,833 and 12,709;
  * no identical rows; the stylesheets 217,830, 584 and 576 bytes; two font files of 75,740 bytes together; pictures at 3x 142,903 bytes
- * (none too wide); 21 router requests. The first request after the server starts streams the product page in another order (tens of
+ * (none too wide, on 4G: the test pins it); 21 router requests. The first request after the server starts streams the product page in another order (tens of
  * bytes); later runs are identical. A first figure is not the end: after phase 2 the themed pages are judged against the bare
  * store's bars (docs/rules/budgets.md). `E2E_MEASURE=1` prints each figure as `[themed] <page> <measure> <value>` and holds none.
  * Without the seed a local run skips them; in CI a missing store fails.
@@ -728,6 +728,10 @@ test.describe("a store on a launch theme (Orbit)", () => {
     const context = await browser.newContext({ viewport: size, screen: size, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
     const page = await context.newPage();
     try {
+      // A phone on 4G, whatever this machine's own network reads as: Chromium loads a lazy picture 1,250 px ahead of the screen on 4G and
+      // 2,500 px on 3G, and CI's runner reads as 3G, where two more tiles load (deep sky and charts: 223,837 bytes on 18 November 2026).
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 20, downloadThroughput: 1_250_000, uploadThroughput: 1_250_000 });
       const pictures: Promise<number>[] = [];
       let moved = Date.now();
       page.on("request", () => {
