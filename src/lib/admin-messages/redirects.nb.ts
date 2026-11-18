@@ -234,6 +234,16 @@ export const redirectsNb: RedirectsMessages = {
     },
   },
   import: {
+    /** Round 50 (D765): what a phone shows. */
+    phone: {
+      lead: "Fra vår fil eller Shopifys, sjekket før noe endres.",
+      hint: "Trenger Redirect from og Redirect to. Ingenting endres før du har sett sjekken.",
+      rules: "Slik leses filen",
+      rulesSub: "Stier, avvisninger, hva som erstattes",
+      kept: "Filen din slettes {days} dager etter importen.",
+      open: "Åpne",
+      close: "Lukk",
+    },
     title: "Importer omdirigeringer",
     intro: "Hent inn omdirigeringer fra en CSV-fil: filen denne butikkens eksport lager, eller en omdirigeringsfil fra Shopify. Du ser hva importen vil gjøre, linje for linje, før noe endres.",
     openTitle: "En import er allerede åpen",

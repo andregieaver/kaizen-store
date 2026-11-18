@@ -115,6 +115,15 @@ export const privacyEn = {
     openCustomer: "Open the customer",
   },
   forms: {
+    /** Round 50 (D765): what a phone shows. */
+    phone: {
+      lead: "For one that came by email, post or phone.",
+      due: "Answer within one month of the date received.",
+      clock: "How the month is counted",
+      clockSub: "Extensions, weekends, the law",
+      open: "Open",
+      close: "Close",
+    },
     extendQuestion: "Why is the answer extended?",
     extendHint: "The person is emailed this reason. You may extend once, within the first month, by up to two further months.",
     extendButton: "Extend and tell the person",

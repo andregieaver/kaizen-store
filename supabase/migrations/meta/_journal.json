@@ -715,6 +715,13 @@
       "when": 1794994342903,
       "tag": "20261118093222_privacy_officers_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1794998138057,
+      "tag": "20261118103538_extension_on_early",
+      "breakpoints": true
     }
   ]
 }

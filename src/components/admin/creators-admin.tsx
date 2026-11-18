@@ -51,6 +51,10 @@ export function CreatorSettingsForm({
   const [percent, setPercent] = useState(bpsToPercent(initial.commissionBps));
   const [days, setDays] = useState(String(initial.cookieDays));
   const [rows, setRows] = useState(Object.entries(initial.categoryBps).map(([id, bps]) => ({ id, percent: bpsToPercent(bps) })));
+  // Round 50 (D765): on a phone the categories and the link's cookie wait behind More choices; their fields are sent either way.
+  const [more, setMore] = useState(false);
+  // A reader's fieldset is disabled, so the toggle could not open: they see everything.
+  const rest = more || !canEdit ? "" : "max-sm:hidden";
   const { problem, saved, pending, run } = useResult();
   const unused = categories.filter((c) => !rows.some((r) => r.id === c.id));
 
@@ -85,7 +89,14 @@ export function CreatorSettingsForm({
             <span className="text-body text-ink-2">{w.commission}</span>
             <input value={percent} onChange={(e) => setPercent(e.target.value)} inputMode="decimal" className="input" />
           </label>
-          <div className="flex flex-col gap-2">
+          <button type="button" aria-expanded={more} onClick={() => setMore((open) => !open)} className={`flex min-h-14 items-center justify-between gap-3 border-y border-line py-2 text-left sm:hidden ${canEdit ? "" : "hidden"}`}>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-body text-ink">{w.phone.more}</span>
+              <span className="text-caption text-ink-2">{w.phone.moreSub}</span>
+            </span>
+            <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{more ? w.phone.close : w.phone.open}</span>
+          </button>
+          <div className={`flex flex-col gap-2 ${rest}`}>
             <span className="text-body-strong text-ink">{w.categoriesHeading}</span>
             <span className="text-caption text-muted">{w.categoriesHint}</span>
             {categories.length === 0 && <span className="text-caption text-muted">{w.noCategories}</span>}
@@ -124,7 +135,7 @@ export function CreatorSettingsForm({
               </label>
             )}
           </div>
-          <label className="flex max-w-xs flex-col gap-1">
+          <label className={`flex max-w-xs flex-col gap-1 ${rest}`}>
             <span className="text-body text-ink-2">{w.cookieDays}</span>
             <input value={days} onChange={(e) => setDays(e.target.value)} inputMode="numeric" className="input" />
             <span className="text-caption text-muted">{w.cookieHint}</span>

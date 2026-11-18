@@ -287,7 +287,8 @@ read-only state decides with them.
 - E2: `20261118080146_extensions`, `20261118080153_extensions_catalogue`, applied by CI 18 November 2026 08:53 UTC; 5 extensions, 8 sizes,
   32 prices (EUR, NOK), 2 bundles and the grants of Grow, Advanced and Plus. Advisors: no new warning (INFO only: RLS on, no policy; new
   indexes not yet used).
-- E3, first part: `20261118082207_extension_facts`.
+- E3, first part: `20261118082207_extension_facts`; then `20261118103538_extension_on_early`, which makes `extension_on()` stop at its first
+  answer (the query budget caught jobs reading every store's billing of an account on each call: over a thousand rows more with twenty stores).
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
