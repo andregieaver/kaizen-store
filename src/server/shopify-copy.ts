@@ -81,7 +81,7 @@ import {
 import { blogsNow, saveBlog } from "./blogs";
 import { log } from "./log";
 import { listStoreMenus, saveStoreMenu } from "./menus";
-import { listPages, pagesTag, savePage } from "./pages";
+import { pageTitles, pagesTag, savePage } from "./pages";
 import { refreshTag } from "./refresh";
 import { storeTag } from "./stores";
 import { memberCan } from "./permissions";
@@ -552,7 +552,7 @@ async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, dep
     const type = feed === "pages" ? "page" : "article";
     const items = directItems(tree);
     total = items.length;
-    const here = new Set((await listPages(member.store.id, type)).map((p) => p.slug));
+    const here = new Set((await pageTitles(member.store.id, type)).map((p) => p.slug));
     const blogs = feed === "articles" ? await blogIdsOf(member, items) : new Map<string, string | null>();
     // Fetching a page's pictures takes time: a tick stops after 40 seconds, and the next goes on.
     const started = Date.now();

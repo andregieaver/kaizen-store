@@ -237,7 +237,7 @@
     "src/server/page-modals.ts": 1,
     "src/server/page-text-edit.ts": 3,
     "src/server/page-versions.ts": 3,
-    "src/server/pages.ts": 24,
+    "src/server/pages.ts": 23,
     "src/server/payment-capture.ts": 12,
     "src/server/payment-disputes.ts": 6,
     "src/server/payment-facts.ts": 2,
@@ -1689,7 +1689,7 @@
     }
   },
   "adminRepeats": {
-    "unwrappedActionFiles": 233,
+    "unwrappedActionFiles": 232,
     "tables": 163,
     "nativeSelects": 468,
     "osloFiles": 68,
