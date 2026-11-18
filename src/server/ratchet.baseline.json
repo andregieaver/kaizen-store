@@ -349,7 +349,7 @@
     "src/server/shopper-emails.ts": 20,
     "src/server/sign-in-limit.ts": 1,
     "src/server/signature-themes.ts": 1,
-    "src/server/site-cookies.ts": 3,
+    "src/server/site-cookies.ts": 1,
     "src/server/site-layouts.ts": 3,
     "src/server/site-staging.ts": 13,
     "src/server/site-tools.ts": 20,

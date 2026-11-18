@@ -453,16 +453,11 @@
       "pagesTag(storeId)"
     ]
   },
-  "src/server/site-cookies.ts#storeFeatures": {
+  "src/server/site-facts.ts#siteFacts": {
     "life": "\"hours\"",
     "tags": [
-      "cookiesTag(storeId)"
-    ]
-  },
-  "src/server/site-cookies.ts#siteFindings": {
-    "life": "\"hours\"",
-    "tags": [
-      "cookiesTag(storeId)"
+      "cookiesTag(null), chatTag(null), pagesTag(null), REFERRALS_TAG, PLATFORM_NAVIGATION_TAG",
+      "cookiesTag(storeId), chatTag(storeId), pagesTag(storeId), affiliateTag(storeId), recommendTag(storeId), experimentsTag(storeId)"
     ]
   },
   "src/server/site-layouts.ts#siteLayoutFor": {

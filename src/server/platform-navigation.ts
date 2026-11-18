@@ -94,8 +94,8 @@ async function loadSettings(): Promise<{
   };
 }
 
-/** The site's languages from `platform_settings.locales`: English always, first, and any other the site has. */
-function offeredLangs(locales: unknown): PlatformLang[] {
+/** The site's languages from `platform_settings.locales`: English always, first, and any other the site has (also counted by `siteFacts()`). */
+export function offeredLangs(locales: unknown): PlatformLang[] {
   const listed = Array.isArray(locales) ? locales.map((l) => langOfLocale(String(l))).filter((l): l is PlatformLang => l !== null) : [];
   return ["en", ...PLATFORM_LANGS.filter((lang) => lang !== "en" && listed.includes(lang))];
 }

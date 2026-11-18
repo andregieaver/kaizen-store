@@ -94,17 +94,23 @@ export async function affiliateSite(
     left join commerce.creator_settings cs on cs.store_id = ${storeId}::uuid
   `);
   const on = Boolean(row?.on);
-  const creators = Boolean(row?.creators_on);
   const cookieDays = Number(row?.cookie_days ?? 30);
-  const creatorDays = Number(row?.creator_days ?? 30);
-  // A creator's link (D386) is kept as a referral link is, in the same cookie: it is captured while either programme works, for the
-  // longer of their times.
   return {
     on,
     cookieDays,
     friendPercent: Number(row?.friend_percent ?? 0),
-    capture: on || creators,
-    captureDays: Math.max(on ? cookieDays : 0, creators ? creatorDays : 0) || cookieDays,
+    ...affiliateCapture({ on, creators: Boolean(row?.creators_on), cookieDays, creatorDays: Number(row?.creator_days ?? 30) }),
+  };
+}
+
+/**
+ * Whether a referral link is captured, and for how long: a creator's link (D386) is kept as a referral link is, in the same cookie, while
+ * either programme works, for the longer of their times. Shared by `affiliateSite()` and the site's facts (`siteFacts()`).
+ */
+export function affiliateCapture(p: { on: boolean; creators: boolean; cookieDays: number; creatorDays: number }): { capture: boolean; captureDays: number } {
+  return {
+    capture: p.on || p.creators,
+    captureDays: Math.max(p.on ? p.cookieDays : 0, p.creators ? p.creatorDays : 0) || p.cookieDays,
   };
 }
 
