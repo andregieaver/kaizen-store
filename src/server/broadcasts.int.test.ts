@@ -86,6 +86,8 @@ const statusOf = async (id: string) => String((await db().execute<Row>(sql`selec
 beforeAll(async () => {
   storeId = await makeStore("bc");
   otherId = await makeStore("bc-other");
+  // These tests are about what is sent, not how often: the contact policy (D764) is held by contact-policy.int.test.ts.
+  await db().execute(sql`insert into commerce.contact_policies (store_id, per_week, spacing_hours, quiet_hours) values (${storeId}::uuid, 14, 0, false)`);
   const [m] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid limit 1`);
   owner = String(m.account_id);
   people.kari = `kari-${run}@example.com`;

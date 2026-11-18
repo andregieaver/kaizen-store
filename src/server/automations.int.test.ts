@@ -104,6 +104,10 @@ const sends = (kind: string) =>
 beforeAll(async () => {
   storeId = await makeStore("au");
   otherId = await makeStore("au-other");
+  // These tests are about what is sent, not how often or when: the contact policy (D764) is held by contact-policy.int.test.ts.
+  for (const id of [storeId, otherId]) {
+    await db().execute(sql`insert into commerce.contact_policies (store_id, per_week, spacing_hours, quiet_hours) values (${id}::uuid, 14, 0, false)`);
+  }
   const [m] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid limit 1`);
   owner = String(m.account_id);
   delete process.env.RESEND_API_KEY;

@@ -17324,7 +17324,7 @@ export const broadcastRecipients = commerce.table(
     locale: text("locale").notNull(),
     marketCode: text("market_code"),
     status: text("status").notNull().default("queued"),
-    /** Why it was skipped: the address left the list after the start, or the send was stopped. */
+    /** Why it was skipped: the address left the list after the start, the send was stopped, or the contact policy held it (`cap`, `spacing`, D764). */
     skipReason: text("skip_reason"),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     emailMessageId: uuid("email_message_id").references(() => emailMessages.id, { onDelete: "set null" }),
@@ -17347,7 +17347,7 @@ export const broadcastRecipients = commerce.table(
     index("broadcast_recipients_email_idx").on(t.storeId, t.email),
     index("broadcast_recipients_message_idx").on(t.emailMessageId),
     check("broadcast_recipients_status", sql`${t.status} in (${sqlList(RECIPIENT_STATUSES)})`),
-    check("broadcast_recipients_skip", sql`${t.skipReason} is null or ${t.skipReason} in ('unsubscribed', 'stopped')`),
+    check("broadcast_recipients_skip", sql`${t.skipReason} is null or ${t.skipReason} in ('unsubscribed', 'stopped', 'cap', 'spacing')`),
     check("broadcast_recipients_email", sql`${t.email} = lower(${t.email}) and char_length(${t.email}) between 3 and 254`),
   ],
 );
@@ -17480,6 +17480,8 @@ export const automationSends = commerce.table(
     /** Which of the automation's emails (D653): 1 its first, 2 and 3 its follow-ups (key `{first key}#{step}`). */
     step: smallint("step").notNull().default(1),
     outcome: text("outcome"),
+    /** Why a `suppressed` email was not sent by the contact policy (D764): `cap` or `spacing`; null for any other outcome or reason. */
+    suppressedReason: text("suppressed_reason"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -17500,6 +17502,31 @@ export const automationSends = commerce.table(
     check("automation_sends_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
     check("automation_sends_step", sql`${t.step} between 1 and 3`),
     check("automation_sends_outcome", sql`${t.outcome} is null or ${t.outcome} in (${sqlList(SEND_OUTCOMES)})`),
+    check("automation_sends_suppressed_reason", sql`${t.suppressedReason} is null or ${t.suppressedReason} in ('cap', 'spacing')`),
+  ],
+);
+
+/**
+ * A store's contact policy (email plan M1.5, D764): at most `per_week` marketing messages to one person in any 7 days, at least
+ * `spacing_hours` apart, across broadcasts, automation emails and texts, and automation emails in the reader's daytime (`src/lib/contact-policy.ts`).
+ * No row is the default (3, 20 hours, quiet hours on).
+ * The store's own setting (`NOT_PERSONAL`); copied with the store.
+ */
+export const contactPolicies = commerce.table(
+  "contact_policies",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    perWeek: smallint("per_week").notNull().default(3),
+    spacingHours: smallint("spacing_hours").notNull().default(20),
+    /** Automation emails wait for the reader's daytime (9 to 20 in their market's time zone), as texts do. */
+    quietHours: boolean("quiet_hours").notNull().default(true),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("contact_policies_per_week", sql`${t.perWeek} between 1 and 14`),
+    check("contact_policies_spacing", sql`${t.spacingHours} between 0 and 72`),
   ],
 );
 

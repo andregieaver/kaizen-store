@@ -32,6 +32,7 @@ import { CLAIM_LABELS } from "@/lib/claims";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { describeRules, matches, SEGMENT_CAP } from "@/lib/segments";
+import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
 import type { OrderCredit } from "@/lib/order-credit";
 import { siteUrl } from "@/lib/site";
 
@@ -42,6 +43,7 @@ import { brandOf } from "./brand";
 import { campaignFacts, emailMarket, findProductFacts } from "./broadcast-facts";
 import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
+import { getContactPolicy, recentContacts } from "./contact-policy";
 import { clickRef, emailClicksPrune, keepClick } from "./email-clicks";
 import { log } from "./log";
 import { sendCredit } from "./order-credit";
@@ -556,9 +558,25 @@ async function sendBatch(
           `)
         ).map((row) => String(row.id)),
   );
+  // The contact policy (D764): what reached each subscribed recipient lately, read once per store in the batch.
+  const held = new Map<string, PolicyReason>();
+  for (const storeId of new Set(batch.filter((r) => r.status === "subscribed").map((r) => r.storeId))) {
+    const mine = batch.filter((r) => r.storeId === storeId && r.status === "subscribed");
+    const [policy, sent] = await Promise.all([getContactPolicy(storeId), recentContacts(storeId, mine.map((r) => ({ email: r.email, customerId: null })))]);
+    mine.forEach((r, i) => {
+      const reason = policyVerdict(sent[i], new Date(), policy, "normal");
+      if (reason) held.set(keyOf(r), reason);
+    });
+  }
   for (const r of batch) {
     if (r.status !== "subscribed") {
       await markRecipient(r, "skipped", null, "unsubscribed");
+      result.skipped += 1;
+      continue;
+    }
+    const reason = held.get(keyOf(r));
+    if (reason) {
+      await markRecipient(r, "skipped", null, reason);
       result.skipped += 1;
       continue;
     }

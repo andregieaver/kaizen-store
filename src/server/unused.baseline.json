@@ -129,6 +129,7 @@
     "src/db/schema.ts#companyInvites",
     "src/db/schema.ts#companyLocationBuyers",
     "src/db/schema.ts#consents",
+    "src/db/schema.ts#contactPolicies",
     "src/db/schema.ts#contentReports",
     "src/db/schema.ts#contentScreened",
     "src/db/schema.ts#contractCodes",

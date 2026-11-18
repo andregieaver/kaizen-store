@@ -95,6 +95,8 @@ beforeAll(async () => {
   `);
   const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`fl-${run}`}, 'Test', null) as id`);
   storeId = String(created.id);
+  // These tests are about what is sent, not how often: the contact policy (D764) is held by contact-policy.int.test.ts.
+  await db().execute(sql`insert into commerce.contact_policies (store_id, per_week, spacing_hours, quiet_hours) values (${storeId}::uuid, 14, 0, false)`);
   await db().execute(sql`update commerce.stores set status = 'active', locales = array['nb-NO', 'en-GB'] where id = ${storeId}::uuid`);
   const [m] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid limit 1`);
   owner = String(m.account_id);
