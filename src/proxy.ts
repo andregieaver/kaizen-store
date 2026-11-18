@@ -11,6 +11,7 @@ import { storeDomain, storeHosts } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { holdingFor } from "@/server/holding";
 import { siteStore } from "@/server/house-switch";
+import { noteFirstRequest } from "@/server/instance-start";
 import { recordNotFound } from "@/server/not-found";
 import { unlockCookieName, unlocks } from "@/lib/unlock-pass";
 import { unlockSecret } from "@/server/private-secret";
@@ -64,6 +65,7 @@ export const config = {
 };
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  noteFirstRequest("proxy", (work) => event.waitUntil(work()));
   const host = request.headers.get("host") ?? "";
   const ownHostStore = storeOfHost(host, storeDomain(), storeHosts());
   // Job 6: the store whose pages are Kaizena Flow's site while the switch is on, read only for Kaizena Flow's own host and the store's own.

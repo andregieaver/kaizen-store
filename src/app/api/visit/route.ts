@@ -1,7 +1,8 @@
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
 import { recordVisit } from "@/server/analytics-visits";
+import { noteFirstRequest } from "@/server/instance-start";
 
 /**
  * A page view from a store's own pages (D152, docs/analytics.md, "Visit counting"), sent by `VisitBeacon` while the store
@@ -17,6 +18,7 @@ const quiet = () => new Response(null, { status: 204, headers: { "Cache-Control"
 
 export async function POST(request: Request) {
   await connection();
+  noteFirstRequest("beacon", after);
   try {
     if (!sameSite(request)) return new Response(null, { status: 403, headers: { "Cache-Control": "no-store" } });
     const declared = Number(request.headers.get("content-length") ?? 0);

@@ -8819,3 +8819,17 @@ describe("what the database writes for a new store (surface budget)", () => {
     }
   });
 });
+
+describe("cold starts (bloat review step 1.16)", () => {
+  const insert = (kind: string, firstMs: number) =>
+    db.query(
+      "insert into commerce.instance_starts (day, kind, first_ms, rss_mb) values ((now() at time zone 'utc')::date, $1, $2, 300)",
+      [kind, firstMs],
+    );
+
+  it("takes a start of a known kind and refuses an unknown kind and a negative time", async () => {
+    await insert("beacon", 120);
+    await expect(insert("other", 120)).rejects.toThrow(/instance_starts_kind/);
+    await expect(insert("beacon", -1)).rejects.toThrow(/instance_starts_values/);
+  });
+});

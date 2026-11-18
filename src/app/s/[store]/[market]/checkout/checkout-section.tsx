@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
@@ -52,6 +53,7 @@ import { orderCodeOutcomes, type CodeOutcome } from "@/server/discounts";
 import { codeProblemText } from "@/lib/code-words";
 import { shownCartGiftCards } from "@/lib/gift-card-words";
 import { checkoutGiftCards } from "@/server/gift-card-cart";
+import { noteFirstRequest } from "@/server/instance-start";
 import { getOrder } from "@/server/orders";
 import { perRequest } from "@/server/request-memo";
 import { platformPublishableKey } from "@/server/stripe";
@@ -70,6 +72,7 @@ async function loadCheckoutView(store: Store, market: Market) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
   const cartId = await readCartId({ storeId: store.id, market });
+  noteFirstRequest("pay", after);
   const open = cartId ? await getOpenCheckout(store.id, cartId) : null;
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!cartId || !open || !order) return null;

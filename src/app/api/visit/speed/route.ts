@@ -1,8 +1,9 @@
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
 import { recordSpeed } from "@/server/analytics-speed";
 import { log } from "@/server/log";
+import { noteFirstRequest } from "@/server/instance-start";
 
 /**
  * One page load's speed (D336, `docs/analytics.md` "Speed"), sent by `SpeedBeacon` while the store counts visits. POST only, from the
@@ -15,6 +16,7 @@ const answer = (status: number) => new Response(null, { status, headers: { "Cach
 
 export async function POST(request: Request) {
   await connection();
+  noteFirstRequest("beacon", after);
   try {
     if (!sameSite(request)) return answer(403);
     const declared = Number(request.headers.get("content-length") ?? 0);

@@ -241,6 +241,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   The page's *Style text owners add* card is a reading taken on demand (`?reading=styles`, `styleReading()` in `src/server/style-reading.ts`,
   pure parts in `src/lib/style-reading.ts`): one statement, no page document leaves the database; its lines (10 KB median, 20 KB a store,
   half of pages with motion) are in `docs/performance.md`.
+  Each server instance stores its cold start once in `commerce.instance_starts` (`src/lib/instance-start.ts`, `src/server/instance-start.ts`,
+  step 1.16: kind, times, memory, bytes of translated text; nothing of the request), kept 30 days by the daily job; the screen's *Cold
+  starts* card (`#cold-starts`) shows cold starts a day with the median and the 95th percentile by kind.
 
 ## The parity tracker (D154, `docs/parity/README.md`, `docs/parity-plan.md`)
 

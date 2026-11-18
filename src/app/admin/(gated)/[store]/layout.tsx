@@ -23,6 +23,7 @@ import { storeNav } from "@/lib/store-nav";
 import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
 import { storeShellReads } from "@/server/admin-screens";
 import { holderOf } from "@/server/auth";
+import { noteFirstRequest } from "@/server/instance-start";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 
@@ -58,6 +59,7 @@ const SETUP = String.raw`^/admin/[^/]+/setup(/|$)`;
  */
 export default async function StoreAdminLayout({ children, params }: LayoutProps<"/admin/[store]">) {
   const member = await requireMemberAny((await params).store);
+  noteFirstRequest("admin", after);
   const { account, store, role } = member;
   const isOwner = memberCan(member, "owner");
   // In test mode, Kaizen sets up the store's test Stripe account itself, after

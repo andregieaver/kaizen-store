@@ -3274,6 +3274,38 @@ export const ownSpeedSamples = commerce.table(
 );
 
 /**
+ * One row for each server instance's cold start (bloat review step 1.16): what it was started for, the milliseconds from process start to the
+ * end of `register()` and to its first answer, its resident memory and the bytes of translated text it read at start. Written once an instance by
+ * `src/server/instance-start.ts`, deleted after 30 days; the row is about an instance, not a store, and holds no request data of any kind.
+ */
+export const instanceStarts = commerce.table(
+  "instance_starts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: createdAt(),
+    /** The UTC day. */
+    day: date("day").notNull(),
+    kind: text("kind").notNull(),
+    registerMs: integer("register_ms"),
+    firstMs: integer("first_ms").notNull(),
+    rssMb: integer("rss_mb").notNull(),
+    uiBytes: integer("ui_bytes").notNull().default(0),
+  },
+  (t) => [
+    index("instance_starts_day_idx").on(t.day, t.kind),
+    check(
+      "instance_starts_kind",
+      sql`${t.kind} in ('health', 'beacon', 'proxy', 'store', 'pay', 'site', 'admin', 'platform_admin', 'api', 'job')`,
+    ),
+    check(
+      "instance_starts_values",
+      sql`${t.firstMs} between 0 and 600000 and ${t.rssMb} between 0 and 100000 and ${t.uiBytes} >= 0
+        and (${t.registerMs} is null or ${t.registerMs} between 0 and 600000)`,
+    ),
+  ],
+);
+
+/**
  * One day's reading of Postgres's own statistics (bloat review step 0.2): for kind table, name is a commerce table and figures hold rows,
  * bytes, seq_scan, seq_tup_read, idx_scan, inserted, updated, deleted; for kind schema, name is a schema and figures hold bytes and tables;
  * for kind statement, name is the statement's queryid and figures hold calls, total_ms, mean_ms, rows and top (time, calls or both), with the
@@ -8546,6 +8578,7 @@ export const flowVersions = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.flowId, t.version] }),
+    index("flow_versions_flow_idx").on(t.storeId, t.flowId),
     foreignKey({ name: "flow_versions_flow_fk", columns: [t.storeId, t.flowId], foreignColumns: [flows.storeId, flows.id] }).onDelete("cascade"),
   ],
 );
@@ -8604,6 +8637,7 @@ export const flowRunSteps = commerce.table(
   (t) => [
     primaryKey({ columns: [t.runId, t.stepId] }),
     index("flow_run_steps_store_idx").on(t.storeId, t.createdAt),
+    index("flow_run_steps_run_idx").on(t.storeId, t.runId),
     foreignKey({ name: "flow_run_steps_run_fk", columns: [t.storeId, t.runId], foreignColumns: [flowRuns.storeId, flowRuns.id] }).onDelete("cascade"),
     check("flow_run_steps_outcome", sql`${t.outcome} in ('sent', 'logged', 'failed', 'suppressed')`),
     check("flow_run_steps_reason", sql`${t.suppressedReason} is null or ${t.suppressedReason} in ('cap', 'spacing', 'room', 'paused')`),

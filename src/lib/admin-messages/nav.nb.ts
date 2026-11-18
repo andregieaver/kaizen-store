@@ -81,12 +81,15 @@ export const NAV_NB: Record<string, string> = {
   "A/B tests": "A/B-tester",
   "Try two versions of a page on real visitors and keep the one that works better.": "Prøv to versjoner av en side på ekte besøkende og behold den som virker best.",
   "Email automations": "Automatiske e-poster",
+  Flows: "Forløp",
   "Ads and conversions": "Annonser og konverteringer",
   "Product feeds": "Produktfeeder",
   "Your products for Google Shopping, Meta, TikTok and Pinterest, at a secret address.": "Produktene dine for Google Shopping, Meta, TikTok og Pinterest, på en hemmelig adresse.",
   "Checkouts and purchases sent to your ad platforms from the server, for shoppers who allowed marketing.": "Kasser og kjøp sendt til annonseplattformene dine fra serveren, for kunder som har tillatt markedsføring.",
   "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.":
     "E-poster som går av seg selv: velkommen, etter et kjøp, for å vinne kunder tilbake og tilbake på lager.",
+  "Emails one after another to each person from the moment something happens, read as a story.":
+    "E-poster etter hverandre til hver person fra noe skjer, lest som en fortelling.",
   Broadcasts: "Nyhetsbrev",
   "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.":
     "E-poster med nyheter og tilbud til alle som vil ha dem, eller til et segment, med hva som skjedde etterpå.",

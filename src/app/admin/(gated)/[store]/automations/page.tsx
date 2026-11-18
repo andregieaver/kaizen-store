@@ -66,6 +66,12 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
             {onNames.length === 0 ? fillWords(wa.leadNoneRest, { first: wa.kinds[LIFECYCLE_KINDS[0]].title }) : wa.leadSomeRest}
           </span>,
         ]}
+        actions={
+          // Flows (D767): sequences of the owner's own, one step away from the fixed automations.
+          <AdminLink href={`/admin/${store.slug}/flows`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
+            {adminText(lang, "flows").title}
+          </AdminLink>
+        }
       />
       <SendingGuardNotice
         state={noticeState(health)}

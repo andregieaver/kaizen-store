@@ -163,6 +163,8 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.", { extension: "email_automation", icon: "send", basic: true }),
           item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.", { extension: "email_automation", icon: "mail-check" }),
+          // Flows (D767): sequences of the owner's own, read as a story.
+          item("/flows", "Flows", "Emails one after another to each person from the moment something happens, read as a story.", { extension: "email_automation", icon: "mail-check" }),
           item("/text-messages", "Text messages", "Offers by text message to the numbers that asked for them at checkout, in their daytime.", { icon: "message-text" }),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
           item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),

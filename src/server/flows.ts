@@ -123,7 +123,7 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
 export type FlowTest = { ok: true; person: string | null; emails: string[]; ends: "goal" | "done" } | { ok: false; problem: string };
 
 /**
- * Walks the store's newest subscriber through the saved version, as they are now, and sends nothing: which emails they would get, in order,
+ * Walks the store's newest subscriber through the saved version, as they are now, and sends nothing: the subjects of the emails they would get, in order,
  * taking every wait at once. Marks that version tested, so it may be switched on.
  */
 export async function testFlow(storeId: string, id: string): Promise<FlowTest> {
@@ -143,7 +143,7 @@ export async function testFlow(storeId: string, id: string): Promise<FlowTest> {
       ends = move.reason;
       break;
     }
-    if (move.do === "email") emails.push(move.step.id);
+    if (move.do === "email") emails.push(Object.values(move.step.content)[0]?.subject || move.step.id);
     path = move.next;
   }
   await db().execute(sql`update commerce.flows set tested_version = version where store_id = ${storeId}::uuid and id = ${id}::uuid`);

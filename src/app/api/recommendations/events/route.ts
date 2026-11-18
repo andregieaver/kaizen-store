@@ -1,7 +1,8 @@
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 
 import { recommendEvents } from "@/lib/recommendations-schema";
 import { visitorKey } from "@/server/chat-turns";
+import { noteFirstRequest } from "@/server/instance-start";
 import { fail } from "@/lib/route-fail";
 import { sameSite } from "@/lib/same-site";
 import { recordRecommendEvents, takeRecommendRequest } from "@/server/recommend-events";
@@ -14,6 +15,7 @@ import { getOpenStore } from "@/server/stores";
  */
 export async function POST(request: Request) {
   await connection();
+  noteFirstRequest("beacon", after);
   if (!sameSite(request)) return new Response(null, { status: 403 });
   let body: unknown;
   try {

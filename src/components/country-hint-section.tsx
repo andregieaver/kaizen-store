@@ -1,10 +1,12 @@
 import { headers } from "next/headers";
+import { after } from "next/server";
 
 import { hintCountry } from "@/lib/country-hint";
 import { isBot } from "@/lib/experiments";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketLink, marketPath } from "@/lib/paths";
+import { noteFirstRequest } from "@/server/instance-start";
 import type { Store } from "@/server/stores";
 
 import { CountryHint } from "./lazy/country-hint";
@@ -16,6 +18,7 @@ import { CountryHint } from "./lazy/country-hint";
  */
 export async function CountryHintSection({ store, market }: { store: Store; market: Market }) {
   const request = await headers();
+  noteFirstRequest("store", after);
   if (isBot(request.get("user-agent"))) return null;
   const country = hintCountry(request.get("x-vercel-ip-country"), market.code, store.markets.map((m) => m.code));
   const target = country ? store.markets.find((m) => m.code === country) : undefined;

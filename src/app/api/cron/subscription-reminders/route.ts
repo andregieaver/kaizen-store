@@ -2,6 +2,7 @@ import { pruneMapShots } from "@/server/map-shots";
 import { pruneRecordings } from "@/server/recordings";
 import { pruneHeat } from "@/server/page-heat";
 import { pruneAdSignals } from "@/server/ad-conversions";
+import { pruneInstanceStarts } from "@/server/instance-starts";
 import { prunePlatformAdSignals } from "@/server/platform-ad-conversions";
 import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
@@ -80,6 +81,8 @@ async function run(request: Request) {
   const [run, memories, usage, company, rates, visits, withdrawals, security, vatRates, vatChecks, ecb, speedSamplesPruned, ownSpeedSamplesPruned] = await Promise.all([sendDueReminders(), fadeMemories(), pruneUsage(), pruneCompanyRecords(), refreshAutoRates(), pruneVisits(), expireWithdrawalRequests(), runSecurityJobs(), syncStandardRates(), pruneVatChecks(), storeEcbRates(), pruneSpeedSamples(), pruneOwnSpeedSamples()]);
   // Ad platforms' ids on orders go 90 days after (D303 I2).
   await pruneAdSignals();
+  // Cold starts older than 30 days go (bloat review step 1.16, never throws).
+  const instanceStartsPruned = await pruneInstanceStarts();
   // And from sign-ups 90 days after (D523): a plan paid later sends nothing.
   await prunePlatformAdSignals();
   // The database's door (PSI SEC-03): the Data API's roles still reach nothing in commerce. Kept as its own job, so an open door reads as failing.
@@ -137,7 +140,7 @@ async function run(request: Request) {
     revalidateTag(storeTag(store.slug), "max");
     revalidateTag(catalogTag(store.id), "max");
   }
-  return Response.json({ ...run, databaseDoor, pgCronJobs: pgCron.jobs, pgCronFailed: pgCron.failed.length, deliveriesPruned, platformDeliveriesPruned, workflowRunsPruned, platformWorkflowRunsPruned, dailyPrunes, productionReading, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, speedSamplesPruned, ownSpeedSamplesPruned, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPicturesSwept: reviewPictureFiles.removed, formFilesSwept: formFiles.removed, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned, noticesPruned, domainRenewals, domainReminders, domainMoves, domainsArrived, sendingDomains }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ ...run, databaseDoor, pgCronJobs: pgCron.jobs, pgCronFailed: pgCron.failed.length, deliveriesPruned, platformDeliveriesPruned, workflowRunsPruned, platformWorkflowRunsPruned, dailyPrunes, productionReading, memories, usageDeleted: usage, companyRecordsDeleted: company, ratesRefreshed: rates.length, visitsDeleted: visits.visits, productViewsDeleted: visits.productViews, speedSamplesPruned, ownSpeedSamplesPruned, instanceStartsPruned, withdrawalRequestsExpired: withdrawals, ...security, vatRatesChanged: vatRates.changed, vatRatesLately: vatRates.recent, vatChecksDeleted: vatChecks.deleted, vatCartsCleared: vatChecks.cartsCleared, retention: { counts: retention.counts, errors: retention.errors, filesLeft: retention.filesLeft.length }, erasuresResumed: erasures.resumed, erasuresFailed: erasures.failed, privacyRemindersDueSoon: privacyReminders.dueSoon, privacyRemindersOverdue: privacyReminders.overdue, ecbRatesStored: ecb.inserted, ecbRatesDiffering: ecb.differing, ecbRatesOk: ecb.ok, dataJobs, notFoundDeleted, themeDetachesDeleted, themeUpdatesDeleted, subscribersPruned, broadcastsPruned, automationsPruned, stockRequestsPruned, giftCardsExpired, pageJobsPruned, reviewRequestsPruned, reviewPicturesSwept: reviewPictureFiles.removed, formFilesSwept: formFiles.removed, pageLooksPruned, researchPruned, autopilotEventsPruned, inboundEmailsPruned, noticesPruned, domainRenewals, domainReminders, domainMoves, domainsArrived, sendingDomains }, { headers: { "Cache-Control": "no-store" } });
 }
 
 // Kept in commerce.cron_jobs (PSI 2026-10-24, REL-06): the platform home says when it is late or failing.

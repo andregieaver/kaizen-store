@@ -98,6 +98,14 @@ describe("the platform's targets, alerts and briefing (D513)", () => {
     expect(platformAlertsFor(snapshot({ flags: [] })).some((a) => a.id === "database_flag")).toBe(false);
     expect(platformAlertsFor(snapshot()).some((a) => a.id === "database_flag")).toBe(false);
   });
+
+  it("says when translated text read at start is over 1 MB, and says nothing at 900,000 bytes or without the field (step 1.16)", () => {
+    const found = platformAlertsFor(snapshot({ uiBytesAtStart: 1_200_000 })).filter((a) => a.id === "ui_text_large");
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ severity: "info", values: { bytes: 1_200_000 }, href: "/admin/platform/capacity#cold-starts" });
+    expect(platformAlertsFor(snapshot({ uiBytesAtStart: 900_000 })).some((a) => a.id === "ui_text_large")).toBe(false);
+    expect(platformAlertsFor(snapshot()).some((a) => a.id === "ui_text_large")).toBe(false);
+  });
 });
 
 describe("what Kaizena Flow's own site raises (ecosystem plan E5.2, D757)", () => {

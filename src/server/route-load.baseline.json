@@ -1,22 +1,22 @@
 {
   "largestCycle": 23,
   "entries": {
-    "proxy": 323,
+    "proxy": 325,
     "start-hook": 1,
-    "health": 10,
-    "beacon-visit": 114,
-    "beacon-touch": 114,
-    "beacon-speed": 128,
-    "beacon-own-speed": 116,
-    "beacon-recommendation-events": 110,
+    "health": 13,
+    "beacon-visit": 116,
+    "beacon-touch": 116,
+    "beacon-speed": 130,
+    "beacon-own-speed": 118,
+    "beacon-recommendation-events": 112,
     "shop-tiles": 320,
-    "store-layout": 594,
+    "store-layout": 596,
     "store-home": 488,
     "store-product": 886,
-    "admin-store-layout": 1068,
-    "admin-orders": 1076,
-    "platform-admin-layout": 1065,
-    "platform-admin-home": 1062,
+    "admin-store-layout": 1070,
+    "admin-orders": 1078,
+    "platform-admin-layout": 1067,
+    "platform-admin-home": 1064,
     "site-front-page": 488,
     "docs-feedback": 282
   },
@@ -60,5 +60,10 @@
     "site-front-page": [],
     "docs-feedback": []
   },
-  "heavyHandlers": {}
+  "heavyHandlers": {
+    "src/app/api/cron/cart-reminders/route.ts": {
+      "files": 1502,
+      "reason": "A reminder job loads the cart, mail and money code it works on; the two files of the cold-start helper (step 1.16) took it from 1,500 to 1,502."
+    }
+  }
 }

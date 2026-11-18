@@ -101,7 +101,7 @@ describe("flows (D767)", () => {
     flowId = saved.id;
     expect(await fl.switchFlow(storeId, owner, flowId, true)).toBe("untested");
     await subscriber(`newest-${run}@example.com`);
-    expect(await fl.testFlow(storeId, flowId)).toEqual({ ok: true, person: `newest-${run}@example.com`, emails: ["welcome", "best"], ends: "done" });
+    expect(await fl.testFlow(storeId, flowId)).toEqual({ ok: true, person: `newest-${run}@example.com`, emails: ["Velkommen", "Bestselgere"], ends: "done" });
     expect(await fl.switchFlow(storeId, owner, flowId, true)).toBe("ok");
     // A new save is a new version, off again until tested.
     const again = await fl.saveFlow(storeId, owner, flowId, { name: `Velkommen ${run}`, trigger: "subscriber.subscribed", steps, goals: [{ kind: "ordered" }] });

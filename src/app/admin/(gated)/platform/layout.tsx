@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { Suspense } from "react";
 
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
@@ -13,6 +14,7 @@ import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { platformRoleOf } from "@/lib/platform-access";
 import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
 import { requirePlatformReader } from "@/server/auth";
+import { noteFirstRequest } from "@/server/instance-start";
 import { platformShellReads } from "@/server/admin-screens";
 
 import {
@@ -64,6 +66,7 @@ const areas: NavArea[] = [
  */
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
   const account = await requirePlatformReader();
+  noteFirstRequest("platform_admin", after);
   const role = platformRoleOf(account) ?? "read_only";
   const { waiting, supportWaiting, supportRequests } = await platformShellReads();
   const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting + supportRequests });
