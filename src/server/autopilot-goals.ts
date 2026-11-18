@@ -27,7 +27,6 @@ import { getAnalyticsSettings } from "./analytics-settings";
 import { periodTotals } from "./analytics-totals";
 import { audit } from "./auth";
 import { isDemoProduct } from "./demo-content";
-import { houseSignupRate } from "./house-signups";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -159,6 +158,8 @@ export async function goalFigures(store: Store | null, now = new Date(), sinceDa
       missing.signup_rate_30d = "Only Kaizena Flow's own store counts sign-ups to Kaizena Flow.";
       return null;
     }
+    // Loaded only here, for Kaizena Flow's own goals, so the five-minute dispatcher, which reaches this file, does not carry it (bloat review 1.8).
+    const { houseSignupRate } = await import("./house-signups");
     const rate = await houseSignupRate(now, store ?? undefined);
     if (rate.percent === null) missing.signup_rate_30d = rate.missing;
     return rate.percent;

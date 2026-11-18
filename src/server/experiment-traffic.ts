@@ -8,7 +8,6 @@ import type { TrafficFacts } from "@/lib/experiment-traffic";
 
 import { funnelCounts } from "./analytics-traffic-data";
 import type { TestableTarget } from "./experiment-admin";
-import { houseSignups } from "./house-signups";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -64,7 +63,8 @@ export async function experimentTraffic(store: Store, targets: readonly Testable
       `,
     ),
     funnelCounts(store, range),
-    houseSignups(store, range),
+    // Loaded only for Kaizena Flow's own store, so the five-minute dispatcher, which reaches this file, does not carry it (bloat review 1.8).
+    store.house ? import("./house-signups").then((m) => m.houseSignups(store, range)) : Promise.resolve(0),
   ]);
   if (!totals || totals.visits === 0) return { ...none, counting: true };
 
