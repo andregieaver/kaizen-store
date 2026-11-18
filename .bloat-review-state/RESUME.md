@@ -273,3 +273,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 18 Nov: 1.6 (2 commits) + 1.7 c1 (Stripe stand-in, guarded: switch + loopback + not Vercel) pushed 873efcd84; CI watched bash bf3ow98g6 (also bkb9jpahn on 1e7d19649). 1.6 stays In progress (production check of step 4.5 table after phase 2) - write a D-row now anyway? Brief: check. Screenshots sent.
 - kz-c executor a92b7eae36e9a74e8 (Opus): 1.7 commit 2+, option (b) second server with dummy test keys.
 - 18 Nov: CI on 1e7d19649: shop-journey product scanned product_terms in shard 2 (planner stats); added to list in 3bc5d53b5, CI watched bash bfi33jang. If green: write up 1.12 Done (claim D).
+- 18 Nov: 1.12 Done D753 (afb07cae5). e2e red since 873efcd84 (1.6): Orbit picture bytes 223,837 vs 150,500 and theme-store.spec:118 preset lost; sent to kz-c executor a92b7eae36e9a74e8 to fix first, it reports via SendMessage. Blocks migration pushes (1.19 c2).
