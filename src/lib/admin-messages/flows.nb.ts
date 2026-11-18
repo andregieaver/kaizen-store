@@ -34,5 +34,17 @@ export const flowsNb: FlowsMessages = {
     goal: "Det stopper når de bestiller.",
     ends: "Så slutter det.",
   },
-  problems: { untested: "Test forløpet før du slår det på.", missing: "Det forløpet hører ikke til denne butikken." },
+  change: "Endre",
+  subject: "Emne",
+  words: "Tekst",
+  days: "Dager senere",
+  save: "Lagre",
+  savedTestAgain: "Lagret. Forløpet er av til du tester det igjen.",
+  changeOff: "Når du lagrer en endring, slås forløpet av til du tester det igjen.",
+  problems: {
+    untested: "Test forløpet før du slår det på.",
+    missing: "Det forløpet hører ikke til denne butikken.",
+    words: "Skriv et emne og litt tekst.",
+    days: "Velg fra 1 til 365 dager.",
+  },
 };

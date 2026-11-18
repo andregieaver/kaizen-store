@@ -34,10 +34,10 @@ describe("a flow as the owner reads it (D767 slice 2, M3.3)", () => {
       { id: "q", kind: "if", condition: { kind: "ordered_since_entry" }, then: [email("thanks", "Takk")], else: [email("best", "Bestselgere"), { id: "w2", kind: "wait", hours: 48 }, email("last", "Siste")] },
     ];
     expect(storyLines(steps, w)).toEqual([
-      { stepId: "welcome", when: "the same day", condition: null, subject: "Velkommen", depth: 0 },
-      { stepId: "thanks", when: "3 days later", condition: "if they have ordered", subject: "Takk", depth: 1 },
-      { stepId: "best", when: "3 days later", condition: "if they have not ordered", subject: "Bestselgere", depth: 1 },
-      { stepId: "last", when: "2 days later", condition: "if they have not ordered", subject: "Siste", depth: 1 },
+      { stepId: "welcome", when: "the same day", condition: null, subject: "Velkommen", depth: 0, waitId: null, waitDays: null },
+      { stepId: "thanks", when: "3 days later", condition: "if they have ordered", subject: "Takk", depth: 1, waitId: "w", waitDays: 3 },
+      { stepId: "best", when: "3 days later", condition: "if they have not ordered", subject: "Bestselgere", depth: 1, waitId: "w", waitDays: 3 },
+      { stepId: "last", when: "2 days later", condition: "if they have not ordered", subject: "Siste", depth: 1, waitId: "w2", waitDays: 2 },
     ]);
   });
 

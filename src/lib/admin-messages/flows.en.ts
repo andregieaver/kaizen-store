@@ -34,7 +34,19 @@ export const flowsEn = {
     goal: "It stops when they order.",
     ends: "Then it ends.",
   },
-  problems: { untested: "Test the flow before switching it on.", missing: "That flow is not this store's." },
+  change: "Change",
+  subject: "Subject",
+  words: "Words",
+  days: "Days later",
+  save: "Save",
+  savedTestAgain: "Saved. The flow is off until you test it again.",
+  changeOff: "Saving a change switches the flow off until you test it again.",
+  problems: {
+    untested: "Test the flow before switching it on.",
+    missing: "That flow is not this store's.",
+    words: "Write a subject and some words.",
+    days: "Choose from 1 to 365 days.",
+  },
 };
 
 export type FlowsMessages = typeof flowsEn;

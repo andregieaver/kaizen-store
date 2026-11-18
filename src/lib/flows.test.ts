@@ -59,3 +59,23 @@ describe("flows (D767, email plan M2.1)", () => {
     expect(advance(steps, [], ["0"], facts({ segments: new Set([seg]) }))).toMatchObject({ do: "email", step: { id: "vip" } });
   });
 });
+
+describe("changing a flow where it is (D767 slice 2)", () => {
+  it("changes one email's subject and first paragraph in one language, inside a branch too, and leaves the rest", async () => {
+    const { withEmailWords } = await import("./flows");
+    const changed = withEmailWords(tree, "best", "nb-NO", { subject: "Våre favoritter", text: "Se hva andre kjøper." });
+    expect(stepAt(changed, ["2", "else", "0"])).toMatchObject({
+      id: "best",
+      content: { "nb-NO": { subject: "Våre favoritter", blocks: [{ type: "paragraph", text: "Se hva andre kjøper." }] } },
+    });
+    expect(stepAt(changed, ["0"])).toEqual(stepAt(tree, ["0"]));
+    // A language it had none of yet gets the words as its first paragraph.
+    const added = withEmailWords(tree, "welcome", "en-GB", { subject: "Welcome", text: "Hello" });
+    expect(stepAt(added, ["0"])).toMatchObject({ content: { "en-GB": { subject: "Welcome", blocks: [{ type: "paragraph", text: "Hello" }] }, "nb-NO": { subject: "Hei" } } });
+  });
+
+  it("changes a wait in days", async () => {
+    const { withWaitDays } = await import("./flows");
+    expect(stepAt(withWaitDays(tree, "w1", 5), ["1"])).toEqual({ id: "w1", kind: "wait", hours: 120 });
+  });
+});

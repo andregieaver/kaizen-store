@@ -16,7 +16,17 @@ export type StoryWords = {
 };
 
 /** One line of the story: when, on what condition (if any), and the email's subject in the flow's first language. */
-export type StoryLine = { stepId: string; when: string; condition: string | null; subject: string; depth: number };
+export type StoryLine = {
+  stepId: string;
+  when: string;
+  condition: string | null;
+  subject: string;
+  depth: number;
+  /** The wait just before this email on its way, which sets its "3 days later" and may be changed from its line; null for none. */
+  waitId: string | null;
+  /** The days that wait holds. */
+  waitDays: number | null;
+};
 
 const fill = (text: string, values: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (_, k: string) => String(values[k] ?? `{${k}}`));
 
@@ -45,25 +55,38 @@ const subjectOf = (step: Extract<FlowStep, { kind: "email" }>): string => Object
  */
 export function storyLines(steps: readonly FlowStep[], w: StoryWords, segmentName: (id: string) => string = () => "?"): StoryLine[] {
   const lines: StoryLine[] = [];
-  const walk = (list: readonly FlowStep[], waited: number, conditions: string[], depth: number): number => {
+  const walk = (list: readonly FlowStep[], waited: number, conditions: string[], depth: number, before: Extract<FlowStep, { kind: "wait" }> | null): number => {
     let hours = waited;
+    let wait = before;
     for (const step of list) {
-      if (step.kind === "wait") hours += step.hours;
-      else if (step.kind === "email") {
-        lines.push({ stepId: step.id, when: waitWords(hours, w), condition: conditions.length > 0 ? conditions.join(", ") : null, subject: subjectOf(step), depth });
+      if (step.kind === "wait") {
+        hours += step.hours;
+        wait = step;
+      } else if (step.kind === "email") {
+        lines.push({
+          stepId: step.id,
+          when: waitWords(hours, w),
+          condition: conditions.length > 0 ? conditions.join(", ") : null,
+          subject: subjectOf(step),
+          depth,
+          waitId: wait?.id ?? null,
+          waitDays: wait ? wait.hours / 24 : null,
+        });
         hours = 0;
+        wait = null;
       } else if (step.kind === "if") {
         const yes = conditionWords(step.condition, true, w, segmentName);
         const no = conditionWords(step.condition, false, w, segmentName);
-        walk(step.then, hours, [...conditions, yes], depth + 1);
-        walk(step.else, hours, [...conditions, no], depth + 1);
+        walk(step.then, hours, [...conditions, yes], depth + 1, wait);
+        walk(step.else, hours, [...conditions, no], depth + 1, wait);
+        wait = null;
         // After a branch, time is told from the branch's last email again: the next line's wait starts at zero.
         hours = 0;
       } else return hours;
     }
     return hours;
   };
-  walk(steps, 0, [], 0);
+  walk(steps, 0, [], 0, null);
   return lines;
 }
 

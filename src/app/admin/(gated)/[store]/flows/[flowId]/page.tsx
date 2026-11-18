@@ -12,7 +12,9 @@ import { getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
-import { switchFlowAction, testFlowAction } from "../actions";
+import { changeFlowEmailAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
+
+const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 export const metadata: Metadata = { title: "Flow" };
 
@@ -64,8 +66,9 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
           <ol className="flex flex-col gap-3">
             {lines.map((line) => {
               const content = emails.get(line.stepId)?.content;
-              const first = content ? Object.values(content)[0] : undefined;
-              const words = first?.blocks.find((b) => "text" in b && typeof b.text === "string") as { text?: string } | undefined;
+              const locale = content ? (Object.keys(content)[0] ?? "") : "";
+              const first = content ? content[locale] : undefined;
+              const words = first?.blocks.find((b) => b.type === "paragraph") as { text?: string } | undefined;
               return (
                 <li key={line.stepId} className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4" style={{ marginInlineStart: `${line.depth * 1.25}rem` }}>
                   <p className="text-body text-ink sm:w-64 sm:shrink-0">
@@ -75,6 +78,35 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
                   <div className="min-w-0 flex-1 rounded-lg border border-line bg-card px-4 py-3 shadow-sm" aria-label={`${w.emailLabel}: ${line.subject}`}>
                     <p className="text-body-strong text-ink">{line.subject}</p>
                     {words?.text && <p className="mt-1 line-clamp-2 text-caption text-muted">{words.text}</p>}
+                    {/* The words changed where they are (D767 slice 2): one step away, under Change. */}
+                    {mayWrite && (
+                      <details className="mt-2 text-sm">
+                        <summary className="cursor-pointer font-medium">{w.change}</summary>
+                        <ActionForm action={changeFlowEmailAction.bind(null, store.slug, flow.id, line.stepId, locale)} className="mt-3 flex flex-col gap-3">
+                          <label className="flex flex-col gap-1">
+                            {w.subject}
+                            <input name="subject" required defaultValue={line.subject} maxLength={200} className={FIELD} />
+                          </label>
+                          <label className="flex flex-col gap-1">
+                            {w.words}
+                            <textarea name="text" required defaultValue={words?.text ?? ""} rows={4} maxLength={5000} className={`${FIELD} py-2`} />
+                          </label>
+                          <div>
+                            <SubmitButton variant="secondary">{w.save}</SubmitButton>
+                          </div>
+                        </ActionForm>
+                        {line.waitId && (
+                          <ActionForm action={changeFlowWaitAction.bind(null, store.slug, flow.id, line.waitId)} className="mt-3 flex flex-wrap items-end gap-2">
+                            <label className="flex flex-col gap-1">
+                              {w.days}
+                              <input name="days" type="number" min={1} max={365} required defaultValue={line.waitDays ?? 1} className={`${FIELD} w-24`} />
+                            </label>
+                            <SubmitButton variant="secondary">{w.save}</SubmitButton>
+                          </ActionForm>
+                        )}
+                        <p className="mt-2 text-caption text-muted">{w.changeOff}</p>
+                      </details>
+                    )}
                   </div>
                 </li>
               );

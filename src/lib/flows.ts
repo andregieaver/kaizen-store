@@ -156,3 +156,34 @@ export function advance(steps: readonly FlowStep[], goals: readonly FlowGoal[], 
   }
   return { do: "end", reason: "done" };
 }
+
+/** The tree with one step replaced by `change(step)`, wherever it is; the same tree when no step has that id. Pure. */
+export function replaceStep(steps: readonly FlowStep[], id: string, change: (step: FlowStep) => FlowStep): FlowStep[] {
+  return steps.map((step) => {
+    if (step.id === id) return change(step);
+    if (step.kind === "if") return { ...step, then: replaceStep(step.then, id, change), else: replaceStep(step.else, id, change) };
+    return step;
+  });
+}
+
+/**
+ * An email step with new words in one language (D767 slice 2, words changed where they are): its subject, and its first paragraph's
+ * text (a paragraph is added first when it has none); its other blocks and languages stay as they were.
+ */
+export function withEmailWords(steps: readonly FlowStep[], id: string, locale: string, words: { subject: string; text: string }): FlowStep[] {
+  return replaceStep(steps, id, (step) => {
+    if (step.kind !== "email") return step;
+    const current = step.content[locale] ?? { subject: "", preview: "", blocks: [] };
+    const index = current.blocks.findIndex((b) => b.type === "paragraph");
+    const blocks =
+      index < 0
+        ? [{ type: "paragraph" as const, text: words.text }, ...current.blocks]
+        : current.blocks.map((b, i) => (i === index ? { ...b, text: words.text } : b));
+    return { ...step, content: { ...step.content, [locale]: { ...current, subject: words.subject, blocks } } };
+  });
+}
+
+/** A wait step with a new number of days (D767 slice 2). */
+export function withWaitDays(steps: readonly FlowStep[], id: string, days: number): FlowStep[] {
+  return replaceStep(steps, id, (step) => (step.kind === "wait" ? { ...step, hours: Math.round(days * 24) } : step));
+}

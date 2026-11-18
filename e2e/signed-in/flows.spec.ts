@@ -58,3 +58,26 @@ test("a welcome series is started with one press, read as a story, tested and sw
   await expect(page.getByRole("list", { name: "Flows" })).toContainText("Welcome series");
   await page.screenshot({ path: "test-results/flow-list.png", fullPage: true });
 });
+
+test("an email's words and its wait are changed where they are, and the flow waits to be tested again", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
+  const best = page.getByLabel("Email: What others like best");
+  await best.getByText("Change", { exact: true }).click();
+  await best.getByLabel("Subject").fill("Our favourites");
+  await best.getByLabel("Words").fill("See what others buy most.");
+  await best.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  const changed = page.getByLabel("Email: Our favourites");
+  await expect(changed).toContainText("See what others buy most.");
+  await changed.getByText("Change", { exact: true }).click();
+  await changed.getByLabel("Days later").fill("5");
+  await changed.getByRole("button", { name: "Save" }).last().click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("[data-flow-story]")).toContainText("5 days later, if they have not ordered");
+  await expect(page.getByText("Test it before switching it on.")).toBeVisible();
+  await page.getByLabel("Email: Our favourites").getByText("Change", { exact: true }).click();
+  await page.screenshot({ path: "test-results/flow-change.png", fullPage: true });
+});

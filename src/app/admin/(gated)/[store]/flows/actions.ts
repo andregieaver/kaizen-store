@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { welcomeSeries } from "@/lib/flow-recipes";
-import { saveFlow, switchFlow, testFlow } from "@/server/flows";
+import { withEmailWords, withWaitDays } from "@/lib/flows";
+import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { storeAction } from "@/server/store-action";
 
 /**
@@ -51,5 +52,40 @@ export async function switchFlowAction(storeSlug: string, flowId: string, on: bo
     if (switched !== "ok") return refusal(switched === "untested" ? w.problems.untested : w.problems.missing);
     refresh();
     return { status: "ok", messages: [on ? w.switchedOn : w.switchedOff] };
+  });
+}
+
+/**
+ * Saves new words for one email of a flow, in one language (D767 slice 2, words changed where they are): a new version, switched off until
+ * it is tested again, as every save is.
+ */
+export async function changeFlowEmailAction(storeSlug: string, flowId: string, stepId: string, locale: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
+    const w = adminText(lang, "flows");
+    const flow = await getFlow(member.store.id, flowId);
+    if (!flow) return refusal(w.problems.missing);
+    const subject = String(form.get("subject") ?? "").trim();
+    const text = String(form.get("text") ?? "").trim();
+    if (!subject || !text) return refusal(w.problems.words);
+    const steps = withEmailWords(flow.steps, stepId, locale, { subject: subject.slice(0, 200), text: text.slice(0, 5000) });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, steps, goals: flow.goals });
+    if (!saved.ok) return refusal(saved.problem);
+    refresh();
+    return { status: "ok", messages: [w.savedTestAgain] };
+  });
+}
+
+/** Saves a new number of days for one wait of a flow (D767 slice 2): a new version, switched off until tested again. */
+export async function changeFlowWaitAction(storeSlug: string, flowId: string, stepId: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
+    const w = adminText(lang, "flows");
+    const flow = await getFlow(member.store.id, flowId);
+    if (!flow) return refusal(w.problems.missing);
+    const days = Number(form.get("days"));
+    if (!Number.isInteger(days) || days < 1 || days > 365) return refusal(w.problems.days);
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
+    if (!saved.ok) return refusal(saved.problem);
+    refresh();
+    return { status: "ok", messages: [w.savedTestAgain] };
   });
 }
