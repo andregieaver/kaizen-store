@@ -823,6 +823,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D818 | **The admin kit: Field, TextInput, Select, EmptyState, ConfirmButton, Pager and ListSearch in the admin's ui (code review** | 2026-11-19 | [text](decisions/D818.md) |
 | D819 | **Admin redesign round 59: add a customer, bring a domain here and recordings on a phone** | 2026-11-19 | [text](decisions/D819.md) |
 | D820 | **Admin redesign round 60: move a domain, footers and draft orders on a phone** | 2026-11-19 | [text](decisions/D820.md) |
+| D821 | **Each admin page hands cuts of the word areas its parts read** | 2026-11-19 | [text](decisions/D821.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
