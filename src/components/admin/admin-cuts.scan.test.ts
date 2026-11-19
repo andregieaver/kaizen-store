@@ -68,6 +68,7 @@ const READERS: { file: string; whole: string[] }[] = [
   { file: "menu-editor.tsx", whole: ["website"] },
   { file: "customer-import-flow.tsx", whole: ["inventory"] },
   { file: "customer-import-flow.tsx", whole: ["customers"] },
+  { file: "forms/form-editor.tsx", whole: ["blocks"] },
 ];
 
 describe("parts drawn on cut-only screens", () => {

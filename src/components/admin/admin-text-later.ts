@@ -121,6 +121,7 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   websiteMenus: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["menus"])),
   inventoryImport: () => import("@/lib/admin-messages/inventory.en").then((m) => pick(m.inventoryEn, ["import"])),
   customersStaff: () => import("@/lib/admin-messages/customers.en").then((m) => pick(m.customersEn, ["staff"])),
+  blocksForm: () => import("@/lib/admin-messages/blocks.en").then((m) => pick(m.blocksEn, ["form", "lists"])),
 };
 
 /** A fetch React can read with `use()`; one that is already settled (`settledEnglish()`) is read at once. */

@@ -269,6 +269,7 @@ export type AdminAreaMessages = {
   websiteMenus: Pick<WebsiteMessages, "menus">;
   inventoryImport: Pick<InventoryMessages, "import">;
   customersStaff: Pick<CustomersMessages, "staff">;
+  blocksForm: Pick<BlocksMessages, "form" | "lists">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -411,6 +412,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   websiteMenus: cut(WEBSITE_WORDS, ["menus"]),
   inventoryImport: cut({ en: inventoryEn, nb: inventoryNb }, ["import"]),
   customersStaff: cut(CUSTOMERS_WORDS, ["staff"]),
+  blocksForm: cut({ en: blocksEn, nb: blocksNb }, ["form", "lists"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

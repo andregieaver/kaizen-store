@@ -238,7 +238,11 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   pictureMaker), `assistantBar` (assistant: name, launcher, notices), `homeDrafts` (home: drafts), `websiteList` (website: list,
   pageJobs, demoHomes), and the page editor's `fieldsEditor` (fields: form, pickers, linkKinds), `productsEditor` (products: terms,
   termFields, termPage, termRules, termSeo), `designEditor` (design: fonts, changes), `blogEditor` (blog: editor) and `schedulesEditor`
-  (schedules: dialog, nouns, share). A screen whose other parts read more of the area hands the area and the cut (the payload carries
+  (schedules: dialog, nouns, share); and the screens' own: `notificationsIntegrations`, `notificationsGoogle`, `notificationsTokens`
+  and `notificationsWorkflows`, `settingsHours`, `settingsAi`, `settingsCompany`, `settingsPriceRules`, `settingsFeatures`, `settingsPrices`
+  and `settingsProducer`, `supportSettings`, `analyticsExport`, `reportsCampaigns`, `platformCopy`, `platformDocsGuide` and
+  `platformReminders`, `builderVersions` (builder: differences, blockNames), `websiteStaging`, `websiteMedia` and `websiteMenus`,
+  `inventoryImport` and `customersStaff`, each named after its area and the groups it picks (`src/lib/admin-text.ts` lists them). A screen whose other parts read more of the area hands the area and the cut (the payload carries
   the shared objects once). The AI manager's chat gets the whole `assistant` area with its start call, not with the screen. A part
   drawn where only its cut is handed is listed in `src/components/admin/admin-cuts.scan.test.ts`, which fails if it asks for the
   whole area again; "read" means named in source, as `admin-words-handed.scan.test.ts` counts it.

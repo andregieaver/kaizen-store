@@ -1017,15 +1017,15 @@
         "builderText"
       ]
     },
-    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
+    "src/app/admin/(gated)/[store]/forms/[formId]/page.tsx#forms+blocksForm+formTemplates": {
       "areas": [
         "forms",
-        "blocks",
+        "blocksForm",
         "formTemplates"
       ],
       "handed": {
-        "en": 65283,
-        "nb": 68400
+        "en": 13282,
+        "nb": 13869
       },
       "named": {
         "en": 13264,
@@ -2795,15 +2795,15 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocks+formTemplates": {
+    "src/app/admin/(gated)/platform/forms/[formId]/page.tsx#forms+blocksForm+formTemplates": {
       "areas": [
         "forms",
-        "blocks",
+        "blocksForm",
         "formTemplates"
       ],
       "handed": {
-        "en": 65283,
-        "nb": 68400
+        "en": 13282,
+        "nb": 13869
       },
       "named": {
         "en": 13264,

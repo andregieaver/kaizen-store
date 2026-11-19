@@ -351,7 +351,11 @@ signed-in build (`e2e/signed-in/admin-scripts.spec.ts`; the English home's docum
 
 The product editor's save answers 134,598 bytes (311,274 before), as it sends its words back (step 2.28). The shared words miss the
 plan's 15.5 KB (16 KB in Norwegian): `common` and `shell`, which every screen reads, are 15 KB together today. The words baseline
-(`admin-words-handed.baseline.json`) fell from 13,219,401 to 10,881,284 bytes handed in English over 231 sites.
+(`admin-words-handed.baseline.json`) fell from 13,219,401 to 10,881,284 bytes handed in English over 231 sites. The shared words are
+held at the figure reached (`SHARED_WORDS` in the spec: 16,617 and 17,180 bytes). Then the screens' own areas were cut the same way
+(integrations, settings, support settings, analytics' export, campaigns, the platform's wizards, staging, the media library, menus,
+imports, the forms editor): 6,132,124 bytes over 216 sites, and 3 sites still hand over 50 KB at more than 1.25 times what their parts
+name (the theme shell, whose parts the scan cannot see, Work's layout and an order's page).
 
 **Three stray imports go (13 November 2026, bloat review step 0.9).** Three imports put 481 KB on 432 of 449 admin routes: the session
 listener and every upload imported the Supabase client (`GoTrueClient`), the shortcut sheet took the page builder's English through
