@@ -362,3 +362,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - D799 (2.26 Done), D800 (2.29), D801 (2.31) written, pushed 6cc955958. 2.29 and 2.31 In progress: owner's signed-in production checks (press heading <1s; tab past token hour).
 - Running: kz-b fixer a81d172c8e56aa7d4 (2.4 theme-switch + prefetch), kz-d 2.20 ad9d56a175cbbb74f.
 - Owed D-rows: 2.42 (In progress), 2.4 after 15:11 re-check.
+- 15:15 2.4 re-check on prod OK (5 pages PRERENDER, full payloads, real titles; mine private no-store). D805 written (ab13770c1, 1d4e9e889). 2.4 In progress till commit 4. Follow-up: drop optimisticRouting:false (D592). Owed D-row: 2.42.
