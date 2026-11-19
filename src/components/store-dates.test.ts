@@ -17,7 +17,7 @@ import { ContentGridView } from "./content-grid";
 import { OrderShipments } from "./order-shipments";
 
 /**
- * The dates a shopper reads on a store's pages are the store's own (code review 1.14's next, FS11, D796): an article published, a campaign's
+ * The dates a shopper reads on a store's pages are the store's own (code review 1.14's next, FS12, D796): an article published, a campaign's
  * last day and a parcel sent in the evening fall on the store's day, wherever the server's clock is (UTC on Vercel) and whatever Oslo says.
  * 23:30 in New York on 3 October is 03:30 UTC on the 4th; 00:30 in Auckland on 4 October is 11:30 UTC on the 3rd.
  */

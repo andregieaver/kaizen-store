@@ -1,7 +1,7 @@
 import { zoneOf } from "./admin-date";
 
 /**
- * Dates people read outside the admin (code review 1.14's next, FS11, D796): the same pure formatter D786 built for the admin
+ * Dates people read outside the admin (code review 1.14's next, FS12, D796): the same pure formatter D786 built for the admin
  * (`src/lib/admin-date.ts`), under names that do not say admin, for storefront pages, shoppers' emails, contracts and Kaizena Flow's own
  * site and mail. Server pages and client parts alike.
  *

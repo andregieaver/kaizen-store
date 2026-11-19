@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Dates outside the admin (code review 1.14's next, FS11, D796): the storefront, shoppers' emails, contracts, the platform's own site and
+ * Dates outside the admin (code review 1.14's next, FS12, D796): the storefront, shoppers' emails, contracts, the platform's own site and
  * mail, and the server code behind them show a moment with `dateIn(where, at, style, locale)` from `src/lib/dates.ts`, in the store's own
  * zone (`store`, `store.timeZone`, or `storeZoneOf(row.time_zone)` for a row read without a type), Kaizena Flow's own in
  * `PLATFORM_TIME_ZONE`, Norway-only features in `NORWAY_TIME_ZONE`, and a calendar day with `calendarDate()`. Three rules, as
@@ -147,7 +147,7 @@ const ADVICE = {
 
 const lists = { zones: KEPT_ZONES, cuts: KEPT_CUTS, zoneless: KEPT_ZONELESS } as const;
 
-describe("dates outside the admin (code review 1.14's next, FS11, D796)", () => {
+describe("dates outside the admin (code review 1.14's next, FS12, D796)", () => {
   it("reads the storefront, email and server sources", () => {
     expect(files.length).toBeGreaterThan(1500);
     expect(files.some(({ rel }) => rel === "src/server/shopper-emails.ts")).toBe(true);

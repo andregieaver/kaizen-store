@@ -78,6 +78,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.17 | Free a page's permission from its place in the menu | FN2 | M | Open | |
 | 1.18 | One structure for the platform's navigation | FN9 | M | Open | |
 | 1.19 | One source for a page's name | FN8 | M | Open | |
+| 1.20 | Dates shoppers see | FS12 | M | Done | 19 Nov 2026, c8a55b08, D796: `dateIn()`/`calendarDate()`/`storeZoneOf()` in `src/lib/dates.ts`; `dates.scan.test.ts`; see Notes below |
 
 **Phase 2: Structure**
 
@@ -178,8 +179,9 @@ This report is a working document: the plan below is the list of work, and this 
 - 16 November 2026: notes moved out of the table into Notes on the steps; a row is at most 300 characters (bloat review step 0.41).
 - 18 November 2026: bloat review step 2.1: CLAUDE.md keeps a map of the rule files, its how-to in `.claude/rules`; step 1.10 In progress (decisions split waits on 2.40); question 5 answered.
 - 18 November 2026: bloat review step 2.17: the Pages and Articles lists of a store and of the platform read and show 100 a page with a count (`ListPager`, the Stores list's markup); 1.13 stays Open (the shared ListSearch is not built).
-- 19 November 2026: steps 1.14 (D786) and 1.16 (D787) done; the shoppers' own dates (storefront, shopper and contract emails) are a new step after 1.14, not yet numbered.
+- 19 November 2026: steps 1.14 (D786) and 1.16 (D787) done; the shoppers' own dates (storefront, shopper and contract emails) are a new step after 1.14 (numbered 1.20, finding FS12).
 - 19 November 2026: step 1.9 done (D794); the money and permission modules still without a test are listed in D794.
+- 19 November 2026: step 1.20 done (D796, finding FS12): the dates shoppers read are on the store's clock; experiments' exposures by UTC day, the platform activity filter and 39 zoneless admin dates are left (D796).
 - 19 November 2026: bloat review step 2.29 (local, not yet pushed): row 3.4's Tiptap part is done (the rich text editor, markup field and inline editors load after the builder's first paint); FB8's fix names them; the dialogs remain.
 
 **Notes on the steps**
@@ -358,6 +360,19 @@ twice. Still without a test of their own, most important first: `payment-session
 `admin-api-orders.ts`, `billing-tools.ts`, `draft-sessions.ts`, `createPlatformWebhooks`, `limits-admin.ts`, `market-price-tools.ts`,
 `house-switch.ts`, `api-idempotency.ts`.
 
+**Step 1.20.** 19 Nov 2026, D796: `src/lib/dates.ts` gives D786's formatter neutral names for code outside the admin
+(`dateIn(where, instant, style, locale)`, `calendarDate(day, style, locale)`) and `storeZoneOf(row.time_zone)` for an untyped row.
+Articles, blog comments, article grids, campaign notices, the subscription and order pages (terms, bonus, downloads, parcels,
+tracking), My account and the passport page read the store's zone already loaded with the store (no new statement). Shoppers' emails
+take it from `EmailStore` (the order confirmation's terms date and delivery window, shipped, pickup, company invite, subscription,
+order change, quote, bonus expiry, referral, broadcasts and the AI's campaign facts), as do contracts, the signing email and the
+owner's endpoint, closure and sending-paused emails. The plans page's campaign and the theme store use `PLATFORM_TIME_ZONE`. The 34
+`?? "Europe/Oslo"` fallbacks in `src/server` are gone. `Europe/Oslo` lines outside the admin fell from 73 to 15 (the constants, the
+column default, fixtures, two country tables and seven SQL lines of the platform's own reports); zoneless dates from 28 to 2 (drawn
+only in the browser). `dates.scan.test.ts` holds all three. Admin leftovers fixed: the challenges, closed stores, the close-store
+page, and the supplier page's month and owed sum. Left: experiments group a store's exposures by UTC day, the platform activity
+filter uses UTC days, and 39 admin dates are formatted with no zone.
+
 ## 1. The headline
 
 **The rules are good; they do not yet reach the riskiest places.** Money is worked out in the database, every admin action is guarded
@@ -498,6 +513,7 @@ Severity 1: **FV11** the key that stops a double plan subscription changes every
 | FS1 ✓ | 3 | Most admin pages give no sign that a click worked until all their data is read. The old page stays put and the owner clicks again. The platform admin is almost wholly without skeletons. | no `loading.tsx` for products, customers, discounts, deals, `S/settings/books`; only boundary at `src/app/admin/(gated)/layout.tsx:23` | One generic `loading.tsx` at `S/` and at `P/`, built from the `block` class in `S/orders/loading.tsx`; keep the fitted ones; a thin pending bar on sidebar links with `useLinkStatus` (read the Next 16 docs first). | S |
 | FS2 ✓ | 3 | Lists page, search and cap in at least four ways: orders by cursor, invoices by offset, returns by page number, products and the platform's stores load everything. Customers stops at 100 with no pager and no word that more exist. Search forms are hand-written in 24 files. | `src/server/customer-admin.ts:131`; `S/customers/page.tsx:37`; `S/products/page.tsx:91`; `S/orders/page.tsx:84-89`; `S/invoices/page.tsx:50`; `S/returns/page.tsx:44`; `P/stores/page.tsx:25` | Lift the orders pattern into `ListSearch` and `Pager` in `A/ui`; move Customers, Products, Invoices and Returns onto them; every list says when it was cut off. *Takes in the audit's phase 1 item for Products.* | M |
 | FS5 | 3 | Dates are fixed to Norwegian time in 66 admin files and cut from UTC strings in 46, while 86 use the store's zone. For a store outside Norway an evening order shows on the wrong day on some screens; one order can carry two dates. | `S/customers/page.tsx:41`; `S/customers/[customerId]/page.tsx:119`; `S/page.tsx:183`; `src/app/admin/(gated)/(owner)/page.tsx:100` | One `adminDate(store, iso, style)` in `src/lib`; a scan test that fails on `Europe/Oslo` and `.slice(0, 10)` in the admin; on the control center, each row's own store zone. *Audit phase 1: not built.* | M |
+| FS12 ✓ | 3 | Outside the admin, shoppers' dates stay on Oslo's clock: 73 `Europe/Oslo` lines, 34 server fallbacks to it, 28 dates with no zone (UTC's day on Vercel). A New York store's evening order shows the next day. | `src/components/article-view.tsx`; `campaign-notice.tsx`; `contract-signing.ts` | `src/lib/dates.ts` over D786's formatter; the store's zone already loaded; a scan test. *Found after step 1.14.* | M |
 | FS6 | 3 | Form feedback is uneven. 83 raw `<form action>` have no busy state and no outcome. `ActionForm` lists problems only at its foot, off screen on a long form; "Saved." is fixed English and stays after further edits; only 8 editors warn before leaving. | `A/action-form.tsx:41, 61-84, 99-117`; `A/ui/button.tsx` (no `useFormStatus`) | In `ActionForm`: each problem under its field, the first scrolled into view, *Not saved* on the first edit, words from `useCommonText()`. `Button` reads `useFormStatus`. A `QuietActionForm` for the raw forms. One `useLeaveGuard`. *Audit phase 1: not built.* | M |
 | FB3 ✓ | 3 | The builder has no Basic view. The wrench on a heading opens General, Style, Motion and Advanced for everyone, and the palette shows 24 components plus store, product and site parts with no search. | `A/page-builder-fields.tsx:217-259`; `A/page-builder.tsx:251, 1827-2057` | Read the D454 view in `SettingsTabs`: Basic shows General and a short Look section, the rest behind one remembered *More settings*. A search box over the tiles and a *most used* group first. | M |
 | FB4 ✓ | 3 | A part's tools show only while it is hovered or holds focus, and only for the innermost part: no kept selection, no Delete key, 28 px buttons. Keyboard users can reach and move a part through its handle; touch users, and rows covered by their columns, struggle. | `src/app/globals.css:376-385`; `A/page-builder.tsx:2589-2590, 466-467, 718-719` | A selected part in builder state (click or tap; Escape clears) whose tools stay shown; a trail in the tools (Row > Column > Heading); Move up and down; Delete and Ctrl/Cmd+D; 44 px on coarse pointers. | M |
@@ -648,6 +664,7 @@ survives a slip. Mostly this phase is for whoever changes the code next: fewer w
 17. **Free a page's permission from its place in the menu.** Give every nav item an `area`; make `areaOfPath` and `platformAreaOfPath` read it; let page guards take their key from the path. Closes FN2. M. Done when: a test that moves an item to another section leaves `permissions.baseline.json` unchanged. This unblocks the audit's phase 2. Platform: yes, in the same change.
 18. **One structure for the platform's navigation.** Model `PLATFORM_SECTIONS` as `STORE_SECTIONS` is and derive tabs, areas and permissions from it. Closes FN9. M. Done when: `P/layout.tsx` lists no area by hand, and the platform's "every page folder in a section" test passes with the orphan routes placed.
 19. **One source for a page's name.** After 1.18. Let `ADMIN_PAGES` take `group` and `navLabel` from the nav data at all three levels. Closes FN8. M. Done when: a test finds no page whose name in the map differs from the menu, and each platform page's group is one of its tabs.
+20. **Dates shoppers see.** After 1.14. Use `dateIn()` and `calendarDate()` on storefront pages, shoppers' emails, contracts and the owner's emails about a store; drop the `?? "Europe/Oslo"` fallbacks in `src/server`. Closes FS12. M. Done when: a scan test holds code outside the admin to no new Oslo literal, UTC cut or zoneless date. Platform: yes; Kaizena Flow's own site and its mail use `PLATFORM_TIME_ZONE`.
 
 ### Phase 2: Structure
 
