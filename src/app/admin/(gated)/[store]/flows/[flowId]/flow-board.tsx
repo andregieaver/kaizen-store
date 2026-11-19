@@ -137,7 +137,7 @@ function Card({ step, p, selected, onSelect }: { step: FlowStep; p: Props; selec
       aria-label={`${p.w.canvas.kinds[step.kind]}: ${title}`}
       aria-pressed={selected}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`relative z-10 flex w-64 max-w-full cursor-grab touch-none items-start gap-3 rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition active:cursor-grabbing ${
+      className={`relative z-10 flex w-60 shrink-0 cursor-grab touch-none items-start gap-3 rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition active:cursor-grabbing ${
         selected ? "border-ink ring-2 ring-ink/15" : "border-line hover:border-ink/50"
       } ${isDragging ? "opacity-60 shadow-lg" : ""}`}
     >
@@ -175,12 +175,12 @@ function Column({
     <div className="flex flex-col items-center">
       <Place place={first} p={p} busy={busy} onAdd={onAdd} />
       {steps.map((step) => (
-        <div key={step.id} className="flex w-full flex-col items-center">
+        <div key={step.id} className="flex flex-col items-center">
           <Card step={step} p={p} selected={selected?.kind === "step" && selected.id === step.id} onSelect={() => onSelect({ kind: "step", id: step.id })} />
           {step.kind === "if" && (
-            <div className="mt-3 grid w-full grid-cols-1 gap-4 border-t border-line pt-1 sm:grid-cols-2" data-board-branches>
+            <div className="mt-3 grid w-max grid-cols-2 gap-4 border-t border-line pt-1" data-board-branches>
               {(["then", "else"] as const).map((branch) => (
-                <div key={branch} className="flex min-w-0 flex-col items-center rounded-lg bg-sunken/60 px-2 pb-2" data-board-branch={branch}>
+                <div key={branch} className="flex min-w-64 flex-col items-center rounded-lg bg-sunken/60 px-2 pb-2" data-board-branch={branch}>
                   <span className={`mt-2 rounded-full px-2 py-0.5 text-caption font-medium ${branch === "then" ? "bg-positive-soft text-positive-text" : "bg-sunken text-ink-2"}`}>
                     {branch === "then" ? p.w.canvas.yes : p.w.canvas.no}
                   </span>
@@ -319,7 +319,11 @@ function Panel({ p, selected, onClose }: { p: Props; selected: Exclude<Selected,
   }
   const heading = selected.kind === "trigger" ? w.canvas.startsWhen : step ? `${w.canvas.kinds[step.kind]}: ${cardWords(step, p).title}` : "";
   return (
-    <aside aria-label={heading} className="flex flex-col gap-4 rounded-lg border border-line bg-card p-4 shadow-sm lg:sticky lg:top-4" data-board-panel>
+    <aside
+      aria-label={heading}
+      className="fixed inset-x-4 bottom-4 z-30 flex max-h-[70vh] flex-col gap-4 overflow-y-auto rounded-lg border border-line bg-card p-4 shadow-xl md:inset-x-auto md:top-24 md:right-6 md:bottom-auto md:w-80"
+      data-board-panel
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="text-body-strong text-ink">{heading}</p>
         <button type="button" onClick={onClose} aria-label={w.canvas.close} className="text-muted hover:text-ink">
@@ -381,15 +385,15 @@ export function FlowBoard(p: Props) {
             {said.text}
           </p>
         )}
-        <div className={`grid gap-4 ${selected ? "lg:grid-cols-[minmax(0,1fr)_20rem]" : ""}`}>
-          <div className={`overflow-x-auto rounded-lg border border-line bg-[radial-gradient(circle,var(--color-line)_1px,transparent_1px)] [background-size:16px_16px] p-4 ${busy ? "opacity-70" : ""}`}>
-            <div className="mx-auto flex min-w-fit flex-col items-center">
+        <div>
+          <div className={`min-w-0 overflow-x-auto rounded-lg border border-line bg-[radial-gradient(circle,var(--color-line)_1px,transparent_1px)] [background-size:16px_16px] p-4 ${busy ? "opacity-70" : ""}`}>
+            <div className="mx-auto flex w-max flex-col items-center">
               <button
                 type="button"
                 onClick={() => setSelected({ kind: "trigger" })}
                 aria-pressed={selected?.kind === "trigger"}
                 data-board-trigger
-                className={`flex w-64 max-w-full items-center gap-3 rounded-lg border-2 bg-card px-3 py-2.5 text-left shadow-sm ${
+                className={`flex w-60 shrink-0 items-center gap-3 rounded-lg border-2 bg-card px-3 py-2.5 text-left shadow-sm ${
                   selected?.kind === "trigger" ? "border-ink" : "border-positive-line hover:border-positive-solid"
                 }`}
               >
