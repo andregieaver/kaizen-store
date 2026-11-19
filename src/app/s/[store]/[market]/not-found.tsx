@@ -5,7 +5,7 @@ import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
-import { pageForRole } from "@/server/pages";
+import { pageForRole } from "@/server/page-reads";
 import { resolveShop } from "@/server/shop";
 
 /**

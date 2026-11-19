@@ -11,7 +11,7 @@ import { PLATFORM_LANG_FACTS, platformPath, type PlatformLang } from "@/lib/plat
 import { platformText } from "@/lib/platform-text";
 import { siteUrl } from "@/lib/site";
 import { articleJsonLd } from "@/lib/structured-data";
-import { findPublishedPage, publishedPageIndex } from "@/server/pages";
+import { findPublishedPage, publishedPageIndex } from "@/server/page-reads";
 import { languageMeta } from "@/server/platform-lang-meta";
 import { platformPageForRole } from "@/server/platform-roles";
 import { PLATFORM_DEFAULTS } from "@/server/seo";

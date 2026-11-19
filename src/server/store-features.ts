@@ -27,7 +27,7 @@ import { affiliateTag } from "./affiliates";
 import { afterSaleTag } from "./after-sale";
 import { audit, type Account, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
 import { cookiesTag } from "./site-cookies";

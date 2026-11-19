@@ -18,7 +18,7 @@ import { adminOrigin, marketPath } from "@/lib/paths";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
 import { blogCategoryIds, findBlog, storeBlogs } from "@/server/blogs";
 import { gridData } from "@/server/content-grid";
-import { pageForRole, publishedPageById, type PublishedPage } from "@/server/pages";
+import { pageForRole, publishedPageById, type PublishedPage } from "@/server/page-reads";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { marketMoved, resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";

@@ -27,7 +27,7 @@ import { PLATFORM_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 import { audit, type Account } from "./auth";
 import { ownMenus, standardMenusInput } from "./navigation";
-import { publishedPageIndex, type PublishedPageEntry } from "./pages";
+import { publishedPageIndex, type PublishedPageEntry } from "./page-reads";
 import { siteTerms } from "./taxonomy";
 import type { SaveResult } from "./settings";
 

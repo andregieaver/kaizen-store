@@ -81,7 +81,8 @@ import {
 import { blogsNow, saveBlog } from "./blogs";
 import { log } from "./log";
 import { listStoreMenus, saveStoreMenu } from "./menus";
-import { pageTitles, pagesTag, savePage } from "./pages";
+import { pageTitles, savePage } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { refreshTag } from "./refresh";
 import { storeTag } from "./stores";
 import { memberCan } from "./permissions";

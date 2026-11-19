@@ -14,7 +14,7 @@ import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureM
 import { fieldsTag } from "@/server/custom-fields";
 import type { VideoUpload } from "@/server/media";
 import { replacePicture, replaceVideo, startVideoReplacement, type CompressOutcome } from "@/server/media-compress";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { storeTag } from "@/server/stores";
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";

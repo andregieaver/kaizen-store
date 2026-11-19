@@ -25,7 +25,7 @@ import { summarize } from "@/lib/seo";
 import { tileLines } from "@/lib/tile-fields";
 
 import { contentTypeByKey, getContentType } from "./content-types";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { marketIn } from "./shop";
 import { col, typedRows } from "./typed-rows";

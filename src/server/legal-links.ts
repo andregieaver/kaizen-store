@@ -6,7 +6,7 @@ import { indexTitle } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 
-import { publishedPageIndex } from "./pages";
+import { publishedPageIndex } from "./page-reads";
 import type { Store } from "./stores";
 
 export type LegalLink = { role: LegalRole; title: string; href: string };

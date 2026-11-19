@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { owned } from "./owned";
 
 /**

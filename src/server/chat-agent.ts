@@ -31,7 +31,7 @@ import { campaignNotices } from "./campaign-notices";
 import { getProduct, getVariantStock, type GridProduct } from "./catalog";
 import { UNLIMITED, availabilityOf, type VariantStock } from "@/lib/stock-availability";
 import { searchKnowledge } from "./knowledge";
-import { publishedPageNames } from "./pages";
+import { publishedPageNames } from "./page-reads";
 import { getPlatformChrome } from "./platform-navigation";
 import { queryVector } from "./query-vector";
 import { recommendForChat } from "./recommend";

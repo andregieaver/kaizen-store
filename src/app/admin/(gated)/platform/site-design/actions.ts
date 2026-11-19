@@ -6,7 +6,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { presetChoice } from "@/lib/design-variations";
 import { requirePlatform } from "@/server/auth";
 import { DESIGNS_TAG, installPresetOnPlatform, undoPlatformThemeUpdate, updatePlatformInstall } from "@/server/design-presets";
-import { PAGES_TAG } from "@/server/pages";
+import { PAGES_TAG } from "@/lib/cache-tags";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { removePlatformInstall, setPlatformFollowsUpdates, switchPlatformInstall } from "@/server/platform-theme-installs";
 

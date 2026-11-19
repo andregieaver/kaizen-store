@@ -13,7 +13,7 @@ import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureM
 import { CONTENT_TYPES } from "@/lib/taxonomy";
 import type { VideoUpload } from "@/server/media";
 import { replacePicture, replaceVideo, startVideoReplacement, type CompressOutcome } from "@/server/media-compress";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { termsTag } from "@/server/taxonomy";
 

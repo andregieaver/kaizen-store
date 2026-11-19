@@ -7,7 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { deleteAuthor, deleteBlog, saveAuthor, saveBlog } from "@/server/blogs";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { checkPageTypeAccess } from "@/server/permissions";
 
 /**
