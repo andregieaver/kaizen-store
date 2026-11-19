@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CART_DRAWER_LOOK, type MenuLook } from "@/lib/menu-drawer";
 
 import { DrawerPanel } from "./drawer-panel";
+import { setCart } from "./shopper-own";
 
 const DESKTOP = "(min-width: 768px)";
 
@@ -124,13 +125,15 @@ export function CartDrawer({
  * store has chosen so (`stores.open_cart_on_add`). `state` is the add
  * action's latest outcome; each new one is looked at once.
  */
-export function useOpenCartAfterAdd(enabled: boolean, cartHref: string, outcome: { outcome: string }) {
+export function useOpenCartAfterAdd(enabled: boolean, cartHref: string, outcome: { outcome: string; count?: number }) {
   const router = useRouter();
   // Coming back to the page later runs effects again: the same outcome opens nothing.
   const seen = useRef(outcome);
   useEffect(() => {
     if (seen.current === outcome) return;
     seen.current = outcome;
+    // The add answers the cart's units, which the header's count shows (bloat review step 2.4).
+    if (typeof outcome.count === "number") setCart(outcome.count);
     if (!enabled || (outcome.outcome !== "added" && outcome.outcome !== "capped")) return;
     if (window.matchMedia(DESKTOP).matches) return;
     router.push(cartHref);

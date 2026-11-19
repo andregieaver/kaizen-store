@@ -2,6 +2,8 @@
 import type { BrowserMessages } from "./en-browser";
 
 export const svBrowser: BrowserMessages = {
+cart: "Varukorg",
+cartCount: (n: number) => `Varukorg (${n})`,
 /** The Cookies page's button that deletes this browser's recordings of visits on the shop (D656). */
 recordings: { delete: "Radera mina inspelningar", deleted: "Inspelningarna som den här webbläsaren gjorde i den här butiken är raderade." },
 pageError: {

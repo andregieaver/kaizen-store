@@ -162,7 +162,7 @@ commit as the fix.
 | 2.1 | Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB | DC-1 | M | review | 1.1, 0.43, 0.41, 0.40 | Done | 18 Nov, 7742afff, D774: CLAUDE.md 10,102 bytes, 134 lines; both proofs of path loading passed. |
 | 2.2 | Send the store's layout once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, GAP-page-model-s6 | M | review | 0.1, 1.3 | Done | 18 Nov, b3a90442, D776: home 135,935 to 105,599 bytes; duplicate rows 27,226 to 1,768. |
 | 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Done | 18 Nov, d0aa131f, D777: breakpoint sheet once; six-row page's part sheets 6 to 1. |
-| 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | Local: commit 1, /api/shop/mine behind the marker; no call on a cold load. |
+| 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | Local, commits 1-2: home, om-oss, blog resuming to static (holes 3 to 0); resuming 268 to 211. |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | Open | |
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | Open | |
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Open | |

@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
+import { CountryHintSlot } from "@/components/country-hint-slot";
 import { AbMarker } from "@/components/lazy/blocks";
 import { StoreExperiments } from "@/components/ab/store-experiments";
 import { KeepFocusEverywhere } from "@/components/keep-focus-everywhere";
@@ -36,7 +37,6 @@ import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text-read";
 
 import { MarketExtras } from "./extras";
-import { CountryHintSection } from "@/components/country-hint-section";
 import { legacyLocation } from "./legacy-redirect";
 
 import "../../../globals.css";
@@ -223,11 +223,11 @@ export default async function MarketLayout({ children, params }: Props) {
             <MarketExtras store={store} market={market} />
           </OffPayRoutes>
         </Suspense>
-        {/* A suggestion of the store for the visitor's country (D338), read per request; never a redirect, never on the pay routes. */}
+        {/* A suggestion of the store for the visitor's country (D338), asked by the browser (`/api/shop/mine`); never a redirect, never on the pay routes. */}
         {store.markets.length > 1 && (
           <Suspense fallback={null}>
             <OffPayRoutes>
-              <CountryHintSection store={store} market={market} />
+              <CountryHintSlot store={store.slug} market={market.slug} storeId={store.id} />
             </OffPayRoutes>
           </Suspense>
         )}

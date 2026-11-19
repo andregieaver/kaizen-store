@@ -32,6 +32,7 @@ import { countryOfVatPrefix } from "@/lib/vat-number";
 import { countryName, vatNumberMessage, vatProblemTexts } from "@/lib/vat-text";
 import { getRecommendSettings } from "@/server/recommend-settings";
 import { CartUpsell } from "@/components/cart-upsell";
+import { CartCountSeed } from "@/components/cart-count-seed";
 import type { Store } from "@/server/stores";
 
 import { applyGiftCardAction, companyPurchaseAction, removeGiftCardAction, setCartCreditsAction, updateCartLine } from "./actions";
@@ -40,6 +41,9 @@ import { GiftBox } from "./cart-gift";
 import { cartView, type Filled } from "./cart-view";
 
 type Draw = { store: Store; market: Market; m: Messages; view: Filled };
+
+/** The cart's units as `getCartCount()` counts them (a booking is one), for the header's count: this page draws the cart anyway. */
+const unitsOf = (view: Filled) => view.cart.lines.reduce((sum, line) => sum + (line.booking ? 1 : line.quantity), 0);
 
 const EMPTY_CART = (home: string, m: Messages) => (
   <div className="flex flex-col items-start gap-4">
@@ -69,7 +73,7 @@ export async function CartContents({
   drawer?: boolean;
 }) {
   const view = await cartView(store, market, m);
-  if (view.empty) return EMPTY_CART(view.home, m);
+  if (view.empty) return <>{EMPTY_CART(view.home, m)}<CartCountSeed count={0} /></>;
   const draw = { store, market, m, view };
   // What goes with the cart (D559): in the standard cart and the slide-out cart while the store's recommendations are on.
   const upsell = (await getRecommendSettings(store.id)).enabled ? (
@@ -95,6 +99,7 @@ export async function CartContents({
         {checkoutAction(draw)}
       </aside>
       {drawer && upsell}
+      <CartCountSeed count={unitsOf(view)} />
     </div>
   );
 }
@@ -102,7 +107,12 @@ export async function CartContents({
 /** The cart's lines and the free gifts, or that it is empty (D117). */
 export async function CartLines({ store, market, m }: { store: Store; market: Market; m: Messages }) {
   const view = await cartView(store, market, m);
-  return view.empty ? EMPTY_CART(view.home, m) : linesList({ store, market, m, view }, false);
+  return (
+    <>
+      {view.empty ? EMPTY_CART(view.home, m) : linesList({ store, market, m, view }, false)}
+      <CartCountSeed count={view.empty ? 0 : unitsOf(view)} />
+    </>
+  );
 }
 
 /** The cart's gift box (wave 3, D173): a tick and To, From and a message; nothing for an empty cart or a store with gift messages switched off. */
