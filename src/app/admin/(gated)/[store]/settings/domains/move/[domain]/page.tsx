@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui/link";
 import { ChevronRight } from "lucide-react";
 
 import { DomainMoveSteps } from "@/components/admin/domain-move-steps";
