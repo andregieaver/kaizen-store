@@ -248,7 +248,7 @@ Each step leaves production working and changes nothing an owner sees until step
 | E2 | **The catalogue and entitlement**: extension tables, `extensionState()`, the platform always `platform`, every account `active` (`legacy`) until launch; the platform admin's editor beside plans | Prices and grants editable; nothing hidden yet. **Built 18 November 2026** (below) |
 | E3 | **Gates**: every route, card, tool, MCP tool, webhook topic, API route and cron job tagged with its extension; scan test | An account without an extension sees none of it (tried on a test account) |
 | E4 | **Account billing**: one subscription per account with items, the store limit, usage across the account, the fee per account plan; existing stores moved to the highest plan | Every paying store billed through its account |
-| E5 | **Trials, grace, read-only, markers**; the Extensions page; existing accounts' `legacy` turned into 60-day trials with reminders | Launch day for extensions |
+| E5 | **Trials, grace, read-only, markers**; the Extensions page; existing accounts' `legacy` turned into 60-day trials with reminders | Launch day for extensions. **Built 19 November 2026** (parts one and two below); the launch is the owner's press on Platform → Plans → Extensions |
 | E6 | **Bundles, the cheapest way, founding prices** | The checkout never charges twice |
 | E7 | **Standalone**: workspaces, the product landing pages and the combined sign-up, Add to your account | A support-desk-only sign-up sees no store feature |
 | E8 | **The pricing table block** on Kaizena Flow's pages and the admin | On the plans page and the landing pages |
@@ -399,6 +399,9 @@ email per account for trials ending together, each once (its key kept with the e
   CI 19 November 2026 (held back from 09:26 to the release after D793: the query budget caught house-customers reading each store twice
   through the view, fixed in 58fc44f). In production: no account row, `store_plans` gives each of the 60 stores its own billing, every
   extension on for all. Advisors: INFO only; the new one (an unindexed composite key, as on `store_billing`) is in `psi-followups.md`.
+- E5 part two: `20261119192530_accounts_billed_after_launch`, applied by CI 19 November 2026 20:10 UTC (run 1724, commit 42df6db7). In
+  production: the trigger is in place, `extensions_launched_at` is null and no account has a row, so nothing changes until the launch is pressed.
+  Advisors: INFO only, nothing on the new function or trigger; no new warning.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
