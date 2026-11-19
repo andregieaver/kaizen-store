@@ -1,12 +1,14 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { canConvert, toRates, type StoreCurrency } from "@/lib/currency";
 import { derivedPrice, ruleProblem, type MarketPriceRule, type PriceBasis, type RulePreview } from "@/lib/market-prices";
 
 import { audit } from "./auth";
+import { col, typedRows } from "./typed-rows";
 
 /**
  * Market price rules (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2): the only writer of `commerce.market_price_rules` and of derived prices.
@@ -113,6 +115,35 @@ async function factsFor(runner: Runner, storeId: string, rule: MarketPriceRule, 
     current: r.current_minor === null ? null : Number(r.current_minor),
     derived: Boolean(r.derived),
   }));
+}
+
+/**
+ * What a rule would write now, every price of its market that changes (A2, D804), each with its variant's cost and the market's VAT rate as a
+ * fraction, for the autopilot's largest price change and margin floor; null when a market is not the store's. The same work `saveMarketPriceRule()`
+ * does, read only.
+ */
+export async function ruleEffect(
+  storeId: string,
+  rule: MarketPriceRule,
+): Promise<{ currency: string; prices: { before: number | null; after: number | null; costMinor: number | null; vatRate: number }[] } | null> {
+  const rates = await ratesOf(storeId, db());
+  const currencies = await currenciesOf(db(), storeId);
+  const base = currencies.get(rule.base);
+  const market = currencies.get(rule.market);
+  if (!base || !market) return null;
+  const facts = await factsFor(db(), storeId, rule, null);
+  const work = planDerivations(rule, facts, { base, market }, rates);
+  if (work.length === 0) return { currency: market, prices: [] };
+  const costs = await typedRows(
+    z.object({ id: col.uuid, cost_minor: col.minor.nullable() }),
+    sql`select id, cost_minor from commerce.product_variants where store_id = ${storeId}::uuid and id = any(${`{${work.map((w) => w.variantId).join(",")}}`}::uuid[])`,
+  );
+  const cost = new Map(costs.map((r) => [r.id, r.cost_minor]));
+  const vat = new Map(facts.map((f) => [f.variantId, f.vat / 100]));
+  return {
+    currency: market,
+    prices: work.map((w) => ({ before: w.before, after: w.amountMinor, costMinor: cost.get(w.variantId) ?? null, vatRate: vat.get(w.variantId) ?? 0 })),
+  };
 }
 
 /** Writes a rule's derivations: new prices through `commerce.set_price`, marked as the rule's, and derived prices with nothing to stand on ended. */

@@ -280,6 +280,10 @@ export const platformToolsNb: PlatformToolsMessages = {
     visitors: { one: "{n} besøkende", many: "{n} besøkende" },
     guardrail: " (sikkerhetsgrense)",
     newest: "Bare de 300 nyeste testene vises.",
+    house: "Kaizena Flows eget nettsted",
+    houseOn: "kaizenaflow.com vises fra Kaizena Flows butikk, så sidene testes der slik som i enhver butikk: en versjon, et mål og svaret med enkle ord.",
+    houseOff: "Kaizena Flows sider kan testes når nettstedet vises fra Kaizena Flows butikk (Nettsted).",
+    houseTests: "Test Kaizena Flows sider",
     own: "Tester som går av seg selv",
     ownText:
       "Søketesten og hver butikks anbefalinger med en holdt-tilbake-rangering. De teller søk og faner, ikke besøkende som har godtatt informasjonskapsler, og lagrer ingen id for noen; her leses de med samme regnestykke som en sidetest.",

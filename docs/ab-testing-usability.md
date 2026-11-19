@@ -63,4 +63,5 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
    (needs your decision, still learning, ideas, what your tests taught you), each with its stage chip and a progress bar or sparkline; the
    Marketing page (D612) shows a test with an answer among *what runs now*. "Ideas to test" built in code from suggest's facts, without a
    model call; `look_at_versions` through page-look (D310); CSV and an Admin API read of the card. The platform's view
-   (`/admin/platform/experiments`) uses the same card and chips (the parity rule; Kaizena Flow's own pages are not tested yet).
+   (`/admin/platform/experiments`) uses the same card and chips (the parity rule). Kaizena Flow's own pages are tested in its store
+   (D484, D712), and the platform's page leads there.

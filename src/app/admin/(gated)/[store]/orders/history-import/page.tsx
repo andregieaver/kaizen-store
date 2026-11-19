@@ -7,6 +7,7 @@ import { CustomerUpload } from "@/components/admin/customer-import-flow";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { requireFeature } from "@/components/admin/feature-off";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -37,7 +38,7 @@ export default async function OrderHistoryImportPage({ params }: Props) {
   const w = adminText(lang, "orders").historyImport;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${member.store.slug}/orders`, label: w.back }} title={w.title} description={w.intro} />
+      <PageHeader back={{ href: `/admin/${member.store.slug}/orders`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.intro}</span></>} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={member.store.slug} />
       </Suspense>
@@ -73,12 +74,15 @@ async function Body({ storeSlug }: { storeSlug: string }) {
             slug={store.slug}
             rowsMax={HISTORY_ORDERS_MAX}
             jobBase="/orders/history-import"
-            words={w}
+            words={{ fileLabel: w.fileLabel, hint: w.hint, phoneHint: w.phone.hint }}
             start={startHistoryUploadAction.bind(null, store.slug)}
             register={registerHistoryUploadAction.bind(null, store.slug)}
           />
         </AdminTextScope>
       )}
+      {/* Round 55 (D806): on a phone what an order history is is a row after the upload. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.rulesTitle} sub={w.phone.rulesSub} change={w.phone.open} done={w.phone.done}>
       <Notice title={w.rulesTitle}>
         <ul className="list-disc pl-5">
           <li>{w.rules.history}</li>
@@ -87,6 +91,8 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           <li>{w.rules.again}</li>
         </ul>
       </Notice>
+      </PhoneRow>
+      </div>
       {jobs.length > 0 && (
         <section aria-labelledby="recent-history-imports" className="flex flex-col gap-2">
           <h2 id="recent-history-imports" className="text-title text-ink">
@@ -128,7 +134,10 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         </section>
       )}
-      <p className={`${hint} ${card} !p-3`}>{fillWords(shared.kept, { days: IMPORT_FILE_KEEP_DAYS })}</p>
+      <p className={`${hint} ${card} !p-3 max-sm:!bg-transparent max-sm:!p-0`}>
+        <span className="sm:hidden">{fillWords(adminText(lang, "inventory").phone.importKept, { days: IMPORT_FILE_KEEP_DAYS })}</span>
+        <span className="max-sm:hidden">{fillWords(shared.kept, { days: IMPORT_FILE_KEEP_DAYS })}</span>
+      </p>
     </>
   );
 }

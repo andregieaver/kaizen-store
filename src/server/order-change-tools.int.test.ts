@@ -30,7 +30,7 @@ vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublish
 
 const { getStore } = await import("./stores");
 const ownerTools = await import("./owner-tools");
-const { orderChangeApprovalDetails } = await import("./order-change-tools");
+const { orderChangeApprovalDetails, orderChangeMoneyOf } = await import("./order-change-tools");
 const { fxStore, paidOrder } = await import("./fulfilment-test-fixture");
 
 type Row = Record<string, unknown>;
@@ -83,6 +83,17 @@ describe("the order change tools", () => {
     expect(await lines(order.orderId)).toEqual([["DEMO-MUG-WHITE", 1]]);
     const [edit] = await db().execute<Row>(sql`select status from commerce.order_edits where order_id = ${order.orderId}::uuid`);
     expect(edit.status).toBe("awaiting_payment");
+  });
+
+  it("says the money a change would move, for the autopilot in the challenge (A2, D804)", async () => {
+    const order = await paidOrder(store, [["DEMO-TOTE", 2]]);
+    const base = { order: order.number, change: [], add: [], reason: "customer_request" as const, notify: true, restock: true };
+    const c = await ctx();
+    // One tote off and one on again at its list price: no money moves.
+    expect(await orderChangeMoneyOf(c, { ...base, change: [{ item: "DEMO-TOTE", quantity: 1 }], add: [{ sku: "DEMO-TOTE", quantity: 1 }] })).toBe("none");
+    expect(await orderChangeMoneyOf(c, { ...base, change: [{ item: "DEMO-TOTE", quantity: 1 }] })).toBe("refund");
+    expect(await orderChangeMoneyOf(c, { ...base, add: [{ sku: "DEMO-MUG-WHITE", quantity: 1 }] })).toBe("charge");
+    expect(await orderChangeMoneyOf(c, { ...base, change: [{ item: "Nothing", quantity: 0 }] })).toBeNull();
   });
 
   it("names a line it cannot find, and refuses an empty change", async () => {

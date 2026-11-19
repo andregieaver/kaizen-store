@@ -361,6 +361,13 @@ export const ordersEn = {
     link: "Import order history",
     moving: "Moving from another shop? Bring its orders in as history.",
     back: "Orders",
+    phone: {
+      lead: "Your old shop's orders, from Shopify's order export.",
+      hint: "Up to {size} and {rows} orders. Checked before anything is imported.",
+      rulesSub: "Never paid, sent or counted; customers first",
+      open: "Open",
+      done: "Done",
+    },
   },
   export: {
     back: "Orders",
