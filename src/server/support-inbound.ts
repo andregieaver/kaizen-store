@@ -505,7 +505,7 @@ async function newConversation(
  * for is kept with its words. With people only, or a store that handles sensitive information (PSI REG-11), nothing: the message waits
  * in the queue for a person.
  */
-async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conversationId: string, from: string, deps: InboundDeps): Promise<void> {
+export async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conversationId: string, from: string, deps: InboundDeps = {}): Promise<void> {
   if (settings.mode !== "ai_first") return;
   const [current] = await db().execute<Row>(sql`select status, handler from commerce.support_conversations where id = ${conversationId}::uuid`);
   if (current?.status !== "open" || current.handler !== "ai") return;
@@ -536,14 +536,19 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
  * desk's *Answer emails about orders* is on, or the store is in the challenge, and only the one customer of the store whose address is the
  * conversation's own. That address is safe to answer about: an email reaches the AI only when its DMARC check did not fail and, in a thread,
  * only from the conversation's address, and every answer goes to that address alone (`sendReplyEmails()`), so whoever sent it, only the
- * address's owner reads what the orders say.
+ * address's owner reads what the orders say. A form's conversation (B2, D797) counts only once the customer wrote in it by email: a form's
+ * address is only typed, a reply from it passed the same checks.
  */
 export async function emailCustomer(desk: Desk, settings: DeskSettings, conversationId: string): Promise<SupportCustomer> {
   if (!desk.storeId || settings.sensitive) return null;
   if (!settings.emailOrders && !(await autonomyFor(desk.storeId)).challenge) return null;
   const conversation = await typedRow(
     z.object({ contact_email: col.textOrNull }),
-    sql`select contact_email from commerce.support_conversations where id = ${conversationId}::uuid and store_id = ${desk.storeId}::uuid and source = 'email'`,
+    sql`select c.contact_email from commerce.support_conversations c
+        where c.id = ${conversationId}::uuid and c.store_id = ${desk.storeId}::uuid
+          and (c.source = 'email' or (c.source = 'form' and exists (
+            select 1 from commerce.support_messages m
+            where m.conversation_id = c.id and m.store_id = c.store_id and m.author = 'customer' and m.data ? 'email')))`,
   );
   const address = conversation?.contact_email ? normaliseEmail(conversation.contact_email) : "";
   if (!address) return null;

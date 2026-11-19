@@ -284,6 +284,7 @@ describe("the desk's settings (step 5)", () => {
     aiActions: null,
     formMessages: "inbox_and_email" as const,
     emailOrders: false,
+    formAi: false,
     aiReady: false,
   };
   const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>
