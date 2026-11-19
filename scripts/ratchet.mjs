@@ -10,6 +10,8 @@
 //
 // And the source files over 100 KB and over 2,000 lines (bloat review step 1.24): read by window, so the counts only fall.
 //
+// And the files that import next/link directly (bloat review step 2.6): a link goes through PolicyLink or AdminLink, and the list only falls.
+//
 // And five counts of the admin's hand-made repeats (bloat review step 1.17): action files off storeAction()/platformAction(), tables, native selects, literal Europe/Oslo and confirm( calls.
 //
 // It refuses to raise a number: a file with more unchecked reads than its baseline, a file that had none, or a total that
@@ -35,6 +37,7 @@ if (before && !process.argv.includes("--first")) {
   if (before.notDistinctStore) for (const [file, n] of Object.entries(now.notDistinctStore)) if (n > (before.notDistinctStore[file] ?? 0)) raised.push(`${file}: ${before.notDistinctStore[file] ?? 0} → ${n} uses of store_id is not distinct from`);
   if (before.pageDocumentReads) for (const [file, n] of Object.entries(now.pageDocumentReads)) if (n > (before.pageDocumentReads[file] ?? 0)) raised.push(`${file}: ${before.pageDocumentReads[file] ?? 0} → ${n} reads of a whole page document`);
   if (before.pagesTagRefreshes) for (const [file, n] of Object.entries(now.pagesTagRefreshes)) if (n > (before.pagesTagRefreshes[file] ?? 0)) raised.push(`${file}: ${before.pagesTagRefreshes[file] ?? 0} → ${n} refreshes of a store's whole pages tag`);
+  for (const file of Object.keys(now.directLinks)) if (!(before.directLinks ?? now.directLinks)[file]) raised.push(`${file}: imports next/link directly; use PolicyLink or AdminLink`);
   if (now.unknownCasts > before.unknownCasts) raised.push(`as unknown as: ${before.unknownCasts} → ${now.unknownCasts}`);
   if (now.anySuppressed > before.anySuppressed) raised.push(`suppressed any: ${before.anySuppressed} → ${now.anySuppressed}`);
   if (now.filesOver100Kb > (before.filesOver100Kb ?? now.filesOver100Kb)) raised.push(`source files over 100 KB: ${before.filesOver100Kb} → ${now.filesOver100Kb}; split the file or move code out`);
@@ -56,5 +59,5 @@ console.log(
     `${sum(now.byIdWrites)} writes by id without the store in ${Object.keys(now.byIdWrites).length} files, ${now.unknownCasts} as unknown as, ` +
     `${now.anySuppressed} suppressed any, ${now.filesOver100Kb} files over 100 KB, ${now.filesOver2000Lines} over 2,000 lines, ` +
     `${sum(now.notDistinctStore)} store_id is not distinct from in ${Object.keys(now.notDistinctStore).length} files; ` +
-    `${sum(now.pageDocumentReads)} whole page documents read in ${Object.keys(now.pageDocumentReads).length} files, ${sum(now.pagesTagRefreshes)} refreshes of a store's whole pages tag in ${Object.keys(now.pagesTagRefreshes).length} files; admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
+    `${sum(now.pageDocumentReads)} whole page documents read in ${Object.keys(now.pageDocumentReads).length} files, ${sum(now.pagesTagRefreshes)} refreshes of a store's whole pages tag in ${Object.keys(now.pagesTagRefreshes).length} files; ${Object.keys(now.directLinks).length} files import next/link directly; admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
 );

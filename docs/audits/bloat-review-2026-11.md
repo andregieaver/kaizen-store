@@ -164,7 +164,7 @@ commit as the fix.
 | 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Done | 18 Nov, d0aa131f, D777: breakpoint sheet once; six-row page's part sheets 6 to 1. |
 | 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | D805: store pages static, live 19 Nov, payloads complete; an add 1 request, 104 B. Commit 4 in its own deploy. |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | In progress | Local: manifest names facebookexternalhit, not Bingbot; crawlers.spec 6 pass; render-modes 0 misses. Waits: deploy, tool checks, log sample. |
-| 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | Local, commits 1-3 of 5: phone router requests 3-5 (was 18-20), 1280 px home 7, first add 7 (32), money cart 7 (15). |
+| 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | Local, commits 1-4 of 5: phone router requests 3-5 (was 18-20), first add 7 (32), money cart 7 (15); next/link direct imports 396 to 389. |
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Open | |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Open | |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
