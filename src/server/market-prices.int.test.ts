@@ -140,6 +140,21 @@ describe("a country's prices worked out from another's", () => {
     ).rejects.toThrow();
   });
 
+  // D804: `commerce.vat_rate()` gives a fraction (0.25) and derivedPrice() takes percent (25); read as it came, a rule on the price before VAT
+  // took off and put back next to nothing, so a country with another VAT rate got the base country's price with VAT.
+  it("takes the base country's VAT off and puts the country's own on for a rule before VAT, at their real rates", async () => {
+    const [c] = products[1].skus;
+    // Books: 0 % VAT in Norway, 6 % in Sweden.
+    await db().execute(sql`update commerce.products set vat_category = 'books' where id = ${products[1].id}::uuid`);
+    try {
+      await savePrices(products[1].id, { [c]: "500,00" });
+      // 500 without VAT, × 1.06 Swedish VAT, × 1.10 = 583 → 589 (read as fractions it was 550.3 → 559).
+      expect((await pricesIn("SE", products[1].id))[c]).toEqual({ amount: 58_900, derived: true });
+    } finally {
+      await db().execute(sql`update commerce.products set vat_category = 'standard' where id = ${products[1].id}::uuid`);
+    }
+  });
+
   it("is refused for a currency with no rate, and keeps its prices when a rate is taken away", async () => {
     const store = await storeOf(fx);
     // Danish kroner have no rate in this store: no price could be worked out, so the rule is not kept.

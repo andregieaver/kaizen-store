@@ -27,7 +27,7 @@ export type MarketPriceRule = {
 export const PERCENT_MIN_BPS = -9_000;
 export const PERCENT_MAX_BPS = 100_000;
 
-/** What a derived price needs besides the rule: the base price and both sides' currency and VAT rate (percent, as `commerce.vat_rate()` gives it). */
+/** What a derived price needs besides the rule: the base price and both sides' currency and VAT rate in percent (25; `commerce.vat_rate()` gives 0.25, D804). */
 export type DeriveFacts = {
   baseMinor: number;
   baseCurrency: string;
