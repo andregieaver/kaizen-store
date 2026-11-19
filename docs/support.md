@@ -1303,7 +1303,7 @@ mail program that replies to the support mailbox instead of the Reply-To, writes
 email continues the conversation its `In-Reply-To` or `References` name (`referencedIds()`: In-Reply-To first, then References newest
 back, at most `THREAD_IDS_MAX`), found by the conversation's first Message-ID or any email filed into it (`threadOfHeaders()`), and
 only when it comes from the conversation's own address; otherwise, or with no ids it knows, it starts a new conversation as before.
-The 24 hours of `REOPEN_HOURS` still apply.
+An email thread is never too old (19 November 2026, the owner): it reopens its conversation however long ago it ended; the chat's `REOPEN_HOURS` does not apply to email.
 
 **An account's own stores by email.** On Kaizena Flow's own desks (the platform's and the house store's, D484), an email from the address of
 a Kaizena Flow account gives the AI `my_stores` and `store_status` for that account (`emailAccount()`, joined with the house store's own
@@ -1344,7 +1344,7 @@ minute in `/api/cron/integrations` (`processInboundEmails()`: claimed, three tri
    `>`, the "On … wrote:" line in the four hand-written languages and German and French, `-----Original Message-----`, a forwarded
    header block, `-- `), held to the customer's message limit. A new conversation's first message starts with the subject.
    Attachments are not kept (support keeps none, section 7); the message says how many there were.
-4. **The conversation.** A reply from the conversation's own address (the address its answers went to) to an open conversation is added to it; to one ended within `REOPEN_HOURS` reopens it; else, and for
+4. **The conversation.** A reply from the conversation's own address (the address its answers went to) to an open conversation is added to it; to one ended, however long ago, reopens it (an email thread has no `REOPEN_HOURS`); else, and for
    the desk address, a full conversation or another sender, a new conversation of source `email` starts as the desk's mode says (the AI with the AI first, else the queue), in
    the store's main language, with the sender's address and name as its contact (typed, never proof: *Email not verified*; it is never
    tied to a customer by the address). Its subject and the last Message-ID are kept for threading. Tone is scored as for a chat message.

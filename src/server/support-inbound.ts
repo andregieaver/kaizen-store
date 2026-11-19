@@ -30,7 +30,7 @@ import {
 } from "@/lib/inbound-email";
 import { homeMarket, inView } from "@/lib/markets";
 import { NO_SIGNALS } from "@/lib/recommendations";
-import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
+import { CONVERSATION_MESSAGES_MAX } from "@/lib/support-rules";
 
 import { takeChatTurn, type ChatSite } from "./chat-agent";
 import { chatContext, type ChatPlace } from "./chat-route";
@@ -431,7 +431,8 @@ export function inEmailLanguage(site: ChatSite, text: string): ChatSite {
 
 /**
  * The conversation a reply address names, when the email may continue it: from the conversation's own address (the address its
- * answers went to), open, or ended within `REOPEN_HOURS` (reopened), and not full. Anything else starts a new conversation.
+ * answers went to), open, or ended however long ago (reopened: an email thread is the same conversation for as long as it goes on, where the
+ * chat's `REOPEN_HOURS` does not apply), and not full. Anything else starts a new conversation.
  */
 async function existingThread(desk: Desk, conversationId: string, from: string): Promise<string | null> {
   const [row] = await db().execute<Row>(sql`
@@ -442,8 +443,6 @@ async function existingThread(desk: Desk, conversationId: string, from: string):
   `);
   if (!row || row.address !== from || Number(row.message_seq) >= CONVERSATION_MESSAGES_MAX) return null;
   if (row.status === "open") return conversationId;
-  const endedAt = row.ended_at ? Date.parse(String(row.ended_at)) : 0;
-  if (Date.now() - endedAt >= REOPEN_HOURS * 3_600_000) return null;
   try {
     await transition(desk, conversationId, "reopen", { kind: "customer" });
     return conversationId;
