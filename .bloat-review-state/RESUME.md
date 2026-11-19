@@ -378,3 +378,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 21:0x 2.21 pushed 732da16a8..fdc7d193a (lint/tc/full unit 1398 pass). D824 written cd0a21d95; In progress: pages/menus/blog on prod to check (fold into 21:06 check).
 - kz-d: 2.22 Opus (brief $S/run/kz-d-2.22.md).
 - 21:14 CI green on 26ed9b957 and 8445130cb (2.6 budgets held incl. webkit). Prod Bingbot: HIT + title/desc in head; FB BYPASS. D825 (2.5), D826 (2.6) pushed 2f607a9a4, both In progress (owner SEO checks; phone/1280 checks). 2.21 prod check at 22:00 (trig_01BVAdQdymiw5b5gr4wZw2D2) -> Done.
+- 21:58 ci-red #26 (bundle budget support/settings +32 KB since run 1732 fdc7d19): replied to session_01URyFZQ4Keks1VYEof4AN1v — not 2.21 (server-only), likely round 61 17c93b214 (PhoneRow in client widgets-list); they take it.
