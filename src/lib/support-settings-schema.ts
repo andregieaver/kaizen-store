@@ -52,6 +52,7 @@ export const deskSettingsInput = z.object({
   toneOn: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   summariesOn: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   emailOrders: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
+  formAi: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   sensitive: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   partner: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   toneAlert: toneLine("tone alert"),

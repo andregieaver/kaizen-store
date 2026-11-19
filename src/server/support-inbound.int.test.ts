@@ -156,6 +156,26 @@ describe("email into the desk", () => {
     expect(await messages(first.row.conversation_id)).toHaveLength(2);
   });
 
+  it("reopens an email thread however long ago it ended, only from the conversation's own address", async () => {
+    const { row } = await receive(deskAddress, "olav@example.com", { subject: "Bestilling 1004" });
+    const id = String(row.conversation_id);
+    const [c] = await db().execute<Row>(sql`select reply_key from commerce.support_conversations where id = ${id}::uuid`);
+    const replyAddress = `reply-${String(c.reply_key)}@${DOMAIN}`;
+    // Ended a month ago: the thread still continues it.
+    const endAMonthAgo = async () => {
+      await support.transition(systemDesk(store.id), id, "end", { kind: "customer" });
+      await db().execute(sql`update commerce.support_conversations set ended_at = now() - interval '30 days' where id = ${id}::uuid and store_id = ${store.id}::uuid`);
+    };
+    await endAMonthAgo();
+    const { row: late } = await receive(replyAddress, "olav@example.com", { subject: "Re: Bestilling 1004" });
+    expect(String(late.conversation_id)).toBe(id);
+    expect(await conversation(id)).toMatchObject({ status: "open", ended_at: null });
+    // Someone else writing to the same reply address starts their own.
+    await endAMonthAgo();
+    const { row: other } = await receive(replyAddress, "someone@example.com", { subject: "Re: Bestilling 1004" });
+    expect(String(other.conversation_id)).not.toBe(id);
+  });
+
   it("refuses machines and failing DMARC, and takes an email Resend sends twice once", async () => {
     expect((await receive(deskAddress, "kari@example.com", { headers: { "Auto-Submitted": "auto-replied" } })).row).toMatchObject({ status: "refused", reason: "auto_submitted" });
     expect((await receive(deskAddress, "kari@example.com", { authentication: { dmarc: "fail" } })).row).toMatchObject({ status: "refused", reason: "dmarc_fail" });

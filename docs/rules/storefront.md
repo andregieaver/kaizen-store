@@ -618,9 +618,9 @@ the path, component or table you change, or list the rules with a search for lin
   button, `NOT_BY_EMAIL`), and its answers go back by `sendReplyEmails()` as a reply in the thread, each marked as the AI's (`aiLabel`, `aiNote`, D334).
   Contact forms (D382, `src/server/support-forms.ts`): a store's email form's message is a conversation of source `form` through
   `formToInbox()` while the desk is on and its `form_messages` is not `email` (the recipients emailed too unless it is `inbox`);
-  it is people only (the database starts it in the queue, never lets it go to the AI and skips its summary), so no model ever
-  reads its words: a new AI helper on a conversation (tone, brief, partner, translation, a manager tool) leaves `source = 'form'`
-  out. Its answers go back as a conversation by email's do, and a customer with its address is shown, never tied
+  people answer it (never given to the AI later, no summary; AI helpers leave `source = 'form'` out), unless it starts with the
+  AI (D797: desk AI first with `form_ai` or the challenge; no orders read by the typed address).
+  Its answers go back as a conversation by email's do, and a customer with its address is shown, never tied
   (`addressCustomer`).
   A product question (D431, a product layout's question part, `src/server/product-questions.ts`) takes the same path with the product's
   title, chosen variant and address as its first answer; its fields and copy addresses come from the published layout only.

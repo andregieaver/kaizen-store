@@ -614,7 +614,11 @@ export const supportNb: SupportMessages = {
         inbox: "Bare i denne innboksen",
         email: "Bare på e-post til skjemaets mottakere",
       },
-      note: "Mens kundeservice er på, blir en melding sendt via et kontaktskjema på nettstedet ditt en samtale her som teamet ditt svarer på e-post. AI-en leser eller svarer aldri på den.",
+      note: "Mens kundeservice er på, blir en melding sendt via et kontaktskjema på nettstedet ditt en samtale her som besvares på e-post.",
+      ai: {
+        title: "La KI-en svare først på meldinger fra kontaktskjemaene dine.",
+        text: "Som i chatten på nettstedet ditt leser den ingen bestillinger: hvem som helst kan skrive en adresse i et skjema. Svarer kunden på e-post fra den adressen, kan den lese bestillingene deres som med e-post. Av: personer svarer. Bare mens KI-en svarer først; alltid på under 100-dagersutfordringen; aldri for en butikk med sensitive opplysninger.",
+      },
       replies:
         "Med Bare i denne innboksen kommer også kundenes svar på e-postene dine om ordrer, returer, bytter og bookinger hit, til innboksens egen adresse.",
     },

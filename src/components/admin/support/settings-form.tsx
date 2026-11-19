@@ -411,6 +411,14 @@ export function SupportSettingsForm({
                 )}
               </label>
             )}
+            {formChoice && (
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="formAi" defaultChecked={settings.formAi} className="mt-0.5 size-4" />
+                <span>
+                  <span className="font-medium">{w.forms.ai.title}</span> <span className="text-muted">{w.forms.ai.text}</span>
+                </span>
+              </label>
+            )}
           </section>
         </div>
       </details>

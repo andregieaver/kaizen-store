@@ -63,6 +63,8 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
   const toneOn = input.toneOn && !sensitive;
   const summariesOn = input.summariesOn && !sensitive;
   const emailOrders = Boolean(staff.desk.storeId) && input.emailOrders && !sensitive;
+  // A store's desk only (D797), shown beside the forms' choice: a form without it keeps what the desk has.
+  const formAi = Boolean(staff.desk.storeId) && !sensitive && (input.formMessages === undefined ? current.formAi : input.formAi);
 
   const storeId = staff.desk.storeId;
   const desk = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
@@ -71,7 +73,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       update commerce.support_settings set
         mode = ${input.mode}, email_followup = ${input.emailFollowup}, hours = ${input.hours ? JSON.stringify(input.hours) : null}::jsonb,
         end_after_minutes = ${input.endAfterMinutes}, notify_after_minutes = ${input.notifyAfterMinutes}, agent_naming = ${input.agentNaming},
-        tone_on = ${toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${summariesOn}, email_orders = ${emailOrders}, sensitive = ${sensitive}, partner = ${input.partner},
+        tone_on = ${toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${summariesOn}, email_orders = ${emailOrders}, form_ai = ${formAi}, sensitive = ${sensitive}, partner = ${input.partner},
         transcript_days = ${transcriptDays}, ai_actions = ${aiActions === null ? null : sql`${`{${aiActions.join(",")}}`}::text[]`}, form_messages = ${formMessages}, updated_at = now(), updated_by = ${staff.account.id}::uuid
       where ${desk}
     `);
@@ -94,6 +96,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       ["tone_on", current.toneOn, toneOn],
       ["summaries_on", current.summariesOn, summariesOn],
       ["email_orders", current.emailOrders, emailOrders],
+      ["form_ai", current.formAi, formAi],
       ["sensitive", current.sensitive, sensitive],
       ["partner", current.partner, input.partner],
       ["tone_alert", current.toneAlert, input.toneAlert],

@@ -6,6 +6,7 @@ import { requireExtension } from "@/components/admin/extension-off";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
@@ -68,14 +69,22 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
           <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays)}</p>
-          {/* A lapse flow's days without an order (slice 4), changed where they are said. */}
+          {/* A date trigger's days (slice 4), changed where they are said. */}
           {mayWrite && flow.triggerDays !== null && (
             <details className="text-sm">
               <summary className="cursor-pointer font-medium">{w.change}</summary>
               <ActionForm action={changeFlowLapseAction.bind(null, store.slug, flow.id)} className="mt-3 flex flex-wrap items-end gap-2">
                 <label className="flex flex-col gap-1">
-                  {w.lapseDays}
-                  <input name="days" type="number" min={30} max={730} required defaultValue={flow.triggerDays} className={`${FIELD} w-28`} />
+                  {flow.trigger === "customer.browsed" ? w.browseDays : w.lapseDays}
+                  <input
+                    name="days"
+                    type="number"
+                    min={isDateTrigger(flow.trigger) ? DATE_TRIGGER_DAYS[flow.trigger].min : 1}
+                    max={isDateTrigger(flow.trigger) ? DATE_TRIGGER_DAYS[flow.trigger].max : 730}
+                    required
+                    defaultValue={flow.triggerDays}
+                    className={`${FIELD} w-28`}
+                  />
                 </label>
                 <SubmitButton variant="secondary">{w.save}</SubmitButton>
               </ActionForm>
