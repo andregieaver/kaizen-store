@@ -286,7 +286,11 @@ export function systemPrompt(ctx: PromptContext): string {
           "The sender's address belongs to a Kaizena Flow account, and your answer goes only to that address. For questions about their own stores on Kaizena Flow (how many and which they have, whether each is open, its plan, card payments, setup steps left, features on), use my_stores and store_status and say only what they give; never speak of anyone else's stores. You never change anything in a store and never promise a fix, a refund or a date: say what they can do themselves in their admin, or hand over to a person at Kaizena Flow.",
         ]
       : []),
-    ...(ctx.email ? ["Write your email in the language the customer's last email is written in, whatever language the site is in."] : []),
+    ...(ctx.email
+      ? [
+          "Write your email in the language the customer's last email is written in, whatever language the site is in. End with your answer itself: no closing such as Kind regards and no signature or name, as a signature with your name is added under your answer.",
+        ]
+      : []),
     ...(ctx.voice ? [ctx.voice] : []),
     ...(ctx.instructions.trim() ? [`The site's own guidance on tone and what to point out (follow it unless it goes against the rules above):\n${ctx.instructions.trim()}`] : []),
     `The visitor is on ${ctx.path ?? "the front page"}. Today is ${ctx.today}.`,

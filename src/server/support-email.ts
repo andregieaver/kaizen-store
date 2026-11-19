@@ -10,6 +10,9 @@ import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang"
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import type { ChatProduct } from "@/lib/chat";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
+import { parseNavigation, type Logo } from "@/lib/navigation";
+import { emailPictureUrl } from "@/lib/email-picture";
+import { parseKey } from "@/lib/secret-box";
 import { EMAIL_CHANNEL_MAX, EMAIL_SETTLE_SECONDS, answerSubject, inboundDomain, replyAddress } from "@/lib/inbound-email";
 import { marketOrigin, marketUrl } from "@/lib/paths";
 import { can } from "@/lib/permissions";
@@ -19,12 +22,16 @@ import { supportEmailText } from "@/lib/support-email-text";
 import { EMAIL_EVERY_MINUTES, EMAILS_MAX, ONLINE_SECONDS } from "@/lib/support-rules";
 
 import type { Role } from "./auth";
+import { getChatAgentForEdit } from "./chat-agent";
 import { sendEmail, type SendOutcome } from "./email";
 import { log } from "./log";
+import { getPlatformChrome } from "./platform-navigation";
 import { emailContext, emailFooter } from "./shopper-emails";
 import { newEmailToken } from "./support";
 import { systemDesk } from "./support-desk";
 import { owned } from "./owned";
+import { typedRow } from "./typed-rows";
+import { z } from "zod";
 
 type Row = Record<string, unknown>;
 
@@ -141,6 +148,36 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   return out;
 }
 
+
+/**
+ * The AI assistant's signature under its answers by email (D332): the closing in the conversation's language, the desk's assistant's picture,
+ * name and occupation (Chat assistant settings), and the site's logo linking to the site. Null without an assistant; a part that cannot be
+ * read is left out, never in the way of the answer.
+ */
+export async function assistantSignature(
+  storeId: string | null,
+  greeting: string,
+  origin: string | null,
+  logoOf: (() => Promise<{ logo: Logo | null; name: string }>) | null,
+): Promise<Extract<EmailBlock, { type: "signature" }> | null> {
+  const agent = await getChatAgentForEdit(storeId).catch(() => null);
+  if (!agent?.name.trim()) return null;
+  const site = logoOf ? await logoOf().catch(() => null) : null;
+  // Through the converter, so WebP and AVIF reach every mail program as PNG: the picture is drawn at 56 pixels, the logo 32 high.
+  const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
+  const logo = site?.logo;
+  const logoWide = logo ? Math.min(200, Math.round((32 * logo.width) / Math.max(1, logo.height))) : 0;
+  const logoUrl = logo ? emailPictureUrl(logo.url, logoWide * 2, siteUrl(), key) : null;
+  return {
+    type: "signature",
+    greeting,
+    name: agent.name.trim(),
+    occupation: agent.occupation.trim(),
+    avatar: emailPictureUrl(agent.avatar?.url, 112, siteUrl(), key, true),
+    logo: logo && logoUrl && origin ? { url: logoUrl, width: logo.width, height: logo.height, alt: site.name, href: origin } : null,
+  };
+}
+
 async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
   const id = String(row.id);
   const storeId = row.store_id ? String(row.store_id) : null;
@@ -169,6 +206,8 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
   let footer: string[];
   let replyTo: string | null = null;
   let origin: string | null = null;
+  // The site's logo for the AI's signature: the store's, or Kaizena Flow's.
+  let logoOf: (() => Promise<{ logo: Logo | null; name: string }>) | null = null;
   // An account's request from the admin is opened in the admin, by its session; no token is made. A conversation by email has no link.
   const admin = row.source === "admin";
   const token = admin || byEmail ? "" : await newEmailToken(desk, id);
@@ -185,21 +224,29 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
     origin = marketOrigin(ctx.store.slug, ctx.market.slug);
     footer = emailFooter(ctx.store, ctx.text);
     replyTo = ctx.store.details.contactEmail;
+    logoOf = async () => {
+      const found = await typedRow(z.object({ navigation: z.unknown() }), sql`select navigation from commerce.stores where id = ${storeId}::uuid`);
+      return { logo: parseNavigation(found?.navigation ?? null).logo, name: ctx.store.name };
+    };
   } else {
     deskName = "Kaizena Flow";
     url = `${siteUrl()}/support/c/${token}`;
     origin = siteUrl();
     footer = ["Kaizena Flow"];
+    logoOf = async () => ({ logo: (await getPlatformChrome()).navigation.logo, name: "Kaizena Flow" });
   }
   // While receiving is set up (D332), replying to the email continues the conversation.
   const domain = admin ? null : inboundDomain(process.env.SUPPORT_INBOUND_DOMAIN);
   const replyKey = domain ? await ensureReplyKey(id, row.reply_key ? String(row.reply_key) : null) : null;
   if (domain && replyKey) replyTo = replyAddress(replyKey, domain);
 
+  // An email of the AI's answers alone is signed by the assistant, with a line under it saying it is the AI's (AI Act Art. 50); beside a
+  // person's answer, each of the AI's keeps its label, as before.
+  const signature = byEmail && messages.every((m) => m.author === "ai") ? await assistantSignature(storeId, words.signoff, origin, logoOf) : null;
   const lines: EmailBlock[] = messages.flatMap((m) => {
     const data = (m.data ?? {}) as { name?: unknown; products?: ChatProduct[] };
     // A person's answer carries their name; the AI's is marked as the AI's, as the chat's notice says (AI Act Art. 50).
-    const name = m.author === "agent" && typeof data.name === "string" ? `${data.name}:\n` : m.author === "ai" ? `${words.aiLabel}\n` : "";
+    const name = m.author === "agent" && typeof data.name === "string" ? `${data.name}:\n` : m.author === "ai" && !signature ? `${words.aiLabel}\n` : "";
     // The AI's product cards, as their names and links: an email carries no cards.
     const products = Array.isArray(data.products) && origin ? data.products.slice(0, 6).map((p) => `${p.title}: ${p.href.startsWith("http") ? p.href : `${origin}${p.href}`}`) : [];
     return [{ type: "paragraph" as const, text: `${name}${String(m.body)}` }, ...(products.length ? [{ type: "paragraph" as const, text: products.join("\n") }] : [])];
@@ -207,7 +254,11 @@ async function sendReply(row: Row, now: Date): Promise<SendOutcome | null> {
   const blocks: EmailBlock[] = byEmail
     ? [
         ...lines,
-        ...(messages.some((m) => m.author === "ai") ? [{ type: "paragraph" as const, text: words.aiNote }] : []),
+        ...(signature
+          ? [signature, { type: "paragraph" as const, text: words.aiSigned }]
+          : messages.some((m) => m.author === "ai")
+            ? [{ type: "paragraph" as const, text: words.aiNote }]
+            : []),
         // Replying continues the conversation only while receiving is set up; a form's conversation (D382) may be answered without it.
         ...(replyKey ? [{ type: "paragraph" as const, text: words.replyNote }] : []),
         { type: "paragraph", text: words.emailWhy(deskName) },

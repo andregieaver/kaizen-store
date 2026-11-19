@@ -21,7 +21,19 @@ export type EmailBlock =
   | { type: "product"; title: string; image: string | null; alt: string; price: string; small: string[]; url: string; linkText: string }
   /** A running campaign's offer in the shop's own words (D352: `noticeText()`), with when it ends. */
   | { type: "offer"; title: string; text: string; until: string | null }
-  | { type: "divider" };
+  | { type: "divider" }
+  /**
+   * The AI assistant's signature under its answer by email (D332): the closing, its picture, name and occupation, and the site's logo as a
+   * link to the site. Pictures are full addresses; either may be missing.
+   */
+  | {
+      type: "signature";
+      greeting: string;
+      name: string;
+      occupation: string;
+      avatar: string | null;
+      logo: { url: string; width: number; height: number; alt: string; href: string } | null;
+    };
 
 /** A row of a list of lines: a product with its picture (a full address), or a total. */
 export type EmailLine = {
@@ -86,6 +98,21 @@ function blockHtml(block: EmailBlock): string {
     }
     case "offer":
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse"><tr><td style="padding:12px 16px;background:#f5f5f4;border-radius:8px;font-size:16px;line-height:1.4;color:#171717"><strong>${escapeHtml(block.text)}</strong><br><span style="font-size:14px;color:#525252">${escapeHtml(block.title)}${block.until ? ` · ${escapeHtml(block.until)}` : ""}</span></td></tr></table>`;
+    case "signature": {
+      const picture = block.avatar
+        ? `<td width="56" style="width:56px;padding:0 12px 0 0;vertical-align:middle"><img src="${escapeHtml(block.avatar)}" alt="${escapeHtml(block.name)}" width="56" height="56" style="display:block;width:56px;height:56px;border:0;border-radius:50%;object-fit:cover;background:#f5f5f4"></td>`
+        : "";
+      const who = `<td style="vertical-align:middle;font-size:15px;line-height:1.4;color:#171717"><strong>${escapeHtml(block.name)}</strong>${block.occupation ? `<br><span style="font-size:14px;color:#525252">${escapeHtml(block.occupation)}</span>` : ""}</td>`;
+      // The logo 32 pixels high, as wide as its shape asks, at most 200.
+      const logo = block.logo
+        ? (() => {
+            const { url, width, height, alt, href } = block.logo;
+            const wide = Math.min(200, Math.max(1, Math.round((32 * width) / Math.max(1, height))));
+            return `<tr><td colspan="2" style="padding:16px 0 0"><a href="${escapeHtml(href)}"><img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" width="${wide}" height="32" style="display:block;width:${wide}px;height:32px;border:0"></a></td></tr>`;
+          })()
+        : "";
+      return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;border-collapse:collapse"><tr><td colspan="2" style="padding:0 0 12px;font-size:16px;line-height:1.5;color:#171717">${escapeHtml(block.greeting)}</td></tr><tr>${picture}${who}</tr>${logo}</table>`;
+    }
     case "lines": {
       // With pictures, a column for them; rows without one (totals) leave it empty, so the titles line up.
       const pictures = block.rows.some((row) => row.image);
@@ -120,6 +147,8 @@ function blockText(block: EmailBlock): string {
       return [block.title, block.price, ...block.small, block.url].join("\n");
     case "offer":
       return [block.text, block.title, block.until].filter(Boolean).join("\n");
+    case "signature":
+      return [block.greeting, "", block.name, ...(block.occupation ? [block.occupation] : []), ...(block.logo ? [`${block.logo.alt}: ${block.logo.href}`] : [])].join("\n");
   }
 }
 

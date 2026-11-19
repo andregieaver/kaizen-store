@@ -1315,6 +1315,13 @@ languages the chat's prompt names) picks it among the site's languages, and `inE
 market in that language or Kaizena Flow's site in Norwegian, so the conversation's locale, the AI's answer and the email around it
 ("Svar fra KI") agree. An email too short to tell, or in a language the site does not have, keeps the site's own.
 
+**The assistant's signature.** An email holding only the AI's answers has no "Answer by AI" label before them: it ends with the assistant's
+signature (`assistantSignature()`: the closing in the conversation's language, the desk's assistant's picture, name and occupation from
+Chat assistant, and the site's logo linking to the site) and, under it, one line saying the answer is the AI's and how to reach a person
+(`aiSigned`, AI Act Art. 50). Beside a person's answer the labels stay. The AI is told not to sign itself. Pictures go through
+`/api/email-picture` (`src/lib/email-picture.ts`): the media library's WebP and AVIF become PNG at the size the email draws, a person's
+picture cut square, as Outlook and older mail apps show neither format nor CSS cropping; only addresses Kaizena Flow signed are served.
+
 **Receiving.** Resend's `email.received` event reaches the signed webhook that already takes delivery events
 (`/api/resend/webhook`, `RESEND_WEBHOOK_SECRET`). The event is kept at once as a row of `commerce.support_inbound_emails` (Resend's id
 unique, so a repeated event does nothing; from, subject, Message-ID, when) and the work runs after the answer (`after()`) and every
