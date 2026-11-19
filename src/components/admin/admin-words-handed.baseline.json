@@ -1632,13 +1632,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/page.tsx#home": {
+    "src/app/admin/(gated)/[store]/page.tsx#homeDrafts": {
       "areas": [
-        "home"
+        "homeDrafts"
       ],
       "handed": {
-        "en": 33467,
-        "nb": 35108
+        "en": 1230,
+        "nb": 1315
       },
       "named": {
         "en": 1219,
@@ -1779,25 +1779,23 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/pages/views.tsx#website+schedules": {
+    "src/app/admin/(gated)/[store]/pages/views.tsx#website+websiteList": {
       "areas": [
         "website",
-        "schedules"
+        "websiteList"
       ],
       "handed": {
-        "en": 54238,
-        "nb": 56684
+        "en": 52105,
+        "nb": 54250
       },
       "named": {
-        "en": 48566,
-        "nb": 50624
+        "en": 52071,
+        "nb": 54216
       },
       "whole": [
         "website"
       ],
-      "unnamed": [
-        "schedules"
-      ]
+      "unnamed": []
     },
     "src/app/admin/(gated)/[store]/privacy/[requestId]/page.tsx#privacy": {
       "areas": [
@@ -2583,13 +2581,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/setup/[step]/page.tsx#home": {
+    "src/app/admin/(gated)/[store]/setup/[step]/page.tsx#homeDrafts": {
       "areas": [
-        "home"
+        "homeDrafts"
       ],
       "handed": {
-        "en": 33467,
-        "nb": 35108
+        "en": 1230,
+        "nb": 1315
       },
       "named": {
         "en": 1219,
@@ -3369,14 +3367,14 @@
         "platformSite"
       ]
     },
-    "src/app/admin/(gated)/platform/pages/views.tsx#website+platformSite": {
+    "src/app/admin/(gated)/platform/pages/views.tsx#websiteList+platformSite": {
       "areas": [
-        "website",
+        "websiteList",
         "platformSite"
       ],
       "handed": {
-        "en": 94844,
-        "nb": 98828
+        "en": 49817,
+        "nb": 51830
       },
       "named": {
         "en": 2773,

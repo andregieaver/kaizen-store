@@ -15,6 +15,14 @@ const READERS: { file: string; whole: string[] }[] = [
   // On every screen, beside the AI manager's button: the chat's words come with its start call.
   { file: "ai-manager-launcher.tsx", whole: ["assistant"] },
   { file: "ai-notices.tsx", whole: ["assistant"] },
+  // The store's home hands its drafts card only its own group, and the page lists hand what their rows read.
+  { file: "store-drafts.tsx", whole: ["home"] },
+  { file: "pages-table.tsx", whole: ["website"] },
+  { file: "site-layouts.tsx", whole: ["website"] },
+  { file: "duplicate-button.tsx", whole: ["website"] },
+  { file: "page-jobs-panel.tsx", whole: ["website"] },
+  { file: "demo-home-pages.tsx", whole: ["website"] },
+  { file: "demo-home-take.tsx", whole: ["website"] },
 ];
 
 describe("parts drawn on cut-only screens", () => {

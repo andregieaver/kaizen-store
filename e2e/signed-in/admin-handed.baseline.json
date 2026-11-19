@@ -2,13 +2,13 @@
   "en": {
     "home": {
       "document": 215768,
-      "handed": 50093,
+      "handed": 17862,
       "scriptByIdle": 783232,
       "named": null,
       "areas": [
         "assistantBar",
         "common",
-        "home",
+        "homeDrafts",
         "shell"
       ]
     },
@@ -76,19 +76,19 @@
   },
   "nb": {
     "home": {
-      "document": 171401,
-      "handed": 52297,
+      "document": 137237,
+      "handed": 18510,
       "scriptByIdle": 783232,
       "named": null,
       "areas": [
         "assistantBar",
         "common",
-        "home",
+        "homeDrafts",
         "shell"
       ]
     },
     "orders": {
-      "document": 157901,
+      "document": 156849,
       "handed": 17180,
       "scriptByIdle": 782433,
       "named": null,
@@ -138,7 +138,7 @@
       ]
     },
     "platform": {
-      "document": 106488,
+      "document": 106269,
       "handed": 17180,
       "scriptByIdle": 755351,
       "named": null,

@@ -237,6 +237,8 @@ export type AdminAreaMessages = {
   websitePick: Pick<WebsiteMessages, "picker" | "pictureMaker">;
   /** The AI manager's button and notices, on every screen; the chat's words (`assistant`) come with its start call. */
   assistantBar: Pick<AssistantMessages, "name" | "launcher" | "notices">;
+  homeDrafts: Pick<HomeMessages, "drafts">;
+  websiteList: Pick<WebsiteMessages, "list" | "pageJobs" | "demoHomes">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -349,6 +351,8 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   builderText: cut({ en: builderEn, nb: builderNb }, ["richText", "textStyles", "responsive"]),
   websitePick: cut(WEBSITE_WORDS, ["picker", "pictureMaker"]),
   assistantBar: cut(ASSISTANT_WORDS, ["name", "launcher", "notices"]),
+  homeDrafts: cut({ en: homeEn, nb: homeNb }, ["drafts"]),
+  websiteList: cut(WEBSITE_WORDS, ["list", "pageJobs", "demoHomes"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

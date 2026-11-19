@@ -50,7 +50,7 @@ export function PagesTable({
   /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
   timeZone: string;
 }) {
-  const w = useAdminText("website").list;
+  const w = useAdminText("websiteList").list;
   const lang = useAdminLang();
   return (
         <Card compact>

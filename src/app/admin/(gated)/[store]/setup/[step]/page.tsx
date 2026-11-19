@@ -92,7 +92,7 @@ export default async function SetupStepPage({ params }: Props) {
           )}
           {/* Or let the AI draft the pages from a few sentences (D351): nothing is on the site until the owner publishes. */}
           <div className="mt-8">
-            <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["home"])}>
+            <AdminTextScope texts={adminTexts(adminLangOf(member.account.adminLocale), ["homeDrafts"])}>
               <Suspense fallback={null}>
                 <StoreDraftsSection storeId={member.store.id} storeSlug={member.store.slug} offerStart />
               </Suspense>
