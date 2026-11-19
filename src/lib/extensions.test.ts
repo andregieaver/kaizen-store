@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { extensionState, readAllowances, type ExtensionRow, type StateFacts } from "./extensions";
+import { extensionState, readAllowances, TOPIC_EXTENSIONS, topicOffered, type ExtensionRow, type StateFacts } from "./extensions";
+import { WEBHOOK_TOPICS } from "./webhook-topics";
 
 /** An account's standing with one extension (D748, `docs/extensions.md` 4.1). */
 
@@ -49,5 +50,17 @@ describe("readAllowances", () => {
     expect(readAllowances({ contacts: 2500, emails_per_contact: 10, people: -1, ai_conversations: 1.5, other: 3 })).toEqual({ contacts: 2500, emails_per_contact: 10 });
     expect(readAllowances(null)).toEqual({});
     expect(readAllowances([1])).toEqual({});
+  });
+});
+
+describe("TOPIC_EXTENSIONS", () => {
+  it("names only real topics, and offers an extension's topics only while the account has it", () => {
+    const ids = new Set<string>(WEBHOOK_TOPICS.map((t) => t.id));
+    expect(Object.keys(TOPIC_EXTENSIONS).filter((id) => !ids.has(id))).toEqual([]);
+    const without = { extensionFacts: { platform: false, launchedAt: "2026-01-01T00:00:00Z", included: ["work"], rows: [] } };
+    expect(topicOffered(without, "deal.won", now)).toBe(false);
+    expect(topicOffered(without, "work_invoice.paid", now)).toBe(true);
+    expect(topicOffered(without, "order.created", now)).toBe(true);
+    expect(topicOffered({ extensionFacts: null }, "deal.won", now)).toBe(true);
   });
 });

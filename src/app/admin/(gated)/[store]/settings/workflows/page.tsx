@@ -8,7 +8,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { EVENTS } from "@/lib/integrations";
-import { listValues } from "@/lib/workflows";
+import { listValues, WORKFLOW_TRIGGERS } from "@/lib/workflows";
 import { listProductChoices } from "@/server/discounts";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
@@ -16,6 +16,7 @@ import { listEndpoints } from "@/server/webhook-endpoints";
 import { listWorkflows, workflowRuns } from "@/server/workflows";
 
 import { deleteWorkflowAction, saveWorkflowAction, switchWorkflowAction, testWorkflowAction } from "./actions";
+import { topicOffered } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Workflows" };
 
@@ -35,6 +36,8 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
   const w = all.workflows;
   const canWrite = memberCan(member, "settings:write");
   const triggerLabels = Object.fromEntries(EVENTS.map((e) => [e.id, all.integrations.events[e.id]?.label ?? e.label]));
+  // A paid extension's events (D748) start a new workflow only while the account has it.
+  const offeredTriggers = WORKFLOW_TRIGGERS.filter((t) => topicOffered(member.store, t));
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
   const [flows, endpoints, segments] = await Promise.all([listWorkflows(store.id), listEndpoints(store.id), listSegments(store.id)]);
   // *The customer is in segment X* (ecosystem plan E3.6, D718) chooses from the store's segments, by name.
@@ -90,7 +93,7 @@ export default async function WorkflowsPage({ params, searchParams }: PageProps<
           <div className="max-sm:order-1 max-sm:overflow-hidden max-sm:rounded-card">
             <PhoneRow flat last title={w.make} sub={w.phone.makeSub} change={w.phone.open} done={w.phone.close}>
               <Card title={w.make}>
-                <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} segments={segmentChoices} />
+                <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} segments={segmentChoices} offeredTriggers={offeredTriggers} />
               </Card>
             </PhoneRow>
           </div>

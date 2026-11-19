@@ -10,6 +10,7 @@ import { widgetCss } from "@/lib/support-widget-style";
 import { themeCss } from "@/lib/theme";
 import { findFont, siteFontStyle } from "@/server/fonts";
 import { frameWidget, recheckFromFrame, widgetShop } from "@/server/support-widgets";
+import { storeExtensionOn } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Chat", robots: { index: false, follow: false } };
 
@@ -51,6 +52,8 @@ async function Frame({ params, searchParams }: PageProps<"/embed/chat/[key]/[hos
   }
   const shop = await widgetShop(widget);
   if (widget.storeId && !shop) return null;
+  // A store's chat on its owner's other websites is the AI support desk's (D748): it draws nothing while the account does not have it.
+  if (shop?.store && !storeExtensionOn(shop.store, "support_desk")) return null;
   const path = pathOf((await searchParams).p);
   const store = shop?.store ?? null;
   const font = widget.style.font ? findFont(widget.style.font) : null;

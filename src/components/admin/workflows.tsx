@@ -115,6 +115,7 @@ export function WorkflowEditor({
   scope = "store",
   namePlaceholder,
   segments = [],
+  offeredTriggers,
 }: {
   start: (AnyWorkflowInput & { id: string | null }) | null;
   endpoints: { id: string; name: string }[];
@@ -126,13 +127,16 @@ export function WorkflowEditor({
   namePlaceholder?: string;
   /** The store's segments; without any, *the customer is in segment X* is not offered. */
   segments?: SegmentChoice[];
+  /** The triggers this store offers (D748: a paid extension's events only while the account has it); not given, every one. */
+  offeredTriggers?: readonly string[];
 }) {
   const w = useAdminText("notifications").workflows;
   const kit = kitOf(scope);
+  const triggers = offeredTriggers ? kit.triggers.filter((t) => offeredTriggers.includes(t) || t === start?.trigger) : kit.triggers;
   const [pending, run] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
   const [name, setName] = useState(start?.name ?? "");
-  const [trigger, setTrigger] = useState<string>(start?.trigger ?? kit.triggers[0]);
+  const [trigger, setTrigger] = useState<string>(start?.trigger ?? triggers[0]);
   const [schedule, setSchedule] = useState(start?.schedule ?? { every: "day" as const, at: "08:00", weekday: null });
   const [conditions, setConditions] = useState<WorkflowCondition[]>(start?.conditions ?? []);
   const [actions, setActions] = useState<WorkflowAction[]>(start?.actions ?? [blankAction("email_staff", null)]);
@@ -172,7 +176,7 @@ export function WorkflowEditor({
           }}
           className={`${FIELD} font-normal`}
         >
-          {kit.triggers.map((t) => (
+          {triggers.map((t) => (
             <option key={t} value={t}>
               {t === "schedule" ? w.schedule : (triggerLabels[t] ?? t)}
             </option>
@@ -338,6 +342,7 @@ export function NewWorkflow(props: {
   scope?: WorkflowScope;
   namePlaceholder?: string;
   segments?: SegmentChoice[];
+  offeredTriggers?: readonly string[];
 }) {
   const w = useAdminText("notifications").workflows;
   const [key, setKey] = useState(0);

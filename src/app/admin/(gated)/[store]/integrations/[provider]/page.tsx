@@ -18,6 +18,7 @@ import { slackAppOn } from "@/server/slack";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 
 import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
+import { topicOffered } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Integration" };
 
@@ -132,7 +133,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-1 text-sm font-medium">{w.events}</legend>
               {/* Subscriptions' events are offered while that feature is on (D178); one already chosen is kept as it is while it is off. */}
-              {SERVICE_EVENTS.filter((event) => !event.id.startsWith("subscription.") || subscriptionsOn).map((event) => (
+              {SERVICE_EVENTS.filter((event) => (!event.id.startsWith("subscription.") || subscriptionsOn) && topicOffered(store, event.id)).map((event) => (
                 <label key={event.id} className="flex items-start gap-2 text-sm">
                   <input type="checkbox" name="events" value={event.id} defaultChecked={chosen.has(event.id)} className="mt-0.5 size-4" />
                   <span>
