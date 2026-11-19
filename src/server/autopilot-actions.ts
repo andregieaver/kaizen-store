@@ -84,8 +84,8 @@ const number = (value: string): number | null => (value === "" ? null : Number(v
 
 /**
  * *Set this goal* on the Goals tab (ecosystem plan E5.3, D757): Kaizena Flow's sign-ups per 100 visits to its site, on Kaizena Flow's own
- * Autopilot or its own store's, named in the person's admin language. The AI manager's `set_goal` sets it too (released 19 November
- * 2026); `setGoal()` refuses it anywhere else.
+ * Autopilot or its own store's, named in the person's admin language. The AI manager's `set_goal` cannot set it until the agents' eval is
+ * recorded with it (`HELD_GOAL_TARGETS`); `setGoal()` refuses it anywhere else.
  */
 export function setSignupGoalFrom(p: Principal, form: FormData): Promise<FormState> {
   return guarded("set_signup_goal", async () => {
