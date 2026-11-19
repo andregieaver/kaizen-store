@@ -89,7 +89,7 @@ const catalogues = (seen: Set<string>) => [...seen].filter((file) => file.starts
 
 /** Catalogue files behind each entry that runs for shoppers; each only falls. */
 const CEILINGS: Record<string, number> = {
-  "src/proxy.ts": 5,
+  "src/proxy.ts": 0,
   "src/app/api/visit/route.ts": 0,
   "src/app/api/visit/touch/route.ts": 0,
   "src/app/api/visit/speed/route.ts": 0,

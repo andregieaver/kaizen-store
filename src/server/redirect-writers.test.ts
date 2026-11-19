@@ -130,8 +130,8 @@ describe("the proxy", () => {
     expect(imports).toEqual(
       // Held domains (D317 8) answer from the proxy too: `holdingFor()`, read for a host that is no one else's. Private mode (D339) reads
       // the visitor's pass with the key it was signed with. Kaizena Flow's site served from its own store (D484) reads the switch. An A/B
-      // test's preview link (D148 phase 20) is read with its own key, as the private pass is. The first answer of an instance is noted once (bloat review step 1.16).
-      ["@/lib/ab-preview", "@/lib/ab-preview-sign", "@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/house-routing", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments", "@/server/holding", "@/server/house-switch", "@/server/instance-start", "@/server/not-found", "@/server/private-secret", "@/server/redirect-resolve", "next/server"].sort(),
+      // test's preview link (D148 phase 20) is read with its own key, as the private pass is. The first answer of an instance is noted once (bloat review step 1.16). Its readers are leaf files that import no writer (bloat review step 2.20).
+      ["@/lib/ab-preview", "@/lib/ab-preview-sign", "@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/house-routing", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments-running", "@/server/holding-read", "@/server/instance-start", "@/server/not-found-record", "@/server/private-secret", "@/server/redirect-resolve", "@/server/site-switch-read", "@/server/store-facts", "next/server"].sort(),
     );
   });
 

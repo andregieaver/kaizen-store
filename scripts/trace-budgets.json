@@ -2,7 +2,7 @@
   "comment": "Written by node scripts/trace-sizes.mjs --write after pnpm build; sizes are the build's megabytes times 1.04, rounded up to 0.1. Held by CI's e2e job (node scripts/trace-sizes.mjs --check).",
   "sizesMb": {
     "median": 64.8,
-    "proxy": 63.2,
+    "proxy": 2.2,
     "storeHome": 58.6,
     "storeCheckout": 59.1,
     "health": 15.4,
