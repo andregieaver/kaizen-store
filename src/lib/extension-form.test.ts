@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseBundleForm, parseExtensionForm, parseGrantsForm } from "./extension-form";
+import { parseBundleForm, parseExtensionForm, parseFoundingForm, parseGrantsForm } from "./extension-form";
 
 /** The extension catalogue's forms (D748 step E2). */
 
@@ -54,11 +54,11 @@ describe("parseExtensionForm", () => {
             position: 0,
             active: true,
             prices: [
-              { currency: "EUR", interval: "month", amountMinor: 2500 },
-              { currency: "NOK", interval: "year", amountMinor: 250000 },
+              { currency: "EUR", interval: "month", amountMinor: 2500 , foundingMinor: null },
+              { currency: "NOK", interval: "year", amountMinor: 250000 , foundingMinor: null },
             ],
           },
-          { id: null, label: "Up to 100,000 contacts", allowances: { contacts: 100000 }, position: 1, active: true, prices: [{ currency: "EUR", interval: "month", amountMinor: 29900 }] },
+          { id: null, label: "Up to 100,000 contacts", allowances: { contacts: 100000 }, position: 1, active: true, prices: [{ currency: "EUR", interval: "month", amountMinor: 29900 , foundingMinor: null }] },
         ],
       },
     });
@@ -102,7 +102,7 @@ describe("parseBundleForm", () => {
     );
     expect(parsed).toEqual({
       ok: true,
-      input: { name: "Customers", description: "", position: 0, active: true, members: ["support_desk", "deals"], prices: [{ currency: "EUR", interval: "month", amountMinor: 8500 }] },
+      input: { name: "Customers", description: "", position: 0, active: true, members: ["support_desk", "deals"], prices: [{ currency: "EUR", interval: "month", amountMinor: 8500 , foundingMinor: null }] },
     });
   });
 
@@ -111,6 +111,32 @@ describe("parseBundleForm", () => {
       ok: false,
       problems: [{ key: "bundleNeedsTwo" }, { key: "bundleNeedsAPrice" }],
     });
+  });
+});
+
+describe("founding prices (D748 E6)", () => {
+  it("reads a founding price beside its price, below it", () => {
+    expect(parseBundleForm(form({ name: "Customers", "member:support_desk": "on", "member:deals": "on", "price:EUR:month": "85", "founding:EUR:month": "59" }), { currencies: ["EUR"] })).toMatchObject({
+      ok: true,
+      input: { prices: [{ currency: "EUR", interval: "month", amountMinor: 8500, foundingMinor: 5900 }] },
+    });
+  });
+
+  it("refuses a founding price at or above its price, or without one", () => {
+    expect(parseBundleForm(form({ name: "C", "member:work": "on", "member:deals": "on", "price:EUR:month": "85", "founding:EUR:month": "85" }), { currencies: ["EUR"] })).toEqual({
+      ok: false,
+      problems: [{ key: "foundingNotBelow", values: { currency: "EUR" } }],
+    });
+    expect(parseBundleForm(form({ name: "C", "member:work": "on", "member:deals": "on", "founding:EUR:year": "590" }), { currencies: ["EUR"] })).toEqual({
+      ok: false,
+      problems: [{ key: "foundingWithoutPrice", values: { currency: "EUR" } }],
+    });
+  });
+
+  it("reads the offer's last day and months, an empty day being no offer", () => {
+    expect(parseFoundingForm(form({ until: "2027-03-31", months: "12" }))).toEqual({ ok: true, input: { until: "2027-03-31", months: 12 } });
+    expect(parseFoundingForm(form({ until: "", months: "6" }))).toEqual({ ok: true, input: { until: null, months: 6 } });
+    expect(parseFoundingForm(form({ until: "31.03.2027", months: "40" }))).toEqual({ ok: false, problems: [{ key: "foundingDate" }, { key: "foundingMonths" }] });
   });
 });
 

@@ -13,6 +13,12 @@ export const EXTENSION_TRIAL_DAYS = 14;
 /** Days of the trial an account gets at launch for each extension it already uses and its plan does not include (D748 E5). */
 export const LAUNCH_TRIAL_DAYS = 60;
 
+/** Founding prices are offered at `now` (D748 E6): the platform admin set when the offer ends, and it has not yet. */
+export const foundingOpen = (until: Date | null, now: Date): boolean => until !== null && now < until;
+
+/** The marker on a founding price's local id (`founding:{price id}`): the Stripe price an account pays while its founding price is locked. */
+export const FOUNDING_PREFIX = "founding:";
+
 /** Days before a trial ends that its owner is emailed, longest first: a reminder is sent only when the trial is longer than it. */
 export const TRIAL_REMINDER_DAYS = [30, 14, 3] as const;
 

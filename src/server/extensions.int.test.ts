@@ -66,7 +66,7 @@ describe("the extension catalogue (D748 E2)", () => {
       position: before.position,
       active: before.active,
       sizes: [
-        { id: size.id, label: size.label, allowances: size.allowances, position: 0, active: true, prices: [...kept, { currency: "EUR", interval: "month", amountMinor: 3600 }] },
+        { id: size.id, label: size.label, allowances: size.allowances, position: 0, active: true, prices: [...kept, { currency: "EUR", interval: "month", amountMinor: 3600, foundingMinor: null }] },
         { id: null, label: `10 people ${tag}`, allowances: { people: 10 }, position: 1, active: false, prices: [] },
       ],
     });
@@ -89,7 +89,7 @@ describe("the extension catalogue (D748 E2)", () => {
         position: 9,
         active: true,
         members: ["work", "deals"],
-        prices: [{ currency: "EUR", interval: "month", amountMinor: 5900 }],
+        prices: [{ currency: "EUR", interval: "month", amountMinor: 5900, foundingMinor: null }],
       })).ok,
     ).toBe(true);
     const bundle = (await getExtensionCatalogue()).bundles.find((b) => b.name === `Office ${tag}`);

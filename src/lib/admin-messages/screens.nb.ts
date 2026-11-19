@@ -38,6 +38,8 @@ export const screensNb: ScreensMessages = {
     notLaunched: "Alle utvidelsene er en del av kontoen din inntil videre. Når utvidelsene selges, får du en gratis prøveperiode av dem du bruker.",
     from: "Fra {price} i måneden",
     bundleHint: "Billigst som pakken {bundle}: {price} i måneden, {saving} mindre enn hver for seg",
+    foundingFrom: "Grunnleggerpris {founding} i måneden i {months} måneder, deretter {price}",
+    foundingUntil: "Grunnleggerpris til {date}",
     states: {
       platform: "Inkludert",
       included: "I abonnementet ditt",
@@ -107,6 +109,7 @@ export const screensNb: ScreensMessages = {
       extensions: "Utvidelser du betaler for",
       extensionLine: "{name}, {size}",
       extensionInBundle: "{name}, i pakken {bundle}",
+      extensionFounding: "grunnleggerpris til {date}",
       extensionEnds: "{name}, {size}: avsluttet, virker fortsatt til {date}",
       plans: "Bytt abonnement",
       plansNote: "En endring gjelder med en gang: differansen krediteres eller belastes på neste faktura. Utvidelsene dine følger med.",

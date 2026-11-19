@@ -1,0 +1,8 @@
+ALTER TABLE "commerce"."extension_bundle_prices" ADD COLUMN "founding_minor" bigint;--> statement-breakpoint
+ALTER TABLE "commerce"."extension_prices" ADD COLUMN "founding_minor" bigint;--> statement-breakpoint
+ALTER TABLE "commerce"."organisation_extensions" ADD COLUMN "founding_ends_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "extension_founding_until" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "extension_founding_months" integer DEFAULT 12 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."extension_bundle_prices" ADD CONSTRAINT "extension_bundle_prices_founding" CHECK ("commerce"."extension_bundle_prices"."founding_minor" is null or ("commerce"."extension_bundle_prices"."founding_minor" >= 0 and "commerce"."extension_bundle_prices"."founding_minor" < "commerce"."extension_bundle_prices"."amount_minor"));--> statement-breakpoint
+ALTER TABLE "commerce"."extension_prices" ADD CONSTRAINT "extension_prices_founding" CHECK ("commerce"."extension_prices"."founding_minor" is null or ("commerce"."extension_prices"."founding_minor" >= 0 and "commerce"."extension_prices"."founding_minor" < "commerce"."extension_prices"."amount_minor"));--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD CONSTRAINT "platform_settings_founding_months" CHECK ("commerce"."platform_settings"."extension_founding_months" between 1 and 36);

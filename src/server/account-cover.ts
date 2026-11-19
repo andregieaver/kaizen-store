@@ -4,10 +4,10 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { cheapestCover, coverSaving, type Cover, type CoverOption } from "@/lib/extension-cover";
-import { isExtensionId, type ExtensionId } from "@/lib/extensions";
+import { FOUNDING_PREFIX, foundingOpen, isExtensionId, type ExtensionId } from "@/lib/extensions";
 import type { PlanInterval } from "@/lib/plans";
 
-import { col, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * The cheapest cover for an account (D748 step E6, `docs/extensions.md` 8.3): what it can buy in its currency and interval, what it has bought
@@ -20,19 +20,20 @@ const OPTION_ROW = z.object({
   id: col.text,
   price_id: col.uuid,
   amount_minor: col.minor,
+  founding_minor: col.minorOrNull,
   size_id: col.uuid.nullable(),
   smallest: col.bool,
   members: z.array(z.string()),
 });
 
-type Option = CoverOption & { sizeId: string | null; smallest: boolean };
+type Option = CoverOption & { sizeId: string | null; smallest: boolean; foundingMinor: number | null };
 
 /** Every offered extension size and bundle priced in this currency and interval. */
 async function coverOptions(currency: string, interval: PlanInterval): Promise<Option[]> {
   const rows = await typedRows(
     OPTION_ROW,
     sql`
-      select 'extension' as kind, es.extension_id as id, ep.id as price_id, ep.amount_minor, es.id as size_id,
+      select 'extension' as kind, es.extension_id as id, ep.id as price_id, ep.amount_minor, ep.founding_minor, es.id as size_id,
              es.id = (select s2.id from commerce.extension_sizes s2 where s2.extension_id = es.extension_id and s2.active
                        order by s2.position, s2.created_at limit 1) as smallest,
              array[es.extension_id] as members
@@ -41,7 +42,7 @@ async function coverOptions(currency: string, interval: PlanInterval): Promise<O
         join commerce.extensions e on e.id = es.extension_id and e.active
        where ep.active and ep.currency = ${currency} and ep.interval = ${interval}
       union all
-      select 'bundle', b.id::text, bp.id, bp.amount_minor, null, true,
+      select 'bundle', b.id::text, bp.id, bp.amount_minor, bp.founding_minor, null, true,
              array(select m.extension_id from commerce.extension_bundle_members m where m.bundle_id = b.id order by m.extension_id)
         from commerce.extension_bundle_prices bp
         join commerce.extension_bundles b on b.id = bp.bundle_id and b.active
@@ -53,22 +54,33 @@ async function coverOptions(currency: string, interval: PlanInterval): Promise<O
     id: r.id,
     priceId: r.price_id,
     amountMinor: r.amount_minor,
+    foundingMinor: r.founding_minor,
     covers: r.members.filter(isExtensionId),
     sizeId: r.size_id,
     smallest: r.smallest,
   }));
 }
 
-/** What the account pays for now, on its own or in a bundle, at its size. */
-async function ownedAddOns(organisationId: string): Promise<{ extensionId: ExtensionId; sizeId: string | null; bundleId: string | null }[]> {
+/** What the account pays for now, on its own or in a bundle, at its size, and until when it keeps a founding price (E6). */
+async function ownedAddOns(
+  organisationId: string,
+): Promise<{ extensionId: ExtensionId; sizeId: string | null; bundleId: string | null; foundingEndsAt: string | null }[]> {
   const rows = await typedRows(
-    z.object({ extension_id: col.text, size_id: col.uuid.nullable(), bundle_id: col.uuid.nullable() }),
+    z.object({ extension_id: col.text, size_id: col.uuid.nullable(), bundle_id: col.uuid.nullable(), founding_ends_at: col.timestampOrNull }),
     sql`
-      select extension_id, size_id, bundle_id from commerce.organisation_extensions
+      select extension_id, size_id, bundle_id, founding_ends_at from commerce.organisation_extensions
        where organisation_id = ${organisationId}::uuid and source in ('bought', 'bundle') and ended_at is null
     `,
   );
-  return rows.flatMap((r) => (isExtensionId(r.extension_id) ? [{ extensionId: r.extension_id, sizeId: r.size_id, bundleId: r.bundle_id }] : []));
+  return rows.flatMap((r) =>
+    isExtensionId(r.extension_id) ? [{ extensionId: r.extension_id, sizeId: r.size_id, bundleId: r.bundle_id, foundingEndsAt: r.founding_ends_at }] : [],
+  );
+}
+
+/** Until when founding prices are offered (D748 E6), or null. */
+async function foundingUntil(): Promise<Date | null> {
+  const row = await typedRow(z.object({ until: col.timestampOrNull }), sql`select extension_founding_until as until from commerce.platform_settings`);
+  return row?.until ? new Date(row.until) : null;
 }
 
 /** What a plan includes. */
@@ -85,15 +97,31 @@ export type AccountCover = Cover & {
   newBundles: string[];
 };
 
-type At = { currency: string; interval: PlanInterval; planId: string | null };
+type At = { currency: string; interval: PlanInterval; planId: string | null; now?: Date };
 type Facts = { usable: Option[]; owned: Awaited<ReturnType<typeof ownedAddOns>>; included: ExtensionId[] };
 
 /**
  * What a cover is worked out from: the options the account can use (an extension bought at a bigger size keeps that size, and no bundle
- * covers it, as a bundle holds the smallest; every other extension at its smallest), what it pays for now, and what the plan includes.
+ * covers it, as a bundle holds the smallest; every other extension at its smallest), what it pays for now, and what the plan includes. An
+ * option is priced at its founding price (E6, `founding:{price id}`) while founding prices are offered, or while the account keeps that
+ * founding price for what it already has; else at its price.
  */
 async function coverFacts(organisationId: string, at: At): Promise<Facts> {
-  const [options, owned, included] = await Promise.all([coverOptions(at.currency, at.interval), ownedAddOns(organisationId), planIncludes(at.planId)]);
+  const now = at.now ?? new Date();
+  const [found, owned, included, until] = await Promise.all([
+    coverOptions(at.currency, at.interval),
+    ownedAddOns(organisationId),
+    planIncludes(at.planId),
+    foundingUntil(),
+  ]);
+  const open = foundingOpen(until, now);
+  const locked = (o: Option) =>
+    owned.some(
+      (x) => x.foundingEndsAt !== null && new Date(x.foundingEndsAt) > now && (o.kind === "bundle" ? x.bundleId === o.id : x.bundleId === null && x.sizeId === o.sizeId),
+    );
+  const options = found.map((o) =>
+    o.foundingMinor !== null && (open || locked(o)) ? { ...o, priceId: `${FOUNDING_PREFIX}${o.priceId}`, amountMinor: o.foundingMinor } : o,
+  );
   const sized = new Map(owned.map((o) => [o.extensionId, o.sizeId]));
   const bigger = new Set(owned.filter((o) => options.some((x) => x.kind === "extension" && x.sizeId === o.sizeId && !x.smallest)).map((o) => o.extensionId));
   const usable = options.filter((o) =>

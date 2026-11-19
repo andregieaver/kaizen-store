@@ -50,6 +50,8 @@ export const screensEn = {
     notLaunched: "Every extension is part of your account for now. When extensions are sold, you will have a free trial of the ones you use.",
     from: "From {price} a month",
     bundleHint: "Cheapest as the {bundle} bundle: {price} a month, {saving} less than one by one",
+    foundingFrom: "Founding price {founding} a month for {months} months, then {price}",
+    foundingUntil: "Founding price until {date}",
     states: {
       platform: "Included",
       included: "In your plan",
@@ -122,6 +124,7 @@ export const screensEn = {
       extensions: "Extensions you pay for",
       extensionLine: "{name}, {size}",
       extensionInBundle: "{name}, in the {bundle} bundle",
+      extensionFounding: "founding price until {date}",
       extensionEnds: "{name}, {size}: ended, still running until {date}",
       plans: "Change plan",
       plansNote: "A change applies at once: the difference is credited or charged on your next invoice. Your extensions come along.",

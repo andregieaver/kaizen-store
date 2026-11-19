@@ -1947,6 +1947,12 @@ export const platformSettings = commerce.table(
      * (`extensionState()`, source `legacy`), so the gates of step E3 hide nothing.
      */
     extensionsLaunchedAt: timestamp("extensions_launched_at", { withTimezone: true }),
+    /**
+     * Founding prices (D748 E6): an extension or bundle started before this pays its founding price for `extension_founding_months`, then
+     * its list price. None: founding prices are not offered.
+     */
+    extensionFoundingUntil: timestamp("extension_founding_until", { withTimezone: true }),
+    extensionFoundingMonths: integer("extension_founding_months").notNull().default(12),
     /** Reminders to store owners who started paying for a plan and did not finish (D33). */
     planReminders: boolean("plan_reminders").notNull().default(false),
     /** Kaizen's own header and footer (D42): logo and menus. Shape: `PlatformNavigation` in lib/navigation. */
@@ -2015,6 +2021,7 @@ export const platformSettings = commerce.table(
   },
   (t) => [
     check("platform_settings_briefing", sql`${t.briefing} in ('off', 'daily', 'weekly')`),
+    check("platform_settings_founding_months", sql`${t.extensionFoundingMonths} between 1 and 36`),
     check("platform_settings_single_row", sql`${t.id}`),
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
@@ -2179,12 +2186,18 @@ export const extensionPrices = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     interval: text("interval").notNull(),
     amountMinor: money("amount_minor"),
+    /**
+     * The founding price (D748 E6): what an account that starts while founding prices are offered pays for
+     * `platform_settings.extension_founding_months`, then the amount above. None: no founding price. Part of the price: a change is a new row.
+     */
+    foundingMinor: bigint("founding_minor", { mode: "number" }),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [
     check("extension_prices_interval", sql`${t.interval} in ('month', 'year')`),
     check("extension_prices_amount", sql`${t.amountMinor} >= 0`),
+    check("extension_prices_founding", sql`${t.foundingMinor} is null or (${t.foundingMinor} >= 0 and ${t.foundingMinor} < ${t.amountMinor})`),
     uniqueIndex("extension_prices_one_active").on(t.sizeId, t.currency, t.interval).where(sql`${t.active}`),
     index("extension_prices_size_idx").on(t.sizeId),
   ],
@@ -2234,12 +2247,15 @@ export const extensionBundlePrices = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     interval: text("interval").notNull(),
     amountMinor: money("amount_minor"),
+    /** The bundle's founding price (D748 E6), as `extension_prices.founding_minor`. */
+    foundingMinor: bigint("founding_minor", { mode: "number" }),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [
     check("extension_bundle_prices_interval", sql`${t.interval} in ('month', 'year')`),
     check("extension_bundle_prices_amount", sql`${t.amountMinor} >= 0`),
+    check("extension_bundle_prices_founding", sql`${t.foundingMinor} is null or (${t.foundingMinor} >= 0 and ${t.foundingMinor} < ${t.amountMinor})`),
     uniqueIndex("extension_bundle_prices_one_active").on(t.bundleId, t.currency, t.interval).where(sql`${t.active}`),
     index("extension_bundle_prices_bundle_idx").on(t.bundleId),
   ],
@@ -2288,6 +2304,8 @@ export const organisationExtensions = commerce.table(
     trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     graceEndsAt: timestamp("grace_ends_at", { withTimezone: true }),
+    /** While its founding price is locked (D748 E6): the daily job moves it to the list price after. None: it pays the list price. */
+    foundingEndsAt: timestamp("founding_ends_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

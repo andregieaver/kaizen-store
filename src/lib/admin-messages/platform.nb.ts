@@ -345,6 +345,15 @@ export const platformNb: PlatformMessages = {
     notIncluded: "Ikke med",
     includesOf: "Hva {plan} gir av {name}",
     noPlan: "Det finnes ingen aktiv plan ennå. Lag en under Planer, og si så her hva den gir.",
+    founding: {
+      title: "Grunnleggerpriser",
+      hint: "En konto som legger til en utvidelse eller en pakke før tilbudet slutter, betaler grunnleggerprisen i månedene under, deretter prisen. Sett hver grunnleggerpris ved siden av prisen.",
+      until: "Tilbys til og med (siste dag)",
+      months: "Beholdes i (måneder)",
+      offered: "Tilbys til og med {date}; en konto beholder grunnleggerprisen i {months} måneder.",
+      notOffered: "Tilbys ikke: alle kontoer betaler prisene.",
+      price: "Grunnleggerpris",
+    },
     launch: {
       title: "Lanser utvidelsene",
       lead: "Lanseringen starter salget av utvidelser. Fra da av har hver konto det planen gir, det den betaler for og prøveperiodene sine.",
@@ -373,6 +382,10 @@ export const platformNb: PlatformMessages = {
       unknownSize: "Den størrelsen hører ikke til utvidelsen.",
       unknownExtension: "Den utvidelsen finnes ikke.",
       unknownBundle: "Den pakken finnes ikke.",
+      foundingNotBelow: "En grunnleggerpris i {currency} er lavere enn prisen.",
+      foundingWithoutPrice: "En grunnleggerpris i {currency} trenger en pris ved siden av.",
+      foundingMonths: "En grunnleggerpris beholdes i 1 til 36 måneder.",
+      foundingDate: "Oppgi siste dag grunnleggerpriser tilbys som en dato, eller la feltet stå tomt.",
     },
   },
   features: {
