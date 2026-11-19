@@ -463,10 +463,20 @@ export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">)
 
 type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: boolean; also?: string[] };
 
+/**
+ * A tab of the store's menu. Home names the addresses that are its own (`also`); a section's tab names its section (`section`), whose
+ * addresses its sidebar (`StoreArea`) already carries as `prefixes`: the browser looks them up there, so each address is sent once as a
+ * prefix and not a second time on the tab (bloat review step 2.28).
+ */
+export type StoreTab = Link & { icon: NavIconName; also?: string[]; section?: string; badge?: number; foot?: boolean };
+
+/** A section's sidebar, by the addresses inside it (`prefixes`; a page of cards in `exact`), keyed as its tab is (`section`, Home's `home`). */
+export type StoreArea = { section: string; prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] };
+
 /** Whether a section's page is left out of the Basic view (D454): one not marked `basic`, unless it is where the section's tab leads. */
 export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<StoreItem, "path" | "basic">): boolean => !item.basic && item.path !== section.start;
 
-function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<StoreSection["key"], number>>): (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[] {
+function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<StoreSection["key"], number>>): StoreTab[] {
   return [
     { href: base, label: "Home", icon: "home", exact: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
     ...sections.map((s) => ({
@@ -477,8 +487,9 @@ function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<S
       ...(counts[s.key] ? { badge: counts[s.key] } : {}),
       // Settings sit at the foot of the rail (docs/admin-style.md 5.3); in the tabs and the menu they keep their place.
       ...(s.key === "settings" && { foot: true }),
-      // The page of cards is the tab's own address; only the pages in the sidebar are inside it (Design is `/settings/design`, the Website's).
-      also: s.groups.flatMap((g) => g.items.flatMap((i) => itemPaths(i).map((p) => `${base}${p}`))),
+      // The page of cards is the tab's own address; only the pages in the sidebar are inside it (Design is `/settings/design`, the Website's):
+      // the sidebar's `prefixes`, looked up by this key in the browser (`useIsCurrent()`).
+      section: s.key,
     })),
   ];
 }
@@ -487,14 +498,15 @@ function tabsOf(base: string, sections: StoreSection[], counts: Partial<Record<S
  * The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are
  * inside their own section. `counts` puts a number on a section's tab (Support: the conversations waiting for a person, D216).
  */
-export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[] {
+export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): StoreTab[] {
   return tabsOf(base, storeSections(flags, canOpen), counts);
 }
 
-function areasOf(base: string, sections: StoreSection[]): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
+function areasOf(base: string, sections: StoreSection[]): StoreArea[] {
   return [
-    { prefixes: HOME_PATHS.map((p) => `${base}${p}`), exact: [base], groups: [] },
+    { section: "home", prefixes: HOME_PATHS.map((p) => `${base}${p}`), exact: [base], groups: [] },
     ...sections.map((s) => ({
+      section: s.key,
       prefixes: s.groups.flatMap((g) => g.items.flatMap((i) => itemPaths(i).map((p) => `${base}${p}`))),
       ...(s.hub && { exact: [`${base}${s.start}`] }),
       groups: s.groups.map((g) => ({
@@ -512,12 +524,12 @@ function areasOf(base: string, sections: StoreSection[]): { prefixes: string[]; 
 }
 
 /** The sidebar of each section (none for Home), by the addresses inside it: a section's page of cards matches only itself. */
-export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
+export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): StoreArea[] {
   return areasOf(base, storeSections(flags, canOpen));
 }
 
 /** The tabs and the sidebars from one reading of the sections: a menu build asks `canOpen` once per item, not twice (bloat review step 0.17). */
-export function storeNav(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): { tabs: (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[]; areas: { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] } {
+export function storeNav(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): { tabs: StoreTab[]; areas: StoreArea[] } {
   const sections = storeSections(flags, canOpen);
   return { tabs: tabsOf(base, sections, counts), areas: areasOf(base, sections) };
 }

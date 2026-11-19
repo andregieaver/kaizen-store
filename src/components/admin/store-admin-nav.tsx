@@ -27,6 +27,8 @@ export type NavItem = {
   icon?: NavIconName;
   /** Other addresses that are inside this section (a tab whose pages live at addresses of their own); an `exact` one is marked on these too, but not below its own address. */
   also?: string[];
+  /** The section whose sidebar's addresses are inside it (`NavArea.section`), for a tab sent without `also` (bloat review step 2.28). */
+  section?: string;
   /** Drawn at the foot of the rail rather than with the others (Settings, docs/admin-style.md 5.3). */
   foot?: boolean;
   /** Left out of the Basic view (D454) unless it is the page being viewed. */
@@ -37,18 +39,22 @@ export type NavGroup = { heading: string; items: NavItem[] };
 /** An address is inside `prefix` when it is that address or below it. */
 const inside = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
-/** Whether a link is the page being viewed, or a section the page is inside. */
-export function useIsCurrent() {
+/**
+ * Whether a link is the page being viewed, or a section the page is inside. A tab that names its `section` and no `also` is inside the
+ * addresses of that section's sidebar in `areas` (the store's menu sends each address once, bloat review step 2.28).
+ */
+export function useIsCurrent(areas: NavArea[] = []) {
   const pathname = usePathname();
+  const alsoOf = (item: NavItem) => (item.section !== undefined && item.also === undefined ? (areas.find((a) => a.section === item.section)?.prefixes ?? []) : (item.also ?? []));
   return (item: NavItem) =>
-    item.exact ? pathname === item.href || (item.also ?? []).some((prefix) => inside(pathname, prefix)) : [item.href, ...(item.also ?? [])].some((prefix) => inside(pathname, prefix));
+    item.exact ? pathname === item.href || alsoOf(item).some((prefix) => inside(pathname, prefix)) : [item.href, ...alsoOf(item)].some((prefix) => inside(pathname, prefix));
 }
 
 /**
  * A level's sidebar that depends on the section being viewed (D144): the groups of the first area whose addresses the
  * page is inside, or none (the area has no sidebar). `prefixes` are the area's addresses; `exact` ones match only themselves.
  */
-export type NavArea = { prefixes: string[]; exact?: string[]; groups: NavGroup[] };
+export type NavArea = { prefixes: string[]; exact?: string[]; groups: NavGroup[]; /** The key a tab names it by (`NavItem.section`). */ section?: string };
 
 export function useAreaGroups(areas: NavArea[], fallback: NavGroup[]): NavGroup[] {
   const pathname = usePathname();
@@ -115,15 +121,15 @@ export function AreaMenu({ tabs, areas, fallback, label, footer }: { tabs: NavIt
   const sections = useAdminText("shell").frame.sections;
   return (
     <>
-      <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: sections, items: tabs }] : []), ...groups]} label={label} />
+      <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: sections, items: tabs }] : []), ...groups]} label={label} areas={areas} />
       {footer}
     </>
   );
 }
 
 /** The main sections, as tabs under the store's name; they scroll sideways on narrow screens. */
-export function StoreTabs({ items, label }: { items: NavItem[]; label: string }) {
-  const isCurrent = useIsCurrent();
+export function StoreTabs({ items, label, areas }: { items: NavItem[]; label: string; areas?: NavArea[] }) {
+  const isCurrent = useIsCurrent(areas);
   return (
     <nav aria-label={label} className="-mb-px overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <ul className="flex min-w-max gap-1">
@@ -167,8 +173,8 @@ export function LinkPending({ className = "inset-x-3 bottom-1" }: { className?: 
  * of the screen within a thumb's reach, each an icon over its name, and More opens the slide-out menu with everything else. It is drawn by
  * the frame in the `rail` layout only, and not in the `focus` layout.
  */
-export function PhoneTabBar({ items, label, more }: { items: NavItem[]; label: string; more: string }) {
-  const isCurrent = useIsCurrent();
+export function PhoneTabBar({ items, label, more, areas }: { items: NavItem[]; label: string; more: string; areas?: NavArea[] }) {
+  const isCurrent = useIsCurrent(areas);
   const shown = items.filter((item) => !item.foot).slice(0, 4);
   return (
     <nav
@@ -226,8 +232,8 @@ function Badge({ count }: { count?: number }) {
  * The store's settings in groups, each under its heading. In the Basic view (D454) the links marked `advanced` are left out, but for the
  * page being viewed; a group with none left is not drawn, and the foot says how many more Advanced has, with the switch to it.
  */
-export function StoreSidebar({ groups, label, hint = true }: { groups: NavGroup[]; label: string; hint?: boolean }) {
-  const isCurrent = useIsCurrent();
+export function StoreSidebar({ groups, label, hint = true, areas }: { groups: NavGroup[]; label: string; hint?: boolean; areas?: NavArea[] }) {
+  const isCurrent = useIsCurrent(areas);
   const { view } = useAdminView();
   const shown = groups.map((group) => ({ ...group, items: group.items.filter((item) => shownIn(view, item, isCurrent(item))) })).filter((group) => group.items.length > 0);
   const hidden = hiddenIn(

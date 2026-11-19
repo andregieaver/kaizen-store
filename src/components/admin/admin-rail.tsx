@@ -9,7 +9,7 @@ import { RAIL_NAMES_EVENT, railNamesShown, setRailNames } from "@/lib/admin-rail
 
 import { useAdminText } from "./admin-text";
 import { NavIcon } from "./nav-icons";
-import { LinkPending, useIsCurrent, type NavItem } from "./store-admin-nav";
+import { LinkPending, useIsCurrent, type NavArea, type NavItem } from "./store-admin-nav";
 
 /** Whether the rail shows its names (`<html data-rail="names">`, D262), followed as it changes; none on the server. */
 function useRailNames(): boolean {
@@ -31,8 +31,8 @@ function useRailNames(): boolean {
  * The button at its foot widens it to show every section's name beside its icon (D262), a choice kept in the browser and set on
  * `<html>` before the page is drawn (`railNamesScript()`), which the classes follow; a workspace's narrow rail keeps to its icons.
  */
-export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]; home: { href: string; label: string }; label: string; collapseOn?: string }) {
-  const isCurrent = useIsCurrent();
+export function AdminRail({ items, home, label, collapseOn, areas }: { items: NavItem[]; home: { href: string; label: string }; label: string; collapseOn?: string; areas?: NavArea[] }) {
+  const isCurrent = useIsCurrent(areas);
   const path = usePathname();
   const named = useRailNames();
   const w = useAdminText("shell").rail;
