@@ -832,6 +832,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D827 | **Admin redesign round 63: Kaizena Flow's customers, extensions and stores on a phone** | 2026-11-19 | [text](decisions/D827.md) |
 | D828 | **The ledger job's turns: ledger_books.checked_at and behind (bloat review step 3.22)** | 2026-11-19 | [text](decisions/D828.md) |
 | D829 | **Forms that answer: each problem under its field, Saved that clears on the next edit, and every admin form busy while it** | 2026-11-19 | [text](decisions/D829.md) |
+| D830 | **Admin redesign round 64: Kaizena Flow's record of processing, themes and languages on a phone** | 2026-11-19 | [text](decisions/D830.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
