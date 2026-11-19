@@ -80,7 +80,7 @@ function conditions(member: Membership, filters: ActivityFilters) {
   if (filters.action) parts.push(sql`a.action = ${filters.action}`);
   const from = day(filters.from);
   const to = day(filters.to);
-  const zone = member.store.timeZone || "Europe/Oslo";
+  const zone = member.store.timeZone;
   if (from) parts.push(sql`a.created_at >= (${from}::date)::timestamp at time zone ${zone}`);
   if (to) parts.push(sql`a.created_at < (${to}::date + 1)::timestamp at time zone ${zone}`);
   return parts;
@@ -191,7 +191,7 @@ export async function exportActivity(member: Membership, filters: ActivityFilter
   const [count] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log a where ${where(parts)}`);
   const total = Number(count?.n ?? 0);
   if (total > EXPORT_MAX_ROWS) return { ok: false, problem: `That period has ${total.toLocaleString("en-GB")} entries and a download holds at most ${EXPORT_MAX_ROWS.toLocaleString("en-GB")}. Choose a shorter period.` };
-  const zone = member.store.timeZone || "Europe/Oslo";
+  const zone = member.store.timeZone;
   const rows = await db().execute<Row>(sql`
     select ${SELECT}, to_char(a.created_at at time zone ${zone}, 'YYYY-MM-DD HH24:MI:SS') as local_time
     from commerce.audit_log a

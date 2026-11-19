@@ -22,6 +22,8 @@
  */
 import { createHash } from "node:crypto";
 
+import { NORWAY_TIME_ZONE } from "./dates";
+
 // --- The export (what the command line reads) ----------------------------------------------------------
 
 type Num = number | string | null;
@@ -280,7 +282,7 @@ export type ImportOptions = {
 };
 
 export const DEFAULT_OPTIONS = {
-  timeZone: "Europe/Oslo",
+  timeZone: NORWAY_TIME_ZONE,
   clientCountry: "NO",
   clientLocale: "nb-NO",
   standardVatBp: 2500,

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { SubscriptionButton, SubscriptionContentsForm } from "@/components/lazy/shop";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
+import { dateIn } from "@/lib/dates";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -34,8 +35,8 @@ async function Details({ store, market, token }: { store: Store; market: Market;
   const subscription = /^[0-9a-f]{64}$/.test(token) ? await getSubscriptionByToken(store.id, token) : null;
   if (!subscription) notFound();
   const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
-  const date = (iso: string) =>
-    new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
+  // The store's own day (D796): a renewal at 00:30 in New York falls on that day, not UTC's or Oslo's.
+  const date = (iso: string) => dateIn(store, iso, "long", market.locale);
   const allowed = allowedChanges(subscription);
   const choices = allowed.contents ? await swapChoices(store.id, subscription.id) : new Map<string, SwapChoice[]>();
   const every = m.planEvery(subscription.interval, subscription.intervalCount);

@@ -1,14 +1,15 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { z } from "zod";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
-import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
+import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
-import { insertStep, newStep, removeStep, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
+import { insertStep, moveStep, newStep, removeStep, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -102,7 +103,6 @@ export async function changeFlowWaitAction(storeSlug: string, flowId: string, st
   });
 }
 
-type Place = { afterId: string } | { into: string; branch: "then" | "else" };
 type Flow = NonNullable<Awaited<ReturnType<typeof getFlow>>>;
 
 /** Saves the flow's tree after one change from the canvas (D767 slice 2): a new version, switched off until tested again. Null: refused. */
@@ -133,20 +133,6 @@ async function saveTree(
 
 const KINDS = ["email", "wait", "if", "end"] as const;
 
-/** Adds a step of the kind chosen at a place of the tree; a new email starts with words in the flow's first language. */
-export async function addFlowStepAction(
-  storeSlug: string,
-  flowId: string,
-  place: Place,
-  locale: string,
-  words: { subject: string; text: string },
-  _state: FormState,
-  form: FormData,
-): Promise<FormState> {
-  const kind = KINDS.find((k) => k === form.get("kind"));
-  return saveTree(storeSlug, flowId, (flow) => (kind ? insertStep(flow.steps, newStep(flow.steps, kind, locale, words), place) : null));
-}
-
 /** Removes one step (an `if` with both its branches). */
 export async function removeFlowStepAction(storeSlug: string, flowId: string, stepId: string): Promise<FormState> {
   return saveTree(storeSlug, flowId, (flow) => removeStep(flow.steps, stepId));
@@ -167,17 +153,18 @@ export async function changeFlowConditionAction(storeSlug: string, flowId: strin
   });
 }
 
-/** Saves a lapse flow's days without an order (slice 4): a new version, switched off until tested again. */
+/** Saves a date trigger's days (slice 4): without an order, or after a view. A new version, switched off until tested again. */
 export async function changeFlowLapseAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
   const days = Number(form.get("days"));
   return saveTree(storeSlug, flowId, (flow) => flow.steps, { triggerDays: days });
 }
 
-/** Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a lapse starts at 90 days. A new version, off until tested. */
+/** Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a date trigger starts at its days (`DATE_TRIGGER_DAYS`). A new version, off until tested. */
 export async function changeFlowTriggerAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
   const trigger = FLOW_TRIGGERS.find((t) => t === form.get("trigger"));
   // No such trigger: the tree change is refused in the owner's words (`problems.step`).
-  return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: trigger === "customer.lapsed" ? 90 : null } : {});
+  const days = trigger && isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger].start : null;
+  return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: days } : {});
 }
 
 /** Puts products picked for each reader in one email (slice 4, D653): `cross_sell`, `replenish`, `browse`, or `none`. A new version, off until tested. */
@@ -185,4 +172,28 @@ export async function changeFlowPicksAction(storeSlug: string, flowId: string, s
   const value = form.get("picks");
   const picks = PICK_KINDS.find((k) => k === value) ?? null;
   return saveTree(storeSlug, flowId, (flow) => (picks || value === "none" ? withStepPicks(flow.steps, stepId, picks) : null));
+}
+
+/** A place on the canvas as the browser sends it, checked before it is used. */
+const placeSchema = z.union([
+  z.object({ start: z.literal(true) }),
+  z.object({ afterId: z.string().max(80) }),
+  z.object({ into: z.string().max(80), branch: z.enum(["then", "else"]) }),
+]);
+
+/** Moves a step to a place on the canvas (drag and drop): a new version, switched off until tested. A place inside the step itself is refused. */
+export async function moveFlowStepAction(storeSlug: string, flowId: string, stepId: string, place: unknown): Promise<FormState> {
+  const parsed = placeSchema.safeParse(place);
+  return saveTree(storeSlug, flowId, (flow) => {
+    if (!parsed.success) return null;
+    const moved = moveStep(flow.steps, stepId, parsed.data);
+    return JSON.stringify(moved) === JSON.stringify(flow.steps) ? null : moved;
+  });
+}
+
+/** Adds a step of a kind dropped on the canvas from its palette: as `addFlowStepAction()`, from a place the browser sends. */
+export async function dropFlowStepAction(storeSlug: string, flowId: string, kind: string, place: unknown, locale: string, words: { subject: string; text: string }): Promise<FormState> {
+  const parsed = placeSchema.safeParse(place);
+  const k = KINDS.find((x) => x === kind);
+  return saveTree(storeSlug, flowId, (flow) => (parsed.success && k ? insertStep(flow.steps, newStep(flow.steps, k, locale, words), parsed.data) : null));
 }

@@ -342,7 +342,7 @@ export async function writeLanguage(input: {
     const checked = read.ok ? checkLegalDraft(read.sections, plan, sheet) : { ok: false as const, problems: [read.problem] };
     if (checked.ok && read.ok) {
       const starterForm = legalStarterSections("withdrawal_info", language, facts).find((s) => s.topic === "model_form") ?? null;
-      const page = renderLegalPage({ plan, sections: read.sections, sheet, starterForm, writtenAt: (input.deps.now ?? (() => new Date()))(), english: input.english });
+      const page = renderLegalPage({ plan, sections: read.sections, sheet, starterForm, writtenAt: (input.deps.now ?? (() => new Date()))(), timeZone: input.store.timeZone, english: input.english });
       // Each passage cited, with the hash of the text it was written from, so the upkeep knows when the law it rests on changes.
       const sources = page.cited.flatMap((c) => {
         const offered = plan.offered.get(`${c.source}|${c.passage}`);

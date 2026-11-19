@@ -23,6 +23,7 @@ import { deliveryRowLabel } from "@/lib/delivery-words";
 import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -85,7 +86,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const a = m.account;
   const vatWords = vatText(market.lang);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" });
+  const date = (iso: string) => dateIn(store, iso, "long", market.locale);
   const address = order.shippingAddress;
   // Bonus credits (D130): what this order earned and from when they can be used.
   const earned = earnedText(order.bonus, {

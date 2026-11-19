@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { pickupBlock, type PickupAction, type PickupBlock } from "@/lib/pickup";
 import { pickupOptionInput } from "@/lib/shipping-methods-schema";
 import { dayIn, noonOf } from "@/lib/work-dates";
@@ -294,7 +295,7 @@ export async function markCollected(storeId: string, input: unknown, accountId: 
     const facts = await pickupFacts(tx, storeId, orderId, "collected", haveStock === true);
     if (!facts) return refused("not_found");
     if (facts.block) return refused(facts.block);
-    const zone = String(facts.order.time_zone ?? "Europe/Oslo");
+    const zone = storeZoneOf(facts.order.time_zone);
     const day = on ?? dayIn(now, zone);
     let at = noonOf(day, zone);
     if (at.getTime() > now.getTime()) {

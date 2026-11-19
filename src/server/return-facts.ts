@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import {
   orderEligibility,
   withdrawalWindow,
@@ -170,7 +171,7 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
       service: serviceFactsOf(line),
     })),
     settings,
-    timeZone: String(order.time_zone ?? "Europe/Oslo"),
+    timeZone: storeZoneOf(order.time_zone),
     storeName: String(order.store_name),
     contactEmail: order.contact_email ? String(order.contact_email) : null,
   };

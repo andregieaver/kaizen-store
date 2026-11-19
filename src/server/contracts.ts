@@ -19,6 +19,7 @@ import {
   type SnapshotSigner,
 } from "@/lib/contract-fields";
 import { starterTemplate } from "@/lib/contract-templates";
+import { dateIn } from "@/lib/dates";
 import { normaliseEmail } from "@/lib/email-address";
 import { formatMoney } from "@/lib/money";
 import { addressText } from "@/lib/work-input";
@@ -516,8 +517,6 @@ const factsRow = z.object({
   draft_id: col.uuid.nullable(),
 });
 
-const dayIn = (at: Date, locale: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" }).format(at);
-
 /** The locale a contract's amounts and dates are written in: the store's own market's when it speaks the contract's language, else the language. */
 const localeFor = (store: Store, language: string): string =>
   store.markets.find((m) => m.lang === language)?.locale ?? (language === "nb" ? "nb-NO" : language === "en" ? "en-GB" : language);
@@ -564,8 +563,8 @@ export async function contractFacts(store: Store, contract: Pick<Contract, "id" 
     "deal.owner": r?.owner_name ?? null,
     "deal.value": null,
     "contract.title": contract.title,
-    "contract.date": dayIn(now, locale),
-    "contract.expires": dayIn(expiresAt, locale),
+    "contract.date": dateIn(store, now, "long", locale),
+    "contract.expires": dateIn(store, expiresAt, "long", locale),
   };
 
   let quote: ContractFacts["quote"] = null;

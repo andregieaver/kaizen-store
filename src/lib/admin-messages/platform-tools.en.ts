@@ -285,6 +285,10 @@ export const platformToolsEn = {
     visitors: { one: "{n} visitor", many: "{n} visitors" },
     guardrail: " (guardrail)",
     newest: "Only the newest 300 tests are shown.",
+    house: "Kaizena Flow's own site",
+    houseOn: "kaizenaflow.com is served from Kaizena Flow's store, so its pages are tested there as any store's are: a version, a goal, and the answer in plain words.",
+    houseOff: "Kaizena Flow's pages can be tested once its site is served from Kaizena Flow's store (Website).",
+    houseTests: "Test Kaizena Flow's pages",
     own: "Tests that run on their own",
     ownText:
       "The search test and each store's held-out recommendations. They count searches and tabs, not visitors who accepted cookies, and keep no id of anyone; they are read here by the same arithmetic as a page test.",

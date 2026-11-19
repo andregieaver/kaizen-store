@@ -186,6 +186,11 @@ describe("reference data", () => {
     await expect(insert("order.paid", 90)).rejects.toThrow(/flows_trigger_days/);
     const { rows } = await insert("customer.lapsed", 90);
     await db.query("delete from commerce.flows where id = $1", [(rows[0] as { id: string }).id]);
+    // A browse flow waits 1 to 5 days after a view (views are kept 7, D691).
+    await expect(insert("customer.browsed", null)).rejects.toThrow(/flows_trigger_days/);
+    await expect(insert("customer.browsed", 6)).rejects.toThrow(/flows_trigger_days/);
+    const browse = await insert("customer.browsed", 1);
+    await db.query("delete from commerce.flows where id = $1", [(browse.rows[0] as { id: string }).id]);
   });
 });
 

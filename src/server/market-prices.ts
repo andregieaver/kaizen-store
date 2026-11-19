@@ -1,12 +1,14 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { canConvert, toRates, type StoreCurrency } from "@/lib/currency";
 import { derivedPrice, ruleProblem, type MarketPriceRule, type PriceBasis, type RulePreview } from "@/lib/market-prices";
 
 import { audit } from "./auth";
+import { col, typedRows } from "./typed-rows";
 
 /**
  * Market price rules (wave 7 unit A2, D335, `docs/wave-7-storefront.md` A.2): the only writer of `commerce.market_price_rules` and of derived prices.
@@ -94,7 +96,8 @@ export function planDerivations(rule: MarketPriceRule, facts: readonly Facts[], 
 async function factsFor(runner: Runner, storeId: string, rule: MarketPriceRule, productIds: readonly string[] | null): Promise<Facts[]> {
   const rows = await runner.execute<Row>(sql`
     select v.id as variant_id, base.amount_minor as base_minor,
-           commerce.vat_rate(${rule.base}, p.vat_category) as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) as vat,
+           -- In percent, as derivedPrice() takes it: commerce.vat_rate() gives a fraction (0.25).
+           commerce.vat_rate(${rule.base}, p.vat_category) * 100 as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) * 100 as vat,
            cur.amount_minor as current_minor, coalesce(cur.derived, false) as derived
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -112,6 +115,35 @@ async function factsFor(runner: Runner, storeId: string, rule: MarketPriceRule, 
     current: r.current_minor === null ? null : Number(r.current_minor),
     derived: Boolean(r.derived),
   }));
+}
+
+/**
+ * What a rule would write now, every price of its market that changes (A2, D804), each with its variant's cost and the market's VAT rate as a
+ * fraction, for the autopilot's largest price change and margin floor; null when a market is not the store's. The same work `saveMarketPriceRule()`
+ * does, read only.
+ */
+export async function ruleEffect(
+  storeId: string,
+  rule: MarketPriceRule,
+): Promise<{ currency: string; prices: { before: number | null; after: number | null; costMinor: number | null; vatRate: number }[] } | null> {
+  const rates = await ratesOf(storeId, db());
+  const currencies = await currenciesOf(db(), storeId);
+  const base = currencies.get(rule.base);
+  const market = currencies.get(rule.market);
+  if (!base || !market) return null;
+  const facts = await factsFor(db(), storeId, rule, null);
+  const work = planDerivations(rule, facts, { base, market }, rates);
+  if (work.length === 0) return { currency: market, prices: [] };
+  const costs = await typedRows(
+    z.object({ id: col.uuid, cost_minor: col.minor.nullable() }),
+    sql`select id, cost_minor from commerce.product_variants where store_id = ${storeId}::uuid and id = any(${`{${work.map((w) => w.variantId).join(",")}}`}::uuid[])`,
+  );
+  const cost = new Map(costs.map((r) => [r.id, r.cost_minor]));
+  const vat = new Map(facts.map((f) => [f.variantId, f.vat / 100]));
+  return {
+    currency: market,
+    prices: work.map((w) => ({ before: w.before, after: w.amountMinor, costMinor: cost.get(w.variantId) ?? null, vatRate: vat.get(w.variantId) ?? 0 })),
+  };
 }
 
 /** Writes a rule's derivations: new prices through `commerce.set_price`, marked as the rule's, and derived prices with nothing to stand on ended. */
@@ -198,7 +230,7 @@ export async function previewRule(storeId: string, rule: MarketPriceRule, locale
   if (!base || !market) return [];
   const rows = await db().execute<Row>(sql`
     select v.id as variant_id, v.sku, coalesce(t.title, p.handle) as title, base.amount_minor as base_minor,
-           commerce.vat_rate(${rule.base}, p.vat_category) as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) as vat,
+           commerce.vat_rate(${rule.base}, p.vat_category) * 100 as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) * 100 as vat,
            cur.amount_minor as current_minor, coalesce(cur.derived, false) as derived
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'

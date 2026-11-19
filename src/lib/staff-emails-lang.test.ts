@@ -34,6 +34,7 @@ describe("owner and staff emails in the account's language (D312 A10)", () => {
     reason: null,
     url: "https://x/a",
     reopenUntil: new Date("2026-11-20T00:00:00Z"),
+    timeZone: "Europe/Oslo",
   };
 
   it("the English is what the words given by default make", () => {
@@ -57,6 +58,10 @@ describe("owner and staff emails in the account's language (D312 A10)", () => {
     );
     expect(text(statusEmail(closure))).toContain(
       "You can reopen the store yourself until 20 November 2026",
+    );
+    // The store's own day (D796): midnight UTC is still the evening of the 19th in New York.
+    expect(text(statusEmail({ ...closure, timeZone: "America/New_York" }))).toContain(
+      "You can reopen the store yourself until 19 November 2026",
     );
     expect(statusEmail(closure).lang).toBe("en");
   });

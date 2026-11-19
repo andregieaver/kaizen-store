@@ -41,23 +41,26 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
   const date = (iso: string) => adminDate(store, iso, "day", dateLocale);
   const conversion = figures.toCart > 0 ? Math.round((figures.bought / figures.toCart) * 100) : null;
   const forCustomer = customerId ? lists[0]?.owner : null;
+  // No lists at all yet: nothing to search or rank (round 56, D809).
+  const empty = figures.lists === 0 && !q && !customerId;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={w.description}
+        description={<><span className="sm:hidden">{w.phoneLead}</span><span className="max-sm:hidden">{w.description}</span></>}
       />
       <WishlistTabs storeSlug={store.slug} current="lists" words={w} />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Round 56 (D809): on a phone the four figures share one card, and a store with no lists yet is not offered a search. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 max-sm:gap-px max-sm:overflow-hidden max-sm:rounded-panel max-sm:border max-sm:border-line max-sm:bg-line">
         {[
           [w.figures.lists, String(figures.lists), countWords(figures.shoppers, w.figures.shoppers)],
           [w.figures.saved, String(figures.savedItems), null],
           [w.figures.toCart, String(figures.toCart), w.figures.fromList],
           [w.figures.bought, String(figures.bought), [conversion !== null && `${conversion} %`, moneyByCurrency(figures.boughtMinor, locale)].filter(Boolean).join(" · ") || null],
         ].map(([label, value, note]) => (
-          <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
+          <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS} max-sm:gap-0.5 max-sm:rounded-none max-sm:border-0 max-sm:p-3 max-sm:shadow-none`}>
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
             {note && <span className="text-xs text-muted">{note}</span>}
@@ -67,7 +70,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 flex-col gap-4">
-          <form role="search" className="flex flex-wrap gap-2">
+          <form role="search" className={`flex flex-wrap gap-2 ${empty ? "max-sm:hidden" : ""}`}>
             <label className="sr-only" htmlFor="wishlist-search">
               {w.search}
             </label>
@@ -98,7 +101,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
 
           {lists.length === 0 ? (
-            <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
+            <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS} max-sm:p-4 max-sm:text-left`}>
               {q || customerId ? w.noMatch : w.none}
             </p>
           ) : (
@@ -131,7 +134,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
         </div>
 
-        <Card title={w.most} className="h-fit" compact>
+        <Card title={w.most} className={`h-fit ${top.length === 0 ? "max-sm:hidden" : ""}`} compact>
           {top.length === 0 ? (
             <p className="text-sm text-muted">{w.nothingSaved}</p>
           ) : (

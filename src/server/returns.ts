@@ -17,6 +17,7 @@ import {
   returnStep as stepSchema,
   type ReturnQueueFilter,
 } from "@/lib/return-input";
+import { storeZoneOf } from "@/lib/dates";
 import { adjustmentOf } from "@/lib/credit-allocation";
 import { labelDeduction, LABEL_PROBLEMS } from "@/lib/return-label";
 import { refundFor, refundableAfter, reviewOverride, shippingPaidMinor, type Refund, type RefundLine, type WorkingRow } from "@/lib/return-refund";
@@ -782,7 +783,7 @@ export async function listReturns(
     getReturnSettings(storeId),
     typedRow(TIME_ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`),
   ]);
-  const timeZone = String(zone?.time_zone ?? "Europe/Oslo");
+  const timeZone = storeZoneOf(zone?.time_zone);
   return {
     rows: rows.map((r) => {
       const refunded = r.refund_minor !== null && r.refund_minor !== undefined;
@@ -996,7 +997,7 @@ export async function setReturnInstructions(storeId: string, input: unknown, acc
 async function stepTime(storeId: string, on: string | null, floor: Date | null): Promise<Date | null> {
   if (!on) return null;
   const zone = await typedRow(TIME_ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  let at = noonOf(on, String(zone?.time_zone ?? "Europe/Oslo"));
+  let at = noonOf(on, storeZoneOf(zone?.time_zone));
   const now = new Date();
   if (at.getTime() > now.getTime()) at = now;
   if (floor && at.getTime() < floor.getTime()) at = floor;

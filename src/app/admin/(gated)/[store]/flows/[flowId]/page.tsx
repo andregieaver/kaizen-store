@@ -6,6 +6,7 @@ import { requireExtension } from "@/components/admin/extension-off";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
@@ -13,7 +14,7 @@ import { getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
-import { FlowCanvas } from "./canvas";
+import { FlowBoard } from "./flow-board";
 import { changeFlowEmailAction, changeFlowLapseAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
 
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
@@ -35,7 +36,7 @@ function emailsOf(steps: readonly FlowStep[], into = new Map<string, Extract<Flo
 /**
  * One flow as the owner reads it (D767 slice 2, email plan M3.3): what starts it, then each email as a sentence (*3 days later, if they have
  * not ordered*) with the email itself drawn as a small picture of its subject and first words. Test it, then switch it on; Homer needs
- * nothing else. Change edits an email where it is; Customise opens the canvas (`canvas.tsx`), every step as a tree.
+ * nothing else. Change edits an email where it is; Customise opens the canvas (`flow-board.tsx`), the flow drawn as a chart and dragged and dropped.
  */
 export default async function FlowPage({ params }: PageProps<"/admin/[store]/flows/[flowId]">) {
   const { store: slug, flowId } = await params;
@@ -68,14 +69,22 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
           <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays)}</p>
-          {/* A lapse flow's days without an order (slice 4), changed where they are said. */}
+          {/* A date trigger's days (slice 4), changed where they are said. */}
           {mayWrite && flow.triggerDays !== null && (
             <details className="text-sm">
               <summary className="cursor-pointer font-medium">{w.change}</summary>
               <ActionForm action={changeFlowLapseAction.bind(null, store.slug, flow.id)} className="mt-3 flex flex-wrap items-end gap-2">
                 <label className="flex flex-col gap-1">
-                  {w.lapseDays}
-                  <input name="days" type="number" min={30} max={730} required defaultValue={flow.triggerDays} className={`${FIELD} w-28`} />
+                  {flow.trigger === "customer.browsed" ? w.browseDays : w.lapseDays}
+                  <input
+                    name="days"
+                    type="number"
+                    min={isDateTrigger(flow.trigger) ? DATE_TRIGGER_DAYS[flow.trigger].min : 1}
+                    max={isDateTrigger(flow.trigger) ? DATE_TRIGGER_DAYS[flow.trigger].max : 730}
+                    required
+                    defaultValue={flow.triggerDays}
+                    className={`${FIELD} w-28`}
+                  />
                 </label>
                 <SubmitButton variant="secondary">{w.save}</SubmitButton>
               </ActionForm>
@@ -156,7 +165,25 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
           <p className="text-caption text-muted">{w.story.ends}</p>
         </div>
       </Card>
-      {mayWrite && <FlowCanvas steps={flow.steps} trigger={flow.trigger} storeSlug={store.slug} flowId={flow.id} locale={firstLocale} w={w} segments={segmentList} />}
+      {/* The canvas (Customise): the flow as a chart, dragged and dropped (flow-board.tsx); one deliberate step from the story. */}
+      {mayWrite && (
+        <details className="rounded-panel border border-line bg-card px-4 py-3" data-flow-canvas>
+          <summary className="cursor-pointer text-body-strong text-ink">{w.canvas.customise}</summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <p className="text-caption text-muted">{w.canvas.lead}</p>
+            <FlowBoard
+              storeSlug={store.slug}
+              flowId={flow.id}
+              locale={firstLocale}
+              steps={flow.steps}
+              trigger={flow.trigger}
+              triggerDays={flow.triggerDays}
+              w={w}
+              segments={segmentList}
+            />
+          </div>
+        </details>
+      )}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">
           {!flow.enabled && !flow.tested && <p className="w-full text-body text-ink-2">{w.untested}</p>}

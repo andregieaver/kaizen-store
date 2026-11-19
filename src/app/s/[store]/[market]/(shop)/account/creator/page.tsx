@@ -6,6 +6,7 @@ import { CopyLinkButton } from "@/components/copy-link-button";
 import { affiliateLink } from "@/lib/affiliate-link";
 import { earnPercentText } from "@/lib/bonus-shopper";
 import { accountsShown } from "@/lib/customer-accounts";
+import { calendarDate } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -96,7 +97,7 @@ async function AccountCreator({ params }: { params: Props["params"] }) {
 
   const link = page.code ? affiliateLink(store.slug, page.code) : null;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, market.locale, market.priceStyle);
-  const day = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const day = (date: string) => calendarDate(date, "day", market.locale);
   return (
     <>
       {header}

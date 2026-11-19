@@ -4,8 +4,10 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { GRACE_DAYS } from "@/lib/account-billing";
 import {
   EXTENSION_IDS,
+  EXTENSION_TRIAL_DAYS,
   isExtensionId,
   readAllowances,
   readExtensionFacts,
@@ -312,4 +314,89 @@ export async function extensionCurrencies(): Promise<string[]> {
     ),
   ]);
   return [...new Set([...plans, ...priced.map((row) => row.currency)])];
+}
+
+/** Why an extension's trial cannot start (the owner's words are the action's). */
+export type TrialRefusal = "not_owner" | "platform" | "not_launched" | "has_it" | "had_trial";
+
+/**
+ * Starts an extension's trial for an account (D748 step E5, section 2 of the spec): 14 days (`EXTENSION_TRIAL_DAYS`) at its smallest size,
+ * once per account per extension, with its grace period set at once. Only the account's owner starts one; never before extensions are sold
+ * (until then every account has every extension), never for Kaizena Flow's own account, and not for an extension the account has.
+ */
+export async function startExtensionTrial(actor: Account, organisationId: string, extensionId: ExtensionId, now = new Date()): Promise<{ ok: true } | { ok: false; refusal: TrialRefusal }> {
+  const facts = await typedRow(
+    z.object({ owner: col.bool, platform: col.bool, launched_at: col.timestampOrNull, had: col.bool, size_id: col.uuid.nullable() }),
+    sql`
+      select exists (select 1 from commerce.organisation_members m
+                      where m.organisation_id = ${organisationId}::uuid and m.account_id = ${actor.id}::uuid and m.role = 'owner') as owner,
+             coalesce((select o.platform from commerce.organisations o where o.id = ${organisationId}::uuid), false) as platform,
+             (select ps.extensions_launched_at from commerce.platform_settings ps) as launched_at,
+             exists (select 1 from commerce.organisation_extensions e where e.organisation_id = ${organisationId}::uuid and e.extension_id = ${extensionId}) as had,
+             (select es.id from commerce.extension_sizes es where es.extension_id = ${extensionId} and es.active order by es.position, es.created_at limit 1) as size_id
+    `,
+  );
+  if (!facts?.owner) return { ok: false, refusal: "not_owner" };
+  if (facts.platform) return { ok: false, refusal: "platform" };
+  if (!facts.launched_at || new Date(facts.launched_at) > now) return { ok: false, refusal: "not_launched" };
+  const standing = (await organisationExtensionStandings(organisationId, now))[extensionId];
+  if (standing.state !== "absent") return { ok: false, refusal: standing.source === "trial" ? "had_trial" : "has_it" };
+  if (facts.had) return { ok: false, refusal: "had_trial" };
+  const ends = new Date(now.getTime() + EXTENSION_TRIAL_DAYS * 86_400_000);
+  const grace = new Date(ends.getTime() + GRACE_DAYS * 86_400_000);
+  const started = await typedRow(
+    z.object({ extension_id: col.text }),
+    sql`
+      insert into commerce.organisation_extensions (organisation_id, extension_id, source, size_id, trial_ends_at, grace_ends_at)
+      values (${organisationId}::uuid, ${extensionId}, 'trial', ${facts.size_id}::uuid, ${ends.toISOString()}::timestamptz, ${grace.toISOString()}::timestamptz)
+      on conflict (organisation_id, extension_id) do nothing
+      returning extension_id
+    `,
+  );
+  if (!started) return { ok: false, refusal: "had_trial" };
+  await refreshExtensionFacts({ organisationId });
+  await audit(actor.id, null, "extension.trial_started", { organisationId, extensionId, days: EXTENSION_TRIAL_DAYS }, { target: { type: "organisation", id: organisationId } });
+  return { ok: true };
+}
+
+/** One extension as Account → Extensions shows it (D748 E5): its words, the account's standing with it, and its price from. */
+export type AccountExtension = {
+  id: ExtensionId;
+  name: string;
+  description: string;
+  state: ExtensionState;
+  source: StateSource;
+  trialEndsAt: string | null;
+  graceEndsAt: string | null;
+  /** Its smallest size's price a month in the account's currency, when it has one. */
+  priceFrom: { currency: string; amountMinor: number } | null;
+};
+
+/** Every extension for an account's Extensions page, in the catalogue's order; only active extensions are offered. */
+export async function accountExtensions(organisationId: string, currency: string | null, now = new Date()): Promise<AccountExtension[]> {
+  const [catalogue, standings, rows] = await Promise.all([
+    getExtensionCatalogue(),
+    organisationExtensionStandings(organisationId, now),
+    typedRows(
+      z.object({ extension_id: col.text, trial_ends_at: col.timestampOrNull, grace_ends_at: col.timestampOrNull }),
+      sql`select extension_id, trial_ends_at, grace_ends_at from commerce.organisation_extensions where organisation_id = ${organisationId}::uuid`,
+    ),
+  ]);
+  return catalogue.extensions
+    .filter((e) => e.active)
+    .map((e) => {
+      const row = rows.find((r) => r.extension_id === e.id);
+      const size = e.sizes.filter((s) => s.active).sort((a, b) => a.position - b.position)[0];
+      const price = size?.prices.find((p) => p.currency === currency && p.interval === "month") ?? null;
+      return {
+        id: e.id,
+        name: e.name,
+        description: e.description,
+        state: standings[e.id].state,
+        source: standings[e.id].source,
+        trialEndsAt: row?.trial_ends_at ?? null,
+        graceEndsAt: row?.grace_ends_at ?? null,
+        priceFrom: price ? { currency: price.currency, amountMinor: price.amountMinor } : null,
+      };
+    });
 }

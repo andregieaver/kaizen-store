@@ -43,6 +43,16 @@ the path, component or table you change, or list the rules with a search for lin
   styles) and nothing inside its JSX; the standard footer (`StoreFooter`) reads the legal links itself, so a footer of the store's own reads
   none (bloat review step 2.18).
 
+## Dates shoppers see are the store's own (D796, `src/lib/dates.ts`, `dates.scan.test.ts`)
+
+- A moment a shopper reads (an article or comment published, a campaign's end, an order placed, a renewal, a link's last day, a parcel
+  sent) is `dateIn(store, at, style, market.locale)`: the store's zone (`store.timeZone`, already loaded with the store, never a read of its
+  own; `storeZoneOf(row.time_zone)` for a row read without a type) in the visitor's or the email's locale. Shoppers' emails carry it on
+  `EmailStore.timeZone`. A calendar day (a release date, a due date) is `calendarDate(day, style, locale)`, never shifted. Kaizena Flow's
+  own site and mail (the plans page's campaign, the theme store, owners' emails about plans and invoices) use `PLATFORM_TIME_ZONE`; the
+  house store's pages are a store's and use its zone. Never a date formatted without a zone, a zone written out, or a day cut from a UTC
+  string (`.slice(0, 10)`): `dates.scan.test.ts` keeps the few that are not dates people read, each with its reason.
+
 ## Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
 
 - Interface text lives in `src/lib/i18n.ts` (each hand-written language in

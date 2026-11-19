@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  */
 const DIR = join(process.cwd(), "src/app/api/cron");
 const NOT_SCHEDULED: Record<string, string> = {
-  "document-pdfs": "run by the dispatcher's invoice job and by staff, not on a schedule of its own",
+  "document-pdfs": "asked by the dispatcher's documentPdfs job only while a document waits for its PDF (D807), and by staff",
 };
 
 const routes = readdirSync(DIR).filter((name) => readdirSync(join(DIR, name)).includes("route.ts"));

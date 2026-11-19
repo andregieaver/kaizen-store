@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SeeItLive } from "@/components/see-it-live";
 import { ThemePreviewStage } from "@/components/lazy/blocks";
 import type { StageLook } from "@/components/theme-preview-stage";
+import { dateIn, PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { designPreviewPath } from "@/lib/design-presets";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
@@ -235,7 +236,8 @@ export function ThemeDetailsPart({ theme, lang = "en", heading }: { theme: Theme
                 <dt className="font-medium">{d.version}</dt>
                 <dd>
                   {theme.version}
-                  {theme.updatedAt && `, ${theme.updatedAt.slice(0, 10)}`}
+                  {/* The day on Kaizena Flow's own clock (D796): the theme store is the platform's. */}
+                  {theme.updatedAt && `, ${dateIn(PLATFORM_TIME_ZONE, theme.updatedAt, "iso", "en")}`}
                 </dd>
               </>
             )}

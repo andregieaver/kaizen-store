@@ -489,6 +489,7 @@ export const bookingsNb: BookingsMessages = {
     listsOf: "Listene til",
     thisCustomer: "denne kunden",
     noMatch: "Ingen liste passer.",
+    phoneLead: "Det kundene lagret med hjertet, og det de kjøpte.",
     none: "Ingen ønskelister ennå. De vises her så snart en kunde trykker på et hjerte.",
     guest: "Gjest, ikke innlogget",
     toCartBought: "{cart} til handlekurven · {bought} kjøpt",

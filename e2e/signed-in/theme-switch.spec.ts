@@ -73,15 +73,18 @@ async function seen(page: Page, path: string, ready?: (page: Page) => Locator) {
       };
     });
   // Stock and the buy box stream in, and the gallery shows the chosen variant's picture once the page's scripts run (D84), which a busy
-  // machine can delay: read until two readings a second apart agree.
+  // machine can delay: read until two readings a second apart agree. Each try waits its second itself, the first one too: `expect.poll`
+  // makes its first try at once, so the two readings were 6 to 20 ms apart and a buy box drawn but not yet hydrated (the phone's
+  // product bar still inside <main>, moved to the body only once the page has hydrated) read as settled (CI runs 44301486804, 44530466000).
   let last = JSON.stringify(await read());
   await expect
     .poll(async () => {
+      await page.waitForTimeout(1000);
       const now = JSON.stringify(await read());
       const same = now === last;
       last = now;
       return same;
-    }, { intervals: [1000, 1000, 1000, 1500], timeout: 15_000 })
+    }, { intervals: [0], timeout: 15_000 })
     .toBe(true);
   return JSON.parse(last) as Awaited<ReturnType<typeof read>>;
 }
@@ -148,8 +151,11 @@ test.afterAll(async ({ browser }) => {
 async function switchTo(page: Page, title: string) {
   await page.goto(design);
   await page.getByRole("button", { name: `Switch to ${title}`, exact: true }).click();
-  // The store's live theme is the one pressed, and its row says so.
+  // The store's live theme is the one pressed, the switch has answered, and its row says so. The answer comes after Next has applied the
+  // action's cache tags; the button's name changes while it waits (Working …) and the row is live in the database before then, so a store
+  // page read in between was the stored page of the theme before (x-nextjs-cache: HIT, CI runs 44529582895 and 44530466000).
   await expect.poll(liveTitle, { timeout: 15_000 }).toBe(title);
+  await expect(page.locator("form[aria-busy='true']")).toHaveCount(0, { timeout: 15_000 });
   await expect(page.getByRole("button", { name: `Switch to ${title}`, exact: true })).toHaveCount(0);
 }
 

@@ -227,10 +227,7 @@ export async function moveAccount(actor: Account, organisationId: string): Promi
 
     await refreshExtensionFacts({ organisationId });
     forgetLimits();
-    await audit(actor.id, null, "billing.account_moved", { organisationId, kept: kept?.storeId ?? null, ended: preview.ending.length }, {
-      area: "settings",
-      target: { type: "organisation", id: organisationId },
-    });
+    await audit(actor.id, null, "billing.account_moved", { organisationId, kept: kept?.storeId ?? null, ended: preview.ending.length }, { target: { type: "organisation", id: organisationId } });
     await tellOwner(preview);
     return problems.length > 0 ? { ok: true, note: `Moved. Stripe said: ${problems.join(" ")}` } : { ok: true };
   });

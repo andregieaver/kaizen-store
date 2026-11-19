@@ -382,6 +382,12 @@ export const redirectsNb: RedirectsMessages = {
     allHelp: "Tar med omdirigeringene Kaizena Flow laget da et produkt, en kategori eller et stikkord fikk ny adresse.",
     submit: "Eksporter omdirigeringer",
     aboutTitle: "Om filen",
+    phone: {
+      lead: "En rad for hver omdirigering: hvor den går fra og til.",
+      aboutSub: "Kolonnene, adressene, å sende den tilbake",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     about1a: "De to første kolonnene er",
     about1b: "og",
     about1c: ", som i en omdirigeringsfil fra Shopify;",

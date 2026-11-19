@@ -386,6 +386,12 @@ export const redirectsEn = {
     allHelp: "Adds the redirects Kaizena Flow made when a product, category or tag changed its address.",
     submit: "Export redirects",
     aboutTitle: "About the file",
+    phone: {
+      lead: "A row for each redirect: where it goes from and to.",
+      aboutSub: "Its columns, addresses, bringing it back",
+      open: "Open",
+      done: "Done",
+    },
     about1a: "The first two columns are",
     about1b: "and",
     about1c: ", as in a Shopify redirect file;",

@@ -38,7 +38,7 @@ export function CustomerUpload({
   register: (input: { path: string; name: string }) => Promise<Registered>;
   /** Where a registered job's page is, after the store's address (the order history's, D384); the customer import's by default. */
   jobBase?: string;
-  words?: Pick<ImportWords, "fileLabel" | "hint">;
+  words?: Pick<ImportWords, "fileLabel" | "hint"> & { phoneHint?: string };
 }) {
   const router = useRouter();
   const w = useAdminText("inventory").import.upload;
@@ -78,7 +78,15 @@ export function CustomerUpload({
           {own.fileLabel}
         </label>
         <input id="customer-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
-        <p className={hint}>{fillWords(own.hint, { size: bytesIn(IMPORT_MAX_BYTES, locale), rows: numberIn(rowsMax, locale) })}</p>
+        {/* A shorter limit on a phone where the words give one (round 55, D806). */}
+        {words?.phoneHint ? (
+          <p className={hint}>
+            <span className="sm:hidden">{fillWords(words.phoneHint, { size: bytesIn(IMPORT_MAX_BYTES, locale), rows: numberIn(rowsMax, locale) })}</span>
+            <span className="max-sm:hidden">{fillWords(own.hint, { size: bytesIn(IMPORT_MAX_BYTES, locale), rows: numberIn(rowsMax, locale) })}</span>
+          </p>
+        ) : (
+          <p className={hint}>{fillWords(own.hint, { size: bytesIn(IMPORT_MAX_BYTES, locale), rows: numberIn(rowsMax, locale) })}</p>
+        )}
       </div>
       <div>
         <button type="button" onClick={send} disabled={working} className={primary}>

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { EXTENSION_IDS, type ExtensionId } from "./extensions";
+import { EXTENSION_IDS, EXTENSION_PATHS } from "./extensions";
 import { TOOL_EXTENSIONS } from "./owner-tool-features";
 import { OWNER_TOOLS } from "./owner-tools";
 
@@ -18,14 +18,7 @@ import { OWNER_TOOLS } from "./owner-tools";
 const ROOT = process.cwd();
 const STORE = join(ROOT, "src/app/admin/(gated)/[store]");
 
-/** The store-level folders each extension owns. */
-const EXTENSION_FOLDERS: Record<ExtensionId, readonly string[]> = {
-  ab_testing: ["experiments"],
-  support_desk: ["support"],
-  email_automation: ["broadcasts", "automations", "segments", "flows"],
-  work: ["settings/books"],
-  deals: ["deals", "leads", "analytics/sales"],
-};
+const EXTENSION_FOLDERS = EXTENSION_PATHS;
 
 function files(dir: string): string[] {
   if (!existsSync(dir)) return [];

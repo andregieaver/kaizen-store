@@ -303,11 +303,18 @@ export type AutonomyFacts = {
   purchaseProblem?: string | null;
   /** A lost parcel's replacement against the challenge's cap (`replacementCapProblem()`, B3, D679): why it must ask, or null when it may. */
   replacementProblem?: string | null;
+  /**
+   * The money a change to a paid order moves as the order editor previews it (A2, D804): `none`, `refund` (money back to the customer) or
+   * `charge` (a link to pay more); null when the change could not be previewed or would be refused.
+   */
+  orderChangeMoney?: "none" | "refund" | "charge" | null;
 };
 
 /**
  * Calls that otherwise always ask but run in challenge mode within its own budgets (`docs/100-day-challenge.md` 4A2): a broadcast within the
- * broadcasts a week. Refunds and every other money back to a customer stay the person's (the rule allows exactly that).
+ * broadcasts a week. Refunds and every other money back to a customer stay the person's (the rule allows exactly that). Also by their own
+ * facts in `autonomyDecision()`: an exchange and a change to an order that give nothing back, a lost parcel's replacement, and a country's
+ * price rule within the largest price change and the margin floor (A2, D804).
  */
 export const CHALLENGE_AUTOMATIC: Readonly<Record<string, AutonomyArea>> = { send_broadcast: "marketing" };
 
@@ -332,6 +339,28 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
     if (facts.exchangeRefundMinor === undefined || facts.exchangeRefundMinor === null) return { run: false, why: "The exchange's refund could not be read." };
     if (facts.exchangeRefundMinor > 0) return { run: false, why: "The exchange gives money back to the customer, which waits for you." };
     return { run: true, tell: levelOf(settings, "messages") === "tell", area: "messages" };
+  }
+  // In challenge mode a change to a paid order that moves no money runs by itself (A2, D804): a refund waits in the refund queue, and a
+  // higher total, a link the customer is asked to pay, waits too.
+  if (challenge && tool === "change_order") {
+    const money = facts.orderChangeMoney;
+    if (money === undefined || money === null) return { run: false, why: "The change could not be previewed." };
+    if (money === "refund") return { run: false, why: "The change gives money back to the customer, which waits for you." };
+    if (money === "charge") return { run: false, why: "The change asks the customer to pay more, which waits for you." };
+    return { run: true, tell: levelOf(settings, "messages") === "tell", area: "messages" };
+  }
+  // In challenge mode a country's price rule runs by itself within the largest price change and the margin floor (A2, D5, D804), at the
+  // catalogue's level, as a price change does.
+  if (challenge && tool === "set_market_price_rule") {
+    const level = levelOf(settings, "catalogue");
+    if (level === "ask") return { run: false, why: `Your autonomy setting for ${AREA_WORDS.catalogue.toLowerCase()} is Ask me first.` };
+    if (facts.priceChangePercent === undefined || facts.priceChangePercent === null) return { run: false, why: "The price changes could not be measured." };
+    if (facts.priceChangePercent > settings.budgets.priceChangePercent) {
+      return { run: false, why: `It changes a price by ${round(facts.priceChangePercent)} %, more than your limit of ${settings.budgets.priceChangePercent} %.` };
+    }
+    const problem = facts.marginUntouched ? null : marginFloorProblem(facts.lowestMarginPercent, settings.budgets.marginFloorPercent);
+    if (problem) return { run: false, why: problem };
+    return { run: true, tell: level === "tell", area: "catalogue" };
   }
   // In challenge mode a lost or returned parcel's goods are sent again by themselves within the cap on their value (B3, D679); outside it, never.
   if (challenge && tool === "send_replacement") {
@@ -391,7 +420,7 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
 }
 
 /** The calls the margin floor holds: what changes what a product sells for. */
-export const MARGIN_TOOLS: ReadonlySet<string> = new Set(["set_prices", "create_discount", "create_campaign"]);
+export const MARGIN_TOOLS: ReadonlySet<string> = new Set(["set_prices", "create_discount", "create_campaign", "set_market_price_rule"]);
 
 const round = (n: number) => Math.round(n * 10) / 10;
 

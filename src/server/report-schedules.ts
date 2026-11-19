@@ -227,7 +227,7 @@ const dueRow = z.object({
   id: col.uuid,
   store_id: col.uuid,
   slug: col.text,
-  time_zone: col.text.nullable(),
+  time_zone: col.text,
   report_id: col.uuid,
   frequency: z.enum(["daily", "weekly", "monthly"]),
   weekday: col.int.nullable(),
@@ -261,7 +261,7 @@ export async function sendScheduledReports(options: { now?: Date; send?: typeof 
   }
   for (const row of rows) {
     try {
-      const local = localNow(now, row.time_zone ?? "Europe/Oslo");
+      const local = localNow(now, row.time_zone);
       if (!scheduleDue({ ...row, monthDay: row.month_day, lastRunOn: row.last_run_on }, local)) continue;
       const claimed = await db().execute(sql`
         update commerce.report_schedules set last_run_on = ${local.date}::date

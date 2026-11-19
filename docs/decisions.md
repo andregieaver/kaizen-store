@@ -798,7 +798,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D793 | **A stale eval recording or a long wait never holds back a release that passed** | 2026-11-19 | [text](decisions/D793.md) |
 | D794 | **Tests for how owners get paid** | 2026-11-19 | [text](decisions/D794.md) |
 | D795 | **Contracts' upkeep runs in the five-minute dispatcher, and it calls the PDF route only when a signed contract waits for its seal** | 2026-11-19 | [text](decisions/D795.md) |
-| D796 | **Dates shoppers see in the store's own time zone: storefront, shopper emails and contracts (code review 1.14's next, FS11** | 2026-11-19 | [text](decisions/D796.md) |
+| D796 | **Dates shoppers see in the store's own time zone** | 2026-11-19 | [text](decisions/D796.md) |
 | D797 | **The AI answers a store's form messages (100-day B2)** | 2026-11-19 | [text](decisions/D797.md) |
 | D798 | **Admin redesign round 53: live, stock locations and authors on a phone** | 2026-11-19 | [text](decisions/D798.md) |
 | D799 | **No English catalogue in the admin's client code** | 2026-11-19 | [text](decisions/D799.md) |
@@ -808,6 +808,13 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D803 | **When main is red: CI keeps a ci-red issue naming the failing tests and the sessions since the last green run** | 2026-11-19 | [text](decisions/D803.md) |
 | D804 | **In the challenge a money-free order change and a market price rule run by themselves (100-day A2)** | 2026-11-19 | [text](decisions/D804.md) |
 | D805 | **Store pages with nothing per visitor are static files** | 2026-11-19 | [text](decisions/D805.md) |
+| D806 | **Admin redesign round 55: product feeds, order history import and redirect export on a phone** | 2026-11-19 | [text](decisions/D806.md) |
+| D807 | **Invoices' and credit notes' PDFs are made ahead: the dispatcher asks the PDF route when a document waits** | 2026-11-19 | [text](decisions/D807.md) |
+| D808 | **A/B tests: the platform's page leads to Kaizena Flow's own site's tests** | 2026-11-19 | [text](decisions/D808.md) |
+| D809 | **Admin redesign round 56: new segment, Google reviews and wishlists on a phone** | 2026-11-19 | [text](decisions/D809.md) |
+| D810 | **Contracts in the Admin API: read-only, the webhooks' fields and drafts, under customers:read** | 2026-11-19 | [text](decisions/D810.md) |
+| D811 | **Tests for the shopper's payment session, the Stripe payment provider and billing (code review 1.9's next, FH9)** | 2026-11-19 | [text](decisions/D811.md) |
+| D812 | **The dates left after D796: A/B results, the platform activity filter and the admin's zoneless dates** | 2026-11-19 | [text](decisions/D812.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import type { OrderDelivery } from "@/lib/delivery-options";
 import { pickupWindows } from "@/lib/porterbuddy";
 import type { ShippingAddress } from "@/lib/shipping-carriers";
@@ -89,7 +90,7 @@ async function bookUnderLock(
       pickupWindows: pickupWindows(Date.now(), {
         hours: context.details.pickupHours ?? "10:00-17:00",
         days: context.details.pickupDays ?? "1-5",
-        timeZone: String(store?.time_zone ?? "Europe/Oslo"),
+        timeZone: storeZoneOf(store?.time_zone),
       }),
     });
     const offer = offered.find((o) => o.serviceId === chosen.serviceId && o.window && Date.parse(o.window.start) === wanted.start && Date.parse(o.window.end) === wanted.end);

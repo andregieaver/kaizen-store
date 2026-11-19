@@ -8607,7 +8607,11 @@ export const flows = commerce.table(
   },
   (t) => [
     unique("flows_store_id_key").on(t.storeId, t.id),
-    check("flows_trigger_days", sql`(${t.trigger} = 'customer.lapsed') = (${t.triggerDays} is not null) and (${t.triggerDays} is null or ${t.triggerDays} between 30 and 730)`), // LAPSE_DAYS
+    // DATE_TRIGGER_DAYS: a date trigger's days in its range, and no days for any other trigger.
+    check(
+      "flows_trigger_days",
+      sql`case ${t.trigger} when 'customer.lapsed' then coalesce(${t.triggerDays} between 30 and 730, false) when 'customer.browsed' then coalesce(${t.triggerDays} between 1 and 5, false) else ${t.triggerDays} is null end`,
+    ),
     check("flows_replaces", sql`${t.replaces} is null or ${t.replaces} in (${sqlList(AUTOMATION_KINDS)})`),
     index("flows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
     check("flows_name", sql`char_length(${t.name}) between 1 and 120`),

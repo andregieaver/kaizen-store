@@ -199,7 +199,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
     case "you_saved":
       return product.priceOnRequest ? null : <ProductSavedNote price={headlinePrice(product)} market={market} m={m} />;
     case "campaigns":
-      return <CampaignNotices notices={noticesFor(ctx.campaigns, product.id)} market={market} m={m} />;
+      return <CampaignNotices notices={noticesFor(ctx.campaigns, product.id)} market={market} timeZone={store.timeZone} m={m} />;
     case "rating":
       return ctx.reviews ? <ProductRating facts={ctx.reviews} m={m} locale={market.locale} anchor={`reviews-${product.id}`} /> : null;
     case "reviews":

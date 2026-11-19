@@ -7,9 +7,30 @@ import { featureOn } from "./store-features";
  * holds the two together).
  */
 
+/** Days an extension's own trial lasts (section 2 of the spec): once per account per extension. */
+export const EXTENSION_TRIAL_DAYS = 14;
+
 /** The extensions, in the order the owner named them. A new one is an id here, its row in a migration and its gates (step E3). */
 export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
+
+/**
+ * The store admin's folders each extension owns (under `/admin/{store}/`): its pages there are gated (`requireExtension()`, the scan test
+ * `extension-gates.scan.test.ts`), and the store frame's banner says when the extension is in its grace period or read-only.
+ */
+export const EXTENSION_PATHS: Record<ExtensionId, readonly string[]> = {
+  ab_testing: ["experiments"],
+  support_desk: ["support"],
+  email_automation: ["broadcasts", "automations", "segments", "flows"],
+  work: ["settings/books"],
+  deals: ["deals", "leads", "analytics/sales"],
+};
+
+/** The extension whose folder a store admin path (after `/admin/{store}/`) is in, if any. */
+export function extensionOfPath(path: string): ExtensionId | null {
+  const clean = path.replace(/^\/+/, "");
+  return EXTENSION_IDS.find((id) => EXTENSION_PATHS[id].some((folder) => clean === folder || clean.startsWith(`${folder}/`))) ?? null;
+}
 
 /** Each extension's name in the AI's and the logs' words (the catalogue's own words are the platform admin's, read from the database). */
 export const EXTENSION_NAMES: Record<ExtensionId, string> = {
@@ -153,6 +174,16 @@ export function standingOf(facts: ExtensionFacts, id: ExtensionId, now: Date): {
 export function extensionOn(facts: ExtensionFacts, id: ExtensionId, now: Date): boolean {
   const { state } = standingOf(facts, id, now);
   return state === "active" || state === "trial" || state === "grace" || state === "platform";
+}
+
+/** The extensions the store frame's banner speaks of at `now` (D748 E5): one in its grace period (until when) or read-only. */
+export function extensionBanners(facts: ExtensionFacts, now: Date): { extension: ExtensionId; state: "grace" | "read_only"; until: string | null }[] {
+  return EXTENSION_IDS.flatMap((extension) => {
+    const { state } = standingOf(facts, extension, now);
+    if (state !== "grace" && state !== "read_only") return [];
+    const until = facts.rows.find((r) => r.extensionId === extension)?.row.graceEndsAt ?? null;
+    return [{ extension, state, until: state === "grace" && until ? until.toISOString() : null }];
+  });
 }
 
 /** The extensions that work at `now`. */

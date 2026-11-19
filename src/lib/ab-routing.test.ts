@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { pageSlugOf, parseStoreRequest, storeOfHost, variantPath } from "./ab-routing";
 import { dataCookieName, encodeAssignments, MARKER_COOKIE } from "./experiments";
+import { HOUSE_SLUG, houseHostStore, houseServedPath } from "./house-routing";
 
 const V = "11111111-1111-4111-8111-111111111111";
 const E = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -172,5 +173,26 @@ describe("where a visitor's request goes under a test of the front page or the A
     const mixed = encodeAssignments({ visitor: V, versions: { [E]: "b", [products.id]: "c", [header.id]: "d" } });
     expect(variantPath(at([]), [header, front, products], mixed)).toBe("/s/demo/no~aaaaaaaab_ccccccccd");
     expect(variantPath(at(["products"]), [header, front, products], mixed)).toBe("/s/demo/no~bbbbbbbbc_ccccccccd/products");
+  });
+});
+
+describe("Kaizena Flow's own site, served from its store (D484)", () => {
+  // The proxy's own steps for a request on Kaizena Flow's host: the store whose pages it is, the request as a store's, the version, and the
+  // store's route it is served from. The store's A/B tests reach kaizenaflow.com's pages as they reach a store's own domain.
+  const site = "kaizenaflow.com";
+  const store = houseHostStore({ host: "kaizenaflow.com", pathname: "/en/about", site, house: HOUSE_SLUG });
+
+  it("sends a visitor in version B of a page under test to that version, and keeps the platform's own routes out", () => {
+    expect(store).toBe(HOUSE_SLUG);
+    const request = parseStoreRequest("/en/about", store);
+    expect(request).toEqual({ store: HOUSE_SLUG, market: "en", rest: ["about"], hostBased: true });
+    const to = variantPath(request!, [{ id: E, slug: "about" }], cookie("b"));
+    expect(to).toBe("/en/about/ab/b");
+    expect(houseServedPath(HOUSE_SLUG, to!)).toBe(`/s/${HOUSE_SLUG}/en/about/ab/b`);
+    expect(variantPath(request!, [{ id: E, slug: "about" }], cookie("a"))).toBeNull();
+    // The admin, sign-in and the docs stay the platform's: no store, so no test reaches them.
+    expect(houseHostStore({ host: "kaizenaflow.com", pathname: "/admin/platform", site, house: HOUSE_SLUG })).toBeNull();
+    // With the switch off there is no house store, and nothing on the platform's host is a store's page.
+    expect(houseHostStore({ host: "kaizenaflow.com", pathname: "/en/about", site, house: null })).toBeNull();
   });
 });

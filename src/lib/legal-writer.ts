@@ -11,6 +11,7 @@
 import { z } from "zod";
 
 import { findClaims } from "./claims";
+import { dateIn } from "./dates";
 import type { LegalFacts } from "./legal-facts";
 import { normalisedLegalText, type Passage } from "./legal-passages";
 import {
@@ -412,6 +413,11 @@ const BLOCKS_MAX = 12;
 const ITEMS_MAX = 15;
 const QUOTE_MIN = 20;
 const QUOTE_MAX = 300;
+/**
+ * The longest quote taken: the prompt asks for 300 characters at most, but the model quotes a whole list where the law gives one (the goods
+ * withdrawal does not cover, 19 November 2026); a longer quote that is word for word in the passage is as grounded, so it is taken.
+ */
+const QUOTE_TAKEN_MAX = 1200;
 
 /** The online dispute resolution platform, repealed in 2025, in the four languages. */
 const ODR = /\bODR\b|online dispute resolution|tvisteløsningsplattform|plattform(en)? for (online )?tvisteløsning|tvistlösning online|onlinetvistlösning|onlinetvistbilæggelse|platform for online tvistbilæggelse/i;
@@ -509,7 +515,7 @@ export function checkLegalDraft(sections: readonly DraftSection[], plan: LegalPl
           continue;
         }
         const quote = normalisedLegalText(c.quote);
-        if (quote.length < QUOTE_MIN || quote.length > QUOTE_MAX) problems.push(`${at}: a quote must be ${QUOTE_MIN} to ${QUOTE_MAX} characters.`);
+        if (quote.length < QUOTE_MIN || quote.length > QUOTE_TAKEN_MAX) problems.push(`${at}: a quote must be ${QUOTE_MIN} to ${QUOTE_MAX} characters.`);
         else {
           const found = quoteIn(offered.text, quote);
           if (found === null) problems.push(`${at}: the quote "${quote.slice(0, 80)}" is not word for word in ${c.source} ${c.passage}.`);
@@ -580,7 +586,8 @@ export const LEGAL_AI_WORDS: Readonly<
 
 const LOCALES: Record<LegalLanguage, string> = { nb: "nb-NO", sv: "sv-SE", da: "da-DK", en: "en-GB" };
 
-const dateIn = (date: Date, language: LegalLanguage) => new Intl.DateTimeFormat(LOCALES[language], { dateStyle: "long", timeZone: "UTC" }).format(date);
+/** A day the page names (when it was written, when a source was read), on the store's own clock (D796), never UTC's. */
+const dayOf = (date: Date, language: LegalLanguage, timeZone: string) => dateIn(timeZone, date, "long", LOCALES[language]);
 
 const listIn = (items: readonly string[], language: LegalLanguage) => {
   try {
@@ -637,6 +644,8 @@ export function renderLegalPage(input: {
   /** The model withdrawal form as the starter has it (nb, or where the annex cannot be read). */
   starterForm: RenderedSection | null;
   writtenAt: Date;
+  /** The store's zone, which the days it names are read in. */
+  timeZone: string;
   /** The page is in English for a store whose main language is none of the four. */
   english?: boolean;
 }): { sections: RenderedSection[]; missing: string[]; cited: CitedPassage[] } {
@@ -687,12 +696,12 @@ export function renderLegalPage(input: {
     .sort((a, b) => a.c.source.localeCompare(b.c.source) || a.c.passage.localeCompare(b.c.passage, undefined, { numeric: true }))
     .map(({ c, o }) => {
       const source = LEGAL_SOURCES_BY_KEY[c.source];
-      return `${source.title}, ${o.title} (${w.read.replace("{date}", dateIn(o.readAt, language))}): [${source.url}](${source.url})`;
+      return `${source.title}, ${o.title} (${w.read.replace("{date}", dayOf(o.readAt, language, input.timeZone))}): [${source.url}](${source.url})`;
     });
   out.push({
     topic: "sources",
     heading: w.sources,
-    blocks: [{ p: w.prepared.replace("{date}", dateIn(input.writtenAt, language)) }, ...(input.english ? [{ p: w.englishPage }] : []), ...(sourceLines.length > 0 ? [{ ul: sourceLines }] : [])],
+    blocks: [{ p: w.prepared.replace("{date}", dayOf(input.writtenAt, language, input.timeZone)) }, ...(input.english ? [{ p: w.englishPage }] : []), ...(sourceLines.length > 0 ? [{ ul: sourceLines }] : [])],
   });
   return { sections: out, missing: [...missing], cited: [...cited.values()] };
 }

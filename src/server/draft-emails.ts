@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { dateIn } from "@/lib/dates";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { formatMoney } from "@/lib/money";
 import { marketUrl, storeSiteUrl } from "@/lib/paths";
@@ -38,7 +39,7 @@ export async function sendDraftLink(storeId: string, draftId: string, token: str
   };
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const url = `${marketUrl(store.slug, String(draft.market_slug), `/account/pay/${token}`)}`;
-  const until = new Date(String(draft.expires_at)).toLocaleDateString(market.locale, { dateStyle: "long" });
+  const until = dateIn(store, String(draft.expires_at), "long", market.locale);
   const note = draft.note_to_buyer ? String(draft.note_to_buyer) : null;
   const blocks: EmailBlock[] = [
     { type: "heading", text: words.heading },

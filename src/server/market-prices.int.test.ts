@@ -15,6 +15,7 @@ const { getEditorContext, getProductForEdit, saveProduct } = await import("./pro
 const { getStore } = await import("./stores");
 const { backToRule, deriveForProducts, marketPriceRules, removeMarketPriceRule, saveMarketPriceRule } = await import("./market-prices");
 const { preflightOwnerTool, runOwnerTool } = await import("./owner-tools");
+const { priceRuleAutopilotFacts } = await import("./market-price-tools");
 
 type Row = Record<string, unknown>;
 
@@ -140,6 +141,21 @@ describe("a country's prices worked out from another's", () => {
     ).rejects.toThrow();
   });
 
+  // D804: `commerce.vat_rate()` gives a fraction (0.25) and derivedPrice() takes percent (25); read as it came, a rule on the price before VAT
+  // took off and put back next to nothing, so a country with another VAT rate got the base country's price with VAT.
+  it("takes the base country's VAT off and puts the country's own on for a rule before VAT, at their real rates", async () => {
+    const [c] = products[1].skus;
+    // Books: 0 % VAT in Norway, 6 % in Sweden.
+    await db().execute(sql`update commerce.products set vat_category = 'books' where id = ${products[1].id}::uuid`);
+    try {
+      await savePrices(products[1].id, { [c]: "500,00" });
+      // 500 without VAT, × 1.06 Swedish VAT, × 1.10 = 583 → 589 (read as fractions it was 550.3 → 559).
+      expect((await pricesIn("SE", products[1].id))[c]).toEqual({ amount: 58_900, derived: true });
+    } finally {
+      await db().execute(sql`update commerce.products set vat_category = 'standard' where id = ${products[1].id}::uuid`);
+    }
+  });
+
   it("is refused for a currency with no rate, and keeps its prices when a rate is taken away", async () => {
     const store = await storeOf(fx);
     // Danish kroner have no rate in this store: no price could be worked out, so the rule is not kept.
@@ -187,5 +203,21 @@ describe("the AI manager's price rules", () => {
     expect(se.prices).toMatch(/^Worked out from NO/);
     expect(se.prices_by_rule).toBe(0);
     expect(read.countries.find((x) => x.country === "NO")!.prices).toBe("Set by hand.");
+  });
+
+  it("measures a rule for the autopilot in the challenge: the largest price change and the lowest margin it would leave (A2, D804)", async () => {
+    const [c] = products[1].skus;
+    const store = await storeOf(fx);
+    // The variant follows the +5 % rule again: 500 × 1.05 = 525 → 529 kr.
+    await savePrices(products[1].id, {}, { [c]: "" });
+    expect((await pricesIn("SE", products[1].id))[c]).toEqual({ amount: 52_900, derived: true });
+    await db().execute(sql`update commerce.product_variants set cost_minor = 20000 where store_id = ${fx.storeId}::uuid and sku = ${c}`);
+    // +20 %: 600 → 609 kr, 15.1 % more than 529; 609 with VAT is 487.20 without, against a cost of 200: a margin of 58.9 %.
+    const facts = await priceRuleAutopilotFacts(store, { country: "SE", from: "NO", percent: 20, vat: "net", round_to: 10, ending: 9 });
+    expect(facts.priceChangePercent).toBeCloseTo(15.12, 1);
+    expect(facts.lowestMarginPercent).toBeCloseTo(58.95, 1);
+    // Taking the rule away changes no price; a rule that cannot be read is not measured.
+    expect(await priceRuleAutopilotFacts(store, { country: "SE", from: null })).toEqual({ priceChangePercent: 0, marginUntouched: true });
+    expect(await priceRuleAutopilotFacts(store, { country: "XX", from: "NO", percent: 0, vat: "net" })).toEqual({ priceChangePercent: null });
   });
 });

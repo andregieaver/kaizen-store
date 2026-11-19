@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { earnPercentText, pendingParts } from "@/lib/bonus-shopper";
 import { isGrantKind, type ShopperBonus } from "@/lib/bonus";
+import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import { formatMoney, type PriceDecimals } from "@/lib/money";
 
@@ -17,6 +18,7 @@ export function BonusAccountView({
   bonus,
   m,
   locale,
+  timeZone,
   base,
   orderIds,
   now = new Date(),
@@ -25,6 +27,8 @@ export function BonusAccountView({
   bonus: ShopperBonus;
   m: Messages;
   locale: string;
+  /** The store's zone: every day here is the store's own (D796). */
+  timeZone: string;
   base: string;
   orderIds: Record<string, string>;
   now?: Date;
@@ -33,10 +37,9 @@ export function BonusAccountView({
 }) {
   const b = m.bonus;
   const money = (minor: number) => formatMoney(minor, bonus.currency, locale, { decimals });
-  const day = (iso: string, style: "long" | "medium" = "medium") =>
-    new Date(iso).toLocaleDateString(locale, { dateStyle: style });
+  const day = (iso: string, style: "long" | "medium" = "medium") => dateIn(timeZone, iso, style === "long" ? "long" : "day", locale);
   const { balance } = bonus;
-  const parts = balance.pendingMinor > 0 ? pendingParts(bonus.entries, balance.pendingMinor, now) : [];
+  const parts = balance.pendingMinor > 0 ? pendingParts(bonus.entries, balance.pendingMinor, now, timeZone) : [];
 
   return (
     <>

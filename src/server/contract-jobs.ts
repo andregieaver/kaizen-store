@@ -45,7 +45,7 @@ const contractRow = z.object({
   pdf_sha256: col.text,
   sent_at: col.timestamp,
   completed_at: col.timestamp,
-  time_zone: col.textOrNull,
+  time_zone: col.text,
 });
 const signerRow = z.object({
   id: col.uuid,
@@ -97,7 +97,7 @@ export async function buildSignedPdf(storeId: string, contractId: string, deps: 
       documentSha256: c.pdf_sha256,
       sentAt: c.sent_at,
       completedAt: c.completed_at,
-      timeZone: c.time_zone ?? "Europe/Oslo",
+      timeZone: c.time_zone,
       signers: signers.map((s) => ({
         role: s.role,
         name: s.name,

@@ -13,6 +13,7 @@ import {
   porterbuddyHost,
   porterbuddyProblem,
 } from "@/lib/porterbuddy";
+import { NORWAY_TIME_ZONE } from "@/lib/dates";
 import { bookingCustomsProblem, type CarrierContext, type ShippingAddress, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
@@ -75,7 +76,7 @@ export function createPorterbuddyAdapter(fetcher: Fetch = fetch): ShippingCarrie
           availabilityBody({
             from: { name: "", street: "Keysers gate 3", postalCode: "0165", city: "Oslo", country: "NO" },
             to: { name: "", street: "Høyenhallveien 25", postalCode: "0678", city: "Oslo", country: "NO" },
-            pickupWindows: pickupWindows(Date.now(), { hours: "10:00-17:00", days: "1-7", timeZone: "Europe/Oslo" }),
+            pickupWindows: pickupWindows(Date.now(), { hours: "10:00-17:00", days: "1-7", timeZone: NORWAY_TIME_ZONE }),
             products: ["delivery"],
             parcels: [{ weightGrams: 1000 }],
           }),
@@ -85,7 +86,7 @@ export function createPorterbuddyAdapter(fetcher: Fetch = fetch): ShippingCarrie
     },
 
     async rates(context, request) {
-      const windows = request.pickupWindows ?? pickupWindows(Date.now(), { hours: context.details.pickupHours ?? "10:00-17:00", days: context.details.pickupDays ?? "1-5", timeZone: "Europe/Oslo" });
+      const windows = request.pickupWindows ?? pickupWindows(Date.now(), { hours: context.details.pickupHours ?? "10:00-17:00", days: context.details.pickupDays ?? "1-5", timeZone: NORWAY_TIME_ZONE });
       if (windows.length === 0) return [];
       const answer = await call(fetcher, `${host(context)}/availability`, {
         method: "POST",

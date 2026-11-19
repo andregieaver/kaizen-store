@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { friendLabel, type ShopperReferrals } from "@/lib/affiliates";
 import { earnPercentText } from "@/lib/bonus-shopper";
+import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import { formatMoney, type PriceDecimals } from "@/lib/money";
 
@@ -18,6 +19,7 @@ export function ReferralsAccountView({
   link,
   m,
   locale,
+  timeZone,
   base,
   decimals,
 }: {
@@ -26,6 +28,8 @@ export function ReferralsAccountView({
   link: string | null;
   m: Messages;
   locale: string;
+  /** The store's zone: every day here is the store's own (D796). */
+  timeZone: string;
   /** The market's own path, for the link to the credits page. */
   base: string;
   /** The market's way with a whole amount's decimals (D429). */
@@ -36,7 +40,7 @@ export function ReferralsAccountView({
   const s = referrals.settings;
   const counted = referrals.friends.filter((friend) => friend.status !== "rejected");
   const wait = referrals.pendingDays > 0 ? a.waitAfter(m.bonus.dayCount(referrals.pendingDays)) : a.waitNow;
-  const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium" });
+  const day = (iso: string) => dateIn(timeZone, iso, "day", locale);
 
   return (
     <>

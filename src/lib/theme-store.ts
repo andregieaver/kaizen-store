@@ -1,4 +1,5 @@
 import { baseScheme } from "./color-mode";
+import { dateIn, PLATFORM_TIME_ZONE } from "./dates";
 import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
@@ -390,7 +391,8 @@ export function themeChangelog(versions: ThemeVersion[], w: ChangelogWords = CHA
     .map((version, index) => {
       const before = ordered[index - 1];
       const lines = before ? whatsNew(before.snapshot, version.snapshot, note(version.notes), w.whatsNew) : [note(version.notes) || w.firstVersion];
-      return { number: version.number, date: version.publishedAt.slice(0, 10), lines: lines.length > 0 ? lines : [w.smallChanges] };
+      // The day on Kaizena Flow's own clock (D796), the theme store being the platform's.
+      return { number: version.number, date: dateIn(PLATFORM_TIME_ZONE, version.publishedAt, "iso", "en"), lines: lines.length > 0 ? lines : [w.smallChanges] };
     })
     .reverse();
 }

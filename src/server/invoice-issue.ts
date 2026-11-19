@@ -73,8 +73,8 @@ export async function issueMissingCreditNotes(storeId: string): Promise<number> 
 }
 
 /**
- * *Try again* on the Waiting tab for a PDF that failed five times: the failures are forgotten and the PDF job (`/api/cron/document-pdfs`)
- * makes it on its next run, or the next download does. It never renders here, so the page's action stays free of Chromium. A document of
+ * *Try again* on the Waiting tab for a PDF that failed five times: the failures are forgotten and the PDF job (`/api/cron/document-pdfs`,
+ * asked by the dispatcher within five minutes while a document waits, D807) makes it, or the next download does. It never renders here, so the page's action stays free of Chromium. A document of
  * another store is untouched. Returns whether the document had failures to forget.
  */
 export async function retryPdfLater(storeId: string, kind: DocumentKind, documentId: string): Promise<boolean> {

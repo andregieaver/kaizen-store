@@ -12,6 +12,8 @@ import { liveCostsMoney } from "./design-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import { marginAfterOffer, marginAfterPrices, priceChangePercent } from "./product-tools";
 import { exchangeRefundOf } from "./exchange-tools";
+import { priceRuleAutopilotFacts } from "./market-price-tools";
+import { orderChangeMoneyOf, type OrderChangeInput } from "./order-change-tools";
 import type { Store } from "./stores";
 import { replacementAutopilotProblem } from "./replacement-tools";
 import { purchaseAutopilotProblem } from "./supply-tools";
@@ -51,6 +53,14 @@ export async function autopilotDecision(
   // A lost parcel's replacement in challenge mode (B3, D679): sent by itself only within the cap on its goods' value.
   if (settings.challenge && p.store && tool === "send_replacement") {
     return autonomyDecision(settings, tool, gate, { replacementProblem: await replacementAutopilotProblem(p.store, String(args.order ?? ""), settings.challenge.replacementMax) });
+  }
+  // A change to a paid order in challenge mode (A2, D804): by itself only when it moves no money.
+  if (settings.challenge && p.store && tool === "change_order") {
+    return autonomyDecision(settings, tool, gate, { orderChangeMoney: await orderChangeMoneyOf({ account: p.account, store: p.store }, args as OrderChangeInput) });
+  }
+  // A country's price rule in challenge mode (A2, D804): by itself within the largest price change and the margin floor.
+  if (settings.challenge && p.store && tool === "set_market_price_rule") {
+    return autonomyDecision(settings, tool, gate, await priceRuleAutopilotFacts(p.store, args));
   }
   // The margin floor (D5) is read only where the owner, or the challenge, set one: it costs a read of the catalogue.
   const floor = settings.budgets.marginFloorPercent !== null;

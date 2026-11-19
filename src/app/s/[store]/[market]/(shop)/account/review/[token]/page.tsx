@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { StarRating } from "@/components/star-rating";
+import { dateIn } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { invitationOf } from "@/server/review-requests";
@@ -46,7 +47,7 @@ async function InvitedReviews({ params, searchParams }: Pick<Props, "params" | "
   const lines = await reviewableLinesFor(store.id, invitation);
   const query = await searchParams;
   const base = marketPath(store.slug, market.slug);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const date = (iso: string) => dateIn(store, iso, "day", market.locale);
   const done = query.done === "waiting" ? r.sentWaiting : query.done === "shown" ? r.sentShown : null;
 
   return (

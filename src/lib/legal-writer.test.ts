@@ -180,6 +180,16 @@ describe("the checks", () => {
     expect(check((d) => ((d[0].blocks[0] as { cites: { passage: string }[] }).cites[0].passage = "art_16"))).toEqual(expect.arrayContaining([expect.stringContaining("not offered for this section")]));
   });
 
+  it("take a quote longer than the prompt asks for while it is word for word, and refuse one too long or too short (19 November 2026)", () => {
+    const cite = (d: DraftSection[]) => (d[0].blocks[0] as { cites: { source: string; passage: string; quote: string }[] }).cites[0];
+    const first = cite(goodReturns());
+    const text = plan.offered.get(`${first.source}|${first.passage}`)!.text;
+    expect(text.length).toBeGreaterThan(400);
+    expect(check((d) => (cite(d).quote = text.slice(0, 400)))).toEqual([]);
+    expect(check((d) => (cite(d).quote = text.slice(0, 1300).padEnd(1300, " x")))).toEqual(expect.arrayContaining([expect.stringContaining("a quote must be")]));
+    expect(check((d) => (cite(d).quote = text.slice(0, 10)))).toEqual(expect.arrayContaining([expect.stringContaining("a quote must be")]));
+  });
+
   it("refuse a number no cited quote holds, in digits or in words", () => {
     expect(check((d) => ((d[0].blocks[0] as { text: string }).text = "You may withdraw within 30 days."))).toEqual(expect.arrayContaining([expect.stringContaining("the number 30")]));
     expect(check((d) => ((d[0].blocks[0] as { text: string }).text = "You may withdraw within thirty days."))).toEqual(expect.arrayContaining([expect.stringContaining("the number 30")]));
@@ -205,7 +215,7 @@ describe("the checks", () => {
 describe("the page", () => {
   it("fills every token from the store's facts, and lists the passages cited with the day each was read", () => {
     const plan = planFor("returns_policy", "en");
-    const page = renderLegalPage({ plan, sections: goodReturns(), sheet: sheetFor("en"), starterForm: null, writtenAt: new Date("2026-10-25T12:00:00Z") });
+    const page = renderLegalPage({ plan, sections: goodReturns(), sheet: sheetFor("en"), starterForm: null, writtenAt: new Date("2026-10-25T12:00:00Z"), timeZone: "Europe/Oslo" });
     const text = JSON.stringify(page.sections);
     expect(text).toContain("With us you have 30 days to return goods.");
     expect(text).toContain("kontakt@demo.example");
@@ -223,7 +233,7 @@ describe("the page", () => {
     const facts = assembleLegalFacts(input({ returnSettings: { ...DEFAULT_RETURN_SETTINGS, instructions: "" } }));
     const sheet = factSheet(facts, starterFactWords(facts, "en"), "en");
     const plan = planLegalPage({ role: "returns_policy", language: "en", facts, sheet, jurisdictions: jurisdictionsFor(facts), texts: TEXTS });
-    const page = renderLegalPage({ plan, sections: goodReturns(), sheet, starterForm: null, writtenAt: READ });
+    const page = renderLegalPage({ plan, sections: goodReturns(), sheet, starterForm: null, writtenAt: READ, timeZone: "Europe/Oslo" });
     expect(page.missing).toEqual([expect.stringMatching(/^\[\[Add: /)]);
   });
 
@@ -240,11 +250,11 @@ describe("the page", () => {
   it("puts the form in the withdrawal information: the directive's in English, the starter's in Norwegian", () => {
     const writtenAt = READ;
     const en = planFor("withdrawal_info", "en");
-    const enPage = renderLegalPage({ plan: en, sections: [], sheet: sheetFor("en"), starterForm: null, writtenAt });
+    const enPage = renderLegalPage({ plan: en, sections: [], sheet: sheetFor("en"), starterForm: null, writtenAt, timeZone: "Europe/Oslo" });
     expect(JSON.stringify(enPage.sections.find((s) => s.topic === "model_form"))).toContain("B. Model withdrawal form");
     const nb = planFor("withdrawal_info", "nb");
     const starterForm = legalStarterSections("withdrawal_info", "nb", FACTS).find((s) => s.topic === "model_form")!;
-    const nbPage = renderLegalPage({ plan: nb, sections: [], sheet: sheetFor("nb"), starterForm, writtenAt });
+    const nbPage = renderLegalPage({ plan: nb, sections: [], sheet: sheetFor("nb"), starterForm, writtenAt, timeZone: "Europe/Oslo" });
     expect(nbPage.sections.find((s) => s.topic === "model_form")?.blocks).toEqual(starterForm.blocks);
     expect(nbPage.sections.at(-1)?.heading).toBe("Kilder");
   });

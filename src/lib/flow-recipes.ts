@@ -18,6 +18,8 @@ type Words = {
   together: [string, string];
   againName: string;
   timeAgain: [string, string];
+  browseName: string;
+  stillThinking: [string, string];
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -38,6 +40,8 @@ const WORDS: Record<"nb" | "en", Words> = {
     together: ["Passer godt sammen", "Andre som kjøpte det samme som deg, valgte også disse."],
     againName: "Påminnelse om å kjøpe igjen",
     timeAgain: ["På tide med påfyll?", "Det er en stund siden du kjøpte disse. Her er de igjen."],
+    browseName: "Minn dem på det de så på",
+    stillThinking: ["Fortsatt interessert?", "Du så på disse hos oss. Her er de igjen, om du vil ta en ny titt."],
   },
   en: {
     name: "Welcome series",
@@ -56,6 +60,8 @@ const WORDS: Record<"nb" | "en", Words> = {
     together: ["Goes well together", "Others who bought what you did also chose these."],
     againName: "Remind them to buy again",
     timeAgain: ["Time for more?", "It has been a while since you bought these. Here they are again."],
+    browseName: "Remind them what they looked at",
+    stillThinking: ["Still thinking about it?", "You looked at these with us. Here they are again, if you want another look."],
   },
 };
 
@@ -152,8 +158,24 @@ export function restock(locale: string): Recipe {
   };
 }
 
+/**
+ * Remind them what they looked at (slice 4, D691's browse abandonment): a day after a signed-in subscriber's latest product view, with
+ * nothing paid since, the products they looked at. Ended by an order. Does the browse automation's work.
+ */
+export function browseReminder(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return {
+    name: w.browseName,
+    trigger: "customer.browsed",
+    triggerDays: 1,
+    replaces: "browse",
+    steps: [{ ...email("looked", locale, w.stillThinking), picks: "browse" }],
+    goals: [{ kind: "ordered" }],
+  };
+}
+
 /** The goals a flow starts from on the flows page (M3.1), each with its recipe; in the order shown. */
-export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack, cross_sell: crossSell, replenish: restock } as const;
+export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack, cross_sell: crossSell, replenish: restock, browse: browseReminder } as const;
 export type RecipeKey = keyof typeof RECIPES;
 
 /** An automation as saved (D298, D653): its days, words and follow-ups, as `getAutomation()` gives them. */
@@ -168,12 +190,12 @@ export function flowFromAutomation(key: RecipeKey, automation: SavedAutomation, 
   if (!automation.content || Object.keys(automation.content).length === 0) return null;
   const recipe = RECIPES[key](locale);
   const wait = (id: string, days: number | null): FlowInput["steps"] => (days && days > 0 ? [{ id, kind: "wait", hours: days * 24 }] : []);
-  // Win-back's days are the lapse itself (the trigger's), not a wait after it.
-  const lapse = recipe.trigger === "customer.lapsed";
+  // A date trigger's days (win-back's lapse, browse's days after a view) are the trigger's own, not a wait after it.
+  const lapse = recipe.trigger === "customer.lapsed" || recipe.trigger === "customer.browsed";
   const steps: FlowInput["steps"] = [
     ...(lapse ? [] : wait("wait-1", automation.delayDays)),
     // A picked kind's first email shows that kind's products for each reader, as the automation's did (D653).
-    { id: "email-1", kind: "email", content: automation.content, ...(key === "cross_sell" || key === "replenish" ? { picks: key } : {}) },
+    { id: "email-1", kind: "email", content: automation.content, ...(key === "cross_sell" || key === "replenish" || key === "browse" ? { picks: key } : {}) },
     ...automation.followUps.flatMap((f) => [...wait(`wait-${f.position}`, f.delayDays), { id: `email-${f.position}`, kind: "email" as const, content: f.content }]),
   ];
   return {
