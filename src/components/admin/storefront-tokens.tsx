@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button, ConfirmButton } from "./ui";
 
 type Answer = { ok: true } | { ok: false; message: string };
 type AsyncAnswer = Promise<Answer>;
@@ -58,20 +58,12 @@ export function MakeStorefrontToken({ markets, make }: { markets: { slug: string
   );
 }
 
-/** Revokes a storefront token, after asking. */
+/** Revokes a storefront token, after asking in the admin's dialog. */
 export function RevokeStorefrontToken({ name, revoke }: { name: string; revoke: () => AsyncAnswer }) {
   const w = useAdminText("notifications").storefrontTokens;
-  const [pending, start] = useTransition();
   return (
-    <Button
-      kind="quiet"
-      size="dense"
-      disabled={pending}
-      onClick={() => {
-        if (window.confirm(fillWords(w.revokeQuestion, { name }))) start(async () => void (await revoke()));
-      }}
-    >
+    <ConfirmButton kind="quiet" size="dense" question={fillWords(w.revokeQuestion, { name })} confirm={w.revoke} action={revoke}>
       {w.revoke}
-    </Button>
+    </ConfirmButton>
   );
 }

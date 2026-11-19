@@ -275,6 +275,8 @@ export const orderEn = {
     emailCancelled: "Email the customer that the order is cancelled",
     cancelling: "Cancelling …",
     cancelOrder: "Cancel order",
+    /** The way back from the question before cancelling (code review 1.12): not "Cancel", which would read as the order's. */
+    keepOrder: "Keep the order",
     paidWith: "Paid with",
     cardTerminal: "Card terminal",
     cash: "Cash",

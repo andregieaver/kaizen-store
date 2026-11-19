@@ -6,7 +6,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { TOKEN_KINDS, type TokenKind } from "@/lib/admin-api";
 
 import { useAdminText } from "./admin-text";
-import { Button } from "./ui";
+import { Button, ConfirmButton } from "./ui";
 
 type Answer = { ok: true; token?: string } | { ok: false; message: string };
 type Async = Promise<Answer>;
@@ -155,28 +155,14 @@ export function MakeApiToken({
   );
 }
 
-/** Revokes one token after asking. */
+/** Revokes one token after asking in the admin's dialog; a refusal is shown beside the button. */
 export function RevokeApiToken({ name, revoke }: { name: string; revoke: () => Async }) {
   const w = useAdminText("notifications").apiTokens;
-  const [pending, start] = useTransition();
-  const [problem, setProblem] = useState<string | null>(null);
   return (
     <span className="flex items-center gap-2">
-      <Button
-        kind="danger"
-        size="dense"
-        disabled={pending}
-        onClick={() =>
-          window.confirm(fillWords(w.revokeQuestion, { name })) &&
-          start(async () => {
-            const answer = await revoke();
-            setProblem(answer.ok ? null : answer.message);
-          })
-        }
-      >
+      <ConfirmButton kind="danger" size="dense" question={fillWords(w.revokeQuestion, { name })} confirm={w.revoke} action={revoke}>
         {w.revoke}
-      </Button>
-      {problem && <span className="text-sm text-danger-text">{problem}</span>}
+      </ConfirmButton>
     </span>
   );
 }

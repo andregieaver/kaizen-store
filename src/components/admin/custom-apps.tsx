@@ -6,7 +6,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { APP_GATES, type AppGate } from "@/lib/custom-apps";
 
 import { useAdminText } from "./admin-text";
-import { Button, Chip, List, ListRow, RowLead } from "./ui";
+import { Button, Chip, ConfirmButton, List, ListRow, RowLead } from "./ui";
 
 type Answer = { ok: true } | { ok: false; message: string };
 type AsyncAnswer = Promise<Answer>;
@@ -98,16 +98,9 @@ export function CustomAppCard({
           <Button kind="quiet" size="dense" disabled={pending} onClick={() => run(actions.relist)}>
             {w.relist}
           </Button>
-          <Button
-            kind="quiet"
-            size="dense"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(fillWords(w.removeQuestion, { name: app.name }))) run(actions.remove);
-            }}
-          >
+          <ConfirmButton kind="quiet" size="dense" disabled={pending} question={fillWords(w.removeQuestion, { name: app.name })} confirm={w.remove} action={() => run(actions.remove)}>
             {w.remove}
-          </Button>
+          </ConfirmButton>
         </div>
       </div>
       {app.problem && <Chip signal="warning">{app.problem}</Chip>}

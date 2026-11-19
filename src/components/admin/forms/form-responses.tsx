@@ -10,7 +10,7 @@ import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { fileSize } from "@/lib/form-files";
 import { AdminLink } from "../ui/link";
-import { Button, ButtonLink, Card, Chip } from "../ui";
+import { Button, ButtonLink, Card, Chip, ConfirmButton } from "../ui";
 
 /**
  * A form's responses (D705): newest first, a new one marked until it is opened; each opens to its answers with a reply by email when it has
@@ -147,16 +147,16 @@ export function FormResponses({
                           {w.markNew}
                         </Button>
                       )}
-                      <Button
+                      <ConfirmButton
                         kind="link"
                         disabled={pending}
                         icon={<Trash2 aria-hidden className="size-4" />}
-                        onClick={() => {
-                          if (window.confirm(w.deleteConfirm)) run(() => remove([r.id]));
-                        }}
+                        question={w.deleteConfirm}
+                        confirm={w.delete}
+                        action={() => run(() => remove([r.id]))}
                       >
                         {w.delete}
-                      </Button>
+                      </ConfirmButton>
                     </div>
                   </div>
                 )}

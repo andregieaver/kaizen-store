@@ -264,6 +264,7 @@ export const orderNb: OrderMessages = {
     emailCancelled: "Send kunden e-post om at bestillingen er kansellert",
     cancelling: "Kansellerer …",
     cancelOrder: "Kanseller bestillingen",
+    keepOrder: "Behold bestillingen",
     paidWith: "Betalt med",
     cardTerminal: "Kortterminal",
     cash: "Kontanter",

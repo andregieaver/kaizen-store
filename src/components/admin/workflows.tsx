@@ -8,7 +8,7 @@ import { PLATFORM_WORKFLOWS } from "@/lib/platform-workflows";
 import { listValues, OPERATORS, SEGMENT_FIELD, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition, type WorkflowField } from "@/lib/workflows";
 
 import { useAdminText } from "./admin-text";
-import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
+import { Button, Card, Chip, ConfirmButton, List, ListRow, RowDate, RowLead } from "./ui";
 
 type Saved = { ok: true } | { ok: false; problems: string[] };
 type Plain = { ok: true; message?: string } | { ok: false; message: string };
@@ -439,9 +439,9 @@ export function WorkflowCard({
           <Button disabled={pending} onClick={() => setEditing(true)}>
             {w.edit}
           </Button>
-          <Button kind="danger" disabled={pending} onClick={() => window.confirm(fillWords(w.deleteQuestion, { name: flow.name })) && plain(() => actions.remove(flow.id))}>
+          <ConfirmButton kind="danger" disabled={pending} question={fillWords(w.deleteQuestion, { name: flow.name })} confirm={w.delete} action={() => plain(() => actions.remove(flow.id))}>
             {w.delete}
-          </Button>
+          </ConfirmButton>
         </div>
       )}
       {test && (

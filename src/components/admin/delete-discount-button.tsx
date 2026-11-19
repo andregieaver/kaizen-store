@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
+import { ConfirmButton } from "./ui/confirm-button";
 
-/** Deletes a code, after asking; orders that used it keep what they got. */
+/** Deletes a code, after asking in the admin's dialog (`ConfirmButton`, code review 1.12); orders that used it keep what they got. */
 export function DeleteDiscountButton({
   action,
   code,
@@ -28,30 +27,22 @@ export function DeleteDiscountButton({
 }) {
   const w = useAdminText("discounts").remove;
   const form = useAdminText("common").form;
-  const [pending, start] = useTransition();
-  const [problem, setProblem] = useState<string | null>(null);
+  const question = asked ?? (used > 0 ? countWords(used, w.questionUsed, { code }) : fillWords(w.question, { code }));
   return (
     <div className={compact ? "inline-flex flex-col items-end" : "flex flex-col gap-1 border-t border-line pt-4"}>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          const question =
-            asked ??
-            (used > 0 ? countWords(used, w.questionUsed, { code }) : fillWords(w.question, { code }));
-          if (!window.confirm(question)) return;
-          start(async () => {
-            const result = await action();
-            if (!result.ok) setProblem(result.problems.join(" "));
-          });
-        }}
+      <ConfirmButton
+        kind="none"
+        question={question}
+        confirm={form.delete}
+        action={action}
+        busy={form.deleting}
         className={
           compact
             ? "min-h-10 rounded-md px-3 text-sm text-danger-text hover:bg-sunken disabled:opacity-50"
             : "w-fit text-sm text-danger-text underline disabled:opacity-50"
         }
       >
-        {pending ? form.deleting : compact ? (
+        {compact ? (
           <>
             {form.delete}
             <span className="sr-only"> {code}</span>
@@ -59,12 +50,7 @@ export function DeleteDiscountButton({
         ) : (
           (label ?? w.deleteCode)
         )}
-      </button>
-      {problem && (
-        <p role="alert" className="text-sm">
-          {problem}
-        </p>
-      )}
+      </ConfirmButton>
     </div>
   );
 }

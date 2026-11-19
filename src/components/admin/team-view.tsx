@@ -11,6 +11,8 @@ import { avatarFor } from "@/server/avatars";
 import type { StaffMember } from "@/server/settings";
 import type { StoreRole } from "@/server/store-roles";
 import { Card, CARD_CLASS } from "@/components/admin/ui";
+import { ConfirmButton } from "@/components/admin/ui/confirm-button";
+import { submitClass } from "@/lib/submit-class";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
@@ -138,9 +140,9 @@ export function TeamList({
                 {member.accountId !== viewerId && (
                   <ActionForm action={actions.disable} className="flex items-center gap-2">
                     <input type="hidden" name="accountId" value={member.accountId} />
-                    <SubmitButton variant="secondary">
+                    <ConfirmButton kind="none" className={submitClass("secondary")} question={fillWords(w.removeQuestion, { email: member.email })} confirm={w.removeAccess}>
                       {w.removeAccess}<span className="sr-only">{fillWords(w.forEmail, { email: member.email })}</span>
-                    </SubmitButton>
+                    </ConfirmButton>
                   </ActionForm>
                 )}
               </div>

@@ -45,6 +45,10 @@ export type ConfirmButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "
   confirm: string;
   /** The confirm button as `danger` (the default: deleting, ending, refusing) or as the `main` action. */
   danger?: boolean;
+  /** The way back's word where *Cancel* would be read as the action's own ("Keep the order" beside *Cancel order*). */
+  cancel?: string;
+  /** Ask only when it matters: false submits (or runs the action) at once, as a plain button (a refund recorded, not sent). */
+  ask?: boolean;
   /** Run on yes; a refusal it answers (`{ ok: false, problems }`) is shown under the button. Without it, the form is submitted. */
   action?: () => unknown;
   /** The button's look: a kit kind, or `none` for the classes in `className` alone. */
@@ -62,6 +66,8 @@ export function ConfirmButton({
   more,
   confirm,
   danger = true,
+  cancel,
+  ask = true,
   action,
   kind = "secondary",
   size = "card",
@@ -88,11 +94,12 @@ export function ConfirmButton({
   const classes = kind === "none" ? className : [buttonClass(kind, size, full), className].filter(Boolean).join(" ");
   const warm = () => void loadDialog().catch(() => undefined);
 
+  const run = (act: () => unknown) => start(async () => setRefusal(refusalOf(await act())));
   const yes = () => {
     setOpen(false);
     setRefusal(null);
     if (action) {
-      start(async () => setRefusal(refusalOf(await action())));
+      run(action);
       return;
     }
     const self = button.current;
@@ -108,10 +115,15 @@ export function ConfirmButton({
         className={classes}
         disabled={disabled || working}
         aria-busy={working || undefined}
-        aria-haspopup="dialog"
-        onPointerEnter={warm}
-        onFocus={warm}
+        aria-haspopup={ask ? "dialog" : undefined}
+        onPointerEnter={ask ? warm : undefined}
+        onFocus={ask ? warm : undefined}
         onClick={(event) => {
+          if (!ask) {
+            // As a plain button: a submit button submits by itself; an action runs now.
+            if (action) run(action);
+            return;
+          }
           event.preventDefault();
           warm();
           setOpen(true);
@@ -121,14 +133,14 @@ export function ConfirmButton({
         {kind === "icon" ? icon : working ? (busy ?? words.working) : children}
       </button>
       {refusal && (
-        <p role="alert" className="text-sm text-danger-text">
+        <span role="alert" className="text-sm text-danger-text">
           {refusal}
-        </p>
+        </span>
       )}
       {open &&
         createPortal(
           <Suspense fallback={null}>
-            <Dialog {...splitQuestion(question)} more={more} confirm={confirm} cancel={words.cancel} danger={danger} onCancel={() => setOpen(false)} onConfirm={yes} />
+            <Dialog {...splitQuestion(question)} more={more} confirm={confirm} cancel={cancel ?? words.cancel} danger={danger} onCancel={() => setOpen(false)} onConfirm={yes} />
           </Suspense>,
           document.body,
         )}
