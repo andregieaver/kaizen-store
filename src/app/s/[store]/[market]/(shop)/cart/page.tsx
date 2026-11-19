@@ -46,7 +46,16 @@ export default async function CartPage({ params, searchParams }: Props) {
       <PayRouteGuard store={store.slug} />
       <RolePage store={store} market={market} ab={shop.ab} role="cart" route={{ part: "cart", query: searchParams }}>
         <h1 className="mb-6 text-3xl font-heading tracking-tight">{m.cart}</h1>
-        <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface" />}>
+        {/* The placeholder holds a screen's height: React shows a streamed part at most every 300 ms, and a short placeholder put the
+            footer on screen meanwhile, where its links were fetched ahead and then jumped away as the lines came (CI run 44529582895:
+            the money path's cart at 21 router requests, six of them for the footer's three links; 15 without them). */}
+        <Suspense
+          fallback={
+            <div className="min-h-svh">
+              <div className="h-40 animate-pulse rounded-lg bg-surface" />
+            </div>
+          }
+        >
           <CartContents store={store} market={market} m={m} />
         </Suspense>
       </RolePage>

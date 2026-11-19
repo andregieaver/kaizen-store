@@ -8,6 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
 import { DeleteDiscountButton } from "./delete-discount-button";
+import { PhoneRow } from "./phone-row";
 
 type Result = { ok: true } | { ok: false; problems: string[] };
 
@@ -75,8 +76,9 @@ export function GoogleReviewsSettings({
         <h2 id="google-key" className="mb-1 text-title text-ink">
           {w.keyTitle}
         </h2>
-        <p className="mb-4 text-sm text-muted">
-          {w.keyHint}
+        {/* Round 56 (D809): on a phone how to get a key is a row after the form; from `sm` up as before. */}
+        <p className={`mb-4 text-sm text-muted ${hint ? "" : "max-sm:hidden"}`}>
+          <span className="max-sm:hidden">{w.keyHint}</span>
           {hint && fillWords(w.savedKey, { hint })}
         </p>
         <form
@@ -94,6 +96,11 @@ export function GoogleReviewsSettings({
             {w.saveKey}
           </button>
         </form>
+        <div className="mt-3 border-t border-line sm:hidden">
+          <PhoneRow inset last title={w.phone.howKey} sub={w.phone.howKeySub} change={w.phone.open} done={w.phone.done}>
+            <p className="text-sm text-muted">{w.keyHint}</p>
+          </PhoneRow>
+        </div>
       </section>
 
       <section aria-labelledby="google-place" className={card}>
@@ -108,12 +115,17 @@ export function GoogleReviewsSettings({
               {w.showingOf.split("{name}")[1] ?? ""}
               {place.address && <>, {place.address}</>}.
             </>
-          ) : (
+          ) : hint ? (
             w.find
+          ) : (
+            <>
+              <span className="sm:hidden">{w.phone.wait}</span>
+              <span className="max-sm:hidden">{w.find}</span>
+            </>
           )}
         </p>
         <form
-          className="flex flex-wrap items-end gap-3"
+          className={`flex flex-wrap items-end gap-3 ${hint ? "" : "max-sm:hidden"}`}
           onSubmit={(event) => {
             event.preventDefault();
             run(() => actions.search(query), null, (result) => setFound(result.places ?? []));
@@ -149,6 +161,8 @@ export function GoogleReviewsSettings({
           </ul>
         )}
       </section>
+
+      <p className="text-caption text-muted sm:hidden">{w.phone.terms}</p>
 
       {hint && (
         <DeleteDiscountButton
