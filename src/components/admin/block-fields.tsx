@@ -1,6 +1,6 @@
 "use client";
 
-import { MarkupInput } from "./markup-input";
+import { MarkupInput, RichTextEditor } from "./lazy/editors";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -18,7 +18,7 @@ import { galleryColumns } from "@/lib/gallery";
 import { SIZES } from "@/lib/breakpoints";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
-import { t } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
@@ -30,7 +30,6 @@ import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom,
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
 import { GradientText } from "./typography-fields";
-import { RichTextEditor } from "./rich-text-editor";
 import { inlinePlain } from "@/lib/inline-text";
 import { newBlock } from "@/lib/page-rows";
 import { ButtonHoverField } from "./hover-fields";
@@ -189,6 +188,7 @@ import { cleanHashtags, FEED_MAX } from "@/lib/instagram";
 import { cleanEnd, endFieldValue } from "@/lib/countdown";
 import { STAT_DURATION_DEFAULT, STAT_ITEMS_MAX } from "@/lib/stats-count";
 import { useAdminLang, useAdminText } from "./admin-text";
+import { useSiteWords } from "./site-words";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { AnimationBlockFields, AnimationStyleFields } from "./animation-fields";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
@@ -2690,11 +2690,14 @@ function FormTexts({
 }
 
 /** The usual words of a form in the admin's own language: what the page shows when the owner writes none. */
-const usualForm = (lang: string) => t(lang === "nb" ? "nb" : "en").form;
+function useUsualForm(): Messages["form"] | null {
+  const lang = useAdminLang();
+  return useSiteWords(lang === "nb" ? "nb" : "en")?.form ?? null;
+}
 
 /** An email form's questions and where it sends (D93). */
 function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) {
-  const en = usualForm(useAdminLang());
+  const en = useUsualForm();
   const all = useAdminText("blocks");
   const w = all.form;
   const labelHints = w.labelHints as Partial<Record<FormFieldKind, string>>;
@@ -2705,7 +2708,7 @@ function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) 
         label={w.subject}
         value={block.subject}
         max={FORM_LABEL_MAX}
-        placeholder={en.messageSubject(w.siteName)}
+        placeholder={en?.messageSubject(w.siteName) ?? ""}
         hint={w.subjectHint}
         onChange={(subject) => onChange({ subject })}
       />
@@ -2760,7 +2763,7 @@ function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) 
           <TextField label={w.consentWords} value={block.consent} max={FORM_TEXT_MAX} multiline placeholder={w.consentPlaceholder} onChange={(consent) => onChange({ consent })} />
         </div>
       )}
-      <FormTexts block={block} onChange={onChange} usual={{ submit: en.send, success: en.sent }} />
+      <FormTexts block={block} onChange={onChange} usual={{ submit: en?.send ?? "", success: en?.sent ?? "" }} />
     </>
   );
 }
@@ -2902,7 +2905,7 @@ function FormLookFields({
 export const SignupCodesContext = createContext<{ id: string; code: string }[] | null>(null);
 
 function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>) {
-  const en = usualForm(useAdminLang());
+  const en = useUsualForm();
   const w = useAdminText("blocks").form;
   const codes = useContext(SignupCodesContext);
   const [tagsText, setTagsText] = useState((block.tags ?? []).join(", "));
@@ -2948,19 +2951,19 @@ function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>
         onChange={(confirm) => onChange({ confirm: confirm ? undefined : false })}
       />
       <Check label={w.askName} hint={w.askNameHint} checked={Boolean(block.askName)} onChange={(askName) => onChange({ askName: askName || undefined })} />
-      <TextField label={w.emailHint} value={block.placeholder} max={FORM_LABEL_MAX} placeholder={en.emailPlaceholder} onChange={(placeholder) => onChange({ placeholder })} />
+      <TextField label={w.emailHint} value={block.placeholder} max={FORM_LABEL_MAX} placeholder={en?.emailPlaceholder ?? ""} onChange={(placeholder) => onChange({ placeholder })} />
       <TextField
         label={w.newsletterConsent}
         value={block.consent}
         max={FORM_TEXT_MAX}
         multiline
-        placeholder={en.newsletterConsent}
+        placeholder={en?.newsletterConsent ?? ""}
         hint={w.newsletterConsentHint}
         onChange={(consent) => onChange({ consent })}
       />
       <FormTexts block={block} onChange={onChange} usual={{
-          submit: en.subscribe,
-          success: block.confirm === false ? en.subscribed : en.confirmed,
+          submit: en?.subscribe ?? "",
+          success: (block.confirm === false ? en?.subscribed : en?.confirmed) ?? "",
           when:
             block.confirm === false ? w.whenSignedUp : w.whenConfirmed,
         }} />

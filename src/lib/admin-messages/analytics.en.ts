@@ -828,6 +828,12 @@ export const analyticsEn = {
     checkoutsHelp: "Orders waiting for payment, placed in the last 30 minutes.",
     countingOff: "Visitors are counted only while visit counting is on. It sets no cookies and counts from the day it is switched on.",
     countingLink: "Turn on visit counting",
+    phone: {
+      lead: "Your store now, read again every 10 seconds.",
+      off: "Visit counting is off",
+      offSub: "No cookies; it counts from the day it is on",
+      turnOn: "Turn on",
+    },
     countriesTitle: "Where visitors are now",
     countriesCaption: "Visitors in the last 5 minutes by country",
     country: "Country",

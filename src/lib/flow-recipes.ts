@@ -14,6 +14,10 @@ type Words = {
   lastCall: [string, string];
   ownName: string;
   hello: [string, string];
+  moreName: string;
+  together: [string, string];
+  againName: string;
+  timeAgain: [string, string];
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -30,6 +34,10 @@ const WORDS: Record<"nb" | "en", Words> = {
     lastCall: ["Fortsatt her for deg", "Vi har mye nytt siden sist. Kanskje noe for deg?"],
     ownName: "Mitt forløp",
     hello: ["Hei!", "Skriv hva denne e-posten sier."],
+    moreName: "Selg mer til kjøpere",
+    together: ["Passer godt sammen", "Andre som kjøpte det samme som deg, valgte også disse."],
+    againName: "Påminnelse om å kjøpe igjen",
+    timeAgain: ["På tide med påfyll?", "Det er en stund siden du kjøpte disse. Her er de igjen."],
   },
   en: {
     name: "Welcome series",
@@ -44,6 +52,10 @@ const WORDS: Record<"nb" | "en", Words> = {
     lastCall: ["Still here for you", "A lot is new since last time. Perhaps something for you?"],
     ownName: "My flow",
     hello: ["Hello!", "Write what this email says."],
+    moreName: "Sell more to buyers",
+    together: ["Goes well together", "Others who bought what you did also chose these."],
+    againName: "Remind them to buy again",
+    timeAgain: ["Time for more?", "It has been a while since you bought these. Here they are again."],
   },
 };
 
@@ -113,8 +125,35 @@ export function winBack(locale: string): Recipe {
   };
 }
 
+/**
+ * Sell more to buyers (slice 4, D653's cross-sell): two weeks after an order is sent, what others bought with its products, chosen for
+ * each reader by code; not sent to someone with nothing to show. Ended by an order. Does the cross-sell automation's work.
+ */
+export function crossSell(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return {
+    name: w.moreName,
+    trigger: "order.sent",
+    replaces: "cross_sell",
+    steps: [{ id: "wait-14d", kind: "wait", hours: 14 * 24 }, { ...email("together", locale, w.together), picks: "cross_sell" }],
+    goals: [{ kind: "ordered" }],
+  };
+}
+
+/** Remind them to buy again (slice 4, D653's restock): a month after an order is sent, its products customers buy again. Ended by an order. */
+export function restock(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return {
+    name: w.againName,
+    trigger: "order.sent",
+    replaces: "replenish",
+    steps: [{ id: "wait-30d", kind: "wait", hours: 30 * 24 }, { ...email("again", locale, w.timeAgain), picks: "replenish" }],
+    goals: [{ kind: "ordered" }],
+  };
+}
+
 /** The goals a flow starts from on the flows page (M3.1), each with its recipe; in the order shown. */
-export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack } as const;
+export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack, cross_sell: crossSell, replenish: restock } as const;
 export type RecipeKey = keyof typeof RECIPES;
 
 /** An automation as saved (D298, D653): its days, words and follow-ups, as `getAutomation()` gives them. */
@@ -133,7 +172,8 @@ export function flowFromAutomation(key: RecipeKey, automation: SavedAutomation, 
   const lapse = recipe.trigger === "customer.lapsed";
   const steps: FlowInput["steps"] = [
     ...(lapse ? [] : wait("wait-1", automation.delayDays)),
-    { id: "email-1", kind: "email", content: automation.content },
+    // A picked kind's first email shows that kind's products for each reader, as the automation's did (D653).
+    { id: "email-1", kind: "email", content: automation.content, ...(key === "cross_sell" || key === "replenish" ? { picks: key } : {}) },
     ...automation.followUps.flatMap((f) => [...wait(`wait-${f.position}`, f.delayDays), { id: `email-${f.position}`, kind: "email" as const, content: f.content }]),
   ];
   return {

@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { DraftLike } from "@/lib/draft-editor";
+import { t } from "@/lib/i18n";
 import { draftMarketOptions } from "@/lib/draft-markets";
 import { toRates } from "@/lib/currency";
 import type { DraftStatus } from "@/lib/draft-status";
@@ -16,6 +17,8 @@ import { DraftSentPanel } from "./draft-sent-panel";
 import { DraftSummaryPanel } from "./draft-summary";
 import { NewDraftForm } from "./new-draft-form";
 
+/** The unit names the server page hands down (the editor's scripts hold no storefront language). */
+const bases = t("en").unitPrice.bases;
 const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
 const plain = (html: string) =>
   html
@@ -167,7 +170,7 @@ const summary = (over: Partial<DraftSummary> = {}): DraftSummary => ({
 
 describe("the draft summary", () => {
   const panel = (props: Record<string, unknown> = {}) =>
-    renderToString(h(DraftSummaryPanel, { summary: summary(), problems: [], currency: "NOK", locale: "nb-NO", state: "fresh", ...props } as never));
+    renderToString(h(DraftSummaryPanel, { summary: summary(), problems: [], currency: "NOK", locale: "nb-NO", state: "fresh", bases, ...props } as never));
 
   it("shows each line at the price charged, the discount the buyer sees, the shipping, the total and the VAT per rate", () => {
     const text = check(panel());
@@ -245,6 +248,7 @@ const editorActions = {
   remove: asyncNo,
 };
 const editorProps = (over: Record<string, unknown> = {}) => ({
+  bases,
   number: "D-12",
   initial: draftLike(),
   version: 4,
@@ -359,6 +363,7 @@ describe("sending and recording a payment", () => {
 
 describe("a draft that is not open", () => {
   const sentProps = (status: DraftStatus, over: Record<string, unknown> = {}) => ({
+    bases,
     slug: "shop",
     number: "D-12",
     status,
@@ -454,6 +459,7 @@ describe("the draft screen", () => {
       timeZone: "Europe/Oslo",
       canWrite: true,
       mayRecordOutside: true,
+      bases,
     },
     sentActions: { resend: asyncNo, reopen: asyncNo, remove: asyncNo, paidOutside: asyncNo },
   });

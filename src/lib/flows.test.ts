@@ -101,3 +101,13 @@ describe("the canvas's changes (D767 slice 2)", () => {
     expect(stepAt(withCondition(tree, "q", { kind: "clicked_flow_email" }), ["2"])).toMatchObject({ condition: { kind: "clicked_flow_email" } });
   });
 });
+
+describe("products picked for each reader (D767 slice 4)", () => {
+  it("puts a pick kind on one email and takes it off", async () => {
+    const { withStepPicks } = await import("./flows");
+    const on = withStepPicks(tree, "best", "cross_sell");
+    expect(stepAt(on, ["2", "else", "0"])).toMatchObject({ id: "best", picks: "cross_sell" });
+    expect(stepAt(withStepPicks(on, "best", null), ["2", "else", "0"])).not.toHaveProperty("picks");
+    expect(checkFlow(on)).toEqual([]);
+  });
+});

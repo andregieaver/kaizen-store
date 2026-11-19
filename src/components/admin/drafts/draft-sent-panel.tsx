@@ -7,6 +7,7 @@ import type { DraftActionResponse, DraftProblemWords } from "@/app/admin/(gated)
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import type { DraftLike } from "@/lib/draft-editor";
 import type { ManualPaymentMethod } from "@/lib/draft-input";
+import type { Messages } from "@/lib/i18n";
 import { DRAFT_SENDS_PER_DAY } from "@/lib/order-limits";
 import { canReopenDraft, isDraftDeletable, type DraftStatus } from "@/lib/draft-status";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
@@ -54,6 +55,7 @@ export function DraftSentPanel({
   timeZone,
   canWrite,
   mayRecordOutside,
+  bases,
   actions,
   onResult,
 }: {
@@ -76,6 +78,8 @@ export function DraftSentPanel({
   timeZone: string;
   canWrite: boolean;
   mayRecordOutside: boolean;
+  /** The unit names of a unit price, read on the server (see `DraftSummaryPanel`). */
+  bases: Messages["unitPrice"]["bases"];
   actions: DraftSentActions;
   onResult: (result: DraftActionResponse) => void;
 }) {
@@ -225,7 +229,7 @@ export function DraftSentPanel({
       </div>
 
       <aside className="lg:sticky lg:top-32 lg:self-start">
-        <DraftSummaryPanel summary={summary} problems={status === "open" ? problems : []} currency={currency} locale={locale} state="fresh" />
+        <DraftSummaryPanel summary={summary} problems={status === "open" ? problems : []} currency={currency} locale={locale} state="fresh" bases={bases} />
       </aside>
     </div>
   );

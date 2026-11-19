@@ -135,7 +135,7 @@ describe("the readers that only ask what a source means", () => {
 
   it("ask sourceTraits() rather than comparing the source's name, so a new source has to answer", () => {
     // These take what the grid shows from the table: products' cards and campaigns, the button's words, what the editor offers.
-    for (const file of ["src/components/content-grid.tsx", "src/components/content-grid-section.tsx"]) {
+    for (const file of ["src/components/content-grid-tiles.tsx", "src/components/content-grid-section.tsx"]) {
       const text = read(file);
       expect(text, file).toContain("sourceTraits(");
       expect(text, file).not.toMatch(/\bsource\??\.type\s*[!=]==/);

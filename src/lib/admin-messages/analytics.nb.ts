@@ -818,6 +818,12 @@ export const analyticsNb: AnalyticsMessages = {
     checkoutsHelp: "Ordrer som venter på betaling, lagt inn de siste 30 minuttene.",
     countingOff: "Besøkende telles bare mens telling av besøk er på. Den setter ingen informasjonskapsler og teller fra dagen den slås på.",
     countingLink: "Slå på telling av besøk",
+    phone: {
+      lead: "Butikken nå, lest på nytt hvert 10. sekund.",
+      off: "Telling av besøk er av",
+      offSub: "Ingen informasjonskapsler; den teller fra dagen den slås på",
+      turnOn: "Slå på",
+    },
     countriesTitle: "Hvor de besøkende er nå",
     countriesCaption: "Besøkende de siste 5 minuttene per land",
     country: "Land",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AUTOMATION_KINDS } from "./automation-kinds";
+import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds";
 import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
 import { FLOW_TRIGGERS, LAPSE_DAYS } from "./flow-triggers";
 
@@ -18,7 +18,8 @@ export type FlowCondition =
   | { kind: "in_segment"; segmentId: string };
 
 export type FlowStep =
-  | { id: string; kind: "email"; content: BroadcastContent }
+  /** `picks` (slice 4): products chosen for each reader by code (D653, D691) put in the email; without any for a reader, it is not sent. */
+  | { id: string; kind: "email"; content: BroadcastContent; picks?: PickKind }
   | { id: string; kind: "wait"; hours: number }
   | { id: string; kind: "if"; condition: FlowCondition; then: FlowStep[]; else: FlowStep[] }
   | { id: string; kind: "end" };
@@ -39,7 +40,7 @@ const conditionSchema: z.ZodType<FlowCondition> = z.discriminatedUnion("kind", [
 
 export const flowStepSchema: z.ZodType<FlowStep> = z.lazy(() =>
   z.discriminatedUnion("kind", [
-    z.object({ id: z.string().regex(STEP_ID), kind: z.literal("email"), content: broadcastContentSchema }),
+    z.object({ id: z.string().regex(STEP_ID), kind: z.literal("email"), content: broadcastContentSchema, picks: z.enum(PICK_KINDS).optional() }),
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("wait"), hours: z.number().int().min(1).max(WAIT_HOURS_MAX) }),
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("if"), condition: conditionSchema, then: z.array(flowStepSchema), else: z.array(flowStepSchema) }),
     z.object({ id: z.string().regex(STEP_ID), kind: z.literal("end") }),
@@ -238,4 +239,12 @@ export function removeStep(steps: readonly FlowStep[], id: string): FlowStep[] {
 /** An `if` with a new condition. Pure. */
 export function withCondition(steps: readonly FlowStep[], id: string, condition: FlowCondition): FlowStep[] {
   return replaceStep(steps, id, (step) => (step.kind === "if" ? { ...step, condition } : step));
+}
+
+/** An email with products picked for each reader of one kind, or with none (`null`). Pure. */
+export function withStepPicks(steps: readonly FlowStep[], id: string, picks: PickKind | null): FlowStep[] {
+  return replaceStep(steps, id, (step) => {
+    if (step.kind !== "email") return step;
+    return picks ? { ...step, picks } : { id: step.id, kind: step.kind, content: step.content };
+  });
 }

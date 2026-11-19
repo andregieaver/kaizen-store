@@ -17,6 +17,7 @@ import {
   TAGS_PER_ORDER,
   TAG_MAX_LENGTH,
 } from "@/lib/order-limits";
+import type { Messages } from "@/lib/i18n";
 import { formatPriceInput } from "@/lib/product-input";
 import type { DraftCustomerChoice, DraftSummary, DraftVariantChoice } from "@/server/draft-orders";
 
@@ -57,6 +58,8 @@ export type DraftEditorProps = {
   /** A shopper's request for a quote (D431): its note, and declining it; null for a draft staff made. */
   quote?: DraftQuote | null;
   timeZone?: string;
+  /** The unit names of a unit price, read on the server (see `DraftSummaryPanel`). */
+  bases: Messages["unitPrice"]["bases"];
   actions: DraftEditorActions;
   /** The screen shows a link once; the editor hands it up when a send made one. */
   onResult: (result: DraftActionResponse) => void;
@@ -118,6 +121,7 @@ export function DraftEditor({
   companyFields = true,
   quote = null,
   timeZone,
+  bases,
   actions,
   onResult,
 }: DraftEditorProps) {
@@ -773,7 +777,7 @@ export function DraftEditor({
       </div>
 
       <aside className="lg:sticky lg:top-32 lg:self-start">
-        <DraftSummaryPanel summary={summary} problems={problems} currency={money.currency} locale={money.locale} state={status === "saving" ? "working" : dirty ? "stale" : "fresh"} />
+        <DraftSummaryPanel summary={summary} problems={problems} currency={money.currency} locale={money.locale} state={status === "saving" ? "working" : dirty ? "stale" : "fresh"} bases={bases} />
       </aside>
     </div>
   );

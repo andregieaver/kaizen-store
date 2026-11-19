@@ -83,6 +83,13 @@ export const blogNb: BlogMessages = {
     saved: "Forfatteren er lagret.",
     remove: "Slett forfatteren",
     removed: "Forfatteren er slettet. Artiklene deres viser navnet som er skrevet på dem.",
+    phone: {
+      lead: "Hvem som skriver artiklene dine, vist under hver av dem.",
+      more: "Bilde, noen ord og en lenke",
+      optional: "Valgfritt",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     cancel: "Avbryt",
     problems: {
       name_missing: "Skriv navnet til forfatteren.",

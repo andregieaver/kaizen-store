@@ -42,7 +42,7 @@
     "builder": {
       "document": 606658,
       "handed": 319551,
-      "scriptByIdle": 3038521,
+      "scriptByIdle": 2747092,
       "named": null,
       "areas": [
         "animation",
@@ -116,7 +116,7 @@
     "builder": {
       "document": 633031,
       "handed": 346127,
-      "scriptByIdle": 3038521,
+      "scriptByIdle": 2747092,
       "named": null,
       "areas": [
         "animation",
