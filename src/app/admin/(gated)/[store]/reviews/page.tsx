@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Button, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, EmptyState, KpiTile, ListSearch, PageHeader, Select } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -102,9 +102,9 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
           <>
             <MoreMenu label={w.more}>
               {canChange && (
-                <Link href={`${base}/import`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+                <ButtonLink kind="quiet" href={`${base}/import`}>
                   {words.move.importLink}
-                </Link>
+                </ButtonLink>
               )}
               <form method="post" action={`${base}/export`}>
                 <button type="submit" className="inline-flex min-h-10 w-full items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
@@ -134,11 +134,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
           compact
           title={state ? (state === "pending" ? w.waiting : STATUS_WORDS[state]) : w.all}
           aside={
-            <form method="get" action={base} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="state" value={state ?? "all"} />
-              <input type="search" name="q" defaultValue={q} placeholder={w.searchPlaceholder} aria-label={w.searchLabel} className="min-h-10 w-64 rounded-md border border-line px-3" />
-              <Button type="submit">{w.search}</Button>
-            </form>
+            <ListSearch action={base} value={q} placeholder={w.searchPlaceholder} words={{ label: w.searchLabel, button: w.search }} keep={{ state: state ?? "all" }} />
           }
         >
           <nav aria-label={w.filterLabel} className="mb-4 flex flex-wrap gap-2">
@@ -165,7 +161,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
             ))}
           </nav>
           {page.rows.length === 0 ? (
-            <p className="p-4 text-body text-muted">{w.noMatch}</p>
+            <EmptyState title={w.noMatch} />
           ) : (
             <ul className="divide-y divide-line">
               {page.rows.map((r) => (
@@ -241,7 +237,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                           <ActionForm action={hideReviewAction.bind(null, store.slug, r.id)} className="mt-2 flex flex-wrap items-end gap-2">
                             <label className="flex flex-col gap-1 text-body">
                               <span className="text-caption text-muted">{w.whyHidden}</span>
-                              <select name="reason" required defaultValue="" className="min-h-10 rounded-md border border-line px-3">
+                              <Select name="reason" required defaultValue="">
                                 <option value="" disabled>
                                   {w.choose}
                                 </option>
@@ -250,7 +246,7 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
                                     {REASON_WORDS[reason]}
                                   </option>
                                 ))}
-                              </select>
+                              </Select>
                             </label>
                             <SubmitButton variant="secondary">{w.hide}</SubmitButton>
                             <p className="w-full text-caption text-muted">{w.negativeNote}</p>

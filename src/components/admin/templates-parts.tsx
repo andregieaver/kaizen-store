@@ -38,17 +38,6 @@ export function Problems({ problems }: { problems: readonly string[] | undefined
   );
 }
 
-/** A list that has nothing to show, and what to do about it. */
-export function EmptyState({ title, hint, children }: { title: string; hint: string; children?: ReactNode }) {
-  return (
-    <div className="flex flex-col items-start gap-2 rounded-md border border-dashed border-line p-3 text-sm">
-      <p className="font-medium">{title}</p>
-      <p className="text-xs text-muted">{hint}</p>
-      {children}
-    </div>
-  );
-}
-
 /** A group's heading, as the Saved tab's. */
 export const groupHeading = "text-eyebrow text-muted uppercase";
 

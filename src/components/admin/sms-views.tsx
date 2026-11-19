@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
+import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import { field, hint, label, primary, secondary } from "@/components/admin/data/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { QUIET_EARLIEST, QUIET_LATEST, SMS_PARTS_MAX, SMS_TEXT_MAX, smsBody, smsParts } from "@/lib/sms";
@@ -129,20 +130,21 @@ export function SmsSettingsForm({
         <button type="submit" disabled={pending} className={primary}>
           {c.save}
         </button>
-        <button
-          type="button"
+        <ConfirmButton
+          kind="none"
           disabled={pending}
           className={secondary}
-          onClick={() => {
-            if (!window.confirm(w.disconnectConfirm)) return;
+          question={w.disconnectConfirm}
+          confirm={w.disconnect}
+          action={() =>
             start(async () => {
               const result = await disconnect();
               if (!result.ok) setMessage({ tone: "problem", text: result.problem });
-            });
-          }}
+            })
+          }
         >
           {w.disconnect}
-        </button>
+        </ConfirmButton>
       </div>
       <Message message={message} />
     </form>
@@ -284,20 +286,22 @@ export function SmsCampaignEditor({
           </button>
         )}
         {send && price && price.withinCap && price.recipients > 0 && (
-          <button
-            type="button"
+          <ConfirmButton
+            kind="none"
             disabled={pending || changed}
             className={primary}
-            onClick={() => {
-              if (!window.confirm(fillWords(w.sendConfirm, { people: people(price.recipients) }))) return;
+            danger={false}
+            question={fillWords(w.sendConfirm, { people: people(price.recipients) })}
+            confirm={w.sendNow}
+            action={() =>
               start(async () => {
                 const result = await send();
                 setMessage(result.ok ? { tone: "ok", text: w.started } : { tone: "problem", text: result.problem });
-              });
-            }}
+              })
+            }
           >
             {w.sendNow}
-          </button>
+          </ConfirmButton>
         )}
         {remove && (
           <button type="button" disabled={pending} className="text-sm underline underline-offset-2" onClick={() => start(async () => void (await remove()))}>

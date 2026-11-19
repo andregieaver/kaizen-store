@@ -1,4 +1,4 @@
-import { AdminLink } from "@/components/admin/ui";
+import { AdminLink, ButtonLink } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
 import type { CoverageCountry, VatRateRow } from "@/server/vat-admin";
@@ -25,9 +25,9 @@ export function VatPhoneList({ countries, unverified, words, locale }: { countri
             <span className="text-caption text-ink-2">{w.toVerifySub}</span>
           </span>
           {next && (
-            <AdminLink href={`/admin/platform/vat/${next.code}`} className="inline-flex min-h-11 shrink-0 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+            <ButtonLink kind="main" size="header" href={`/admin/platform/vat/${next.code}`} className="shrink-0">
               {w.verifyNext}
-            </AdminLink>
+            </ButtonLink>
           )}
         </section>
       )}

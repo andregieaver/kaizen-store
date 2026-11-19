@@ -1,8 +1,10 @@
-import { ArrowRight, Search, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 
 import { AdminLink } from "../ui/link";
+import { ListSearch } from "../ui/list-search";
+import { Select, TextInput } from "../ui/field";
 
-import { field, hint, primary, secondary } from "@/components/admin/data/ui";
+import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { clearHref, plainState } from "@/lib/order-list-admin";
@@ -38,7 +40,7 @@ function Group<T extends string>({ legend, name, values, labels, checked }: { le
 }
 
 /**
- * The search box and the filters of the Orders list (wave 3, D173, `docs/wave-3-orders.md` 2.2): one GET form, so it works without a script and the address is the state (a bookmark, the
+ * The search box and the filters of the Orders list (wave 3, D173, `docs/wave-3-orders.md` 2.2): one GET form (the kit's `ListSearch`, code review 1.12), so it works without a script and the address is the state (a bookmark, the
  * back button, a saved view). The form shows the state with a built-in view written out as the filters it stands for, and submits the whole of it: a saved view is not carried
  * along (its filters are in the form). Below it, a chip for each filter that is on, each a link that clears it, and *Clear all*.
  */
@@ -66,27 +68,24 @@ export function FilterBar({
   const filtered = hasFilters(params);
   return (
     <div className="flex flex-col gap-3">
-      <form method="get" action={base} role="search" aria-label={w.formLabel} className="relative flex flex-col gap-3">
-        {/* Round 3 (D603): one bar, the search and its Filters together; the filters open as a panel under it. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex min-w-60 flex-1 items-center gap-2 rounded-pill bg-card py-1 pr-1.5 pl-4 shadow-[inset_0_0_0_1px_var(--color-edge)]">
-            <Search aria-hidden className="size-4 shrink-0 text-muted" />
-            <label htmlFor="orders-q" className="sr-only">
-              {w.search}
-            </label>
-            <input
-              id="orders-q"
-              type="search"
-              name="q"
-              defaultValue={params.q}
-              maxLength={100}
-              placeholder={w.searchPlaceholder}
-              className="min-h-9 min-w-0 flex-1 bg-transparent text-body outline-none"
-            />
-            <button type="submit" className="flex size-9 shrink-0 items-center justify-center rounded-pill text-ink hover:bg-sunken">
-              <ArrowRight aria-hidden className="size-4" />
-              <span className="sr-only">{w.searchButton}</span>
-            </button>
+      {/* Round 3 (D603): one bar, the search and its Filters together; the filters open as a panel under it. */}
+      <ListSearch
+        action={base}
+        id="orders-q"
+        value={params.q}
+        maxLength={100}
+        placeholder={w.searchPlaceholder}
+        formLabel={w.formLabel}
+        words={{ label: w.search, button: w.searchButton }}
+        aside={
+          filtered &&
+          chips.length > 0 && (
+            <AdminLink href={base} className={secondary}>
+              {w.clearAll}
+            </AdminLink>
+          )
+        }
+        tools={
             <details className="group">
               <summary className="inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-pill bg-sunken px-3.5 text-caption text-ink group-open:bg-ink group-open:text-card [&::-webkit-details-marker]:hidden">
                 <SlidersHorizontal aria-hidden className="size-3.5" />
@@ -115,7 +114,7 @@ export function FilterBar({
                 <label htmlFor="orders-tag" className="text-sm font-medium">
                   {w.tagged} <span className="font-normal text-muted">{w.allOfThem}</span>
                 </label>
-                <input id="orders-tag" name="tag" list="orders-tag-suggestions" defaultValue={state.tag.join(", ")} placeholder={w.tagPlaceholder} autoComplete="off" className={field} />
+                <TextInput id="orders-tag" name="tag" list="orders-tag-suggestions" defaultValue={state.tag.join(", ")} placeholder={w.tagPlaceholder} autoComplete="off" />
                 <datalist id="orders-tag-suggestions">
                   {tagSuggestions.map((label) => (
                     <option key={label} value={label} />
@@ -126,77 +125,77 @@ export function FilterBar({
                 <label htmlFor="orders-range" className="text-sm font-medium">
                   {w.placed}
                 </label>
-                <select id="orders-range" name="range" defaultValue={state.range ?? ""} className={field}>
+                <Select id="orders-range" name="range" defaultValue={state.range ?? ""}>
                   <option value="">{w.anyTime}</option>
                   {RANGE_FILTERS.map((range) => (
                     <option key={range} value={range}>
                       {w.ranges[range][0].toUpperCase() + w.ranges[range].slice(1)}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <span className={hint}>{w.daysWin}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-from" className="text-sm font-medium">
                   {w.fromDay}
                 </label>
-                <input id="orders-from" type="date" name="from" defaultValue={state.from ?? ""} className={field} />
+                <TextInput id="orders-from" type="date" name="from" defaultValue={state.from ?? ""} />
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-to" className="text-sm font-medium">
                   {w.toDay} <span className="font-normal text-muted">{w.inclusive}</span>
                 </label>
-                <input id="orders-to" type="date" name="to" defaultValue={state.to ?? ""} className={field} />
+                <TextInput id="orders-to" type="date" name="to" defaultValue={state.to ?? ""} />
               </div>
               {markets.length > 1 && (
                 <div className="flex flex-col gap-1">
                   <label htmlFor="orders-market" className="text-sm font-medium">
                     {w.market}
                   </label>
-                  <select id="orders-market" name="market" defaultValue={state.market ?? ""} className={field}>
+                  <Select id="orders-market" name="market" defaultValue={state.market ?? ""}>
                     <option value="">{w.allMarkets}</option>
                     {markets.map((market) => (
                       <option key={market.code} value={market.code}>
                         {market.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-source" className="text-sm font-medium">
                   {w.madeBy}
                 </label>
-                <select id="orders-source" name="source" defaultValue={state.source ?? ""} className={field}>
+                <Select id="orders-source" name="source" defaultValue={state.source ?? ""}>
                   <option value="">{w.anyone}</option>
                   {SOURCE_FILTERS.map((source) => (
                     <option key={source} value={source}>
                       {w.sources[source]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-archived" className="text-sm font-medium">
                   {w.archived}
                 </label>
-                <select id="orders-archived" name="archived" defaultValue={state.archived} className={field}>
+                <Select id="orders-archived" name="archived" defaultValue={state.archived}>
                   <option value="no">{w.notArchived}</option>
                   <option value="yes">{w.onlyArchived}</option>
                   <option value="all">{w.both}</option>
-                </select>
+                </Select>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="orders-sort" className="text-sm font-medium">
                   {w.sort}
                 </label>
-                <select id="orders-sort" name="sort" defaultValue={state.sort} className={field}>
+                <Select id="orders-sort" name="sort" defaultValue={state.sort}>
                   {SORT_KEYS.map((sort) => (
                     <option key={sort} value={sort}>
                       {w.sorts[sort]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -212,14 +211,8 @@ export function FilterBar({
           </div>
               </div>
             </details>
-          </div>
-          {filtered && chips.length > 0 && (
-            <AdminLink href={base} className={secondary}>
-              {w.clearAll}
-            </AdminLink>
-          )}
-        </div>
-      </form>
+        }
+      />
 
       {chips.length > 0 && (
         <ul aria-label={w.chipsLabel} className="flex flex-wrap gap-2">

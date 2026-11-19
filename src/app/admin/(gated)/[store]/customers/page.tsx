@@ -1,6 +1,6 @@
 import { SelectNav } from "@/components/admin/select-nav";
 import type { Metadata } from "next";
-import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
@@ -19,7 +19,7 @@ import { tagKey } from "@/lib/order-tags";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { AdminLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, CARD_CLASS, EmptyState, ListSearch, PageHeader, Select, TextInput } from "@/components/admin/ui";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
 import { bulkTagAction, tagTickedAction } from "./actions";
@@ -161,15 +161,17 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             </AdminLink>
           ))}
         </nav>
-        <form role="search" action={base} className="flex min-w-[16rem] flex-1 items-center max-sm:order-1 max-sm:basis-full gap-2 rounded-pill bg-card py-1 pr-1.5 pl-4 shadow-[inset_0_0_0_1px_var(--color-edge)]">
-          {show && <input type="hidden" name="show" value={show} />}
-          {sort !== "recent" && <input type="hidden" name="sort" value={sort} />}
-          <Search aria-hidden className="size-4 shrink-0 text-muted" />
-          <label className="sr-only" htmlFor="customer-search">
-            {words.search}
-          </label>
-          <input id="customer-search" name="q" type="search" defaultValue={q} placeholder={words.searchPlaceholder} className="min-h-9 min-w-0 flex-1 bg-transparent text-body outline-none" />
-          {tags.length > 0 && (
+        <ListSearch
+          action={base}
+          id="customer-search"
+          value={q}
+          placeholder={words.searchPlaceholder}
+          words={{ label: words.search, button: words.searchButton }}
+          keep={{ show, sort: sort === "recent" ? null : sort }}
+          button="hidden"
+          className="min-w-[16rem] flex-1 max-sm:order-1 max-sm:basis-full"
+          tools={
+            tags.length > 0 && (
             <details className="relative">
               <summary className="inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-pill bg-sunken px-3.5 text-caption text-ink [&::-webkit-details-marker]:hidden">
                 <SlidersHorizontal aria-hidden className="size-3.5" />
@@ -179,25 +181,23 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
               <div className="absolute right-0 z-30 mt-2 flex w-64 flex-col gap-3 rounded-panel border border-line bg-card p-3 shadow-[var(--shadow-float)]">
                 <label className="flex flex-col gap-1 text-caption text-muted">
                   {staff.tagLabel}
-                  <select name="tag" defaultValue={tag ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-body text-ink">
+                  <Select name="tag" defaultValue={tag ?? ""} className="text-ink">
                     <option value="">{staff.allTags}</option>
                     {tags.map((t) => (
                       <option key={t.key} value={t.key}>
                         {t.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-body font-medium text-brand-ink">
                   {words.searchButton}
                 </button>
               </div>
             </details>
-          )}
-          <button type="submit" className="sr-only">
-            {words.searchButton}
-          </button>
-        </form>
+            )
+          }
+        />
         <div className="max-sm:order-3">
         <MoreMenu label={words.sort[sort]}>
           {SORTS.map((option) => (
@@ -216,7 +216,20 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
       </div>
 
       {customers.length === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>{filtered || show ? words.noMatch : words.none}</p>
+        <EmptyState
+          title={filtered || show ? words.noMatch : words.none}
+          action={
+            filtered ? (
+              <ButtonLink href={hrefWith({ q: null, tag: null })}>{words.showEveryone}</ButtonLink>
+            ) : (
+              !show && canWrite && (
+                <ButtonLink kind="main" href={`${base}/new`}>
+                  {staff.addCustomer}
+                </ButtonLink>
+              )
+            )
+          }
+        />
       ) : (
         <CustomerList
           base={base}
@@ -263,7 +276,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             <input type="hidden" name="filterTag" value={tag ?? ""} />
             <label className="flex flex-col gap-1 text-body">
               {staff.bulk.tag}
-              <input name="tag" required maxLength={40} className="min-h-10 w-56 rounded-md border border-line bg-card px-3" />
+              <TextInput name="tag" required maxLength={40} className="w-56" />
             </label>
             <SubmitButton name="mode" value="add">
               {staff.bulk.add}

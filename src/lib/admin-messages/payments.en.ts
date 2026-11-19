@@ -155,6 +155,8 @@ export const paymentsEn = {
     agreements: "Vipps and MobilePay need your own agreement with them, Swish a business in the EEA. Switch those on in your",
     dashboard: "Mollie Dashboard",
     disconnect: "Disconnect Mollie",
+    /** Asked before Mollie is disconnected (code review 1.12; the admin usability audit's H3 row). */
+    disconnectQuestion: "Disconnect Mollie? Shoppers can no longer pay with Mollie's methods until it is connected again.",
   },
   audit: {
     title: "Recent changes",

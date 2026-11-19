@@ -10,7 +10,8 @@ import { formatDay, isDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import type { GeneratedLines, UnbilledGroup } from "@/server/work-invoices";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -168,7 +169,7 @@ function UnbilledBody({
         {tw.billableTimeThatNo}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={tw.fromDateOptional} error={from && !isDay(from) ? tw.giveTheDate : undefined}>
+        <Field label={tw.fromDateOptional} problem={from && !isDay(from) ? tw.giveTheDate : undefined}>
           {(props) => (
             <input
               {...props}
@@ -179,7 +180,7 @@ function UnbilledBody({
             />
           )}
         </Field>
-        <Field label={tw.toDateOptional} error={rangeProblem ?? undefined}>
+        <Field label={tw.toDateOptional} problem={rangeProblem ?? undefined}>
           {(props) => (
             <input
               {...props}

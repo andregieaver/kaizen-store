@@ -151,6 +151,7 @@ export const paymentsNb: PaymentsMessages = {
     agreements: "Vipps og MobilePay krever din egen avtale med dem, Swish en virksomhet i EØS. Slå dem på i",
     dashboard: "Mollie-dashbordet",
     disconnect: "Koble fra Mollie",
+    disconnectQuestion: "Koble fra Mollie? Kundene kan ikke betale med Mollies betalingsmåter før den er koblet til igjen.",
   },
   audit: {
     title: "Siste endringer",

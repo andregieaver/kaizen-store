@@ -10,7 +10,8 @@ import { readFxRate } from "@/lib/work-invoice-ui";
 import type { InvoiceReadiness } from "@/server/work-invoices";
 
 import { ReadinessList, type ReadinessWords } from "./invoice-readiness";
-import { Field, Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -148,7 +149,7 @@ function IssueForm(props: IssueDialogProps) {
 
       <Field
         label={tw.issueDate}
-        error={dateProblem ?? undefined}
+        problem={dateProblem ?? undefined}
         hint={fillWords(tw.dueToday, { due: isDay(issuedOn) && paymentDays > 0 ? fillWords(tw.dueDays, { day: formatDay(dueOn(issuedOn, paymentDays), locale), days: paymentDays }) : tw.afterDaysToPay, today: formatDay(today, locale) })}
       >
         {(fieldProps) => (
@@ -188,7 +189,7 @@ function IssueForm(props: IssueDialogProps) {
       {needsFx && (
         <Field
           label={fillWords(tw.exchangeRate, { currency, home })}
-          error={fxProblem ?? undefined}
+          problem={fxProblem ?? undefined}
           hint={fillWords(tw.vatAlsoInHome, { home })}
         >
           {(fieldProps) => (

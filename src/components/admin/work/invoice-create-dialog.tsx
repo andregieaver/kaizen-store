@@ -12,7 +12,8 @@ import {
 import { Modal } from "@/components/admin/modal";
 import type { NewInvoiceChoices } from "@/server/work-invoice-screens";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { workBase } from "@/lib/work-paths";
 import { useAdminText } from "@/components/admin/admin-text";
 
@@ -142,7 +143,7 @@ function NewInvoiceForm({
 
   return (
     <form onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
-      <Field label={tw.client} error={attempted && !chosenClient ? tw.chooseTheClientTo : undefined}>
+      <Field label={tw.client} problem={attempted && !chosenClient ? tw.chooseTheClientTo : undefined}>
         {(props) => (
           <select
             {...props}

@@ -17,7 +17,8 @@ import {
 } from "@/lib/work-ui";
 import type { WorkAssignment } from "@/server/work";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -131,7 +132,7 @@ export function AssignmentForm({
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
-      <Field label={tw.name} error={err("name")}>
+      <Field label={tw.name} problem={err("name")}>
         {(props) => (
           <input
             {...props}
@@ -147,7 +148,7 @@ export function AssignmentForm({
       {moveTo && moveTo.length > 0 && (
         <Field
           label={tw.client}
-          error={err("clientId")}
+          problem={err("clientId")}
           hint={tw.anAssignmentWithNo}
         >
           {(props) => (
@@ -162,7 +163,7 @@ export function AssignmentForm({
         </Field>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={tw.billing} error={err("billingType")}>
+        <Field label={tw.billing} problem={err("billingType")}>
           {(props) => (
             <select
               {...props}
@@ -179,7 +180,7 @@ export function AssignmentForm({
             </select>
           )}
         </Field>
-        <Field label={tw.status} error={err("status")}>
+        <Field label={tw.status} problem={err("status")}>
           {(props) => (
             <select {...props} name="status" defaultValue={assignment?.status ?? "active"} className={control}>
               {(Object.keys(ASSIGNMENT_STATUS_LABELS) as (keyof typeof ASSIGNMENT_STATUS_LABELS)[]).map((value) => (
@@ -194,7 +195,7 @@ export function AssignmentForm({
       {billingType === "fixed_fee" ? (
         <Field
           label={fillWords(tw.fixedFeeIn, { currency })}
-          error={err("fixedAmount")}
+          problem={err("fixedAmount")}
           hint={tw.withoutVatBilledOnce}
         >
           {(props) => (
@@ -211,7 +212,7 @@ export function AssignmentForm({
       ) : (
         <Field
           label={fillWords(tw.hourlyRateIn, { currency })}
-          error={err("hourlyRate")}
+          problem={err("hourlyRate")}
           hint={
             clientRate
               ? fillWords(tw.emptyBillsClientRate, { rate: clientRate })
@@ -230,7 +231,7 @@ export function AssignmentForm({
           )}
         </Field>
       )}
-      <Field label={tw.estimate} error={err("estimate")} hint={tw.hoursOr1h301}>
+      <Field label={tw.estimate} problem={err("estimate")} hint={tw.hoursOr1h301}>
         {(props) => (
           <input
             {...props}
@@ -242,7 +243,7 @@ export function AssignmentForm({
         )}
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={tw.start} error={err("startDate")}>
+        <Field label={tw.start} problem={err("startDate")}>
           {(props) => (
             <input
               {...props}
@@ -253,7 +254,7 @@ export function AssignmentForm({
             />
           )}
         </Field>
-        <Field label={tw.end} error={err("endDate")}>
+        <Field label={tw.end} problem={err("endDate")}>
           {(props) => (
             <input {...props} name="endDate" type="date" defaultValue={assignment?.endDate ?? ""} className={control} />
           )}
@@ -267,7 +268,7 @@ export function AssignmentForm({
         </p>
         <Field
           label={tw.warnThisManyMinutes}
-          error={err("alertMinutes")}
+          problem={err("alertMinutes")}
           hint={tw.emptyForNoWarnings}
         >
           {(props) => (

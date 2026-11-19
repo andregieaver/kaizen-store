@@ -149,6 +149,8 @@ import type { SandboxMessages } from "./admin-messages/sandbox.en";
 import { SANDBOX_WORDS } from "./admin-words/sandbox";
 import type { HouseAutopilotMessages } from "./admin-messages/house-autopilot.en";
 import { HOUSE_AUTOPILOT_WORDS } from "./admin-words/house-autopilot";
+import { kitEn, type KitMessages } from "./admin-messages/kit.en";
+import { kitNb } from "./admin-messages/kit.nb";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -232,6 +234,8 @@ export type AdminAreaMessages = {
   oauth: OauthMessages;
   sandbox: SandboxMessages;
   houseAutopilot: HouseAutopilotMessages;
+  /** The admin kit's own words (code review 1.12, D818): `Pager` and `ListSearch`, drawn on the server. */
+  kit: KitMessages;
   /** Cuts (bloat review step 2.27, `cut()` below): some groups of an area, the same objects, for screens whose parts read only those. */
   builderText: Pick<BuilderMessages, "richText" | "textStyles" | "responsive">;
   websitePick: Pick<WebsiteMessages, "picker" | "pictureMaker">;
@@ -279,7 +283,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "privacyOfficer", "flows", "automatic", "houseAutopilot"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings", "privacyOfficer", "flows", "automatic", "houseAutopilot", "kit"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
@@ -379,6 +383,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   oauth: OAUTH_WORDS,
   sandbox: SANDBOX_WORDS,
   houseAutopilot: HOUSE_AUTOPILOT_WORDS,
+  kit: { en: kitEn, nb: kitNb },
   builderText: cut({ en: builderEn, nb: builderNb }, ["richText", "textStyles", "responsive"]),
   websitePick: cut(WEBSITE_WORDS, ["picker", "pictureMaker"]),
   assistantBar: cut(ASSISTANT_WORDS, ["name", "launcher", "notices"]),

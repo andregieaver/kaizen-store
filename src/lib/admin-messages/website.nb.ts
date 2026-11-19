@@ -80,9 +80,6 @@ export const websiteNb: WebsiteMessages = {
     inUse: "I bruk",
   },
   storePages: {
-    shownOf: "{shown} av {total}",
-    next: "Neste 100",
-    previous: "Forrige 100",
     types: {
       page: {
         list: "Sider",

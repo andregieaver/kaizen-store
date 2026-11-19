@@ -5,7 +5,13 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, PageHeader, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, ShareBar, TrendChip } from "./index";
+import { adminText } from "@/lib/admin-text";
+
+import { ConfirmButton, refusalOf, splitQuestion } from "./confirm-button";
+import { fieldClass, TextArea, type FieldControl } from "./field";
+import { pageAddress } from "./pager";
+import ConfirmDialog from "./confirm-dialog";
+import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, EmptyState, Field, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, ListSearch, PageHeader, Pager, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, Select, ShareBar, TextInput, TrendChip } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
@@ -206,5 +212,174 @@ describe("the page header's way back and description", () => {
     expect(out).toContain('aria-hidden="true"'); // the chevron
     expect(out).toContain('<div class="mt-2 max-w-[75ch] text-body text-ink-2">Tick what each plan includes.</div>');
     expect(out.indexOf("Plans")).toBeLessThan(out.indexOf("<h1"));
+  });
+});
+
+describe("fields (code review 1.12)", () => {
+  it("draws a field's box in the roles, 40 px or dense, as wide as asked", () => {
+    expect(fieldClass()).toContain("min-h-10 px-3");
+    expect(fieldClass()).toContain("rounded-md border border-line bg-card text-sm font-normal");
+    expect(fieldClass({ dense: true })).toContain("min-h-9 px-2");
+    expect(fieldClass({ full: true })).toContain("w-full");
+    expect(fieldClass()).not.toContain("w-full");
+    const input = html(h(TextInput, { name: "q", defaultValue: "mugs", className: "max-w-xs" }));
+    expect(input).toMatch(/^<input class="[^"]*min-h-10[^"]* max-w-xs" name="q" value="mugs"\/>$/);
+    const select = html(h(Select, { name: "tag", defaultValue: "b", dense: true }, h("option", { value: "a" }, "A"), h("option", { value: "b" }, "B")));
+    expect(select).toMatch(/^<select class="[^"]*min-h-9 px-2[^"]*" name="tag">/);
+    expect(select).toContain('<option value="b" selected="">B</option>');
+    expect(html(h(TextArea, { name: "note", rows: 3 }))).toContain("rounded-md border border-line bg-card");
+  });
+
+  it("ties the label, the hint and the problem to the control, and marks a required one", () => {
+    const out = html(
+      h(Field, { label: "Email", hint: "Where receipts go.", problem: "Write an email address.", required: true, children: (control: FieldControl) => h(TextInput, { name: "email", ...control }) }),
+    );
+    const id = out.match(/<label for="([^"]+)"/)?.[1];
+    expect(id).toBeTruthy();
+    expect(out).toContain(`id="${id}"`);
+    expect(out).toContain(`aria-describedby="${id}-hint ${id}-problem"`);
+    expect(out).toContain('aria-invalid="true"');
+    expect(out).toContain('required=""');
+    expect(out).toContain('<span aria-hidden="true" class="text-danger-text"> *</span>');
+    expect(out.indexOf("Where receipts go.")).toBeLessThan(out.indexOf("Write an email address."));
+    expect(out).toContain(`<p id="${id}-problem" class="text-sm text-danger-text">Write an email address.</p>`);
+  });
+
+  it("says nothing it was not given, and takes a control drawn another way by its id", () => {
+    const plain = html(h(Field, { label: "Name", children: (control: FieldControl) => h(TextInput, { name: "name", ...control }) }));
+    expect(plain).not.toContain("aria-describedby");
+    expect(plain).not.toContain('aria-invalid="');
+    expect(plain).not.toContain("required");
+    const given = html(h(Field, { label: "Colour", id: "colour", children: h("input", { id: "colour", type: "color" }) }));
+    expect(given).toContain('<label for="colour"');
+    expect(given).toContain('<input id="colour" type="color"/>');
+  });
+});
+
+describe("the empty state (code review 1.12)", () => {
+  it("names what is missing, says what it is for and offers one next step", () => {
+    const out = html(h(EmptyState, { title: "No price lists yet", action: h(ButtonLink, { kind: "main", href: "/admin/s/price-lists/new" }, "Make a price list") }, "Give a group of customers their own prices."));
+    expect(out).toContain("border-dashed border-line");
+    expect(out).toContain('<p class="text-body-strong text-ink">No price lists yet</p>');
+    expect(out).toContain("Give a group of customers their own prices.");
+    expect(out).toMatch(/href="\/admin\/s\/price-lists\/new"/);
+    expect(out.indexOf("No price lists yet")).toBeLessThan(out.indexOf("Make a price list"));
+  });
+
+  it("has a small left-aligned form for a panel or a dialog", () => {
+    const out = html(h(EmptyState, { title: "Nothing saved", compact: true }, "Save a section to use it again."));
+    expect(out).toContain("items-start");
+    expect(out).toContain('<div class="text-xs text-muted">Save a section to use it again.</div>');
+    expect(out).not.toContain("text-center");
+  });
+});
+
+describe("the pager (code review 1.12)", () => {
+  const words = { label: "Pages", shownOf: "{shown} of {total}", previous: "Previous {n}", next: "Next {n}", first: "Back to the first page" };
+
+  it("pages by number: how many of how many, and the hundred after, keeping the other values", () => {
+    const out = html(h(Pager, { words, base: "/admin/s/pages", query: { status: "draft", page: "1" }, page: 1, size: 100, shown: 100, total: 150 }));
+    expect(out).toContain('<nav aria-label="Pages"');
+    expect(out).toContain("100 of 150");
+    expect(out).toContain('href="/admin/s/pages?status=draft&page=2"');
+    expect(out).toContain('rel="next"');
+    expect(out).toContain("Next 100");
+    expect(out).not.toContain("Previous");
+  });
+
+  it("leads back to page one without the page in the address, and draws nothing when everything is shown", () => {
+    const out = html(h(Pager, { words, label: "Pages of the list", base: "/admin/s/pages", page: 2, size: 100, shown: 50, total: 150 }));
+    expect(out).toContain('aria-label="Pages of the list"');
+    expect(out).toContain("150 of 150");
+    expect(out).toMatch(/rel="prev"[^>]*href="\/admin\/s\/pages"/);
+    expect(out).not.toContain("Next");
+    expect(html(h(Pager, { words, base: "/admin/s/pages", page: 1, size: 100, shown: 12, total: 12 }))).toBe("");
+    expect(pageAddress("/x", { q: "a b", tags: ["1", "2"] }, 3)).toBe("/x?q=a+b&page=3");
+  });
+
+  it("pages by cursor: the way back names the first page, and nothing is drawn with nowhere to go", () => {
+    const out = html(h(Pager, { words, previous: "/admin/s/orders", first: true, next: "/admin/s/orders?after=abc" }));
+    expect(out).toContain("Back to the first page");
+    expect(out).toMatch(/rel="next"[^>]*href="\/admin\/s\/orders\?after=abc"/);
+    expect(html(h(Pager, { words: { ...words, next: "Next 50 orders" }, next: "/n" }))).toContain("Next 50 orders");
+    expect(html(h(Pager, { words, previous: null, next: null }))).toBe("");
+  });
+});
+
+describe("the list's search (code review 1.12)", () => {
+  it("is a GET form with a real named field, so it works without a script and the words stay in the address", () => {
+    const out = html(h(ListSearch, { action: "/admin/s/customers", words: { label: "Search", button: "Search" }, value: "anna", placeholder: "Name or email", keep: { show: "new", sort: null } }));
+    expect(out).toMatch(/^<form role="search"[^>]* action="\/admin\/s\/customers" method="get">/);
+    expect(out).toContain('<input type="hidden" name="show" value="new"/>');
+    expect(out).not.toContain('name="sort"');
+    expect(out).toMatch(/<input id="[^"]+" type="search" [^>]*name="q" value="anna"\/>/);
+    expect(out).toContain('placeholder="Name or email"');
+    expect(out).toMatch(/<label for="[^"]+" class="sr-only">Search<\/label>/);
+    expect(out).toContain('<button type="submit" class="flex size-9');
+  });
+
+  it("names the field and the form as the list asks, hides the button where Enter is enough, and holds the list's tools", () => {
+    const out = html(
+      h(ListSearch, { action: "/a", words: { label: "Search", button: "Search" }, name: "query", label: "Search orders", formLabel: "Find orders", button: "hidden", tools: h("details", null, "Filters"), children: h("p", null, "under") }),
+    );
+    expect(out).toContain('aria-label="Find orders"');
+    expect(out).toContain('name="query"');
+    expect(out).toContain(">Search orders</label>");
+    expect(out).toContain('<button type="submit" class="sr-only">Search</button>');
+    expect(out).toContain("<details>Filters</details></div><p>under</p></form>");
+  });
+});
+
+describe("the confirm button (code review 1.12)", () => {
+  it("submits its form as its submitter, or calls its action, after asking: closed, it is a button with a dialog to open", () => {
+    const form = html(h(ConfirmButton, { question: "Delete Spring?", confirm: "Delete", name: "intent", value: "delete" }, "Delete"));
+    expect(form).toMatch(/^<button value="delete" type="submit" class="[^"]*border-edge[^"]*" aria-haspopup="dialog" name="intent">Delete<\/button>$/);
+    const own = html(h(ConfirmButton, { question: "Revoke Shop key?", confirm: "Revoke", action: () => undefined, kind: "danger", size: "dense" }, "Revoke"));
+    expect(own).toMatch(/^<button type="button" class="[^"]*h-8[^"]*bg-danger-soft/);
+    expect(html(h(ConfirmButton, { question: "Remove?", confirm: "Remove", kind: "none", className: "text-sm underline" }, "Remove"))).toContain('class="text-sm underline"');
+  });
+
+  it("asks with the action's own words: the first sentence the title, the rest under it", () => {
+    expect(splitQuestion("Remove Hook? Nothing more is sent to it and its log goes too.")).toEqual({ title: "Remove Hook?", detail: "Nothing more is sent to it and its log goes too." });
+    expect(splitQuestion("Delete this response for good?")).toEqual({ title: "Delete this response for good?", detail: "" });
+    expect(splitQuestion("I want to delete Home; this cannot be undone.")).toEqual({ title: "I want to delete Home; this cannot be undone.", detail: "" });
+    expect(splitQuestion("Is 1?5 ok? Yes.")).toEqual({ title: "Is 1?5 ok?", detail: "Yes." });
+    const dialog = html(h(ConfirmDialog, { title: "Remove Hook?", detail: "Its log goes too.", confirm: "Remove", cancel: "Cancel", danger: true, onCancel: () => undefined, onConfirm: () => undefined }));
+    expect(dialog).toContain("Remove Hook?");
+    expect(dialog).toContain("<p>Its log goes too.</p>");
+    expect(dialog).toMatch(/data-confirm-cancel="">Cancel<\/button>/);
+    expect(dialog).toMatch(/bg-danger-soft[^"]*" data-confirm-yes="">Remove<\/button>/);
+  });
+
+  it("shows what a refused action said, in the shapes the admin's actions answer with", () => {
+    expect(refusalOf({ ok: false, problems: ["In use.", "Try later."] })).toBe("In use. Try later.");
+    expect(refusalOf({ ok: false, problem: "Not connected." })).toBe("Not connected.");
+    expect(refusalOf({ ok: false, message: "Gone." })).toBe("Gone.");
+    expect(refusalOf({ ok: true })).toBeNull();
+    expect(refusalOf(undefined)).toBeNull();
+  });
+
+  it("is kept out of the kit's index, which every route's server code reaches: its index names no client part but the link", () => {
+    const index = readFileSync(join(__dirname, "index.ts"), "utf8");
+    const named = [...index.matchAll(/^export \{[^}]*\} from "\.\/([\w-]+)";$/gm)].map((m) => m[1]);
+    const client = named.filter((name) => /^\s*["']use client["']/.test(readFileSync(join(__dirname, `${name}.tsx`), "utf8")));
+    expect(client).toEqual(["link"]);
+    expect(index).not.toMatch(/export \{[^}]*\bConfirmButton\b[^}]*\} from/);
+  });
+
+  it("never asks with the browser's own confirm", () => {
+    for (const file of ["confirm-button.tsx", "confirm-dialog.tsx"]) expect(readFileSync(join(__dirname, file), "utf8")).not.toMatch(/\bconfirm\(/);
+  });
+});
+
+describe("the kit's words (code review 1.12)", () => {
+  it("are in both languages, with the same placeholders", () => {
+    const en = adminText("en", "kit");
+    const nb = adminText("nb", "kit");
+    for (const key of Object.keys(en.pager) as (keyof typeof en.pager)[]) {
+      expect(nb.pager[key].match(/\{\w+\}/g) ?? []).toEqual(en.pager[key].match(/\{\w+\}/g) ?? []);
+    }
+    expect(nb.search.button).toBe("Søk");
+    expect(adminText("nb", "common").form.cancel).toBe("Avbryt");
   });
 });
