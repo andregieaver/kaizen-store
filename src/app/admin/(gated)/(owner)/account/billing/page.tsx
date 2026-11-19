@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
-import { adminDate } from "@/lib/admin-date";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { money } from "@/lib/control-center";
 import { requireAccount } from "@/server/auth";
 import {
@@ -20,7 +20,7 @@ import { listPlans, listStoreBilling, type StoreBilling } from "@/server/billing
 import { ownedAccount } from "@/server/privacy-officers";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
@@ -61,7 +61,7 @@ export default async function OwnerBillingPage({ searchParams }: PageProps<"/adm
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={billedByAccount ? w.account.description : w.description} />
-      {billedByAccount && <AccountPlan billing={billedByAccount} words={w.account} b={b} per={per} />}
+      {billedByAccount && <AccountPlan billing={billedByAccount} words={w.account} b={b} per={per} lang={lang} />}
       {rows.length === 0 ? (
         <p className="rounded-panel border border-line p-4 text-sm">{w.none}</p>
       ) : (
@@ -109,11 +109,13 @@ async function AccountPlan({
   words,
   b,
   per,
+  lang,
 }: {
   billing: AccountBilling;
   words: ScreensMessages["ownerBilling"]["account"];
   b: BillingMessages;
   per: (price: NonNullable<StoreBilling["price"]>) => string;
+  lang: AdminLang;
 }) {
   const [plans, currency, extensions, invoices] = await Promise.all([
     listPlans(),
@@ -135,7 +137,7 @@ async function AccountPlan({
               {fillWords(words.line, { price: money(billing.price.amountMinor, billing.price.currency), interval: b.intervals[billing.price.interval] })}
               {" · "}
               {b.statuses[billing.status ?? ""] ?? billing.status}
-              {billing.currentPeriodEnd && ` · ${billing.cancelAtPeriodEnd ? b.page.ends : b.page.renews} ${billing.currentPeriodEnd.slice(0, 10)}`}
+              {billing.currentPeriodEnd && ` · ${billing.cancelAtPeriodEnd ? b.page.ends : b.page.renews} ${adminDate(PLATFORM_TIME_ZONE, billing.currentPeriodEnd, "day", lang)}`}
             </p>
           )}
           <p className="text-muted">{words.stores}</p>
@@ -145,7 +147,7 @@ async function AccountPlan({
               <ul className="list-disc pl-5">
                 {extensions.map((e) => (
                   <li key={e.extensionId}>
-                    {e.endedAt ? fillWords(words.extensionEnds, { name: e.name, size: e.size, date: e.endedAt.slice(0, 10) }) : fillWords(words.extensionLine, { name: e.name, size: e.size })}
+                    {e.endedAt ? fillWords(words.extensionEnds, { name: e.name, size: e.size, date: adminDate(PLATFORM_TIME_ZONE, e.endedAt, "day", lang) }) : fillWords(words.extensionLine, { name: e.name, size: e.size })}
                   </li>
                 ))}
               </ul>
@@ -202,7 +204,7 @@ async function AccountPlan({
             {invoices.map((invoice) => (
               <li key={invoice.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                 <span className="flex-1">
-                  {fillWords(words.invoiceLine, { number: invoice.number ?? invoice.id, date: invoice.createdAt.slice(0, 10), total: money(invoice.totalMinor, invoice.currency) })}
+                  {fillWords(words.invoiceLine, { number: invoice.number ?? invoice.id, date: adminDate(PLATFORM_TIME_ZONE, invoice.createdAt, "day", lang), total: money(invoice.totalMinor, invoice.currency) })}
                 </span>
                 <span className="text-muted">{b.statuses[invoice.status] ?? invoice.status}</span>
                 {invoice.hostedUrl && (
