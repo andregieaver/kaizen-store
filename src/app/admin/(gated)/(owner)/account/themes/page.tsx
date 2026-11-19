@@ -4,7 +4,8 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { themeStorePath } from "@/lib/theme-host";
 import { OPEN_STATUSES, SUBMISSION_SIGNAL } from "@/lib/theme-submissions";
@@ -24,7 +25,6 @@ export default async function YourThemesPage() {
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "design").yours;
-  const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium" });
   const [submissions, themes] = await Promise.all([mySubmissions(account.id), authoredThemes(account.id)]);
   return (
     <div className="flex flex-col gap-6">
@@ -40,7 +40,7 @@ export default async function YourThemesPage() {
                   title={submission.kind === "update" ? (submission.presetTitle ?? submission.title) : submission.title}
                   sub={
                     <>
-                      {w.kind[submission.kind]} · {fillWords(w.from, { store: submission.storeName })} · {date.format(new Date(submission.createdAt))}
+                      {w.kind[submission.kind]} · {fillWords(w.from, { store: submission.storeName })} · {adminDate(PLATFORM_TIME_ZONE, submission.createdAt, "day", lang)}
                       {submission.status === "rejected" && submission.reason && <span className="block text-ink-2">{fillWords(w.why, { reason: submission.reason })}</span>}
                     </>
                   }

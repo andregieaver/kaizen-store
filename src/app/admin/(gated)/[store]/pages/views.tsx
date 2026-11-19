@@ -12,6 +12,7 @@ import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords, countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
@@ -253,9 +254,10 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           words={w.layouts}
           shared={site.list}
           locale={ADMIN_LANG_FACTS[lang].locale}
+          timeZone={store.timeZone}
         />
       ) : type === "header" || type === "footer" ? (
-        <SiteLayoutsTable layouts={pages} adminBase={base} current={current} schedules={schedules} />
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={current} schedules={schedules} timeZone={store.timeZone} />
       ) : (
         <PagesTable
           timeZone={store.timeZone}
@@ -530,6 +532,7 @@ function ProductLayoutsTable({
   words,
   shared,
   locale,
+  timeZone,
 }: {
   layouts: PageSummary[];
   adminBase: string;
@@ -539,8 +542,9 @@ function ProductLayoutsTable({
   shared: SharedWords;
   /** The admin's locale, for the dates. */
   locale: string;
+  /** The store's time zone, the dates' clock (D812). */
+  timeZone: string;
 }) {
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   const names = (ids: string[]) => ids.map((id) => terms.find((term) => term.id === id)?.name).filter(Boolean).join(", ");
   const usedFor = (id: string) => {
     const use = uses.get(id);
@@ -582,7 +586,7 @@ function ProductLayoutsTable({
               </td>
               <td className="px-4 py-2">
                 {shared.layoutStates[layout.state]}
-                {layout.publishedAt && <span className="block text-muted">{fillWords(shared.publishedOn, { date: date.format(new Date(layout.publishedAt)) })}</span>}
+                {layout.publishedAt && <span className="block text-muted">{fillWords(shared.publishedOn, { date: adminDate(timeZone, layout.publishedAt, "day", locale) })}</span>}
               </td>
               <td className="px-4 py-2">
                 {usedFor(layout.id)}

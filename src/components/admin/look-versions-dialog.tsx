@@ -2,8 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { LOOK_VERSIONS_KEPT, type LookVersionActions, type LookVersionItem } from "@/lib/look-versions";
 import type { StoreTheme } from "@/lib/theme";
 import { compareLooks, type LookArea } from "@/lib/version-compare";
@@ -32,7 +32,7 @@ export function LookVersionsDialog({
   current?: StoreTheme;
 }) {
   const w = useAdminText("schedules").versions;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
   const [items, setItems] = useState<LookVersionItem[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [taking, setTaking] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export function LookVersionsDialog({
       setTaking(null);
     }
   };
-  const when = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+  const when = (iso: string) => adminDate(actions.timeZone, iso, "dayTime", lang);
 
   return (
     <Modal open={open} onClose={onClose} title={w.title} footer={<Button onClick={onClose}>{w.close}</Button>}>

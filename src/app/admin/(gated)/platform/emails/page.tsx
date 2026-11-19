@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { EmailLog } from "@/components/admin/email-log";
-import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
 import { platformCan, requirePlatformReader } from "@/server/auth";
@@ -95,7 +95,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
                 )}
                 <span className="text-muted">
                   {p.reason === "bounces" ? w.paused.bounces : w.paused.complaints},{" "}
-                  {fillWords(w.paused.since, { date: new Date(p.pausedAt).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium" }) })}
+                  {fillWords(w.paused.since, { date: adminDate(PLATFORM_TIME_ZONE, p.pausedAt, "day", lang) })}
                 </span>
               </li>
             ))}
@@ -110,6 +110,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
           words={adminText(lang, "notifications").sendingDomain}
           action={platformCan(account, "settings") ? platformSendingDomainAction : null}
           display={ADMIN_LANG_FACTS[lang].tag}
+          timeZone={PLATFORM_TIME_ZONE}
         />
       )}
       <nav aria-label={w.showsLabel} className={CHIP_STRIP}>

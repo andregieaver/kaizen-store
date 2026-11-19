@@ -93,6 +93,7 @@ export async function sandboxPageContext(sandbox: Sandbox, type: SandboxKind): P
   const typed = <A extends unknown[], R>(action: (sandboxId: string, kind: SandboxKind, ...args: A) => R) => action.bind(null, id, type);
   return {
     owner: store.id,
+    timeZone: store.timeZone,
     features: store.features,
     type,
     defaultAuthor: "",

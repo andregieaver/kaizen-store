@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
@@ -28,7 +29,7 @@ export default async function AccountsPage() {
   const w = adminText(lang, "screens").platformAccounts;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const previews = await movePreviews();
-  const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium" });
+  const day = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
   const money = (totals: MovePreview["before"]) => totals.map((t) => formatMoney(t.minor, t.currency, locale)).join(" + ") || formatMoney(0, "EUR", locale);
 
   return (

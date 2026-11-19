@@ -25,7 +25,7 @@ export default async function AnalyticsLivePage({ params, searchParams }: PagePr
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/live" title={words.live.title} description={<><span className="sm:hidden">{words.live.phone.lead}</span><span className="max-sm:hidden">{words.live.description}</span></>} picker={false} showCompare={false} />
-        <LiveView base={ctx.base} locale={ctx.locale} live={live} words={words} />
+        <LiveView base={ctx.base} locale={ctx.locale} timeZone={ctx.store.timeZone} live={live} words={words} />
         <LiveRefresh every={LIVE_REFRESH_MS} />
       </div>
     </AdminTextScope>

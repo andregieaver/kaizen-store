@@ -136,6 +136,7 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
         refresher={<RefreshWhile seconds={20} />}
         words={words}
         locale={ctx.locale}
+        timeZone={store.timeZone}
         watchHref={ctx.owner ? recordingsOfPage(ctx.base, page) : undefined}
         tag={tag}
         versions={versions}

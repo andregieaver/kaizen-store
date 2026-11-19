@@ -105,6 +105,7 @@ export async function storePageContext(
     action.bind(null, store.slug, type);
   return {
     owner: store.id,
+    timeZone: store.timeZone,
     // The store's features (D178): the builder offers only the parts of those that are on.
     features: store.features,
     type,

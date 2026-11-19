@@ -1,6 +1,8 @@
+import { zoneOf } from "./admin-date";
 import { MIN_PER_ARM } from "./experiment-stats";
 import { compareToOriginal, normalQuantile, type VariantFigures, type VerdictKind } from "./experiment-results";
 import { GOAL_WORDS, type ExperimentStatus, type Goal } from "./experiments";
+import { dayIn } from "./work-dates";
 
 /**
  * One A/B test as a person reads it (D148 phase 12, D659, `docs/ab-testing-usability.md`): which stage it is at, how far it is from an
@@ -67,12 +69,14 @@ export type CardInput = {
   /** What was counted; absent before a test starts. */
   results: { figures: VariantFigures[]; days: number; verdict: { kind: VerdictKind; best: string | null } } | null;
   now: Date;
+  /** The store's time zone: the day an answer is expected is a day on the store's calendar (D812). */
+  timeZone: string;
 };
 
 const DAY = 86_400_000;
 
-/** The day, `days` from `now`, as YYYY-MM-DD. */
-const dayFrom = (now: Date, days: number) => new Date(now.getTime() + Math.ceil(days) * DAY).toISOString().slice(0, 10);
+/** The day, `days` from `now`, on the store's calendar, as YYYY-MM-DD. */
+const dayFrom = (now: Date, days: number, timeZone: string) => dayIn(now.getTime() + Math.ceil(days) * DAY, timeZone);
 
 /** The test as a person reads it. */
 export function experimentCard(input: CardInput): ExperimentCard {
@@ -86,12 +90,13 @@ export function experimentCard(input: CardInput): ExperimentCard {
 
   // When: the days still needed, and the visitors still needed at the pace the version with the fewest has had so far.
   let readyAround: string | null = null;
+  const zone = zoneOf(input.timeZone);
   if (results !== null && !reached && (status === "running" || status === "scheduled")) {
     const daysLeft = Math.max(0, input.minDays - days);
     const pace = days > 0 ? fewest / days : 0;
     const visitorsLeft = Math.max(0, minVisitors - fewest);
-    if (visitorsLeft === 0) readyAround = dayFrom(input.now, daysLeft);
-    else if (pace > 0) readyAround = dayFrom(input.now, Math.max(daysLeft, visitorsLeft / pace));
+    if (visitorsLeft === 0) readyAround = dayFrom(input.now, daysLeft, zone);
+    else if (pace > 0) readyAround = dayFrom(input.now, Math.max(daysLeft, visitorsLeft / pace), zone);
   }
 
   const kind = GOAL_WORDS[input.goal].kind;

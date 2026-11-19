@@ -12,8 +12,9 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { extensionBanners, readExtensionFacts } from "@/lib/extensions";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -225,7 +226,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             </p>
           </div>
         )}
-        {banners.length > 0 && <ExtensionBanner banners={banners} owner={isOwner} locale={ADMIN_LANG_FACTS[lang].locale} />}
+        {banners.length > 0 && <ExtensionBanner banners={banners.map((b) => ({ extension: b.extension, state: b.state, untilDay: adminDate(PLATFORM_TIME_ZONE, b.until, "long", lang) }))} owner={isOwner} />}
         {children}
       </AdminFrame>
     </AdminViewProvider>

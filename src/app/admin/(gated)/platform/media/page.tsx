@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { MediaLibrary } from "@/components/admin/media-library";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { mediaQuery } from "@/lib/media-query";
 import { requirePlatformReader } from "@/server/auth";
 import { aiFor } from "@/server/ai";
@@ -70,6 +71,7 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
       searched={searched}
       meaning={Boolean(ai?.space)}
       basePath="/admin/platform/media"
+      timeZone={PLATFORM_TIME_ZONE}
       pictures={{
         make: ai?.image && uploadsEnabled() ? "/admin/platform/media/make" : null,
         edit: ai?.image?.editModel && uploadsEnabled() ? "/admin/platform/media/edit" : null,

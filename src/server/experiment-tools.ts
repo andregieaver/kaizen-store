@@ -14,6 +14,8 @@ import { GOAL_WORDS, isHouseGoal, MAX_RUN_DAYS, MAX_RUNNING_PER_STORE, STATUS_WO
 import { COUNTED_GOALS, eligiblePerDay, goalEstimate } from "@/lib/experiment-traffic";
 import { findClaims } from "@/lib/claims";
 import { addDays, todayIn } from "@/lib/analytics-period";
+import { zoneOf } from "@/lib/admin-date";
+import { dayIn } from "@/lib/work-dates";
 import { hubFigures } from "@/lib/heat-tools";
 import { localInstant } from "@/lib/follow-ups";
 import { formatMoney } from "@/lib/money";
@@ -69,7 +71,8 @@ const fail = (message: string): never => {
 const mainLocale = (store: Store) => store.markets[0]?.locale ?? "en";
 const percent = (share: number, digits = 1) => `${(share * 100).toLocaleString("en-GB", { maximumFractionDigits: digits })} %`;
 const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
-const when = (iso: string | null) => (iso ? iso.slice(0, 10) : null);
+/** A test's day on the store's clock, as its page shows it (D812). */
+const when = (store: Store, iso: string | null) => (iso ? dayIn(iso, zoneOf(store)) : null);
 
 /** A test by its name (any case) or id, the store's only; a name that fits several says so. */
 async function findTest(store: Store, ref: string): Promise<ExperimentInfo> {
@@ -120,9 +123,9 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
         improves: GOAL_WORDS[t.goal].label,
         versions: t.variants.map((v) => v.name),
         visitors_counted: t.exposed,
-        started: when(t.startedAt),
-        starts: t.status === "scheduled" ? when(t.scheduledStart) : undefined,
-        planned_end: t.status === "running" ? when(t.plannedEnd) : undefined,
+        started: when(store, t.startedAt),
+        starts: t.status === "scheduled" ? when(store, t.scheduledStart) : undefined,
+        planned_end: t.status === "running" ? when(store, t.plannedEnd) : undefined,
         winner: t.status === "applied" ? t.variants.find((v) => v.key === t.appliedVariant)?.name : undefined,
         verdict: verdict ? { kind: verdict.kind, headline: verdict.headline } : undefined,
         learned: t.learning ?? undefined,
@@ -177,8 +180,8 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       tests: targetWords(test),
       improves: GOAL_WORDS[test.goal].label,
       hypothesis: test.hypothesis || undefined,
-      started: when(test.startedAt),
-      stopped: when(test.stoppedAt),
+      started: when(store, test.startedAt),
+      stopped: when(store, test.stoppedAt),
       stop_reason: test.stopReason === "guardrail" ? guardrailStopReason(test.stopGuardrail) : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
       winner: test.status === "applied" ? (test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "the original") : undefined,
       learned: test.learning ? `In the owner's words: ${test.learning}` : undefined,
@@ -233,7 +236,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
     };
   });
   // The card the test's page draws (D659): its stage, how far from an answer and when, each version's likely range, what each changed.
-  const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results: r, now: new Date() });
+  const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results: r, now: new Date(), timeZone: store.timeZone });
   const changes = await versionDifferences(store.id, test);
   const signed = (share: number) => `${share >= 0 ? "+" : "−"}${Math.abs(Math.round(share * 100))} %`;
   const chance = (p: number) => (p > 0.99 ? "more than 99 %" : p < 0.01 ? "less than 1 %" : `${Math.round(p * 100)} %`);

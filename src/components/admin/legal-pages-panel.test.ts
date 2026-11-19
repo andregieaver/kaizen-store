@@ -28,7 +28,7 @@ const ON: LegalAiState["settings"] = { enabled: true, publish: "auto", turnedOnA
 const write = (over: Partial<LegalWriteState>): LegalWriteState => ({ id: "w1", role: "returns_policy", why: "asked", status: "written", createdAt: new Date(), finishedAt: null, page: null, languages: [], problems: [], ...over });
 /** The markup with its escaped quotes read back, so the catalogue's words compare as written. */
 const render = (ai: LegalAiState, words = legalEn) =>
-  renderToStaticMarkup(createElement(LegalPagesPanel, { overview, ai, storeSlug: "shop", actions, words })).replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  renderToStaticMarkup(createElement(LegalPagesPanel, { overview, ai, storeSlug: "shop", actions, words, timeZone: "Europe/Oslo" })).replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 const count = (html: string, text: string) => html.split(text).length - 1;
 
 describe("the Legal page's AI part", () => {

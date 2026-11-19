@@ -2,6 +2,7 @@ import { AdminLink } from "@/components/admin/ui/link";
 
 import { formatCount } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { analyticsEn, type AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
 import type { LiveFigures } from "@/server/analytics-live";
@@ -24,7 +25,8 @@ function countryName(code: string, locale: string, unknown: string): string {
  * visitors are by country (a visit keeps no place finer than that, so there is no map). Without visit counting the visitor figures say
  * what is missing and link to switching it on, never a zero. Presentational: the page reads `liveFigures()` and hands them in.
  */
-export function LiveView({ base, locale, live, words = analyticsEn }: { base: string; locale: string; live: LiveFigures; words?: AnalyticsMessages }) {
+/** `timeZone`: the store's, so the last update reads on the store's clock (D812). */
+export function LiveView({ base, locale, timeZone, live, words = analyticsEn }: { base: string; locale: string; timeZone: string; live: LiveFigures; words?: AnalyticsMessages }) {
   const w = words.live;
   const off = { text: w.countingOff, action: { label: w.countingLink, href: `${base}/analytics/settings#visits` } };
   const visitorCard = (label: string, value: number | null, help: string, emphasis = false): KpiCardProps =>
@@ -46,7 +48,7 @@ export function LiveView({ base, locale, live, words = analyticsEn }: { base: st
     { key: "country", label: w.country, cell: (r) => countryName(r.code, locale, w.unknownCountry) },
     { key: "visitors", label: w.visitors, align: "right", cell: (r) => formatCount(r.visitors) },
   ];
-  const time = new Intl.DateTimeFormat(locale, { timeStyle: "medium" }).format(new Date(live.at));
+  const time = adminDate(timeZone, live.at, "seconds", locale);
   return (
     <div className="flex flex-col gap-6" data-live>
       <p className="text-caption text-muted" aria-live="polite">

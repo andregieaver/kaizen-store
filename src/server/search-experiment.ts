@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { keywordArm, rate, type Rate } from "@/lib/experiment-stats";
 import { callRates, splitP, UNITS, type Call } from "@/lib/experiment-units";
 
@@ -117,7 +118,7 @@ export type ExperimentResults = {
 
 const empty = (): ArmResult => ({ searches: 0, zero: 0, opened: 0, withResults: 0, firstPosition: null });
 
-/** How the arms of a test compare, overall and week by week. */
+/** How the arms of a test compare, overall and week by week: the platform's own test, so its weeks start on Monday on the platform's clock (D812). */
 export async function experimentResults(experiment: Experiment): Promise<ExperimentResults> {
   const [armRows, weekRows] = await Promise.all([
     readDb().execute<Row>(sql`
@@ -134,7 +135,7 @@ export async function experimentResults(experiment: Experiment): Promise<Experim
     `),
     readDb().execute<Row>(sql`
       with s as (
-        select q.arm, q.results, date_trunc('week', q.created_at) as week,
+        select q.arm, q.results, date_trunc('week', q.created_at at time zone ${PLATFORM_TIME_ZONE}) as week,
           exists (select 1 from commerce.search_clicks c where c.search_id = q.id) as opened
         from commerce.search_queries q where q.experiment_id = ${experiment.id}::uuid
       )

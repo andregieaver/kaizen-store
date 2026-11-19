@@ -5,6 +5,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { AUDIT_AREA_KEYS, isAuditArea, summaryOf, type AuditArea, type AuditChanges } from "@/lib/audit";
 import { toCsv } from "@/lib/dac7";
 import { AREAS, can, type Area } from "@/lib/permissions";
@@ -213,7 +214,8 @@ export type PlatformActivityFilters = { accountId?: string | null; area?: AuditA
 /**
  * One page of the platform's own activity (wave 1, 1f): entries with no store, such as two-step events, recovery codes used, resets and
  * approvals, newest first. For platform admins only: the page checks it (`requirePlatformAdmin()`), and no entry of a store is ever here
- * because every condition starts with `store_id is null`. Days are UTC.
+ * because every condition starts with `store_id is null`. Days are the platform's own (`PLATFORM_TIME_ZONE`, D786, D812), as a store's log reads
+ * the store's.
  */
 export async function listPlatformActivity(filters: PlatformActivityFilters = {}, before: number | null = null, limit = ACTIVITY_PAGE): Promise<ActivityPage> {
   const size = Math.min(Math.max(1, Math.trunc(limit)), 200);
@@ -223,8 +225,8 @@ export async function listPlatformActivity(filters: PlatformActivityFilters = {}
   if (filters.action) parts.push(sql`a.action = ${filters.action}`);
   const from = day(filters.from);
   const to = day(filters.to);
-  if (from) parts.push(sql`a.created_at >= (${from}::date)::timestamp at time zone 'UTC'`);
-  if (to) parts.push(sql`a.created_at < (${to}::date + 1)::timestamp at time zone 'UTC'`);
+  if (from) parts.push(sql`a.created_at >= (${from}::date)::timestamp at time zone ${PLATFORM_TIME_ZONE}`);
+  if (to) parts.push(sql`a.created_at < (${to}::date + 1)::timestamp at time zone ${PLATFORM_TIME_ZONE}`);
   if (before !== null && Number.isFinite(before)) parts.push(sql`a.id < ${Math.trunc(before)}`);
   const rows = await db().execute<Row>(sql`
     select ${SELECT}

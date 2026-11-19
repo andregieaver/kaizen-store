@@ -5,6 +5,7 @@ import { FeatureOffNote } from "@/components/admin/feature-off";
 import { RefreshWhile } from "@/components/admin/refresh-while";
 import { FoldRow } from "@/components/admin/fold-row";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import { languageNames } from "@/lib/legal-admin-words";
@@ -55,6 +56,7 @@ export function LegalPagesPanel({
   actions,
   words = legalEn,
   lang = "en",
+  timeZone,
 }: {
   overview: LegalOverview;
   ai?: LegalAiState;
@@ -75,6 +77,8 @@ export function LegalPagesPanel({
   /** The words, in the account's language (D312 A8); English unless given. */
   words?: LegalMessages;
   lang?: AdminLang;
+  /** The store's time zone: since when the AI writes them, on the store's clock (D812). */
+  timeZone: string;
 }) {
   const w = words.pages;
   const a = words.ai;
@@ -95,7 +99,7 @@ export function LegalPagesPanel({
   const aiSub = !ai
     ? ""
     : on
-      ? [ai.settings.turnedOnAt && fillWords(a.on.since, { date: new Intl.DateTimeFormat(lang === "nb" ? "nb-NO" : "en-GB", { dateStyle: "long" }).format(new Date(ai.settings.turnedOnAt)) }), ai.settings.publish === "auto" ? a.on.autoLine : a.on.askLine]
+      ? [ai.settings.turnedOnAt && fillWords(a.on.since, { date: adminDate(timeZone, ai.settings.turnedOnAt, "long", lang) }), ai.settings.publish === "auto" ? a.on.autoLine : a.on.askLine]
           .filter(Boolean)
           .join(" ")
       : ai.available

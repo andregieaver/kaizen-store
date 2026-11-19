@@ -108,7 +108,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                   ) : t.startedAt ? (
                     fillWords(w.days, { n: daysBetween(t.startedAt, t.stoppedAt ?? now) })
                   ) : t.scheduledStart ? (
-                    fillWords(w.starts, { date: adminDate(PLATFORM_TIME_ZONE, t.scheduledStart, "day", lang) })
+                    fillWords(w.starts, { date: adminDate(t.store, t.scheduledStart, "day", lang) })
                   ) : (
                     w.notStarted
                   )}

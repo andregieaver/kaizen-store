@@ -141,6 +141,20 @@ describe("filters", () => {
     }
   });
 
+  it("the platform's log filters by the platform's days, Oslo's, never UTC's (D812)", async () => {
+    // An action of this run alone, as other tests write the platform's log too.
+    const action = `platform.d812_${Date.now()}`;
+    // 13 March 2026 in Oslo (winter time, +1) runs from 2026-03-12T23:00Z to 2026-03-13T23:00Z.
+    const before = await put({ storeId: null, accountId: admin.id, action, at: "2026-03-12T22:30:00Z" });
+    const justAfterMidnight = await put({ storeId: null, accountId: admin.id, action, at: "2026-03-12T23:30:00Z" });
+    const lateEvening = await put({ storeId: null, accountId: admin.id, action, at: "2026-03-13T22:30:00Z" });
+    const nextDay = await put({ storeId: null, accountId: admin.id, action, at: "2026-03-13T23:30:00Z" });
+    const ids = async (filters: Parameters<typeof act.listPlatformActivity>[0]) => (await act.listPlatformActivity({ action, ...filters })).entries.map((e) => e.id);
+    expect(await ids({ from: "2026-03-13", to: "2026-03-13" })).toEqual([lateEvening, justAfterMidnight]);
+    expect(await ids({ to: "2026-03-12" })).toEqual([before]);
+    expect(await ids({ from: "2026-03-14" })).toEqual([nextDay]);
+  });
+
   it("ignores a filter it cannot read (an unknown area, a date that is not one) rather than failing", async () => {
     expect(actions(await act.listActivity(owner, { area: "nonsense" as never }))).toHaveLength(8);
     expect(actions(await act.listActivity(owner, { from: "yesterday", to: "2026-13-40" }))).toHaveLength(8);

@@ -7,6 +7,7 @@ import { KIND_LABELS, SHARING_LABELS } from "@/lib/templates";
 import { requirePlatformReader } from "@/server/auth";
 import { listSharedFormTemplates } from "@/server/form-templates";
 import { listMarketplaceTemplates } from "@/server/templates";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { PageHeader } from "@/components/admin/ui";
@@ -62,7 +63,7 @@ export default async function PlatformTemplatesPage() {
               <span className="text-muted">
                 By {template.publisher}
                 {template.storeSlug ? ` (${template.storeSlug})` : ""} · {SHARING_LABELS[template.sharing].label} ·
-                updated {new Date(template.updatedAt).toLocaleDateString("en-GB")}
+                updated {adminDate(PLATFORM_TIME_ZONE, template.updatedAt, "day", "en")}
               </span>
             </div>
             <ActionForm action={setTemplateHiddenAction.bind(null, template.id, !template.hidden)}>

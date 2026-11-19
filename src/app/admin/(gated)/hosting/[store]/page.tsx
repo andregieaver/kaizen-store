@@ -75,6 +75,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
           locale={lang === "en" ? (store.markets[0]?.locale ?? "en-GB") : loc}
           words={t.payouts}
           dateLocale={loc}
+          timeZone={tz}
         />
       )}
 

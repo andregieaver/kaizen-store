@@ -70,6 +70,7 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
       searched={searched}
       meaning={Boolean(ai?.space)}
       basePath={`/admin/${store.slug}/media`}
+      timeZone={store.timeZone}
       pictures={{
         make: ai?.image && uploadsEnabled() ? `/admin/${store.slug}/media/make` : null,
         edit: ai?.image?.editModel && uploadsEnabled() ? `/admin/${store.slug}/media/edit` : null,

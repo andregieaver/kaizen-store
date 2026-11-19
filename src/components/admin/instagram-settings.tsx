@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
@@ -16,6 +17,7 @@ export function InstagramSettings({
   returned,
   connect,
   disconnect,
+  timeZone,
 }: {
   status: InstagramStatus | null;
   appOn: boolean;
@@ -26,10 +28,12 @@ export function InstagramSettings({
   returned: keyof ReturnType<typeof words>["returned"] | null;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own: when the posts were last read, on that clock (D812). */
+  timeZone: string;
 }) {
   const w = words(lang);
   const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
-  const when = status?.fetchedAt ? new Intl.DateTimeFormat(lang === "nb" ? "nb-NO" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(status.fetchedAt)) : w.never;
+  const when = status?.fetchedAt ? adminDate(timeZone, status.fetchedAt, "dayTime", lang) : w.never;
   return (
     <div className="flex flex-col gap-6">
       {returned && (

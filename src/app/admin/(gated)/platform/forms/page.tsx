@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { FormsList } from "@/components/admin/forms/forms-list";
 import { ButtonLink, PageHeader } from "@/components/admin/ui";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { platformCan, requirePlatform } from "@/server/auth";
@@ -38,7 +39,7 @@ export default async function PlatformFormsPage({ searchParams }: PageProps<"/ad
             {problem}
           </p>
         )}
-        <FormsList lang={lang} base={base} forms={forms} uses={uses} />
+        <FormsList lang={lang} base={base} forms={forms} uses={uses} timeZone={PLATFORM_TIME_ZONE} />
       </div>
     </AdminTextScope>
   );

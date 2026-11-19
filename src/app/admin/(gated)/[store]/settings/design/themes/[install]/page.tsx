@@ -118,6 +118,7 @@ export default async function CustomiseThemePage({ params, searchParams }: PageP
               make: makeInstallLinkAction.bind(null, store.slug),
               revoke: revokeInstallLinkAction.bind(null, store.slug),
             }}
+            timeZone={store.timeZone}
           />
         </Card>
       )}

@@ -92,7 +92,7 @@ describe("making a test on one screen (D660)", () => {
   };
 
   it("names the part, offers no other page, and fills in a name from it", () => {
-    const out = html(createElement(ExperimentForm, { pages: [pages[0]], markets: [], create, base: "/admin/demo/experiments", part: { ...part, buttons: [] } }));
+    const out = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages: [pages[0]], markets: [], create, base: "/admin/demo/experiments", part: { ...part, buttons: [] } }));
     expect(out).toContain("What you are testing");
     expect(out).toContain("Heading “Welcome” in row 1");
     expect(out).toContain("about this part only");
@@ -101,7 +101,7 @@ describe("making a test on one screen (D660)", () => {
   });
 
   it("says how soon each goal answers at the shop's traffic, recommends one, and draws the time to an answer", () => {
-    const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic, history: { [pages[0].id]: { status: "applied" as const, winner: "Version B" } } }));
+    const out = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages, markets: [], create, base: "/admin/demo/experiments", traffic, history: { [pages[0].id]: { status: "applied" as const, winner: "Version B" } } }));
     expect(out).toContain("What do you want more of?");
     expect(out).toMatch(/About \d+ weeks?( at your traffic|: long for your traffic| for a change of \d+ % or more)/);
     expect(out).toContain("Recommended");
@@ -118,29 +118,29 @@ describe("making a test on one screen (D660)", () => {
   });
 
   it("offers Kaizena Flow's own store sign-ups first and chosen, and no other store sign-ups at all (D148 phase 19)", () => {
-    const house = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/kaizenaflow/experiments", traffic, house: true }));
+    const house = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages, markets: [], create, base: "/admin/kaizenaflow/experiments", traffic, house: true }));
     expect(house).toContain('data-goal="signup"');
     expect(house).toMatch(/data-goal="signup"><input type="radio" class="sr-only" name="goal" checked=""/);
     expect(house).not.toContain('data-goal="orders"');
     expect(house).not.toContain("more people adding to the cart");
     expect(house).toContain("How long a test of sign-ups takes depends on how many of a page's visitors sign up today");
-    const shop = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic }));
+    const shop = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages, markets: [], create, base: "/admin/demo/experiments", traffic }));
     expect(shop).not.toContain('data-goal="signup"');
     expect(shop).not.toContain("sign-ups to Kaizena Flow");
   });
 
   it("offers going on to a page among the more goals, and new or returning visitors under Customise (D148 phase 20)", () => {
-    const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic, destinations: [{ id: pages[1].id, title: "Front page" }] }));
+    const out = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages, markets: [], create, base: "/admin/demo/experiments", traffic, destinations: [{ id: pages[1].id, title: "Front page" }] }));
     expect(out).toContain("more people going on to a page");
     expect(out).toMatch(/<select[^>]*data-returning[^>]*>/);
     expect(out).toContain("New visitors only");
     expect(out).toContain("Returning visitors only");
-    const house = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/kaizenaflow/experiments", traffic, house: true }));
+    const house = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages, markets: [], create, base: "/admin/kaizenaflow/experiments", traffic, house: true }));
     expect(house).toContain("More goals: more people going on to a page");
   });
 
   it("says why there is no estimate, and asks for nothing before the main button", () => {
-    const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments" }));
+    const out = html(createElement(ExperimentForm, { timeZone: "Europe/Oslo", pages, markets: [], create, base: "/admin/demo/experiments" }));
     expect(out).toContain("not counting visits for this shop");
     expect(out).not.toContain("data-estimate-days");
     // Name, idea, share and devices wait under Customise; the main button needs none of them.
@@ -253,7 +253,7 @@ describe("what a started test found (D659)", () => {
   const view = (figures: ReturnType<typeof rate>[], days: number, behaviour: BehaviourProps | null = null) => {
     const r = results(figures, days);
     const t = test({ status: "running", goal: "cart", startedAt: "2026-11-01T10:00:00.000Z" });
-    const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: r, now: new Date("2026-11-16T12:00:00Z") });
+    const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: r, now: new Date("2026-11-16T12:00:00Z"), timeZone: "Europe/Oslo" });
     return html(createElement(ExperimentResultsView, { test: t, results: r, card, base: "/admin/demo/experiments", locale: "nb-NO", differences: { b: ["Heading: “Welcome” became “New this week”"] }, readyAround: "27 Nov 2026", behaviour }));
   };
 

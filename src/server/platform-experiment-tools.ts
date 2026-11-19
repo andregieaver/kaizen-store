@@ -9,6 +9,7 @@ import { frustratedVersion } from "@/lib/heat-read";
 import { FLAG_VERSION_VIEWS } from "@/lib/page-heat";
 import type { PlatformToolInput } from "@/lib/manager-tools";
 import { adviceFor } from "@/lib/platform-experiments";
+import { dayIn } from "@/lib/work-dates";
 import type { UnitTestRow } from "@/lib/platform-unit-tests";
 
 import type { Account } from "./auth";
@@ -34,7 +35,8 @@ const fail = (message: string): never => {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+/** A test's day on its own store's clock, as the store's page and the store's AI manager give it (D812). */
+const day = (d: Date | null, t: PlatformTest) => (d ? dayIn(d, t.store.timeZone) : null);
 
 const target = (t: PlatformTest) => `${targetLabel(t.target.type as Parameters<typeof targetLabel>[0], t.target.slug, t.target.title, t.target.role)}${t.target.part ? ", a part of it" : ""}`;
 
@@ -47,8 +49,8 @@ const testLine = (t: PlatformTest, now: Date) => ({
   tests: target(t),
   improves: GOAL_WORDS[t.goal].label,
   versions: t.versions,
-  started: day(t.startedAt),
-  starts: t.status === "scheduled" ? day(t.scheduledStart) : undefined,
+  started: day(t.startedAt, t),
+  starts: t.status === "scheduled" ? day(t.scheduledStart, t) : undefined,
   days_running: t.startedAt && t.status === "running" ? Math.floor((now.getTime() - t.startedAt.getTime()) / 86_400_000) : undefined,
   visitors_counted: t.exposed,
   visitors_per_version: t.split ? t.split.map((s) => `${s.key.toUpperCase()}: ${s.visitors}`) : undefined,

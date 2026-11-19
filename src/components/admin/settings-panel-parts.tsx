@@ -17,6 +17,7 @@ import { foldOpen, keepFold, keepScroll, keepTab, newSettingsMemory, rememberedS
 import { readCopiedStyle, type CopiedStyle } from "@/lib/style-copy";
 import { frameAtGlance, spacingAtGlance, typographyAtGlance, visibilityAtGlance, type SidesAtGlance } from "@/lib/settings-summary";
 import { SIZES } from "@/lib/breakpoints";
+import { adminDate } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import type { PartBase, Spacing } from "@/lib/page-content";
@@ -348,10 +349,12 @@ export function DesignSizeStrip() {
   );
 }
 
-/** A date and time as the schedule keeps it (`2026-12-01T09:00`), in the admin's language. */
+/**
+ * A date and time as the schedule keeps it (`2026-12-01T09:00`), in the admin's language. It is a wall clock on the store's own clock (`visibility.ts`),
+ * not a moment: read and shown on UTC's, so neither the server's zone nor the browser's moves it (D812).
+ */
 function when(value: string, tag: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(tag, { dateStyle: "medium", timeStyle: "short" });
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? adminDate("UTC", `${value}:00Z`, "dayTime", tag) : value;
 }
 
 /** The top of Visibility: who sees the part, on which screens and when, as one sentence (D631). */

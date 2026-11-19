@@ -21,7 +21,7 @@ export async function listedTests(store: Store, say: { words: ExperimentsMessage
   return Promise.all(
     tests.map(async (t): Promise<ListedTest> => {
       const results = t.status === "running" || t.status === "stopped" ? await experimentResults(store, t, now, say) : null;
-      const card = experimentCard({ status: t.status, goal: t.goal, minDays: t.minDays, minVisitors: t.minVisitors, results, now });
+      const card = experimentCard({ status: t.status, goal: t.goal, minDays: t.minDays, minVisitors: t.minVisitors, results, now, timeZone: store.timeZone });
       return { ...t, card, group: groupOf(t.status, card), figures: results?.figures ?? null };
     }),
   );

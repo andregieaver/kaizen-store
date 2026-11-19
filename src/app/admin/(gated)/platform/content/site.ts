@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { ContentSite } from "@/components/admin/content-site";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { MAX_LOOKUPS } from "@/lib/custom-fields";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
@@ -31,6 +32,7 @@ export function platformContentSite(account: Account): ContentSite {
     owner: null,
     base: "/admin/platform/content",
     lang,
+    timeZone: PLATFORM_TIME_ZONE,
     languages: PLATFORM_PAGE_LOCALES.map((locale) => ({ locale, name: names.of(locale) ?? locale })),
     currencies: [],
     uploadImage: uploadsEnabled() ? uploadPlatformImageAction : null,

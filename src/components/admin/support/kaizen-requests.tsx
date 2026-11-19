@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { VisitorMessage, VisitorState } from "@/lib/support-visitor";
 import type { RequesterRow } from "@/server/support-kaizen";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { SupportMessages } from "@/lib/admin-messages/support.en";
 
 import { useAdminLang, useAdminText } from "../admin-text";
@@ -65,7 +65,8 @@ export function KaizenRequests({
   initialOpen: string | null;
 }) {
   const w = useAdminText("support").kaizen;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  // The account's requests to Kaizena Flow: an account's records, on the platform's clock (D786, D812).
+  const lang = useAdminLang();
   const [rows, setRows] = useState(initial);
   const [open, setOpen] = useState<string | null>(initialOpen);
   const [messages, setMessages] = useState<VisitorMessage[]>([]);
@@ -231,9 +232,7 @@ export function KaizenRequests({
                           ? w.waitingKaizena
                           : w.withAssistant}
                     {row.aboutStore ? ` · ${row.aboutStore}` : ""} ·{" "}
-                    {new Date(row.lastMessageAt).toLocaleDateString(locale, {
-                      dateStyle: "medium",
-                    })}
+                    {adminDate(PLATFORM_TIME_ZONE, row.lastMessageAt, "day", lang)}
                   </span>
                 </button>
               </li>

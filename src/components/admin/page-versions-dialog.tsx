@@ -10,13 +10,11 @@ import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import { VersionDifferences } from "./version-differences";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 
 const secondary = "min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
 const small = "min-h-9 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50";
 
-const when = (iso: string, locale: string) =>
-  new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
 /**
  * A page's versions (D305): every save, publish and change made on the live site, newest first, each with who and when. *Use this
@@ -29,6 +27,7 @@ export function PageVersionsDialog({
   read,
   onUse,
   current,
+  timeZone,
 }: {
   open: boolean;
   onClose: () => void;
@@ -37,6 +36,8 @@ export function PageVersionsDialog({
   onUse: (content: string, item: PageVersionItem) => void;
   /** The page in the editor now, for *Compare* (D358); none offers no comparing. */
   current?: PageContent;
+  /** The site's clock: the store's zone, or the platform's for Kaizena Flow's own, for when each version was made (D812). */
+  timeZone: string;
 }) {
   const [items, setItems] = useState<PageVersionItem[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -46,7 +47,8 @@ export function PageVersionsDialog({
   // An answer for a dialog closed meanwhile is thrown away.
   const ticket = useRef(0);
   const w = useAdminText("builder").versions;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
+  const when = (iso: string) => adminDate(timeZone, iso, "dayTime", lang);
 
   // The list is asked for when the dialog opens, whatever function the editor passes on each render.
   const load = useEffectEvent((mine: number) => {
@@ -138,7 +140,7 @@ export function PageVersionsDialog({
                     {index === 0 && <span className="ml-2 text-xs text-muted">{w.newest}</span>}
                   </span>
                   <span className="text-xs text-muted">
-                    {when(item.at, locale)}
+                    {when(item.at)}
                     {item.by ? ` · ${item.by}` : ""}
                     {item.title ? ` · ${item.title}` : ""}
                   </span>

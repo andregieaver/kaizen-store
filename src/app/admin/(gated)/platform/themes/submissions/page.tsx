@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { Card, Chip, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { SUBMISSION_SIGNAL } from "@/lib/theme-submissions";
 import { requirePlatformReader } from "@/server/auth";
@@ -26,7 +26,6 @@ export default async function SubmissionsPage({ searchParams }: PageProps<"/admi
   const s = w.submissions;
   const filter: QueueFilter = (await searchParams).show === "decided" ? "decided" : "open";
   const rows = await listSubmissions(admin, filter);
-  const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium" });
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: THEMES_ADMIN, label: w.themes.title }} title={s.title} description={s.description} />
@@ -48,7 +47,7 @@ export default async function SubmissionsPage({ searchParams }: PageProps<"/admi
                 <RowLead
                   title={row.kind === "update" ? fillWords(s.update, { title: row.presetTitle ?? row.title }) : row.title}
                   href={`${THEMES_ADMIN}/submissions/${row.id}`}
-                  sub={`${row.kind === "update" ? "" : `${s.newTheme} · `}${fillWords(s.by, { author: row.authorName })} · ${fillWords(s.from, { store: row.storeName })} · ${date.format(new Date(row.createdAt))}`}
+                  sub={`${row.kind === "update" ? "" : `${s.newTheme} · `}${fillWords(s.by, { author: row.authorName })} · ${fillWords(s.from, { store: row.storeName })} · ${adminDate(PLATFORM_TIME_ZONE, row.createdAt, "day", lang)}`}
                 />
                 <Chip signal={SUBMISSION_SIGNAL[row.status]}>{s.status[row.status]}</Chip>
               </ListRow>

@@ -104,6 +104,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
           capped={orderProfits.capped}
           cappedAt={PROFIT_ORDERS_MAX}
           words={words}
+          timeZone={store.timeZone}
         />
         </PhoneRow>
         <PhoneRow
