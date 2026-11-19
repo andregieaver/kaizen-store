@@ -75,7 +75,10 @@ the path, component or table you change, or list the rules with a search for lin
   list in code; never read the texts from the database while rendering (they
   are in memory, `src/server/ui-text-read.ts`). An instance reads them at start with two statements, builds a language when `t()` first
   reads it, and polls the one-row stamp `platform_settings.ui_text_version` every ten minutes only while it is asked for a translated
-  language; every writer of `commerce.ui_translations` raises the stamp (bloat review step 0.8).
+  language; every writer of `commerce.ui_translations` raises the stamp (bloat review step 0.8). The admin's browser never imports
+  `src/lib/i18n.ts` or a language's module (`admin-bundle.scan.test.ts`, bloat review step 2.29): a screen that needs a storefront
+  language's words gets them from the server as a prop, and a preview on the builder's canvas loads one language when it is drawn
+  with `useSiteWords()` (`src/components/admin/site-words.ts`: null until it arrives, English for a language translated by AI).
 
 ## Language and currency are apart from the country (D109; offered only while Several languages and Several currencies are on, D178 step 4)
 

@@ -94,11 +94,23 @@ Steps of the bloat review write their sentence under a heading of their own belo
 ### Where the words and the scripts may go (step 1.4)
 
 - src/components/admin/admin-bundle.scan.test.ts: the frame reaches no zod, Supabase client or catalogue; ZOD_REACH only shrinks.
+- src/components/admin/admin-bundle.scan.test.ts (step 2.29): no admin client module reaches lib/i18n or a storefront language (lib/messages/{en,nb,sv,da}.ts), with no exception list; words come from the server or from useSiteWords().
 - src/lib/admin-text-reach.scan.test.ts: the admin's words are not imported outside the admin.
 - src/lib/admin-messages/imports.scan.test.ts: a catalogue file holds text only; the listed imports only shrink until step 2.50.
 - src/lib/message-keys.scan.test.ts: a key nothing reads fails; tables read by matching are named in MATCHED_TABLES.
 - The three baselines (admin-bundle, imports, message-keys) are rewritten by the writer each failure message names, which writes
   today's figures: a rewrite is the deliberate step that accepts growth, shown in the diff.
+
+### The builder's editors arrive after first paint (step 2.29)
+
+- The rich text editor, the markup field and the two inline editors (Tiptap) are stand-ins in src/components/admin/lazy/editors.tsx,
+  never imported directly by the builder or its fields (the rule's own words: `docs/rules/admin/website.md`, Editing words where
+  they are). `warmEditors()` fetches their chunks when the browser is idle after the builder mounts. A press keeps its point in the
+  builder's state (`actions.inline`) until the editor calls `onDone`; while an inline editor's chunk is on its way the block draws
+  its own view (the `fallback`), never nothing: a block that vanished for a moment took the second press of a double press with it
+  (e2e/signed-in/text-styles.spec.ts).
+- The builder's first scripts: /admin/[store]/pages/[pageId] 2,007,139 bytes (scripts/bundle-budget.baseline.json), the editor marker
+  (ProseMirror) in no route's first load, and /pages/{page} in e2e/signed-in/admin-scripts.spec.ts at 2,190,000.
 
 ### Migrations in tests (step 0.39)
 

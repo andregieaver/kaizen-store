@@ -17,7 +17,7 @@ import baseline from "./admin-bundle.baseline.json";
  *      schema to a `-schema.ts` file beside the helper, or read the helper from a module without zod. Rewrite the list, once a module
  *      has stopped (or when growth is accepted on purpose, shown in the diff), with
  *      `WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts`.
- * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below.
+ * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below, step 2.29's rule 5.
  * 4. The full Supabase client loads on the press (step 2.31): no client module reaches `@supabase/supabase-js`, `@supabase/ssr` (both
  *    named `@supabase` by the walk) or `lib/supabase/client.ts` by a static import. The session is kept by `lib/supabase/auth-client.ts`
  *    (loaded with `import()` by `session.tsx`), and an upload loads the client inside its handler (`lib/supabase/signed-upload.ts`).
@@ -134,6 +134,24 @@ const FULL_CLIENT = "lib/supabase/client.ts";
 const supabaseStatic = (planted?: Map<string, string[]>) =>
   [...new Set([...clientsReaching("@supabase", planted), ...clientsReaching(FULL_CLIENT, planted)])].sort();
 
+/**
+ * 5. No storefront language (bloat review step 2.29): no client module reaches `lib/i18n.ts` or a language's module
+ *    (`lib/messages/{en,nb,sv,da}.ts`) through value imports. Until 19 November 2026 40 admin routes carried all four languages (about 318 KB)
+ *    for the page builder's previews and the draft editor's unit names. Words of a storefront language come from the server as a prop, or are
+ *    read with `useSiteWords()` (`components/admin/site-words.ts`, whose `import()` per language the walk does not follow). A type import is free.
+ */
+const SITE_LANGUAGES = ["lib/i18n.ts", "lib/messages/en.ts", "lib/messages/nb.ts", "lib/messages/sv.ts", "lib/messages/da.ts"];
+
+/** The chains `client -> ... -> language` by which an admin client module reaches a storefront language. */
+function languageOffences(planted?: Map<string, string[]>): string[] {
+  const found = new Set<string>();
+  for (const client of CLIENTS) {
+    const seen = reach(client, { planted });
+    for (const target of seen.keys()) if (SITE_LANGUAGES.includes(rel(target))) found.add(chain(seen, target).join(" -> "));
+  }
+  return [...found].sort();
+}
+
 describe.runIf(WRITE)("the baseline writer", () => {
   it("writes the baseline", () => {
     writeFileSync(join(SRC, "components/admin/admin-bundle.baseline.json"), JSON.stringify({ zodReach: zodReach() }, null, 2) + "\n");
@@ -191,6 +209,21 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     expect(supabaseStatic()).not.toContain(rel(first));
     expect(supabaseStatic(new Map([[first, ["@/lib/supabase/client"]]]))).toContain(rel(first));
     expect(supabaseStatic(new Map([[first, ["@supabase/supabase-js"]]]))).toContain(rel(first));
+  });
+
+  it("no client module reaches lib/i18n or a storefront language", () => {
+    expect(
+      languageOffences(),
+      "Give the words from the server as a prop, or read them with useSiteWords() (src/components/admin/site-words.ts).",
+    ).toEqual([]);
+  });
+
+  it("would notice: lib/i18n planted on an admin part, and a language on a lib module a client part reads", () => {
+    const rail = join(SRC, "components/admin/admin-rail.tsx");
+    expect(CLIENTS).toContain(rail);
+    expect(languageOffences(new Map([[rail, ["@/lib/i18n"]]])).some((line) => line.startsWith(rel(rail)) && line.endsWith("lib/i18n.ts"))).toBe(true);
+    const helper = join(SRC, "lib/admin-fill.ts");
+    expect(languageOffences(new Map([[helper, ["@/lib/messages/sv"]]])).some((line) => line.endsWith("lib/messages/sv.ts"))).toBe(true);
   });
 
   it("would notice: zod planted on a part of the frame", () => {

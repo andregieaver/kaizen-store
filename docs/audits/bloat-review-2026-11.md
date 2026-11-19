@@ -187,7 +187,7 @@ commit as the fix.
 | 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | In progress | 19 Nov local: catalogue sites 35 to 0; 83 routes fell (Work 54 KB each); five screens 634-664 KB; admin median 643,240 B; builderEnglish 26 to 0 routes. |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | Open | |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Open | |
-| 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | In progress | 19 Nov local: commits 1-3 of 4 (storefront words on demand; rich text editor loads after the builder paints). |
+| 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | In progress | 19 Nov local: builder 2,791,016 to 2,007,139 B; ProseMirror routes 26 to 0; drafts 1,220,086 to 840,961; i18n rule live. |
 | 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | In progress | Local 19 Nov: auth client alone; idle home 953,731 to 812,820 (brief: 800,000), orders 798,324; no realtime/storage client idle; scan rule added. Awaits deploy. |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |

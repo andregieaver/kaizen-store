@@ -35,6 +35,8 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  * left the first scripts (`admin-text-later.ts`): about 1.1 MB off each.
  */
 const BUDGETS: Record<string, number> = {
+  // Measured 19 November 2026 once the rich text editor (Tiptap) and a storefront language left the builder's first scripts (bloat review step
+  // 2.29): a page in the builder 2,101,839 bytes (3,135,169 on 13 November); about 4 % of room, rounded up to 10,000. Lowered, never raised.
   // Measured 14 November 2026 once the page builder and the rich text editor left the screens that do not edit a page (bloat review step
   // 0.10): a new product 1,197,589, pages 754,535, a page's preview 971,898, content 715,153 bytes; about 4 % of room, rounded up to 10,000.
   // The order page has no entry: e2e-shop has no order of its own (`markers.mjs` holds it). Lowered, never raised.
@@ -46,7 +48,7 @@ const BUDGETS: Record<string, number> = {
   "/products/new": 1_250_000,
   "/orders": 800_000,
   "/pages": 790_000,
-  "/pages/{page}": 3_270_000,
+  "/pages/{page}": 2_190_000,
   "/pages/{page}/preview": 1_020_000,
   "/content": 750_000,
   "/settings": 750_000,
