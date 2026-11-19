@@ -9,7 +9,6 @@ import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PageCards } from "@/components/admin/page-cards";
 import { PhoneRow } from "@/components/admin/phone-row";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
-import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { adminDate } from "@/lib/admin-date";
@@ -31,7 +30,7 @@ import { isScheduledType } from "@/lib/page-schedules";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { listTerms } from "@/server/taxonomy";
-import { buttonClass, Card, CARD_CLASS, Chip, CountBadge, PageHeader } from "@/components/admin/ui";
+import { buttonClass, Card, CARD_CLASS, Chip, CountBadge, PageHeader, Pager } from "@/components/admin/ui";
 import { commentCounts } from "@/server/blog-comments";
 
 import {
@@ -268,7 +267,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           duplicate={context.actions.duplicate}
         />
       )}
-      {total > pages.length && <ListPager words={w} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={pages.length} total={total} />}
+      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={pages.length} total={total} />
       {(type === "header" || type === "footer") && (
         <SiteLayoutChoice
           type={type}

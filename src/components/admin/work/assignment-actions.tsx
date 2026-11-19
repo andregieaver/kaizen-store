@@ -6,7 +6,8 @@ import { useState, useTransition } from "react";
 import { deleteAssignmentAction, setAssignmentStatusAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { ASSIGNMENT_STATUS_LABELS } from "@/lib/work-ui";
 
-import { Field, Problems, dangerLink, smallControl } from "./work-parts";
+import { Problems, dangerLink, smallControl } from "./work-parts";
+import { Field } from "../ui/field";
 import { workBase } from "@/lib/work-paths";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";

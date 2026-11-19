@@ -17,7 +17,8 @@ import {
 } from "@/lib/work-invoice-ui";
 import type { CreditNoteSummary, InvoiceAmounts, InvoiceLine } from "@/server/work-invoices";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -252,7 +253,7 @@ export function CreditForm({
 
       <Field
         label={tw.reason}
-        error={attempted ? (reasonProblem ?? undefined) : undefined}
+        problem={attempted ? (reasonProblem ?? undefined) : undefined}
         hint={tw.printedOnTheCredit}
       >
         {(props) => (
@@ -269,7 +270,7 @@ export function CreditForm({
 
       <Field
         label={tw.creditNoteDate}
-        error={attempted ? (dateProblem ?? undefined) : undefined}
+        problem={attempted ? (dateProblem ?? undefined) : undefined}
         hint={fillWords(tw.todayIsNotBefore, { day: formatDay(today, locale) })}
       >
         {(props) => (

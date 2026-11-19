@@ -45,17 +45,8 @@ import { ReadinessList, type ReadinessWords } from "./invoice-readiness";
 import { InvoiceTotalsParts } from "./invoice-totals-view";
 import { UnbilledTimeDialog } from "./invoice-unbilled-dialog";
 import { useWorkTimerApi } from "./timer-context";
-import {
-  card,
-  control,
-  Field,
-  hintText,
-  primaryButton,
-  Problems,
-  secondaryButton,
-  smallButton,
-  smallControl,
-} from "./work-parts";
+import { card, control, hintText, primaryButton, Problems, secondaryButton, smallButton, smallControl } from "./work-parts";
+import { Field } from "../ui/field";
 import { workBase } from "@/lib/work-paths";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
@@ -477,7 +468,7 @@ export function DraftEditor(props: DraftEditorProps) {
             </div>
           </dl>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label={tw.currency} error={headerErrors.currency}>
+            <Field label={tw.currency} problem={headerErrors.currency}>
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -495,7 +486,7 @@ export function DraftEditor(props: DraftEditorProps) {
             </Field>
             <Field
               label={tw.daysToPay}
-              error={headerErrors.paymentDays}
+              problem={headerErrors.paymentDays}
               hint={`${inherited !== null && header.paymentDays.trim() === "" ? `${fillWords(tw.followsDays, { days: inherited })} ` : ""}${fillWords(tw.dueIfToday, { day: formatDay(dueOn(detail.today, dueDays), locale) })}`}
             >
               {(fieldProps) => (
@@ -512,7 +503,7 @@ export function DraftEditor(props: DraftEditorProps) {
             </Field>
             <Field
               label={tw.yourReference}
-              error={headerErrors.reference}
+              problem={headerErrors.reference}
               hint={tw.theClientSOwn}
             >
               {(fieldProps) => (
@@ -528,7 +519,7 @@ export function DraftEditor(props: DraftEditorProps) {
             </Field>
             <Field
               label={tw.periodFrom}
-              error={headerErrors.serviceFrom}
+              problem={headerErrors.serviceFrom}
               hint={tw.whenTheWorkWas}
             >
               {(fieldProps) => (
@@ -541,7 +532,7 @@ export function DraftEditor(props: DraftEditorProps) {
                 />
               )}
             </Field>
-            <Field label={tw.periodTo} error={headerErrors.serviceTo}>
+            <Field label={tw.periodTo} problem={headerErrors.serviceTo}>
               {(fieldProps) => (
                 <input
                   {...fieldProps}
@@ -583,7 +574,7 @@ export function DraftEditor(props: DraftEditorProps) {
           </div>
           <Field
             label={tw.notesForTheClient}
-            error={headerErrors.notes}
+            problem={headerErrors.notes}
             className="mt-4"
             hint={tw.printedOnTheInvoice}
           >

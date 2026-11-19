@@ -15,7 +15,8 @@ import { VAT_TREATMENTS, VAT_TREATMENT_LABELS, suggestTreatment, type VatTreatme
 import { NO_PROBLEMS, clientPayload, moneyField, type ClientFormValues, type FormProblems } from "@/lib/work-ui";
 import type { WorkClient } from "@/server/work";
 
-import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -196,7 +197,7 @@ export function ClientForm({
       </div>
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-1 font-medium">{tw.client}</legend>
-        <Field label={tw.name} error={err("name")} hint={tw.whatYouCallThem}>
+        <Field label={tw.name} problem={err("name")} hint={tw.whatYouCallThem}>
           {(props) => (
             <input
               {...props}
@@ -211,7 +212,7 @@ export function ClientForm({
           )}
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={tw.contactPerson} error={err("contactName")}>
+          <Field label={tw.contactPerson} problem={err("contactName")}>
             {(props) => (
               <input
                 {...props}
@@ -223,7 +224,7 @@ export function ClientForm({
               />
             )}
           </Field>
-          <Field label={tw.phone} error={err("phone")}>
+          <Field label={tw.phone} problem={err("phone")}>
             {(props) => (
               <input
                 {...props}
@@ -237,7 +238,7 @@ export function ClientForm({
             )}
           </Field>
         </div>
-        <Field label={tw.invoiceEmail} error={err("billingEmail")} hint={tw.whereInvoicesAreSent}>
+        <Field label={tw.invoiceEmail} problem={err("billingEmail")} hint={tw.whereInvoicesAreSent}>
           {(props) => (
             <input
               {...props}
@@ -258,7 +259,7 @@ export function ClientForm({
           {tw.printedOnInvoicesUnder}
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={tw.legalName} error={err("legalName")} hint={tw.ifItDiffersFrom}>
+          <Field label={tw.legalName} problem={err("legalName")} hint={tw.ifItDiffersFrom}>
             {(props) => (
               <input
                 {...props}
@@ -271,7 +272,7 @@ export function ClientForm({
               />
             )}
           </Field>
-          <Field label={tw.organisationNumber} error={err("organisationNumber")}>
+          <Field label={tw.organisationNumber} problem={err("organisationNumber")}>
             {(props) => (
               <input
                 {...props}
@@ -285,7 +286,7 @@ export function ClientForm({
             )}
           </Field>
         </div>
-        <Field label={tw.address} error={err("line1")}>
+        <Field label={tw.address} problem={err("line1")}>
           {(props) => (
             <input
               {...props}
@@ -298,7 +299,7 @@ export function ClientForm({
             />
           )}
         </Field>
-        <Field label={tw.addressLine2} error={err("line2")}>
+        <Field label={tw.addressLine2} problem={err("line2")}>
           {(props) => (
             <input
               {...props}
@@ -312,7 +313,7 @@ export function ClientForm({
           )}
         </Field>
         <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-          <Field label={tw.postalCode} error={err("postalCode")}>
+          <Field label={tw.postalCode} problem={err("postalCode")}>
             {(props) => (
               <input
                 {...props}
@@ -325,7 +326,7 @@ export function ClientForm({
               />
             )}
           </Field>
-          <Field label={tw.city} error={err("city")}>
+          <Field label={tw.city} problem={err("city")}>
             {(props) => (
               <input
                 {...props}
@@ -340,7 +341,7 @@ export function ClientForm({
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={tw.country} error={err("country")}>
+          <Field label={tw.country} problem={err("country")}>
             {(props) => (
               <select
                 {...props}
@@ -358,7 +359,7 @@ export function ClientForm({
               </select>
             )}
           </Field>
-          <Field label={tw.vatNumber} error={err("vatNumber")} hint={tw.withTheCountryCode}>
+          <Field label={tw.vatNumber} problem={err("vatNumber")} hint={tw.withTheCountryCode}>
             {(props) => (
               <input
                 {...props}
@@ -377,7 +378,7 @@ export function ClientForm({
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-1 font-medium">{tw.ratesAndTerms}</legend>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label={tw.currency} error={err("currency")}>
+          <Field label={tw.currency} problem={err("currency")}>
             {(props) => (
               <select {...props} name="currency" defaultValue={currency} className={control}>
                 {(currencies.includes(currency) ? currencies : [currency, ...currencies]).map((code) => (
@@ -390,7 +391,7 @@ export function ClientForm({
           </Field>
           <Field
             label={tw.hourlyRate}
-            error={err("hourlyRate")}
+            problem={err("hourlyRate")}
             hint={tw.withoutVatAssignmentsUse}
           >
             {(props) => (
@@ -406,7 +407,7 @@ export function ClientForm({
           </Field>
           <Field
             label={tw.daysToPay}
-            error={err("paymentDays")}
+            problem={err("paymentDays")}
             hint={fillWords(tw.emptyUsesDefault, { days: defaults.paymentDays })}
           >
             {(props) => (
@@ -424,7 +425,7 @@ export function ClientForm({
         </div>
         <Field
           label={tw.languageOfTheirInvoices}
-          error={err("locale")}
+          problem={err("locale")}
           hint={tw.invoicesAndEmailsTo}
         >
           {(props) => (
@@ -465,7 +466,7 @@ export function ClientForm({
             </span>
           </span>
         </label>
-        <Field label={tw.vatTreatment} error={err("vatTreatment")} hint={VAT_TREATMENT_LABELS[treatment].hint}>
+        <Field label={tw.vatTreatment} problem={err("vatTreatment")} hint={VAT_TREATMENT_LABELS[treatment].hint}>
           {(props) => (
             <select
               {...props}
@@ -493,7 +494,7 @@ export function ClientForm({
         )}
       </fieldset>
 
-      <Field label={tw.notes} error={err("notes")} hint={tw.forYouNotPrinted}>
+      <Field label={tw.notes} problem={err("notes")} hint={tw.forYouNotPrinted}>
         {(props) => (
           <textarea
             {...props}

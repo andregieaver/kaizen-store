@@ -4,7 +4,6 @@ import { connection } from "next/server";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagePlaceForm } from "@/components/admin/page-place-form";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
-import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
@@ -15,7 +14,7 @@ import { countPages, listPages, pageTitles } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader, Pager } from "@/components/admin/ui";
 import { PlatformLegalCard, platformLegalLead } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
@@ -71,7 +70,6 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
     type === "header" || type === "footer" ? siteLayoutChoice(null) : Promise.resolve(null),
   ]);
   const layoutCurrent = layoutChoice && (type === "header" || type === "footer") ? layoutChoice[type] : null;
-  const pagerWords = adminText(lang, "website").storePages;
   const officer = legal && platform
     ? await Promise.all([storedChoice(platform, null), officerCandidates(platform, null), accountOfficer(platform)]).then(([choice, people, current]) => ({ choice, people, current }))
     : null;
@@ -164,7 +162,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
-      {total > all.length && <ListPager words={pagerWords} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={all.length} total={total} />}
+      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={all.length} total={total} />
       {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
       {officer && (
         <section className="flex max-w-xl flex-col gap-3" aria-labelledby="platform-officer" id="privacy-officer">

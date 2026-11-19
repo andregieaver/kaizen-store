@@ -6,7 +6,8 @@ import { logTimeAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store
 import { NO_PROBLEMS, timePayload, type FormProblems } from "@/lib/work-ui";
 import type { AssignmentChoice } from "@/server/work-choices";
 
-import { Field, Problems, control, primaryButton, secondaryButton } from "./work-parts";
+import { Problems, control, primaryButton, secondaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { useAdminText } from "@/components/admin/admin-text";
 
 const text = (data: FormData, name: string): string => {
@@ -96,7 +97,7 @@ export function LogTimeForm({
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-4">
       {choices.length > 1 && (
-        <Field label={tw.assignment} error={err("assignmentId")}>
+        <Field label={tw.assignment} problem={err("assignmentId")}>
           {(props) => (
             <select {...props} value={chosen} onChange={(event) => setChosen(event.target.value)} className={control}>
               {choices.map((choice) => (
@@ -130,7 +131,7 @@ export function LogTimeForm({
         </Field>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={tw.day} error={err("workDate")}>
+        <Field label={tw.day} problem={err("workDate")}>
           {(props) => (
             <input
               {...props}
@@ -143,7 +144,7 @@ export function LogTimeForm({
             />
           )}
         </Field>
-        <Field label={tw.time} error={err("duration")} hint={tw.n1h301301}>
+        <Field label={tw.time} problem={err("duration")} hint={tw.n1h301301}>
           {(props) => (
             <input
               {...props}
@@ -157,7 +158,7 @@ export function LogTimeForm({
           )}
         </Field>
       </div>
-      <Field label={tw.note} error={err("note")} hint={tw.whatYouDidOptional}>
+      <Field label={tw.note} problem={err("note")} hint={tw.whatYouDidOptional}>
         {(props) => <input {...props} name="note" maxLength={500} autoComplete="off" className={control} />}
       </Field>
       <label className="flex items-center gap-2 text-sm">
