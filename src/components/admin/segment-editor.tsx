@@ -93,8 +93,9 @@ export function SegmentEditor(props: Props) {
     <div className="flex flex-col gap-6">
       {props.starters && rules.conditions.length === 0 && (
         <section aria-labelledby="starters" className="flex flex-col gap-3">
-          <h2 id="starters" className="text-title text-ink">{w.editor.startFrom}</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Round 56 (D809): on a phone the starts are rows of one card, so the name and Save come into view. */}
+          <h2 id="starters" className="text-title text-ink max-sm:text-sm max-sm:text-ink-2">{w.editor.startFrom}</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel max-sm:bg-card">
             {props.starters.map((s) => (
               <button
                 key={s.key}
@@ -103,7 +104,7 @@ export function SegmentEditor(props: Props) {
                   setName(s.name);
                   setRules(s.rules);
                 }}
-                className={`${CARD_CLASS} p-4 text-left hover:bg-sunken`}
+                className={`${CARD_CLASS} p-4 text-left hover:bg-sunken max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:border-line max-sm:py-3 max-sm:shadow-none max-sm:last:border-b-0`}
               >
                 <span className="block text-body-strong text-ink">{s.name}</span>
                 <span className="block text-caption text-muted">{s.line}</span>

@@ -489,6 +489,7 @@ export const bookingsEn = {
     listsOf: "Lists of",
     thisCustomer: "this customer",
     noMatch: "No list matches.",
+    phoneLead: "What shoppers saved with the heart, and what they bought.",
     none: "No wishlists yet. They show here once a shopper taps a heart.",
     guest: "Guest, not signed in",
     toCartBought: "{cart} to cart · {bought} bought",
