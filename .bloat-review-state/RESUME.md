@@ -329,3 +329,14 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.18 pushed 38759d010 (frame.platform 17->11, cookie-scan 14->7, siteCookies 1, experiments 6->2 cached). After CI: D-row. kz-b free.
 - 2.33 c1 pushed 00d7bddd8 (migration two_step_mirror_reconcile; sign-in reconciles mirror, fails closed). c2 STOPPED: trusting empty mirror lets enrolled-unmirrored accounts skip 2FA and Auth-down case; needs prod count 0 + owner decision. back-in-stock e2e fixed 4cc84650a (two stores, buy facts cached). Disk cleaned to 9.6G. kz-c: 2.42.
 - 2.42 c1 REJECTED in review: ts7 devDep's tsc bin shadowed TS6 (gate would run TS7, 11 TS7-only errors). Executor a40c9e4b402c83c2f resumed to redo via pnpm dlx typescript@7.0.2 in trial step only. Main typechecks clean (00d7bddd8).
+- 2.42 c1 (trial, pnpm dlx typescript@7.0.2, continue-on-error) pushed f776326a4. Finding: TS7 gives 11 errors TS6 doesn't (ActionAnswer/FormState inference: marketing/actions.ts 14,26; settings/books/actions.ts x8; settings/company/officer-actions.ts 15). c2 after a week (25 Nov). kz-c free.
+- webkit search race fixed (expect.poll) pushed. 2.48 executor a28be989d531956a1 resumed with decisions (visit held 5/3, +2/line, commit 3 feature-gated triggers).
+- 38759d010 pending failed = waited on 2.33's migration (normal). Release depends on c743d9baf run (bt59p824b).
+- 19 Nov ~01: 2.13 D779 Done, 2.18 D780 Done, 2.33 c1 D781 (prod: 1 verified, mirrored, 0 without). 2.48 executor resumed: case 5 on warm connection. kz-b 2.4 resumed. TS7 trial first run: 34.7 s vs 211.9 s cold, same 11 errors. contract-seal unit test failed once (other session's).
+- 2.48 c1-c2 pushed 0e649cc07 (case 5 warm 2.9 ms). After CI: D-row 2.48. kz-c: 2.34.
+- 2.48 Done D782. ai-round platform +30 accepted by other session (2a877a3df).
+- 2.34 pushed c30c7d23a. kz-c: 2.26 (Opus).
+- 2.34 D-row written (In progress; day's stats). Watch: 2.17 (week), 2.34 (day), 2.16 (week pg_stat).
+- 19 Nov ~08:40: THIRD EXECUTOR added: worktree /home/user/kz-d (branch bloat-d), no builds. Running 2.44 -> 2.40 -> 2.41 (Sonnet). Shared kaizen DB replaced by a fresh template clone (was 4.9 GB). Disk 9.7 GB free.
+- kz-b: 2.4 (afd4ccd83482464ef). kz-c: 2.26 (ad9d83271bbd34604).
+- Reminders: 20 Nov 03:10 (2.34 stats), 25 Nov 03:20 (2.16, 2.17, 2.42 trial).
