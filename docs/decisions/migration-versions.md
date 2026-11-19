@@ -1,5 +1,7 @@
 # Migration versions
 
+Frozen on 4 October 2026: nothing is added here. The ledger `supabase_migrations.kaizen_files` (written by `scripts/db-migrate.mjs`) is the record of what was applied and when.
+
 On 24 September 2026 Kaizen became multi-tenant (see [`platform.md`](platform.md)).
 The single-store migrations were replaced by a fresh baseline. In production,
 the old schema was not dropped: it was renamed to `commerce_legacy` and can be

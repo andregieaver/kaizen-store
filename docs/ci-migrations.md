@@ -190,8 +190,10 @@ and set `DEPLOY_VIA_CI` to anything but `true`.
   or drop in the same change as the code that stops using them; do the removal in a later push.
 - A migration is plain SQL for a real Postgres: the production connection is not Supabase's migration
   tool, so `DROP` statements, triggers and multi-statement files run as written.
-- Advisors (RLS, search path, indexes) are still checked by hand after a migration that adds tables
-  or functions; record the result in `docs/decisions.md` as before.
+- Advisors (RLS, search path, indexes) are still checked by hand after every migration. A clean check is not written down. A new
+  finding is written as a line in `docs/audits/psi-followups.md` with the migration's file name. The ledger
+  `supabase_migrations.kaizen_files` is the record of what was applied and when; the Migration versions list in the decisions is
+  frozen (4 October 2026) and nothing is added to it.
 - A migration that adds a table, or an index or trigger on a hot table, raises the surface budget
   (`src/lib/surface-budget.scan.test.ts`); the scan runs with the full checks, so for a push without a migration it reports
   beside the deploy and does not hold it back.

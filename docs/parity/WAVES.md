@@ -74,10 +74,10 @@ The result holds every agent's report (`spec`, `found`, `server`, `surfaces`, `g
    Keep the agents' `ownerStatements` only for what is not a migration. After the deploy, check the security and
    performance advisors and fix what the migration caused. Migrations stay additive (the old code runs against the
    new schema until the deploy ends).
-3. **Record.** Claim the decision's number first (`node scripts/claim-decision.mjs "title"`), then write its text in `docs/decisions/D{n}.md`
-   (`node scripts/decisions.mjs new "…"` takes the number and adds the index row) and the migration versions to
-   `docs/decisions/migration-versions.md`; add the rule under its heading in `docs/rules` (a draft is in the
-   `rerate` report); CLAUDE.md gets no line; update the plan comparison (D132) and the AI manager's tools and skills
+3. **Record.** Claim the decision's number first (`node scripts/claim-decision.mjs "title"`: it makes `docs/decisions/D{n}.md`
+   and the decision's row in the index of `docs/decisions.md`), then write the text in that file (no migration versions: the
+   ledger records them, and a new advisor finding goes to `docs/audits/psi-followups.md`); add the rule under its heading in
+   `docs/rules` (a draft is in the `rerate` report); CLAUDE.md gets no line; update the plan comparison (D132) and the AI manager's tools and skills
    when the wave added a feature that belongs there.
 4. **Legal texts.** List every consumer legal text the wave added (spec section "Needs human legal review") in the
    hand-over. They are hand-written and unreviewed; a row that rests on them is not Full until a person has read them.

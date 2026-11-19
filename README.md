@@ -66,9 +66,9 @@ There are no branches or pull requests: a commit to `main` is a deploy (D5). CI 
 - a push with a migration waits for the checks, applies the migration to production (`scripts/db-migrate.mjs`), then deploys;
 - each deploy waits until `/api/health` reports the commit, and fails the job when it does not.
 
-So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change),
-is never applied to production by hand, and has its version recorded in `docs/decisions/migration-versions.md` afterwards. Pushes of `*.md` and
-`docs/**` alone run nothing.
+So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change)
+and is never applied to production by hand. What was applied, and when, is in the ledger `supabase_migrations.kaizen_files`
+(`scripts/db-migrate.mjs`). Pushes of `*.md` and `docs/**` alone run nothing.
 
 ## Where things are
 

@@ -199,7 +199,7 @@ commit as the fix.
 | 2.38 | Use cached input | AI-3 | M | strong | 1.19, 2.36, 2.37 | Open | |
 | 2.39 | Give small jobs a quick model | AI-7, GAP-ai-s4 | M | strong | 1.19, 2.38 | Open | |
 | 2.40 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | cheap | 0.41, 1.1 | In progress | 19 Nov, local: 779 decisions in 779 files (every cell identical to its row), lines over 500: 756 to 0, decisions.md 1,674,094 to 83,189 bytes. |
-| 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | Open | |
+| 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | In progress | 19 Nov, local: instructions to record a version 3 to 0 in the four files; clean advisor check needs no note; CLAUDE.md 10,098 to 10,152 bytes (ceiling 10,500). |
 | 2.42 | Shorten the gate's type check | TC-4, TC-9 | M | review | 0.38, 1.20 | In progress | Commit 1: native TS 7 trial in static until 25 Nov. Local: TS 7 via dlx 27 s, 11 errors tsc 6.0.3 lacks; tsc 0. |
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
 | 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | In progress | 19 Nov, local: components isolate off fails 16 files, kept; db off 150 s to 108 s, 3 runs green, kept. No ceiling set yet. |
