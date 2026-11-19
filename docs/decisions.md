@@ -830,6 +830,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D825 | **Crawlers get the cached page; only link previews keep the blocking render** | 2026-11-19 | [text](decisions/D825.md) |
 | D826 | **Every storefront link states what it may fetch ahead** | 2026-11-19 | [text](decisions/D826.md) |
 | D827 | **Admin redesign round 63: Kaizena Flow's customers, extensions and stores on a phone** | 2026-11-19 | [text](decisions/D827.md) |
+| D828 | **The ledger job's turns: ledger_books.checked_at and behind (bloat review step 3.22)** | 2026-11-19 | [text](decisions/D828.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
