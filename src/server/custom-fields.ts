@@ -48,7 +48,7 @@ import { t } from "@/lib/i18n";
 import type { PageContent } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
-import { fieldsTag } from "@/lib/cache-tags";
+import { fieldsTag, pagesTag } from "@/lib/cache-tags";
 
 import { audit, type Membership } from "./auth";
 import { isOwnFieldFile } from "./media";
@@ -58,7 +58,6 @@ import type { SaveResult } from "./settings";
 import { marketIn } from "./shop";
 import { getStore, storeSlugOf, storeTag } from "./stores";
 import { OFFERED } from "./product-conditions";
-import { pagesTag } from "./pages";
 import { owned } from "./owned";
 
 type Row = Record<string, unknown>;

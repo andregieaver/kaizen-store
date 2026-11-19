@@ -17,7 +17,7 @@ import { articleJsonLd } from "@/lib/structured-data";
 import { approvedComments } from "@/server/blog-comments";
 import { authorOf, bylineOf, findBlog, storeAuthors, storeBlogs } from "@/server/blogs";
 import { bindForPlace } from "@/server/field-binding";
-import { findPublishedPage, publishedPageIndex } from "@/server/pages";
+import { findPublishedPage, publishedPageIndex } from "@/server/page-reads";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { marketMoved, resolveShop } from "@/server/shop";

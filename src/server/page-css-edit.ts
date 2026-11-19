@@ -10,7 +10,7 @@ import { audit, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { keepVersion } from "./page-versions";
 import { PLATFORM_NAVIGATION_TAG } from "./platform-navigation";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { checkPassPermission, checkPermission } from "./permissions";
 import { refreshTagNow } from "./refresh";
 import { authorise, pageRow, revisionOf, type PageTextFailure } from "./page-text-edit";

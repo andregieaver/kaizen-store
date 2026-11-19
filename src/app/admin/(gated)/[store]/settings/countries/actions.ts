@@ -12,7 +12,7 @@ import { marketPriceRules, previewRule, rateProblem, removeMarketPriceRule, save
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { STORES_TAG } from "@/server/seo";
 import { setMarkets } from "@/server/setup";
 import { forgetStoreFacts } from "@/server/redirect-resolve";

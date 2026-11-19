@@ -15,7 +15,7 @@ const CALL = /listPublishedPages\(/;
  * The files that may name it: the definition, and the sitemaps and llms.txt, which read the pictures and the words of every page (bloat
  * review step 2.17: the blog feed reads articleCards(), the platform's static params and the admin's search page the index).
  */
-const ALLOWED = ["src/server/pages.ts", "src/server/seo.ts"].sort();
+const ALLOWED = ["src/server/page-reads.ts", "src/server/seo.ts"].sort();
 
 /** The definition, and in seo.ts its four readers' two lines each and one comment (step 2.17; 14 after step 0.24). */
 const MAX_LINES = 10;

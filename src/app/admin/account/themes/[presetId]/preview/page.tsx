@@ -22,7 +22,7 @@ import { campaignNotices } from "@/server/campaign-notices";
 import { getProduct, listProducts } from "@/server/catalog";
 import { adminDesignPreview, publicDesignPreview } from "@/server/design-presets";
 import { siteFontStyle } from "@/server/fonts";
-import { publishedPageById } from "@/server/pages";
+import { publishedPageById } from "@/server/page-reads";
 import { getStore, type Store } from "@/server/stores";
 
 export const metadata: Metadata = { title: "Theme preview", robots: { index: false, follow: false } };

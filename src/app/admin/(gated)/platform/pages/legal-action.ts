@@ -7,7 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_KINDS, type PlatformLegalKind } from "@/lib/platform-legal";
 import { requirePlatform } from "@/server/auth";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { writePlatformLegalPages } from "@/server/platform-legal";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { platformAccountId, setOfficer } from "@/server/privacy-officers";

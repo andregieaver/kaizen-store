@@ -42,7 +42,7 @@ import { listStoreDomains } from "./domains";
 import { listLanguages } from "./languages";
 import { languagesProblems, saveCurrencies, saveLanguages } from "./localization";
 import { OwnerToolError } from "./owner-tool-error";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { forgetStoreFacts } from "./redirect-resolve";
 import { STORES_TAG } from "./seo";
 import { getShippingSettings, saveShippingSettings } from "./settings";

@@ -6,7 +6,7 @@ import type { MenuSaveResult } from "@/server/menus";
 import { checkPermission, NO_ACCESS } from "@/server/permissions";
 import { discardStaging, keepStagedCopy, publishStaging, stageMenu, stagePage, stageTheme, startStaging, type PublishOutcome } from "@/server/site-staging";
 import { designTags } from "@/server/design-presets";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { storeTag } from "@/server/stores";
 
 /** Staging the site changes what visitors will see, so every action asks `website:write` (D358); publishing asks each page's own key too. */

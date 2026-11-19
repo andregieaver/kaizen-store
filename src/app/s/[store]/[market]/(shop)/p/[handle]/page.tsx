@@ -20,7 +20,7 @@ import { getProduct, listProducts } from "@/server/catalog";
 import { buyFacts } from "@/server/buy-facts";
 import { campaignNotices } from "@/server/campaign-notices";
 import { reviewFacts } from "@/server/review-facts";
-import { productsPageOf } from "@/server/pages";
+import { productsPageOf } from "@/server/page-reads";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { productLayoutForVisitor } from "@/server/product-layouts";
 import { getRecommendSettings } from "@/server/recommend-settings";

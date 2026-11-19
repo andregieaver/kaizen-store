@@ -7,7 +7,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import { marketPath } from "@/lib/paths";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { exchangePageFor } from "@/server/exchange-pay";
-import { publishedPageById } from "@/server/pages";
+import { publishedPageById } from "@/server/page-reads";
 import { resolveShop } from "@/server/shop";
 
 import { ExchangeView } from "./exchange-view";

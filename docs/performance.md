@@ -481,6 +481,23 @@ it auth, pages, catalog, stores, seo, stripe, permissions, customers, the page m
 | Traced beside it | 60.7 MB | 2.1 MB |
 | Cold load, median of five | about 290 to 330 ms beyond a function that does nothing | 145 ms, 3 ms under `/api/health`'s 148 |
 
+### Page reads apart from page writes (bloat review step 2.21)
+
+The reads of published pages are in `src/server/page-reads.ts` (the site's cached reads, the cards of a grid and a blog's feed, the
+All products and role pages), which imports the database client, the tag leaf, the page model, the media library's alt texts and pure
+`src/lib` code, and never `src/server/pages.ts`. `pages.ts` keeps the writers, imports the few helpers they share from the reader and
+re-exports every read for its tests; a file that only reads pages imports the reader, and one that only needs a tag imports
+`src/lib/cache-tags.ts`. The page renderer (`src/components/page-article.tsx`) may not reach `pages.ts`, `design-presets.ts`,
+`page-ai.ts` or `src/lib/signature/`: the one path it had went through the content types' reads, which now have their own file
+(`src/server/content-types-read.ts`, re-exported by the writer `content-types.ts`). `route-load.graph.test.ts` holds both entries:
+`page-reads` at 130 files or fewer with `pages.ts`, `auth.ts`, `design-presets.ts`, `page-ai.ts` and `src/lib/signature/` forbidden,
+and `page-article` with the four forbidden.
+
+| Files reached by static value imports | Before (19 November) | After |
+|---|---|---|
+| Reading a page | 183 through `pages.ts` (1,307 on 12 November) | 72 (`page-reads.ts`) |
+| The page renderer (`page-article.tsx`) | 467, `pages.ts` among them (1,396 on 12 November) | 430, none of the four |
+
 ## Cold starts in production (bloat review step 1.16)
 
 Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the

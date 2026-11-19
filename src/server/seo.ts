@@ -11,7 +11,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { STORES_TAG } from "@/lib/cache-tags";
+import { STORES_TAG, pagesTag } from "@/lib/cache-tags";
 import { t } from "@/lib/i18n";
 import { languageChoices, localizationOf } from "@/lib/localization";
 import { LEGAL_ROLES } from "@/lib/legal-roles";
@@ -50,7 +50,7 @@ import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { storeBlogs } from "./blogs";
 import { col, typedRows } from "./typed-rows";
-import { listPublishedPages, pagesTag, publishedPageIndex } from "./pages";
+import { listPublishedPages, publishedPageIndex } from "./page-reads";
 import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";

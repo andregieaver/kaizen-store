@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { takePackHome, undoHomeTake } from "@/server/home-takes";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { storeTag } from "@/server/stores";
 import { adminText } from "@/lib/admin-text";
