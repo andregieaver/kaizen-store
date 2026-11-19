@@ -245,10 +245,11 @@ export function SmsCampaignEditor({
           required
         />
         <p id="sms-text-hint" className={hint}>
-          {w.messageHint}
+          <span className="sm:hidden">{fillWords(w.phoneGets, { store: storeName })}</span>
+          <span className="max-sm:hidden">{w.messageHint}</span>
         </p>
       </div>
-      <section aria-labelledby="sms-preview" className="flex flex-col gap-2">
+      <section aria-labelledby="sms-preview" className={`flex flex-col gap-2 ${values.text ? "" : "max-sm:hidden"}`}>
         <h3 id="sms-preview" className={label}>
           {w.preview}
         </h3>
