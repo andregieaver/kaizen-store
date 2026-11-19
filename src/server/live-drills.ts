@@ -14,7 +14,7 @@ import { activeAccount, audit, passMembership } from "./auth";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
 import { decideApproval, runTurn, type Principal } from "./owner-assistant";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { memberCan } from "./permissions";
 import { readMissingPaymentFacts } from "./payment-facts";
 import { writePlatformLegalPages } from "./platform-legal";

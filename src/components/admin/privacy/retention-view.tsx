@@ -5,6 +5,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
 import { isBookkeepingKind, RETENTION_KINDS, type Period, type RetentionKind } from "@/lib/retention";
 import type { RetentionOverview, StoredRule } from "@/server/retention";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { PageHeader } from "@/components/admin/ui";
 
 import { ChangeRuleForm } from "./retention-forms";
@@ -110,7 +111,15 @@ export function RetentionView({
   const actions = (a: string) => personal.filter((e) => e.erasure === a).length;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={<>{w.description}</>} />
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+      />
 
       <section aria-labelledby="unreviewed" className={card}>
         <h2 id="unreviewed" className="text-title text-ink">
@@ -125,10 +134,24 @@ export function RetentionView({
         )}
       </section>
 
-      {RETENTION_KINDS.filter((kind) => byKind.has(kind)).map((kind) => (
-        <section key={kind} aria-labelledby={`kind-${kind}`} className={card}>
+      {/* Round 62 (D823): on a phone each kind of data is a row of one card saying how many periods and how many to review; from sm up as before. */}
+      <PhoneRows>
+      {RETENTION_KINDS.filter((kind) => byKind.has(kind)).map((kind, index, kinds) => {
+        const rules = byKind.get(kind) ?? [];
+        const open = rules.filter((rule) => !rule.verifiedAt).length;
+        return (
+        <PhoneRow
+          key={kind}
+          flat
+          last={index === kinds.length - 1}
+          title={w.kinds[kind]}
+          sub={fillWords(open > 0 ? w.phone.kindSub : w.phone.kindSubDone, { n: rules.length, m: open })}
+          change={w.phone.open}
+          done={w.phone.close}
+        >
+        <section aria-labelledby={`kind-${kind}`} className={card}>
           <div>
-            <h2 id={`kind-${kind}`} className="text-title text-ink">
+            <h2 id={`kind-${kind}`} className="text-title text-ink max-sm:sr-only">
               {w.kinds[kind]}
             </h2>
             {isBookkeepingKind(kind) && <p className="text-sm text-muted">{w.floor}</p>}
@@ -153,14 +176,17 @@ export function RetentionView({
                 </tr>
               </thead>
               <tbody>
-                {(byKind.get(kind) ?? []).map((rule) => (
+                {rules.map((rule) => (
                   <RuleRow key={rule.id} rule={rule} verify={verify} w={w} day={day} />
                 ))}
               </tbody>
             </table>
           </div>
         </section>
-      ))}
+        </PhoneRow>
+        );
+      })}
+      </PhoneRows>
 
       <section aria-labelledby="change-rule" className={card}>
         <h2 id="change-rule" className="text-title text-ink">

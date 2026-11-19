@@ -10,7 +10,7 @@ import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { fieldsTag } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { STORES_TAG } from "@/server/seo";
 import { applyTranslations, translationWorklist, type ApplyResult } from "@/server/store-translate";
 import { adminText } from "@/lib/admin-text";

@@ -6,7 +6,7 @@ import { pageSlugProblem } from "@/lib/page-content";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import { findEntryPage } from "@/server/content-site";
-import { findPublishedPage, publishedPageIndex } from "@/server/pages";
+import { findPublishedPage, publishedPageIndex } from "@/server/page-reads";
 import { languageMeta } from "@/server/platform-lang-meta";
 import { platformRoleOf } from "@/server/platform-roles";
 

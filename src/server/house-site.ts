@@ -7,7 +7,7 @@ import { z } from "zod";
 import { audit, type Account } from "./auth";
 import { houseStoreId } from "./house-customers";
 import { log } from "./log";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { refreshTag } from "./refresh";
 import { refreshStoreById } from "./stores";
 import { termsTag } from "./taxonomy";

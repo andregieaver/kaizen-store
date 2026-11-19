@@ -6,7 +6,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import { marketPath } from "@/lib/paths";
 import { payPageFor } from "@/server/draft-pay";
 import { termsDisplayFor } from "@/server/checkout-terms";
-import { publishedPageById } from "@/server/pages";
+import { publishedPageById } from "@/server/page-reads";
 import { resolveShop } from "@/server/shop";
 
 import { PayView } from "./pay-view";

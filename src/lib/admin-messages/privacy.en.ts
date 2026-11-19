@@ -300,6 +300,14 @@ export const privacyEn = {
     title: "Data retention",
     description:
       "How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country's law and need an accountant to review them; the rest are Kaizena Flow's own choice. This is not legal advice.",
+    /** Round 62 (D823): the schedule on a phone, each kind of data a row. */
+    phone: {
+      lead: "How long each kind of personal data is kept before the daily job removes it.",
+      kindSub: "{n} in force · {m} to review",
+      kindSubDone: "{n} in force · all reviewed",
+      open: "Open",
+      close: "Close",
+    },
     kinds: {
       bookkeeping: "Orders, invoices and payments (bookkeeping)",
       host_bookkeeping: "Hosts' orders (bookkeeping)",

@@ -118,7 +118,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
 | 3.13 | Domain folders | FV4, FH6 | L | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach; when a feature gets its folder, its reads and writes become two files (bloat step 2.20) |
-| 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only |
+| 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only; pages' reads and writes two files (bloat 2.21, 19 Nov) |
 | 3.15 | Keep the big tables lean | FD7, FD8 | M | Open | The 13 duplicate indexes dropped by bloat step 0.26, 15 November 2026, commit f1c57b2f; hot-table index counts held by the surface budget. |
 | 3.16 | One error shape for the API | FD10 | M | Open | |
 | 3.17 | Limit floods at the edge | FD11 | S | Open | |
@@ -725,6 +725,8 @@ up on long pages; editors open sooner; cart, checkout and admin pages answer fas
 11. **One card query; smaller storefront files.** Follow FF10's fix. Closes FF10. M. Done when: both list functions use one fragment and mapper, and `cart-contents.tsx` and `product-parts.tsx` are each under about 500 lines.
 12. **One accounting adapter, one `afterOrNow`.** Follow FV10's fix. Closes FV10. M. Done when: Tripletex and Fiken share the client and the sync runner, and the 16 hand-written blocks are gone.
 13. **Domain folders.** Move one cluster first (Work) to learn the cost, then the others; split `work-invoices.ts` and `owner-tools.ts`. Closes FV4, FH6. L. Done when: each moved domain has its folder in `src/server` and `src/lib`, the paths in `CLAUDE.md` and `docs/rules` are right, and `rules-index.test.ts` passes.
+    Page reads and writes are two files since bloat review step 2.21, 19 November 2026 (`src/server/page-reads.ts` beside
+    `pages.ts`; the content types' reads in `content-types-read.ts`); the step's tracker row is at its 300 characters, so the note is here.
 14. **Split `schema.ts`.** Follow FD5's fix. Closes FD5. M. Done when: `client.ts` no longer imports the schema and `pnpm db:check` writes no migration.
 15. **Keep the big tables lean.** Drop the redundant index and write the unused-index check into `docs/ci-migrations.md`; add the delete steps and periods to retention. Closes FD7, FD8. M. Done when: each table named in FD8 has a delete step with its period in `src/lib/retention.ts`, and the privacy text states the same periods. (Question 6.)
 16. **One error shape for the API.** Follow FD10's fix. Closes FD10. M. Done when: the browser-facing route families answer through `api-route.ts` and no `console.warn` is left in `src/app/api`. Platform: its editor routes are among them.
@@ -810,3 +812,4 @@ scale. `statement_timeout` on a role behind the transaction pooler (FD9) needs a
 - 18 November 2026: bloat review step 1.20: `scripts/timed.mjs` records every CI check's seconds, `scripts/next-build.mjs` ends with `Build: N s, peak memory X GB`, and the two source-map switches are measured under an 8 GB cap (`docs/build-memory.md`: `serverSourceMaps: false` stays on Vercel, `enablePrerenderSourceMaps` gained nothing); row 1.8's status unchanged.
 - 19 November 2026: bloat review step 2.40: every decision is its own file in `docs/decisions/` with `docs/decisions.md` a generated index (`scripts/decisions.mjs`); the Migration versions list is `docs/decisions/migration-versions.md`; 1.10 Done.
 - 19 November 2026: bloat review step 2.20: the proxy's readers are leaf files beside their features' writers; step 3.13's note gains the rule that a feature's reads and writes become two files when it gets its folder.
+- 19 November 2026: bloat review step 2.21: page reads live in `src/server/page-reads.ts`, apart from the writers in `pages.ts`, and the content types' reads in `content-types-read.ts`; steps 3.13 and 3.14 say so in their notes.

@@ -25,7 +25,7 @@ import { marketPath } from "@/lib/paths";
 import { readCartId } from "./cart";
 import { getOpenCheckout } from "./checkout";
 import { log } from "./log";
-import { publishedPageById, type PublishedPage } from "./pages";
+import { publishedPageById, type PublishedPage } from "./page-reads";
 import { resolveShop } from "./shop";
 import type { Store } from "./stores";
 

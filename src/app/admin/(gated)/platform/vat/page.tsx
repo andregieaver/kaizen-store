@@ -5,7 +5,9 @@ import { CategoriesCard } from "@/components/admin/vat/categories-card";
 import { CoverageCard } from "@/components/admin/vat/coverage-card";
 import { RateForm } from "@/components/admin/vat/rate-form";
 import { UnverifiedCard } from "@/components/admin/vat/rates-table";
+import { VatPhoneList } from "@/components/admin/vat/phone-list";
 import { ShippingRulesCard } from "@/components/admin/vat/shipping-rules-card";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { requirePlatformReader } from "@/server/auth";
 import { listShippingVatRules, unverifiedRates, vatCoverage } from "@/server/vat-admin";
 import { PageHeader } from "@/components/admin/ui";
@@ -35,13 +37,30 @@ export default async function PlatformVatPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={<>{w.intro}</>}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.intro}</span>
+          </>
+        }
       />
-      <UnverifiedCard rows={unverified} categoryName={(code) => names.get(code) ?? code} verify={(c, k, from) => verifyVatRateAction.bind(null, c, k, from)} words={w} locale={locale} />
-      <CoverageCard categories={coverage.categories} countries={coverage.countries} words={w} />
-      <RateForm categories={coverage.categories.filter((c) => c.code !== "exempt")} countries={countries} action={setVatRateAction} words={w} />
-      <CategoriesCard categories={coverage.categories} addAction={addVatCategoryAction} activeAction={(code, active) => setVatCategoryActiveAction.bind(null, code, active)} words={w} />
-      <ShippingRulesCard rules={shippingRules} countries={countries} action={setShippingVatRuleAction} words={w} locale={locale} />
+      {/* Round 62 (D823): on a phone what to verify and each country as a row; the tables, the form, the categories and shipping one row away. */}
+      <VatPhoneList countries={coverage.countries} unverified={unverified} words={w} locale={locale} />
+      <div className="contents max-sm:hidden">
+        <UnverifiedCard rows={unverified} categoryName={(code) => names.get(code) ?? code} verify={(c, k, from) => verifyVatRateAction.bind(null, c, k, from)} words={w} locale={locale} />
+        <CoverageCard categories={coverage.categories} countries={coverage.countries} words={w} />
+      </div>
+      <PhoneRows>
+        <PhoneRow flat title={w.rateForm.title} change={w.phone.open} done={w.phone.close}>
+          <RateForm categories={coverage.categories.filter((c) => c.code !== "exempt")} countries={countries} action={setVatRateAction} words={w} />
+        </PhoneRow>
+        <PhoneRow flat title={w.categories.title} change={w.phone.open} done={w.phone.close}>
+          <CategoriesCard categories={coverage.categories} addAction={addVatCategoryAction} activeAction={(code, active) => setVatCategoryActiveAction.bind(null, code, active)} words={w} />
+        </PhoneRow>
+        <PhoneRow flat last title={w.shipping.title} change={w.phone.open} done={w.phone.close}>
+          <ShippingRulesCard rules={shippingRules} countries={countries} action={setShippingVatRuleAction} words={w} locale={locale} />
+        </PhoneRow>
+      </PhoneRows>
     </div>
   );
 }

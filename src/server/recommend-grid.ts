@@ -13,7 +13,7 @@ import { tileFieldIds } from "@/lib/tile-fields";
 import { catalogTag } from "./catalog";
 import { gridData, storeAndMarket, type GridPlace } from "./content-grid";
 import { fieldsTag } from "./custom-fields";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { standInFor } from "./recommend";
 import { getRecommendSettings, recommendTag } from "./recommend-settings";
 import { termsTag } from "./taxonomy";

@@ -4,7 +4,7 @@ import { catalogTag } from "@/server/catalog";
 import { cronAuthorised } from "@/server/cron-auth";
 import { runJobs, tracked } from "@/server/cron-runs";
 import { DISPATCHER_JOBS } from "@/server/dispatcher-jobs";
-import { PAGES_TAG, pagesTag } from "@/server/pages";
+import { PAGES_TAG, pagesTag } from "@/lib/cache-tags";
 import { STATUS_TAG } from "@/server/status";
 import { DESIGNS_TAG, designTags, runPlatformThemeUpdates, runThemeUpdates } from "@/server/design-presets";
 import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purchases";

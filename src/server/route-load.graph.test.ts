@@ -63,6 +63,14 @@ describe("what a server entry loads (bloat review 1.8)", () => {
     ).toBeLessThanOrEqual(PROXY_FILES_MAX);
   });
 
+  it("the page reader reaches at most 130 files (bloat review step 2.21)", () => {
+    console.info(`route-load: src/server/page-reads.ts reaches ${now.entries["page-reads"]} files (at most 130)`);
+    expect(
+      now.entries["page-reads"],
+      `src/server/page-reads.ts reaches ${now.entries["page-reads"]} files: the reader may import only the database client, the tag leaf (src/lib/cache-tags.ts), the page model and the media library's alt texts (src/server/media-alts.ts)`,
+    ).toBeLessThanOrEqual(130);
+  });
+
   it("the largest import cycle in src/server does not grow", () => {
     expect(now.largestCycle, "the largest import cycle in src/server: import the helper from the file that defines it").toBeLessThanOrEqual(recorded.largestCycle);
   });

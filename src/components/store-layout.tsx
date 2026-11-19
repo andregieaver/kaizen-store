@@ -16,7 +16,7 @@ import { marketHome, marketLink, marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { legalLinksFor } from "@/server/legal-links";
-import { publishedPageNames } from "@/server/pages";
+import { publishedPageNames } from "@/server/page-reads";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 import { termsIn } from "@/lib/term-texts";

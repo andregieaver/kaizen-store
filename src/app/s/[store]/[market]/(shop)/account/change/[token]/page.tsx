@@ -6,7 +6,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import type { LegalRole } from "@/lib/legal-roles";
 import { marketPath } from "@/lib/paths";
 import { changePageFor } from "@/server/order-edit-pay";
-import { publishedPageIndex } from "@/server/pages";
+import { publishedPageIndex } from "@/server/page-reads";
 import { resolveShop } from "@/server/shop";
 
 import { ChangeView } from "./change-view";

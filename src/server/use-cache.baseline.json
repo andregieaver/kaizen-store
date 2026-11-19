@@ -296,37 +296,37 @@
       "pagesTag(storeId)"
     ]
   },
-  "src/server/pages.ts#listPublishedPages": {
+  "src/server/page-reads.ts#listPublishedPages": {
     "life": "\"hours\"",
     "tags": [
       "pagesTag(owner)"
     ]
   },
-  "src/server/pages.ts#publishedPageById": {
+  "src/server/page-reads.ts#publishedPageById": {
     "life": "\"hours\"",
     "tags": [
       "pagesTag(owner)"
     ]
   },
-  "src/server/pages.ts#publishedPageIndex": {
+  "src/server/page-reads.ts#publishedPageIndex": {
     "life": "\"hours\"",
     "tags": [
       "pagesTag(owner)"
     ]
   },
-  "src/server/pages.ts#articleCards": {
+  "src/server/page-reads.ts#articleCards": {
     "life": "\"hours\"",
     "tags": [
       "pagesTag(storeId)"
     ]
   },
-  "src/server/pages.ts#findPublishedPage": {
+  "src/server/page-reads.ts#findPublishedPage": {
     "life": "\"hours\"",
     "tags": [
       "pagesTag(owner)"
     ]
   },
-  "src/server/pages.ts#publishedPageNames": {
+  "src/server/page-reads.ts#publishedPageNames": {
     "life": "\"hours\"",
     "tags": [
       "pagesTag(owner)"
