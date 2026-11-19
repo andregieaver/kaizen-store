@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import { createContext, useContext, useEffect, useId, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
 
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { cssLineChanges, type CssVersionActions, type CssVersionItem } from "@/lib/css-versions";
 import { CSS_MAX, cssProblem } from "@/lib/custom-css";
 import { BUILDER_PANEL, builderPanelWidth } from "@/lib/panel-box";
@@ -68,6 +68,7 @@ export function CssPanel({
   versions,
   classNames = [],
   pageSide = null,
+  timeZone,
 }: {
   /** A dual page (D412): which of the two pages *This page* edits, and the switch between them; null on a page alone. */
   pageSide?: { value: "left" | "right"; onChange: (side: "left" | "right") => void; label: string; left: string; right: string } | null;
@@ -87,6 +88,8 @@ export function CssPanel({
   versions?: CssVersionActions;
   /** The classes the page's parts and the site's text styles have, offered after a `.` (`knownClassNames()`). */
   classNames?: readonly string[];
+  /** The site's clock: the store's zone, or the platform's for Kaizena Flow's own, for when each version was saved (D812). */
+  timeZone: string;
 }) {
   const id = useId();
   const [tab, setTab] = useState<"page" | "site">("page");
@@ -267,6 +270,7 @@ export function CssPanel({
               onSiteCss(css);
               setStatus({ ok: true, text: w.versionUsed });
             }}
+            timeZone={timeZone}
           />
         )}
         {tab === "site" && (
@@ -362,16 +366,15 @@ function PanelWidthHandle({
 
 const placeholderOf = (tab: "page" | "site") => (tab === "page" ? ".hero h1 {\n  letter-spacing: -0.02em;\n}" : "h2 {\n  text-wrap: balance;\n}");
 
-const when = (iso: string, locale: string) =>
-  new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
 /**
  * The site CSS's earlier saves (D385), folded away until asked for: each with when and who, and how it differs from what the panel holds
  * in lines. *Use this version* puts it in the panel unsaved; it reaches the site only through Save.
  */
-function CssVersions({ versions, current, onUse }: { versions: CssVersionActions; current: string; onUse: (css: string) => void }) {
+function CssVersions({ versions, current, onUse, timeZone }: { versions: CssVersionActions; current: string; onUse: (css: string) => void; timeZone: string }) {
   const w = useAdminText("builder").css;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
+  const when = (iso: string) => adminDate(timeZone, iso, "dayTime", lang);
   const [items, setItems] = useState<CssVersionItem[] | null>(null);
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [problem, setProblem] = useState<string | null>(null);
@@ -413,7 +416,7 @@ function CssVersions({ versions, current, onUse }: { versions: CssVersionActions
               return (
                 <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <span className="flex flex-col">
-                    <span>{item.by ? fillWords(w.versionBy, { when: when(item.at, locale), by: item.by }) : fillWords(w.versionAt, { when: when(item.at, locale) })}</span>
+                    <span>{item.by ? fillWords(w.versionBy, { when: when(item.at), by: item.by }) : fillWords(w.versionAt, { when: when(item.at) })}</span>
                     {changes && (
                       <span className="text-xs text-muted">
                         {changes.added === 0 && changes.removed === 0 ? w.versionSame : fillWords(w.versionChanges, { added: changes.added, removed: changes.removed })}

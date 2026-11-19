@@ -23,6 +23,8 @@ export type Notice = {
   storeId: string | null;
   /** The store's name, or null for Kaizena Flow's own AI manager. */
   place: string | null;
+  /** The store's time zone, or null for Kaizena Flow's own (`PLATFORM_TIME_ZONE`): the notice's time on that clock (D812). */
+  timeZone: string | null;
   facts: Record<string, string>;
   href: string;
   read: boolean;
@@ -140,6 +142,7 @@ const NOTICE = z.object({
   kind: col.text,
   store_id: col.uuid.nullable(),
   place: col.textOrNull,
+  time_zone: col.textOrNull,
   facts: z.unknown(),
   href: col.text,
   read: col.bool,
@@ -160,7 +163,7 @@ export async function listNotices(accountId: string, place: NoticePlace, limit =
   const rows = await typedRows(
     NOTICE,
     sql`
-      select n.id, n.kind, n.store_id, s.name as place, n.facts, n.href, n.read_at is not null as read, n.created_at
+      select n.id, n.kind, n.store_id, s.name as place, s.time_zone, n.facts, n.href, n.read_at is not null as read, n.created_at
       from commerce.assistant_notices n left join commerce.stores s on s.id = n.store_id
       where n.account_id = ${accountId}::uuid and ${placeWhere(place)}
       order by n.created_at desc, n.id
@@ -174,6 +177,7 @@ export async function listNotices(accountId: string, place: NoticePlace, limit =
       kind: row.kind as NoticeKind,
       storeId: row.store_id,
       place: row.place,
+      timeZone: row.time_zone,
       facts: cleanFacts((row.facts ?? {}) as Record<string, unknown>),
       href: row.href,
       read: row.read,

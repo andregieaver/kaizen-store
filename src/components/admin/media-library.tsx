@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import type { AltLanguage } from "@/lib/alt-text";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
 import { formatBytes } from "@/lib/image-size";
@@ -105,6 +105,7 @@ export function MediaLibrary({
   compress,
   waiting,
   pictures,
+  timeZone,
 }: {
   items: MediaItem[];
   total: number;
@@ -129,6 +130,8 @@ export function MediaLibrary({
   waiting: number;
   /** Making and editing pictures with the site's AI (D349): the routes, null where the site has no such model, and where its AI settings are. */
   pictures?: PictureTools;
+  /** The store's time zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own library: when each file was added, on that clock (D812). */
+  timeZone: string;
 }) {
   const w = useAdminText("website").media;
   const router = useRouter();
@@ -337,7 +340,7 @@ export function MediaLibrary({
         </div>
       )}
 
-      {items.length > 0 && query.view === "list" && <FileList items={items} onOpen={setOpenId} chosen={choosing ? chosen : null} onPick={pick} />}
+      {items.length > 0 && query.view === "list" && <FileList items={items} onOpen={setOpenId} chosen={choosing ? chosen : null} onPick={pick} timeZone={timeZone} />}
 
       {items.length > 0 && query.view === "grid" && (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" aria-label={w.filesLabel}>
@@ -402,6 +405,7 @@ export function MediaLibrary({
         <Details
           key={open.id}
           item={open}
+          timeZone={timeZone}
           actions={actions}
           compress={compress}
           languages={languages}
@@ -424,9 +428,9 @@ export function MediaLibrary({
 }
 
 /** The files as a list, a row each with its details, alt text and uses; a row's name opens it. */
-function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void }) {
+function FileList({ items, onOpen, chosen, onPick, timeZone }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void; timeZone: string }) {
   const w = useAdminText("website").media;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
   const cell = "px-3 py-2 align-middle";
   return (
     <div className={`overflow-x-auto ${CARD_CLASS}`}>
@@ -488,7 +492,7 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
               </td>
               <td className={`${cell} whitespace-nowrap text-muted`}>{item.uses.length > 0 ? countWords(item.uses.length, w.places) : w.notInUse}</td>
               <td className={`${cell} hidden whitespace-nowrap text-muted md:table-cell`}>
-                {new Date(item.createdAt).toLocaleDateString(locale, { dateStyle: "medium" })}
+                {adminDate(timeZone, item.createdAt, "day", lang)}
               </td>
             </tr>
           ))}
@@ -538,6 +542,7 @@ function Preview({ item, small = false }: { item: MediaItem; small?: boolean }) 
 /** A file opened: seen large, with its details and where it is used; described, downloaded or deleted. */
 function Details({
   item,
+  timeZone,
   actions,
   compress,
   languages,
@@ -549,6 +554,7 @@ function Details({
   onDeleted,
 }: {
   item: MediaItem;
+  timeZone: string;
   actions: MediaActions;
   compress: CompressActions | null;
   languages: AltLanguage[];
@@ -560,7 +566,7 @@ function Details({
   onDeleted: () => void;
 }) {
   const w = useAdminText("website").media;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
   const id = useId();
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -572,7 +578,7 @@ function Details({
     [w.rows.fileType, describeType(item.contentType, w)],
     [w.rows.fileSize, formatBytes(item.sizeBytes)],
     [w.rows.dimensions, dimensions(item) ?? w.measuredWhenShown],
-    [w.rows.added, new Date(item.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })],
+    [w.rows.added, adminDate(timeZone, item.createdAt, "dayTime", lang)],
     ...(item.kind === "image" ? [[w.rows.madeBy, w.madeBy[item.madeBy]] as [string, string]] : []),
   ];
 

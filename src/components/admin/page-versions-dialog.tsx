@@ -8,15 +8,14 @@ import { compareVersions, type PageDifference } from "@/lib/version-compare";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
+import { VersionLabel } from "./version-label";
 import { VersionDifferences } from "./version-differences";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
 
 const secondary = "min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
 const small = "min-h-9 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50";
 
-const when = (iso: string, locale: string) =>
-  new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
 /**
  * A page's versions (D305): every save, publish and change made on the live site, newest first, each with who and when. *Use this
@@ -29,6 +28,7 @@ export function PageVersionsDialog({
   read,
   onUse,
   current,
+  timeZone,
 }: {
   open: boolean;
   onClose: () => void;
@@ -37,6 +37,8 @@ export function PageVersionsDialog({
   onUse: (content: string, item: PageVersionItem) => void;
   /** The page in the editor now, for *Compare* (D358); none offers no comparing. */
   current?: PageContent;
+  /** The site's clock: the store's zone, or the platform's for Kaizena Flow's own, for when each version was made (D812). */
+  timeZone: string;
 }) {
   const [items, setItems] = useState<PageVersionItem[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -46,7 +48,8 @@ export function PageVersionsDialog({
   // An answer for a dialog closed meanwhile is thrown away.
   const ticket = useRef(0);
   const w = useAdminText("builder").versions;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
+  const when = (iso: string) => adminDate(timeZone, iso, "dayTime", lang);
 
   // The list is asked for when the dialog opens, whatever function the editor passes on each render.
   const load = useEffectEvent((mine: number) => {
@@ -132,17 +135,7 @@ export function PageVersionsDialog({
           <ol aria-label={w.listLabel} className="flex flex-col divide-y divide-line">
             {items?.map((item, index) => (
               <li key={item.id} className="flex flex-wrap items-center gap-3 py-2">
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-sm text-ink">
-                    {w.kinds[item.kind]}
-                    {index === 0 && <span className="ml-2 text-xs text-muted">{w.newest}</span>}
-                  </span>
-                  <span className="text-xs text-muted">
-                    {when(item.at, locale)}
-                    {item.by ? ` · ${item.by}` : ""}
-                    {item.title ? ` · ${item.title}` : ""}
-                  </span>
-                </div>
+                <VersionLabel kind={w.kinds[item.kind]} newest={index === 0 ? w.newest : null} when={when(item.at)} by={item.by} title={item.title} />
                 {current && (
                   <button type="button" onClick={() => void compare(item)} disabled={taking !== null} className={small}>
                     {w.compare}

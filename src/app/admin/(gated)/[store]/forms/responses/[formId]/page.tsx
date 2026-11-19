@@ -45,6 +45,7 @@ export default async function FormResponsesPage({ params, searchParams }: PagePr
           exportAction={`${here}/export`}
           setState={setResponseStateAction.bind(null, store.slug, form.id)}
           remove={deleteResponsesAction.bind(null, store.slug, form.id)}
+          timeZone={store.timeZone}
         />
       </div>
     </AdminTextScope>

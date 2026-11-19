@@ -1259,6 +1259,18 @@ describe("every operation's answer (D438)", () => {
     expect(ubl.status).toBe(200);
     expect(ubl.body.data.xml).toContain(invoice.documentNumber);
     expect((await call("GET", `credit-notes/${note.id}/ubl`, reader.token)).status).toBe(200);
+    // A deal's contract (D810), read with customers:read (which customers:write holds); its own cases are admin-api-contracts.int.test.ts.
+    await db().execute(sql`update commerce.stores set features = array_append(features, 'sales') where id = ${store.storeId}::uuid and not ('sales' = any(features))`);
+    const deals = await import("./deals");
+    const [pipeline] = await deals.ensurePipeline(store.storeId, { name: "Sales", stages: [{ name: "New" }] });
+    const person = await (await import("./customer-staff")).createCustomer(store.member, { email: `contract-${Date.now()}@example.com`, name: "Kari" });
+    if (!person.ok) throw new Error("customer");
+    const deal = await deals.createDeal(store.member, { title: "API contract", customerId: person.id, pipelineId: pipeline.id, stageId: pipeline.stages[0].id });
+    if (!deal.ok) throw new Error(deal.problems.join(","));
+    const contract = await (await import("./contracts")).createContract(store.member, deal.id);
+    if (!contract.ok) throw new Error(contract.problem);
+    expect((await call("GET", "contracts", full)).status).toBe(200);
+    expect((await call("GET", `contracts/${contract.id}`, full)).status).toBe(200);
     expect([...parsed].sort()).toEqual(Object.keys(ADMIN_API_BY_NAME).sort());
   });
 });

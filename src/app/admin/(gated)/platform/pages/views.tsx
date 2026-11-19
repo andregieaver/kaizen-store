@@ -153,7 +153,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           {tw.none}
         </p>
       ) : type === "header" || type === "footer" ? (
-        <SiteLayoutsTable layouts={pages} adminBase={base} current={layoutCurrent} />
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={layoutCurrent} timeZone={PLATFORM_TIME_ZONE} />
       ) : (
         <PagesTable
           timeZone={PLATFORM_TIME_ZONE}

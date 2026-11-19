@@ -484,6 +484,7 @@ export function DualPageEditor({
           saveSiteCss={site.save}
           versions={site.versions}
           classNames={cssState.classNames}
+          timeZone={left.props.context.timeZone}
           pageSide={
             openSides.length === 2
               ? {

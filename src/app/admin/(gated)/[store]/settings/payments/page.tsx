@@ -261,6 +261,7 @@ export default async function PaymentSettingsPage({
           words={w.wallets}
           methodWords={w.methods}
           locale={ADMIN_LANG_FACTS[lang].locale}
+          timeZone={store.timeZone}
         />
       )}
 

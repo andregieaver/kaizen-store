@@ -7,6 +7,7 @@ import { platformPublishableKey } from "@/server/stripe";
 
 import { hostAccountSessionAction, hostCreateStripeAccountAction, hostRefreshStripeAccountAction } from "./actions";
 import { Card } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
@@ -26,6 +27,7 @@ export function HostPayouts({
   locale,
   words: w = adminText("en", "bookings").payouts,
   dateLocale = "en-GB",
+  timeZone,
 }: {
   storeSlug: string;
   mode: PaymentModeName;
@@ -36,11 +38,12 @@ export function HostPayouts({
   /** The panel's words and dates (D312 A11); English when none are given. */
   words?: BookingsMessages["payouts"];
   dateLocale?: string;
+  /** The store's time zone: when each booking was paid, on the store's clock (D812). */
+  timeZone: string;
 }) {
   const STAGE_TEXT: Record<AccountStage, string> = w.stages;
   const stage = accountStage(account ?? null);
   const publishableKey = platformPublishableKey(mode);
-  const date = new Intl.DateTimeFormat(dateLocale, { day: "numeric", month: "short", year: "numeric" });
   return (
     <Card
       title={mode === "live" ? w.title : w.titleTest}
@@ -99,7 +102,7 @@ export function HostPayouts({
                   <tr key={e.paymentId}>
                     <td className="py-1 pr-3">{e.number}</td>
                     <td className="py-1 pr-3">{e.kind === "no_show" ? w.noShowFee : w.booking}</td>
-                    <td className="py-1 pr-3">{date.format(new Date(e.paidAt))}</td>
+                    <td className="py-1 pr-3">{adminDate(timeZone, e.paidAt, "day", dateLocale)}</td>
                     <td className="py-1 pr-3 text-right tabular-nums">{formatMoney(e.paidMinor, e.currency, locale)}</td>
                     <td className="py-1 pr-3 text-right tabular-nums">
                       {e.refundedMinor > 0 ? formatMoney(e.refundedMinor, e.currency, locale) : "–"}

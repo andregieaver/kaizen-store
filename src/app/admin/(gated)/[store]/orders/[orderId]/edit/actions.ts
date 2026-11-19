@@ -18,7 +18,8 @@ import {
 } from "@/server/order-edits";
 import { checkPermission } from "@/server/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
+import { adminDate, type ZoneOf } from "@/lib/admin-date";
+import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { fillWords, type DraftsWords } from "@/lib/drafts-words";
 import { editProblemText } from "@/lib/drafts-words-english";
@@ -52,7 +53,8 @@ const refusedWith = (problems: EditProblem[], w: DraftsWords, message = w.edit.a
 const isId = (value: unknown): value is string => z.uuid().safeParse(value).success;
 const orderGone = (w: DraftsWords): EditActionResponse => ({ ok: false, message: w.edit.actions.orderGone });
 /** A link's last day, as the account reads dates. */
-const untilOf = (iso: string, lang: AdminLang) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "long" });
+/** The link's last day on the store's clock (D812). */
+const untilOf = (iso: string, member: { store: ZoneOf; account: { adminLocale?: string | null } }) => adminDate(member.store, iso, "long", langOf(member));
 
 /** The summary beside the editor: the server's own pricing of what is on the screen (reads only). */
 export async function previewOrderEditAction(storeSlug: string, orderId: string, raw: unknown): Promise<EditPreviewResponse> {
@@ -93,7 +95,7 @@ export async function sendOrderEditAction(storeSlug: string, orderId: string, ra
   const result = await sendOrderEdit(member.store.id, orderId, raw, staffActor(member.account.id), { email });
   if (!result.ok) return refusedWith(result.problems, w);
   refresh();
-  const values = { label: result.label, until: untilOf(result.expiresAt, langOf(member)) };
+  const values = { label: result.label, until: untilOf(result.expiresAt, member) };
   return {
     ok: true,
     label: result.label,
@@ -140,7 +142,7 @@ export async function resendOrderEditAction(storeSlug: string, editId: string, o
   const result = await resendOrderEdit(member.store.id, editId, staffActor(member.account.id), { email });
   refresh();
   if (!result.ok) return { ok: false, message: a.resend[result.problem] };
-  const until = untilOf(result.expiresAt, langOf(member));
+  const until = untilOf(result.expiresAt, member);
   return {
     ok: true,
     link: email ? null : result.link,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
+import { adminDate, PLATFORM_TIME_ZONE, type ZoneOf } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { formatMoney } from "@/lib/money";
@@ -236,14 +236,18 @@ export function SummaryPanel({
  */
 export function CustomerOrders({
   store,
+  timeZone,
   customer,
 }: {
   store: string;
+  /** The store's zone: each order's day on the store's clock (D812). */
+  timeZone: ZoneOf;
   customer: ConversationCustomer;
 }) {
   const w = useAdminText("support").context;
   const statusWords = useAdminText("common").orderStatus;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
+  const lang = useAdminLang();
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const orders = customer.orders ?? [];
   return (
     <section className="flex flex-col gap-2 text-sm" aria-label={w.latestOrders}>
@@ -261,10 +265,7 @@ export function CustomerOrders({
                 {fillWords(w.orderNumber, { number: o.number })}
               </Link>
               <span className="text-muted">
-                {new Date(o.placedAt).toLocaleDateString(locale, {
-                  day: "numeric",
-                  month: "short",
-                })}
+                {adminDate(timeZone, o.placedAt, "short", lang)}
               </span>
               <span>{statusWords[o.status]}</span>
               <span className="tabular-nums">
@@ -366,6 +367,7 @@ export function ConversationContext({
       {conversation.store && conversation.customer?.orders && (
         <CustomerOrders
           store={conversation.store.slug}
+          timeZone={conversation.store}
           customer={conversation.customer}
         />
       )}

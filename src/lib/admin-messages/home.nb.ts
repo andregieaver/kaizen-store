@@ -677,6 +677,15 @@ export const homeNb: HomeMessages = {
       startLabel: "Hva vil du endre?",
       startHint: "For eksempel: et varmere utseende med rundere knapper, en forside som løfter frem bestselgerne, en ny side med spørsmål og svar, livligere produkttekster. 20 til 2 000 tegn.",
       start: "Planlegg endringene",
+      /** Runde 58 (D814): starten på en telefon. */
+      phone: {
+        lead: "Si hva du vil endre. Ingenting blir synlig før du sier ja.",
+        hint: "For eksempel: et varmere uttrykk med rundere knapper.",
+        look: "La AI-en se på nettstedet først",
+        lookSub: "Design, tekst og bilder; den foreslår hva du kan be om",
+        open: "Åpne",
+        close: "Lukk",
+      },
       instead: "Har du bygget butikken selv? Endre den som den er i stedet",
       another: "Endre noe annet",
       building: "Endrer {store}",

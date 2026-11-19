@@ -15,6 +15,8 @@ export type ContentSite = {
   /** Content's address in the admin (`/admin/{store}/content`, `/admin/platform/content`). */
   base: string;
   lang: AdminLang;
+  /** The clock its dates are read on: the store's zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own site (D812). */
+  timeZone: string;
   /** The site's languages, the main one first, with their names. */
   languages: FieldLanguage[];
   /** The currencies money fields may use (none for Kaizena Flow's own site, which keeps no money fields). */

@@ -28,6 +28,7 @@ export function storeContentSite({ store, account }: Membership): ContentSite {
     owner: store.id,
     base: `/admin/${store.slug}/content`,
     lang,
+    timeZone: store.timeZone,
     languages: storeLanguages(store, lang === "nb" ? "nb" : "en"),
     currencies: moneyCurrencies(store),
     uploadImage: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,

@@ -8,6 +8,7 @@ import { Button, Card, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { checkWords, contentChecks } from "@/lib/flow-checks";
 import { marketingProblem } from "@/lib/marketing-words";
 import { formatMoney } from "@/lib/money";
 import { audienceCount, broadcastReport, getBroadcast } from "@/server/broadcasts";
@@ -56,6 +57,9 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
   const date = (iso: string) => new Date(iso).toLocaleString(numbers, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
 
   if (editable) {
+    // Server-only words (`flows`): the warnings are drawn here, nothing more is handed to the browser.
+    const wf = adminText(lang, "flows");
+    const warnings = contentChecks(broadcast.content, store.localization.locales[0] ?? "en-GB").filter((c) => !c.blocking);
     const [choices, emailStore] = await Promise.all([mayWrite ? broadcastChoices(store, lang) : Promise.resolve(null), storeById(store.id)]);
     const count = emailStore ? await audienceCount(emailStore, broadcast.audience, broadcast.segmentId) : null;
     return (
@@ -93,6 +97,18 @@ export default async function BroadcastPage({ params }: PageProps<"/admin/[store
         {choices ? (
           <>
             <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
+            {/* The checks before sending (email plan M3.6): the warnings, each a line with what to fix; what blocks a send is refused by it. */}
+            {warnings.length > 0 && (
+              <Card title={wf.checks.title} compact>
+                <ul className="flex flex-col gap-1.5" data-broadcast-checks>
+                  {warnings.map((c, i) => (
+                    <li key={i} className="text-sm text-ink-2">
+                      {checkWords(wf, { ...c, stepId: "", subject: broadcast.content[store.localization.locales[0] ?? ""]?.subject || broadcast.title })}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
             <Card title={wb.send} description={wb.sendDescription} compact>
               <BroadcastSend
                 storeSlug={store.slug}

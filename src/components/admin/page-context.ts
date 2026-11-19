@@ -76,6 +76,8 @@ export type ScheduleAnswer = { ok: true; view: ScheduleView; message: string } |
 export type PageOwnerContext = {
   /** Null for Kaizen, else the store's id. */
   owner: string | null;
+  /** The clock the builder's times are read on (versions, a version taken back): the store's zone, or `PLATFORM_TIME_ZONE` for Kaizena Flow's own (D812). */
+  timeZone: string;
   /** A page, or an article in the blog (D57). */
   type: PageType;
   /** A new article's author: the signed-in person's name (D57). */

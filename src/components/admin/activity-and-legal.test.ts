@@ -159,7 +159,7 @@ describe("the legal pages", () => {
     ...over,
   });
   const panel = (over: Partial<LegalOverview> = {}) =>
-    html(createElement(LegalPagesPanel, { overview: overview(over), storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action } }));
+    html(createElement(LegalPagesPanel, { timeZone: "Europe/Oslo", overview: overview(over), storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action } }));
 
   it("says which pages a website does not need, and has no checkout to set (D178 step 5)", () => {
     const out = panel({ shopOn: false, roles: overview().roles.map((r) => ({ ...r, needed: r.role !== "terms" })) });
@@ -222,7 +222,7 @@ describe("the legal pages as rows (round 15)", () => {
   });
 
   it("offers every missing draft in one press, naming them", () => {
-    const out = html(createElement(LegalPagesPanel, { overview: base, storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action, createAll: action } }));
+    const out = html(createElement(LegalPagesPanel, { timeZone: "Europe/Oslo", overview: base, storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action, createAll: action } }));
     expect(out).toContain("Make all 2 drafts");
     expect(out).toContain("Terms of sale, Privacy statement, as drafts.");
     expect(out).toContain("Make the drafts");

@@ -47,6 +47,7 @@ export async function workspacePageContext(store: Store, workspace: DesignWorksp
   const bind = <A extends unknown[], R>(action: (presetId: string, ...args: A) => R) => action.bind(null, workspace.presetId);
   return {
     owner: store.id,
+    timeZone: store.timeZone,
     type,
     defaultAuthor: "",
     adminBase,

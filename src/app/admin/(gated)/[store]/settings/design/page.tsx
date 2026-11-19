@@ -186,7 +186,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
             removeSaved: deleteSavedThemeAction.bind(null, store.slug),
             installFont: installStoreFontAction.bind(null, store.slug),
             // The live look's earlier versions (D340), for those who may change it.
-            ...(canChange && { versions: { list: lookVersionsAction.bind(null, store.slug), read: lookVersionAction.bind(null, store.slug) } }),
+            ...(canChange && { versions: { timeZone: store.timeZone, list: lookVersionsAction.bind(null, store.slug), read: lookVersionAction.bind(null, store.slug) } }),
           }}
         />
       </div>

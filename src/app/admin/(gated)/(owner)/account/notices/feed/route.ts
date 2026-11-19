@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminDate } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { sameSite } from "@/lib/same-site";
 import { listNotices, markNoticesRead, noticeCount, type NoticePlace } from "@/server/assistant-notices";
 import { adminText } from "@/lib/admin-text";
@@ -32,7 +34,10 @@ export async function GET(request: NextRequest) {
   if (place === undefined) return NextResponse.json({ unread: 0, items: [] }, { headers: NO_STORE });
   const count = request.nextUrl.searchParams.get("count") === "1";
   if (count) return NextResponse.json(await noticeCount(account.id, place), { headers: NO_STORE });
-  return NextResponse.json(await listNotices(account.id, place, 30), { headers: NO_STORE });
+  // Each notice's time in the person's language, on its store's clock or the platform's for Kaizena Flow's own (D812).
+  const lang = adminLangOf(account.adminLocale);
+  const listed = await listNotices(account.id, place, 30);
+  return NextResponse.json({ ...listed, items: listed.items.map((item) => ({ ...item, when: adminDate(item, item.createdAt, "dayTime", lang) })) }, { headers: NO_STORE });
 }
 
 export async function POST(request: NextRequest) {

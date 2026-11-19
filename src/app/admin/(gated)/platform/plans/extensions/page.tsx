@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
@@ -48,7 +49,7 @@ export default async function ExtensionsPage() {
     <>
       <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title} description={w.description} />
       <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-        {launchedAt ? fillWords(w.launched, { date: launchedAt.toLocaleDateString(locale, { dateStyle: "long" }) }) : w.notLaunched}
+        {launchedAt ? fillWords(w.launched, { date: adminDate(PLATFORM_TIME_ZONE, launchedAt, "long", lang) }) : w.notLaunched}
       </p>
 
       {catalogue.extensions.map((extension) => (

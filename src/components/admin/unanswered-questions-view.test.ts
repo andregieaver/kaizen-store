@@ -30,6 +30,7 @@ const action = async (): Promise<FormState> => ({ status: "ok", messages: [] });
 const view = (rows: UnansweredQuestion[], over: Partial<Parameters<typeof UnansweredQuestionsView>[0]> = {}) =>
   html(
     h(UnansweredQuestionsView, {
+      timeZone: "Europe/Oslo",
       rows,
       show: "open",
       base: "/admin/shop/chat/questions",
@@ -63,6 +64,7 @@ describe("the questions the assistant could not answer (ecosystem plan E4.3)", (
 
   it("draws a visitor's words as text, never as HTML", () => {
     const out = renderToString(h(UnansweredQuestionsView, {
+      timeZone: "Europe/Oslo",
       rows: [question({ question: '<img src=x onerror="alert(1)"> hi there' })],
       show: "open",
       base: "/q",

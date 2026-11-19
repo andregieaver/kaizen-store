@@ -3,12 +3,14 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { zoneless } from "@/test/zoneless-dates";
+
 /**
  * Dates outside the admin (code review 1.14's next, FS12, D796): the storefront, shoppers' emails, contracts, the platform's own site and
  * mail, and the server code behind them show a moment with `dateIn(where, at, style, locale)` from `src/lib/dates.ts`, in the store's own
  * zone (`store`, `store.timeZone`, or `storeZoneOf(row.time_zone)` for a row read without a type), Kaizena Flow's own in
  * `PLATFORM_TIME_ZONE`, Norway-only features in `NORWAY_TIME_ZONE`, and a calendar day with `calendarDate()`. Three rules, as
- * `admin-dates.scan.test.ts` holds the admin to the first two:
+ * `admin-dates.scan.test.ts` holds the admin to all three (the third since D812, with the same detector, `src/test/zoneless-dates.ts`):
  *
  * 1. No zone written out (`Europe/Oslo`, which put every store on Norwegian time) in any source outside the admin, but the kept lines below.
  * 2. No day or time cut from a UTC string (`.slice(0, 10)`, `.slice(0, 16)`) in storefront code (`src/components`, `src/app`, the admin
@@ -109,27 +111,6 @@ const files = sources(path.join(root, "src"))
 
 const storefront = (rel: string) => rel.startsWith("src/components/") || rel.startsWith("src/app/");
 const email = (rel: string) => /^src\/(lib|server)\/[^/]*email[^/]*\.tsx?$/.test(rel);
-
-const CALL = /(toLocaleDateString|toLocaleString|toLocaleTimeString|Intl\.DateTimeFormat)\(/g;
-const DATE_PARTS = /dateStyle|timeStyle|\bday\b|\bmonth\b|\byear\b|weekday|\bhour\b|\bminute\b/;
-
-/** The date formatting calls in a text that name no zone: a number's `toLocaleString()` (no date parts) is not one. */
-function zoneless(text: string): number[] {
-  const lines: number[] = [];
-  for (const m of text.matchAll(CALL)) {
-    let i = m.index + m[0].length;
-    let depth = 1;
-    while (i < text.length && depth > 0) {
-      if (text[i] === "(") depth++;
-      else if (text[i] === ")") depth--;
-      i++;
-    }
-    const args = text.slice(m.index + m[0].length, i - 1);
-    const isDate = m[1] === "toLocaleDateString" || m[1] === "toLocaleTimeString" || DATE_PARTS.test(args);
-    if (isDate && !/timeZone/.test(args)) lines.push(text.slice(0, m.index).split("\n").length);
-  }
-  return lines;
-}
 
 const lineCount = (text: string, pattern: RegExp) => text.split("\n").filter((line) => pattern.test(line)).length;
 

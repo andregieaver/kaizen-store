@@ -82,7 +82,7 @@ export default async function PackingSlipsPage({ params, searchParams }: PagePro
         </Link>
       </div>
       {set.slips.map((slip, index) => (
-        <PackingSlipView key={slip.orderId} slip={slip} storeName={store.name} seller={store.details} breakAfter={index < set.slips.length - 1} />
+        <PackingSlipView key={slip.orderId} slip={slip} storeName={store.name} seller={store.details} timeZone={store.timeZone} breakAfter={index < set.slips.length - 1} />
       ))}
     </PrintArea>
   );

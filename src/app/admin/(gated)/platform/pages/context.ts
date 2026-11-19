@@ -7,6 +7,7 @@ import { breakpointsOf } from "@/lib/breakpoints";
 import { themeSetsOf } from "@/lib/page-a11y";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import type { PageOwnerContext } from "@/components/admin/page-context";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
@@ -64,6 +65,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
   const [gridStores, fonts, menus, chrome, plans] = await Promise.all([listGridStores(), getPlatformFonts(), platformMenuPreviews(), getPlatformChrome(), getPublicPlans()]);
   return {
     owner: null,
+    timeZone: PLATFORM_TIME_ZONE,
     type,
     defaultAuthor: author,
     adminBase: `/admin/platform/${copy.segment}`,

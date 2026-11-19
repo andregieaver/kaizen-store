@@ -35,7 +35,7 @@ const slip = (over: Partial<PackingSlip> = {}): PackingSlip => ({
 });
 
 const draw = (s: PackingSlip, extra: { breakAfter?: boolean } = {}) =>
-  renderToString(h(PackingSlipView, { slip: s, storeName: "Kaffe AS", seller: { legalName: "Kaffe AS", postalAddress: "Gata 2\n0150 Oslo", contactEmail: "hei@kaffe.no" }, ...extra }));
+  renderToString(h(PackingSlipView, { slip: s, timeZone: "Europe/Oslo", storeName: "Kaffe AS", seller: { legalName: "Kaffe AS", postalAddress: "Gata 2\n0150 Oslo", contactEmail: "hei@kaffe.no" }, ...extra }));
 
 /** Words that belong to money, in the four languages the store writes. A slip has none of them. */
 const MONEY_WORDS = /\b(total|subtotal|sum|vat|mva|moms|discount|rabatt|rabat|invoice|faktura|betalt|paid|betald|betalt|price|pris|kr|nok|sek|dkk|eur)\b/i;

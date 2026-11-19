@@ -17,6 +17,8 @@ export type LookVersionItem = { id: string; kind: LookVersionKind; at: string; b
 
 /** The live look's versions as the theme editor reads them (D340): the list, and one version's theme. */
 export type LookVersionActions = {
+  /** The store's time zone: when each version was made, on the store's clock (D812). */
+  timeZone: string;
   list: () => Promise<LookVersionItem[]>;
   read: (version: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problem: string }>;
 };

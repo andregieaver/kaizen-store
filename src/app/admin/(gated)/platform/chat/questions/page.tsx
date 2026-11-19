@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/admin/ui";
 import { UnansweredQuestionsView } from "@/components/admin/unanswered-questions-view";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { QUESTION_STATUSES, type QuestionStatus } from "@/lib/unanswered-questions";
@@ -41,6 +42,7 @@ export default async function PlatformQuestionsPage({ searchParams }: PageProps<
         restore={write ? (id) => restorePlatformQuestionAction.bind(null, id) : null}
         lang={lang}
         words={words}
+        timeZone={PLATFORM_TIME_ZONE}
       />
     </div>
   );

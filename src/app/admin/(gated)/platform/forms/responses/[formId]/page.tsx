@@ -5,6 +5,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { FormResponses } from "@/components/admin/forms/form-responses";
 import { FormTabs } from "@/components/admin/forms/form-tabs";
 import { Chip, PageHeader } from "@/components/admin/ui";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { requirePlatform } from "@/server/auth";
@@ -44,6 +45,7 @@ export default async function PlatformFormResponsesPage({ params, searchParams }
           exportAction={`${here}/export`}
           setState={setPlatformResponseStateAction.bind(null, form.id)}
           remove={deletePlatformResponsesAction.bind(null, form.id)}
+          timeZone={PLATFORM_TIME_ZONE}
         />
       </div>
     </AdminTextScope>

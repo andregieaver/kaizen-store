@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { card, field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { parseCsv } from "@/lib/csv";
@@ -278,13 +279,13 @@ export type DocumentRow = {
   createdAt: string;
 };
 
-/** The list of a store's transfers or purchase orders, newest first, each opening its own page. */
-export function StockDocumentList({ kind, rows }: { kind: Kind; rows: DocumentRow[] }) {
+/** The list of a store's transfers or purchase orders, newest first, each opening its own page; `timeZone` is the store's, each one's day on its clock (D812). */
+export function StockDocumentList({ kind, rows, timeZone }: { kind: Kind; rows: DocumentRow[]; timeZone: string }) {
   const w = useAdminText("inventory").documents;
   const pw = useAdminText("inventory").phone;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const states = kind === "transfer" ? w.transferStates : w.orderStates;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+  const date = (iso: string) => adminDate(timeZone, iso, "day", locale);
   if (rows.length === 0)
     return kind === "transfer" ? (
       <p className="max-w-3xl text-sm text-muted">{w.noTransfers}</p>

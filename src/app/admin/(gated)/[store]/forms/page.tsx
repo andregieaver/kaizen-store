@@ -40,7 +40,7 @@ export default async function FormsPage({ params, searchParams }: PageProps<"/ad
             {problem}
           </p>
         )}
-        <FormsList lang={lang} base={base} forms={forms} uses={uses} />
+        <FormsList lang={lang} base={base} forms={forms} uses={uses} timeZone={store.timeZone} />
       </div>
     </AdminTextScope>
   );

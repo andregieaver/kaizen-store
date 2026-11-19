@@ -11,7 +11,7 @@ const rate = (key: string, visitors: number, conversions: number): VariantFigure
 /** A running test of adding to the cart, its verdict worked out as the store does. */
 function running(figures: VariantFigures[], days: number, over: Partial<CardInput> = {}): CardInput {
   const verdict = verdictOf({ words: experimentsEn, goal: "cart", figures, splitP: 0.5, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
-  return { status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: { figures, days, verdict }, now, ...over };
+  return { status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: { figures, days, verdict }, now, timeZone: "Europe/Oslo", ...over };
 }
 
 describe("experimentCard", () => {
@@ -68,6 +68,15 @@ describe("experimentCard", () => {
     expect(card.progress.readyAround).toBe("2026-12-01");
   });
 
+  it("gives the day it is likely ready on the store's calendar, east and west of UTC (D812)", () => {
+    // 23:30 UTC on 16 November: already 17 November in Auckland, still 16 November in New York. Eleven days on.
+    const late = new Date("2026-11-16T23:30:00Z");
+    const ready = (timeZone: string) => experimentCard(running([rate("a", 152, 14), rate("b", 148, 12)], 3, { now: late, timeZone })).progress.readyAround;
+    expect(ready("Pacific/Auckland")).toBe("2026-11-28");
+    expect(ready("America/New_York")).toBe("2026-11-27");
+    expect(ready("UTC")).toBe("2026-11-27");
+  });
+
   it("has no date to give before anyone has been counted", () => {
     const card = experimentCard(running([rate("a", 0, 0), rate("b", 0, 0)], 0));
     expect(card.progress.readyAround).toBeNull();
@@ -77,12 +86,12 @@ describe("experimentCard", () => {
   it("sends a broken split to a new test, and shows no figures", () => {
     const figures = [rate("a", 3000, 270), rate("b", 1000, 110)];
     const verdict = verdictOf({ words: experimentsEn, goal: "cart", figures, splitP: 0.00001, days: 20, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
-    const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: { figures, days: 20, verdict }, now });
+    const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: { figures, days: 20, verdict }, now, timeZone: "Europe/Oslo" });
     expect(card).toMatchObject({ state: "broken", next: "start_again", showFigures: false });
   });
 
   it("asks a draft to start, and a stopped test that is still too early to keep the original", () => {
-    expect(experimentCard({ status: "draft", goal: "orders", minDays: 14, minVisitors: 0, results: null, now })).toMatchObject({ state: "draft", next: "start", showFigures: false });
+    expect(experimentCard({ status: "draft", goal: "orders", minDays: 14, minVisitors: 0, results: null, now, timeZone: "Europe/Oslo" })).toMatchObject({ state: "draft", next: "start", showFigures: false });
     const stopped = experimentCard({ ...running([rate("a", 152, 14), rate("b", 148, 12)], 3), status: "stopped" });
     expect(stopped).toMatchObject({ state: "learning", next: "keep_original", progress: { readyAround: null } });
   });

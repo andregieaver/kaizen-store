@@ -798,6 +798,7 @@ export const marketingEn = {
     everyone: "Everyone who gets your texts",
     message: "Message",
     messageHint: "Your store's name is put first and a link to stop texts last.",
+    phoneGets: "They get “{store}: …” and a link to stop texts.",
     parts: { one: "{n} text", many: "{n} texts each" },
     preview: "What they get",
     saveDraft: "Save draft",

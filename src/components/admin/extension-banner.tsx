@@ -11,16 +11,15 @@ import { useAdminText } from "./admin-text";
 /**
  * The store frame's line about a paid extension on its own pages (D748 E5, section 4.3 of the spec): in its grace period, until when; read-only
  * after it, where the pages open to be read and exported and nothing is sent or changed. Subscribe for the owner, "Ask your account owner"
- * for a member. Nothing on any other page, and nothing while every extension works.
+ * for a member. Nothing on any other page, and nothing while every extension works. The grace period's last day comes written by the layout
+ * (`untilDay`): it is the account's, on `PLATFORM_TIME_ZONE` as on Account → Extensions, and the frame's scripts carry no date formatter (D812).
  */
 export function ExtensionBanner({
   banners,
   owner,
-  locale,
 }: {
-  banners: readonly { extension: ExtensionId; state: "grace" | "read_only"; until: string | null }[];
+  banners: readonly { extension: ExtensionId; state: "grace" | "read_only"; untilDay: string }[];
   owner: boolean;
-  locale: string;
 }) {
   const path = usePathname();
   const w = useAdminText("common").extensions;
@@ -30,7 +29,7 @@ export function ExtensionBanner({
   const name = w.names[banner.extension];
   const line =
     banner.state === "grace"
-      ? fillWords(w.grace, { name, date: banner.until ? new Date(banner.until).toLocaleDateString(locale, { dateStyle: "long" }) : "" })
+      ? fillWords(w.grace, { name, date: banner.untilDay })
       : fillWords(w.readOnly, { name });
   return (
     <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
