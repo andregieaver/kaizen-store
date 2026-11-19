@@ -1,5 +1,6 @@
 import "server-only";
 
+import { refreshBuyFacts } from "./buy-facts";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -52,7 +53,18 @@ const PAUSED_RETRY_HOURS = 1;
 // Saving, testing, switching
 // ---------------------------------------------------------------------------
 
-export type FlowView = { id: string; name: string; trigger: string; enabled: boolean; version: number; tested: boolean; steps: FlowStep[]; goals: FlowGoal[] };
+export type FlowView = {
+  id: string;
+  name: string;
+  trigger: string;
+  enabled: boolean;
+  version: number;
+  tested: boolean;
+  steps: FlowStep[];
+  goals: FlowGoal[];
+  /** The automation it does the work of (slice 3), or null. */
+  replaces: string | null;
+};
 
 const flowRow = z.object({
   id: col.uuid,
@@ -61,6 +73,7 @@ const flowRow = z.object({
   enabled: col.bool,
   version: col.int,
   tested_version: z.number().int().nullable(),
+  replaces: col.text.nullable(),
   steps: z.unknown(),
   goals: z.unknown(),
 });
@@ -72,11 +85,12 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   enabled: r.enabled,
   version: r.version,
   tested: r.tested_version === r.version,
+  replaces: r.replaces,
   steps: z.array(flowStepSchema).parse(r.steps),
   goals: z.array(z.object({ kind: z.literal("ordered") })).parse(r.goals),
 });
 
-const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, v.steps, v.goals
+const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, v.steps, v.goals
   from commerce.flows f join commerce.flow_versions v on v.flow_id = f.id and v.version = f.version`;
 
 /** A store's flows, newest first. */
@@ -100,14 +114,14 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
   if (!parsed.success) return { ok: false, problem: parsed.error.issues[0]?.message ?? "Check the flow." };
   const problems = checkFlow(parsed.data.steps);
   if (problems.length > 0) return { ok: false, problem: problems[0] };
-  const { name, trigger, steps, goals } = parsed.data;
+  const { name, trigger, steps, goals, replaces } = parsed.data;
   const saved = await db().transaction(async (tx) => {
     const [raw] = id
       ? await tx.execute(sql`
           update commerce.flows set name = ${name}, trigger = ${trigger}, enabled = false, version = version + 1, updated_at = now()
            where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
       : await tx.execute(sql`
-          insert into commerce.flows (store_id, name, trigger) values (${storeId}::uuid, ${name}, ${trigger}) returning id, version`);
+          insert into commerce.flows (store_id, name, trigger, replaces) values (${storeId}::uuid, ${name}, ${trigger}, ${replaces ?? null}) returning id, version`);
     if (!raw) return null;
     const row = savedRow.parse(raw);
     await tx.execute(sql`
@@ -151,13 +165,37 @@ export async function testFlow(storeId: string, id: string): Promise<FlowTest> {
 }
 
 /** Switches a flow on (only once its saved version is tested) or off; off stops nobody already in it. */
-export async function switchFlow(storeId: string, accountId: string | null, id: string, on: boolean): Promise<"ok" | "untested" | "missing"> {
-  const rows = await db().execute(sql`
-    update commerce.flows set enabled = ${on}, updated_at = now()
-     where store_id = ${storeId}::uuid and id = ${id}::uuid and (${!on} or tested_version = version) returning id`);
-  if (rows.length === 0) return (await getFlow(storeId, id)) ? "untested" : "missing";
-  await audit(accountId, storeId, on ? "marketing.flow_on" : "marketing.flow_off", { flow: id });
-  return "ok";
+/**
+ * Switches a flow on (only once its saved version is tested) or off. On, a flow that does an automation's work (`replaces`, slice 3) switches
+ * that automation off in the same transaction, so nobody gets both: "replaced" says it did. Off leaves the automation off.
+ */
+export async function switchFlow(storeId: string, accountId: string | null, id: string, on: boolean): Promise<"ok" | "replaced" | "untested" | "missing"> {
+  const outcome = await db().transaction(async (tx) => {
+    const [row] = await tx.execute(sql`
+      update commerce.flows set enabled = ${on}, updated_at = now()
+       where store_id = ${storeId}::uuid and id = ${id}::uuid and (${!on} or tested_version = version) returning replaces`);
+    if (!row) return null;
+    const replaces = z.object({ replaces: col.text.nullable() }).parse(row).replaces;
+    if (!on || !replaces) return { replaced: null };
+    const off = await tx.execute(sql`
+      update commerce.automations set enabled = false, updated_by = ${accountId}::uuid
+       where store_id = ${storeId}::uuid and kind = ${replaces} and enabled returning kind`);
+    return { replaced: off.length > 0 ? replaces : null };
+  });
+  if (!outcome) return (await getFlow(storeId, id)) ? "untested" : "missing";
+  // An automation switched off changes what the buy facts say the store sends (as switchAutomation() refreshes them).
+  if (outcome.replaced) refreshBuyFacts(storeId);
+  await audit(accountId, storeId, on ? "marketing.flow_on" : "marketing.flow_off", { flow: id, ...(outcome.replaced ? { automationOff: outcome.replaced } : {}) });
+  return outcome.replaced ? "replaced" : "ok";
+}
+
+/** The switched-on flow of a store that does an automation's work, by name; null for none (an automation stays off while one is on). */
+export async function flowReplacing(storeId: string, kind: string): Promise<string | null> {
+  const row = await typedRow(
+    z.object({ name: col.text }),
+    sql`select name from commerce.flows where store_id = ${storeId}::uuid and replaces = ${kind} and enabled order by updated_at desc limit 1`,
+  );
+  return row?.name ?? null;
 }
 
 // ---------------------------------------------------------------------------

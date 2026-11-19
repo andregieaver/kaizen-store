@@ -47,5 +47,9 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    The whole of it: a flow read as sentences, the emails as pictures (*When someone joins, the same day: Welcome. Three days
    later, if they have not ordered: our best sellers*); *Customise* opens the canvas. One model, so a change in either shows in both.
 3. **Recipes** (M2.2, M3.1): today's automations as flows on the engine, their tests carried over, and the front page that starts
-   from a goal.
+   from a goal. *Part a, 19 November:* the flows page starts from a goal (`RECIPES`, `src/lib/flow-recipes.ts`: welcome, after a
+   purchase), one Start each; a recipe names the automation it does the work of (`flows.replaces`), switching the flow on switches that
+   automation off in the same transaction, and the automation is refused while the flow is on, so nobody gets both. Kaizena Flow's own
+   flows replace nothing: its automations are a store's. *Next:* cart reminders, win-back and the picked kinds (cross-sell, restock,
+   browse), which need date triggers and product picks (slice 4's triggers).
 4. **Triggers from the whole system** (M2.3), texts in flows (M2.7) and store actions.

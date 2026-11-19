@@ -166,6 +166,17 @@ describe("reference data", () => {
       ),
     ).rejects.toThrow(/prices_market_fk/);
   });
+
+  it("lets a flow name only an automation kind as the one it replaces (D767 slice 3)", async () => {
+    await expect(
+      db.query(`insert into commerce.flows (store_id, name, trigger, replaces) values ($1, 'X', 'order.paid', 'cart')`, [store]),
+    ).rejects.toThrow(/flows_replaces/);
+    const { rows } = await db.query<{ id: string }>(
+      `insert into commerce.flows (store_id, name, trigger, replaces) values ($1, 'X', 'order.paid', 'after_purchase') returning id`,
+      [store],
+    );
+    await db.query("delete from commerce.flows where id = $1", [rows[0].id]);
+  });
 });
 
 describe("sequential order numbering", () => {

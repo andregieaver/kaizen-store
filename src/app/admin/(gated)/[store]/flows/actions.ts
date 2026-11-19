@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
-import { welcomeSeries } from "@/lib/flow-recipes";
+import { RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { insertStep, newStep, removeStep, withCondition, withEmailWords, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getFlow, saveFlow, switchFlow, testFlow } from "@/server/flows";
 import { listSegments } from "@/server/segments";
@@ -18,12 +18,13 @@ import { storeAction } from "@/server/store-action";
 
 const refusal = (message: string): FormState => ({ status: "error", messages: [message] });
 
-/** Makes the welcome series in the store's first language, switched off, and opens it. */
-export async function startWelcomeFlowAction(storeSlug: string): Promise<FormState> {
+/** Makes a flow from a goal's recipe (D767 slice 3, M3.1) in the store's first language, switched off, and opens it. */
+export async function startRecipeFlowAction(storeSlug: string, key: RecipeKey): Promise<FormState> {
   const made = await storeAction(
     { store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" },
-    async (member) => {
-      const recipe = welcomeSeries(member.store.localization.locales[0] ?? "en-GB");
+    async (member, lang) => {
+      const recipe = RECIPES[key]?.(member.store.localization.locales[0] ?? "en-GB");
+      if (!recipe) return refusal(adminText(lang, "flows").problems.missing);
       const saved = await saveFlow(member.store.id, member.account.id, null, recipe);
       return saved.ok ? { status: "ok" as const, messages: [saved.id] } : refusal(saved.problem);
     },
@@ -50,9 +51,9 @@ export async function switchFlowAction(storeSlug: string, flowId: string, on: bo
   return storeAction({ store: storeSlug, key: "marketing:write", action: on ? "marketing.flow_on" : "marketing.flow_off", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = adminText(lang, "flows");
     const switched = await switchFlow(member.store.id, member.account.id, flowId, on);
-    if (switched !== "ok") return refusal(switched === "untested" ? w.problems.untested : w.problems.missing);
+    if (switched === "untested" || switched === "missing") return refusal(switched === "untested" ? w.problems.untested : w.problems.missing);
     refresh();
-    return { status: "ok", messages: [on ? w.switchedOn : w.switchedOff] };
+    return { status: "ok", messages: [switched === "replaced" ? `${w.switchedOn} ${w.automationOff}` : on ? w.switchedOn : w.switchedOff] };
   });
 }
 

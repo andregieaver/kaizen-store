@@ -35,7 +35,10 @@ test.beforeAll(async () => {
 
 test("a welcome series is started with one press, read as a story, tested and switched on", async ({ page }) => {
   await page.goto(`/admin/${STORE}/flows`);
-  await page.getByRole("button", { name: "Start a welcome series" }).first().click();
+  // The page starts from a goal (slice 3): one Start per goal the store has no flow for yet.
+  await expect(page.getByRole("group", { name: "Follow up after a purchase" })).toBeVisible();
+  await page.screenshot({ path: "test-results/flow-goals.png", fullPage: true });
+  await page.getByRole("group", { name: "Welcome new subscribers" }).getByRole("button", { name: "Start" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
 
   const story = page.locator("[data-flow-story]");
@@ -56,6 +59,9 @@ test("a welcome series is started with one press, read as a story, tested and sw
 
   await page.goto(`/admin/${STORE}/flows`);
   await expect(page.getByRole("list", { name: "Flows" })).toContainText("Welcome series");
+  // Its goal is made, so only the other one is offered.
+  await expect(page.getByRole("group", { name: "Welcome new subscribers" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Follow up after a purchase" })).toBeVisible();
   await page.screenshot({ path: "test-results/flow-list.png", fullPage: true });
 });
 

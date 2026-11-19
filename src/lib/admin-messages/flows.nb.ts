@@ -4,8 +4,6 @@ import type { FlowsMessages } from "./flows.en";
 export const flowsNb: FlowsMessages = {
   title: "Forløp",
   lead: "Et forløp sender e-poster etter hverandre til hver person, fra noe skjer, og stopper når de når målet.",
-  empty: "Ingen forløp ennå. Start med en velkomstserie: tre e-poster, klare til å lese og endre.",
-  startWelcome: "Start en velkomstserie",
   open: "Åpne",
   statuses: { on: "På", off: "Av" },
   untested: "Test det før du slår det på.",
@@ -17,6 +15,13 @@ export const flowsNb: FlowsMessages = {
   switchOff: "Slå av",
   switchedOn: "På. Nye personer går gjennom det fra nå.",
   switchedOff: "Av. Ingen nye går inn; de som er i det, fullfører.",
+  automationOff: "Automatiseringen som sendte den samme e-posten er nå av, så ingen får begge.",
+  goals: {
+    title: "Start fra et mål",
+    start: "Start",
+    welcome: { title: "Ønsk nye abonnenter velkommen", text: "En velkomst samme dag; tre dager senere en takk eller bestselgerne dine." },
+    after_purchase: { title: "Følg opp etter et kjøp", text: "En uke etter en bestilling, spør hvordan det går; tre uker senere, noe nytt." },
+  },
   emailLabel: "E-post",
   story: {
     triggers: {

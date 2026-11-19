@@ -5,17 +5,19 @@ import { requireExtension } from "@/components/admin/extension-off";
 import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { RECIPES, type RecipeKey } from "@/lib/flow-recipes";
 import { storyLead } from "@/lib/flow-story";
 import { listFlows } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { startWelcomeFlowAction } from "./actions";
+import { startRecipeFlowAction } from "./actions";
 
 export const metadata: Metadata = { title: "Flows" };
 
 /**
- * A store's flows (D767 slice 2, email plan M3.3): each with what starts it and whether it is on, and one button that starts the welcome
- * series while there are none. `marketing:read` sees it; `marketing:write` starts one. Part of the email automation extension (D748).
+ * A store's flows (D767, email plan M3.1 and M3.3): each with what starts it and whether it is on, and below them the goals a flow starts
+ * from (`RECIPES`), one Start each, for the goals the store has no flow for yet. `marketing:read` sees it; `marketing:write` starts one.
+ * Part of the email automation extension (D748).
  */
 export default async function FlowsPage({ params }: PageProps<"/admin/[store]/flows">) {
   const member = await requirePermission((await params).store, "marketing:read");
@@ -26,22 +28,12 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
   const w = adminText(lang, "flows");
   const flows = await listFlows(store.id);
   const mayWrite = memberCan(member, "marketing:write");
-  const start = mayWrite ? (
-    <ActionForm action={startWelcomeFlowAction.bind(null, store.slug)}>
-      <SubmitButton>{w.startWelcome}</SubmitButton>
-    </ActionForm>
-  ) : undefined;
+  const made = new Set(flows.map((f) => f.replaces));
+  const goals = (Object.keys(RECIPES) as RecipeKey[]).filter((key) => !made.has(key));
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.lead} actions={flows.length > 0 ? start : undefined} />
-      {flows.length === 0 ? (
-        <Card compact>
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-body text-ink-2">{w.empty}</p>
-            {start}
-          </div>
-        </Card>
-      ) : (
+      <PageHeader title={w.title} description={w.lead} />
+      {flows.length > 0 && (
         <ul className="flex flex-col gap-3" aria-label={w.title}>
           {flows.map((flow) => (
             <li key={flow.id}>
@@ -61,6 +53,24 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
             </li>
           ))}
         </ul>
+      )}
+      {mayWrite && goals.length > 0 && (
+        <section className="flex flex-col gap-3" aria-label={w.goals.title}>
+          <h2 className="text-body-strong text-ink">{w.goals.title}</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {goals.map((key) => (
+              <Card compact key={key}>
+                <div role="group" aria-label={w.goals[key].title} className="flex h-full flex-col items-start gap-2">
+                  <p className="text-body-strong text-ink">{w.goals[key].title}</p>
+                  <p className="flex-1 text-caption text-muted">{w.goals[key].text}</p>
+                  <ActionForm action={startRecipeFlowAction.bind(null, store.slug, key)}>
+                    <SubmitButton variant={flows.length === 0 ? "primary" : "secondary"}>{w.goals.start}</SubmitButton>
+                  </ActionForm>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

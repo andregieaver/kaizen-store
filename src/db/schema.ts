@@ -8553,11 +8553,15 @@ export const flows = commerce.table(
     enabled: boolean("enabled").notNull().default(false),
     version: integer("version").notNull().default(1),
     testedVersion: integer("tested_version"),
+    // The automation this flow does the work of (D767 slice 3): switching the flow on switches that one off, and it stays off while the
+    // flow is on, so nobody gets both. Null for a flow of the owner's own.
+    replaces: text("replaces"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("flows_store_id_key").on(t.storeId, t.id),
+    check("flows_replaces", sql`${t.replaces} is null or ${t.replaces} in (${sqlList(AUTOMATION_KINDS)})`),
     index("flows_store_trigger_idx").on(t.storeId, t.trigger).where(sql`${t.enabled}`),
     check("flows_name", sql`char_length(${t.name}) between 1 and 120`),
     check("flows_trigger", sql`${t.trigger} in (${sqlList(FLOW_TRIGGERS)})`),

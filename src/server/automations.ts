@@ -46,6 +46,7 @@ import { inStockNow, OFFERED } from "./product-conditions";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
 import { PRODUCT_VIEW_DAYS } from "@/lib/automation-kinds";
 import { col, typedRows } from "./typed-rows";
+import { flowReplacing } from "./flows";
 import { isPaused } from "./sending-guard";
 
 type Row = Record<string, unknown>;
@@ -163,6 +164,9 @@ export async function saveAutomation(store: Pick<EmailStore, "id" | "localizatio
 /** Switches an automation on or off (`marketing:write`). On sets `enabled_at` to now: what happened before starts nothing. */
 export async function switchAutomation(store: Pick<EmailStore, "id" | "localization">, accountId: string, kind: AutomationKind, on: boolean): Promise<AutomationResult> {
   const current = await getAutomation(store, kind);
+  // A flow doing this automation's work (D767 slice 3): never both on, so nobody gets two of the same email.
+  const flow = on ? await flowReplacing(store.id, kind) : null;
+  if (flow) return { ok: false, problem: `The flow "${flow}" sends this now. Switch it off under Flows first.` };
   if (on && kind !== "back_in_stock") {
     const problems = sendProblems(current.content ?? {}, store.localization.locales[0]);
     if (!current.saved) return { ok: false, problem: "Save its words first." };

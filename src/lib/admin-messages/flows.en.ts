@@ -4,8 +4,6 @@
 export const flowsEn = {
   title: "Flows",
   lead: "A flow sends emails one after another to each person, from the moment something happens, and stops when they reach the goal.",
-  empty: "No flows yet. Start with a welcome series: three emails, ready to read and change.",
-  startWelcome: "Start a welcome series",
   open: "Open",
   statuses: { on: "On", off: "Off" },
   untested: "Test it before switching it on.",
@@ -17,6 +15,13 @@ export const flowsEn = {
   switchOff: "Switch off",
   switchedOn: "On. New people go through it from now.",
   switchedOff: "Off. Nobody new goes into it; those already in it finish.",
+  automationOff: "The automation that sent the same email is now off, so nobody gets both.",
+  goals: {
+    title: "Start from a goal",
+    start: "Start",
+    welcome: { title: "Welcome new subscribers", text: "A welcome the same day; three days later, a thank-you or your best sellers." },
+    after_purchase: { title: "Follow up after a purchase", text: "A week after an order, ask how it is going; three weeks later, something new." },
+  },
   emailLabel: "Email",
   story: {
     triggers: {

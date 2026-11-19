@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AUTOMATION_KINDS } from "./automation-kinds";
 import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
 import { FLOW_TRIGGERS } from "./flow-triggers";
 
@@ -50,6 +51,8 @@ export const flowInputSchema = z.object({
   trigger: z.enum(FLOW_TRIGGERS),
   steps: z.array(flowStepSchema),
   goals: z.array(z.object({ kind: z.literal("ordered") })).max(1),
+  /** The automation a recipe does the work of (slice 3): set when the flow is made, kept through every save. */
+  replaces: z.enum(AUTOMATION_KINDS).nullish(),
 });
 export type FlowInput = z.infer<typeof flowInputSchema>;
 
