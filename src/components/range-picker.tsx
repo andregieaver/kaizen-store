@@ -69,6 +69,7 @@ export function RangePicker({
   store,
   market,
   cartHref,
+  redraw = false,
   productId,
   kind,
   variants,
@@ -85,6 +86,8 @@ export function RangePicker({
   store: string;
   market: string;
   cartHref: string;
+  /** The page draws the cart (a basket note, the cart's own upsells): the add redraws it (bloat review step 2.4). */
+  redraw?: boolean;
   productId: string;
   kind: RangeKind;
   variants: {
@@ -368,6 +371,7 @@ export function RangePicker({
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variantId} />
+        {redraw && <input type="hidden" name="redraw" value="1" />}
         <input type="hidden" name="quantity" value={Math.max(1, count)} />
         <AffiliateField store={store} />
         <RecommendField />

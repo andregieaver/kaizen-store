@@ -137,7 +137,9 @@ export async function addToCart(
       if (productId && credited) await recordRecommendedAdd(input.shop.storeId, cartId, productId, credited);
     }
   }
-  refresh();
+  // Only a page that draws the cart is drawn again (a basket note, the cart's upsells: the form sends `redraw`); any other add answers the
+  // count, which the header shows, and Next keeps the page it has (bloat review step 2.4).
+  if (formData.get("redraw") === "1") refresh();
   const count = await getCartCount(input.shop);
   // Adding follows the variant's rule (D323) and is never refused by it; only setting a line can be.
   return result.outcome === "removed" || result.outcome === "quantity"
@@ -446,6 +448,8 @@ export async function expressCheckoutAction(
     form.set("market", shop.market.slug);
     form.set("variantId", add.variantId);
     form.set("quantity", String(Math.max(1, Math.min(MAX_ORDER_QUANTITY, Math.trunc(add.quantity) || 1))));
+    // The express press goes on to pay: the page is drawn again with the cart, as before.
+    form.set("redraw", "1");
     const added = await addToCart({ outcome: "idle", quantity: 0 }, form);
     if (added.outcome !== "added" && added.outcome !== "capped") return problem("add");
   }
