@@ -18,6 +18,7 @@ export const capacityEn = {
     marketing_emails: "Marketing emails",
     ai_cost_micros: "AI",
     recordings: "Recordings of visits",
+    contracts_sent: "Contracts sent",
   },
   limits: {
     storage_bytes: "Storage",
@@ -29,6 +30,7 @@ export const capacityEn = {
     requests_month: "Visits a month",
     egress_bytes_month: "Bandwidth a month",
     recordings_month: "Recordings of visits a month",
+    contracts_sent_month: "Contracts sent a month",
     ab_tests_running: "A/B tests at a time (0: none; at most 5)",
     stores_owned: "Stores per owner",
   },
@@ -59,6 +61,7 @@ export const capacityEn = {
     ai_cost_month_micros: "This store has used the AI its plan includes this month.",
     requests_month: "",
     egress_bytes_month: "",
+    contracts_sent_month: "",
     recordings_month: "This store has recorded the {limit} visits its plan includes this month. Recording starts again next month, or choose a plan with more.",
     ab_tests_running: "Your plan runs up to {limit} A/B tests at a time. Stop one first, or choose a plan with more.",
     stores_owned: "Your plan allows {limit} stores. Choose a plan with more to add another.",

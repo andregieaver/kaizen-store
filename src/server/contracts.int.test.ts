@@ -275,6 +275,34 @@ describe("erasure", () => {
   }, 120_000);
 });
 
+describe("usage (D817)", () => {
+  it("counts a sent contract on the day it went, and shows the line on Usage and limits only once one was sent this month", async () => {
+    const { measureDay } = await import("./usage-meter");
+    const { storeUsageLines } = await import("./usage");
+    const { utcDay } = await import("@/lib/usage-metrics");
+    const fresh = await newStore("contracts-usage");
+    await db().execute(sql`update commerce.stores set legal_name = 'Butikken AS', organisation_number = '999 888 777' where id = ${fresh.storeId}::uuid`);
+    const s = await storeOf(fresh.storeId);
+    if (s) fresh.member.store = s;
+    const today = utcDay(new Date());
+    await measureDay(today, false);
+    expect((await storeUsageLines(fresh.storeId)).map((l) => l.metric)).not.toContain("contracts_sent");
+
+    const d = await deal(fresh, "kari.usage@example.com");
+    const made = await contracts.createContract(fresh.member, d.dealId);
+    if (!made.ok) throw new Error(made.problem);
+    expect(await contracts.sendContract(fresh.member, made.id, { render, storage: memoryStorage() })).toEqual({ ok: true, id: made.id });
+    await measureDay(today, false);
+    const [row] = await db().execute<Row>(sql`
+      select value from commerce.store_usage_daily where store_id = ${fresh.storeId}::uuid and day = ${today}::date and metric = 'contracts_sent'
+    `);
+    expect(Number(row.value)).toBe(1);
+    const line = (await storeUsageLines(fresh.storeId)).find((l) => l.metric === "contracts_sent");
+    expect(line).toMatchObject({ key: "contracts_sent_month", used: 1, limit: null });
+    await db().execute(sql`delete from commerce.store_usage_daily where store_id = ${fresh.storeId}::uuid`);
+  }, 60_000);
+});
+
 describe("templates (step 2)", () => {
   it("are added with a name of their own, saved with their words checked, versioned by their words, and the last one stays", async () => {
     const fresh = await newStore("contracts-templates");

@@ -1,6 +1,6 @@
 {
-  "id": "891dca38-23a9-461e-b410-4289388c989f",
-  "prevId": "94695b33-b696-4682-b288-72c5dc4464cb",
+  "id": "d1628812-a316-4daa-8b17-78599c497a80",
+  "prevId": "891dca38-23a9-461e-b410-4289388c989f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -45640,7 +45640,7 @@
         },
         "limit_overrides_known": {
           "name": "limit_overrides_known",
-          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned')"
+          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'contracts_sent_month', 'ab_tests_running', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -59204,7 +59204,7 @@
         },
         "plan_limits_known": {
           "name": "plan_limits_known",
-          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'ab_tests_running', 'stores_owned')"
+          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'contracts_sent_month', 'ab_tests_running', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -86356,7 +86356,7 @@
         },
         "store_usage_daily_metric": {
           "name": "store_usage_daily_metric",
-          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros', 'recordings')"
+          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros', 'recordings', 'contracts_sent')"
         }
       },
       "isRLSEnabled": false

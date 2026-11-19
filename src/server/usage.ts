@@ -33,6 +33,7 @@ export const OWNER_LINES: readonly { metric: UsageMetric; key: LimitKey }[] = [
   { metric: "marketing_emails", key: "marketing_emails_month" },
   { metric: "ai_cost_micros", key: "ai_cost_month_micros" },
   { metric: "recordings", key: "recordings_month" },
+  { metric: "contracts_sent", key: "contracts_sent_month" },
 ];
 
 /** Which counter metrics anything wrote this month, for a store (traffic needs the drain: a store with no row is not measured). */
@@ -56,8 +57,10 @@ export async function drainConnected(now: Date = new Date()): Promise<boolean> {
 /** A store's usage this month against each of its limits. */
 export async function storeUsageLines(storeId: string, now: Date = new Date()): Promise<UsageLine[]> {
   const [{ limits }, counted, drain] = await Promise.all([storeLimits(storeId), measuredCounters(storeId, now), drainConnected(now)]);
+  // Contracts sent (D817) are a line only once the store has sent one this month: a shop without Deals never reads a zero about them.
+  const lines = OWNER_LINES.filter(({ metric }) => metric !== "contracts_sent" || counted.measured.has(metric));
   return Promise.all(
-    OWNER_LINES.map(async ({ metric, key }) => {
+    lines.map(async ({ metric, key }) => {
       const traffic = USAGE_METRICS[metric].source === "traffic";
       const measured = USAGE_METRICS[metric].kind === "gauge" || (traffic ? drain && counted.measured.has(metric) : true);
       const used = measured ? await usageNow(storeId, key, now) : 0;
