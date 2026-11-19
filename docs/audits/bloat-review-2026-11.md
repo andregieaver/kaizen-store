@@ -206,7 +206,7 @@ commit as the fix.
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
 | 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
-| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | In progress | 1) 41=41; 2) +2/line; 3) 5.6/81.8 ms; 4) visit 5 stmts, 3 rows (0.43 rule); 5) warm 1.44-1.88 ms, held 2.9; no gates |
+| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Done | 19 Nov, 0e649cc0, D782: +2 statements a line, history-free, warm triggers under 2.9 ms; no gates. |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
 | 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | Open | |
 
@@ -341,6 +341,7 @@ Change log:
 - 18 Nov 2026: step 2.3 Done (d0aa131f, D777): the breakpoint sheet is drawn once by the layout and a page's rows share one part stylesheet.
 - 18 Nov 2026: step 2.17 on main (13522625, D778): page lists, pickers and grids read columns and cards, not documents; Done after a week's statistics.
 - 19 Nov 2026: step 2.13 Done (4cc84650, D779); step 2.18 Done (38759d01, D780); step 2.33 commit 1 on main (00d7bddd, D781), commit 2 waits for the owner.
+- 19 Nov 2026: step 2.48 Done (0e649cc0, D782): a placed order's ceilings held; no trigger gated, as each would change what an order writes.
 - 18 Nov 2026: step 2.17 carried out locally in five commits (the Pages list in SQL with pageTitles(), pages of 100, the grid's and the
   feed's cards in SQL, the index for the static params and search picker, the pageDocuments list); waiting for review and the D-row.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
