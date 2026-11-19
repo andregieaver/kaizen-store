@@ -24,7 +24,7 @@ import { marketPath } from "@/lib/paths";
 import { summarize } from "@/lib/seo";
 import { tileLines } from "@/lib/tile-fields";
 
-import { contentTypeByKey, getContentType } from "./content-types";
+import { contentTypeByKey, getContentType } from "./content-types-read";
 import { pagesTag } from "@/lib/cache-tags";
 import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { marketIn } from "./shop";
