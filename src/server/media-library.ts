@@ -220,6 +220,8 @@ export type LibraryFile = {
   height: number | null;
   /** Who made it (D349): a copy of a picture the site's AI made or edited stays the AI's (an edit's original is the other owner's, so not named). */
   madeBy?: MediaMadeBy;
+  /** When its files were marked as AI-made (AI Act Art. 50(2)); a copy is byte for byte, so it carries the mark. */
+  aiMarkedAt?: string | null;
 };
 
 /**
@@ -231,7 +233,7 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
   if (urls.length === 0) return found;
   const list = sql.join(urls.map((url) => sql`${url}`), sql`, `);
   const rows = await db().execute<Row>(sql`
-    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, medium_path, file_name, content_type, size_bytes, width, height, made_by
+    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, medium_path, file_name, content_type, size_bytes, width, height, made_by, ai_marked_at
     from commerce.media
     where ${owned(storeId)} and (url in (${list}) or thumbnail_url in (${list}))
   `);
@@ -251,6 +253,7 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
       width: row.width === null ? null : Number(row.width),
       height: row.height === null ? null : Number(row.height),
       madeBy: (row.made_by as MediaMadeBy | null) ?? "person",
+      aiMarkedAt: row.ai_marked_at === null || row.ai_marked_at === undefined ? null : new Date(String(row.ai_marked_at)).toISOString(),
     };
     for (const url of [file.url, file.thumbnailUrl]) if (url && urls.includes(url)) found.set(url, file);
   }
@@ -291,11 +294,11 @@ export async function copyToLibrary(
   await db().execute(sql`
     insert into commerce.media (
       store_id, kind, url, thumbnail_url, medium_url, bucket, path, thumbnail_path, medium_path, file_name, content_type, size_bytes, width,
-      height, created_by, made_by
+      height, created_by, made_by, ai_marked_at
     ) values (
       ${target.storeId}::uuid, ${file.kind}, ${url}, ${thumbnail?.url ?? null}, ${medium?.url ?? null}, ${file.bucket}, ${path},
       ${thumbnail?.path ?? null}, ${medium?.path ?? null}, ${file.fileName}, ${file.contentType}, ${file.sizeBytes}, ${file.width},
-      ${file.height}, ${target.accountId}::uuid, ${file.madeBy ?? "person"}
+      ${file.height}, ${target.accountId}::uuid, ${file.madeBy ?? "person"}, ${file.aiMarkedAt ?? null}::timestamptz
     )
     on conflict (url) do nothing
   `);

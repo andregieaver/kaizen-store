@@ -383,4 +383,21 @@ describe("the media library (D88)", () => {
     expect(removed[0]).toHaveLength(3);
     expect(removed[0][2]).toMatch(/-800\.webp$/);
   });
+  it("a copied AI picture is already marked (AI Act Art. 50(2), bloat review step 3.7): the backfill never meets it again", async () => {
+    const url = `https://files.example.com/${storeId}/${run}-ai-made.webp`;
+    await db().execute(sql`
+      insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, made_by, ai_marked_at)
+      values (${storeId}::uuid, 'image', ${url}, 'media', ${`${storeId}/${run}-ai-made.webp`}, 'ai-made.webp', 'image/webp', 1000, 'ai_made', now())
+    `);
+    const file = (await library.libraryFilesByUrl(storeId, [url])).get(url);
+    expect(file?.madeBy).toBe("ai_made");
+    expect(file?.aiMarkedAt).toEqual(expect.any(String));
+    const copy = await library.copyToLibrary({ storeId, accountId }, file!, async (_bucket, _from, to) => `https://files.example.com/copied/${to}`);
+    const [copied] = await db().execute<Row>(sql`
+      select c.made_by, c.ai_marked_at is not null as marked, abs(extract(epoch from c.ai_marked_at - o.ai_marked_at)) < 0.001 as same_moment
+      from commerce.media c join commerce.media o on o.url = ${url} where c.url = ${copy!.url}
+    `);
+    expect(copied).toEqual({ made_by: "ai_made", marked: true, same_moment: true });
+    await db().execute(sql`delete from commerce.media where store_id = ${storeId}::uuid and url in (${url}, ${copy!.url})`);
+  });
 });

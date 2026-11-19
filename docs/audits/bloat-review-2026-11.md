@@ -220,7 +220,7 @@ commit as the fix.
 | 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 | Open | |
 | 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2, 3.4 | Open | |
 | 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Open | |
-| 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | Part 2026-11-19 (D807): the dispatcher asks the route; left: cron_due() and indexes, commits 1 and 3 |
+| 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | Part 2026-11-19 (D807): the dispatcher asks the route; commit 1 done; left: cron_due() and its indexes, commit 3 |
 | 3.8 | Drop the duplicate idempotency table and the leftover schema, after a verified dump | DS-14 | S | review | 0.2 | Open | |
 | 3.9 | Keep one kaizenaflow.com | FM-3, FT-5, DS-6 | L | strong |  | Open | |
 | 3.10 | Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope | CP-4, FM-4, FM-5 | M | strong | 1.17 | Open | |
