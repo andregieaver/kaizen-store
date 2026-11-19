@@ -88,7 +88,15 @@ export default async function ThemesPage({ searchParams }: PageProps<"/admin/pla
   return (
     <AdminTextScope texts={adminTexts(lang, ["platformSite"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader title={t.title} description={t.description} />
+      <PageHeader
+        title={t.title}
+        description={
+          <>
+            <span className="sm:hidden">{t.phoneLead}</span>
+            <span className="max-sm:hidden">{t.description}</span>
+          </>
+        }
+      />
 
       <nav aria-label={t.which} className="flex flex-wrap gap-2">
         <Link href={THEMES_ADMIN} aria-current={current ? "page" : undefined} className={tab}>
@@ -284,12 +292,48 @@ function DesignItem({
   const t = w.themes;
   const shown = shownDesignDetails(design);
   const picture = shown.pictureUrl ?? madeCard;
+  // Everything but Edit: in the row from sm up, behind More on a phone (round 64, D830).
+  const more = (
+    <>
+          <PreviewLink href={designPreviewPath(design.id, null, true)} label={design.published ? w.preview.asPublished : w.preview.preview} title={shown.title} of={w.preview.of} />
+            {design.workspaceStoreId && facts.changed && <PreviewLink href={designPreviewPath(design.id, null, true, true)} label={w.preview.draft} title={shown.title} of={w.preview.of} />}
+            <LifecycleButtons
+              kind="theme"
+              title={shown.title}
+              facts={facts}
+              words={w.lifecycle}
+              actions={{
+                publish: publishDesignAction.bind(null, design.id),
+                unpublish: unpublishDesignAction.bind(null, design.id),
+                archive: archiveDesignAction.bind(null, design.id),
+                restore: unarchiveDesignAction.bind(null, design.id),
+                remove: deleteDesignAction.bind(null, design.id),
+              }}
+            />
+            {!archived && !first && (
+              <ActionForm action={moveDesignAction.bind(null, design.id, "up")}>
+                <SubmitButton variant="secondary">
+                  {t.moveUp}
+                  <span className="sr-only"> {shown.title}</span>
+                </SubmitButton>
+              </ActionForm>
+            )}
+            {!archived && !last && (
+              <ActionForm action={moveDesignAction.bind(null, design.id, "down")}>
+                <SubmitButton variant="secondary">
+                  {t.moveDown}
+                  <span className="sr-only"> {shown.title}</span>
+                </SubmitButton>
+              </ActionForm>
+            )}
+    </>
+  );
   const edit = "flex min-h-10 items-center gap-1.5 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
   return (
-    <li className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 md:flex-row md:items-start">
+    <li className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 max-sm:gap-1 max-sm:p-3 md:flex-row md:items-start">
       {picture ? (
         // eslint-disable-next-line @next/next/no-img-element -- a theme's picture from Kaizen's media library, or its photograph (D264)
-        <img src={picture} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover object-top md:w-48" />
+        <img src={picture} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover object-top max-sm:hidden md:w-48" />
       ) : (
         <div aria-hidden="true" className="hidden aspect-video w-48 rounded-md border border-dashed border-line md:block" />
       )}
@@ -300,48 +344,30 @@ function DesignItem({
           {!design.readable && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{t.unreadable}</span>}
         </span>
         <span className="text-muted">
-          {!archived && fillWords(t.position, { n: design.position })}
+          {!archived && <span className="max-sm:hidden">{fillWords(t.position, { n: design.position })}</span>}
           {design.publishedAt ? fillWords(t.publishedOn, { date: adminDate(PLATFORM_TIME_ZONE, design.publishedAt, "day", lang) }) : t.neverPublished}
           {countWords(design.storesUsing, t.applied)}
           {design.requests > 0 && countWords(design.requests, t.chosen)}
         </span>
-        {shown.summary && <span>{shown.summary}</span>}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        {shown.summary && <span className="max-sm:hidden">{shown.summary}</span>}
+        <div className="mt-2 flex flex-wrap items-center gap-2 max-sm:mt-1">
           <Link href={designTabHref(design.id, "details")} className={edit}>
             {t.edit}
             <span className="sr-only"> {shown.title}</span>
           </Link>
-          <PreviewLink href={designPreviewPath(design.id, null, true)} label={design.published ? w.preview.asPublished : w.preview.preview} title={shown.title} of={w.preview.of} />
-          {design.workspaceStoreId && facts.changed && <PreviewLink href={designPreviewPath(design.id, null, true, true)} label={w.preview.draft} title={shown.title} of={w.preview.of} />}
-          <LifecycleButtons
-            kind="theme"
-            title={shown.title}
-            facts={facts}
-            words={w.lifecycle}
-            actions={{
-              publish: publishDesignAction.bind(null, design.id),
-              unpublish: unpublishDesignAction.bind(null, design.id),
-              archive: archiveDesignAction.bind(null, design.id),
-              restore: unarchiveDesignAction.bind(null, design.id),
-              remove: deleteDesignAction.bind(null, design.id),
-            }}
-          />
-          {!archived && !first && (
-            <ActionForm action={moveDesignAction.bind(null, design.id, "up")}>
-              <SubmitButton variant="secondary">
-                {t.moveUp}
-                <span className="sr-only"> {shown.title}</span>
-              </SubmitButton>
-            </ActionForm>
-          )}
-          {!archived && !last && (
-            <ActionForm action={moveDesignAction.bind(null, design.id, "down")}>
-              <SubmitButton variant="secondary">
-                {t.moveDown}
-                <span className="sr-only"> {shown.title}</span>
-              </SubmitButton>
-            </ActionForm>
-          )}
+          {/* Round 64 (D830): on a phone Edit stays and the rest is one More; from sm up every button as before. */}
+          <div className="contents max-sm:hidden">
+            {more}
+          </div>
+          <details className="group relative sm:hidden">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-md border border-edge px-3 text-sm [&::-webkit-details-marker]:hidden">
+              {t.phoneMore}
+              <span className="sr-only"> {shown.title}</span>
+            </summary>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {more}
+            </div>
+          </details>
         </div>
       </div>
     </li>

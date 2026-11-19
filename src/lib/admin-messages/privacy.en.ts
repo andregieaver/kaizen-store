@@ -284,6 +284,13 @@ export const privacyEn = {
     title: "Record of processing",
     description:
       "What Kaizena Flow does with personal data, purpose by purpose, as GDPR Art. 30 asks it to keep: the lawful basis and why, who decides the purpose, whose data it is, where it is kept and for how long. Drawn from the register of personal data, so it never falls behind the code. The bases are proposals for the lawyer to confirm; a row marked for review is a judgement, not a clear case. This is not legal advice.",
+    /** Round 64 (D830): the record on a phone, each purpose a row. */
+    phone: {
+      lead: "What Kaizena Flow does with personal data, purpose by purpose (GDPR Art. 30). Not legal advice.",
+      review: "for the lawyer",
+      open: "Open",
+      close: "Close",
+    },
     purpose: "Purpose",
     basis: "Lawful basis",
     controller: "Who decides",

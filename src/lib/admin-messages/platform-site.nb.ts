@@ -47,6 +47,9 @@ export const platformSiteNb: PlatformSiteMessages = {
     title: "Temaer",
     description:
       "Et tema er et helt utseende (farger, skrifttyper, knapper, hjørner, lyst og mørkt, en topp og bunn, en produktside og CSS) med opptil fem varianter over seg, og sitt eget innhold: sidene, produktene og bildene det vises med, som en ny butikk startet fra det begynner med. Eiere tar i bruk et tema fra butikkens Designinnstillinger, som aldri endrer ordene deres; de som oppretter en butikk, velger ett. Alle endringer er et utkast til du publiserer dem.",
+    /** Runde 64 (D830): temaene på en telefon. */
+    phoneLead: "Hele uttrykk eiere bruker fra designinnstillingene; hver endring er et utkast til du publiserer den.",
+    phoneMore: "Mer",
     which: "Hvilke temaer",
     tabThemes: "Temaer",
     tabArchived: "Arkivert",

@@ -299,6 +299,10 @@ export const platformToolsEn = {
   },
   languages: {
     title: "Languages",
+    /** Round 64 (D830): the languages on a phone. */
+    phoneLead: "The languages owners can offer; the interface is translated by AI and reviewed here.",
+    phoneOpen: "Open",
+    phoneClose: "Close",
     intro:
       "The languages store owners can offer under Languages and currencies. Products, pages and menus can be written or translated in any of them; the interface (buttons, cart, checkout and the emails shoppers get) is written by hand in Norwegian, Swedish, Danish and English, and translated by AI and reviewed here for the others. A language without interface text shows English there.",
     site: "Kaizena Flow's own site",
