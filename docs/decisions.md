@@ -811,6 +811,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D806 | **Admin redesign round 55: product feeds, order history import and redirect export on a phone** | 2026-11-19 | [text](decisions/D806.md) |
 | D807 | **Invoices' and credit notes' PDFs are made ahead: the dispatcher asks the PDF route when a document waits** | 2026-11-19 | [text](decisions/D807.md) |
 | D808 | **A/B tests: the platform's page leads to Kaizena Flow's own site's tests** | 2026-11-19 | [text](decisions/D808.md) |
+| D809 | **Admin redesign round 56: new segment, Google reviews and wishlists on a phone** | 2026-11-19 | [text](decisions/D809.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
