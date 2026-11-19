@@ -421,6 +421,14 @@ catalogue writer), in the page's language: the block's words in `platformText(la
 The admin's Extensions page keeps its own list for now (its rows carry the account's standing and actions); drawing it with the same cards
 is left for when it is redesigned.
 
+**E7, planned in four parts (19 November 2026).** 1. **The workspace, dark**: `stores.workspace`, a store row that holds a standalone
+account's extension data; never listed as a store, never served as a storefront, never counted against the store limit; its jobs run and
+its emails send (a scan holds every reader of a real store to it, as for sandboxes). 2. **The sign-up**: one sign-up where the visitor ticks
+the extensions (each product's page links to it with its own ticked), which makes the account, its workspace and the chosen 14-day trials.
+3. **The workspace's admin and Add to your account**: a workspace's admin shows only its extensions, the account's settings and the AI
+manager; the account menu's Add to your account offers "Open an online store" and the other extensions, each one press to start a trial.
+4. **The product pages**: `/support-desk`, `/email-automation`, `/work`, `/deals` from `docs/site-design.md`, saved as drafts for the owner.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
