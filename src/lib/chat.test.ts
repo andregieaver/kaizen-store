@@ -84,6 +84,13 @@ describe("the rules", () => {
 });
 
 describe("cleanReply", () => {
+  it("keeps the line break after a sentence's stop, so sentences never run together", () => {
+    expect(cleanReply('Du har én nettside, "Test store", og den er aktiv.\n\nGi beskjed om du trenger mer hjelp!', "")).toBe(
+      'Du har én nettside, "Test store", og den er aktiv.\n\nGi beskjed om du trenger mer hjelp!',
+    );
+    expect(cleanReply("Hei André,\n\nDu har én nettside.\nTakk!", "")).toBe("Hei André,\n\nDu har én nettside.\nTakk!");
+  });
+
   it("shows plain text without Markdown or addresses", () => {
     expect(cleanReply("**Yes!** See [the page](https://evil.example/x) or https://evil.example.", "sorry")).toBe("Yes! See the page or");
     expect(cleanReply("## Delivery\n- Two days\n- Free over 500", "sorry")).toBe("Delivery\nTwo days\nFree over 500");
