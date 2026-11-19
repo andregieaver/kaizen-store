@@ -185,6 +185,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 19 November 2026: step 1.20's leftovers done (D812): A/B results count exposures, conversions and weeks by the store's day (`visits.day` already was); the platform's change log filters on `PLATFORM_TIME_ZONE`; the admin's zoneless dates fell from 42 to 2 (browser only), held by `admin-dates.scan.test.ts`.
 - 19 November 2026: bloat review step 2.29 (local, not yet pushed): row 3.4's Tiptap part is done (the rich text editor, markup field and inline editors load after the builder's first paint); FB8's fix names them; the dialogs remain.
 - 19 November 2026: FH9's next (D811): `payment-session.ts`, `payment-providers/stripe.ts`, `draft-sessions.ts`, `billing-tools.ts`, `api-idempotency.ts` and `stripe.ts` (`createPlatformWebhooks()`) have tests, on one Stripe stand-in (`stripe-test-support.ts`); still without: `limits-admin.ts`, `house-switch.ts`, `admin-api-orders.ts` (reached only through the Admin API's route) and most of `market-price-tools.ts`.
+- 19 November 2026: D811's found fault fixed (D815): the platform's Stripe webhooks are replaced new first, so a failure part way leaves the working ones.
 
 **Notes on the steps**
 

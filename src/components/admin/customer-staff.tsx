@@ -52,7 +52,8 @@ export function CustomerForm({
   );
   return (
     <ActionForm action={action} className="flex flex-col gap-4" successMessage={words.saved}>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* Round 59 (D819): on a phone the name and phone share a line under the email, so the button is on the first screen. */}
+      <div className="grid gap-3 max-sm:grid-cols-2 max-sm:[&>*:first-child]:col-span-2 sm:grid-cols-2">
         {input("email", words.email, { type: "email", max: 254, required: true })}
         {input("name", words.name, { max: CUSTOMER_NAME_MAX })}
         {input("phone", words.phone, { type: "tel", max: CUSTOMER_PHONE_MAX })}

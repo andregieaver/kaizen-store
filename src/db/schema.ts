@@ -17623,7 +17623,8 @@ export const emailClicks = commerce.table(
       columns: [t.storeId, t.flowId],
       foreignColumns: [flows.storeId, flows.id],
     }).onDelete("cascade"),
-    index("email_clicks_flow_idx").on(t.flowId, t.subscriberId),
+    // Covers the flow foreign key (store, flow) and the click condition's lookup (store, flow, person).
+    index("email_clicks_flow_idx").on(t.storeId, t.flowId, t.subscriberId),
     check("email_clicks_source", sql`(${t.broadcastId} is null) <> (${t.flowId} is null) and (${t.flowId} is null) = (${t.stepId} is null)`),
     index("email_clicks_subscriber_idx").on(t.storeId, t.subscriberId, t.clickedAt),
     index("email_clicks_broadcast_idx").on(t.broadcastId, t.link),

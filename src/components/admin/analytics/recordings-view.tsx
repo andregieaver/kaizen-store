@@ -100,7 +100,8 @@ export function RecordingsList(props: RecordingsListProps) {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label={w.filters} className="flex flex-wrap gap-2">
+        {/* Round 59 (D819): on a phone the filters are one line that scrolls, and each visit one line with Watch at its end. */}
+        <nav aria-label={w.filters} className="flex flex-wrap gap-2 max-sm:-mr-4 max-sm:w-[calc(100%+1rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pr-4 max-sm:*:shrink-0">
           {chips
             .filter((c) => c.n > 0 || c.active)
             .map((c) => (
@@ -140,7 +141,7 @@ export function RecordingsList(props: RecordingsListProps) {
             </h2>
             <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-card">
               {list.map((r) => (
-                <li key={r.id} data-watched={r.viewedAt ? "" : undefined} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${r.viewedAt ? "opacity-60" : ""}`}>
+                <li key={r.id} data-watched={r.viewedAt ? "" : undefined} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 max-sm:flex-nowrap ${r.viewedAt ? "opacity-60" : ""}`}>
                   <div className="min-w-0">
                     <p className="font-medium">
                       {fillWords(w.around, { time: time(r.startedAt) })} · {w.devices[r.device]} · {lengthText(r.durationMs, w)} ·{" "}
@@ -149,15 +150,22 @@ export function RecordingsList(props: RecordingsListProps) {
                     <p className="break-all text-sm text-muted">
                       {entryName(r.entryPage, w)}
                       {r.tags.length > 0 ? ` · ${r.tags.map((t) => props.versions?.find((v) => v.tag === t)?.label ?? t.slice(-1).toUpperCase()).join(", ")}` : ""}
+                      <span className="sm:hidden">
+                        {r.rageClicks > 0 ? ` · ${fillWords(w.rage, { n: r.rageClicks })}` : ""}
+                        {r.deadClicks > 0 ? ` · ${fillWords(w.dead, { n: r.deadClicks })}` : ""}
+                      </span>
                     </p>
                     {r.rageClicks > 0 || r.deadClicks > 0 ? (
-                      <p className="mt-1 flex flex-wrap gap-1.5 text-xs">
+                      <p className="mt-1 flex flex-wrap gap-1.5 text-xs max-sm:hidden">
                         {r.rageClicks > 0 ? <span className="rounded-full border border-(--chart-warn) px-2 py-0.5">{fillWords(w.rage, { n: r.rageClicks })}</span> : null}
                         {r.deadClicks > 0 ? <span className="rounded-full border border-line px-2 py-0.5">{fillWords(w.dead, { n: r.deadClicks })}</span> : null}
                       </p>
                     ) : null}
                   </div>
-                  <Link href={recordingHref(base, r.id)} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm">
+                  <Link
+                    href={recordingHref(base, r.id)}
+                    className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm max-sm:min-h-11 max-sm:shrink-0 max-sm:border-0 max-sm:bg-transparent max-sm:px-0 max-sm:font-medium max-sm:underline max-sm:underline-offset-2"
+                  >
                     {r.viewedAt ? w.watched : w.watch}
                   </Link>
                 </li>

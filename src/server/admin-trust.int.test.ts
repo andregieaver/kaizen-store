@@ -51,13 +51,14 @@ describe("the platform's activity log", () => {
     expect(page.entries.find((e) => e.id === later)).toMatchObject({ email: admin.email, area: "account", summary: expect.stringContaining("used a recovery code") });
   });
 
-  it("filters by area, action, and day, in UTC", async () => {
+  it("filters by area, action, and day, on the platform's clock (Oslo, D812)", async () => {
+    // 23:30 UTC on 5 February is 00:30 on the 6th in Oslo (winter time): the platform's log reads it as the 6th.
     const id = await put(null, admin.id, "platform.request_approved", "2026-02-05T23:30:00Z");
     expect((await act.listPlatformActivity({ accountId: admin.id, area: "platform" })).entries.map((e) => e.id)).toContain(id);
     expect((await act.listPlatformActivity({ accountId: admin.id, area: "orders" })).entries.map((e) => e.id)).not.toContain(id);
     expect((await act.listPlatformActivity({ accountId: admin.id, action: "platform.request_approved" })).entries.map((e) => e.id)).toContain(id);
-    expect((await act.listPlatformActivity({ accountId: admin.id, from: "2026-02-05", to: "2026-02-05" })).entries.map((e) => e.id)).toEqual([id]);
-    expect((await act.listPlatformActivity({ accountId: admin.id, from: "2026-02-06", to: "2026-02-06" })).entries).toEqual([]);
+    expect((await act.listPlatformActivity({ accountId: admin.id, from: "2026-02-06", to: "2026-02-06" })).entries.map((e) => e.id)).toEqual([id]);
+    expect((await act.listPlatformActivity({ accountId: admin.id, from: "2026-02-05", to: "2026-02-05" })).entries).toEqual([]);
     // Anything that is not a day is ignored, not trusted.
     expect((await act.listPlatformActivity({ accountId: admin.id, from: "yesterday" })).entries.map((e) => e.id)).toContain(id);
   });

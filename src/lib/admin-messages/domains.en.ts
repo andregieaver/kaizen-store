@@ -384,6 +384,18 @@ export const domainsEn = {
     title: "Bring a domain here",
     intro: "Move a domain you have elsewhere to Kaizena Flow: its DNS, so its records can be changed here and by the AI manager, its registration, so it renews with your store, or both.",
     back: "Domains",
+    /** Round 59 (D819): the page on a phone. */
+    phone: {
+      lead: "Move its DNS, its registration, or both to Kaizena Flow.",
+      dns: "Move its DNS here",
+      dnsReady: "Your email and site keep working the whole time",
+      dnsWaits: "Connect a domain to the store first",
+      transfer: "Move its registration here",
+      transferReady: "It then renews with your store",
+      transferWaits: "Opens soon",
+      open: "Open",
+      close: "Close",
+    },
     dns: {
       title: "Move its DNS here",
       intro: "Kaizena Flow copies every record it finds, checks them against what the internet sees today, and only then do you change the nameservers. Your email and site keep working the whole time.",
