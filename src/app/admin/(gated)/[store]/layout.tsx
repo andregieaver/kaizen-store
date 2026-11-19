@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
+import { ExtensionBanner } from "@/components/admin/extension-banner";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
@@ -12,7 +13,8 @@ import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-vie
 import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { extensionBanners, readExtensionFacts } from "@/lib/extensions";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { featureOn } from "@/lib/store-features";
@@ -83,6 +85,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const open = store.status === "active";
   const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
   const lang = adminLangOf(account.adminLocale);
+  // A paid extension in its grace period or read-only (D748 E5): the frame says so on its pages.
+  const banners = extensionBanners(readExtensionFacts(store.extensionFacts), new Date());
   const w = adminText(lang, "shell");
   const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
   // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
@@ -221,6 +225,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             </p>
           </div>
         )}
+        {banners.length > 0 && <ExtensionBanner banners={banners} owner={isOwner} locale={ADMIN_LANG_FACTS[lang].locale} />}
         {children}
       </AdminFrame>
     </AdminViewProvider>

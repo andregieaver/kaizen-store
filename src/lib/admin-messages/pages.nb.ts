@@ -693,6 +693,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Abonnement og faktura",
     keywords: ["plan", "abonnement", "faktura", "fakturering", "fornyes", "gebyr", "kostnad"],
   },
+  "account:account.extensions": {
+    title: "Utvidelser",
+    keywords: ["utvidelser", "tillegg", "prøveperiode", "abonner", "a/b-testing", "kundestøtte", "e-postautomatisering", "work", "avtaler"],
+  },
   "account:account.delete": { title: "Slett kontoen din", keywords: ["slett konto", "slette konto", "personvern", "fjern opplysningene mine"] },
   "account:account.appearance": { title: "Utseende", keywords: ["utseende", "farger", "tema", "fargeskjema", "mørk", "lys"] },
   "account:account.domains": {

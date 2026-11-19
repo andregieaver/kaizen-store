@@ -1132,6 +1132,9 @@ const PAGES: readonly AdminPage[] = [
   account("account.billing", "/account/billing", "Billing", "The plan of each store you own, what it costs, when it renews and Kaizena Flow's fee.", {
     keywords: ["plan", "subscription", "invoice", "renews", "fee", "cost"],
   }),
+  account("account.extensions", "/account/extensions", "Extensions", "The paid extensions of the account (D748): A/B testing, AI support desk, email automation, Work and deals and contracts, each with whether the account has it (in its plan, added, a free trial and until when, read-only), its price from, and a free trial, adding or ending it.", {
+    keywords: ["extensions", "add-ons", "trial", "subscribe", "a/b testing", "support desk", "email automation", "work", "deals"],
+  }),
   account("account.appearance", "/account/appearance", "Appearance", "How the admin looks for you: light or dark, and the colour scheme, with every scheme drawn in light and dark with the admin's buttons, cards, figures and lists so you can compare them. Your stores keep their own colours.", {
     keywords: ["appearance", "colours", "colors", "theme", "scheme", "dark", "light", "meadow", "indigo", "look"],
     tasks: ["Choose light or dark", "Choose the admin's colour scheme", "Compare the schemes side by side"],
