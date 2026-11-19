@@ -10,6 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { EXTENSION_TRIAL_DAYS } from "@/lib/extensions";
 import { formatMoney } from "@/lib/money";
 import { accountCurrency, getAccountBilling } from "@/server/account-billing";
+import { bundleHints } from "@/server/account-cover";
 import { requireAccount } from "@/server/auth";
 import { accountExtensions, extensionsLaunchedAt, type AccountExtension } from "@/server/extensions";
 import { ownedAccount } from "@/server/privacy-officers";
@@ -34,6 +35,15 @@ export default async function ExtensionsPage() {
   const [launchedAt, billing, currency] = await Promise.all([extensionsLaunchedAt(), getAccountBilling(own.id), accountCurrency(own.id)]);
   const extensions = await accountExtensions(own.id, currency);
   const launched = launchedAt !== null && launchedAt <= new Date();
+  // Paid for now, on its own or in a bundle: ended from here; anything else not in the plan can be added.
+  const paid = (e: AccountExtension) => (e.source === "bought" || e.source === "bundle") && e.state === "active";
+  const addable = (e: AccountExtension) => e.source !== "plan" && e.state !== "platform" && !paid(e);
+  // When the cheapest way to add one is a bundle, the row says so (E6: the checkout buys that answer).
+  const hints =
+    launched && billing && currency
+      ? await bundleHints(own.id, { currency, interval: billing.price?.interval ?? "month", planId: billing.planId }, extensions.filter(addable).map((e) => e.id))
+      : {};
+  const money = (minor: number) => formatMoney(minor, currency ?? "EUR", locale);
   const day = (iso: string | null) => adminDate(PLATFORM_TIME_ZONE, iso, "long", lang);
   const stateLine = (e: AccountExtension) =>
     e.source === "legacy"
@@ -54,7 +64,15 @@ export default async function ExtensionsPage() {
         {extensions.map((e) => (
           <ListRow key={e.id}>
             <RowLead title={e.name} sub={e.description} />
-            <RowFact sub={e.priceFrom ? fillWords(w.from, { price: formatMoney(e.priceFrom.amountMinor, e.priceFrom.currency, locale) }) : undefined}>
+            <RowFact
+              sub={
+                hints[e.id]
+                  ? fillWords(w.bundleHint, { bundle: hints[e.id]!.bundle, price: money(hints[e.id]!.amountMinor), saving: money(hints[e.id]!.savingMinor) })
+                  : e.priceFrom
+                    ? fillWords(w.from, { price: formatMoney(e.priceFrom.amountMinor, e.priceFrom.currency, locale) })
+                    : undefined
+              }
+            >
               <Chip signal={e.state === "read_only" || e.state === "grace" ? "warning" : e.state === "absent" ? "neutral" : "positive"} dot>
                 {stateLine(e)}
               </Chip>
@@ -66,12 +84,12 @@ export default async function ExtensionsPage() {
                     <SubmitButton>{w.try}</SubmitButton>
                   </ActionForm>
                 )}
-                {billing && e.source !== "plan" && e.source !== "bought" && e.state !== "platform" && (
+                {billing && addable(e) && (
                   <ActionForm action={setExtensionAction.bind(null, e.id, true)}>
                     <SubmitButton variant={e.state === "absent" && e.source === null ? "secondary" : "primary"}>{w.add}</SubmitButton>
                   </ActionForm>
                 )}
-                {billing && e.source === "bought" && e.state === "active" && (
+                {billing && paid(e) && (
                   <ActionForm action={setExtensionAction.bind(null, e.id, false)}>
                     <SubmitButton variant="secondary">{w.end}</SubmitButton>
                   </ActionForm>

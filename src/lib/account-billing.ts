@@ -11,13 +11,21 @@ export const GRACE_DAYS = 14;
 
 export type WantedPrice = { id: string; currency: string; interval: PlanInterval };
 export type WantedExtension = WantedPrice & { extensionId: ExtensionId };
+/** A bundle's price on the subscription (D748 E6): its members each at their smallest size. */
+export type WantedBundle = WantedPrice & { bundleId: string; members: readonly ExtensionId[] };
 
 /**
- * Why a subscription with this plan price and these extension prices cannot be made, or none: something is chosen, one currency and one
- * interval for all of it (one invoice), each extension once, and never an extension the plan already includes (it is never charged twice).
+ * Why a subscription with this plan price, these extension prices and these bundles cannot be made, or none: something is chosen, one
+ * currency and one interval for all of it (one invoice), each extension once (on its own or in one bundle), and never an extension the plan
+ * already includes, on its own or in a bundle (it is never charged twice).
  */
-export function itemProblems(plan: WantedPrice | null, extensions: readonly WantedExtension[], included: readonly ExtensionId[]): string[] {
-  const all = [...(plan ? [plan] : []), ...extensions];
+export function itemProblems(
+  plan: WantedPrice | null,
+  extensions: readonly WantedExtension[],
+  included: readonly ExtensionId[],
+  bundles: readonly WantedBundle[] = [],
+): string[] {
+  const all = [...(plan ? [plan] : []), ...extensions, ...bundles];
   if (all.length === 0) return ["Choose a plan or an extension."];
   const problems: string[] = [];
   if (new Set(all.map((p) => p.currency)).size > 1) problems.push("Everything on the account's plan is billed in one currency.");
@@ -27,6 +35,13 @@ export function itemProblems(plan: WantedPrice | null, extensions: readonly Want
     if (seen.has(e.extensionId)) problems.push(`${EXTENSION_NAMES[e.extensionId]} is chosen twice.`);
     seen.add(e.extensionId);
     if (plan && included.includes(e.extensionId)) problems.push(`${EXTENSION_NAMES[e.extensionId]} is in the plan already.`);
+  }
+  for (const b of bundles) {
+    for (const id of b.members) {
+      if (seen.has(id)) problems.push(`${EXTENSION_NAMES[id]} is chosen twice.`);
+      seen.add(id);
+      if (plan && included.includes(id)) problems.push(`A bundle holds ${EXTENSION_NAMES[id]}, which is in the plan already.`);
+    }
   }
   return problems;
 }
@@ -53,8 +68,9 @@ export function itemChanges(running: readonly RunningItem[], wanted: readonly st
 const PAYING = ["trialing", "active", "past_due"];
 
 /**
- * Which extensions the account bought on its subscription end now: every bought one when the subscription no longer pays (cancelled,
- * unpaid, expired), else those no longer among its items. Bought rows only: a trial or a bundle ends by its own rules.
+ * Which extensions the account paid for on its subscription end now: every one when the subscription no longer pays (cancelled, unpaid,
+ * expired), else those no longer covered by its items (on their own or in a bundle). Bought and bundle rows only: a trial ends by its own
+ * rules.
  */
 export function endedExtensions(bought: readonly ExtensionId[], onSubscription: readonly ExtensionId[], status: string): ExtensionId[] {
   if (!PAYING.includes(status)) return [...bought];

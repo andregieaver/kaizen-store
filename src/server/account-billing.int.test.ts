@@ -267,6 +267,38 @@ describe("an account's one subscription (D748 E4 part two)", () => {
     expect(off).toEqual({ ended: true });
   });
 
+  it("buys the Customers bundle once its three are wanted, says so first, and splits it when one ends (D748 E6)", async () => {
+    const cover = await import("./account-cover");
+    const extensionsOf = async () =>
+      db().execute<Row>(sql`
+        select oe.extension_id, oe.source, b.name as bundle, oe.ended_at is not null as ended from commerce.organisation_extensions oe
+          left join commerce.extension_bundles b on b.id = oe.bundle_id
+         where oe.organisation_id = ${organisation}::uuid and oe.extension_id in ('support_desk', 'email_automation', 'deals') order by oe.extension_id`);
+    expect(await accounts.setAccountExtension(owner, organisation, "support_desk", true, origin)).toEqual({ ok: true });
+    expect(await accounts.setAccountExtension(owner, organisation, "email_automation", true, origin)).toEqual({ ok: true });
+    // Adding deals now is cheapest as the bundle (850 kr against 390 + 250 + 350), and the page says so first.
+    const hints = await cover.bundleHints(organisation, { currency: "NOK", interval: "month", planId }, ["deals", "work"]);
+    expect(hints).toEqual({ deals: { bundle: "Customers", amountMinor: 85000, savingMinor: 14000 } });
+    expect(await accounts.setAccountExtension(owner, organisation, "deals", true, origin)).toEqual({ ok: true });
+    // The two singles' items go and the bundle's one comes: each extension paid for once.
+    const items = calls("subscriptions.update").at(-1)?.params.items as ({ deleted: true } | { price: string })[];
+    expect(items.filter((i) => "deleted" in i)).toHaveLength(2);
+    expect(items.filter((i) => "price" in i)).toHaveLength(1);
+    expect(await extensionsOf()).toEqual([
+      { extension_id: "deals", source: "bundle", bundle: "Customers", ended: false },
+      { extension_id: "email_automation", source: "bundle", bundle: "Customers", ended: false },
+      { extension_id: "support_desk", source: "bundle", bundle: "Customers", ended: false },
+    ]);
+    expect((await accounts.boughtExtensions(organisation)).filter((e) => e.bundle === "Customers")).toHaveLength(3);
+    // Ending deals: the bundle goes, the other two are bought on their own; deals keeps its grace period.
+    expect(await accounts.setAccountExtension(owner, organisation, "deals", false, origin)).toEqual({ ok: true });
+    expect(await extensionsOf()).toEqual([
+      { extension_id: "deals", source: "bundle", bundle: "Customers", ended: true },
+      { extension_id: "email_automation", source: "bought", bundle: null, ended: false },
+      { extension_id: "support_desk", source: "bought", bundle: null, ended: false },
+    ]);
+  });
+
   it("opens Stripe's portal and lists invoices for the account's customer", async () => {
     expect(await accounts.accountPortalUrl(organisation, `${origin}/admin`)).toEqual({ ok: true, url: "https://billing.stripe.test/account" });
     const [store] = await db().execute<Row>(sql`select account_id from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = 'test'`);
