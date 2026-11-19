@@ -27,7 +27,9 @@ describe("the leave guard's dialog", () => {
 
 describe("the offer of changes kept in this browser", () => {
   it("says when they were made and offers Restore unsaved changes, or Discard", () => {
-    const out = html(createElement(RestoreBar, { at: Date.UTC(2026, 10, 19, 9, 5), onRestore: noop, onDiscard: noop }));
+    // The draft is kept in this browser, so its time is read on the browser's own clock: the moment is made on the runner's clock too, so
+    // the test holds in any zone (it failed under TZ=America/New_York when built in UTC).
+    const out = html(createElement(RestoreBar, { at: new Date(2026, 10, 19, 9, 5).getTime(), onRestore: noop, onDiscard: noop }));
     expect(out).toContain('role="status"');
     expect(out).toMatch(/Changes from 19 Nov,? 09:05 were not saved\. They are kept in this browser\./);
     expect(out).toContain(">Restore unsaved changes<");
