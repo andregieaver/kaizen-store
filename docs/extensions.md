@@ -345,6 +345,11 @@ there. Still to come in part three: the platform's accounts list with overrides 
   caught jobs reading every store's billing of an account on each call), applied by CI 18 November 2026 11:06 UTC; production on d67f931
   with E3's both parts; `extension_on()` is true for all 60 stores (not launched). Advisors: nothing on the new functions; no new warning.
 
+- E4 parts one and two: `20261119091542_organisation_billing`, `20261119091545_store_plans`, `20261119093521_account_plan_moves`, applied by
+  CI 19 November 2026 (held back from 09:26 to the release after D793: the query budget caught house-customers reading each store twice
+  through the view, fixed in 58fc44f). In production: no account row, `store_plans` gives each of the 60 stores its own billing, every
+  extension on for all. Advisors: INFO only; the new one (an unindexed composite key, as on `store_billing`) is in `psi-followups.md`.
+
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
 ## 14. Still open
