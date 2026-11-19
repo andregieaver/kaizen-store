@@ -25,7 +25,7 @@ let storeId: string;
 let owner: string;
 let n = 0;
 
-const email = (id: string, subject: string): FlowStep => ({
+const email = (id: string, subject: string): Extract<FlowStep, { kind: "email" }> => ({
   id,
   kind: "email",
   content: { "nb-NO": { subject, preview: "", blocks: [{ type: "paragraph", text: subject }] } },
