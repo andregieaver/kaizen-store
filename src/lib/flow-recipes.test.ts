@@ -64,3 +64,13 @@ describe("win-back from the owner's own automation (slice 4)", () => {
     expect(flowInputSchema.safeParse(flow).success).toBe(true);
   });
 });
+
+describe("a flow of the owner's own (slice 4)", () => {
+  it("is one sound email when an order is sent, replacing nothing", async () => {
+    const { ownFlow } = await import("./flow-recipes");
+    const flow = ownFlow("nb-NO");
+    expect(flowInputSchema.safeParse(flow).success).toBe(true);
+    expect(checkFlow(flow.steps)).toEqual([]);
+    expect(flow).toMatchObject({ name: "Mitt forløp", trigger: "order.sent", replaces: null });
+  });
+});

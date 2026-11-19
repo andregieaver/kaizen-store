@@ -163,12 +163,16 @@ function handedOf(html: string): { handed: number; areas: string[] } {
   return { handed, areas: [...areas].sort() };
 }
 
+/** Names of Supabase's realtime, storage and database clients: the full client (an upload's press loads it), never an idle screen (step 2.31). */
+const FULL_CLIENT_NAMES = ["RealtimeClient", "StorageClient", "PostgrestClient"];
+
 /** The bytes of every script the page fetches until nothing has started or finished for three seconds (each address once). */
 async function scriptByIdle(browser: Browser, state: string, address: string, lang: Lang): Promise<number> {
   const context = await browser.newContext({ storageState: state });
   try {
     const page = await context.newPage();
     const sizes = new Map<string, number>();
+    const full: string[] = [];
     const pending: Promise<void>[] = [];
     let last = Date.now();
     const recent: string[] = [];
@@ -185,7 +189,11 @@ async function scriptByIdle(browser: Browser, state: string, address: string, la
       sizes.set(response.url(), 0);
       pending.push(
         response.body().then(
-          (body) => void sizes.set(response.url(), body.length),
+          (body) => {
+            sizes.set(response.url(), body.length);
+            const text = body.toString("utf8");
+            for (const name of FULL_CLIENT_NAMES) if (text.includes(name)) full.push(`${name} in ${response.url()}`);
+          },
           () => undefined,
         ),
       );
@@ -197,6 +205,8 @@ async function scriptByIdle(browser: Browser, state: string, address: string, la
       await page.waitForTimeout(250);
     }
     await Promise.all(pending);
+    if (MEASURE && full.length > 0) console.log(`[handed] full Supabase client on ${address}: ${full.join(", ")}`);
+    expect(MEASURE ? [] : full, `${address} loaded Supabase's full client by idle: load it with import() on the press (step 2.31)`).toEqual([]);
     if (lang === "nb") await expect(page.locator("html")).toHaveAttribute("lang", "nb");
     return [...sizes.values()].reduce((sum, size) => sum + size, 0);
   } finally {

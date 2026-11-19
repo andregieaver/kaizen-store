@@ -153,7 +153,7 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
           <p className="text-caption text-muted">{w.story.ends}</p>
         </div>
       </Card>
-      {mayWrite && <FlowCanvas steps={flow.steps} storeSlug={store.slug} flowId={flow.id} locale={firstLocale} w={w} segments={segmentList} />}
+      {mayWrite && <FlowCanvas steps={flow.steps} trigger={flow.trigger} storeSlug={store.slug} flowId={flow.id} locale={firstLocale} w={w} segments={segmentList} />}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">
           {!flow.enabled && !flow.tested && <p className="w-full text-body text-ink-2">{w.untested}</p>}

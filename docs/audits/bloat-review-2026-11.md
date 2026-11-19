@@ -189,7 +189,7 @@ commit as the fix.
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Open | |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | Open | |
 | 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
-| 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | Open | |
+| 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | In progress | Local 19 Nov: auth client alone; idle home 953,731 to 812,820 (brief: 800,000), orders 798,324; no realtime/storage client idle; scan rule added. Awaits deploy. |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
 | 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | In progress | 19 Nov, c30c7d23, D783: untouched tab 60 to 6 asks an hour; a day's statistics to read. |

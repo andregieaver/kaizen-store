@@ -18,6 +18,9 @@ import baseline from "./admin-bundle.baseline.json";
  *      has stopped (or when growth is accepted on purpose, shown in the diff), with
  *      `WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts`.
  * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below.
+ * 4. The full Supabase client loads on the press (step 2.31): no client module reaches `@supabase/supabase-js`, `@supabase/ssr` (both
+ *    named `@supabase` by the walk) or `lib/supabase/client.ts` by a static import. The session is kept by `lib/supabase/auth-client.ts`
+ *    (loaded with `import()` by `session.tsx`), and an upload loads the client inside its handler (`lib/supabase/signed-upload.ts`).
  */
 const WRITE = process.env.WRITE_ADMIN_BUNDLE_BASELINE === "1";
 
@@ -122,6 +125,15 @@ function catalogueSites(planted?: Map<string, string[]>): string[] {
   return [...sites].sort();
 }
 
+/**
+ * Client modules allowed to import the full Supabase client statically (`rel()` names). Step 0.9 moved every upload to `uploadToSignedUrl()`
+ * and step 2.31 moved `SessionKeeper` to `auth-client.ts`, so the list starts empty and only shrinks.
+ */
+const SUPABASE_STATIC: string[] = [];
+const FULL_CLIENT = "lib/supabase/client.ts";
+const supabaseStatic = (planted?: Map<string, string[]>) =>
+  [...new Set([...clientsReaching("@supabase", planted), ...clientsReaching(FULL_CLIENT, planted)])].sort();
+
 describe.runIf(WRITE)("the baseline writer", () => {
   it("writes the baseline", () => {
     writeFileSync(join(SRC, "components/admin/admin-bundle.baseline.json"), JSON.stringify({ zodReach: zodReach() }, null, 2) + "\n");
@@ -163,6 +175,22 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     const sites = catalogueSites(planted);
     expect(sites).toContain("src/lib/admin-fill.ts -> home.en");
     expect(sites).toContain("src/lib/admin-fill.ts -> src/lib/return-admin-english.ts");
+  });
+
+  it("the full Supabase client loads on the press, in no client module's static imports", () => {
+    const now = supabaseStatic();
+    expect(
+      now.filter((name) => !SUPABASE_STATIC.includes(name)),
+      "load the Supabase client with import() inside the handler that uploads (see src/lib/supabase/signed-upload.ts); the session is kept by src/lib/supabase/auth-client.ts",
+    ).toEqual([]);
+    expect(SUPABASE_STATIC.filter((name) => !now.includes(name)), "take the module off SUPABASE_STATIC").toEqual([]);
+  });
+
+  it("would notice: a client module that imports the full client at its top", () => {
+    const first = CLIENTS[0];
+    expect(supabaseStatic()).not.toContain(rel(first));
+    expect(supabaseStatic(new Map([[first, ["@/lib/supabase/client"]]]))).toContain(rel(first));
+    expect(supabaseStatic(new Map([[first, ["@supabase/supabase-js"]]]))).toContain(rel(first));
   });
 
   it("would notice: zod planted on a part of the frame", () => {

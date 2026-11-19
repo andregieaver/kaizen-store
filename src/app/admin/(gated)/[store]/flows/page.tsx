@@ -57,7 +57,7 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
           ))}
         </ul>
       )}
-      {mayWrite && goals.length > 0 && (
+      {mayWrite && (
         <section className="flex flex-col gap-3" aria-label={w.goals.title}>
           <h2 className="text-body-strong text-ink">{w.goals.title}</h2>
           <div className="grid gap-3 md:grid-cols-2">
@@ -72,6 +72,16 @@ export default async function FlowsPage({ params }: PageProps<"/admin/[store]/fl
                 </div>
               </Card>
             ))}
+            {/* A flow of the owner's own (slice 4): one email, and what starts it chosen under Customise. */}
+            <Card compact>
+              <div role="group" aria-label={w.goals.own.title} className="flex h-full flex-col items-start gap-2">
+                <p className="text-body-strong text-ink">{w.goals.own.title}</p>
+                <p className="flex-1 text-caption text-muted">{w.goals.own.text}</p>
+                <ActionForm action={startRecipeFlowAction.bind(null, store.slug, "own")}>
+                  <SubmitButton variant="secondary">{w.goals.start}</SubmitButton>
+                </ActionForm>
+              </div>
+            </Card>
           </div>
         </section>
       )}

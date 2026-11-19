@@ -119,13 +119,19 @@ export async function createStripeAccount(
   }
 
   const status = accountStatus(created);
-  await db().execute(sql`
-    insert into commerce.stripe_accounts
-      (store_id, mode, account_id, card_payments, requirements_due, payment_methods_requested, created_by)
-    values (${store.id}::uuid, ${mode}, ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
-            ${BASE_LIST}::text[], ${account.id}::uuid)
-    on conflict (store_id, mode) do nothing
-  `);
+  const inserted = await typedRow(
+    z.object({ account_id: col.text }),
+    sql`
+      insert into commerce.stripe_accounts
+        (store_id, mode, account_id, card_payments, requirements_due, payment_methods_requested, created_by)
+      values (${store.id}::uuid, ${mode}, ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
+              ${BASE_LIST}::text[], ${account.id}::uuid)
+      on conflict (store_id, mode) do nothing
+      returning account_id
+    `,
+  );
+  // Two presses at once: Stripe answered both with one account (the idempotency key), and the other press recorded it.
+  if (!inserted) return { ok: true };
   refreshBuyFacts(store.id);
   await audit(account.id, store.id, "payments.stripe_account_created", { mode, accountId: created.id });
   return { ok: true };

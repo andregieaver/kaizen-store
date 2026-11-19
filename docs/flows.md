@@ -59,3 +59,6 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    with nothing paid since, entered once per such order (`lapse:{order}`) by `enterLapsed()`, one statement on each tick while a flow is
    on, counting only lapses since the flow was switched on (`enabled_at`) and at most three days back. The goal Bring back customers
    (`winBack()`, replacing the win-back automation, or from its own words) and its days changed under the story's first sentence.
+   *Part b:* six more events start a flow (`EVENT_TRIGGERS`: an order sent, a subscription started or ended, a form sent, a quote asked
+   for, a signed-in customer's review), the person found by the address their subject is about (`emailOfSubject()`); Customise says what
+   starts a flow and changes it with one press (a new trigger stops replacing an automation), and Your own flow starts from one email.

@@ -749,7 +749,7 @@ bloat review step 1.12), none of a switched-off feature beyond its named excepti
 | large store product | 3 | 5 |  |
 | product with price breaks | 3 | 5 |  |
 | product with producer schemes | 2 | 4 |  |
-| large store home, cold | 1 | 3 |  |
+| large store home, cold | 22 | 24 | made once, then served static (step 2.4) |
 | large store product, cold | 6 | 8 |  |
 <!-- server-budget:end -->
 

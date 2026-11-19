@@ -9,9 +9,9 @@ import { AdminWaiting } from "./admin-waiting";
 import type { AdminLang } from "@/lib/admin-lang";
 
 /**
- * Keeps the admin session fresh while a tab is open. The browser client
+ * Keeps the admin session fresh while a tab is open. The browser's auth client
  * refreshes the access token before it expires and writes the new cookies,
- * so server rendering keeps seeing a valid session. The client is loaded once the page is idle (bloat review step 0.9), so it is not in a screen's first scripts.
+ * so server rendering keeps seeing a valid session. The auth client alone (`src/lib/supabase/auth-client.ts`, step 2.31, not the full Supabase client) is loaded once the page is idle (step 0.9), so it is not in a screen's first scripts.
  */
 export function SessionKeeper() {
   useEffect(() => {
@@ -21,9 +21,9 @@ export function SessionKeeper() {
     let unsubscribe: (() => void) | undefined;
     const start = async () => {
       try {
-        const { createClient } = await import("@/lib/supabase/client");
+        const { createAuthClient } = await import("@/lib/supabase/auth-client");
         if (cancelled) return;
-        const { data } = createClient().auth.onAuthStateChange(() => {});
+        const { data } = createAuthClient().onAuthStateChange(() => {});
         unsubscribe = () => data.subscription.unsubscribe();
         if (cancelled) unsubscribe();
       } catch {}
@@ -55,14 +55,14 @@ export function SessionRecovery({ waiting }: { waiting: Record<AdminLang, string
     (async () => {
       let client;
       try {
-        const { createClient } = await import("@/lib/supabase/client");
-        client = createClient();
+        const { createAuthClient } = await import("@/lib/supabase/auth-client");
+        client = createAuthClient();
       } catch {
         router.replace(signIn);
         return;
       }
       if (cancelled) return;
-      const { data } = await client.auth.getSession();
+      const { data } = await client.getSession();
       if (cancelled) return;
       if (!data.session) {
         router.replace(signIn);

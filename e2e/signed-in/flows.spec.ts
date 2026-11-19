@@ -170,3 +170,18 @@ test("bring back customers starts from 90 days without an order, and its days ar
   await expect(page.locator("[data-flow-story]")).toContainText("When someone has not ordered for 120 days:");
   await page.screenshot({ path: "test-results/flow-win-back.png", fullPage: true });
 });
+
+test("your own flow starts from one email, and what starts it is chosen under Customise (slice 4)", async ({ page }) => {
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("group", { name: "Your own flow" }).getByRole("button", { name: "Start" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
+  await expect(page.locator("[data-flow-story]")).toContainText("When an order is sent:");
+  const canvas = page.locator("[data-flow-canvas]");
+  await canvas.getByText("Customise", { exact: true }).click();
+  await canvas.getByRole("group", { name: "Starts when" }).getByRole("button", { name: "A form is sent" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("[data-flow-story]")).toContainText("When someone sends a form:");
+  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+  await page.screenshot({ path: "test-results/flow-starts-when.png", fullPage: true });
+});

@@ -67,7 +67,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.6 | Safe indexes on hot tables | FD4 | M | Done | 11 Nov 2026, D569; see Notes below |
 | 1.7 | Squash to a baseline | FD3 | M | Done | 11 Nov 2026, D572; see Notes below |
 | 1.8 | Give the build room, and deploy what was checked | FH10 | M | Open | CI's browser builds no longer type-check (bloat step 0.38, 16 Nov 2026, commit 1 of that step); the type check stays in static and the gate. Bloat 1.20: serverSourceMaps off, -0.8 GB at the 8 GB cap. |
-| 1.9 | Test what gets owners paid | FH9 | M | Open | |
+| 1.9 | Test what gets owners paid | FH9 | M | Done | 19 Nov 2026, da190c63, 372c047e, 7f0eb225, D794: `connect.int.test.ts` (47 tests) and `cron-auth.test.ts`; the untested money modules listed in D794 |
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Done | 19 Nov: CLAUDE.md by bloat step 2.1 (7742afff, 10,102 bytes); decisions split by bloat step 2.40 (779 files, none over 500 characters a line). |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
 | 1.12 | Build the admin kit | FS4 | L | Open | |
@@ -179,6 +179,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 18 November 2026: bloat review step 2.1: CLAUDE.md keeps a map of the rule files, its how-to in `.claude/rules`; step 1.10 In progress (decisions split waits on 2.40); question 5 answered.
 - 18 November 2026: bloat review step 2.17: the Pages and Articles lists of a store and of the platform read and show 100 a page with a count (`ListPager`, the Stores list's markup); 1.13 stays Open (the shared ListSearch is not built).
 - 19 November 2026: steps 1.14 (D786) and 1.16 (D787) done; the shoppers' own dates (storefront, shopper and contract emails) are a new step after 1.14, not yet numbered.
+- 19 November 2026: step 1.9 done (D794); the money and permission modules still without a test are listed in D794.
 
 **Notes on the steps**
 
@@ -348,6 +349,13 @@ or *Leave without saving*, only while there are changes, its code loaded once th
 and the product editor keep a draft in `localStorage`, offered as *Restore unsaved changes* only while the saved version is the one it
 started from; stock always comes from the saved product. `e2e/signed-in/leave-guard.spec.ts` holds a menu link, Back, and Back without
 the Navigation API. Left: the dual page's four close-half confirms, and an edit made during a save is unguarded until the next change.
+
+**Step 1.9.** 19 Nov 2026, D794: `src/server/connect.int.test.ts` runs `connect.ts` against a Stripe stand-in (47 tests: accounts,
+test accounts, status, the `account.updated` webhook through `storeForAccount`, account sessions, payment domains and methods, the
+platform's webhooks, refusals, and no secret or address in a log). It found one fault, fixed: two presses at once audited one account
+twice. Still without a test of their own, most important first: `payment-session.ts`, `payment-providers/stripe.ts`,
+`admin-api-orders.ts`, `billing-tools.ts`, `draft-sessions.ts`, `createPlatformWebhooks`, `limits-admin.ts`, `market-price-tools.ts`,
+`house-switch.ts`, `api-idempotency.ts`.
 
 ## 1. The headline
 

@@ -1,9 +1,10 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { waitWords } from "@/lib/flow-story";
+import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
 import type { FlowCondition, FlowStep } from "@/lib/flows";
 import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 
-import { addFlowStepAction, changeFlowConditionAction, removeFlowStepAction } from "../actions";
+import { addFlowStepAction, changeFlowConditionAction, changeFlowTriggerAction, removeFlowStepAction } from "../actions";
 
 type Props = {
   storeSlug: string;
@@ -96,12 +97,25 @@ function StepList({ steps, p, depth }: { steps: readonly FlowStep[]; p: Props; d
  * can be removed, an `if`'s condition changed, and a step of any kind added after it or first in a branch; every change saves a new
  * version switched off until tested, and the story above is drawn from the same tree.
  */
-export function FlowCanvas({ steps, ...p }: Props & { steps: readonly FlowStep[] }) {
+export function FlowCanvas({ steps, trigger, ...p }: Props & { steps: readonly FlowStep[]; trigger: string }) {
   return (
     <details className="rounded-panel border border-line bg-card px-4 py-3" data-flow-canvas>
       <summary className="cursor-pointer text-body-strong text-ink">{p.w.canvas.customise}</summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className="text-caption text-muted">{p.w.canvas.lead}</p>
+        {/* What starts it (slice 4, M2.3): one press each; the one it has is said, not offered. */}
+        <ActionForm action={changeFlowTriggerAction.bind(null, p.storeSlug, p.flowId)}>
+          <div role="group" aria-label={p.w.canvas.startsWhen} className="flex flex-wrap items-center gap-2 text-caption text-muted">
+            <span>
+              {p.w.canvas.startsWhen}: <strong className="text-ink">{p.w.canvas.triggers[trigger as keyof FlowsMessages["canvas"]["triggers"]] ?? trigger}</strong>
+            </span>
+            {FLOW_TRIGGERS.filter((t) => t !== trigger).map((t) => (
+              <SubmitButton key={t} variant="secondary" name="trigger" value={t}>
+                {p.w.canvas.triggers[t]}
+              </SubmitButton>
+            ))}
+          </div>
+        </ActionForm>
         <StepList steps={steps} p={p} depth={0} />
       </div>
     </details>

@@ -12,6 +12,8 @@ type Words = {
   backName: string;
   missYou: [string, string];
   lastCall: [string, string];
+  ownName: string;
+  hello: [string, string];
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -26,6 +28,8 @@ const WORDS: Record<"nb" | "en", Words> = {
     backName: "Hent tilbake kunder",
     missYou: ["Vi savner deg", "Det er en stund siden sist. Se hva som er nytt hos oss."],
     lastCall: ["Fortsatt her for deg", "Vi har mye nytt siden sist. Kanskje noe for deg?"],
+    ownName: "Mitt forløp",
+    hello: ["Hei!", "Skriv hva denne e-posten sier."],
   },
   en: {
     name: "Welcome series",
@@ -38,6 +42,8 @@ const WORDS: Record<"nb" | "en", Words> = {
     backName: "Bring back customers",
     missYou: ["We miss you", "It has been a while. See what is new with us."],
     lastCall: ["Still here for you", "A lot is new since last time. Perhaps something for you?"],
+    ownName: "My flow",
+    hello: ["Hello!", "Write what this email says."],
   },
 };
 
@@ -139,4 +145,13 @@ export function flowFromAutomation(key: RecipeKey, automation: SavedAutomation, 
     // An order ends follow-ups (D653), and a win-back always: its only point is the next order.
     goals: lapse || automation.followUps.length > 0 ? [{ kind: "ordered" }] : [],
   };
+}
+
+/**
+ * A flow of the owner's own (slice 4, M2.3): one email when an order is sent, to change from there; what starts it is chosen under
+ * Customise. Replaces nothing.
+ */
+export function ownFlow(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return { name: w.ownName, trigger: "order.sent", replaces: null, steps: [email("hello", locale, w.hello)], goals: [] };
 }

@@ -210,4 +210,25 @@ describe("flows (D767)", () => {
     expect(entered.map((r) => String(r.subscriber_id))).not.toContain(per);
     await fl.switchFlow(storeId, owner, saved.id, false);
   });
+
+  it("enters the person an order.sent event's order is about, and a new trigger stops replacing an automation (slice 4)", async () => {
+    const { ownFlow, welcomeSeries } = await import("@/lib/flow-recipes");
+    const lise = await subscriber(`sent-lise-${run}@example.com`);
+    await paidOrder(`sent-lise-${run}@example.com`, new Date());
+    const [order] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid and email = ${`sent-lise-${run}@example.com`}`);
+    const saved = await fl.saveFlow(storeId, owner, null, ownFlow("nb-NO"));
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'order.sent', ${String(order.id)}::uuid)`);
+    await fl.enterFlows();
+    const runs = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(runs.map((r) => String(r.subscriber_id))).toEqual([lise]);
+    await fl.switchFlow(storeId, owner, saved.id, false);
+    // The welcome series moved to another trigger no longer does the welcome automation's work.
+    const welcome = await fl.saveFlow(storeId, owner, null, welcomeSeries("nb-NO"));
+    if (!welcome.ok) throw new Error(welcome.problem);
+    await fl.saveFlow(storeId, owner, welcome.id, { ...welcomeSeries("nb-NO"), trigger: "order.sent", replaces: undefined });
+    expect((await fl.getFlow(storeId, welcome.id))?.replaces).toBeNull();
+  });
 });

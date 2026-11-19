@@ -3,7 +3,7 @@
     "home": {
       "document": 215768,
       "handed": 67199,
-      "scriptByIdle": 953731,
+      "scriptByIdle": 812820,
       "named": null,
       "areas": [
         "assistant",
@@ -15,7 +15,7 @@
     "orders": {
       "document": 202030,
       "handed": 33723,
-      "scriptByIdle": 939235,
+      "scriptByIdle": 798324,
       "named": null,
       "areas": [
         "assistant",
@@ -26,7 +26,7 @@
     "product": {
       "document": 431497,
       "handed": 246259,
-      "scriptByIdle": 1379355,
+      "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
         "assistant",
@@ -42,7 +42,7 @@
     "builder": {
       "document": 606658,
       "handed": 319551,
-      "scriptByIdle": 3179230,
+      "scriptByIdle": 3038521,
       "named": null,
       "areas": [
         "animation",
@@ -64,7 +64,7 @@
     "platform": {
       "document": 123638,
       "handed": 33723,
-      "scriptByIdle": 896262,
+      "scriptByIdle": 755351,
       "named": null,
       "areas": [
         "assistant",
@@ -77,7 +77,7 @@
     "home": {
       "document": 205247,
       "handed": 82220,
-      "scriptByIdle": 953731,
+      "scriptByIdle": 812820,
       "named": null,
       "areas": [
         "assistant",
@@ -89,7 +89,7 @@
     "orders": {
       "document": 189379,
       "handed": 47103,
-      "scriptByIdle": 939235,
+      "scriptByIdle": 798324,
       "named": null,
       "areas": [
         "assistant",
@@ -100,7 +100,7 @@
     "product": {
       "document": 452922,
       "handed": 268145,
-      "scriptByIdle": 1379355,
+      "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
         "assistant",
@@ -116,7 +116,7 @@
     "builder": {
       "document": 633031,
       "handed": 346127,
-      "scriptByIdle": 3179230,
+      "scriptByIdle": 3038521,
       "named": null,
       "areas": [
         "animation",
@@ -138,7 +138,7 @@
     "platform": {
       "document": 138023,
       "handed": 47103,
-      "scriptByIdle": 896262,
+      "scriptByIdle": 755351,
       "named": null,
       "areas": [
         "assistant",
