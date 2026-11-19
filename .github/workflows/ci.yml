@@ -385,7 +385,7 @@ jobs:
   pending:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     # D741: the fallback reads newer CI runs.
     permissions:
       contents: read
@@ -511,7 +511,7 @@ jobs:
       && needs.audit.result == 'success'
     needs: [pending, static, integration, e2e, hosts, signed-in, audit]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     environment: production
     # D741: the fallback reads newer CI runs.
     permissions:
@@ -572,6 +572,7 @@ jobs:
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
       # D741, as in `pending` (run 1551 applied its migrations and left the deploy to the head's release): this commit's migrations are applied, so its code may go out on its own.
+      # D793: once the wait is over it deploys this commit unless a newer run is deploying, rather than fail while newer runs go on.
       - name: A newer run was to deploy, so make sure production gets this commit
         id: fallback
         if: vars.DEPLOY_VIA_CI == 'true' && needs.pending.outputs.pending == 'true' && (steps.head.outputs.pending == 'true' || steps.newer.outputs.newer == 'true')
