@@ -259,9 +259,8 @@ the path, component or table you change, or list the rules with a search for lin
   label for one country is the label key `{locale}@{COUNTRY}`, read only by `menuLabel()` given the market's country and kept by `cleanLabels()`.
   A country's own domain is `store_domains.market` (written only by `setDomainCountry()`; never with language domains, never the primary):
   `countryHostDecision()` routes it before `languageHostDecision()`, and `marketHost()`/`marketPath()` write a market on it without its country,
-  so full addresses still come only from `marketUrl()` and `marketMetaPath()`. The country suggestion (`CountryHintSlot`) is asked by
-  the browser from `/api/shop/mine`, one small call a page load, only in a store with several countries; still off the pay routes, never for a
-  crawler, never a redirect, dismissal in memory only.
+  so full addresses still come only from `marketUrl()` and `marketMetaPath()`. The country suggestion is `CountryHintSection` (per request in its
+  `<Suspense>`, off the pay routes, never a crawler, never a redirect, dismissal in memory only).
 
 ## Private mode (wave 7 unit E, D339, `docs/wave-7-storefront.md` E)
 

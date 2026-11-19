@@ -1,4 +1,4 @@
-import { after, connection } from "next/server";
+import { connection } from "next/server";
 
 import { hintCountry } from "@/lib/country-hint";
 import { isBot } from "@/lib/experiments";
@@ -9,7 +9,6 @@ import { fail } from "@/lib/route-fail";
 import { sameSite } from "@/lib/same-site";
 import { featureOn } from "@/lib/store-features";
 import { getCartCount } from "@/server/cart";
-import { noteFirstRequest } from "@/server/instance-start";
 import { lockedOut } from "@/server/private-mode";
 import { resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
@@ -23,8 +22,6 @@ import { savedProductIds } from "@/server/wishlists";
  */
 export async function GET(request: Request) {
   await connection();
-  // A store page is a static file now: its first per-request part an instance answers is this one (bloat review step 1.16's `store` kind).
-  noteFirstRequest("store", after);
   if (!sameSite(request)) return fail(403, "Your own things are for the site's own pages.");
   const url = new URL(request.url);
   const store = url.searchParams.get("store") ?? "";

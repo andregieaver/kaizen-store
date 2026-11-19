@@ -1,26 +1,45 @@
 import Link from "next/link";
 
-import { browserText } from "@/lib/browser-text";
+import { t } from "@/lib/i18n";
+import type { Market } from "@/lib/markets";
+import { marketPath } from "@/lib/paths";
+import { getCartCount } from "@/server/cart";
 
 import { Icon } from "./icons";
 
 /**
- * The cart link, with how many items it holds: a bag in the header, a labelled icon in the phone's bottom bar. A plain component, so
- * the browser's `CartLink` (`cart-link-live.tsx`) draws it with the count it asked for (bloat review step 2.4); its words are the
- * browser's (D212). `href` is the cart's address as the server writes it (`marketPath()`, which knows the store's address shape).
+ * The cart link, with how many items it holds: a bag in the header, a
+ * labelled icon in the phone's bottom bar. Reads the cart cookie, so it
+ * renders per request (inside Suspense, with `CartLinkShell` meanwhile).
  */
+export async function CartLink({
+  storeId,
+  storeSlug,
+  market,
+  variant = "header",
+}: {
+  storeId: string;
+  storeSlug: string;
+  market: Market;
+  variant?: "header" | "bar";
+}) {
+  // The header's link and the phone bar's share one count for a render: `getCartCount()` shares it per request (step 2.2).
+  const count = await getCartCount({ storeId, market });
+  return <CartLinkShell storeSlug={storeSlug} market={market} variant={variant} count={count} />;
+}
+
 export function CartLinkShell({
-  href,
-  lang,
+  storeSlug,
+  market,
   variant = "header",
   count = 0,
 }: {
-  href: string;
-  lang: string;
+  storeSlug: string;
+  market: Market;
   variant?: "header" | "bar";
   count?: number;
 }) {
-  const m = browserText(lang);
+  const m = t(market.lang);
   const badge = count > 0 && (
     <span
       aria-hidden="true"
@@ -32,7 +51,7 @@ export function CartLinkShell({
   const name = count > 0 ? m.cartCount(count) : m.cart;
   if (variant === "bar") {
     return (
-      <Link href={href} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs">
+      <Link href={marketPath(storeSlug, market.slug, "/cart")} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs">
         <span className="relative">
           <Icon name="bag" />
           {badge}
@@ -49,6 +68,7 @@ export function CartLinkShell({
       <span className="sr-only">{name}</span>
     </>
   );
+  const href = marketPath(storeSlug, market.slug, "/cart");
   // Drawn twice, one shown at a time: a router link under 768 px (the intercepted drawer) and a plain anchor from 768 px, which is never in view
   // on a phone and so never fetched ahead, and is not in the accessibility tree while hidden (D64, bloat review step 2.2).
   return (

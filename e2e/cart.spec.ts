@@ -35,31 +35,6 @@ test("on a wide screen the header's cart link loads the cart page at once, and n
   expect(seen.filter((entry) => entry.rsc && isCart(entry))).toHaveLength(0);
 });
 
-test("a store page served as a static file shows one visitor's cart to that visitor only", async ({ page, browser }) => {
-  // The front page is one file for everyone (bloat review step 2.4): the count is asked by each browser for itself.
-  await page.goto("/s/demo/no/p/demo-handlenett");
-  await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
-  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
-  await page.goto("/s/demo/no");
-  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
-
-  const other = await browser.newContext();
-  try {
-    const stranger = await other.newPage();
-    const response = await stranger.goto("/s/demo/no");
-    expect(response?.headers()["x-nextjs-cache"]).toBe("HIT");
-    await stranger.waitForLoadState("networkidle");
-    await expect(stranger.getByRole("link", { name: "Handlekurv", exact: true }).first()).toBeAttached();
-    await expect(stranger.getByRole("link", { name: /Handlekurv \(\d+\)/ })).toHaveCount(0);
-    // The marker says only yes; the cart's id stays out of the page's reach (D14).
-    const cookies = await page.context().cookies();
-    expect(cookies.find((c) => c.name.startsWith("kaizen_mine_"))).toMatchObject({ value: "1", httpOnly: false });
-    expect(cookies.find((c) => c.name.startsWith("cart_"))).toMatchObject({ httpOnly: true });
-  } finally {
-    await other.close();
-  }
-});
-
 test("add to cart, change quantity within stock, and remove", async ({ page }) => {
   await page.goto("/s/demo/no/p/demo-keramikkopp");
 
