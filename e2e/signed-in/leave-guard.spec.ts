@@ -41,6 +41,12 @@ test.beforeAll(async () => {
 const title = (page: Page) => page.getByLabel("Title", { exact: true });
 const unsaved = (page: Page) => page.getByRole("status").filter({ hasText: "Unsaved changes." });
 
+/**
+ * The browser's Back. A Back the guard holds is cancelled before anything moves (the Navigation API), so Playwright's wait for it never
+ * ends: it is given a moment, then the test goes on with the dialog.
+ */
+const back = (page: Page) => page.goBack({ timeout: 1500 }).catch(() => null);
+
 /** Types into the title until the editor has taken it (a key before hydration does nothing). */
 async function edit(page: Page, text: string) {
   await expect(async () => {
@@ -95,7 +101,7 @@ test("the browser's Back asks too, and Leave without saving leaves and keeps not
   await edit(page, "Bli her, igjen");
   await page.waitForTimeout(1500);
 
-  await page.goBack();
+  await back(page);
   const ask = page.getByRole("dialog", { name: "Leave without saving?" });
   await expect(ask).toBeVisible();
   await expect(title(page)).toHaveValue("Bli her, igjen");
@@ -103,11 +109,33 @@ test("the browser's Back asks too, and Leave without saving leaves and keeps not
   await expect(page).toHaveURL(new RegExp(`/pages/${pageId}$`));
   await expect(title(page)).toHaveValue("Bli her, igjen");
 
-  await page.goBack();
+  await back(page);
   await page.getByRole("dialog", { name: "Leave without saving?" }).getByRole("button", { name: "Leave without saving" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/pages$`));
   await page.goto(`/admin/${E2E_STORE}/pages/${pageId}`);
   await expect(title(page)).toHaveValue("Bli her, endret");
   await page.waitForTimeout(500);
   await expect(page.locator("[data-draft-offer]")).toHaveCount(0);
+});
+
+test("without the Navigation API (an older browser), Back still asks, and Keep editing puts the editor's address back", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, "navigation", { value: undefined, configurable: true }));
+  await page.goto(`/admin/${E2E_STORE}/pages`);
+  await page.waitForLoadState("networkidle");
+  await page.locator(`a[href="/admin/${E2E_STORE}/pages/${pageId}"]`).first().click();
+  await expect(page.locator("[data-editor-bar]")).toBeVisible();
+  await edit(page, "Bli her, eldre");
+
+  await back(page);
+  const ask = page.getByRole("dialog", { name: "Leave without saving?" });
+  await expect(ask).toBeVisible();
+  await expect(title(page)).toHaveValue("Bli her, eldre");
+  await ask.getByRole("button", { name: "Keep editing" }).click();
+  await expect(page).toHaveURL(new RegExp(`/pages/${pageId}$`));
+  await expect(title(page)).toHaveValue("Bli her, eldre");
+
+  await back(page);
+  await page.getByRole("dialog", { name: "Leave without saving?" }).getByRole("button", { name: "Leave without saving" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Pages" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/pages$`));
 });

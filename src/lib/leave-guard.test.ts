@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clickLeaves, popLeaves } from "./leave-guard";
+import { clickLeaves, LEAVE_POP, leavePopScript, popLeaves } from "./leave-guard";
 
 /**
  * The leave guard's decisions (code review 1.16, D787): which clicks on a link would lose an editor's unsaved changes and are asked
@@ -60,5 +60,22 @@ describe("the browser's Back or Forward", () => {
     expect(popLeaves(`${HERE}?with=mirror`, HERE)).toBe(true);
     expect(popLeaves(`${HERE}#seo`, HERE)).toBe(false);
     expect(popLeaves(HERE, `${HERE}#seo`)).toBe(false);
+  });
+});
+
+describe("the admin's first script", () => {
+  it("adds a Back listener before any of the router's, which hands each event to the guard once it has loaded", () => {
+    const added: { type: string; capture: unknown; listener: (event: unknown) => void }[] = [];
+    const handed: unknown[] = [];
+    const window: Record<string, unknown> = {};
+    const addEventListener = (type: string, listener: (event: unknown) => void, capture: unknown) => added.push({ type, capture, listener });
+    new Function("window", "addEventListener", leavePopScript())(window, addEventListener);
+    expect(added.map(({ type, capture }) => [type, capture])).toEqual([["popstate", true]]);
+    expect(window[`${LEAVE_POP}First`]).toBe(1);
+    // Before the guard's code has loaded the event passes; after, the guard has it.
+    added[0].listener({ state: 1 });
+    window[LEAVE_POP] = (event: unknown) => handed.push(event);
+    added[0].listener({ state: 2 });
+    expect(handed).toEqual([{ state: 2 }]);
   });
 });

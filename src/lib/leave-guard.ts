@@ -39,6 +39,17 @@ export function clickLeaves(click: ClickFacts, link: LinkFacts, here: string): "
   return "ask";
 }
 
+/** The name on `window` of the guard's `popstate` listener (`leave-listeners.ts`), which the admin's first script calls. */
+export const LEAVE_POP = "__kaizenLeavePop";
+
+/**
+ * The admin's first script's part for the leave guard: a `popstate` listener added before any of Next's scripts run, so it comes
+ * before the router's own (a window's listeners run in the order they were added, capture or not), and hands the event to the guard.
+ */
+export function leavePopScript(): string {
+  return `window.${LEAVE_POP}First=1;addEventListener("popstate",function(e){var f=window.${LEAVE_POP};if(f)f(e)},true);`;
+}
+
 /** Whether the browser's Back or Forward took the person off the editor's page (`now`), rather than to a part of it or back to it. */
 export function popLeaves(now: string, editor: string): boolean {
   const to = url(now, editor);

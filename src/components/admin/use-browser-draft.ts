@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { browserStorage, pruneDrafts, readDraft, removeDraft, writeDraft, type StoredDraft } from "@/lib/browser-draft";
 
-import { whenLeaving } from "./leave-guard";
+import { whenLeaving } from "./leave-listeners";
 
 /** A draft is written this long after the last change, and at least this often while changes keep coming. */
 const QUIET_MS = 800;

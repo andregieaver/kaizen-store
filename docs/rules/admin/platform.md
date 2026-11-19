@@ -148,11 +148,14 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 ## Unsaved work: one leave guard, and drafts kept in the browser (code review 1.16, D787)
 
 - An editor that holds changes until Save asks before they are left with `useLeaveGuard(dirty)` (`src/components/admin/leave-guard.tsx`,
-  decisions in `src/lib/leave-guard.ts`), never a `beforeunload` listener or `window.confirm` of its own. It covers the browser's own
-  leaving (`beforeunload`), a click on any link in the admin (a capture-phase click listener on the window, before Next's `<Link>`) and
-  Back and Forward (a capture-phase `popstate` listener, before the router's), and asks in the admin's dialog (`leave-dialogs.tsx`,
-  loaded once the editor is dirty). Draw its `dialog`; an editor's own `router.push` goes through `leave(go)`; a link that says it
-  leaves without saving carries `data-leave-anyway`. An editor that saves by itself passes `links` (only a failed save asks).
+  listeners in `leave-listeners.ts`, decisions in `src/lib/leave-guard.ts`), never a `beforeunload` listener or `window.confirm` of
+  its own. It covers the browser's own leaving (`beforeunload`), a click on any link in the admin (a capture-phase click listener on
+  the window, before Next's link) and Back and Forward (the Navigation API's `navigate` event, cancelled before anything moves; else
+  a `popstate` listener the admin's first script adds before the router's, `leavePopScript()`, as a window's listeners run in the
+  order added), and asks in the
+  admin's dialog (`leave-dialogs.tsx`, loaded once the editor is dirty). Draw its `dialog`; an editor's own `router.push` goes through
+  `leave(go)`; a link that says it leaves without saving carries `data-leave-anyway`. An editor that saves by itself passes `links`
+  (only a failed save asks).
 - The page builder and the product editor also keep their unsaved changes in `localStorage` (`useBrowserDraft`,
   `src/lib/browser-draft.ts`): per owner and page, or store and product, written a moment after each change, offered back with
   *Restore unsaved changes* only onto the saved version they were made from (a page's `updatedAt`; a product's stamp without its stock,
