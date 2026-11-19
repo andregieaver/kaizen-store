@@ -5,7 +5,7 @@ import { type Size } from "@/lib/breakpoints";
 import { type ThemeTabValue } from "@/lib/theme";
 import { rowWidthPatch } from "@/lib/theme-elements";
 import { sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
-import { MarkupInput } from "@/components/admin/markup-input";
+import { MarkupInput } from "@/components/admin/lazy/editors";
 import { carouselAnywhere, carouselAt, clearAt, inheritedAt, setAt, sizeSource, stackAt, stackPatchAt, valueAt } from "@/lib/responsive";
 import { createContext, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
 import { SETTINGS_TABS, type SettingsTab } from "@/lib/settings-memory";

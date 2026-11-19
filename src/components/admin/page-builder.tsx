@@ -11,8 +11,6 @@ import { ROW_GAP, meetsAbove } from "@/lib/row-join";
 import { THEME_ELEMENT_KEYS, elementAsPart, elementFromPart, sectionStylesSchema, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import { SECTION_STYLE_NAME, SECTION_STYLES_MAX, isCoreSectionStyle, sectionStyleChoices } from "@/lib/section-styles";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
-import { InlineMarkupEditor } from "@/components/inline-edit/markup-editor";
-import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
 import { inlineKindOf } from "@/lib/inline-edit";
 import { clearAt, setAt, sizeSource, spacingAt, stackAt, valueAt, viewAt } from "@/lib/responsive";
 import { switcherAt } from "@/lib/language-switch";
@@ -94,7 +92,7 @@ import { type StartVideo } from "./video-upload";
 import type { PageOwnerContext } from "./page-context";
 import { FloatingPanel as SettingsPanel } from "./floating-panel";
 import { Modal } from "./modal";
-import { RichTextEditor } from "./rich-text-editor";
+import { InlineMarkupEditor, InlineRichEditor, RichTextEditor, warmEditors } from "./lazy/editors";
 import { DisplayBadge, DisplayFields, DisplayLegend, ScheduleFields, showPatch, type DisplaySetup } from "./display-fields";
 import { displayLocked, factsOffered, type Show } from "@/lib/visibility";
 import { SpacingFields, ImageFields, ImageLinkFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowLayoutFields, RowColumnFields, RowContentMaxField, SectionStyleField, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AnchorField, ClassesField, NewTabField, linkKindOf, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
@@ -756,6 +754,17 @@ export function PageBuilder({
         : asSeenFrom(hub.dragging.data, hub.dragging.side, dualOn.side)
       : null
     : ownDragging;
+  // The editors (Tiptap) are not in the builder's first scripts (bloat review step 2.29): their chunks are fetched once the browser is idle,
+  // so a press on a heading or a text field finds them there. The same shape as `whenIdle()` in `components/lazy/lazy-view.tsx`.
+  useEffect(() => {
+    const run = () => warmEditors();
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(run, { timeout: 2000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 1000);
+    return () => clearTimeout(id);
+  }, []);
   /** A copy made from the other page, or why not (D412), said on this canvas for a while. */
   const [dualNote, setDualNote] = useState<string | null>(null);
   useEffect(() => {
@@ -3311,6 +3320,7 @@ function BlockItem({
             level={block.level}
             className="leading-tight text-balance font-heading"
             text={block.text}
+            fallback={<PageBlockView block={block} preview />}
             point={actions.inline?.point ?? null}
             onChange={(text) => actions.onRows((rows) => patchBlock<HeadingBlock>(rows, block.id, { text }))}
             onDone={endInline}
@@ -3318,6 +3328,7 @@ function BlockItem({
         ) : editingInline && block.type === "richText" ? (
           <InlineRichEditor
             doc={block.doc}
+            fallback={<PageBlockView block={block} preview />}
             point={actions.inline?.point ?? null}
             label={fillWords(tw.textIn, { name })}
             onChange={(doc) => actions.onRows((rows) => patchBlock<RichTextBlock>(rows, block.id, { doc }))}

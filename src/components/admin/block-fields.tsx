@@ -1,6 +1,6 @@
 "use client";
 
-import { MarkupInput } from "./markup-input";
+import { MarkupInput, RichTextEditor } from "./lazy/editors";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -30,7 +30,6 @@ import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom,
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
 import { GradientText } from "./typography-fields";
-import { RichTextEditor } from "./rich-text-editor";
 import { inlinePlain } from "@/lib/inline-text";
 import { newBlock } from "@/lib/page-rows";
 import { ButtonHoverField } from "./hover-fields";

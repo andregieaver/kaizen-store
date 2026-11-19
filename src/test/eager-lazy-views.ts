@@ -69,6 +69,10 @@ vi.mock("@/components/admin/lazy/editors", async () => {
   return {
     RichTextEditor: await pick(() => import("@/components/admin/rich-text-editor"), "RichTextEditor"),
     EntityFieldsCard: (props: never) => card?.(props) ?? null,
+    MarkupInput: await pick(() => import("@/components/admin/markup-input"), "MarkupInput"),
+    InlineMarkupEditor: await pick(() => import("@/components/inline-edit/markup-editor"), "InlineMarkupEditor"),
+    InlineRichEditor: await pick(() => import("@/components/inline-edit/rich-text-inline"), "InlineRichEditor"),
+    warmEditors: () => {},
   };
 });
 
