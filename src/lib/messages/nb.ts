@@ -1,4 +1,4 @@
-/** Norwegian interface text, written by hand (`src/lib/i18n.ts`, D212). */
+/** Norwegian interface text, hand-written (`src/lib/i18n.ts`, D212). */
 import { nbBrowser } from "./nb-browser";
 import { nbReturns } from "./nb-returns";
 import { nbExchange, nbReturnLabel } from "./nb-exchange";
@@ -201,7 +201,7 @@ export const nb: Messages = {
     birthdaySave: "Lagre bursdagen",
     birthdayRemove: "Fjern bursdagen",
   },
-  /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md section 8). `{terms}` and `{privacy}` stand for the two links. */
+  /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md 8). `{terms}` and `{privacy}` stand for the two links. */
   terms: {
     both: (terms: string, privacy: string) => `Ved å bestille godtar du ${terms} og bekrefter at du har lest ${privacy}.`,
     termsOnly: (terms: string) => `Ved å bestille godtar du ${terms}.`,
