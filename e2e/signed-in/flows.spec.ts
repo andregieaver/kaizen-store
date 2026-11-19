@@ -50,6 +50,10 @@ test("a welcome series is started with one press, read as a story, tested and sw
   await expect(page.getByText("Test it before switching it on.")).toBeVisible();
   await page.screenshot({ path: "test-results/flow-story.png", fullPage: true });
 
+  // The dry run (M3.5): each email drawn for the newest person, nothing sent.
+  await page.getByRole("link", { name: "See the emails as the newest person on your list would get them" }).click();
+  await expect(page.locator("[data-flow-drawn] iframe")).toHaveCount(2);
+  await expect(page.locator("[data-flow-drawn]")).toContainText(`The emails as ida-${RUN}@example.com would get them`);
   await page.getByRole("button", { name: "Test it" }).click();
   await expect(page.getByText(`Tested on ida-${RUN}@example.com: Welcome!, What others like best. Then it ends.`)).toBeVisible();
   await page.getByRole("button", { name: "Switch on" }).click();

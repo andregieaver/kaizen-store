@@ -336,4 +336,23 @@ describe("flows (D767)", () => {
     expect(await fl.flowReach(storeId, "order.sent", null)).toBe(sentBefore + 1);
     expect(await fl.flowReach(storeId, "customer.lapsed", 90)).toBeGreaterThanOrEqual(0);
   });
+
+  it("draws each email for the newest subscriber as it would be sent, sending nothing (M3.5)", async () => {
+    const steps: FlowStep[] = [email("hello", "Hei der"), { id: "w", kind: "wait", hours: 24 }, email("more", "Mer fra oss")];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Drawn ${run}`, trigger: "subscriber.subscribed", steps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    const newest = `drawn-${run}@example.com`;
+    await subscriber(newest);
+    const drawn = await fl.drawFlowEmails(storeId, saved.id);
+    expect(drawn.person).toBe(newest);
+    expect(drawn.emails.map((e) => [e.stepId, e.subject])).toEqual([
+      ["hello", "Hei der"],
+      ["more", "Mer fra oss"],
+    ]);
+    expect(drawn.emails[0]?.html).toContain("Hei der");
+    // Drawing marks nothing tested and starts nobody.
+    expect((await fl.getFlow(storeId, saved.id))?.tested).toBe(false);
+    const runs = await db().execute<Row>(sql`select id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+    expect(runs).toHaveLength(0);
+  });
 });
