@@ -7,7 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_KINDS, type PlatformLegalKind } from "@/lib/platform-legal";
 import { requirePlatform } from "@/server/auth";
-import { PAGES_TAG } from "@/server/pages";
+import { pagesTag } from "@/server/pages";
 import { writePlatformLegalPages } from "@/server/platform-legal";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { platformAccountId, setOfficer } from "@/server/privacy-officers";
@@ -21,7 +21,7 @@ export async function writeLegalPagesAction(_state: FormState, formData: FormDat
     .getAll("overwrite")
     .filter((value): value is PlatformLegalKind => (PLATFORM_LEGAL_KINDS as readonly unknown[]).includes(value));
   const outcomes = await writePlatformLegalPages(admin, { overwrite });
-  if (outcomes.some((o) => o.outcome === "made" || o.outcome === "written")) updateTag(PAGES_TAG);
+  for (const owner of new Set(outcomes.filter((o) => o.outcome === "made" || o.outcome === "written").map((o) => o.owner))) updateTag(pagesTag(owner));
   const list = outcomes.map((o) => `${w.kinds[o.kind]} ${w.outcomes[o.outcome]}`).join(", ");
   const problems = outcomes.flatMap((o) => o.problems ?? []);
   return problems.length > 0
