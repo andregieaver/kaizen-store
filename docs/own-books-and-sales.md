@@ -189,6 +189,8 @@ reversing entry; accounting periods that can be locked; a chart of accounts per 
 SAF-T standard VAT codes); opening balances. Posted from the same documents the Tripletex sync reads, plus payouts and fees, gift cards
 and store credit, and refunds. Reports: trial balance, profit and loss, balance sheet, VAT by code and period. Hand-made entries for Lisa.
 The ledger also knows each store's turnover over the last twelve months, which the threshold watch reads (section 4.4).
+The job looks at each book in turn (D828): a new shop invoice or credit note, with its payment or refund, on the next five-minute tick; Work's
+documents, payouts and disputes within the hour, when an idle book is looked at; a book that is behind, or opened earlier, keeps its turn.
 
 For the pilot it runs beside Tripletex: a daily comparison, per account and period, with Tripletex's postings read back through the
 client we have (`GET /ledger/posting` [docs, Tripletex's spec]); a difference is a line in *Needs you* with both sides. Opening balances
