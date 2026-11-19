@@ -42,7 +42,8 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    words in its first language and the days of the wait before it (`withEmailWords()`, `withWaitDays()`), each save a new version switched
    off until tested again. *Part c, the same day:* Customise opens the canvas (`canvas.tsx`): every step as a tree, a step of any kind
    added after another or first in a branch, one removed (an `if` with both branches, said on its button), an `if`'s condition chosen
-   (`insertStep()`, `removeStep()`, `withCondition()`). *Next:* every language side by side.
+   (`insertStep()`, `removeStep()`, `withCondition()`). *Part d, 19 November:* under Change, every language of the store side by side,
+   each saved on its own, and each email names the languages not yet written (their readers get the store's first language, `languageFor()`). Slice 2 is done.
    The whole of it: a flow read as sentences, the emails as pictures (*When someone joins, the same day: Welcome. Three days
    later, if they have not ordered: our best sellers*); *Customise* opens the canvas. One model, so a change in either shows in both.
 3. **Recipes** (M2.2, M3.1): today's automations as flows on the engine, their tests carried over, and the front page that starts

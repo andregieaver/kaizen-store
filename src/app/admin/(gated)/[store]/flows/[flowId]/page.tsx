@@ -6,6 +6,7 @@ import { requireExtension } from "@/components/admin/extension-off";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
 import { getFlow } from "@/server/flows";
@@ -51,6 +52,7 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
   const lines = storyLines(flow.steps, w.story, (id) => segments.get(id) ?? "?");
   const emails = emailsOf(flow.steps);
   const mayWrite = memberCan(member, "marketing:write");
+  const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
   const firstLocale = Object.keys([...emails.values()][0]?.content ?? {})[0] ?? store.localization.locales[0] ?? "en-GB";
   return (
     <div className="flex flex-col gap-6">
@@ -72,6 +74,7 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
               const locale = content ? (Object.keys(content)[0] ?? "") : "";
               const first = content ? content[locale] : undefined;
               const words = first?.blocks.find((b) => b.type === "paragraph") as { text?: string } | undefined;
+              const missing = languages.filter((l) => !content?.[l]?.subject);
               return (
                 <li key={line.stepId} className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4" style={{ marginInlineStart: `${line.depth * 1.25}rem` }}>
                   <p className="text-body text-ink sm:w-64 sm:shrink-0">
@@ -81,23 +84,42 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
                   <div className="min-w-0 flex-1 rounded-lg border border-line bg-card px-4 py-3 shadow-sm" aria-label={`${w.emailLabel}: ${line.subject}`}>
                     <p className="text-body-strong text-ink">{line.subject}</p>
                     {words?.text && <p className="mt-1 line-clamp-2 text-caption text-muted">{words.text}</p>}
-                    {/* The words changed where they are (D767 slice 2): one step away, under Change. */}
+                    {missing.length > 0 && (
+                      <p className="mt-1 text-caption text-muted">
+                        {/* languageFor() (D767): a reader without their language gets the store's first language, or nothing without it. */}
+                        {(missing.includes(languages[0]) ? w.mainMissing : w.missingIn)
+                          .replace("{languages}", missing.map(languageName).join(", "))
+                          .replace("{first}", languageName(languages[0]))}
+                      </p>
+                    )}
+                    {/* The words changed where they are (D767 slice 2), every language of the store side by side: one step away, under Change. */}
                     {mayWrite && (
                       <details className="mt-2 text-sm">
                         <summary className="cursor-pointer font-medium">{w.change}</summary>
-                        <ActionForm action={changeFlowEmailAction.bind(null, store.slug, flow.id, line.stepId, locale)} className="mt-3 flex flex-col gap-3">
-                          <label className="flex flex-col gap-1">
-                            {w.subject}
-                            <input name="subject" required defaultValue={line.subject} maxLength={200} className={FIELD} />
-                          </label>
-                          <label className="flex flex-col gap-1">
-                            {w.words}
-                            <textarea name="text" required defaultValue={words?.text ?? ""} rows={4} maxLength={5000} className={`${FIELD} py-2`} />
-                          </label>
-                          <div>
-                            <SubmitButton variant="secondary">{w.save}</SubmitButton>
-                          </div>
-                        </ActionForm>
+                        <div className="mt-3 grid gap-4 md:grid-cols-2">
+                          {languages.map((lang) => {
+                            const own = content?.[lang];
+                            const ownWords = own?.blocks.find((b) => b.type === "paragraph") as { text?: string } | undefined;
+                            return (
+                              <ActionForm key={lang} action={changeFlowEmailAction.bind(null, store.slug, flow.id, line.stepId, lang)} className="flex flex-col gap-3">
+                                <fieldset className="flex flex-col gap-3" aria-label={languageName(lang)}>
+                                  {languages.length > 1 && <legend className="mb-1 font-medium text-ink">{languageName(lang)}</legend>}
+                                  <label className="flex flex-col gap-1">
+                                    {w.subject}
+                                    <input name="subject" required defaultValue={own?.subject ?? ""} maxLength={200} className={FIELD} />
+                                  </label>
+                                  <label className="flex flex-col gap-1">
+                                    {w.words}
+                                    <textarea name="text" required defaultValue={ownWords?.text ?? ""} rows={4} maxLength={5000} className={`${FIELD} py-2`} />
+                                  </label>
+                                  <div>
+                                    <SubmitButton variant="secondary">{w.save}</SubmitButton>
+                                  </div>
+                                </fieldset>
+                              </ActionForm>
+                            );
+                          })}
+                        </div>
                         {line.waitId && (
                           <ActionForm action={changeFlowWaitAction.bind(null, store.slug, flow.id, line.waitId)} className="mt-3 flex flex-wrap items-end gap-2">
                             <label className="flex flex-col gap-1">

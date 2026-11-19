@@ -34,6 +34,8 @@ export const flowsNb: FlowsMessages = {
     goal: "Det stopper når de bestiller.",
     ends: "Så slutter det.",
   },
+  missingIn: "Ikke skrevet på {languages} ennå; de leserne får den på {first}.",
+  mainMissing: "Ikke skrevet på {languages} ennå, og {first} er butikkens første språk: lesere på et språk som ikke er skrevet, får ingenting.",
   change: "Endre",
   subject: "Emne",
   words: "Tekst",

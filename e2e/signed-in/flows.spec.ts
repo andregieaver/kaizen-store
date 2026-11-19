@@ -64,9 +64,11 @@ test("an email's words and its wait are changed where they are, and the flow wai
   await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
   const best = page.getByLabel("Email: What others like best");
   await best.getByText("Change", { exact: true }).click();
-  await best.getByLabel("Subject").fill("Our favourites");
-  await best.getByLabel("Words").fill("See what others buy most.");
-  await best.getByRole("button", { name: "Save" }).first().click();
+  // Its languages side by side (the store's own and its markets'); English is the store's first.
+  const english = best.getByRole("group", { name: "English" });
+  await english.getByLabel("Subject").fill("Our favourites");
+  await english.getByLabel("Words").fill("See what others buy most.");
+  await english.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();
   const changed = page.getByLabel("Email: Our favourites");
@@ -105,4 +107,21 @@ test("under Customise, a step is added in a branch and removed, and the story fo
   await row.getByRole("button", { name: "Remove" }).click();
   await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toHaveCount(0);
   await expect(page.locator("[data-canvas-step=if]")).toHaveCount(1);
+});
+
+test("an email's words are written in each of the store's languages side by side, and the missing one is named", async ({ page }) => {
+  // The store writes English; its Norwegian market brings Norwegian (localization's locales).
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
+  const welcome = page.getByLabel("Email: Welcome!");
+  await expect(welcome).toContainText("Not written in Norsk bokmål yet; those readers get it in English.");
+  await welcome.getByText("Change", { exact: true }).click();
+  const norsk = welcome.getByRole("group", { name: "Norsk bokmål" });
+  await norsk.getByLabel("Subject").fill("Velkommen!");
+  await norsk.getByLabel("Words").fill("Takk for at du vil høre fra oss.");
+  await page.screenshot({ path: "test-results/flow-languages.png", fullPage: true });
+  await norsk.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Email: Welcome!")).not.toContainText("Not written in");
 });

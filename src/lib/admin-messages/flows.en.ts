@@ -34,6 +34,8 @@ export const flowsEn = {
     goal: "It stops when they order.",
     ends: "Then it ends.",
   },
+  missingIn: "Not written in {languages} yet; those readers get it in {first}.",
+  mainMissing: "Not written in {languages} yet, and {first} is your store's first language: readers in a language not written get nothing.",
   change: "Change",
   subject: "Subject",
   words: "Words",
