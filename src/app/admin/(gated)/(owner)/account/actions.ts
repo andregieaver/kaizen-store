@@ -23,7 +23,11 @@ import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepR
 import { adminText } from "@/lib/admin-text";
 import { officerFields, readOfficerChoice } from "@/lib/privacy-officer";
 import { ownedAccount, setOfficer } from "@/server/privacy-officers";
-import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan } from "@/server/account-billing";
+import { accountPortalUrl, cancelAccountPlan, chooseAccountPlan, setAccountExtension } from "@/server/account-billing";
+import { startExtensionTrial } from "@/server/extensions";
+import { GRACE_DAYS } from "@/lib/account-billing";
+import { fillWords } from "@/lib/admin-fill";
+import { isExtensionId } from "@/lib/extensions";
 import { NO_COUNTRY } from "@/server/billing";
 
 async function origin(): Promise<string> {
@@ -221,4 +225,33 @@ export async function accountPortalAction(): Promise<FormState> {
   const result = await accountPortalUrl(organisationId, `${await origin()}/admin/account/billing`);
   if (!result.ok) return { status: "error", messages: [result.problem] };
   redirect(result.url);
+}
+
+/** The owner's own account, for Account → Extensions (D748 E5); null for someone who owns none. */
+async function extensionsAccount() {
+  const account = await requireAccount();
+  const owned = await ownedAccount(account.id);
+  const lang = adminLangOf(account.adminLocale);
+  return { account, organisationId: owned?.id ?? null, w: adminText(lang, "screens").accountExtensions, common: adminText(lang, "common").extensions };
+}
+
+/** Starts an extension's 14-day trial for the owner's account. */
+export async function tryExtensionAction(extension: string): Promise<FormState> {
+  const { account, organisationId, w, common } = await extensionsAccount();
+  if (!organisationId || !isExtensionId(extension)) return { status: "error", messages: [w.ownerOnly] };
+  const result = await startExtensionTrial(account, organisationId, extension);
+  if (!result.ok) return { status: "error", messages: [common.refusals[result.refusal]] };
+  refresh();
+  return { status: "ok", messages: [common.trialStarted] };
+}
+
+/** Adds an extension to the account's subscription (Stripe Checkout when the account pays for nothing yet), or ends one bought on its own. */
+export async function setExtensionAction(extension: string, on: boolean): Promise<FormState> {
+  const { account, organisationId, w } = await extensionsAccount();
+  if (!organisationId || !isExtensionId(extension)) return { status: "error", messages: [w.ownerOnly] };
+  const result = await setAccountExtension(account, organisationId, extension, on, await origin());
+  if (!result.ok) return { status: "error", messages: result.problems };
+  if ("checkoutUrl" in result && result.checkoutUrl) redirect(result.checkoutUrl);
+  refresh();
+  return { status: "ok", messages: [on ? w.added : fillWords(w.ended, { days: GRACE_DAYS })] };
 }
