@@ -2,6 +2,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { isAppAddress } from "@/components/block-link";
+
 import { importsOf, reach } from "../../scripts/lib/import-walk.mjs";
 import { FORBIDDEN_ON_PAY_ROUTES, importsForbidden } from "./pay-routes";
 
@@ -135,6 +137,12 @@ describe("entering a pay route", () => {
       if (/router\.(push|replace)\([^)]*\/checkout/.test(text)) offenders.push(`${rel(file)}: the router goes to /checkout`);
     }
     expect(offenders).toEqual([]);
+  });
+
+  it("a built page's link never client-navigates to a pay path", () => {
+    // A builder block's link (`BlockLink`, bloat review step 2.7) stays in the app only for an address that is not a pay path.
+    expect(readFileSync(join(SRC, "components/block-link.tsx"), "utf8")).toContain("isPayPath(");
+    for (const href of ["/s/demo/no/cart", "/s/demo/no/checkout", "/s/demo/no/order/1"]) expect(isAppAddress(href), href).toBe(false);
   });
 
   it("is, from the cart's button, a full page load", () => {

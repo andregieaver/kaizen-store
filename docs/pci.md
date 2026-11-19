@@ -111,6 +111,9 @@ redirect that ends on `/checkout` use a full navigation (the cart's action hands
 `PayRouteGuard` on the cart, checkout and order pages reloads the document once if it has been on any other page of the store: the
 market layout's `PayDocumentWatcher` notes that in a module variable (nothing is stored, a reload starts clean, so it cannot loop).
 The cart's slide-out on phones is not a pay page and is left alone. A scan test fails on a `<Link>` to `/checkout`.
+A builder block's link (`BlockLink`, `src/components/block-link.tsx`) stays in the app only for an address that is not a pay path
+(`isPayPath()`); a block that points at a cart, checkout or order address is a plain anchor, and `PayRouteGuard` still reloads a pay
+page reached another way.
 
 **Express checkout outside the pay routes (D373).** A product page draws Stripe's Express Checkout Element and Klarna's messaging element,
 and the product page is not a pay route: it carries the store's own code, the consent manager and the chat. Neither element takes a card on the

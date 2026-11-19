@@ -165,7 +165,7 @@ commit as the fix.
 | 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | D805: store pages static, live 19 Nov, payloads complete; an add 1 request, 104 B. Commit 4 in its own deploy. |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | In progress | D825: Bingbot gets the cached page (HIT, title in head), link previews keep the render; live 19 Nov. Owner: Rich Results, Bing Webmaster; log sample. |
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | D826: router requests front 19 to 3, product 18 to 3, cart 20 to 5, first add 32 to 7; admin at rest 0; next/link 396 to 384. Phone and 1280 px checks due. |
-| 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Open | |
+| 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | In progress | Local 19 Nov: a tap on the phone home's first tile 1 document, 29 requests before; 0 and 7-8 after (6 runs). A block's cart link: 1 document. Grid anchors in content-grid-tiles.tsx. |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Open | |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
 | 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Open | |

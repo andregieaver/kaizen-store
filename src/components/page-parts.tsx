@@ -23,6 +23,7 @@ import { valueAt } from "@/lib/responsive";
 import { summarize } from "@/lib/seo";
 import { boxFamilies } from "@/lib/typography";
 
+import { BlockLink } from "./block-link";
 import { BackgroundVideo } from "./lazy/blocks";
 
 /**
@@ -449,7 +450,7 @@ export function ColumnLinkCover({ column }: { column: PageColumn }) {
   if (!column.link) return null;
   const name = column.link.label || summarize(column.blocks.map(blockText).join(" "), 100) || column.link.href;
   return (
-    <a
+    <BlockLink
       href={column.link.href}
       aria-label={name}
       className="absolute inset-0 z-[1] rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"

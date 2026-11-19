@@ -744,7 +744,7 @@ three policies. `e2e/prefetch.spec.ts` holds the counts per page.
 | Policy | What it does | Links |
 | --- | --- | --- |
 | sight | Next's default: fetched when it scrolls into view | the cart link on phones, a header menu's top links, product tiles (bounded by step 2.8), the site's sign-up button |
-| intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, every admin link (`AdminLink`) |
+| intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, builder blocks (`BlockLink`, step 2.7: a built page's tiles, buttons, pictures, icon lists and column links to an address of the app; a pay path, a file, a handler, a new tab or another site stays a plain anchor), every admin link (`AdminLink`) |
 | never | not fetched ahead | countries, languages and currencies, links that leave their root layout, file links, the cart link from 768 px (a plain anchor) |
 
 A link states its policy through `PolicyLink` or `AdminLink` and `next/link` is imported only by them (ratchet count `directLinks`, in
