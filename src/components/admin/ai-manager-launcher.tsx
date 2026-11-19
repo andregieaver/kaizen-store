@@ -7,17 +7,22 @@ import { createPortal } from "react-dom";
 
 import { focusAiComposer } from "@/lib/ai-composer";
 import { pageName, parseRecent, rememberPage } from "@/lib/recent-pages";
+import type { AdminAreaMessages } from "@/lib/admin-text";
 import type { ConversationSummary } from "@/server/owner-assistant";
 
 import type { Abilities, AiManagerActions, AiManagerChat } from "./ai-manager";
 import { MicIcon } from "./mic-icon";
 import { unlockVoiceAudio } from "./voice-mode";
-import { useAdminText } from "./admin-text";
+import { AdminTextScope, useAdminText } from "./admin-text";
 import { ASK_AI_MANAGER_EVENT, askFrom, type AskDetail } from "@/lib/alert-ask";
 
 import { NoticeBadge, NoticeList, useNoticeCount } from "./ai-notices";
 
-export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[] }>;
+/**
+ * What the panel needs when it first opens: the chat's words too (`assistant`), in the account's language, so no screen carries them
+ * before the panel is opened; the button and the notices read their own few (`assistantBar`, bloat review step 2.27).
+ */
+export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[]; texts: Pick<AdminAreaMessages, "assistant"> }>;
 
 type ChatComponent = typeof AiManagerChat;
 
@@ -74,7 +79,7 @@ export function AiManagerLauncher({
   noticePlace?: string;
 }) {
   const pathname = usePathname();
-  const w = useAdminText("assistant");
+  const w = useAdminText("assistantBar");
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState<Awaited<ReturnType<AiManagerStart>> | null>(null);
   const [Chat, setChat] = useState<ChatComponent | null>(null);
@@ -231,21 +236,24 @@ export function AiManagerLauncher({
         <div className={showNotices ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
         <RecentPages storageKey={recentKey} current={pathname} label={w.launcher.recent} onOpen={closeOnPhones} />
         {ready && Chat ? (
-          <Chat
-            area={area}
-            base={base}
-            siteName={siteName}
-            settingsHref={settingsHref}
-            abilities={ready.abilities}
-            conversations={ready.conversations}
-            conversation={null}
-            actions={actions}
-            variant="panel"
-            inputRef={inputRef}
-            onNavigate={closeOnPhones}
-            startVoice={talk}
-            ask={ask}
-          />
+          // The chat is drawn only once start() has answered, with its words.
+          <AdminTextScope texts={ready.texts}>
+            <Chat
+              area={area}
+              base={base}
+              siteName={siteName}
+              settingsHref={settingsHref}
+              abilities={ready.abilities}
+              conversations={ready.conversations}
+              conversation={null}
+              actions={actions}
+              variant="panel"
+              inputRef={inputRef}
+              onNavigate={closeOnPhones}
+              startVoice={talk}
+              ask={ask}
+            />
+          </AdminTextScope>
         ) : chatFailed ? (
           <p className="p-4 text-sm" role="alert">
             {w.launcher.failed}{" "}

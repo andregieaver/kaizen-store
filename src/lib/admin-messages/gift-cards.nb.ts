@@ -152,6 +152,13 @@ export const giftCardsNb: GiftCardsMessages = {
     language: "Språket i e-posten",
     note: "Hvorfor det utstedes (for dine egne notater, vises ikke til dem)",
     notePlaceholder: "En kompensasjon for bestilling 1042",
+    phone: {
+      lead: "Verdt beløpet du gir. Koden vises én gang.",
+      more: "Hvem det er til, og hvorfor",
+      moreSub: "Valgfritt: en e-post sender dem koden",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     submit: "Utsted gavekortet",
   },
   actions: {

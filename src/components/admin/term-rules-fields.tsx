@@ -35,7 +35,7 @@ export function TermRulesFields({
   value: TermRulesDraft;
   onChange: (value: TermRulesDraft) => void;
 }) {
-  const w = useAdminText("products").termRules;
+  const w = useAdminText("productsEditor").termRules;
   const id = useId();
   const [choices, setChoices] = useState<RuleChoices | null>(null);
   // The last count, kept with the rules it was counted for: shown only while the rules are still those.
@@ -171,7 +171,7 @@ export function TermRulesFields({
 
 /** The fields of one condition, by its kind. */
 function ConditionFields({ id, condition, choices, onChange }: { id: string; condition: RuleCondition; choices: RuleChoices | null; onChange: (next: RuleCondition) => void }) {
-  const w = useAdminText("products").termRules;
+  const w = useAdminText("productsEditor").termRules;
   const none = <span className="pb-2 text-xs text-muted">{w.noneHere}</span>;
   switch (condition.kind) {
     case "term":

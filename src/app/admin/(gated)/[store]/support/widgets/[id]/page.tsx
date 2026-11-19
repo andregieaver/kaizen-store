@@ -41,7 +41,7 @@ export default async function SupportWidgetPage({ params }: PageProps<"/admin/[s
   const preview = await widgetPreviewOf(member.store, widget);
   const write = staff.canWrite;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["support", "design"])}>
+    <AdminTextScope texts={adminTexts(lang, ["support", "designEditor"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${slug}/support/widgets`, label: w.back }} title={widget.name} description={w.description} />
         {!preview.chatOn && (

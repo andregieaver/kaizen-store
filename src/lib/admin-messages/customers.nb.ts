@@ -633,6 +633,13 @@ export const customersNb: CustomersMessages = {
       fileLabel: "En CSV-fil med kunder",
       hint: "Opptil {size} og {rows} rader. En rad trenger en e-post; navn, telefon, adresse, bedrift og merker leses når de er med. En tom celle beholder det butikken har.",
       rulesTitle: "Hva en import gjør",
+      phone: {
+        lead: "Kundene dine fra en CSV-fil, som Shopifys eksport.",
+        hint: "Opptil {size} og {rows} rader. Hver rad trenger en e-post. Sjekkes før noe endres.",
+        rulesSub: "Funnet etter e-post; ingen passord, ingen markedsføring",
+        open: "Åpne",
+        done: "Ferdig",
+      },
       rules: {
         match: "En rad finner kunden sin på e-posten. En ny e-post gir en konto uten passord; personen logger inn med en kode.",
         keep: "En tom celle endrer ingenting. En adresse er hel eller utelatt; en bedrift trenger navn og organisasjonsnummer.",

@@ -25,7 +25,7 @@ export type DraftActions = {
  * again every ten seconds while a page is being built.
  */
 export function StoreDraftPanel({ storeSlug, initial, canDraft, actions }: { storeSlug: string; initial: DraftView | null; canDraft: boolean; actions: DraftActions }) {
-  const w = useAdminText("home").drafts;
+  const w = useAdminText("homeDrafts").drafts;
   const router = useRouter();
   const id = useId();
   const [draft, setDraft] = useState(initial);

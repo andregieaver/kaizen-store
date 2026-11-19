@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Chat agent" };
 export default async function PlatformChatPage() {
   const account = await requirePlatformReader();
   return (
-    <AdminAreas areas={["website"]}>
+    <AdminAreas areas={["websitePick"]}>
     <ChatAgentView
       storeId={null}
       siteName="Kaizena Flow"

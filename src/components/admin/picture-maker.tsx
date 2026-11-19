@@ -41,7 +41,7 @@ export function PictureEditorProvider({ editor, children }: { editor: PictureEdi
  * is not in the site's library is refused with the reason. Draws nothing where the site cannot edit pictures.
  */
 export function RemoveBackgroundButton({ current, onEdited }: { current?: CurrentPicture | null; onEdited: (picture: MadePicture) => void }) {
-  const w = useAdminText("website").pictureMaker;
+  const w = useAdminText("websitePick").pictureMaker;
   const editor = useContext(EditorContext);
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
@@ -107,7 +107,7 @@ export function MakePictureButton({
   /** Where it is asked for (D349), sent with the request: the media library or the product editor. */
   place?: "library" | "product";
 }) {
-  const w = useAdminText("website").pictureMaker;
+  const w = useAdminText("websitePick").pictureMaker;
   const maker = useContext(MakerContext);
   const [open, setOpen] = useState(false);
   if (!maker) return null;
@@ -160,7 +160,7 @@ function MakeDialog({
   onClose: () => void;
   onUse: (picture: MadePicture) => void;
 }) {
-  const w = useAdminText("website").pictureMaker;
+  const w = useAdminText("websitePick").pictureMaker;
   const id = useId();
   const before = current ? asked.get(current.url) : undefined;
   const [brief, setBrief] = useState(before?.brief ?? current?.alt ?? startBrief ?? "");

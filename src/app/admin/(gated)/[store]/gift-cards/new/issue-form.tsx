@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { PhoneRow } from "@/components/admin/phone-row";
 import { useActionState, useState } from "react";
 
 import { Button, ButtonLink } from "@/components/admin/ui";
@@ -63,9 +65,17 @@ export function IssueGiftCardForm({
   }
 
   return (
-    <form action={formAction} aria-busy={pending} className="flex max-w-xl flex-col gap-4">
-      <div className="flex flex-wrap gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-body">
+    <form
+      action={formAction}
+      aria-busy={pending}
+      className="flex max-w-xl flex-col gap-4"
+      onInvalidCapture={(event) => {
+        // A field the browser flags inside the closed phone row opens it (the row follows its anchor): round 57, D813.
+        if ((event.target as HTMLElement).closest("#gift-more") && window.location.hash !== "#gift-more") window.location.hash = "gift-more";
+      }}
+    >
+      <div className="flex flex-wrap gap-3 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_6rem]">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-body">
           <span className="text-caption text-muted">{w.amount}</span>
           <input name="amount" inputMode="decimal" required autoComplete="off" placeholder="500" className="min-h-10 rounded-md border border-line px-3" />
         </label>
@@ -80,6 +90,9 @@ export function IssueGiftCardForm({
           </select>
         </label>
       </div>
+      {/* On a phone who it is for and why are one row; the amount and Issue stay in view. From `sm` up as before. */}
+      <PhoneRow id="gift-more" inset title={w.phone.more} sub={w.phone.moreSub} change={w.phone.open} done={w.phone.done}>
+      <div className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-body-strong text-ink">{w.forWhom}</legend>
         <label className="flex flex-col gap-1 text-body">
@@ -111,6 +124,8 @@ export function IssueGiftCardForm({
         <span className="text-caption text-muted">{w.note}</span>
         <input name="note" maxLength={500} autoComplete="off" placeholder={w.notePlaceholder} className="min-h-10 rounded-md border border-line px-3" />
       </label>
+      </div>
+      </PhoneRow>
       {state.status === "error" && (
         <p role="alert" className="text-body text-danger-text">
           {state.message}

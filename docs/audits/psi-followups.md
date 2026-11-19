@@ -82,6 +82,8 @@ A new deferred item goes here and moves to its dated section when it is ticked.
       statistics (`docs/performance.md`). Still open: the p75 from the beacon.
       19 November 2026 (bloat review step 2.26): the indirect importers are gone too; no admin client module reaches an area's English
       catalogue through a lib module, held by `src/components/admin/admin-bundle.scan.test.ts`.
+      19 November 2026 (bloat review step 2.27): pages hand cuts of areas (only the groups their parts read); shared words 33.7 to 16.6 KB,
+      the product editor's document 431 to 242 KB and the builder's 607 to 468 KB (`docs/performance.md`, *Cuts*).
 
 ## Decided
 

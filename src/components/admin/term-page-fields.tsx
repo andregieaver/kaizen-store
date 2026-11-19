@@ -35,7 +35,7 @@ const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 /** The picture, and the name and description per language: the main language's description here, its name in the row's own field above. */
 export function TermPageFields({ setup, value, onChange }: { setup: TermPageSetup; value: TermPageDraft; onChange: (value: TermPageDraft) => void }) {
-  const w = useAdminText("products").termPage;
+  const w = useAdminText("productsEditor").termPage;
   const main = setup.locales[0] ?? "";
   const [locale, setLocale] = useState(main);
   const own = locale === main ? null : (value.texts[locale] ?? {});
@@ -107,7 +107,7 @@ export function TermPageFields({ setup, value, onChange }: { setup: TermPageSetu
  * each, saved in one press. Products added later come last.
  */
 export function TermProductOrder({ termId, setup }: { termId: string; setup: TermPageSetup }) {
-  const w = useAdminText("products").termPage;
+  const w = useAdminText("productsEditor").termPage;
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState<TermProduct[] | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -218,7 +218,7 @@ export function TermProductOrder({ termId, setup }: { termId: string; setup: Ter
 
 /** One product in the order: a handle to drag it, its place, its picture and name, and buttons to move it. */
 function OrderRow({ product, index, count, move }: { product: TermProduct; index: number; count: number; move: (from: number, to: number) => void }) {
-  const w = useAdminText("products").termPage;
+  const w = useAdminText("productsEditor").termPage;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
   return (
     <li

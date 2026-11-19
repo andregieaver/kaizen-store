@@ -708,7 +708,7 @@ export function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (
 
 /** A section style's name in the account's language: the core styles' from the design words (D312 A7), a theme's own as it is written. */
 export function useStyleName(): (name: string) => string {
-  const names = useAdminText("design").changes.styles;
+  const names = useAdminText("designEditor").changes.styles;
   return (name) => names[name] ?? sectionStyleLabel(name);
 }
 

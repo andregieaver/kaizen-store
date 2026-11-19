@@ -21,7 +21,7 @@ import { sandboxPageContext } from "./context";
 import { offers } from "./sandbox";
 
 /** The catalogue areas the page editor's parts read (D312 A7), as the store's own editor hands them down. */
-const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules", "storeParts", "backdrops", "animation"] as const;
+const EDITOR_AREAS = ["builder", "blocks", "fieldsEditor", "productsEditor", "designEditor", "blogEditor", "schedulesEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick"] as const;
 
 type Query = Record<string, string | string[] | undefined>;
 

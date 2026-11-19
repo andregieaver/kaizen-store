@@ -110,7 +110,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const frontPage = type === "page" ? every.find((p) => p.id === store.frontPageId && p.live) : undefined;
   const current = layoutChoice && (type === "header" || type === "footer") ? layoutChoice[type] : null;
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website", "schedules"])}>
+    <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website", "websiteList"])}>
     <div className="flex flex-col gap-6">
       {type === "page" ? (
         <div className="flex flex-wrap items-end justify-between gap-4">

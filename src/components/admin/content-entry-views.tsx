@@ -27,7 +27,7 @@ export async function EntryView({ site, typeId, entryId }: { site: ContentSite; 
   const base = `${site.base}/${type.id}`;
 
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "builder", "website"])}>
+    <AdminTextScope texts={adminTexts(site.lang, ["content", "fieldsEditor", "builderText", "websitePick"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: fillWords(w.entry.back, { type: type.name }) }}

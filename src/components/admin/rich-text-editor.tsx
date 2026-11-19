@@ -152,7 +152,7 @@ export function RichTextEditor({
     onUpdate: ({ editor }) => onChange(editor.getJSON() as RichTextDoc),
   });
 
-  const w = useAdminText("builder").textStyles;
+  const w = useAdminText("builderText").textStyles;
   const styles = useTextStyles();
   // The HTML view (D393): the editor's HTML to edit as text, read back into the editor's parts on Visual, naming what was left out.
   const [html, setHtml] = useState<string | null>(null);
@@ -247,7 +247,7 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
   const [linking, setLinking] = useState(false);
   const [colouring, setColouring] = useState(false);
   const chain = () => editor.chain().focus();
-  const w = useAdminText("builder").richText;
+  const w = useAdminText("builderText").richText;
   /** Colours the selected words, or the coloured words the cursor is in (without taking the focus from the colour field). */
   const colour = (attrs: { color: string; opacity: number | null } | null) => {
     let next = editor.chain();
@@ -383,7 +383,7 @@ function LinkForm({
   onRemove: () => void;
   onCancel: () => void;
 }) {
-  const w = useAdminText("builder").richText;
+  const w = useAdminText("builderText").richText;
   const id = useId();
   const [value, setValue] = useState(initial);
   const [problem, setProblem] = useState<string | null>(null);

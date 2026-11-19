@@ -62,7 +62,7 @@ export function FontPicker({
   /** Beside the label: a setting that can differ by screen size has its device icon and where its value comes from (D179). */
   mark?: ReactNode;
 }) {
-  const w = useAdminText("design").fonts;
+  const w = useAdminText("designEditor").fonts;
   const [open, setOpen] = useState(false);
   const labelId = useId();
   return (
@@ -119,7 +119,7 @@ function FontDialog({
   onClose: () => void;
   onChoose: (family: string | undefined) => void;
 }) {
-  const w = useAdminText("design").fonts;
+  const w = useAdminText("designEditor").fonts;
   const kindName = (category: FontCategory) => w.categories[category] ?? FONT_CATEGORIES[category];
   const [fonts, setFonts] = useState<CatalogFont[] | null>(null);
   const [failed, setFailed] = useState(false);

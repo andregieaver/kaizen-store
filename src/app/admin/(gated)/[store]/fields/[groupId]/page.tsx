@@ -33,7 +33,7 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
   if (!group) notFound();
   const base = `/admin/${store.slug}/fields`;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["fields"])}>
+    <AdminTextScope texts={adminTexts(lang, ["fields", "fieldsEditor"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: base, label: t.title }}

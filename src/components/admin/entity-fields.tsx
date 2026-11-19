@@ -64,7 +64,7 @@ export function EntityFields({
   intro?: string;
   idPrefix?: string;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   const [own, setLocale] = useState(main);
   const locale = chosen ?? own;
   const shown = side === undefined ? groups : groups.filter((group) => (group.position === "side") === side);

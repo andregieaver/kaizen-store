@@ -650,6 +650,13 @@ export const customersEn = {
       fileLabel: "A CSV file of customers",
       hint: "Up to {size} and {rows} rows. A row needs an email; name, phone, address, company and tags are read when given. An empty cell keeps what the store has.",
       rulesTitle: "What an import does",
+      phone: {
+        lead: "Your customers from a CSV file, such as Shopify's export.",
+        hint: "Up to {size} and {rows} rows. Each row needs an email. Checked before anything changes.",
+        rulesSub: "Found by email; no passwords, no marketing",
+        open: "Open",
+        done: "Done",
+      },
       rules: {
         match: "A row finds its customer by email. A new email makes an account without a password; the person signs in with a code.",
         keep: "An empty cell changes nothing. An address is whole or left out; a company needs its name and organisation number.",

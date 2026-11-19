@@ -38,7 +38,7 @@ export default async function MenusPage({ params, searchParams }: PageProps<"/ad
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "website").menusPage;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["website"])}>
+    <AdminTextScope texts={adminTexts(lang, ["website", "websitePick"])}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={<><span className="sm:hidden">{w.lead}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The menu chosen in the address is read per request. */}

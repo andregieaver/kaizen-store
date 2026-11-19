@@ -29,7 +29,7 @@ export function PageJobsPanel({
   /** Stops a build or a page's pictures; absent for a person who may not change the site. */
   stop?: (kind: RunningPageJob["kind"], id: string) => Promise<FormState>;
 }) {
-  const w = useAdminText("website").pageJobs;
+  const w = useAdminText("websiteList").pageJobs;
   const [answer, setAnswer] = useState<FormState | null>(null);
   const [stopping, setStopping] = useState<string | null>(null);
   const [, startTransition] = useTransition();

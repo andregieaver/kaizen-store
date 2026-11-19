@@ -112,7 +112,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             </div>
             {/* The AI manager (D103), from every page of the store's admin, for owners. */}
             {isOwner && open && (
-              <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+              <AdminTextScope texts={adminTexts(lang, ["assistantBar"])}>
                 <AiManagerLauncher
                   area="store"
                   noticePlace={store.id}

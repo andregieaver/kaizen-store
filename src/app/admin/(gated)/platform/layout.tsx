@@ -87,7 +87,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         <PageFinder find={findPlatformPagesAction} words={w.finder} />
         {/* The AI manager can do anything on the platform, so it is the owners' (D510). */}
         {account.platformAdmin && (
-        <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+        <AdminTextScope texts={adminTexts(lang, ["assistantBar"])}>
           <AiManagerLauncher
             area="platform"
             base={`${base}/assistant`}

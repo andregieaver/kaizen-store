@@ -29,7 +29,7 @@ export function DemoHomePages({
   use: (state: FormState, data: FormData) => Promise<FormState>;
   undo: (state: FormState, data: FormData) => Promise<FormState>;
 }) {
-  const w = useAdminText("website").demoHomes;
+  const w = useAdminText("websiteList").demoHomes;
   if (offers.length === 0 && !take) return null;
   return (
     <Card

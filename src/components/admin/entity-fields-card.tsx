@@ -42,7 +42,7 @@ export function EntityFieldsCard({
   intro: string;
   idPrefix: string;
 }) {
-  const w = useAdminText("fields").form;
+  const w = useAdminText("fieldsEditor").form;
   const [data, setData] = useState<FieldData>(initial);
   const [problems, setProblems] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);

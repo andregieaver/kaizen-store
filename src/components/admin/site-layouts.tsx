@@ -34,7 +34,7 @@ export function SiteLayoutChoice({
   siteName: string;
   action: (state: FormState, form: FormData) => Promise<FormState>;
 }) {
-  const w = useAdminText("website").list;
+  const w = useAdminText("websiteList").list;
   const choices = layouts.filter((layout) => layout.state !== "draft" || layout.id === current);
   const unpublished = layouts.find((layout) => layout.id === current)?.state === "draft";
   return (
@@ -74,7 +74,7 @@ export function SiteLayoutsTable({
   /** What is scheduled for each header or footer or did not happen (D340), by page id. */
   schedules?: Record<string, ScheduleChip>;
 }) {
-  const w = useAdminText("website").list;
+  const w = useAdminText("websiteList").list;
   const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[useAdminLang()].locale, { dateStyle: "medium" });
   return (
     <Card compact>

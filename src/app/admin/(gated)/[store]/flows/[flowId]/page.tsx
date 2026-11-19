@@ -14,7 +14,7 @@ import { getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
-import { FlowBoard } from "./flow-board";
+import { FlowCanvasSection } from "./flow-canvas-section";
 import { changeFlowEmailAction, changeFlowLapseAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
 
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
@@ -167,22 +167,18 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
       </Card>
       {/* The canvas (Customise): the flow as a chart, dragged and dropped (flow-board.tsx); one deliberate step from the story. */}
       {mayWrite && (
-        <details className="rounded-panel border border-line bg-card px-4 py-3" data-flow-canvas>
-          <summary className="cursor-pointer text-body-strong text-ink">{w.canvas.customise}</summary>
-          <div className="mt-3 flex flex-col gap-3">
-            <p className="text-caption text-muted">{w.canvas.lead}</p>
-            <FlowBoard
-              storeSlug={store.slug}
-              flowId={flow.id}
-              locale={firstLocale}
-              steps={flow.steps}
-              trigger={flow.trigger}
-              triggerDays={flow.triggerDays}
-              w={w}
-              segments={segmentList}
-            />
-          </div>
-        </details>
+        <FlowCanvasSection
+          customise={w.canvas.customise}
+          lead={w.canvas.lead}
+          storeSlug={store.slug}
+          flowId={flow.id}
+          locale={firstLocale}
+          steps={flow.steps}
+          trigger={flow.trigger}
+          triggerDays={flow.triggerDays}
+          w={w}
+          segments={segmentList}
+        />
       )}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">
