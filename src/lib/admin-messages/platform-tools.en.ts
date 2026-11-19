@@ -581,6 +581,8 @@ export const platformToolsEn = {
   /** The platform's duty rates (wave 7 unit I, D343): the table stores' customs estimates are worked out from. */
   dutyRates: {
     title: "Duty rates",
+    /** Round 65 (D832): the rows on a phone. */
+    phone: { lead: "What every customs estimate is worked out from. Not customs advice.", open: "Open", close: "Close" },
     intro:
       "The rates and thresholds every store's customs estimate is worked out from. Each row cites the address it was read from and is an estimate until a person checks it against that source and marks it verified. A change applies to carts and orders from now on; placed orders keep their estimate. This is not customs advice.",
     tableTitle: "Rows",

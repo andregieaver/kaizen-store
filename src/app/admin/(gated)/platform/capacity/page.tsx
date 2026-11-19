@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { PlatformFlagsCard } from "@/components/admin/platform-flags-card";
 import { ColdStartsCard } from "@/components/admin/cold-starts-card";
@@ -86,7 +87,12 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.platform.title}
-        description={w.platform.description}
+        description={
+          <>
+            <span className="sm:hidden">{w.platform.phoneLead}</span>
+            <span className="max-sm:hidden">{w.platform.description}</span>
+          </>
+        }
         actions={<ButtonLink href={`${BASE}/csv?month=${month}`} prefetch={false}>{w.platform.csv}</ButtonLink>}
       />
       <Card title={w.platform.database} compact>
@@ -95,6 +101,9 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
         </p>
         {!drain && <p className="mt-2 text-body text-muted">{w.platform.drainOff}</p>}
       </Card>
+      {/* Round 65 (D832): on a phone each reading is a row of one card, opening its explanation and table; from sm up the cards as before. */}
+      <PhoneRows>
+      <PhoneRow flat title={w.platform.styles.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <Card title={w.platform.styles.title} description={w.platform.styles.description} compact>
         {reading === null ? (
           <ButtonLink href={`${BASE}?month=${month}&reading=styles`} prefetch={false}>{w.platform.styles.take}</ButtonLink>
@@ -102,6 +111,8 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           <StylesReading reading={reading} words={w.platform.styles} kaizen={w.platform.kaizen} locale={locale} />
         )}
       </Card>
+      </PhoneRow>
+      <PhoneRow flat title={w.flags.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <PlatformFlagsCard
         flags={flagged?.flags ?? []}
         difference={flagged?.difference ?? null}
@@ -109,7 +120,9 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
         words={w.flags}
         locale={locale}
       />
+      </PhoneRow>
       {/* Recordings of visits (D656): the platform's hold, open to every store or Kaizena Flow's own only. */}
+      <PhoneRow flat title={w.recordings.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <div id="recordings">
         <Card title={w.recordings.title} description={w.recordings.description} compact>
           <p className="text-body text-ink-2">{recordingsOpen ? w.recordings.open : w.recordings.closed}</p>
@@ -124,7 +137,9 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           ) : null}
         </Card>
       </div>
+      </PhoneRow>
       {/* Scheduled jobs (PSI 2026-10-24, REL-06): the platform home links here when one is late or failing. */}
+      <PhoneRow flat title={w.jobs.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <div id="jobs">
         <Card title={w.jobs.title} description={w.jobs.description} compact>
           {jobs.length === 0 ? (
@@ -162,7 +177,9 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           )}
         </Card>
       </div>
+      </PhoneRow>
       {/* Refreshes of cache tags and draws of store layouts (bloat review step 1.25, `docs/capacity.md`). */}
+      <PhoneRow flat title={w.cache.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <div id="cache">
         <Card title={w.cache.title} description={w.cache.description} compact>
           {cacheRows.length === 0 ? (
@@ -204,7 +221,9 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           )}
         </Card>
       </div>
+      </PhoneRow>
       {/* How fast Kaizena Flow's own pages and the admin are for the people using them (D390, PSI PERF-01, PERF-02). */}
+      <PhoneRow flat title={w.speed.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <div id="speed">
         <OwnSpeedView
           reports={[
@@ -216,11 +235,15 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
           speed={adminText(lang, "analytics").speed}
         />
       </div>
+      </PhoneRow>
       {/* How long a fresh server instance took to its first answer, by kind (bloat review step 1.16). */}
+      <PhoneRow flat title={w.coldStarts.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <div id="cold-starts">
         <ColdStartsCard rows={coldStarts.rows} words={w.coldStarts} locale={locale} />
       </div>
+      </PhoneRow>
       {/* The admin timed from Dublin by the status checks (PSI PERF-02). */}
+      <PhoneRow flat last title={w.dublin.title} change={w.platform.phoneOpen} done={w.platform.phoneClose}>
       <Card title={w.dublin.title} compact>
         <p className="text-body text-ink-2">
           {dublin.checks === 0 || dublin.p50 === null
@@ -228,6 +251,8 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
             : fillWords(w.dublin.text, { p50: dublin.p50, p95: dublin.p95 ?? dublin.p50, checks: dublin.checks })}
         </p>
       </Card>
+      </PhoneRow>
+      </PhoneRows>
       {peaks.length > 0 && (
         <Card title={w.peaks.upcoming} compact>
           <ul className="grid gap-2 text-body">

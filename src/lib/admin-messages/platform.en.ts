@@ -719,6 +719,8 @@ export const platformEn = {
   reports: {
     // Notices of illegal content (DSA), named apart from Reports and the AI manager's notices (ecosystem plan E3.7, D718).
     title: "Content notices",
+    /** Round 65 (D832): the notices on a phone. */
+    phone: { lead: "Notices about content on stores. The sender is told what you decide.", ai: "AI", decide: "Decide", close: "Close" },
     description: "Notices people sent about content on stores. Decide each one in good time, with the reason: the sender is told, and the store too when you restrict something.",
     waiting: "Waiting for a decision",
     decided: "Decided",

@@ -70,6 +70,10 @@ export const capacityNb: CapacityMessages = {
   },
   platform: {
     title: "Bruk og grenser",
+    /** Runde 65 (D832): målingene på en telefon. */
+    phoneLead: "Hva hver butikk brukte denne måneden, målt hver natt.",
+    phoneOpen: "Åpne",
+    phoneClose: "Lukk",
     description: "Hva hver butikk har brukt denne måneden. Trafikk kommer fra Vercels loggstrøm; alt annet måles hver natt.",
     store: "Butikk",
     plan: "Abonnement",

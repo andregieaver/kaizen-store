@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
@@ -33,14 +34,33 @@ export default async function PlatformReportsPage() {
   const decided = reports.filter((r) => r.status !== "received");
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.description} meta={[`${waiting.length} · ${w.waiting.toLowerCase()}`]} />
-      <Card title={w.waiting}>
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+        meta={[`${waiting.length} · ${w.waiting.toLowerCase()}`]}
+      />
+      {/* Round 65 (D832): on a phone each waiting notice is one row (its kind, when it came, the AI's urgency and the store) opening the notice, the reading and the decision. */}
+      <Card title={w.waiting} className="max-sm:p-0 max-sm:[&>header]:sr-only">
         {waiting.length === 0 ? (
           <p className="text-sm text-muted">{w.none}</p>
         ) : (
-          <ul className="flex flex-col gap-6">
-            {waiting.map((report) => (
-              <li key={report.id} className="flex flex-col gap-3 border-b border-line pb-6 last:border-b-0 last:pb-0">
+          <ul className="flex flex-col gap-6 max-sm:gap-0 max-sm:px-4">
+            {waiting.map((report, index) => (
+              <li key={report.id} className="border-b border-line pb-6 last:border-b-0 last:pb-0 max-sm:border-b-0 max-sm:pb-0">
+                <PhoneRow
+                  inset
+                  last={index === waiting.length - 1}
+                  title={`${w.categories[report.category]} · ${when(report.createdAt)}`}
+                  sub={[report.aiReading ? `${w.phone.ai}: ${w.ai.urgency[report.aiReading.urgency]}` : null, report.store ? report.store.name : w.noStore].filter(Boolean).join(" · ")}
+                  change={w.phone.decide}
+                  done={w.phone.close}
+                >
+                <div className="flex flex-col gap-3">
                 <Facts report={report} w={w} lang={lang} />
                 <Reading report={report} w={w} />
                 <ActionForm id={`decide-${report.id}`} action={decideReportAction.bind(null, report.id)} className="flex flex-col gap-3" replaceOnSuccess>
@@ -69,6 +89,8 @@ export default async function PlatformReportsPage() {
                     <SubmitButton>{w.decide}</SubmitButton>
                   </div>
                 </ActionForm>
+                </div>
+                </PhoneRow>
               </li>
             ))}
           </ul>
