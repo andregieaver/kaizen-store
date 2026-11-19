@@ -444,6 +444,13 @@ export const ordersNb: OrdersMessages = {
     link: "Importer bestillingshistorikk",
     moving: "Flytter du fra en annen butikk? Hent inn bestillingene som historikk.",
     back: "Bestillinger",
+    phone: {
+      lead: "Bestillingene fra den gamle butikken din, fra Shopifys ordreeksport.",
+      hint: "Opptil {size} og {rows} bestillinger. Sjekkes før noe importeres.",
+      rulesSub: "Aldri betalt, sendt eller telt; kunder først",
+      open: "Åpne",
+      done: "Ferdig",
+    },
   },
   export: {
     back: "Bestillinger",

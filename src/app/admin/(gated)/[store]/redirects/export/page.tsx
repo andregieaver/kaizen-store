@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { RedirectExportForm } from "@/components/admin/redirects/redirect-export-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -35,7 +36,12 @@ export default async function RedirectExportPage({ params, searchParams }: Props
         slug={store.slug}
         active="export"
         title={w.export.title}
-        intro={fillWords(w.export.intro, { n: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
+        intro={
+          <>
+            <span className="sm:hidden">{w.export.phone.lead}</span>
+            <span className="max-sm:hidden">{fillWords(w.export.intro, { n: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}</span>
+          </>
+        }
         words={w}
       />
       <Suspense fallback={<DataSkeleton />}>
@@ -56,6 +62,9 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     <>
       <ProblemAlert text={problem} />
       <RedirectExportForm slug={member.store.slug} words={adminText(adminLangOf(member.account.adminLocale), "redirects")} exportWords={adminText(adminLangOf(member.account.adminLocale), "bookings").exports} />
+      {/* Round 55 (D806): on a phone what the file holds is a row after the button; from `sm` up as before. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.aboutTitle} sub={w.phone.aboutSub} change={w.phone.open} done={w.phone.done}>
       <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>
@@ -72,6 +81,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           </li>
         </ul>
       </Notice>
+      </PhoneRow>
+      </div>
       <ExportSection member={member} kind="redirect_export" jobId={first(query.job)} base={redirectPaths(member.store.slug).export} now={new Date()} />
     </>
   );
