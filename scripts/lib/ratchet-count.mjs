@@ -5,6 +5,7 @@
 // store), and in total the casts through `unknown` (`as unknown as`) and the lines that switch off the linter's `any` rule.
 // Two more totals (bloat review step 1.24): the source files over 100 KB and over 2,000 lines. A file this large is read by window,
 // so the counts only fall; splitting a file belongs to the code area, never to the step that holds the count.
+// Two lists by file (code review step 1.12, D818, `adminFiles`): the admin's field boxes and pill links written out by hand, in place of the kit.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -93,20 +94,81 @@ export const SELECT_TAG = /<select\b/g;
 export const OSLO_ZONE = "Europe/Oslo";
 export const CONFIRM_CALL = /\bconfirm\(/;
 
-/** Counts the admin's action files off the shared wrapper, `<table>`s, native `<select>`s, files with a literal Oslo zone and files calling `confirm(`. */
+/** The admin's kit (code review step 1.12, D818): the one place a field's box, a native `<select>` and a pill are written out. */
+export const ADMIN_KIT = "src/components/admin/ui/";
+
+/** The admin's source files the repeats are counted in: every page, layout and part of the three levels (`src/app/admin`, the platform's `P/` and the owner's level included) and `src/components/admin`. */
+export function adminSources(root) {
+  return [...sources(root, "src/app/admin"), ...sources(root, "src/components/admin")];
+}
+
+/** Counts the admin's action files off the shared wrapper, `<table>`s, native `<select>`s (the kit's `Select` aside), files with a literal Oslo zone and files calling `confirm(`. */
 export function adminRepeats(root) {
   /** @type {Record<string, number>} */
   const out = { unwrappedActionFiles: 0, tables: 0, nativeSelects: 0, osloFiles: 0, confirmFiles: 0 };
-  for (const file of [...sources(root, "src/app/admin"), ...sources(root, "src/components/admin")]) {
+  for (const file of adminSources(root)) {
     const text = readFileSync(path.join(root, file), "utf8");
     if (USE_SERVER_FIRST.test(text) && !WRAPPED_ACTION.test(text)) out.unwrappedActionFiles++;
+    if (CONFIRM_CALL.test(text)) out.confirmFiles++;
     if (!file.endsWith(".tsx")) continue;
     out.tables += count(text, TABLE_TAG);
-    out.nativeSelects += count(text, SELECT_TAG);
+    if (!file.startsWith(ADMIN_KIT)) out.nativeSelects += count(text, SELECT_TAG);
     if (text.includes(OSLO_ZONE)) out.osloFiles++;
-    if (CONFIRM_CALL.test(text)) out.confirmFiles++;
   }
   return out;
+}
+
+/**
+ * A field's box written out by hand (code review step 1.12, FS4): the class string `TextInput`, `Select` and `TextArea` draw
+ * (`min-h-10 rounded-md border border-line bg-card px-3`, a width between, or the dense `min-h-9 … px-2`).
+ */
+export const RAW_FIELD = /\bmin-h-(?:9|10|11)\s+(?:(?:w-\S+|max-w-\S+)\s+)*rounded-md\s+border\s+border-(?:line|edge)\s+bg-card\s+px-[23]\b/g;
+const LINK_OPEN = /<(?:Link|AdminLink|a)(?=[\s>/])/g;
+const PILL_CLASS = /\bclassName=[\s\S]*\brounded-(?:pill|full)\b/;
+
+/** The opening tag that starts at `start`: up to its `>`, past the `>` of an arrow or a comparison inside `{…}` and of a quoted value. */
+function openingTag(text, start) {
+  let depth = 0;
+  let quote = null;
+  for (let i = start + 1; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (depth === 0 && (c === '"' || c === "'")) quote = c;
+    else if (c === "{") depth++;
+    else if (c === "}") depth--;
+    else if (c === ">" && depth === 0) return text.slice(start, i + 1);
+  }
+  return text.slice(start);
+}
+
+/**
+ * Links in `text` made into a pill by hand: a `Link`, `AdminLink` or `a` whose own class string says `rounded-pill` or `rounded-full`
+ * (code review step 1.12; the admin audit's phase 3 lint rule for pills). A link that is a button is `ButtonLink` (`buttonClass()`), a
+ * state is a `Chip`.
+ */
+export function handMadePills(text) {
+  let n = 0;
+  for (const m of text.matchAll(LINK_OPEN)) if (PILL_CLASS.test(openingTag(text, m.index))) n++;
+  return n;
+}
+
+/** The admin's hand-made field boxes and pill links, by file (only files that have one), the kit aside (code review step 1.12). */
+export function adminFiles(root) {
+  /** @type {Record<string, number>} */
+  const rawFields = {};
+  /** @type {Record<string, number>} */
+  const pillLinks = {};
+  for (const file of adminSources(root).sort()) {
+    if (file.startsWith(ADMIN_KIT)) continue;
+    const text = readFileSync(path.join(root, file), "utf8");
+    const fields = count(text, RAW_FIELD);
+    if (fields > 0) rawFields[file] = fields;
+    if (!file.endsWith(".tsx")) continue;
+    const pills = handMadePills(text);
+    if (pills > 0) pillLinks[file] = pills;
+  }
+  return { rawFields, pillLinks };
 }
 
 /** The counts as they stand: untyped reads, writes by id alone and `store_id is not distinct from` uses, by file (only files that have one), and the totals. */
@@ -143,5 +205,5 @@ export function ratchetCounts(root) {
     unknownCasts += count(text, UNKNOWN_CAST);
     anySuppressed += count(text, ANY_SUPPRESSED);
   }
-  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, pageDocumentReads, pagesTagRefreshes, adminRepeats: adminRepeats(root) };
+  return { unknownCasts, anySuppressed, filesOver100Kb, filesOver2000Lines, untypedReads, byIdWrites, notDistinctStore, pageDocumentReads, pagesTagRefreshes, adminRepeats: adminRepeats(root), adminFiles: adminFiles(root) };
 }
