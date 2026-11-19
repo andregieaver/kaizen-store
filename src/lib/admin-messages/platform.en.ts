@@ -295,6 +295,19 @@ export const platformEn = {
     title: "Extensions",
     description:
       "The paid extensions: what each is called, whether it is also sold without a store, its sizes with what they include and their prices, the bundles, and what each plan includes at no extra cost. Prices exclude VAT. A changed price is a new price: accounts on the old one keep it. Until extensions are sold, every account has every extension.",
+    /** Round 63 (D827): the extensions on a phone, each one a row. */
+    phone: {
+      lead: "What each extension costs and includes. Prices exclude VAT.",
+      notSold: "Not sold yet",
+      notSoldSub: "Every account has every extension until launch",
+      launch: "Launch",
+      sizes: { one: "{n} size", many: "{n} sizes" },
+      offered: "offered",
+      notOffered: "not offered",
+      edit: "Edit",
+      open: "Open",
+      close: "Close",
+    },
     notLaunched: "Not sold yet: every account has every extension until extensions are launched.",
     launched: "Sold since {date}.",
     name: "Name",
@@ -1014,6 +1027,9 @@ export const platformEn = {
     next: "Next 100 stores",
     previous: "Previous 100 stores",
     title: "Stores",
+    /** Round 63 (D827): the sandbox row on a phone. */
+    phoneOpen: "Open",
+    phoneClose: "Close",
     description:
       "Each store's plan with Kaizena Flow and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.",
     dreamLink: "Build a store with AI",
