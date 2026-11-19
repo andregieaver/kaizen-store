@@ -217,6 +217,14 @@ async function scriptByIdle(browser: Browser, state: string, address: string, la
 }
 
 type Figures = { document: number; handed: number; scriptByIdle: number };
+
+/**
+ * The words every store and platform screen is handed (`common`, `shell` and the AI manager's button, `assistantBar`): what orders and the
+ * platform home carry. Bloat review step 2.27 aimed at 15.5 KB in English and 16 KB in Norwegian; `common` and `shell` alone are about
+ * 15 KB, and cutting them is not that step's work, so the ceiling holds the figure it reached (step 0.43's rule for a ceiling already
+ * exceeded), with the words' usual room. Lowered, never raised.
+ */
+const SHARED_WORDS: Record<Lang, number> = { en: 16_617, nb: 17_180 };
 const measured: Record<Lang, Partial<Record<ScreenKey, Figures>>> = { en: {}, nb: {} };
 
 test.describe("what a signed-in screen is handed", () => {
@@ -247,6 +255,9 @@ test.describe("what a signed-in screen is handed", () => {
         const where = `${screen.key} in ${lang}`;
         expect(figures.document, `${where}: document ${figures.document} bytes, baseline ${held.document}; ${lower}`).toBeLessThanOrEqual(held.document * 1.05);
         expect(figures.handed, `${where}: words handed ${figures.handed} bytes, baseline ${held.handed}; ${lower}`).toBeLessThanOrEqual(held.handed + Math.max(2_000, held.handed * 0.05));
+        if (screen.key === "orders" || screen.key === "platform") {
+          expect(figures.handed, `${where}: the shared words are ${figures.handed} bytes, ceiling ${SHARED_WORDS[lang]}`).toBeLessThanOrEqual(SHARED_WORDS[lang] + 2_000);
+        }
         expect(figures.scriptByIdle, `${where}: script by idle ${figures.scriptByIdle} bytes, baseline ${held.scriptByIdle}; ${lower}`).toBeLessThanOrEqual(
           held.scriptByIdle * 1.05,
         );
