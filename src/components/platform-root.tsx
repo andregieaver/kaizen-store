@@ -11,7 +11,7 @@ import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { themeAttributes } from "@/lib/theme";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { OffPayRoutes } from "@/components/off-pay-routes";
-import { KaizenChat } from "@/components/site-chat";
+import { HouseChat, KaizenChat } from "@/components/site-chat";
 import { LanguageHint } from "@/components/language-switch";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
@@ -110,7 +110,8 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
         <Suspense fallback={null}>
           <OffPayRoutes>
             <Suspense fallback={null}>
-              <KaizenChat lang={lang} />
+              {/* While the site is served from Kaizena Flow's own store (D484), its assistant on every page; else the platform's. */}
+              {house ? <HouseChat store={house} lang={lang} /> : <KaizenChat lang={lang} />}
             </Suspense>
             <Suspense fallback={null}>
               {house ? (

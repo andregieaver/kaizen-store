@@ -1,5 +1,5 @@
 import { t } from "@/lib/i18n";
-import type { Market } from "@/lib/markets";
+import { homeMarket, inView, type Market } from "@/lib/markets";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
@@ -169,6 +169,19 @@ export async function FrameChat({ widget, shop, widgetKey, host, path }: { widge
       embedded={embedded}
     />
   );
+}
+
+/**
+ * Kaizena Flow's own store's chat on the platform's own routes of kaizenaflow.com (sign-in, plans, the docs) while the site is served from
+ * it (D484): the store's assistant and desk, in its country shown in the page's language, so a visitor meets the same assistant on every
+ * page of the site (step 6 of `docs/platform-parity-plan.md`: the site's visitors on the store's desk).
+ */
+export async function HouseChat({ store, lang }: { store: Store; lang: PlatformLang }) {
+  const home = homeMarket(store);
+  if (!home) return null;
+  const locale = store.localization.locales.find((candidate) => candidate.split("-")[0].toLowerCase() === lang);
+  const market = store.markets.find((candidate) => candidate.lang === lang) ?? (locale ? inView(home, { locale }) : home);
+  return <StoreChat store={store} market={market} />;
 }
 
 /** Kaizen's own chat (D81, D216), on its pages: the agent while it is on, or the desk while support is on. */
