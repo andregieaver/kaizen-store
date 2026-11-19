@@ -1730,7 +1730,7 @@
   "adminRepeats": {
     "unwrappedActionFiles": 232,
     "tables": 163,
-    "nativeSelects": 459,
+    "nativeSelects": 456,
     "osloFiles": 0,
     "confirmFiles": 32
   },
@@ -2819,7 +2819,6 @@
       "src/app/admin/(gated)/platform/apps/page.tsx": 1,
       "src/app/admin/(gated)/platform/challenges/[storeId]/page.tsx": 1,
       "src/app/admin/(gated)/platform/challenges/challenge-form.tsx": 1,
-      "src/app/admin/(gated)/platform/customers/page.tsx": 1,
       "src/app/admin/(gated)/platform/discounts/discount-fields.tsx": 1,
       "src/app/admin/(gated)/platform/domains/page.tsx": 1,
       "src/app/admin/(gated)/platform/integrations/[provider]/page.tsx": 1,
@@ -3042,7 +3041,7 @@
       "src/app/admin/(gated)/[store]/products/bulk/page.tsx": 1,
       "src/app/admin/(gated)/[store]/products/page.tsx": 1,
       "src/app/admin/(gated)/[store]/recommendations/page.tsx": 1,
-      "src/app/admin/(gated)/[store]/reviews/page.tsx": 3,
+      "src/app/admin/(gated)/[store]/reviews/page.tsx": 2,
       "src/app/admin/(gated)/[store]/settings/automation/[ruleId]/page.tsx": 1,
       "src/app/admin/(gated)/[store]/settings/automation/page.tsx": 1,
       "src/app/admin/(gated)/[store]/settings/books/page.tsx": 1,
@@ -3053,7 +3052,6 @@
       "src/app/admin/(gated)/[store]/settings/seo/page.tsx": 1,
       "src/app/admin/(gated)/[store]/setup/[step]/page.tsx": 3,
       "src/app/admin/(gated)/[store]/staff/page.tsx": 3,
-      "src/app/admin/(gated)/[store]/text-messages/page.tsx": 1,
       "src/app/admin/(gated)/[store]/website/page.tsx": 4,
       "src/app/admin/(gated)/[store]/wishlists/activity/page.tsx": 1,
       "src/app/admin/(gated)/platform/capacity/page.tsx": 5,
