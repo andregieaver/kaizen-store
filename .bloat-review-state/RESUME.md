@@ -355,3 +355,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 2.31 pushed dca90b410 (idle -140,911 B every screen; home 812,820 held vs brief 800,000). kz-d: 2.20 (Opus).
 - 19 Nov ~13:30: FREEZE OVER; production dca90b410 (2.4+fix, 2.26, 2.31 live). 2.4 e2e all 710 pass; server-budget cold large home 22 (static made once) accepted a067d25be. Prod check: demo store at demo.kaizenstore.site; home x-vercel-cache HIT prerender; RSC payloads complete (not postponed). Re-check scheduled +2h (then 2.4 D-row).
 - 19 Nov ~14:15: CI-triage session (session_01URyFZPGHhenMtdvim81y9X, owner's request) reported 2 failures from 2.4: theme-switch.spec:168 (bottom bar inside main = late hydration / missing --accent after theme switch) and performance.spec:981 money path routerRequests 21>20 (cart & demo-notatbok prefetched twice). Confirmed in runs 44530466000, 44529582895. Opus fixer a81d172c8e56aa7d4 in kz-b. 2.5 WIP at wip-2.5b (bae93842f) and wip-2.5 (717ef3d66). Reply to triage session sent.
+- 2.29 pushed 5f62939f9 (builder 2,791,016->2,007,139; ProseMirror 26->0 routes; inline editors lazy with block fallback). kz-c: next 2.27.
+
+## 19 Nov ~14:16 UTC
+- 2.29 pushed 5f62939f9; kz-c clean. 2.27 launched in kz-c (Opus a345a7655ca1d69c1, brief $S/run/kz-c-2.27.md).
+- D799 (2.26 Done), D800 (2.29), D801 (2.31) written, pushed 6cc955958. 2.29 and 2.31 In progress: owner's signed-in production checks (press heading <1s; tab past token hour).
+- Running: kz-b fixer a81d172c8e56aa7d4 (2.4 theme-switch + prefetch), kz-d 2.20 ad9d56a175cbbb74f.
+- Owed D-rows: 2.42 (In progress), 2.4 after 15:11 re-check.
