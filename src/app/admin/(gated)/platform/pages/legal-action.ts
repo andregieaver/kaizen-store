@@ -1,6 +1,6 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -39,6 +39,7 @@ export async function setPlatformOfficerAction(_state: FormState, formData: Form
     if (!read.ok) return { status: "error", messages: read.problems };
     const result = await setOfficer(admin.id, platform, null, read.choice);
     if (!result.ok) return { status: "error", messages: result.problems };
+    refresh();
     return { status: "ok", messages: [w.saved] };
   });
 }
