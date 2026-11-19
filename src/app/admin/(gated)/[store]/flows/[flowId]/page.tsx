@@ -6,6 +6,7 @@ import { requireExtension } from "@/components/admin/extension-off";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
@@ -54,6 +55,7 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
   const emails = emailsOf(flow.steps);
   const mayWrite = memberCan(member, "marketing:write");
   const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
+  const checks = flowChecks(flow.steps, languages[0]);
   const firstLocale = Object.keys([...emails.values()][0]?.content ?? {})[0] ?? store.localization.locales[0] ?? "en-GB";
   return (
     <div className="flex flex-col gap-6">
@@ -179,6 +181,21 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
           w={w}
           segments={segmentList}
         />
+      )}
+      {/* The checks before switching on (M3.6): each a line with what to fix; a blocking one keeps Switch on refused. */}
+      {mayWrite && checks.length > 0 && (
+        <Card compact>
+          <div className="flex flex-col gap-2" data-flow-checks>
+            <p className="text-body-strong text-ink">{w.checks.title}</p>
+            <ul className="flex flex-col gap-1.5">
+              {checks.map((c, i) => (
+                <li key={i} className={`text-sm ${c.blocking ? "text-danger-text" : "text-ink-2"}`}>
+                  {checkWords(w, c)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Card>
       )}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">

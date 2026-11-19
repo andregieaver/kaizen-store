@@ -84,3 +84,11 @@ A flow's email's links go through the broadcasts' click route (`/api/marketing/c
 (`flow_id`, `step_id`; a broadcast's or a flow's, never both: `email_clicks_source`), 180 days, in their export and erased with them
 (D754). The condition "if they pressed a link" holds once they pressed a link of this flow since they entered. An email with picks
 keeps its links plain: the picks move its blocks, so a link's key would not name the same block.
+
+## Checks before switching on (19 November 2026, email plan M3.6)
+
+`flowChecks()` (`src/lib/flow-checks.ts`, pure) lists, above Test and Switch on, each email's problem as a line saying what to fix:
+blocking, an email not written in the store's first language (its readers in a missing language would get nothing) or a language half
+written; warning, a picture without a description, one in a format many mail apps do not show, an email near Gmail's 102 KB
+clipping. Switch on is refused while a blocking one stands, in the same words. Links need no check (refused when saved). Broadcasts'
+send checks are the step's next part.
