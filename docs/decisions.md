@@ -785,6 +785,7 @@ this file wins.
 | D783 | **An untouched admin tab asks for notices less often (bloat review step 2.34; 19 November 2026).** The AI manager's notices (`src/components/admin/ai-notices.tsx`, `noticeWait()` in `src/lib/assistant-notices.ts`) are asked for every ten minutes on a tab nobody uses, and every minute while one is unread, an approval waits or the person used the admin in the last minutes; opening the assistant, showing the tab again or changing page (at most once a minute) asks at once, and a hidden tab skips its timed ask. The count stays one statement, now returning `{ unread, waiting }`. An untouched tab asks at most 6 times an hour (60 before); a notice there can be up to ten minutes late. CI green on c30c7d23. The statement statistics a day after the deploy are to be read. Commit c30c7d23. |
 | D784 | **Admin redesign round 51: Export customers, Add a store and Export products on a phone** (claimed 2026-11-19, text follows) | 2026-11-19 | |
 | D785 | **E3 rest: the AI reads the campaigns report and the books' budget (100-day E3)** (claimed 2026-11-19, text follows) | 2026-11-19 | |
+| D786 | **Dates in the store's own time zone: one admin date formatter (code review 1.14, FS5)** (claimed 2026-11-19, text follows) | 2026-11-19 | |
 
 ### Selling from Norway to Sweden and Denmark
 
