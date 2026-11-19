@@ -35,20 +35,21 @@ describe("the tables of redirects and of the 404 report", () => {
   it("are written only by the redirect service (commerce.redirects) and the 404 report's module (the report's tables)", () => {
     const offenders = (table: string, allowed: string[]) =>
       files.filter((f) => writes(table).test(read(f)) && !allowed.includes(rel(f)));
-    expect(offenders("redirects", ["src/server/redirects.ts"])).toEqual([]);
+    // redirect-live.ts writes only a redirect's hit count (`countHit()`, bloat review step 2.20); every other change is the redirect service's.
+    expect(offenders("redirects", ["src/server/redirects.ts", "src/server/redirect-live.ts"])).toEqual([]);
     expect(offenders("not_found_hits", ["src/server/not-found.ts"])).toEqual([]);
     expect(offenders("not_found_ignored", ["src/server/not-found.ts"])).toEqual([]);
     expect(offenders("old_shops", ["src/server/old-shop.ts"])).toEqual([]);
   });
 
-  it("call `commerce.record_not_found()` from the report's module only", () => {
+  it("call `commerce.record_not_found()` from the report's recorder only", () => {
     const callers = files.filter((f) => /record_not_found\s*\(/.test(code(f)));
-    expect(callers.map(rel)).toEqual(["src/server/not-found.ts"]);
+    expect(callers.map(rel)).toEqual(["src/server/not-found-record.ts"]);
   });
 });
 
 describe("the redirect and report modules", () => {
-  const mine = files.filter((f) => /src\/(?:server|lib)\/(?:redirect[a-z-]*|not-found|legacy-path|term-seo)\.ts$/.test(f) && !/redirect-test-support/.test(f));
+  const mine = files.filter((f) => /src\/(?:server|lib)\/(?:redirect[a-z-]*|not-found|not-found-record|store-facts|legacy-path|term-seo)\.ts$/.test(f) && !/redirect-test-support/.test(f));
 
   it("are found by the scan", () => {
     expect(mine.map(rel)).toEqual(
@@ -61,11 +62,13 @@ describe("the redirect and report modules", () => {
         "src/lib/redirects.ts",
         "src/lib/term-seo.ts",
         "src/server/not-found.ts",
+        "src/server/not-found-record.ts",
         "src/server/redirect-export.ts",
         "src/server/redirect-import.ts",
         "src/server/redirect-live.ts",
         "src/server/redirect-resolve.ts",
         "src/server/redirects.ts",
+        "src/server/store-facts.ts",
       ]),
     );
   });
