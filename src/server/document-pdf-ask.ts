@@ -29,24 +29,23 @@ const WAITING = z.object({ documents: col.bool, seals: col.bool });
 /** Whether an invoice or credit note waits for its PDF, or a signed contract for its seal. One statement. `storeId` narrows it, for a test. */
 export async function documentPdfsWaiting(now = new Date(), storeId: string | null = null) {
   const at = now.toISOString();
-  const mine = (alias: string) => (storeId ? sql`and ${sql.raw(alias)}.store_id = ${storeId}::uuid` : sql``);
   return typedRow(
     WAITING,
     sql`select
       exists (
         select 1 from commerce.invoices i
         left join commerce.document_pdf_state s on s.store_id = i.store_id and s.document_type = 'invoice' and s.document_id = i.id
-        where i.pdf_path is null and i.anonymised_at is null ${mine("i")} and coalesce(s.attempts, 0) < ${PDF_ATTEMPTS}
+        where i.pdf_path is null and i.anonymised_at is null ${storeId ? sql`and i.store_id = ${storeId}::uuid` : sql``} and coalesce(s.attempts, 0) < ${PDF_ATTEMPTS}
           and (s.last_attempt_at is null or s.last_attempt_at < ${at}::timestamptz - make_interval(mins => ${RETRY_MINUTES}))
       ) or exists (
         select 1 from commerce.credit_notes c
         left join commerce.document_pdf_state s on s.store_id = c.store_id and s.document_type = 'credit_note' and s.document_id = c.id
-        where c.pdf_path is null and c.anonymised_at is null ${mine("c")} and coalesce(s.attempts, 0) < ${PDF_ATTEMPTS}
+        where c.pdf_path is null and c.anonymised_at is null ${storeId ? sql`and c.store_id = ${storeId}::uuid` : sql``} and coalesce(s.attempts, 0) < ${PDF_ATTEMPTS}
           and (s.last_attempt_at is null or s.last_attempt_at < ${at}::timestamptz - make_interval(mins => ${RETRY_MINUTES}))
       ) as documents,
       exists (
         select 1 from commerce.contracts k
-        where k.status = 'signed' and k.signed_pdf_path is null ${mine("k")} and k.signed_pdf_attempts < ${PDF_ATTEMPTS}
+        where k.status = 'signed' and k.signed_pdf_path is null ${storeId ? sql`and k.store_id = ${storeId}::uuid` : sql``} and k.signed_pdf_attempts < ${PDF_ATTEMPTS}
           and (k.signed_pdf_tried_at is null or k.signed_pdf_tried_at < ${at}::timestamptz - make_interval(mins => ${RETRY_MINUTES}))
       ) as seals`,
   );

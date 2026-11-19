@@ -175,8 +175,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   job). The VAT in the seller's currency is `vatHome` (`homeVatRequirement()`); `vatMain` and `buckets[*]` are what unit 1c reads.
   A new money read here needs a euro scenario in `checkout-kinds.int.test.ts` (it checks the invoice and its credit notes). A PDF
   is `renderToStaticMarkup()` of the same view loaded into Chromium with every request refused (`src/server/invoice-pdf.ts`;
-  Chromium only there, the two PDF routes and `/api/cron/document-pdfs`, each in `outputFileTracingIncludes`; the dispatcher's
-  `documentPdfs` job asks that route while a document waits, D807), stored once in the
+  Chromium only there, the two PDF routes and `/api/cron/document-pdfs`, each in `outputFileTracingIncludes`), stored once in the
   private `documents` bucket, the print page the fallback. The hosted page is `/s/{store}/{market}/account/documents/{token}`
   (token `inv_`/`crn_`, no cookie, noindex, no tracking or chat extras: `isNoExtrasPath()`). Admin: `/admin/{store}/invoices`
   (`orders:read`; CSV and *Check again* `orders:write`), `/admin/{store}/settings/invoices` (owner). Invoicing is off for stores
