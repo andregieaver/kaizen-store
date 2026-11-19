@@ -9,6 +9,9 @@ type Words = {
   afterName: string;
   howIsIt: [string, string];
   again: [string, string];
+  backName: string;
+  missYou: [string, string];
+  lastCall: [string, string];
 };
 
 const WORDS: Record<"nb" | "en", Words> = {
@@ -20,6 +23,9 @@ const WORDS: Record<"nb" | "en", Words> = {
     afterName: "Etter et kjøp",
     howIsIt: ["Hvordan går det med varen?", "Nå har du hatt den en uke. Svar gjerne på denne e-posten hvis noe ikke er som det skal."],
     again: ["Noe nytt til deg", "Takk for sist! Her er noe vi tror du vil like."],
+    backName: "Hent tilbake kunder",
+    missYou: ["Vi savner deg", "Det er en stund siden sist. Se hva som er nytt hos oss."],
+    lastCall: ["Fortsatt her for deg", "Vi har mye nytt siden sist. Kanskje noe for deg?"],
   },
   en: {
     name: "Welcome series",
@@ -29,6 +35,9 @@ const WORDS: Record<"nb" | "en", Words> = {
     afterName: "After a purchase",
     howIsIt: ["How is it going?", "You have had it for a week now. Reply to this email if anything is not as it should be."],
     again: ["Something new for you", "Thank you for last time! Here is something we think you will like."],
+    backName: "Bring back customers",
+    missYou: ["We miss you", "It has been a while. See what is new with us."],
+    lastCall: ["Still here for you", "A lot is new since last time. Perhaps something for you?"],
   },
 };
 
@@ -38,7 +47,7 @@ const email = (id: string, locale: string, [subject, text]: [string, string]) =>
   content: { [locale]: { subject, preview: "", blocks: [{ type: "paragraph" as const, text }] } },
 });
 
-export type Recipe = Pick<FlowInput, "name" | "trigger" | "steps" | "goals" | "replaces">;
+export type Recipe = Pick<FlowInput, "name" | "trigger" | "steps" | "goals" | "replaces" | "triggerDays">;
 
 const wordsFor = (locale: string) => WORDS[locale.startsWith("nb") || locale.startsWith("nn") || locale.startsWith("no") ? "nb" : "en"];
 
@@ -82,8 +91,24 @@ export function afterPurchase(locale: string): Recipe {
   };
 }
 
+/**
+ * Bring back customers (slice 4, M2.3, win-back): 90 days after a person's latest paid order with nothing since, we miss you; two weeks
+ * later, to someone who has still not ordered, one more. Ended by an order. Does the win-back automation's work.
+ */
+export function winBack(locale: string): Recipe {
+  const w = wordsFor(locale);
+  return {
+    name: w.backName,
+    trigger: "customer.lapsed",
+    triggerDays: 90,
+    replaces: "win_back",
+    steps: [email("miss", locale, w.missYou), { id: "wait-14d", kind: "wait", hours: 14 * 24 }, email("last", locale, w.lastCall)],
+    goals: [{ kind: "ordered" }],
+  };
+}
+
 /** The goals a flow starts from on the flows page (M3.1), each with its recipe; in the order shown. */
-export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase } as const;
+export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase, win_back: winBack } as const;
 export type RecipeKey = keyof typeof RECIPES;
 
 /** An automation as saved (D298, D653): its days, words and follow-ups, as `getAutomation()` gives them. */
@@ -98,10 +123,20 @@ export function flowFromAutomation(key: RecipeKey, automation: SavedAutomation, 
   if (!automation.content || Object.keys(automation.content).length === 0) return null;
   const recipe = RECIPES[key](locale);
   const wait = (id: string, days: number | null): FlowInput["steps"] => (days && days > 0 ? [{ id, kind: "wait", hours: days * 24 }] : []);
+  // Win-back's days are the lapse itself (the trigger's), not a wait after it.
+  const lapse = recipe.trigger === "customer.lapsed";
   const steps: FlowInput["steps"] = [
-    ...wait("wait-1", automation.delayDays),
+    ...(lapse ? [] : wait("wait-1", automation.delayDays)),
     { id: "email-1", kind: "email", content: automation.content },
     ...automation.followUps.flatMap((f) => [...wait(`wait-${f.position}`, f.delayDays), { id: `email-${f.position}`, kind: "email" as const, content: f.content }]),
   ];
-  return { name: recipe.name, trigger: recipe.trigger, replaces: recipe.replaces, steps, goals: automation.followUps.length > 0 ? [{ kind: "ordered" }] : [] };
+  return {
+    name: recipe.name,
+    trigger: recipe.trigger,
+    triggerDays: lapse ? (automation.delayDays ?? recipe.triggerDays) : null,
+    replaces: recipe.replaces,
+    steps,
+    // An order ends follow-ups (D653), and a win-back always: its only point is the next order.
+    goals: lapse || automation.followUps.length > 0 ? [{ kind: "ordered" }] : [],
+  };
 }

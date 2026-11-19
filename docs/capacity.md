@@ -134,8 +134,10 @@ Check each of these before you push. Most of them are held by a test that fails 
   and `pg_cron` schedules go in a custom migration (`pnpm exec drizzle-kit generate --custom --name <name>`). Every new
   table gets `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;` with the comment *Row-level security, no policy: the commerce
   schema is private to the server* (see `supabase/migrations/20261016153126_theme_shots.sql`). `pnpm db:check` must
-  pass. **Never apply a migration to production by hand.** After the deploy, record the migration versions in
-  `docs/decisions.md` (Migration versions) and check the Supabase advisors (project `ybsozesfuxuitoacntfo`).
+  pass. **Never apply a migration to production by hand.** After the deploy, check the
+  Supabase advisors (project `ybsozesfuxuitoacntfo`); write a new finding as a line in `docs/audits/psi-followups.md` with the
+  migration's file name, and nothing when the check is clean. The ledger `supabase_migrations.kaizen_files` records what was
+  applied.
 - **Database rules get a test** in `src/db/commerce.test.ts` (PGlite applies every migration).
 - **A new store-owned table** (one with `store_id`) needs:
   - an entry in `COPY_RULES` (`src/lib/store-copy-rules.ts`). Usage rows are `derived`; overrides and peak events

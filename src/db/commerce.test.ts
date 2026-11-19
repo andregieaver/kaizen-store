@@ -177,6 +177,16 @@ describe("reference data", () => {
     );
     await db.query("delete from commerce.flows where id = $1", [rows[0].id]);
   });
+
+  it("gives a lapse flow, and only it, its days from 30 to 730 (D767 slice 4)", async () => {
+    const insert = (trigger: string, days: number | null) =>
+      db.query(`insert into commerce.flows (store_id, name, trigger, trigger_days) values ($1, 'X', $2, $3) returning id`, [store, trigger, days]);
+    await expect(insert("customer.lapsed", null)).rejects.toThrow(/flows_trigger_days/);
+    await expect(insert("customer.lapsed", 10)).rejects.toThrow(/flows_trigger_days/);
+    await expect(insert("order.paid", 90)).rejects.toThrow(/flows_trigger_days/);
+    const { rows } = await insert("customer.lapsed", 90);
+    await db.query("delete from commerce.flows where id = $1", [(rows[0] as { id: string }).id]);
+  });
 });
 
 describe("sequential order numbering", () => {

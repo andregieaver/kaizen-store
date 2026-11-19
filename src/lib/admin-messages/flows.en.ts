@@ -22,6 +22,7 @@ export const flowsEn = {
     start: "Start",
     welcome: { title: "Welcome new subscribers", text: "A welcome the same day; three days later, a thank-you or your best sellers." },
     after_purchase: { title: "Follow up after a purchase", text: "A week after an order, ask how it is going; three weeks later, something new." },
+    win_back: { title: "Bring back customers", text: "When someone has not ordered for 90 days, we miss you; two weeks later, one more." },
   },
   emailLabel: "Email",
   story: {
@@ -29,6 +30,7 @@ export const flowsEn = {
       "subscriber.subscribed": "When someone joins your list:",
       "order.paid": "When someone pays for an order:",
       "checkout.abandoned": "When someone leaves their checkout:",
+      "customer.lapsed": "When someone has not ordered for {n} days:",
     },
     sameDay: "the same day",
     after: { hours: { one: "an hour later", many: "{n} hours later" }, days: { one: "a day later", many: "{n} days later" } },
@@ -45,6 +47,7 @@ export const flowsEn = {
   change: "Change",
   subject: "Subject",
   words: "Words",
+  lapseDays: "Days without an order",
   days: "Days later",
   save: "Save",
   savedTestAgain: "Saved. The flow is off until you test it again.",

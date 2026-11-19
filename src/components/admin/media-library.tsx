@@ -21,6 +21,7 @@ import { useAdminLang, useAdminText } from "./admin-text";
 import { uploadPicture, type Saving, type Upload } from "./image-upload";
 import { compressLibraryFile, type CompressActions } from "./media-compress";
 import { Modal } from "./modal";
+import { PhoneRow, PhoneRows } from "./phone-row";
 import { MakePictureButton, PictureMakerProvider } from "./picture-maker";
 import { uploadVideoFile, type StartVideo } from "./video-upload";
 import { CARD_CLASS } from "@/components/admin/ui";
@@ -176,6 +177,7 @@ export function MediaLibrary({
   }, [items, actions]);
 
   const address = (next: Partial<Query>) => mediaAddress(basePath, { ...query, ...next });
+  const missingAltTitle = (altMissing === 0 ? w.everyHasAlt : countWords(altMissing, w.missingAlt)).replace(/\.$/, "");
 
   return (
     <div className="flex flex-col gap-6">
@@ -189,10 +191,29 @@ export function MediaLibrary({
         </PictureMakerProvider>
       )}
 
-      <AltTexts missing={altMissing} ai={altAi} writeAlts={actions.writeAlts} onChanged={() => router.refresh()} />
+      {/* Round 52 (D788): on a phone the alt texts and the search are rows of one card, each saying what it holds; from `sm` up as before. */}
+      <PhoneRows>
+      <PhoneRow
+        title={missingAltTitle}
+        sub={altAi ? w.phone.aiCan : w.phone.aiCannot}
+        change={w.phone.how}
+        done={w.phone.done}
+        flat
+      >
+        <AltTexts missing={altMissing} ai={altAi} writeAlts={actions.writeAlts} onChanged={() => router.refresh()} />
+      </PhoneRow>
 
       {compress && <CompressAll waiting={waiting} compress={compress} onChanged={() => router.refresh()} />}
 
+      <PhoneRow
+        title={w.phone.find}
+        sub={query.q ? `“${query.q}”` : `${w.sorts[query.sort as keyof typeof w.sorts] ?? ""} · ${w.kinds[query.kind as keyof typeof w.kinds] ?? ""}`}
+        change={w.phone.open}
+        done={w.phone.done}
+        flat
+        last
+        defaultOpen={Boolean(query.q) || query.kind !== "all"}
+      >
       <form
         role="search"
         action={basePath}
@@ -257,6 +278,8 @@ export function MediaLibrary({
           {meaning ? w.searchMeaning : w.searchWords}
         </p>
       </form>
+      </PhoneRow>
+      </PhoneRows>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
       <p role="status" className="text-sm text-muted">

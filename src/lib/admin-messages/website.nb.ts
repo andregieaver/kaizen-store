@@ -432,6 +432,14 @@ export const websiteNb: WebsiteMessages = {
     altTexts: "Alternative tekster.",
     everyHasAlt: "Alle bildene har en alternativ tekst.",
     missingAlt: { one: "1 bilde har ingen alternativ tekst.", many: "{n} bilder har ingen alternativ tekst." },
+    phone: {
+      find: "Finn en fil",
+      aiCan: "KI-en din kan skrive dem",
+      aiCannot: "En KI som ser bilder kan skrive dem",
+      how: "Hvordan",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     aiCan: "KI-en din kan se på hvert bilde og skrive en på alle nettstedets språk; nye bilder får sin innen noen minutter etter at de er lagt til.",
     aiCannot: "Sett opp en KI med en modell som ser bilder under KI-innstillinger, så kan den skrive dem for deg.",
     writingAlts: "Skriver alternative tekster …",
@@ -464,6 +472,7 @@ export const websiteNb: WebsiteMessages = {
   },
   mediaPage: {
     title: "Mediebibliotek",
+    lead: "Alle bilder og videoer {store} har lastet opp.",
     description:
       "Alle bilder og videoer {store} har lastet opp, her eller i en redigering. Legg til mange samtidig, finn dem etter navn eller alternativ tekst, gi bildene alternative tekster (eller la KI-en din skrive dem), og se hvor hver enkelt brukes på nettstedet.",
   },

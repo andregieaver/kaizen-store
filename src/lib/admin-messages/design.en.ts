@@ -488,6 +488,15 @@ export const designEn = {
     notHere: "A demo store's or starting content's look is shared from Kaizena Flow's Themes pages.",
     closed: "Only an open store's look can be shared.",
     yours: "Your themes",
+    phone: {
+      lead: "Your look goes to Kaizena Flow to review; your words and products stay yours.",
+      more: "Description, author and demo pages",
+      by: "By {name}",
+      sentRow: "What is sent",
+      sentSub: "Settings, header, footer, product page, CSS",
+      open: "Open",
+      done: "Done",
+    },
     problems: {
       title: "Give it a name of at most 80 characters.",
       summary: "Keep the line to at most 200 characters.",

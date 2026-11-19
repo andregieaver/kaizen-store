@@ -58,6 +58,25 @@ export const screensEn = {
     renews: "Renews {date}",
     fee: "{fee} % fee on sales",
     manage: "Manage",
+    /** An account billed through its account (D748 E4): one plan for all its stores. */
+    account: {
+      description: "Your account has one plan for every store you own: what it costs, what it includes and its invoices.",
+      title: "Your account's plan: {plan}",
+      none: "Your account has no plan yet",
+      stores: "Every store in your account is on this plan.",
+      line: "{price} / {interval}, excluding VAT",
+      extensions: "Extensions you pay for",
+      extensionLine: "{name}, {size}",
+      extensionEnds: "{name}, {size}: ended, still running until {date}",
+      plans: "Change plan",
+      plansNote: "A change applies at once: the difference is credited or charged on your next invoice. Your extensions come along.",
+      current: "Your plan",
+      invoices: "Latest invoices",
+      invoiceLine: "{number} · {date} · {total}",
+      noInvoices: "No invoices yet.",
+      invoicesUnreachable: "Stripe could not be asked for your invoices just now.",
+      openInvoice: "Open",
+    },
   },
   /** Duplicating one of the account's stores (D129): the page around the wizard. */
   copyPage: {

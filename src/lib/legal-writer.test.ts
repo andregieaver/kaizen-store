@@ -127,6 +127,22 @@ describe("reading the answer", () => {
   it("takes JSON in a code fence, and says when there is none or its shape is wrong", () => {
     expect(readWriterAnswer('```json\n{"sections":[{"topic":"window","blocks":[{"kind":"practical","text":"x"}]}]}\n```')).toMatchObject({ ok: true });
     expect(readWriterAnswer("I cannot help")).toEqual({ ok: false, problem: "The answer is not JSON." });
+  });
+
+  it("reads a cite's keys out of the heading or text the model wrote after them, as production's answers did (19 November 2026)", () => {
+    const answer = (cite: object) => JSON.stringify({ sections: [{ topic: "controller", blocks: [{ kind: "statement", text: "x", cites: [cite] }] }] });
+    const keys = (cite: object) => {
+      const read = readWriterAnswer(answer(cite));
+      if (!read.ok) throw new Error(read.problem);
+      const [c] = read.sections[0].blocks[0].cites ?? [];
+      return [c.source, c.passage, c.quote];
+    };
+    const quote = "identiteten og kontaktopplysningene til den behandlingsansvarlige";
+    expect(keys({ source: "no-popplyl", passage: "gdpr/a13 Artikkel 13. Informasjon som skal gis", quote })).toEqual(["no-popplyl", "gdpr/a13", quote]);
+    expect(keys({ source: "eu-gdpr", passage: "art_6 Article 6 Lawfulness of processing", quote })).toEqual(["eu-gdpr", "art_6", quote]);
+    expect(keys({ source: "[no-popplyl gdpr/a13]", passage: "", quote })).toEqual(["no-popplyl", "gdpr/a13", quote]);
+    expect(keys({ source: "no-arl", passage: "§ 20", quote })).toEqual(["no-arl", "20", quote]);
+    expect(keys({ source: " eu-crd ", passage: " anx_I ", quote })).toEqual(["eu-crd", "anx_I", quote]);
     expect(readWriterAnswer('{"sections":[{"topic":1}]}')).toMatchObject({ ok: false });
   });
 });

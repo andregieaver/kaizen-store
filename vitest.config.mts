@@ -8,6 +8,8 @@ const SKIP = ["src/**/*.int.test.ts", "node_modules/**"];
 // English settled before a test (src/test/admin-english.ts: 93 modules); `db` opens the migrated test database, built once
 // (src/test/test-db-template.ts); `unit` is everything else. Integration tests need a database: `pnpm test:int`. Parts loaded
 // with next/dynamic are drawn whole in both projects that draw parts (D211). src/lib/ci-once.scan.test.ts holds this layout.
+// Bloat review step 2.44, by trial: `db` shares a worker per project (`isolate: false`: 150 s to 108 s, three runs green, one shuffled);
+// `components` does not (16 files leak state between files, 6 to 9 failing in each run), and neither does `unit` (step 0.39).
 // Nothing is set at the root of `test`: arrays there are merged into every project, so a root setup file would come back everywhere.
 export default defineConfig({
   resolve: {
@@ -32,6 +34,7 @@ export default defineConfig({
           include: ["src/db/**/*.test.ts"],
           exclude: SKIP,
           globalSetup: ["src/test/test-db-template.ts"],
+          isolate: false,
           ...SHARED,
         },
       },

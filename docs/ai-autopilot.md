@@ -283,8 +283,8 @@ the platform principal (`store_id` null), with the targets and checks that make 
   A goal is `met` when every target is met; the code marks it, the model never does.
 - Tools (manager tools, so the platform has them too; ungated: goals are staff-only data): `set_goal` (make or change one, by id),
   `list_goals` (each with its progress written by code), `drop_goal`. At most five active goals per store. `set_goal` offers
-  `TOOL_GOAL_TARGETS`: a kind in `HELD_GOAL_TARGETS` is held out of its schema until the agents' eval is recorded with it (D391) and is set
-  on the Autopilot page's Goals meanwhile. None is held: `signup_rate_30d` (*More sign-ups to Kaizena Flow*, below in 17) joined on 19 November 2026.
+  `TOOL_GOAL_TARGETS`: a kind in `HELD_GOAL_TARGETS` (`signup_rate_30d`) is held out of its schema until the agents' eval is recorded with it
+  (D391), and until then is set on the Autopilot page's Goals (*More sign-ups to Kaizena Flow*, below in 17).
 
 ### 7.2 Plans and steps (B1)
 

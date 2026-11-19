@@ -124,8 +124,7 @@ describe("Kaizena Flow's sign-ups per visit (ecosystem plan E5.3, D757)", () => 
 
   it("is held out of the AI manager's set_goal until the agents' eval is recorded with it", () => {
     expect(TOOL_GOAL_TARGETS).toEqual(GOAL_TARGETS.filter((k) => !(HELD_GOAL_TARGETS as readonly string[]).includes(k)));
-    expect(HELD_GOAL_TARGETS).toEqual([]);
-    expect(goalTargetInput.safeParse({ kind: "signup_rate_30d", percent: 2 }).success).toBe(true);
+    expect(goalTargetInput.safeParse({ kind: "signup_rate_30d", percent: 2 }).success).toBe(false);
     expect(goalTargetInput.safeParse({ kind: "conversion_30d", percent: 2 }).success).toBe(true);
   });
 

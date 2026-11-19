@@ -54,4 +54,8 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    words, days and follow-ups (`flowFromAutomation()`). Cart reminders stay their own (D33): they reach shoppers not on the list, on
    checkout's notice, with their own cart; flows reach only the list. *Next:* win-back and the picked kinds (cross-sell, restock, browse),
    which need date triggers and product picks (slice 4's triggers).
-4. **Triggers from the whole system** (M2.3), texts in flows (M2.7) and store actions.
+4. **Triggers from the whole system** (M2.3), texts in flows (M2.7) and store actions. *Part a, 19 November:* the first date trigger,
+   `customer.lapsed` (`DATE_TRIGGERS`): a person on the list whose latest paid order is the flow's days old (30 to 730, `trigger_days`)
+   with nothing paid since, entered once per such order (`lapse:{order}`) by `enterLapsed()`, one statement on each tick while a flow is
+   on, counting only lapses since the flow was switched on (`enabled_at`) and at most three days back. The goal Bring back customers
+   (`winBack()`, replacing the win-back automation, or from its own words) and its days changed under the story's first sentence.

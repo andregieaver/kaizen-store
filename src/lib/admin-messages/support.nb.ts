@@ -466,6 +466,15 @@ export const supportNb: SupportMessages = {
     notPlaceholder: "Ikke en plassholder, så det blir stående som skrevet:",
     save: "Lagre",
     add: "Legg til lagret svar",
+    phone: {
+      lead: "Skriv / i innboksen for å sette inn et.",
+      newRow: "Nytt svar",
+      newSub: "En tittel, teksten, en snarvei om du vil",
+      helpRow: "Hva / fyller ut",
+      helpSub: "Kundens navn, navnet ditt, butikken",
+      open: "Åpne",
+      done: "Ferdig",
+    },
   },
   settings: {
     whoAnswers: "Hvem som svarer kundene dine",

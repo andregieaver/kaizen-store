@@ -83,6 +83,26 @@ describe("commerce.store_plans (D748 E4)", () => {
     ).rejects.toThrow(/organisation_billing_price_plan_fk/);
   });
 
+  it("keeps an account's plan moves under its first store, as a store's own (part two)", async () => {
+    const { organisation, stores } = await account(2);
+    const grow = await plan("Moves grow");
+    const moves = async () =>
+      (await db.query<{ store_id: string; kind: string; mrr_before_minor: string; mrr_after_minor: string }>(
+        "select store_id, kind, mrr_before_minor::text, mrr_after_minor::text from commerce.plan_moves where plan_id = $1 order by id",
+        [grow.plan],
+      )).rows;
+    await db.query("insert into commerce.organisation_billing (organisation_id, plan_id, price_id, mode, status) values ($1, $2, $3, 'live', 'active')", [
+      organisation,
+      grow.plan,
+      grow.price,
+    ]);
+    await db.query("update commerce.organisation_billing set status = 'canceled' where organisation_id = $1", [organisation]);
+    expect(await moves()).toEqual([
+      { store_id: stores[0], kind: "started", mrr_before_minor: "0", mrr_after_minor: "2900" },
+      { store_id: stores[0], kind: "cancelled", mrr_before_minor: "2900", mrr_after_minor: "0" },
+    ]);
+  });
+
   it("takes what the plan includes from the account's own plan once it is billed through its account", async () => {
     const { organisation, stores } = await account();
     const own = await plan("Grants own");

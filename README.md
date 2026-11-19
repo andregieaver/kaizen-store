@@ -15,7 +15,7 @@ The code still says `kaizen` (packages, cookies, the database schema's functions
 2. Read [`docs/platform.md`](docs/platform.md) (stores, members, plans: how one deployment serves many stores).
    [`docs/plan.md`](docs/plan.md) is the research behind the first build, written before the platform was
    multi-tenant: open the section a doc cites, not the whole.
-3. Look up a decision by its number in [`docs/decisions.md`](docs/decisions.md) (`D16`, `D240`, …). Code comments cite them.
+3. Look up a decision by its number: open `docs/decisions/D16.md` (the index is [`docs/decisions.md`](docs/decisions.md)). Code comments cite them.
 4. This Next.js has breaking changes from the one you may know: read the guide in `node_modules/next/dist/docs/` before
    writing Next code ([`AGENTS.md`](AGENTS.md)).
 
@@ -66,9 +66,9 @@ There are no branches or pull requests: a commit to `main` is a deploy (D5). CI 
 - a push with a migration waits for the checks, applies the migration to production (`scripts/db-migrate.mjs`), then deploys;
 - each deploy waits until `/api/health` reports the commit, and fails the job when it does not.
 
-So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change),
-is never applied to production by hand, and has its version recorded in `docs/decisions.md` afterwards. Pushes of `*.md` and
-`docs/**` alone run nothing.
+So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change)
+and is never applied to production by hand. What was applied, and when, is in the ledger `supabase_migrations.kaizen_files`
+(`scripts/db-migrate.mjs`). Pushes of `*.md` and `docs/**` alone run nothing.
 
 ## Where things are
 

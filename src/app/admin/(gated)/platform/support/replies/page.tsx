@@ -27,7 +27,7 @@ export default async function KaizenSupportRepliesPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.platformReplies.title}
-          description={t.pages.platformReplies.description}
+          description={<><span className="sm:hidden">{t.replies.phone.lead}</span><span className="max-sm:hidden">{t.pages.platformReplies.description}</span></>}
         />
         <RepliesManager
           replies={replies}

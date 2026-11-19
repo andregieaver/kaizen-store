@@ -65,9 +65,27 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const { checkout } = await searchParams;
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
+  // A store whose account is billed through its account (D748 E4) has the account's plan: changed on the account's Billing page.
+  const own = await getStoreBilling(store.id);
+  if (own?.byAccount) {
+    const w = adminText(adminLangOf(account.adminLocale), "billing").page;
+    return (
+      <div className="flex flex-col gap-8">
+        <PageHeader title={w.title} description={fillWords(w.accountDescription, { store: store.name })} />
+        <Card title={own.planName ? fillWords(w.accountPlan, { plan: own.planName }) : w.accountNoPlan} className="text-sm" compact>
+          <p>
+            {w.accountBilled}{" "}
+            <Link href="/admin/account/billing" className="font-medium underline underline-offset-2">
+              {w.accountLink}
+            </Link>
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
-  const [billing, plans, matrix, themes, usage, usageByDay, peaks, trialEnd, aiMoney] = await Promise.all([
-    getStoreBilling(store.id),
+  const billing = own;
+  const [plans, matrix, themes, usage, usageByDay, peaks, trialEnd, aiMoney] = await Promise.all([
     listPlans(),
     getFeatureMatrix(),
     storeThemePurchases(store.id),

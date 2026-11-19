@@ -306,13 +306,33 @@ belongs to its plan). `commerce.store_plans` gives each store its account's plan
 has a row, else its own; Kaizena Flow's fee takes the store's own override, then the account's. Readers moved to it: limits, the fee and
 the store's billing read (`getStoreBilling()`, with `byAccount`), setup, the trial job, plan reminders, the platform's home, overview,
 briefing, customers, channels, API, integrations and discounts, the AI manager's and the account assistant's reads, domain prices and the
-control center; plan analytics counts one line per subscription. What a plan includes (`organisation_extension_facts()`,
+control center; plan analytics counts one line per subscription; the house-customers job writes the view's rule out beside the store it reads (through the view each
+store was read twice: CI's query budget). What a plan includes (`organisation_extension_facts()`,
 `extension_on()`) is the account's plan once it has a row (a workspace with no store has one too). Limits of an account with a row: its
 plan's numbers against what its stores use together (each store's count, summed), its stores' overrides at their widest, and
 `stores_owned` counting the account's stores; A/B tests running stays per store (the engine's five are a store's). A store billed through
 its account refuses its own plan actions (choose, cancel, a code, the portal: `ACCOUNT_BILLED`) until part three gives it the account's
 page. Left on the store's own row: the trial pause mark (which store the trial's end made private, now written even without a row), the
 open-plan check when a store closes, and the store's invoices.
+
+**E4 as built, part two (19 November 2026).** `src/server/account-billing.ts` (pure rules in `src/lib/account-billing.ts`): an account's
+one subscription on Kaizena Flow's Stripe account, billed to its first store's Stripe account (`customer_account`, kept on the row; an
+account with no store waits for E7's business details). Its items are the plan's price and each extension bought on its own
+(`syncExtensions()`: a Stripe product per extension, a price per size's price, through the same `syncRecurringPrice()` as the plans). A
+change keeps the items it still wants (no new proration), adds the new and deletes the rest, prorated; one currency and one interval per
+subscription; an extension the plan includes is refused (never paid twice), and a plan change keeps the extensions bought, less any the
+new plan includes. Stripe's word (`applyAccountSubscription()`, from the billing webhook when the subscription names
+`kaizen_organisation_id`, else the store's own path) sets the account's row, makes each extension item a bought row, and ends a bought
+extension taken off or no longer paid for with 14 days of grace. Plan moves and the platform's plan events are kept for an account as for a
+store, under its first store (the one Stripe bills, so Kaizena Flow's sales name the same store); the store triggers now share the two
+functions. Owner and platform actions: choose (Checkout first, then at once), assign (invoiced, for the move), cancel or keep, Stripe's
+portal, invoices.
+
+**E4 as built, part three begun (19 November 2026).** Account → Billing draws the account's one plan first for an account billed through its
+account: price, status and renewal, "every store in your account is on this plan", the extensions it pays for, change plan (the extensions
+come along), the latest invoices, Stripe's page and cancel; the stores' list stays, without the stores' own totals and Manage links. An
+account billed store by store sees the page as before. A moved store's own Billing page says it is on the account's plan and links
+there. Still to come in part three: the platform's accounts list with overrides per account.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

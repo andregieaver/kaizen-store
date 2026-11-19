@@ -14,7 +14,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
 import { FlowCanvas } from "./canvas";
-import { changeFlowEmailAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
+import { changeFlowEmailAction, changeFlowLapseAction, changeFlowWaitAction, switchFlowAction, testFlowAction } from "../actions";
 
 const FIELD = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
@@ -67,7 +67,20 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
       />
       <Card compact>
         <div className="flex flex-col gap-4" data-flow-story>
-          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story)}</p>
+          <p className="text-body-strong text-ink">{storyLead(flow.trigger, flow.goals, w.story, flow.triggerDays)}</p>
+          {/* A lapse flow's days without an order (slice 4), changed where they are said. */}
+          {mayWrite && flow.triggerDays !== null && (
+            <details className="text-sm">
+              <summary className="cursor-pointer font-medium">{w.change}</summary>
+              <ActionForm action={changeFlowLapseAction.bind(null, store.slug, flow.id)} className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="flex flex-col gap-1">
+                  {w.lapseDays}
+                  <input name="days" type="number" min={30} max={730} required defaultValue={flow.triggerDays} className={`${FIELD} w-28`} />
+                </label>
+                <SubmitButton variant="secondary">{w.save}</SubmitButton>
+              </ActionForm>
+            </details>
+          )}
           <ol className="flex flex-col gap-3">
             {lines.map((line) => {
               const content = emails.get(line.stepId)?.content;

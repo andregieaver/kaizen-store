@@ -447,6 +447,14 @@ export const websiteEn = {
     altTexts: "Alt texts.",
     everyHasAlt: "Every picture has an alt text.",
     missingAlt: { one: "1 picture has no alt text.", many: "{n} pictures have no alt text." },
+    phone: {
+      find: "Find a file",
+      aiCan: "Your AI can write them",
+      aiCannot: "An AI that sees pictures can write them",
+      how: "How",
+      open: "Open",
+      done: "Done",
+    },
     aiCan: "Your AI can look at each picture and write one in every language of the site; new pictures get theirs within a few minutes of being added.",
     aiCannot: "Set up an AI with a model that sees pictures under AI settings, and it can write them for you.",
     writingAlts: "Writing alt texts …",
@@ -479,6 +487,7 @@ export const websiteEn = {
   },
   mediaPage: {
     title: "Media library",
+    lead: "Every picture and video {store} has uploaded.",
     description:
       "Every picture and video {store} has uploaded, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let your AI write them), and see where each one is used on the site.",
   },

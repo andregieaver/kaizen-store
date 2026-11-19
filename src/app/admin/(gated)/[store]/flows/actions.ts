@@ -74,7 +74,7 @@ export async function changeFlowEmailAction(storeSlug: string, flowId: string, s
     const text = String(form.get("text") ?? "").trim();
     if (!subject || !text) return refusal(w.problems.words);
     const steps = withEmailWords(flow.steps, stepId, locale, { subject: subject.slice(0, 200), text: text.slice(0, 5000) });
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, steps, goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, steps, goals: flow.goals });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -89,7 +89,7 @@ export async function changeFlowWaitAction(storeSlug: string, flowId: string, st
     if (!flow) return refusal(w.problems.missing);
     const days = Number(form.get("days"));
     if (!Number.isInteger(days) || days < 1 || days > 365) return refusal(w.problems.days);
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, triggerDays: flow.triggerDays, steps: withWaitDays(flow.steps, stepId, days), goals: flow.goals });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -100,14 +100,25 @@ type Place = { afterId: string } | { into: string; branch: "then" | "else" };
 type Flow = NonNullable<Awaited<ReturnType<typeof getFlow>>>;
 
 /** Saves the flow's tree after one change from the canvas (D767 slice 2): a new version, switched off until tested again. Null: refused. */
-async function saveTree(storeSlug: string, flowId: string, change: (flow: Flow, storeId: string) => Promise<FlowStep[] | null> | FlowStep[] | null): Promise<FormState> {
+async function saveTree(
+  storeSlug: string,
+  flowId: string,
+  change: (flow: Flow, storeId: string) => Promise<FlowStep[] | null> | FlowStep[] | null,
+  triggerDays?: number,
+): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: "marketing.flow_saved", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = adminText(lang, "flows");
     const flow = await getFlow(member.store.id, flowId);
     if (!flow) return refusal(w.problems.missing);
     const steps = await change(flow, member.store.id);
     if (!steps) return refusal(w.problems.step);
-    const saved = await saveFlow(member.store.id, member.account.id, flowId, { name: flow.name, trigger: flow.trigger, steps, goals: flow.goals });
+    const saved = await saveFlow(member.store.id, member.account.id, flowId, {
+      name: flow.name,
+      trigger: flow.trigger,
+      triggerDays: triggerDays ?? flow.triggerDays,
+      steps,
+      goals: flow.goals,
+    });
     if (!saved.ok) return refusal(saved.problem);
     refresh();
     return { status: "ok", messages: [w.savedTestAgain] };
@@ -148,4 +159,10 @@ export async function changeFlowConditionAction(storeSlug: string, flowId: strin
     }
     return condition ? withCondition(flow.steps, stepId, condition) : null;
   });
+}
+
+/** Saves a lapse flow's days without an order (slice 4): a new version, switched off until tested again. */
+export async function changeFlowLapseAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const days = Number(form.get("days"));
+  return saveTree(storeSlug, flowId, (flow) => flow.steps, days);
 }

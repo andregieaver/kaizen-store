@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { policyVerdict, type PolicyReason } from "@/lib/contact-policy";
-import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
+import { EVENT_TRIGGERS } from "@/lib/flow-triggers";
 import {
   advance,
   checkFlow,
@@ -64,6 +64,8 @@ export type FlowView = {
   goals: FlowGoal[];
   /** The automation it does the work of (slice 3), or null. */
   replaces: string | null;
+  /** A lapse trigger's days (slice 4), or null. */
+  triggerDays: number | null;
 };
 
 const flowRow = z.object({
@@ -74,6 +76,7 @@ const flowRow = z.object({
   version: col.int,
   tested_version: z.number().int().nullable(),
   replaces: col.text.nullable(),
+  trigger_days: z.number().int().nullable(),
   steps: z.unknown(),
   goals: z.unknown(),
 });
@@ -86,11 +89,12 @@ const viewOf = (r: z.infer<typeof flowRow>): FlowView => ({
   version: r.version,
   tested: r.tested_version === r.version,
   replaces: r.replaces,
+  triggerDays: r.trigger_days,
   steps: z.array(flowStepSchema).parse(r.steps),
   goals: z.array(z.object({ kind: z.literal("ordered") })).parse(r.goals),
 });
 
-const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, v.steps, v.goals
+const FLOW_SELECT = sql`select f.id, f.name, f.trigger, f.enabled, f.version, f.tested_version, f.replaces, f.trigger_days, v.steps, v.goals
   from commerce.flows f join commerce.flow_versions v on v.flow_id = f.id and v.version = f.version`;
 
 /** A store's flows, newest first. */
@@ -115,13 +119,15 @@ export async function saveFlow(storeId: string, accountId: string | null, id: st
   const problems = checkFlow(parsed.data.steps);
   if (problems.length > 0) return { ok: false, problem: problems[0] };
   const { name, trigger, steps, goals, replaces } = parsed.data;
+  const days = parsed.data.triggerDays ?? null;
   const saved = await db().transaction(async (tx) => {
     const [raw] = id
       ? await tx.execute(sql`
-          update commerce.flows set name = ${name}, trigger = ${trigger}, enabled = false, version = version + 1, updated_at = now()
+          update commerce.flows set name = ${name}, trigger = ${trigger}, trigger_days = ${days}, enabled = false, version = version + 1, updated_at = now()
            where store_id = ${storeId}::uuid and id = ${id}::uuid returning id, version`)
       : await tx.execute(sql`
-          insert into commerce.flows (store_id, name, trigger, replaces) values (${storeId}::uuid, ${name}, ${trigger}, ${replaces ?? null}) returning id, version`);
+          insert into commerce.flows (store_id, name, trigger, trigger_days, replaces)
+          values (${storeId}::uuid, ${name}, ${trigger}, ${days}, ${replaces ?? null}) returning id, version`);
     if (!raw) return null;
     const row = savedRow.parse(raw);
     await tx.execute(sql`
@@ -172,7 +178,7 @@ export async function testFlow(storeId: string, id: string): Promise<FlowTest> {
 export async function switchFlow(storeId: string, accountId: string | null, id: string, on: boolean): Promise<"ok" | "replaced" | "untested" | "missing"> {
   const outcome = await db().transaction(async (tx) => {
     const [row] = await tx.execute(sql`
-      update commerce.flows set enabled = ${on}, updated_at = now()
+      update commerce.flows set enabled = ${on}, enabled_at = case when ${on} and not enabled then now() else enabled_at end, updated_at = now()
        where store_id = ${storeId}::uuid and id = ${id}::uuid and (${!on} or tested_version = version) returning replaces`);
     if (!row) return null;
     const replaces = z.object({ replaces: col.text.nullable() }).parse(row).replaces;
@@ -208,7 +214,7 @@ export async function flowReplacing(storeId: string, kind: string): Promise<stri
  * subscribed address of the order or cart. Returns how many runs began.
  */
 export async function enterFlows(): Promise<number> {
-  const batch = await readEventsAfter(READER, { events: FLOW_TRIGGERS, limit: 500 });
+  const batch = await readEventsAfter(READER, { events: EVENT_TRIGGERS, limit: 500 });
   if (!batch.claim) return 0;
   let entered = 0;
   for (const event of batch.events) {
@@ -423,6 +429,36 @@ async function heldBy(
 export const flowRunsPrune = () =>
   sql`delete from commerce.flow_runs where status <> 'running' and ended_at < now() - make_interval(days => ${RUNS_KEEP_DAYS})`;
 
+/** How many days back a lapse is still entered (a pause or a late tick catches up, no further), as automations' catch-up. */
+const LAPSE_CATCH_UP_DAYS = 3;
+
+/**
+ * Enters the people a lapse flow is for (slice 4, M2.3, win-back): a subscribed person whose latest paid order is the flow's days old,
+ * with nothing paid since, once per such order (`lapse:{order}`) and never while a run of theirs is going. Only lapses since the flow
+ * was switched on, and at most `LAPSE_CATCH_UP_DAYS` back, so switching it on or a pause never sends to everyone at once. One statement
+ * for every store; returns how many runs began.
+ */
+export async function enterLapsed(now = new Date()): Promise<number> {
+  const at = now.toISOString();
+  const lapse = sql`(l.placed_at + make_interval(days => f.trigger_days))`;
+  const rows = await db().execute(sql`
+    insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
+    select distinct on (f.id, m.id) f.store_id, f.id, f.version, m.id, 'lapse:' || l.id, '0'
+      from commerce.flows f
+      join commerce.orders l on l.store_id = f.store_id and l.restricted_at is null
+       and l.placed_at <= ${at}::timestamptz - make_interval(days => f.trigger_days)
+       and l.placed_at > ${at}::timestamptz - make_interval(days => f.trigger_days + ${LAPSE_CATCH_UP_DAYS})
+      join commerce.marketing_subscribers m on m.store_id = f.store_id and lower(m.email) = lower(l.email) and m.status = 'subscribed'
+     where f.enabled and f.trigger = 'customer.lapsed' and f.store_id is not null and ${lapse} >= f.enabled_at
+       and exists (select 1 from commerce.orders o where o.store_id = l.store_id and o.id = l.id and ${PAID})
+       and not exists (select 1 from commerce.orders o where o.store_id = l.store_id and lower(o.email) = lower(l.email)
+                        and o.placed_at > l.placed_at and o.restricted_at is null and ${PAID})
+     order by f.id, m.id, l.placed_at desc
+    on conflict do nothing
+    returning id`);
+  return rows.length;
+}
+
 /**
  * The every-minute job's turn: while no flow is switched on anywhere (one read), nothing more; else people enter from the event log and the
  * due runs move on, whose runs may still be going after their flow was switched off. Never throws.
@@ -435,6 +471,7 @@ export async function tickFlows(): Promise<void> {
     );
     if (!any?.on) return;
     await enterFlows();
+    await enterLapsed();
     await runFlows();
   } catch (error) {
     log("error", "flows.tick_failed", {}, error);
