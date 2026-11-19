@@ -814,6 +814,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D809 | **Admin redesign round 56: new segment, Google reviews and wishlists on a phone** | 2026-11-19 | [text](decisions/D809.md) |
 | D810 | **Contracts in the Admin API: read-only, the webhooks' fields and drafts, under customers:read** | 2026-11-19 | [text](decisions/D810.md) |
 | D811 | **Tests for the shopper's payment session, the Stripe payment provider and billing (code review 1.9's next, FH9)** | 2026-11-19 | [text](decisions/D811.md) |
+| D812 | **The dates left after D796: A/B results, the platform activity filter and the admin's zoneless dates** | 2026-11-19 | [text](decisions/D812.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
