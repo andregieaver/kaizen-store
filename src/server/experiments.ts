@@ -25,6 +25,7 @@ import {
 import { experimentsTag } from "@/lib/cache-tags";
 
 import { log } from "./log";
+import { forgetRemembered, remembered } from "./short-memory";
 import { col, typedRows } from "./typed-rows";
 import { unlockSecret } from "./private-secret";
 import { withPageAlts } from "./media-alts";
@@ -65,19 +66,10 @@ export type RunningExperiment = {
 // ---------------------------------------------------------------------------
 
 const MEMO_MS = 20_000;
-const memo = new Map<string, { at: number; value: unknown }>();
-
-async function remembered<T>(key: string, ms: number, load: () => Promise<T>): Promise<T> {
-  const hit = memo.get(key);
-  if (hit && Date.now() - hit.at < ms) return hit.value as T;
-  const value = await load();
-  memo.set(key, { at: Date.now(), value });
-  return value;
-}
 
 /** Forgets what this server knows of a store's tests (others catch up within `MEMO_MS`). */
 export function forgetRunning(storeId: string): void {
-  memo.delete(`running:${storeId}`);
+  forgetRemembered(`running:${storeId}`);
 }
 
 /**
@@ -85,7 +77,7 @@ export function forgetRunning(storeId: string): void {
  * requests do not each ask the database.
  */
 export function runningExperiments(storeId: string): Promise<RunningExperiment[]> {
-  return remembered(`running:${storeId}`, MEMO_MS, async () => {
+  return remembered(`running:${storeId}`, async () => {
     const rows = await db().execute<Row>(sql`
       select e.id, e.target_page_id, p.slug, p.type as target_type, e.traffic_share::float8 as traffic_share, e.audience, e.primary_goal, e.goal_params,
         commerce.page_place(e.store_id, e.target_page_id) as target_role,
@@ -110,15 +102,15 @@ export function runningExperiments(storeId: string): Promise<RunningExperiment[]
         variants: ((r.variants ?? []) as { key: string; share: number; pageId: string | null }[]).map((v) => ({ key: v.key, share: Number(v.share), pageId: v.pageId })),
       }),
     );
-  });
+  }, MEMO_MS);
 }
 
 /** The store an address names, for the proxy: the id of an open store by its slug. */
 export function storeIdOfSlug(slug: string): Promise<string | null> {
-  return remembered(`store:${slug}`, 60_000, async () => {
+  return remembered(`store:${slug}`, async () => {
     const [row] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug} and status = 'active' and not (is_template or starter or sandbox) limit 1`);
     return row ? String(row.id) : null;
-  });
+  }, 60_000);
 }
 
 export type PageExperiment = {

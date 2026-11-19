@@ -7,6 +7,7 @@ import { apexOf } from "@/lib/domain-health";
 import { cleanHoldingRedirect, holdingAnswer, HOLDING_MODES, type HoldingAnswer, type HoldingMode } from "@/lib/holding";
 
 import { audit, type Account } from "./auth";
+import { forgetRemembered, remembered } from "./short-memory";
 import { vercelDomains, type DomainServices } from "./vercel";
 
 type Row = Record<string, unknown>;
@@ -16,23 +17,23 @@ type Row = Record<string, unknown>;
  * instance every 30 seconds, so a change shows within a minute and with no deployment. A zone a store uses is the store's, never held here.
  */
 const MEMO_MS = 30_000;
-const memo = new Map<string, { at: number; answer: HoldingAnswer }>();
 
 export async function holdingFor(host: string): Promise<HoldingAnswer> {
   const apex = apexOf(host.toLowerCase().split(":")[0].replace(/\.$/, ""));
-  const kept = memo.get(apex);
-  if (kept && Date.now() - kept.at < MEMO_MS) return kept.answer;
-  const [row] = await db().execute<Row>(sql`
-    select z.apex, z.holding, z.holding_redirect, g.country from commerce.dns_zones z
-      left join commerce.domain_registrations r on r.apex = z.apex and r.status <> 'transferred_out'
-      left join commerce.domain_registrants g on g.id = r.registrant_id
-     where z.apex = ${apex} and z.status = 'active' and z.store_id is null and z.arrived_at is not null
-     limit 1
-  `);
-  const answer = holdingAnswer(row ? { apex: String(row.apex), holding: String(row.holding), redirect: row.holding_redirect ? String(row.holding_redirect) : null, country: row.country ? String(row.country) : null } : null);
-  if (memo.size > 5_000) memo.clear();
-  memo.set(apex, { at: Date.now(), answer });
-  return answer;
+  return remembered(
+    "holding:" + apex,
+    async () => {
+      const [row] = await db().execute<Row>(sql`
+        select z.apex, z.holding, z.holding_redirect, g.country from commerce.dns_zones z
+          left join commerce.domain_registrations r on r.apex = z.apex and r.status <> 'transferred_out'
+          left join commerce.domain_registrants g on g.id = r.registrant_id
+         where z.apex = ${apex} and z.status = 'active' and z.store_id is null and z.arrived_at is not null
+         limit 1
+      `);
+      return holdingAnswer(row ? { apex: String(row.apex), holding: String(row.holding), redirect: row.holding_redirect ? String(row.holding_redirect) : null, country: row.country ? String(row.country) : null } : null);
+    },
+    MEMO_MS,
+  );
 }
 
 /** The holder's choice for a domain no store uses: the holding page, a redirect, or nothing. */
@@ -47,7 +48,7 @@ export async function setHolding(account: Account, apex: string, mode: string, r
     returning id
   `);
   if (rows.length === 0) return { ok: false, problems: [`${name} isn't one of your domains with its DNS here.`] };
-  memo.delete(name);
+  forgetRemembered("holding:" + name);
   await audit(account.id, null, "account.domain_holding_set", { domain: name, mode });
   return { ok: true };
 }

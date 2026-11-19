@@ -10,7 +10,11 @@ import { emptyIndex, redirectsTag, type RedirectIndex } from "@/lib/redirects";
 import { siteUrl } from "@/lib/site";
 
 import { pgTextArray } from "./pg-arrays";
+import { forgetWhere } from "./short-memory";
 import type { Store } from "./stores";
+
+// This instance's short memory of what the proxy looked up lives in short-memory.ts (bloat review step 2.20); its importers here keep their names.
+export { forgetRemembered, remembered, MEMORY_MS } from "./short-memory";
 
 type Row = Record<string, unknown>;
 /** Anything that can run a statement: the database, or a transaction of it. */
@@ -183,29 +187,9 @@ export async function manualCountOf(storeId: string, run: Executor = db()): Prom
 // After a change: the cache and this server's short memory
 // ---------------------------------------------------------------------------
 
-/** This instance's short memory of what the proxy looked up (so a flood of one address is one query), forgotten when this instance writes a redirect. */
-const memory = new Map<string, { at: number; value: unknown }>();
-export const MEMORY_MS = 5_000;
-const MEMORY_MAX = 2_000;
-
-/** Remembers an answer for a few seconds, per instance; bounded. */
-export async function remembered<T>(key: string, load: () => Promise<T>, ms: number = MEMORY_MS): Promise<T> {
-  const hit = memory.get(key);
-  if (hit && Date.now() - hit.at < ms) return hit.value as T;
-  const value = await load();
-  if (memory.size >= MEMORY_MAX) memory.clear();
-  memory.set(key, { at: Date.now(), value });
-  return value;
-}
-
-/** Forgets one answer this instance remembers. */
-export function forgetRemembered(key: string): void {
-  memory.delete(key);
-}
-
 /** Forgets what this server remembers of a store's redirects (other instances catch up within `MEMORY_MS`). */
 export function forgetRedirects(storeId: string): void {
-  for (const key of memory.keys()) if (key.startsWith(`${storeId}|`)) memory.delete(key);
+  forgetWhere((key) => key.startsWith(`${storeId}|`));
 }
 
 /**
