@@ -21,7 +21,7 @@ export default async function IssueGiftCardPage({ params }: PageProps<"/admin/[s
   const languages = [...new Set(store.localization.locales.map((l) => l.slice(0, 2)))].map((code) => ({ code, label: languageName(code) }));
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: base, label: w.back }} title={w.title} description={w.description} />
+      <PageHeader back={{ href: base, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       <Card compact>
         {memberCan(member, "products:write") ? (
           <IssueGiftCardForm action={issueGiftCardAction.bind(null, store.slug)} currencies={currencies} languages={languages} base={base} words={w} />

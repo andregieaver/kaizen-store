@@ -142,6 +142,13 @@ export const giftCardsEn = {
     language: "Language of the email",
     note: "Why it is issued (for your own records, not shown to them)",
     notePlaceholder: "A make-good for order 1042",
+    phone: {
+      lead: "Worth the amount you give. Its code is shown once.",
+      more: "Who it is for, and why",
+      moreSub: "Optional: an email sends them the code",
+      open: "Open",
+      done: "Done",
+    },
     submit: "Issue the gift card",
   },
   actions: {

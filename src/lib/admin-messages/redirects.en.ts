@@ -185,6 +185,13 @@ export const redirectsEn = {
   },
   oldShop: {
     title: "Your old shop's links",
+    phone: {
+      lead: "Check that every link to your old shop still leads somewhere here.",
+      help: "Only its list of pages is read; nothing changes there.",
+      howSub: "The sitemap, redirects, suggestions",
+      open: "Open",
+      done: "Done",
+    },
     intro: "Moving from Shopify or another shop? Check that every link to your old shop, from Google, other websites and old emails, still leads somewhere here.",
     start: {
       label: "Your old shop's address",

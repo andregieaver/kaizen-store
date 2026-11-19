@@ -5,6 +5,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { OldShopFix, OldShopForget, OldShopStart, OldShopTable } from "@/components/admin/redirects/old-shop-check";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { RedirectsHead } from "@/components/admin/redirects/redirect-head";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -33,7 +34,7 @@ export default async function OldShopPage({ params }: Props) {
   const w = adminText(adminLangOf(account.adminLocale), "redirects");
   return (
     <div className="flex flex-col gap-6">
-      <RedirectsHead slug={store.slug} active="oldShop" title={w.oldShop.title} intro={w.oldShop.intro} words={w} />
+      <RedirectsHead slug={store.slug} active="oldShop" title={w.oldShop.title} intro={<><span className="sm:hidden">{w.oldShop.phone.lead}</span><span className="max-sm:hidden">{w.oldShop.intro}</span></>} words={w} />
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} />
       </Suspense>
@@ -62,7 +63,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
     return (
       <AdminTextScope texts={adminTexts(lang, ["redirects"])}>
         <section className={card}>{canWrite ? <OldShopStart read={actions.read} /> : <p className="text-sm">{o.start.help}</p>}</section>
-        <HowItWorks words={o.notes} />
+        <HowItWorks words={o.notes} phone={o.phone} />
       </AdminTextScope>
     );
 
@@ -137,13 +138,16 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </div>
         )}
       </section>
-      <HowItWorks words={o.notes} />
+      <HowItWorks words={o.notes} phone={o.phone} />
     </AdminTextScope>
   );
 }
 
-function HowItWorks({ words }: { words: { title: string; sitemap: string; leads: string; again: string; words: string } }) {
+function HowItWorks({ words, phone }: { words: { title: string; sitemap: string; leads: string; again: string; words: string }; phone: { howSub: string; open: string; done: string } }) {
+  // Round 57 (D813): on a phone how it works is a row; from `sm` up as before.
   return (
+    <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+    <PhoneRow flat last title={words.title} sub={phone.howSub} change={phone.open} done={phone.done}>
     <Notice title={words.title}>
       <ul className="list-disc pl-5">
         <li>{words.sitemap}</li>
@@ -152,5 +156,7 @@ function HowItWorks({ words }: { words: { title: string; sitemap: string; leads:
         <li>{words.words}</li>
       </ul>
     </Notice>
+    </PhoneRow>
+    </div>
   );
 }

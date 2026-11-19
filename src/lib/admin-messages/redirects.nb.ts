@@ -181,6 +181,13 @@ export const redirectsNb: RedirectsMessages = {
   },
   oldShop: {
     title: "Lenkene til den gamle nettbutikken",
+    phone: {
+      lead: "Sjekk at hver lenke til den gamle butikken fortsatt leder et sted her.",
+      help: "Bare listen over sider leses; ingenting endres der.",
+      howSub: "Nettstedskartet, omdirigeringer, forslag",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     intro: "Flytter du fra Shopify eller en annen nettbutikk? Sjekk at alle lenker til den gamle butikken, fra Google, andre nettsteder og gamle e-poster, fortsatt fører et sted her.",
     start: {
       label: "Adressen til den gamle butikken",

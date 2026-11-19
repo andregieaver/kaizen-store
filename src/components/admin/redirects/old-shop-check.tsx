@@ -86,7 +86,8 @@ export function OldShopStart({ read, initial = "", again = false }: { read: OldS
         </button>
       </div>
       <p id={`${id}-help`} className={hint}>
-        {w.start.help}
+        <span className="sm:hidden">{w.phone.help}</span>
+        <span className="max-sm:hidden">{w.start.help}</span>
       </p>
       {problem && (
         <p role="alert" className="text-sm text-danger-text">
