@@ -234,6 +234,10 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   `src/server/account-billing.ts` (`applyAccountSubscription()` alone writes the account's row and bought extensions from Stripe; metadata
   `kaizen_organisation_id` routes the webhook there). The move to one plan is `moveAccount()` (`src/server/account-move.ts`) alone, under
   `accountLock()`; it alone sets `commerce.billing_move`, which the plan's history and events skip.
+- **Trials, markers and read-only (E5)**: a trial starts only through `startExtensionTrial()` (the owner, once per account per extension).
+  An absent extension's pages show its marker; one in its grace period or read-only opens them under the store frame's banner, matched by
+  `EXTENSION_PATHS` (one list, which `extension-gates.scan.test.ts` reads too); its writes still refuse. Account → Extensions adds or ends
+  one through `setAccountExtension()`.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

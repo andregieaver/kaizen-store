@@ -43,6 +43,29 @@ export const screensEn = {
     plain: "The plain ranking is doing better than the AI's order on this measure: consider switching the AI off for recommendations.",
     ai: "The AI's order is doing clearly better than the plain ranking on this measure: keep it on.",
   },
+  /** Account → Extensions (D748 E5): every extension, the account's standing with it, and one press to try, add or end it. */
+  accountExtensions: {
+    title: "Extensions",
+    description: "Add what your account needs: each extension works in every store you own. Try one free for {days} days first.",
+    notLaunched: "Every extension is part of your account for now. When extensions are sold, you will have a free trial of the ones you use.",
+    from: "From {price} a month",
+    states: {
+      platform: "Included",
+      included: "In your plan",
+      active: "Added",
+      trial: "Free until {date}",
+      grace: "Running until {date}",
+      read_only: "Read-only",
+      absent: "Not added",
+      legacy: "Included for now",
+    },
+    try: "Try free",
+    add: "Add",
+    end: "End",
+    ownerOnly: "Only the account's owner can add or end an extension.",
+    added: "Added.",
+    ended: "Ended. It keeps running for {days} days, then it is read-only.",
+  },
   /** Platform → Plans → Accounts (D748 E4): each account's move from store-by-store billing to one plan. */
   platformAccounts: {
     plans: "Plans",

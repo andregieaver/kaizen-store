@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extensionState, readAllowances, TOPIC_EXTENSIONS, topicOffered, type ExtensionRow, type StateFacts } from "./extensions";
+import { extensionBanners, extensionOfPath, extensionState, readAllowances, TOPIC_EXTENSIONS, topicOffered, type ExtensionRow, type StateFacts } from "./extensions";
 import { WEBHOOK_TOPICS } from "./webhook-topics";
 
 /** An account's standing with one extension (D748, `docs/extensions.md` 4.1). */
@@ -62,5 +62,33 @@ describe("TOPIC_EXTENSIONS", () => {
     expect(topicOffered(without, "work_invoice.paid", now)).toBe(true);
     expect(topicOffered(without, "order.created", now)).toBe(true);
     expect(topicOffered({ extensionFacts: null }, "deal.won", now)).toBe(true);
+  });
+});
+
+describe("extensionOfPath", () => {
+  it("finds the extension whose folder a store admin path is in", () => {
+    expect(extensionOfPath("/deals/123")).toBe("deals");
+    expect(extensionOfPath("settings/books")).toBe("work");
+    expect(extensionOfPath("/settings/company")).toBeNull();
+    expect(extensionOfPath("/support-settings")).toBeNull();
+  });
+});
+
+describe("extensionBanners", () => {
+  it("names an extension in its grace period, with its end, and one that is read-only", () => {
+    const facts = {
+      platform: false,
+      launchedAt: launched,
+      included: ["work" as const],
+      rows: [
+        { extensionId: "deals" as const, row: row({ source: "trial", trialEndsAt: days(-2), graceEndsAt: days(12) }) },
+        { extensionId: "support_desk" as const, row: row({ source: "bought", endedAt: days(-30), graceEndsAt: days(-16) }) },
+      ],
+    };
+    expect(extensionBanners(facts, now)).toEqual([
+      { extension: "support_desk", state: "read_only", until: null },
+      { extension: "deals", state: "grace", until: days(12).toISOString() },
+    ]);
+    expect(extensionBanners({ ...facts, launchedAt: null }, now)).toEqual([]);
   });
 });

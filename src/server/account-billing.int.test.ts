@@ -256,6 +256,17 @@ describe("an account's one subscription (D748 E4 part two)", () => {
     expect(await accounts.applyAccountSubscription(fake.shape({ id: "sub_store", items: [], status: "active", cancel: false, metadata: {} }) as never, "test")).toBe(false);
   });
 
+  it("adds an extension to the running subscription and ends it again (D748 E5)", async () => {
+    expect(await accounts.setAccountExtension(owner, organisation, "work", true, origin)).toEqual({ ok: true });
+    const added = calls("subscriptions.update").at(-1)?.params.items as unknown[];
+    expect(added).toEqual([{ price: expect.any(String) }]);
+    const [on] = await db().execute<Row>(sql`select source, ended_at from commerce.organisation_extensions where organisation_id = ${organisation}::uuid and extension_id = 'work'`);
+    expect(on).toEqual({ source: "bought", ended_at: null });
+    expect(await accounts.setAccountExtension(owner, organisation, "work", false, origin)).toEqual({ ok: true });
+    const [off] = await db().execute<Row>(sql`select ended_at is not null as ended from commerce.organisation_extensions where organisation_id = ${organisation}::uuid and extension_id = 'work'`);
+    expect(off).toEqual({ ended: true });
+  });
+
   it("opens Stripe's portal and lists invoices for the account's customer", async () => {
     expect(await accounts.accountPortalUrl(organisation, `${origin}/admin`)).toEqual({ ok: true, url: "https://billing.stripe.test/account" });
     const [store] = await db().execute<Row>(sql`select account_id from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = 'test'`);

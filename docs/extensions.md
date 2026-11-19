@@ -359,6 +359,17 @@ appears only when a store's plan would end). Moving every account is E5's launch
    extension: its records exist), and sets `extensions_launched_at`. A daily job emails the owner 30, 14 and 3 days before a trial
    ends (3 days for a 14-day one). Sign-ups after launch start with the account's trial on `organisation_billing`, not a store's.
 
+**E5 as built, part one (19 November 2026).** A trial (`startExtensionTrial()` in `src/server/extensions.ts`): one press for the
+account's owner, 14 days (`EXTENSION_TRIAL_DAYS`) at the smallest size with its grace period set with it, refused before launch, for
+Kaizena Flow's own account, for an extension the account has, and a second time. The marker is the page an absent extension's folder
+shows (`requireExtension()`, `ExtensionOffPanel`): its name, what Homer gets (`common.extensions.pitch`), "Try free for 14 days" and
+every extension for the owner, "Ask your account owner" for a member. An extension in its grace period or read-only opens its pages:
+the store frame's banner (`ExtensionBanner`, by `EXTENSION_PATHS`) says until when, or that nothing is sent or changed, with Subscribe;
+its actions and jobs already refuse. Account → Extensions lists each extension with the account's standing and its price from, with try
+free, add (Stripe Checkout when the account pays for nothing yet, else an item on its subscription: `setAccountExtension()`) and end.
+Until launch every account has every extension: the page says so and offers nothing, and no marker or banner shows. Markers on other
+screens, and their dismissal for good (`extension_marker_dismissals`), wait until a screen needs one.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.

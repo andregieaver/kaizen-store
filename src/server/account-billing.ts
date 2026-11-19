@@ -336,7 +336,7 @@ const metadataOf = (organisationId: string, resolved: Resolved): Record<string, 
   ...(resolved.plan && { kaizen_plan_id: resolved.plan.planId, kaizen_price_id: resolved.plan.id }),
 });
 
-const accountTarget = (organisationId: string) => ({ area: "settings" as const, target: { type: "organisation", id: organisationId } });
+const accountTarget = (organisationId: string) => ({ target: { type: "organisation", id: organisationId } });
 
 /** Moves the running subscription to the wanted items at once, prorated: kept items untouched, new ones added, the rest taken off. */
 async function changeItems(actor: Account, organisationId: string, mode: PaymentModeName, stripe: Stripe, subscriptionId: string, resolved: Resolved): Promise<SaveResult> {
@@ -413,6 +413,48 @@ export async function chooseAccountPlan(
       return { ok: false, problems: [stripeProblem(error)] };
     }
   });
+}
+
+/**
+ * The owner adds an extension to the account's subscription, or ends one bought on its own (D748 E5): the subscription keeps its plan and
+ * every other extension; the extension is added at its smallest size in the plan's currency and interval (monthly in the account's currency
+ * without a plan). Without a running subscription, adding one opens Stripe Checkout, as a first plan does.
+ */
+export async function setAccountExtension(
+  owner: Account,
+  organisationId: string,
+  extensionId: ExtensionId,
+  on: boolean,
+  origin: string,
+): Promise<{ ok: true; checkoutUrl?: string } | { ok: false; problems: string[] }> {
+  const billing = await getAccountBilling(organisationId);
+  if (!billing) return { ok: false, problems: [NOT_BILLED_BY_ACCOUNT] };
+  const currency = billing.price?.currency ?? (await accountCurrency(organisationId));
+  const interval = billing.price?.interval ?? "month";
+  const kept = await typedRows(
+    z.object({ id: col.uuid, extension_id: col.text }),
+    sql`
+      select ep.id, oe.extension_id from commerce.organisation_extensions oe
+        join commerce.extension_prices ep on ep.size_id = oe.size_id and ep.active and ep.currency = ${currency} and ep.interval = ${interval}
+       where oe.organisation_id = ${organisationId}::uuid and oe.source = 'bought' and oe.ended_at is null
+    `,
+  );
+  const others = kept.filter((k) => k.extension_id !== extensionId).map((k) => k.id);
+  if (!on) {
+    if (others.length === 0 && !billing.priceId) return cancelAccountPlan(owner, organisationId, "now");
+    return chooseAccountPlan(owner, organisationId, { planPriceId: billing.priceId, extensionPriceIds: others }, origin);
+  }
+  const added = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`
+      select ep.id from commerce.extension_sizes es
+        join commerce.extension_prices ep on ep.size_id = es.id and ep.active and ep.currency = ${currency} and ep.interval = ${interval}
+       where es.extension_id = ${extensionId} and es.active
+       order by es.position, es.created_at limit 1
+    `,
+  );
+  if (!added) return { ok: false, problems: ["That extension has no price in your account's currency yet."] };
+  return chooseAccountPlan(owner, organisationId, { planPriceId: billing.priceId, extensionPriceIds: [...others, added.id] }, origin);
 }
 
 /**
