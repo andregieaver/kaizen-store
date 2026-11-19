@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
-import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
+import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
 import { insertStep, newStep, removeStep, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
 import { getAutomation } from "@/server/automations";
@@ -167,17 +167,18 @@ export async function changeFlowConditionAction(storeSlug: string, flowId: strin
   });
 }
 
-/** Saves a lapse flow's days without an order (slice 4): a new version, switched off until tested again. */
+/** Saves a date trigger's days (slice 4): without an order, or after a view. A new version, switched off until tested again. */
 export async function changeFlowLapseAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
   const days = Number(form.get("days"));
   return saveTree(storeSlug, flowId, (flow) => flow.steps, { triggerDays: days });
 }
 
-/** Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a lapse starts at 90 days. A new version, off until tested. */
+/** Changes what starts a flow (slice 4, M2.3): one of `FLOW_TRIGGERS`; a date trigger starts at its days (`DATE_TRIGGER_DAYS`). A new version, off until tested. */
 export async function changeFlowTriggerAction(storeSlug: string, flowId: string, _state: FormState, form: FormData): Promise<FormState> {
   const trigger = FLOW_TRIGGERS.find((t) => t === form.get("trigger"));
   // No such trigger: the tree change is refused in the owner's words (`problems.step`).
-  return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: trigger === "customer.lapsed" ? 90 : null } : {});
+  const days = trigger && isDateTrigger(trigger) ? DATE_TRIGGER_DAYS[trigger].start : null;
+  return saveTree(storeSlug, flowId, (flow) => (trigger ? flow.steps : null), trigger ? { trigger, triggerDays: days } : {});
 }
 
 /** Puts products picked for each reader in one email (slice 4, D653): `cross_sell`, `replenish`, `browse`, or `none`. A new version, off until tested. */

@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."flows" DROP CONSTRAINT "flows_trigger_days";--> statement-breakpoint
+ALTER TABLE "commerce"."flows" DROP CONSTRAINT "flows_trigger";--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_trigger_days" CHECK (case "commerce"."flows"."trigger" when 'customer.lapsed' then coalesce("commerce"."flows"."trigger_days" between 30 and 730, false) when 'customer.browsed' then coalesce("commerce"."flows"."trigger_days" between 1 and 5, false) else "commerce"."flows"."trigger_days" is null end);--> statement-breakpoint
+ALTER TABLE "commerce"."flows" ADD CONSTRAINT "flows_trigger" CHECK ("commerce"."flows"."trigger" in ('subscriber.subscribed', 'order.paid', 'checkout.abandoned', 'order.sent', 'subscription.started', 'subscription.cancelled', 'form.response', 'quote.requested', 'review.created', 'customer.lapsed', 'customer.browsed'));

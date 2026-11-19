@@ -9,12 +9,13 @@ import { PRODUCT_VIEW_DAYS } from "@/lib/automation-kinds";
 import { consentCookieName, decodeConsent } from "@/lib/cookie-consent";
 
 import { getCustomer } from "./customers";
+import { BROWSE_ON } from "./flows";
 import { log } from "./log";
 
 /**
  * What a signed-in subscriber looked at, for browse abandonment (`docs/100-day-challenge.md` D4, D691). The owner's rule: a product view is
  * kept only for a customer who is signed in to the store, subscribed to its emails, and allowed marketing cookies in the store's own consent,
- * only while the store's browse email is on (switched off, its views go), and never while the browser sends Global Privacy Control or Do Not
+ * only while the store's browse email is on, its automation or a flow that starts from views (switched off, its views go), and never while the browser sends Global Privacy Control or Do Not
  * Track. One row per customer and product holds the latest view; rows go
  * after `PRODUCT_VIEW_DAYS` days (`pruneProductViews()`), and with the customer or the product. Visits stay anonymous (D152): nothing here
  * reaches the visit tables, and nothing is kept for anyone else.
@@ -38,8 +39,8 @@ export async function recordProductView(storeId: string, product: unknown, heade
       from commerce.customers c
       join commerce.products p on p.store_id = c.store_id and p.id = ${parsed.data}::uuid and p.status = 'active'
       where c.store_id = ${storeId}::uuid and c.id = ${customer.id}::uuid
-        -- Only while the store's browse email is on: nothing is kept for an email that will not go.
-        and exists (select 1 from commerce.automations a where a.store_id = c.store_id and a.kind = 'browse' and a.enabled)
+        -- Only while the store's browse email is on (its automation, or a flow that starts from views): nothing is kept for an email that will not go.
+        and ${BROWSE_ON(sql`c.store_id`)}
         and exists (
           select 1 from commerce.marketing_subscribers m
           where m.store_id = c.store_id and lower(m.email) = lower(c.email) and m.status = 'subscribed'

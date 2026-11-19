@@ -65,3 +65,6 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    *Part c:* an email may carry products picked for each reader by code (`picks`: bought together, buy again, looked at; `picksFor()`,
    D653, D691), from their latest paid order; with none to show it is not sent and the run goes on. Customise sets it per email; the goals
    Sell more to buyers and Remind them to buy again (`crossSell()`, `restock()`) replace those automations. Texts (M2.7) wait for 46elks.
+   *Part d:* the date trigger `customer.browsed` (1 to 5 days after a signed-in subscriber's latest product view, nothing paid since,
+   once per day viewed; `enterBrowsed()`) and the goal Remind them what they looked at (`browseReminder()`, replacing the browse
+   automation). Views are kept while the browse automation or such a flow is on (`BROWSE_ON`), and go when the last is off (D691).
