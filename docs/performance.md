@@ -426,6 +426,25 @@ The largest import cycle in `src/server` is 23 files, and one route handler reac
 (1,502, with its reason in `src/server/route-load.baseline.json`). The cold-start helper (step 1.16) added two files to each entry
 that reaches it, three to health, which now reaches the log.
 
+### The proxy imports leaf readers only (bloat review step 2.20)
+
+`src/proxy.ts` runs before every page and prefetch, so it imports six small reader files and nothing else of `src/server`:
+`store-facts.ts` (a store's few-second facts and the private-mode gate), `redirect-resolve.ts` (the shape of a store's addresses and
+the lookup of an address with no country), `not-found-record.ts` (a missing address counted for the 404 report), `holding-read.ts`
+(held domains), `site-switch-read.ts` (Kaizena Flow's site served from its store) and `experiments-running.ts` (running A/B tests),
+beside `private-secret.ts` and the cold-start note. The rule: a feature's cached reads and tag names live in a reader file that
+imports the database client, typed-rows, the log, the short memory (`src/server/short-memory.ts`, which shares a read in flight) and
+pure `src/lib` code; the feature file keeps the writes and imports the reader, never the other way; a reader never imports `auth.ts`;
+tag names live in `src/lib/cache-tags.ts`, which imports nothing. `route-load.graph.test.ts` holds the proxy to 120 files and forbids
+it auth, pages, catalog, stores, seo, stripe, permissions, customers, the page model, the schema, the admin's words, sharp and Stripe.
+
+| The proxy | Before (18 November) | After (19 November, local build) |
+|---|---|---|
+| Source files reached | 321 (1,309 when the review began) | 57 |
+| Chunk bytes listed at start | 2,200.9 KB | 572.2 KB (budget 1,024 KB) |
+| Traced beside it | 60.7 MB | 2.1 MB |
+| Cold load, median of five | about 290 to 330 ms beyond a function that does nothing | 145 ms, 3 ms under `/api/health`'s 148 |
+
 ## Cold starts in production (bloat review step 1.16)
 
 Each server instance notes its first answer once, as the log line `instance.start` and a row in `commerce.instance_starts`: what the

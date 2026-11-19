@@ -178,7 +178,7 @@ commit as the fix.
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | In progress | 18 Nov, 13522625, D778: lists 100 a page from columns, grids from SQL; a week's statistics to read. |
 | 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | Done | 19 Nov, 38759d01, D780: platform frame 17 to 11 statements, cookie scan 14 to 7. |
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
-| 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | In progress | Commits 1-4 of 5 local: proxy 321 to 57 files, chunks 2,200.9 to 572.2 KB, trace 60.7 to 2.1 MB; 1 remembered() (3 before). |
+| 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | In progress | 5 local commits: proxy 321 to 57 files, chunks 2,200.9 to 572.2 KB, trace 60.7 to 2.1 MB; 1 remembered() (3 before). D-row and push: reviewer. |
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Open | |
 | 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | Open | |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
@@ -348,6 +348,8 @@ Change log:
   feed's cards in SQL, the index for the static params and search picker, the pageDocuments list); waiting for review and the D-row.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
+- 19 Nov 2026: step 2.20 carried out locally in five commits (the tag leaf, the shared short memory, the leaf readers, the proxy on
+  them, the docs): the proxy 321 to 57 source files and 2,200.9 to 572.2 KB of chunks; waiting for review, the D-row and the hosts job.
 
 
 **Notes on the steps**

@@ -455,12 +455,13 @@ the registries of 5.6.
 - `redirect-resolve.ts`: `resolveMiss(store, path, query)`: the lookup of 2.1 and 4.1 rule 9 (a bounded recursive query, one round trip, store id and source in the predicate, an entity redirect's target found live in the market asked), returning
   `{ to, redirectId } | null`; `missOrRedirect(shop, path, query = "")` is the one function a route calls (below; `query` is the
   request's `search` where a route has it, a prerendered page has none: only the proxy and dynamic routes carry it); `countHit()`
-  (in `redirects.ts`, the only counter write, in the cached lookup's fill, throttled to one a second per redirect and instance).
+  (in `redirect-live.ts` since bloat review step 2.20, the only counter write, in the cached lookup's fill, throttled to one a
+  second per redirect and instance).
   For an address with no country: `legacyAnswer(pathname, search, hostStore)` (the proxy's: a `{ location }` for a manual
   redirect, a `{ miss }` for the caller to count, null for a path that has a market) and
   `legacyRedirectFor(storeSlug, rest, search)` (the unknown-market route's own lookup of `legacyPathOf()`), both **manual
   redirects only**: an automatic redirect is an address inside a market.
-- `not-found.ts` (server): `recordNotFound()` (calls `commerce.record_not_found()`, throttled per instance, wrapped, never throws), `notFoundReport(store, days)`, `ignoreAddress()`, `redirectFromReport()` (a `createRedirect()` with `origin: 'report'`), `pruneNotFound()` (the daily cron
+- `not-found.ts` (server): `recordNotFound()` (in `not-found-record.ts` since bloat review step 2.20, re-exported here: the one caller of `commerce.record_not_found()`, throttled per instance, wrapped, never throws), `notFoundReport(store, days)`, `ignoreAddress()`, `redirectFromReport()` (a `createRedirect()` with `origin: 'report'`), `pruneNotFound()` (the daily cron
   gains it next to `pruneDataJobs()` in `src/app/api/cron/subscription-reminders/route.ts`, behind the existing authorisation).
 - `redirect-import.ts` / `redirect-export.ts`: the product import's shape, for redirects: `startRedirectUpload()`, `registerRedirectImport()`, `checkRedirectImport()`, `applyRedirectImport()`, `runRedirectCheck()`, `runRedirectApply()`, `redirectExportReader()`
   (an `ExportReader`), `requestRedirectExport()`. `src/server/data-jobs.ts` gets the dispatch (`runJob()` by kind, `readerFor()`, `JOB_KEY`, `AUDIT_MADE`, `AUDIT_DOWNLOADED`, `AREA`), `data-job-store.ts` the kind lists, `data-routes.ts` the `redirects` page, `data-job-emails.ts` the kind's words,
@@ -556,7 +557,7 @@ proxy branch; the A/B proxy test (`ab-routing.test.ts`, `e2e/ab-*.spec.ts`) stay
 
 | Test | Holds |
 |---|---|
-| `redirect-writers.test.ts` (unit, scans `src/`) | only `redirects.ts` and the triggers write `commerce.redirects`; only `not-found.ts` calls `record_not_found()`; no redirect or report module calls `fetch`, `safeFetch` or sets a cookie; every `notFound()` of the five store routes is reached through `missOrRedirect()`; the proxy imports no module that is not on the proxy's allowed list |
+| `redirect-writers.test.ts` (unit, scans `src/`) | only `redirects.ts`, `redirect-live.ts` (the hit count) and the triggers write `commerce.redirects`; only `not-found-record.ts` calls `record_not_found()`; no redirect or report module calls `fetch`, `safeFetch` or sets a cookie; every `notFound()` of the five store routes is reached through `missOrRedirect()`; the proxy imports no module that is not on the proxy's allowed list |
 | `permissions.scan.test.ts` and baseline | every new page and action asks `website:read` or `website:write`; the actions take the store slug as bound first argument |
 | `admin-map` test, `store-nav` test | the five pages are in `ADMIN_PAGES` and exactly one nav group |
 | `src/db/commerce.test.ts` | the three tables are in `COPY_RULES`; `clone_store()` and `duplicate_store()` copy `terms.seo` and no redirect |
