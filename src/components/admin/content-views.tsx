@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import type { ContentSite } from "@/components/admin/content-site";
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -149,16 +150,16 @@ export async function ContentEntriesView({ site, typeId, q }: { site: ContentSit
                     <RowFact className="hidden md:block">{fillWords(w.entries.changed, { when: adminDate(site.timeZone, entry.updatedAt, "day", site.lang) })}</RowFact>
                     {!query && (
                       <RowActions>
-                        <form action={site.actions.move(entry.id, "earlier")}>
+                        <QuietActionForm action={site.actions.move(entry.id, "earlier")}>
                           <Button type="submit" kind="quiet" size="dense" disabled={index === 0} aria-label={fillWords(w.entries.moveEarlier, { title: name })}>
                             {w.entries.earlier}
                           </Button>
-                        </form>
-                        <form action={site.actions.move(entry.id, "later")}>
+                        </QuietActionForm>
+                        <QuietActionForm action={site.actions.move(entry.id, "later")}>
                           <Button type="submit" kind="quiet" size="dense" disabled={index === shown.length - 1} aria-label={fillWords(w.entries.moveLater, { title: name })}>
                             {w.entries.later}
                           </Button>
-                        </form>
+                        </QuietActionForm>
                       </RowActions>
                     )}
                   </ListRow>

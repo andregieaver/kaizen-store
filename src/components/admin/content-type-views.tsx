@@ -6,6 +6,7 @@ import { DeleteContentTypeButton } from "@/components/admin/content-type-delete"
 import { ContentTypeEditor } from "@/components/admin/content-type-editor";
 import type { ContentSite } from "@/components/admin/content-site";
 import { Button, ButtonLink, Card, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { emptyType, typeFromPreset, typeToInput } from "@/lib/content-types";
@@ -70,9 +71,9 @@ export async function ContentTypeSettingsView({ site, typeId }: { site: ContentS
                 {layout ? (
                   <ButtonLink href={`${base}/layouts/${layout.id}`}>{w.layout.edit}</ButtonLink>
                 ) : (
-                  <form action={design(type.id)}>
+                  <QuietActionForm action={design(type.id)}>
                     <Button type="submit">{w.layout.design}</Button>
-                  </form>
+                  </QuietActionForm>
                 )}
               </div>
             )}

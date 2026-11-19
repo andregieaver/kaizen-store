@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/money";
 import { listCampaigns } from "@/server/campaigns";
 import type { Store } from "@/server/stores";
 import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { deleteCampaignAction, setCampaignActiveAction } from "./actions";
 
@@ -104,12 +105,12 @@ export async function automaticTab(store: Store, lang: AdminLang): Promise<{ lea
                     {usedUp ? all.status.used_up : status === "active" ? all.status.running : all.status[status]}
                   </Chip>
                   <RowActions>
-                    <form action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>
+                    <QuietActionForm action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>
                       <Button type="submit" kind="quiet" size="dense">
                         {c.active ? w.switchOff : w.switchOn}
                         <span className="sr-only"> {c.name}</span>
                       </Button>
-                    </form>
+                    </QuietActionForm>
                     <ButtonLink href={`${base}/${c.id}`} kind="quiet" size="dense">
                       {all.codes.edit}<span className="sr-only"> {c.name}</span>
                     </ButtonLink>

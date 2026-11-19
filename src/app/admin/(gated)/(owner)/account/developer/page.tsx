@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { buttonClass, Card, CARD_CLASS, List, ListRow, PageHeader, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -29,7 +30,7 @@ export default async function DeveloperPage({ searchParams }: PageProps<"/admin/
       <div className="flex flex-col gap-8">
         <PageHeader title={w.title} description={w.description} />
         <Card title={w.becomeTitle} description={w.become}>
-          <form action={becomeDeveloperAction} className="flex flex-col gap-3">
+          <QuietActionForm action={becomeDeveloperAction} className="flex flex-col gap-3">
             {problem === "terms" && (
               <p role="alert" className="text-sm text-danger-text">
                 {w.terms}
@@ -50,7 +51,7 @@ export default async function DeveloperPage({ searchParams }: PageProps<"/admin/
                 {w.start}
               </button>
             </div>
-          </form>
+          </QuietActionForm>
         </Card>
       </div>
     );

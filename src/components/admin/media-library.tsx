@@ -219,6 +219,7 @@ export function MediaLibrary({
       >
       <form
         role="search"
+        method="get"
         action={basePath}
         className={`flex flex-wrap items-end gap-3 p-4 ${CARD_CLASS}`}
         onSubmit={(event) => {

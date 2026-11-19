@@ -16,6 +16,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 import { setPlanRemindersAction } from "./actions";
 import { requirePlatformReader } from "@/server/auth";
 import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -58,11 +59,11 @@ export default async function PlanRemindersPage() {
       <Card
         title={settings.enabled ? (active > 0 ? w.on : w.onAllOff) : w.off}
         aside={
-          <form action={setPlanRemindersAction.bind(null, !settings.enabled)}>
+          <QuietActionForm action={setPlanRemindersAction.bind(null, !settings.enabled)}>
             <Button type="submit" kind={settings.enabled ? "secondary" : "main"}>
               {settings.enabled ? w.turnOff : w.turnOn}
             </Button>
-          </form>
+          </QuietActionForm>
         }
         compact
       >

@@ -174,11 +174,21 @@ under *What the router fetches ahead*.
   (`pnpm test:int`, after `scripts/db-setup.mjs --seed`); CI runs them. Pass
   inputs through the same validation the app uses.
 
-## Forms use `ActionForm`, which keeps what was typed when validation fails
+## Forms use `ActionForm` or `QuietActionForm`, which answer where the form is (code review 1.15, D829)
 
-- Forms use `ActionForm`, which keeps what was typed when validation fails.
-  Server actions that change a store call `updateTag()` for its store and
-  catalogue tags.
+- A form bound to a server action is `ActionForm` (`src/components/admin/action-form.tsx`) when its action answers in words, or
+  `QuietActionForm` (`quiet-action-form.tsx`) when it answers by what it does (removes, moves, switches or connects, then refreshes the
+  page or goes elsewhere). Both call the action from a transition, so a refusal keeps what was typed, and post without JavaScript.
+  Server actions that change a store call `updateTag()` for its store and catalogue tags.
+- A refusal that names its fields (`fields`, `formProblems()`) shows each problem under its field (after its hint; at the foot of the
+  kit's `Field`), the field `aria-invalid` and described by it, the first brought into view and focused; the rest are listed at the
+  form's foot. *Saved* is `common.form.saved` unless the action or `successMessage` says more, and it goes on the first edit after it.
+- While it works the form is `aria-busy`, takes no second submission and marks the pressed button `data-submitting` (`admin.css` spins
+  it, so a server page's `Button` needs no state); `SubmitButton` and `ConfirmButton` read the work from `FormWorkContext`, as React's
+  `useFormStatus` does not see an action the form calls itself.
+- A form to an address (a search, a filter, a file to download) says its `method` or has a string action. The ratchet lists per file
+  the forms still bound to an action by hand (`adminFiles.rawActionForms`): those left hold the answer in their own `useActionState` or
+  transition, each named with why in `src/server/ratchet.scan.test.ts`, and a new one is not added.
 
 ## Unsaved work: one leave guard, and drafts kept in the browser (code review 1.16, D787)
 

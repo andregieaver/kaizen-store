@@ -9,6 +9,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -83,11 +84,11 @@ export default async function PlatformIntegrationPage({ params, searchParams }: 
               {integration ? w.changeChannel : w.addToSlack}
             </h2>
             <p className="mb-3 text-sm text-muted">{w.slackAsks}</p>
-            <form action={connectPlatformSlackAction}>
+            <QuietActionForm action={connectPlatformSlackAction}>
               <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
                 {integration ? w.otherChannel : w.addToSlack}
               </button>
-            </form>
+            </QuietActionForm>
           </section>
         )}
 

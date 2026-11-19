@@ -24,6 +24,7 @@ import { adminText } from "@/lib/admin-text";
 import { trialEndOf } from "@/server/store-trial";
 import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import { PeaksForm, UsageDays, UsageLines } from "@/components/admin/usage-limits";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { storePeaks } from "@/server/capacity-events";
 import { addPeakAction, removePeakAction } from "./peak-actions";
 import { storeAiMoney, storeUsageLines, usageDays } from "@/server/usage";
@@ -247,12 +248,12 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           </div>
           {!onPlan && (isOwner || billing?.discount) && codeField}
           {!onPlan && isOwner && reminders && (
-            <form action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
+            <QuietActionForm action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
               {optedOut ? w.noReminders : w.mayRemind}
               <button type="submit" className="underline hover:text-ink">
                 {optedOut ? w.sendReminders : w.stopReminders}
               </button>
-            </form>
+            </QuietActionForm>
           )}
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {offered.map((plan) => (

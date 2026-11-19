@@ -1,4 +1,5 @@
 import { AdminLink, Button, Card, Chip } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
 import { leadKindLinks, type Lead, type LeadSource } from "@/lib/leads";
@@ -59,16 +60,16 @@ export function LeadsList({
                 </div>
                 {actions && (
                   <div className="flex flex-wrap gap-2">
-                    <form action={actions.make(lead.email)}>
+                    <QuietActionForm action={actions.make(lead.email)}>
                       <Button type="submit" kind="main" size="dense" aria-label={fillWords(w.makeDealOf, { name })}>
                         {w.makeDeal}
                       </Button>
-                    </form>
-                    <form action={actions.dismiss(lead.email)}>
+                    </QuietActionForm>
+                    <QuietActionForm action={actions.dismiss(lead.email)}>
                       <Button type="submit" kind="secondary" size="dense" aria-label={fillWords(w.dismissOf, { name })}>
                         {w.dismiss}
                       </Button>
-                    </form>
+                    </QuietActionForm>
                   </div>
                 )}
               </li>

@@ -27,6 +27,7 @@ import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { twoStepStatus } from "@/server/two-step";
 import { PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import {
   accountAvatarAction,
@@ -240,22 +241,22 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
               <p className="text-sm">
                 {fillWords(w.lifeConnected, { as: typeof identity.identity_data?.email === "string" ? fillWords(w.as, { email: identity.identity_data.email }) : "" })}
               </p>
-              <form action={disconnectKaizenLifeAction}>
+              <QuietActionForm action={disconnectKaizenLifeAction}>
                 <button type="submit" className={smallButton}>
                   {w.lifeDisconnect}
                 </button>
-              </form>
+              </QuietActionForm>
             </>
           ) : (
             <>
               <p className="text-sm text-muted">
                 {w.lifeHint}
               </p>
-              <form action={connectKaizenLifeAction}>
+              <QuietActionForm action={connectKaizenLifeAction}>
                 <button type="submit" className={smallButton}>
                   {w.lifeConnect}
                 </button>
-              </form>
+              </QuietActionForm>
             </>
           )}
         </section>
@@ -273,12 +274,12 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
                   {grant.client.name || w.anApp}
                   <span className="block text-xs text-muted">{fillWords(w.since, { date: adminDate(PLATFORM_TIME_ZONE, String(grant.granted_at), "day", lang) })}</span>
                 </span>
-                <form action={revokeAppAction}>
+                <QuietActionForm action={revokeAppAction}>
                   <input type="hidden" name="client" value={grant.client.id} />
                   <button type="submit" className={smallButton}>
                     {w.remove}
                   </button>
-                </form>
+                </QuietActionForm>
               </li>
             ))}
           </ul>

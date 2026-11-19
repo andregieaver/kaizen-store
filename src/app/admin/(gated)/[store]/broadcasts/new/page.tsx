@@ -14,6 +14,7 @@ import { uploadsEnabled } from "@/server/media";
 import { audienceCountAction, deleteTemplateAction, saveBroadcastAction, findBroadcastFactsAction, suggestBroadcastAction, uploadBroadcastPictureAction } from "../actions";
 import { broadcastChoices } from "../editor-props";
 import { requireExtension } from "@/components/admin/extension-off";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 export const metadata: Metadata = { title: "New broadcast" };
 
@@ -67,11 +68,11 @@ export default async function NewBroadcastPage({ params, searchParams }: PagePro
               {own.map((t) => (
                 <li key={t.id} className="flex items-center gap-1">
                   {link(t.id, t.title)}
-                  <form action={deleteTemplateAction.bind(null, store.slug, t.id)}>
+                  <QuietActionForm action={deleteTemplateAction.bind(null, store.slug, t.id)}>
                     <button type="submit" aria-label={`${wb.deleteTemplate}: ${t.title}`} className="rounded-pill px-2 text-muted hover:text-danger-text">
                       ×
                     </button>
-                  </form>
+                  </QuietActionForm>
                 </li>
               ))}
             </ul>

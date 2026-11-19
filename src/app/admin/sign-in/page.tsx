@@ -14,6 +14,7 @@ import { requestAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
 import { kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { buttonClass, FocusFrame } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { signIn, signInWithKaizenLife } from "./actions";
 
@@ -136,12 +137,12 @@ async function KaizenLifeButton({ searchParams, lang }: { searchParams: PageProp
   if (!kaizenLifeSignInOn()) return null;
   const w = adminText(lang, "signIn").signIn;
   return (
-    <form action={signInWithKaizenLife} className="flex flex-col gap-2">
+    <QuietActionForm action={signInWithKaizenLife} className="flex flex-col gap-2">
       {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
       <button type="submit" className={buttonClass("secondary", "card", true)}>
         {w.withKaizenLife}
       </button>
       <p className="text-xs text-muted">{w.kaizenLifeFor}</p>
-    </form>
+    </QuietActionForm>
   );
 }

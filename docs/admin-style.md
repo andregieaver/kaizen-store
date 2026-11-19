@@ -443,6 +443,10 @@ header only.
   confirm word, `danger` for deleting, ending and refusing, `main` for sending.
 - **A list's search and pages**: the Orders bar (a pill of `bg-card` ringed in `edge`: the search icon, the field, the round arrow,
   Filters), and under the list "100 of 150" in `muted` with underlined links to the pages before and after.
+- **A form's answer** (code review 1.15, D829): a refused field's problem under it as `Field` draws one (`text-sm`, `danger-text`,
+  after the hint), the field's border `danger-text`; what names no field at the form's foot, `danger-text`, a list beside the others;
+  *Saved* in `text-sm` at the foot until the next edit. While a form works the pointer is `progress` and the pressed button shows the
+  spinner after its words.
 
 ---
 

@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_KIT, adminSources, ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, handMadePills, OSLO_ZONE, RAW_FIELD, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ADMIN_KIT, adminSources, ANSWERING_FORMS, ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, handMadePills, OSLO_ZONE, RAW_FIELD, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, rawActionForms, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import { selectsDocument } from "./page-documents-test-support";
 import baseline from "./ratchet.baseline.json";
 
@@ -50,6 +50,42 @@ const REPEAT_FIX: Record<string, string> = {
 const FILE_FIX: Record<string, string> = {
   rawFields: "draw the field's box with TextInput, Select or TextArea (and its label with Field) from src/components/admin/ui",
   pillLinks: "a link that is a button is ButtonLink (or buttonClass()), a state is a Chip, from src/components/admin/ui",
+  rawActionForms:
+    "a form bound to a server action is ActionForm (it says Saved, or each problem under its field) or QuietActionForm (it answers by what it does), from src/components/admin; a form to an address says its method",
+};
+
+/** Why the job it does keeps its own form (it answers by itself). */
+const OWN_STATE = "its action is its own useActionState's: the button is busy with `pending` and the state is its answer";
+const OWN_TRANSITION = "it runs its action in a transition of its own (`aria-busy`) and shows what comes back itself: a new key or secret once, or its problem";
+
+/**
+ * The forms still bound to an action by hand (code review step 1.15, D829), each with why: client parts that hold the action's answer in
+ * their own state. Every other admin form bound to a server action is `ActionForm` or `QuietActionForm`. The list is the ratchet's
+ * (`adminFiles.rawActionForms`): a file leaves it once its forms move onto the two, and a new one is not added without its reason.
+ */
+const KEPT_ACTION_FORMS: Record<string, string> = {
+  "src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx": OWN_STATE,
+  "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx": OWN_STATE,
+  "src/components/admin/admin-trail.tsx":
+    "Sign out leaves the admin, so there is nothing to answer; it is in every admin page's frame, where QuietActionForm would add 4 KB to the first scripts of every admin route",
+  "src/components/admin/api-tokens.tsx": OWN_TRANSITION,
+  "src/components/admin/contact-fields-card.tsx": OWN_TRANSITION,
+  "src/components/admin/custom-apps.tsx": OWN_TRANSITION,
+  "src/components/admin/customer-accounts-card.tsx": OWN_TRANSITION,
+  "src/components/admin/demo-content-card.tsx": OWN_STATE,
+  "src/components/admin/demo-home-take.tsx": OWN_STATE,
+  "src/components/admin/developer-apps.tsx": OWN_TRANSITION,
+  "src/components/admin/moving/woo-list.tsx": OWN_STATE,
+  "src/components/admin/no-show-form.tsx": OWN_STATE,
+  "src/components/admin/order-actions.tsx": OWN_STATE,
+  "src/components/admin/orders/capture-card.tsx": OWN_STATE,
+  "src/components/admin/orders/send-parcel.tsx": OWN_STATE,
+  "src/components/admin/review-import-form.tsx": OWN_STATE,
+  "src/components/admin/storefront-tokens.tsx": OWN_TRANSITION,
+  "src/components/admin/subscription-actions.tsx": OWN_STATE,
+  "src/components/admin/support/request-actions.tsx": OWN_STATE,
+  "src/components/admin/webhook-endpoints.tsx": OWN_TRANSITION,
+  "src/components/admin/workflows.tsx": OWN_TRANSITION,
 };
 
 describe("the ratchet (code review 1.2)", () => {
@@ -106,6 +142,14 @@ describe("the ratchet (code review 1.2)", () => {
         .map(([file, n]) => `${file}: ${n} ${key}, baseline ${recordedFiles[key][file] ?? 0}. ${FILE_FIX[key]}. Accepting it on purpose: node scripts/ratchet.mjs --first, and commit the diff.`),
     );
     expect(raised).toEqual([]);
+  });
+
+  it("keeps a form bound to an action by hand only where it answers by itself, each named with why (code review 1.15, D829)", () => {
+    const kept = Object.keys(now.adminFiles.rawActionForms).sort();
+    expect(kept.filter((file) => !(file in KEPT_ACTION_FORMS)).map((file) => `${file}: ${FILE_FIX.rawActionForms}`)).toEqual([]);
+    expect(Object.keys(KEPT_ACTION_FORMS).filter((file) => !kept.includes(file)), "its forms moved onto ActionForm or QuietActionForm: take its line out").toEqual([]);
+    // The two forms are where an action is bound to a <form>: the count sees theirs, and leaves them out.
+    for (const file of ANSWERING_FORMS) expect(rawActionForms(readFileSync(join(process.cwd(), file), "utf8")), file).toBe(1);
   });
 
   it("counts the repeats in every admin page and part: the store's, the platform's and the owner's level (code review 1.12)", () => {
@@ -213,6 +257,11 @@ describe("the ratchet (code review 1.2)", () => {
     expect(handMadePills('<Link\n  href={`/a/${b}`}\n  onClick={() => x > 1 && go()}\n  className={`rounded-full px-2 ${on ? "a" : "b"}`}\n>x</Link> <a href="/y" className="rounded-full">y</a>')).toBe(2);
     expect(handMadePills('<ButtonLink kind="main" href="/x">Go</ButtonLink> <AdminLink href="/x" className={buttonClass("main")}>Go</AdminLink> <Chip>On</Chip>')).toBe(0);
     expect(handMadePills('<a href="/x" className="underline">x</a> <aside className="rounded-full" /> <span className="rounded-pill" />')).toBe(0);
+    // A form bound to an action by hand (step 1.15): a server action, bound or not, or a client function; never a form to an address.
+    expect(rawActionForms('<form action={removeAction.bind(null, slug, id)}><button /></form> <form\n  className="flex"\n  action={save}\n>')).toBe(2);
+    expect(rawActionForms('<form action={(form) => start(async () => { if (a > b) await make(form); })} aria-busy={pending}>')).toBe(1);
+    expect(rawActionForms('<form action="/admin/x"> <form action={`${base}/orders`}> <form method="get" action={base}> <form method="post" action={exportHref}>')).toBe(0);
+    expect(rawActionForms('<form onSubmit={submit}> <formset /> <QuietActionForm action={removeAction}> <ActionForm action={saveAction}>')).toBe(0);
     const tables = new Set(["media", "experiments"]);
     expect(unscopedWrites("sql`delete from commerce.media where id = ${id}::uuid`", tables)).toBe(1);
     expect(unscopedWrites("sql`update commerce.experiments e set status = 'done' where e.id = ${id}::uuid`", tables)).toBe(1);

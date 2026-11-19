@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -53,9 +54,9 @@ export default async function DeleteAccountPage() {
                 {w.signInTitle}
               </h2>
               <p className="text-sm text-muted">{w.signInText}</p>
-              <form action={signInAgainAction}>
+              <QuietActionForm action={signInAgainAction}>
                 <SubmitButton>{w.signIn}</SubmitButton>
-              </form>
+              </QuietActionForm>
             </section>
           ) : (
             <ActionForm action={eraseAccountAction} className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}>

@@ -12,6 +12,7 @@ import { bpsText, type AdminReferrer } from "@/lib/referrals";
 import { requirePlatformReader } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -41,11 +42,11 @@ function ReferrerActions({ referrer, w }: { referrer: AdminReferrer; w: W }) {
   return (
     <div className="flex flex-col gap-2">
       {referrer.blockedAt ? (
-        <form action={unblockReferrerAction.bind(null, referrer.accountId)}>
+        <QuietActionForm action={unblockReferrerAction.bind(null, referrer.accountId)}>
           <button type="submit" className="min-h-9 rounded-pill border border-edge px-3 text-sm">
             {w.unblock}<span className="sr-only"> {referrer.email}</span>
           </button>
-        </form>
+        </QuietActionForm>
       ) : (
         <details>
           <summary className="cursor-pointer text-sm underline">{w.block}</summary>
@@ -253,11 +254,11 @@ export default async function PlatformReferralsPage() {
                     </td>
                     <td className="px-4 py-2">
                       {r.status === "void" ? (
-                        <form action={restoreReferralAction.bind(null, r.id)}>
+                        <QuietActionForm action={restoreReferralAction.bind(null, r.id)}>
                           <button type="submit" className="min-h-9 rounded-pill border border-edge px-3 text-sm">
                             {w.countAgain}<span className="sr-only"> {r.storeName}</span>
                           </button>
-                        </form>
+                        </QuietActionForm>
                       ) : (
                         <details>
                           <summary className="cursor-pointer text-sm underline">{w.void}</summary>

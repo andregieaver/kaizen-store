@@ -3,6 +3,7 @@ import { useId } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { buttonClass, Card, Chip } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { ACTIVITY_DURATION_MAX, ACTIVITY_KINDS, ACTIVITY_NOTE_MAX, ACTIVITY_TITLE_MAX } from "@/lib/activities";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { DealsMessages } from "@/lib/admin-messages/deals.en";
@@ -153,7 +154,7 @@ function DoneMark({ activity: a, words, actions }: { activity: ActivityView; wor
   );
   if (!actions) return <span className={look}>{tick}</span>;
   return (
-    <form action={actions.done(a.id, !a.done)}>
+    <QuietActionForm action={actions.done(a.id, !a.done)}>
       <button
         type="submit"
         aria-label={fillWords(a.done ? words.markOpen : words.markDone, { title: a.title })}
@@ -162,7 +163,7 @@ function DoneMark({ activity: a, words, actions }: { activity: ActivityView; wor
       >
         {tick}
       </button>
-    </form>
+    </QuietActionForm>
   );
 }
 

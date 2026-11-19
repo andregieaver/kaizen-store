@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -79,9 +80,9 @@ export default async function SandboxLooksPage({ params, searchParams }: PagePro
                       {w.keepToUse}
                     </ButtonLink>
                   ) : (
-                    <form action={sandboxUseLookAction.bind(null, sandbox.id, theme.id)}>
+                    <QuietActionForm action={sandboxUseLookAction.bind(null, sandbox.id, theme.id)}>
                       <SubmitButton variant="secondary">{w.use}</SubmitButton>
-                    </form>
+                    </QuietActionForm>
                   )}
                 </div>
               </Card>

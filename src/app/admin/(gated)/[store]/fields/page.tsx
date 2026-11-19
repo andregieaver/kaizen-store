@@ -11,6 +11,7 @@ import { describeLocation, entitiesText } from "@/lib/field-group-editor";
 import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
 import { Button, buttonClass, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import {
   createFromPresetAction,
@@ -83,22 +84,22 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
                   {group.active ? t.on : t.off}
                 </Chip>
                 <RowActions>
-                  <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "up")}>
+                  <QuietActionForm action={moveFieldGroupAction.bind(null, store.slug, group.id, "up")}>
                     <Button type="submit" kind="quiet" size="dense" disabled={index === 0}>
                       {t.moveUp}<span className="sr-only"> {group.name}</span>
                     </Button>
-                  </form>
-                  <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "down")}>
+                  </QuietActionForm>
+                  <QuietActionForm action={moveFieldGroupAction.bind(null, store.slug, group.id, "down")}>
                     <Button type="submit" kind="quiet" size="dense" disabled={index === groups.length - 1}>
                       {t.moveDown}<span className="sr-only"> {group.name}</span>
                     </Button>
-                  </form>
-                  <form action={setFieldGroupActiveAction.bind(null, store.slug, group.id, !group.active)}>
+                  </QuietActionForm>
+                  <QuietActionForm action={setFieldGroupActiveAction.bind(null, store.slug, group.id, !group.active)}>
                     <Button type="submit" kind="quiet" size="dense">
                       {group.active ? t.switchOff : t.switchOn}
                       <span className="sr-only"> {group.name}</span>
                     </Button>
-                  </form>
+                  </QuietActionForm>
                   <ButtonLink href={`${base}/${group.id}`} kind="quiet" size="dense">
                     {t.edit}<span className="sr-only"> {group.name}</span>
                   </ButtonLink>

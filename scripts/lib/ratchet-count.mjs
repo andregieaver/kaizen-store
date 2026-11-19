@@ -8,6 +8,7 @@
 // And the files that import `next/link` directly (bloat review step 2.6, `directLinks`): a link states what it may fetch ahead through
 // `PolicyLink` or `AdminLink`, so only the wrappers in `LINK_WRAPPERS` import it, and the files that still do only fall.
 // Two lists by file (code review step 1.12, D818, `adminFiles`): the admin's field boxes and pill links written out by hand, in place of the kit.
+// A third (code review step 1.15, D829, `adminFiles.rawActionForms`): forms bound to an action by hand, in place of ActionForm or QuietActionForm.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -160,12 +161,36 @@ export function handMadePills(text) {
   return n;
 }
 
-/** The admin's hand-made field boxes and pill links, by file (only files that have one), the kit aside (code review step 1.12). */
+/** The two forms that answer (code review step 1.15, D829): the only place a `<form>` is bound to an action by hand. */
+export const ANSWERING_FORMS = ["src/components/admin/action-form.tsx", "src/components/admin/quiet-action-form.tsx"];
+const FORM_OPEN = /<form(?=[\s>])/g;
+
+/**
+ * Forms in `text` bound to an action by hand (code review step 1.15, finding FS6): a `<form>` whose `action` is an expression and which says
+ * no `method`. Such a form has no busy state and no answer of its own, so it is `ActionForm` (it says *Saved* or what is wrong) or
+ * `QuietActionForm` (it answers by what it does). A form that goes to an address is not one: its `action` is a string or a template
+ * literal, or it says its method (`method="get"` for a search or a filter, `method="post"` to a route that sends a file). A form with no
+ * `action` (its own `onSubmit`) is not counted.
+ */
+export function rawActionForms(text) {
+  let n = 0;
+  for (const m of text.matchAll(FORM_OPEN)) {
+    const tag = openingTag(text, m.index);
+    if (/\smethod=/.test(tag)) continue;
+    const action = tag.match(/\saction=\{\s*(\S)/);
+    if (action && action[1] !== "`") n++;
+  }
+  return n;
+}
+
+/** The admin's hand-made field boxes, pill links and action forms, by file (only files that have one), the kit aside (code review steps 1.12 and 1.15). */
 export function adminFiles(root) {
   /** @type {Record<string, number>} */
   const rawFields = {};
   /** @type {Record<string, number>} */
   const pillLinks = {};
+  /** @type {Record<string, number>} */
+  const actionForms = {};
   for (const file of adminSources(root).sort()) {
     if (file.startsWith(ADMIN_KIT)) continue;
     const text = readFileSync(path.join(root, file), "utf8");
@@ -174,8 +199,10 @@ export function adminFiles(root) {
     if (!file.endsWith(".tsx")) continue;
     const pills = handMadePills(text);
     if (pills > 0) pillLinks[file] = pills;
+    const forms = ANSWERING_FORMS.includes(file) ? 0 : rawActionForms(text);
+    if (forms > 0) actionForms[file] = forms;
   }
-  return { rawFields, pillLinks };
+  return { rawFields, pillLinks, rawActionForms: actionForms };
 }
 
 /** The counts as they stand: untyped reads, writes by id alone, `store_id is not distinct from` uses and direct imports of `next/link`, by file (only files that have one), and the totals. */

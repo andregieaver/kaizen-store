@@ -17,6 +17,7 @@ import { getStore } from "@/server/stores";
 
 import { finishEnrolmentAction, leaveTwoStepAction, startEnrolmentAction } from "../actions";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
 export const metadata: Metadata = { title: signInEn.titles.setUp };
@@ -73,11 +74,11 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
           alreadyOn={alreadyOn}
         />
         {assurance.state === "enrol" && (
-          <form action={leaveTwoStepAction}>
+          <QuietActionForm action={leaveTwoStepAction}>
             <button type="submit" className="text-sm underline">
               {w.twoStep.signOut}
             </button>
-          </form>
+          </QuietActionForm>
         )}
       </FocusFrame>
     </AdminTextProvider>

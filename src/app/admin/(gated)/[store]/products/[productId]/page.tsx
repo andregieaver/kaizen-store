@@ -8,6 +8,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PageSignalsStrip } from "@/components/admin/page-signals-strip";
 import { ProductEditor } from "@/components/admin/product-editor";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { signalPlan } from "@/lib/page-signals";
@@ -70,7 +71,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
           {adminText(lang, "products").passport.link}
         </Link>
       </p>
-      <form
+      <QuietActionForm
         action={archiveProductAction.bind(null, store.slug, productId, !archived)}
         className="border-t border-line pt-4"
       >
@@ -80,7 +81,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
         {!archived && (
           <span className="ml-2 text-sm text-muted">{w.archiveHint}</span>
         )}
-      </form>
+      </QuietActionForm>
     </div>
   );
 }

@@ -51,6 +51,7 @@ import { tagsOf } from "@/server/segments";
 import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
 import { DotChip, Pictures } from "@/components/admin/home/home-parts";
 import { MoreMenu } from "@/components/admin/orders/order-folds";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { orderPreviews } from "@/server/home";
 import { Mail } from "lucide-react";
 
@@ -174,11 +175,11 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {mayTag && (
               <MoreMenu label={words.moreMenu}>
                 {!customer.customerId && (
-                  <form action={addGuestAction.bind(null, store.slug, ref.key)}>
+                  <QuietActionForm action={addGuestAction.bind(null, store.slug, ref.key)}>
                     <button type="submit" className={menuItem}>
                       {all.staff.edit.makeAccount}
                     </button>
-                  </form>
+                  </QuietActionForm>
                 )}
                 {customer.customerId && (
                   <AdminLink href={`${base}/customers/${ref.key}/merge`} className={menuItem}>
@@ -446,21 +447,21 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                   <li key={tag.key} className="inline-flex items-center gap-1 rounded-pill bg-sunken px-3 py-1">
                     {tag.label}
                     {mayTag && (
-                      <form action={removeCustomerTagAction.bind(null, store.slug, ref.key, tag.key)}>
+                      <QuietActionForm action={removeCustomerTagAction.bind(null, store.slug, ref.key, tag.key)}>
                         <button type="submit" aria-label={fillWords(words.removeTag, { tag: tag.label })} className="rounded-pill px-1 text-muted hover:text-ink">
                           ×
                         </button>
-                      </form>
+                      </QuietActionForm>
                     )}
                   </li>
                 ))}
               </ul>
             )}
             {mayTag && (
-              <form action={addCustomerTagAction.bind(null, store.slug, ref.key)} className="mt-3 flex gap-2">
+              <QuietActionForm action={addCustomerTagAction.bind(null, store.slug, ref.key)} className="mt-3 flex gap-2">
                 <input name="tag" maxLength={40} required aria-label={words.newTag} placeholder={words.addTag} className="min-h-10 min-w-0 flex-1 rounded-md border border-line px-3" />
                 <SubmitButton>{words.add}</SubmitButton>
-              </form>
+              </QuietActionForm>
             )}
           </section>
           <CustomerMarketing

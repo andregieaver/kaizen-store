@@ -104,10 +104,11 @@ export const commonEn = {
     noteSwitch: "Switch it on under Features",
     noteOwner: "An owner can switch it on under Settings, Features",
   },
-  /** What forms say on their own (`SubmitButton`, `PasswordField`; `ConfirmButton`'s way back, code review 1.12). */
+  /** What forms say on their own (`SubmitButton`, `PasswordField`; `ConfirmButton`'s way back, code review 1.12; `ActionForm`'s *Saved*, 1.15). */
   form: {
     working: "Working …",
     cancel: "Cancel",
+    saved: "Saved.",
     show: "Show",
     hide: "Hide",
     delete: "Delete",

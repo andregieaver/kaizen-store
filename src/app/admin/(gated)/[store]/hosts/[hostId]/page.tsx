@@ -11,6 +11,7 @@ import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -146,14 +147,14 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         </Link>
       </section>
       {owner && (
-        <form action={setHostDisabledAction.bind(null, store.slug, host.id, !host.disabled)}>
+        <QuietActionForm action={setHostDisabledAction.bind(null, store.slug, host.id, !host.disabled)}>
           <button type="submit" className="min-h-10 rounded-pill border border-edge px-3 text-sm">
             {host.disabled ? w.giveBack : w.takeAway}
           </button>
           <span className="ml-2 text-sm text-muted">
             {host.disabled ? w.giveBackHint : w.takeAwayHint}
           </span>
-        </form>
+        </QuietActionForm>
       )}
     </div>
   );

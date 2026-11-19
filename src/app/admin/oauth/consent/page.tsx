@@ -13,6 +13,7 @@ import { isOwner } from "@/server/kaizen-life";
 
 import { decideConsentAction } from "./actions";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
 export const metadata: Metadata = { title: signInEn.titles.consent };
@@ -57,12 +58,12 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
       <FocusFrame lang={lang}>
         <FocusHeading title={w.ownersTitle} />
         <p className="text-sm">{fillWords(w.ownersText, { email: account.email })}</p>
-        <form action={decideConsentAction}>
+        <QuietActionForm action={decideConsentAction}>
           <input type="hidden" name="authorization_id" value={id} />
           <button type="submit" name="decision" value="deny" className={`${button} border border-line`}>
             {w.goBack}
           </button>
-        </form>
+        </QuietActionForm>
       </FocusFrame>
     );
   }
@@ -96,7 +97,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
         </p>
       )}
       <p className="text-sm">{fillWords(w.shares, { app, shares: shares.length > 0 ? shares.join(", ") : w.whoYouAre, email: account.email })}</p>
-      <form action={decideConsentAction} className="flex gap-3">
+      <QuietActionForm action={decideConsentAction} className="flex gap-3">
         <input type="hidden" name="authorization_id" value={id} />
         <button type="submit" name="decision" value="approve" className={`${button} bg-brand text-brand-ink`}>
           {w.allow}
@@ -104,7 +105,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
         <button type="submit" name="decision" value="deny" className={`${button} border border-line`}>
           {w.cancel}
         </button>
-      </form>
+      </QuietActionForm>
       <p className="text-xs text-muted">
         {w.takeBack}{" "}
         <Link href="/admin/account" className="underline">

@@ -14,6 +14,7 @@
 //
 // And five counts of the admin's hand-made repeats (bloat review step 1.17): action files off storeAction()/platformAction(), tables, native selects, literal Europe/Oslo and confirm( calls.
 // And, per file, the admin's hand-made field boxes and pill links (code review step 1.12, D818: `adminFiles.rawFields`, `adminFiles.pillLinks`), the kit in src/components/admin/ui aside.
+// And, per file, the admin's forms bound to an action by hand (code review step 1.15, D829: `adminFiles.rawActionForms`), ActionForm and QuietActionForm aside.
 //
 // It refuses to raise a number: a file with more unchecked reads than its baseline, a file that had none, or a total that
 // went up is said and nothing is written. Make the new read typed (`typedRows()`) or the cast unneeded instead.

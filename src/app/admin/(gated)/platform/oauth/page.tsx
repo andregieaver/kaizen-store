@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { buttonClass, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -51,16 +52,16 @@ export default async function PlatformOAuthPage() {
                   }
                 />
                 <RowActions>
-                  <form action={verifyClientAction.bind(null, client.id, !client.verified)}>
+                  <QuietActionForm action={verifyClientAction.bind(null, client.id, !client.verified)}>
                     <button type="submit" className={buttonClass("secondary", "dense")}>
                       {client.verified ? w.unverify : w.verify}
                     </button>
-                  </form>
-                  <form action={blockClientAction.bind(null, client.id, !client.blocked)}>
+                  </QuietActionForm>
+                  <QuietActionForm action={blockClientAction.bind(null, client.id, !client.blocked)}>
                     <button type="submit" className={buttonClass(client.blocked ? "secondary" : "danger", "dense")}>
                       {client.blocked ? w.unblock : w.block}
                     </button>
-                  </form>
+                  </QuietActionForm>
                 </RowActions>
               </ListRow>
             ))}
