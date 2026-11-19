@@ -279,7 +279,7 @@ function ShopTools({ store, market }: Props) {
       )}
       <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="heart" />
-        <WishlistCount store={store.slug} market={market.slug} storeId={store.id} />
+        <WishlistCount base={base} />
         <span className="sr-only">{m.wishlist.title}</span>
       </Link>
       <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>

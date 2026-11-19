@@ -167,7 +167,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
             <WishlistHeart
               store={store.slug}
               market={market.slug}
-              storeId={store.id}
+              base={base}
               productId={product.id}
               placement="page"
               labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
@@ -683,7 +683,6 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
         market={market}
         m={m}
         store={store.slug}
-        storeId={store.id}
         base={marketPath(store.slug, market.slug)}
         sizedColumns
         notices={ctx.campaigns}

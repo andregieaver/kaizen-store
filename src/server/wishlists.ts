@@ -10,7 +10,6 @@ import type { Market } from "@/lib/markets";
 
 import { changeLine } from "./cart";
 import { getCustomer } from "./customers";
-import { markMine } from "./mine-marker";
 import { convertedSql, OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
@@ -29,8 +28,19 @@ export const MAX_ITEMS = 200;
 const COOKIE_DAYS = 365;
 
 const cookieName = (storeId: string) => `wishlist_${storeId}`;
-// The marker lives in its own module, so the cart can set it without importing this file (which imports the cart).
-export { markMine, mineCookieName } from "./mine-marker";
+/** The marker that tells the page its visitor may have saved products (not httpOnly: the hearts' script reads it; only ever '1'). */
+export const mineCookieName = (storeId: string) => `kaizen_mine_${storeId}`;
+
+export async function markMine(storeId: string): Promise<void> {
+  const jar = await cookies();
+  jar.set(mineCookieName(storeId), "1", {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: COOKIE_DAYS * 24 * 60 * 60,
+  });
+}
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 

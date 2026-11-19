@@ -117,7 +117,7 @@ export async function ProductListing({
       {products.length === 0 ? (
         <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
       ) : (
-        <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} hrefFor={hrefFor} tracked={tracked} notices={notices} />
+        <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} notices={notices} />
       )}
       {(more || (asGiven && givenMore)) && page < LISTING_PAGES_MAX && (
         <div className="flex flex-col items-center gap-2 pt-2">
@@ -226,7 +226,6 @@ export function ProductGrid({
   market,
   m,
   store,
-  storeId,
   base,
   hrefFor,
   tracked = false,
@@ -237,8 +236,6 @@ export function ProductGrid({
   market: Market;
   m: Messages;
   store: string;
-  /** The store's id, for the hearts' marker cookie. */
-  storeId: string;
   base: string;
   hrefFor?: (product: GridProduct, index: number) => string;
   tracked?: boolean;
@@ -261,7 +258,6 @@ export function ProductGrid({
           market={market}
           m={m}
           store={store}
-          storeId={storeId}
           base={base}
           notices={notices}
         />
