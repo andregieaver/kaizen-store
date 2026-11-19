@@ -11,7 +11,7 @@ import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
-import { getFlow } from "@/server/flows";
+import { flowReach, getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
@@ -56,6 +56,7 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
   const mayWrite = memberCan(member, "marketing:write");
   const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
   const checks = flowChecks(flow.steps, languages[0]);
+  const reach = mayWrite ? await flowReach(store.id, flow.trigger, flow.triggerDays) : 0;
   const firstLocale = Object.keys([...emails.values()][0]?.content ?? {})[0] ?? store.localization.locales[0] ?? "en-GB";
   return (
     <div className="flex flex-col gap-6">
@@ -199,6 +200,10 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
       )}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">
+          {/* The dry run's reach (M3.5): from real data, nothing sent; Test below walks one real person through it. */}
+          <p className="w-full text-body text-ink-2" data-flow-reach>
+            {reach === 0 ? w.reach.none : reach === 1 ? w.reach.one : w.reach.many.replace("{n}", String(reach))}
+          </p>
           {!flow.enabled && !flow.tested && <p className="w-full text-body text-ink-2">{w.untested}</p>}
           <ActionForm action={testFlowAction.bind(null, store.slug, flow.id)} className="flex flex-col gap-2">
             <SubmitButton variant={flow.tested ? "secondary" : "primary"}>{w.test}</SubmitButton>

@@ -320,4 +320,20 @@ describe("flows (D767)", () => {
     await fl.switchFlow(storeId, owner, saved.id, false);
     vi.unstubAllEnvs();
   });
+
+  it("says about how many people would start a flow, from the last 30 days, sending nothing (M3.5)", async () => {
+    const before = await fl.flowReach(storeId, "subscriber.subscribed", null);
+    const lone = await subscriber(`reach-lone-${run}@example.com`);
+    await joined(lone);
+    expect(await fl.flowReach(storeId, "subscriber.subscribed", null)).toBe(before + 1);
+    // A paid order's event names its buyer on the list.
+    const buyer = `reach-buyer-${run}@example.com`;
+    await subscriber(buyer);
+    await paidOrder(buyer, new Date());
+    const [order] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid and email = ${buyer}`);
+    const sentBefore = await fl.flowReach(storeId, "order.sent", null);
+    await db().execute(sql`select commerce.queue_integration_event(${storeId}::uuid, 'order.sent', ${String(order.id)}::uuid)`);
+    expect(await fl.flowReach(storeId, "order.sent", null)).toBe(sentBefore + 1);
+    expect(await fl.flowReach(storeId, "customer.lapsed", 90)).toBeGreaterThanOrEqual(0);
+  });
 });

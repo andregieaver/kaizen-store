@@ -68,6 +68,11 @@ export const flowsNb: FlowsMessages = {
     picture_format: "Et bilde i «{subject}» ({language}) er i et format mange e-postprogrammer ikke viser. Velg JPEG eller PNG.",
     too_big: "«{subject}» ({language}) er lang: Gmail kutter en e-post rundt 102 KB. Gjør den kortere.",
   },
+  reach: {
+    none: "Ingen ville ha startet det de siste 30 dagene.",
+    one: "Omtrent 1 person ville starte det de neste 30 dagene, bedømt ut fra de siste 30.",
+    many: "Omtrent {n} personer ville starte det de neste 30 dagene, bedømt ut fra de siste 30.",
+  },
   change: "Endre",
   subject: "Emne",
   words: "Tekst",
