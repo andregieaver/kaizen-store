@@ -276,9 +276,12 @@ company, order and draft pages, Home's Today card, attention, leads, email filin
 extension, the marketing hub shows tests, automations and the sending guard only with theirs, and the page builder's "A/B test this" only
 with A/B testing.
 
-**E3, third part (to do).** Webhook topics offered on the endpoints page, the admin finder's records and workflows' fields, the support
-widget on the owner's own sites, and the pages customers open (signing a contract, a Work invoice, a broadcast's tracked link), which E5's
-read-only state decides with them.
+**E3 as built, third part (19 November 2026).** Webhook and workflow topics an extension owns (`TOPIC_EXTENSIONS`: an A/B test's answer,
+a conversation waiting for a person, a broadcast sent and marketing paused, Work's clients and invoices, contracts and deals) are offered on
+the endpoints and integrations pages and as a new workflow's trigger only while the account has the extension (`topicOffered()`); the finder
+offers deals and the inbox's conversations only with theirs (`recordKindsFor()`); a store's chat on its owner's other websites draws nothing
+without the support desk. The pages customers open from an extension (signing a contract, a Work invoice, a broadcast's tracked link) are
+left as they are: E5's read-only state decides them, since a customer may hold such a link from before.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

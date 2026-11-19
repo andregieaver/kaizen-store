@@ -46,7 +46,8 @@ test("a shopper searches from the header, picks a suggestion, and finds results"
   // An uploaded picture is served as stored, never through /_next/image, which refuses the storage host (bloat review step 0.32).
   const thumb = list.getByRole("option", { name: /Keramikkopp/ }).locator("img");
   await expect(thumb).toHaveAttribute("src", "/demo/themes/orbit/stars.webp");
-  expect(await thumb.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  // It loads after the list appears; WebKit on CI is sometimes still loading it at once, so wait for it (a picture that never loads still fails).
+  await expect.poll(() => thumb.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0), { timeout: 10_000 }).toBe(true);
   await box.press("ArrowDown");
   await box.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/p/demo-keramikkopp$`));

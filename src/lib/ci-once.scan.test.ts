@@ -25,13 +25,27 @@ const jobsRunning = (text: string, command: RegExp) => {
   return jobsOf(text).filter((job) => recorded.test(job.text));
 };
 
+/** The steps of a workflow whose name starts "Trial:" (a one-week trial of a step of the bloat review): each one starts at six spaces in. */
+const trialSteps = (text: string) => text.split(/\n(?= {6}- )/).filter((step) => /^ {6}- name: "?Trial:/.test(step));
+
+/** The workflow without its trial steps: a trial never counts as a check. */
+const withoutTrials = (text: string) => trialSteps(text).reduce((rest, step) => rest.replace(step, ""), text);
+
 /** The build jobs that do not set the variable that skips the build's own type check. */
 const buildsWithoutSkip = (text: string) =>
   jobsRunning(text, /run: pnpm build\b/).filter((job) => !job.text.includes('SKIP_BUILD_TYPECHECK: "1"')).map((job) => job.name);
 
 describe("CI runs each check once", () => {
   it("runs the type check in two jobs", () => {
-    expect(jobsRunning(ci, /run: pnpm typecheck\b/).map((job) => job.name).sort()).toEqual(["pending", "static"]);
+    expect(jobsRunning(withoutTrials(ci), /run: pnpm typecheck\b/).map((job) => job.name).sort()).toEqual(["pending", "static"]);
+  });
+
+  it("allows one trial step, which cannot fail the job (bloat review 2.42)", () => {
+    const trials = trialSteps(ci);
+    expect(trials.length).toBeLessThanOrEqual(1);
+    for (const step of trials) expect(step).toContain("continue-on-error: true");
+    // The trial is not a type check: a second job that only trials one has no gate.
+    expect(jobsRunning(withoutTrials("jobs:\n  a:\n    steps:\n      - name: \"Trial: x\"\n        continue-on-error: true\n        run: pnpm typecheck\n"), /run: pnpm typecheck\b/)).toEqual([]);
   });
 
   it("type-checks in no build of CI", () => {

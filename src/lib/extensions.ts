@@ -172,3 +172,31 @@ export const storeExtensionOn = (store: { extensionFacts?: unknown }, id: Extens
 export function dealsOn(store: { features: readonly string[]; extensionFacts?: unknown }, now: Date = new Date()): boolean {
   return featureOn(store, "sales") && storeExtensionOn(store, "deals", now);
 }
+
+/**
+ * The webhook and workflow topics (D354, D356) each paid extension owns: offered on the endpoints, integrations and workflow pages only while
+ * the account has it. A topic not listed is the shop's own. `extensions.test.ts` holds that every one is a topic.
+ */
+export const TOPIC_EXTENSIONS: Readonly<Record<string, ExtensionId>> = {
+  "experiment.answered": "ab_testing",
+  "support.waiting": "support_desk",
+  "broadcast.sent": "email_automation",
+  "marketing.paused": "email_automation",
+  "work_client.created": "work",
+  "work_invoice.sent": "work",
+  "work_invoice.paid": "work",
+  "work_invoice.credited": "work",
+  "contract.sent": "deals",
+  "contract.signed": "deals",
+  "contract.declined": "deals",
+  "deal.created": "deals",
+  "deal.stage_changed": "deals",
+  "deal.won": "deals",
+  "deal.lost": "deals",
+};
+
+/** The topic is offered to the store: the shop's own, or its extension works for the store's account. */
+export const topicOffered = (store: { extensionFacts?: unknown }, topic: string, now: Date = new Date()): boolean => {
+  const extension = Object.hasOwn(TOPIC_EXTENSIONS, topic) ? TOPIC_EXTENSIONS[topic] : undefined;
+  return !extension || storeExtensionOn(store, extension, now);
+};

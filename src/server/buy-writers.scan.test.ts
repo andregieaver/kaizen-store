@@ -50,6 +50,8 @@ describe("writers of a buy fact refresh it", () => {
         "src/server/order-settings.ts",
         "src/server/suppliers.ts",
         "src/server/automations.ts",
+        // Switching a flow on switches off the automation it replaces (D767 slice 3).
+        "src/server/flows.ts",
         "src/server/products.ts",
         "src/server/price-lists.ts",
       ].sort(),

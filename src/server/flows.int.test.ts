@@ -161,4 +161,28 @@ describe("flows (D767)", () => {
     await fl.runFlows({ only: storeId, now: new Date(Date.now() + 1000) });
     expect(await runOf(nils)).toMatchObject({ status: "stopped" });
   });
+
+  it("switches off the automation a recipe does the work of, and keeps it off while the flow is on (slice 3)", async () => {
+    const { welcomeSeries } = await import("@/lib/flow-recipes");
+    const au = await import("./automations");
+    await db().execute(sql`
+      insert into commerce.automations (store_id, kind, enabled, enabled_at, delay_days, content)
+      values (${storeId}::uuid, 'welcome', true, now(), 0, ${JSON.stringify({ "nb-NO": { subject: "Hei", preview: "", blocks: [{ type: "paragraph", text: "Hei" }] } })}::jsonb)
+      on conflict (store_id, kind) do update set enabled = true, enabled_at = now()`);
+    const saved = await fl.saveFlow(storeId, owner, null, welcomeSeries("nb-NO"));
+    if (!saved.ok) throw new Error(saved.problem);
+    expect((await fl.getFlow(storeId, saved.id))?.replaces).toBe("welcome");
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("replaced");
+    const [auto] = await db().execute<Row>(sql`select enabled from commerce.automations where store_id = ${storeId}::uuid and kind = 'welcome'`);
+    expect(auto?.enabled).toBe(false);
+    // A save keeps what it replaces; switching the automation back on is refused while the flow is on.
+    await fl.saveFlow(storeId, owner, saved.id, { ...welcomeSeries("nb-NO"), replaces: undefined });
+    expect((await fl.getFlow(storeId, saved.id))?.replaces).toBe("welcome");
+    await fl.testFlow(storeId, saved.id);
+    expect(await fl.switchFlow(storeId, owner, saved.id, true)).toBe("ok");
+    const store = { id: storeId, localization: { locales: ["nb-NO"], keptLocales: ["nb-NO"] } } as Parameters<typeof au.switchAutomation>[0];
+    expect(await au.switchAutomation(store, owner, "welcome", true)).toEqual({ ok: false, problem: "The flow \"Velkomstserie\" sends this now. Switch it off under Flows first." });
+    expect(await fl.switchFlow(storeId, owner, saved.id, false)).toBe("ok");
+  });
 });

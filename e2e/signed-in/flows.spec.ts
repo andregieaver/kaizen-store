@@ -35,7 +35,10 @@ test.beforeAll(async () => {
 
 test("a welcome series is started with one press, read as a story, tested and switched on", async ({ page }) => {
   await page.goto(`/admin/${STORE}/flows`);
-  await page.getByRole("button", { name: "Start a welcome series" }).first().click();
+  // The page starts from a goal (slice 3): one Start per goal the store has no flow for yet.
+  await expect(page.getByRole("group", { name: "Follow up after a purchase" })).toBeVisible();
+  await page.screenshot({ path: "test-results/flow-goals.png", fullPage: true });
+  await page.getByRole("group", { name: "Welcome new subscribers" }).getByRole("button", { name: "Start" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
 
   const story = page.locator("[data-flow-story]");
@@ -56,6 +59,9 @@ test("a welcome series is started with one press, read as a story, tested and sw
 
   await page.goto(`/admin/${STORE}/flows`);
   await expect(page.getByRole("list", { name: "Flows" })).toContainText("Welcome series");
+  // Its goal is made, so only the other one is offered.
+  await expect(page.getByRole("group", { name: "Welcome new subscribers" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Follow up after a purchase" })).toBeVisible();
   await page.screenshot({ path: "test-results/flow-list.png", fullPage: true });
 });
 
@@ -64,9 +70,11 @@ test("an email's words and its wait are changed where they are, and the flow wai
   await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
   const best = page.getByLabel("Email: What others like best");
   await best.getByText("Change", { exact: true }).click();
-  await best.getByLabel("Subject").fill("Our favourites");
-  await best.getByLabel("Words").fill("See what others buy most.");
-  await best.getByRole("button", { name: "Save" }).first().click();
+  // Its languages side by side (the store's own and its markets'); English is the store's first.
+  const english = best.getByRole("group", { name: "English" });
+  await english.getByLabel("Subject").fill("Our favourites");
+  await english.getByLabel("Words").fill("See what others buy most.");
+  await english.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();
   const changed = page.getByLabel("Email: Our favourites");
@@ -105,4 +113,21 @@ test("under Customise, a step is added in a branch and removed, and the story fo
   await row.getByRole("button", { name: "Remove" }).click();
   await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toHaveCount(0);
   await expect(page.locator("[data-canvas-step=if]")).toHaveCount(1);
+});
+
+test("an email's words are written in each of the store's languages side by side, and the missing one is named", async ({ page }) => {
+  // The store writes English; its Norwegian market brings Norwegian (localization's locales).
+  await page.goto(`/admin/${STORE}/flows`);
+  await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
+  const welcome = page.getByLabel("Email: Welcome!");
+  await expect(welcome).toContainText("Not written in Norsk bokmål yet; those readers get it in English.");
+  await welcome.getByText("Change", { exact: true }).click();
+  const norsk = welcome.getByRole("group", { name: "Norsk bokmål" });
+  await norsk.getByLabel("Subject").fill("Velkommen!");
+  await norsk.getByLabel("Words").fill("Takk for at du vil høre fra oss.");
+  await page.screenshot({ path: "test-results/flow-languages.png", fullPage: true });
+  await norsk.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Email: Welcome!")).not.toContainText("Not written in");
 });

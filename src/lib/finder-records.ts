@@ -9,6 +9,7 @@
 import type { PermissionKey } from "./permissions";
 import { escapeLike, normaliseSearch } from "./order-search";
 import type { FinderGroup } from "./finder-groups";
+import { storeExtensionOn, type ExtensionId } from "./extensions";
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
 import { CUSTOMERS_FEATURE } from "./store-nav";
 
@@ -39,9 +40,16 @@ export const RECORD_FEATURES: Record<RecordKind, FeatureRequirement | undefined>
   product: "shop",
 };
 
-/** The kinds a person may be offered in a store: they hold the kind's key and its feature is on. */
+/** The paid extension (D748) a kind's pages are part of: a conversation opens in the support desk's inbox, a deal in Deals. */
+const RECORD_EXTENSIONS: Partial<Record<RecordKind, ExtensionId>> = { conversation: "support_desk", deal: "deals" };
+
+/** The kinds a person may be offered in a store: they hold the kind's key, its feature is on and the account has its extension. */
 export function recordKindsFor(may: (key: PermissionKey) => boolean, features: FeatureSource): RecordKind[] {
-  return RECORD_KINDS.filter((kind) => may(RECORD_KEYS[kind]) && requirementMet(features, RECORD_FEATURES[kind]));
+  const extensionOk = (kind: RecordKind) => {
+    const extension = RECORD_EXTENSIONS[kind];
+    return !extension || Array.isArray(features) || storeExtensionOn(features as { extensionFacts?: unknown }, extension);
+  };
+  return RECORD_KINDS.filter((kind) => may(RECORD_KEYS[kind]) && requirementMet(features, RECORD_FEATURES[kind]) && extensionOk(kind));
 }
 
 /** One store's part of a search: the kinds this person may be offered there. */

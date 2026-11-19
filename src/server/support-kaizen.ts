@@ -250,9 +250,12 @@ export function adminPages(question: string, storeSlug: string | null) {
   return store.map(({ page, href }) => ({ title: page.title, what: page.what, ...(page.tasks ? { canDo: page.tasks } : {}), href }));
 }
 
-/** The first line's tools for an account's conversation with Kaizen (4.3a): their stores, a store's status, the admin's pages. */
-export function kaizenToolsFor(account: Account, aboutStore: string | null): SupportToolSet {
-  const offered = KAIZEN_SUPPORT_TOOLS.filter((tool) => tool.name !== "handoff_to_human");
+/**
+ * The first line's tools for an account's conversation with Kaizen (4.3a): their stores, a store's status, the admin's pages. By email
+ * (`emailAccount()`) the admin's pages are left out: their links are buttons, which an email cannot carry.
+ */
+export function kaizenToolsFor(account: Account, aboutStore: string | null, channel: { email?: boolean } = {}): SupportToolSet {
+  const offered = KAIZEN_SUPPORT_TOOLS.filter((tool) => tool.name !== "handoff_to_human" && !(channel.email && tool.name === "find_admin_page"));
   const definitions: ToolDefinition[] = offered.map((tool) => ({ name: tool.name, description: tool.description, parameters: z.toJSONSchema(tool.input) as Record<string, unknown> }));
   return {
     definitions,
@@ -281,6 +284,16 @@ export function kaizenToolsFor(account: Account, aboutStore: string | null): Sup
       }
       return { result: json({ error: "unknown_tool" }) };
     },
+  };
+}
+
+/** Two tool sets as one, or either alone: a name in both is the second's. */
+export function joinTools(first: SupportToolSet | null, second: SupportToolSet | null): SupportToolSet | null {
+  if (!first || !second) return first ?? second;
+  const names = new Set(second.definitions.map((tool) => tool.name));
+  return {
+    definitions: [...first.definitions.filter((tool) => !names.has(tool.name)), ...second.definitions],
+    run: (name, args) => (names.has(name) ? second.run(name, args) : first.run(name, args)),
   };
 }
 

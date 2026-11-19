@@ -1603,8 +1603,6 @@ const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set<string>([
   // The questions the chat assistant could not answer (ecosystem plan E4.3, D729): named in the AI's map once the eval is recorded with it.
   "store:chat.questions",
   "platform:chat.questions",
-  // The paid extensions' catalogue (D748 step E2): named in the AI's map once the eval is recorded with it.
-  "platform:plan-extensions",
 ]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */

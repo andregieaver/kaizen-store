@@ -28,7 +28,7 @@ import {
   routeOf,
   type Headers,
 } from "@/lib/inbound-email";
-import { homeMarket } from "@/lib/markets";
+import { homeMarket, inView } from "@/lib/markets";
 import { NO_SIGNALS } from "@/lib/recommendations";
 import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
 
@@ -45,12 +45,15 @@ import { handOver } from "./support-route";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
 import type { SupportCustomer } from "./support-tools";
+import type { Account } from "./auth";
 import { autonomyFor } from "./autopilot-settings";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { owned } from "./owned";
 import { textList } from "./sql-arrays";
 import { z } from "zod";
 import { normaliseEmail } from "@/lib/email-address";
+import { emailLanguage } from "@/lib/email-language";
+import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, isPlatformLang } from "@/lib/platform-lang";
 
 type Row = Record<string, unknown>;
 
@@ -336,18 +339,20 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   const message = messageOf({ text: email.text ?? null, html: email.html ?? null, subject: email.subject ?? (row.subject ? String(row.subject) : null) }, { withSubject: thread === null });
   if (!message.body) return refused("empty");
 
-  const conversationId = thread ?? (await newConversation(desk, settings, site, { from, name: displayName(email.from ?? ""), subject: cleanSubject(email.subject ?? (row.subject ? String(row.subject) : null)), messageId }));
+  const spoken = inEmailLanguage(site, message.body);
+  const conversationId = thread ?? (await newConversation(desk, settings, spoken, { from, name: displayName(email.from ?? ""), subject: cleanSubject(email.subject ?? (row.subject ? String(row.subject) : null)), messageId }));
   if (thread) {
     await db().execute(sql`
       update commerce.support_conversations set email_message_id = coalesce(${messageId}, email_message_id),
-        email_subject = coalesce(email_subject, ${cleanSubject(email.subject)}), reply_key = coalesce(reply_key, ${newKey()})
+        email_subject = coalesce(email_subject, ${cleanSubject(email.subject)}), reply_key = coalesce(reply_key, ${newKey()}),
+        locale = ${placeOf(spoken).locale.slice(0, 16)}, market = ${placeOf(spoken).market}
       where id = ${thread}::uuid
     `);
   }
   const attachments = Array.isArray(email.attachments) ? email.attachments.length : 0;
   const added = await addMessage(desk, conversationId, "customer", null, message.body, { data: { email: { attachments, cut: message.cut } } });
   if (added && scoresTone(settings)) await scoreTone(desk, conversationId, added.seq).catch((error) => log("warn", "support.inbound_tone_failed", { conversationId }, error));
-  await answer(desk, settings, site, conversationId, from, deps);
+  await answer(desk, settings, spoken, conversationId, from, deps);
   return { status: "done", conversationId };
 }
 
@@ -363,7 +368,30 @@ async function siteOf(storeId: string | null): Promise<ChatSite | null> {
 const placeOf = (site: ChatSite): ChatPlace =>
   site.kind === "store"
     ? { site, storeId: site.store.id, lang: site.market.lang, locale: site.market.locale, market: site.market.slug }
-    : { site, storeId: null, lang: "en", locale: "en-GB", market: null };
+    : isPlatformLang(site.lang) && site.lang !== "en"
+      ? { site, storeId: null, lang: site.lang, locale: PLATFORM_LANG_FACTS[site.lang].locale, market: null }
+      : { site, storeId: null, lang: "en", locale: "en-GB", market: null };
+
+/**
+ * The site in the language an email is written in (D332, `emailLanguage()`): a store's market in that language, or Kaizena Flow's site in
+ * one of its languages; the site as it is when the email does not say clearly or the site has no such language. The conversation keeps
+ * that language, so the AI's answer and the email around it are written in it.
+ */
+export function inEmailLanguage(site: ChatSite, text: string): ChatSite {
+  if (site.kind === "store") {
+    // The store's languages: those it offers (a country may be shown in another of them, as Kaizena Flow's Norway is in English and
+    // Norwegian), and each country's own.
+    const offered = [...new Set([...site.store.localization.locales, ...site.store.markets.map((market) => market.locale)])];
+    const lang = emailLanguage(text, offered);
+    if (!lang || lang === site.market.lang) return site;
+    const market = site.store.markets.find((candidate) => candidate.lang === lang);
+    if (market) return { ...site, market };
+    const locale = offered.find((candidate) => candidate.split("-")[0].toLowerCase() === lang);
+    return locale ? { ...site, market: inView(site.market, { locale }) } : site;
+  }
+  const lang = emailLanguage(text, PLATFORM_LANGS);
+  return lang && lang !== (site.lang ?? "en") ? { ...site, lang } : site;
+}
 
 /**
  * The conversation a reply address names, when the email may continue it: from the conversation's own address (the address its
@@ -461,7 +489,8 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
     return;
   }
   const customer = await emailCustomer(desk, settings, conversationId);
-  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true });
+  const account = await emailAccount(desk, settings, conversationId);
+  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true, account });
   if (result.error) await handOver(desk, conversationId, "system", "no_ai");
   else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff, result.escalation);
 }
@@ -487,6 +516,31 @@ export async function emailCustomer(desk: Desk, settings: DeskSettings, conversa
     sql`select id, email from commerce.customers where store_id = ${desk.storeId}::uuid and lower(email) = ${address} limit 2`,
   );
   return found.length === 1 ? { id: found[0].id, email: found[0].email } : null;
+}
+
+/**
+ * The Kaizena Flow account an email conversation is from, for the AI to read that account's own stores (`my_stores`, `store_status`), or
+ * null: only on Kaizena Flow's own desks (the platform's, and the house store's, D484), never on a desk for sensitive information, and only
+ * the one account whose address is the conversation's own. As with `emailCustomer()`, the email reached the AI only with a DMARC check that
+ * did not fail and, in a thread, only from that address; every answer goes to that address alone, and the tools only read.
+ */
+export async function emailAccount(desk: Desk, settings: DeskSettings, conversationId: string): Promise<Account | null> {
+  if (settings.sensitive) return null;
+  if (desk.storeId) {
+    const store = await typedRow(z.object({ house: col.bool }), sql`select house from commerce.stores where id = ${desk.storeId}::uuid`);
+    if (!store?.house) return null;
+  }
+  const conversation = await typedRow(
+    z.object({ contact_email: col.textOrNull }),
+    sql`select contact_email from commerce.support_conversations where id = ${conversationId}::uuid and ${owned(desk.storeId)} and source = 'email'`,
+  );
+  const address = conversation?.contact_email ? normaliseEmail(conversation.contact_email) : "";
+  if (!address) return null;
+  const found = await typedRows(
+    z.object({ id: col.uuid, email: col.text, name: col.textOrNull }),
+    sql`select id, email, name from commerce.accounts where lower(email) = ${address} limit 2`,
+  );
+  return found.length === 1 ? { id: found[0].id, email: found[0].email, name: found[0].name, platformAdmin: false } : null;
 }
 
 /**

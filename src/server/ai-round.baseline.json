@@ -228,11 +228,11 @@
       "case": "review"
     },
     "platform": {
-      "promptChars": 6734,
+      "promptChars": 6764,
       "toolCount": 70,
       "toolChars": 64160,
       "alwaysSentChars": 21619,
-      "totalChars": 70894
+      "totalChars": 70924
     }
   },
   "largeTools": {

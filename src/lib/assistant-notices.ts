@@ -10,8 +10,26 @@ export type NoticeKind = (typeof NOTICE_KINDS)[number];
 /** How long a notice is kept, read or not. */
 export const NOTICE_DAYS = 60;
 
-/** How often an open admin asks again how many notices wait (and at once when the tab is shown again). */
+/** How often an open admin asks again how many notices wait while the count was lately above zero, the assistant was lately used, or an approval waits. */
 export const NOTICE_POLL_MS = 60_000;
+
+/** How often a tab nobody touches asks. */
+export const NOTICE_IDLE_MS = 600_000;
+
+/** How long after the last sign of use the one-minute pace is kept. */
+export const NOTICE_ACTIVE_MS = 600_000;
+
+/** A change of path asks again, at most this often. */
+export const NOTICE_PATH_MS = 60_000;
+
+/**
+ * The milliseconds until an open tab asks again; `activeAt` is when the count was last above zero or the person last used the assistant;
+ * `waiting` is whether one of their approvals waits.
+ */
+export function noticeWait(state: { now: number; activeAt: number | null; waiting: boolean }): number {
+  if (state.waiting || (state.activeAt !== null && state.now - state.activeAt < NOTICE_ACTIVE_MS)) return NOTICE_POLL_MS;
+  return NOTICE_IDLE_MS;
+}
 
 /** A notice's words from its kind's template and its facts (`{title}`, `{summary}`, `{plan}`, `{step}`), a missing fact left out. */
 export function noticeText(template: string, facts: Record<string, string>): string {

@@ -24,6 +24,7 @@ import {
   testEndpointAction,
   updateEndpointAction,
 } from "./actions";
+import { topicOffered } from "@/lib/extensions";
 
 export const metadata: Metadata = { title: "Your own endpoints" };
 
@@ -36,7 +37,8 @@ export default async function EndpointsPage({ params }: PageProps<"/admin/[store
   const w = all.endpoints;
   const owner = memberCan(member, "owner");
   const subscriptionsOn = featureOn(store, "subscriptions");
-  const topics = EVENTS.filter((event) => !event.id.startsWith("subscription.") || subscriptionsOn).map((event) => ({
+  // A paid extension's events (D748) only while the account has it.
+  const topics = EVENTS.filter((event) => (!event.id.startsWith("subscription.") || subscriptionsOn) && topicOffered(store, event.id)).map((event) => ({
     id: event.id,
     label: all.events[event.id]?.label ?? event.label,
     hint: all.events[event.id]?.hint ?? event.hint,

@@ -68,6 +68,18 @@ jobs:
             eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
       - run: node scripts/timed.mjs lint -- pnpm lint
       - run: node scripts/timed.mjs typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck
+      # A one-week trial of bloat review step 2.42, until 25 November 2026: the native TypeScript 7 compiler (fetched for this step only, never installed in the project) checks the same program beside tsc,
+      # and its errors are kept to compare with tsc's. It cannot fail the job and has no ceiling in scripts/ci-budgets.json (recorded, not held).
+      - name: "Trial: native type check (does not fail the job)"
+        continue-on-error: true
+        run: node scripts/timed.mjs typecheck-native -- bash -o pipefail -c 'pnpm dlx typescript@7.0.2 --noEmit -p tsconfig.json 2>&1 | tee typecheck-native.txt'
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: typecheck-native
+          path: typecheck-native.txt
+          retention-days: 14
+          if-no-files-found: ignore
       - run: node scripts/timed.mjs unit --unit -- pnpm test --reporter=default --reporter=json --outputFile=.vitest-report.json
       - if: always()
         uses: actions/upload-artifact@v7

@@ -223,6 +223,11 @@ export type PromptContext = {
    * own orders, and the answer goes only to that address.
    */
   emailOrders?: boolean;
+  /**
+   * By email on Kaizena Flow's own desks, and the sender's address is a Kaizena Flow account's (`emailAccount()`): `my_stores` and
+   * `store_status` read that account's stores, and the answer goes only to that address.
+   */
+  emailAccount?: boolean;
   /** The chat is on a site of the owner's own (D582): its host, and that only the knowledge base can be searched there. */
   embed?: { host: string } | null;
 };
@@ -273,9 +278,15 @@ export function systemPrompt(ctx: PromptContext): string {
         ]
       : ctx.email
         ? [
-            "This conversation is by email: your answer is sent to the customer as an email reply. Nobody is signed in here and the customer cannot sign in or press a button in an email, so never offer a sign-in, a form or a confirmation. For anything about their own orders, parcels, returns, bookings, subscriptions or account, write one short sentence saying a person from the store will answer by email, and call handoff_to_human. Write it as an email: plain text, a short greeting is fine, at most about 150 words, no web addresses.",
+            `This conversation is by email: your answer is sent to the customer as an email reply. Nobody is signed in here and the customer cannot sign in or press a button in an email, so never offer a sign-in, a form or a confirmation. For anything about their own orders, parcels, returns, bookings, subscriptions or account${ctx.emailAccount ? " that your tools do not answer" : ""}, write one short sentence saying a person from the store will answer by email, and call handoff_to_human. Write it as an email: plain text, a short greeting is fine, at most about 150 words, no web addresses.`,
           ]
         : []),
+    ...(ctx.email && ctx.emailAccount
+      ? [
+          "The sender's address belongs to a Kaizena Flow account, and your answer goes only to that address. For questions about their own stores on Kaizena Flow (how many and which they have, whether each is open, its plan, card payments, setup steps left, features on), use my_stores and store_status and say only what they give; never speak of anyone else's stores. You never change anything in a store and never promise a fix, a refund or a date: say what they can do themselves in their admin, or hand over to a person at Kaizena Flow.",
+        ]
+      : []),
+    ...(ctx.email ? ["Write your email in the language the customer's last email is written in, whatever language the site is in."] : []),
     ...(ctx.voice ? [ctx.voice] : []),
     ...(ctx.instructions.trim() ? [`The site's own guidance on tone and what to point out (follow it unless it goes against the rules above):\n${ctx.instructions.trim()}`] : []),
     `The visitor is on ${ctx.path ?? "the front page"}. Today is ${ctx.today}.`,

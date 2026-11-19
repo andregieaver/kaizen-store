@@ -152,6 +152,9 @@ export type NoticePlace = string | null | "all";
 const placeWhere = (place: NoticePlace) =>
   place === "all" ? sql`true` : place === null ? sql`n.store_id is null` : sql`n.store_id = ${place}::uuid`;
 
+const approvalPlace = (place: NoticePlace) =>
+  place === "all" ? sql`true` : place === null ? sql`a.store_id is null` : sql`a.store_id = ${place}::uuid`;
+
 /** A person's notices, newest first, with how many are unread. */
 export async function listNotices(accountId: string, place: NoticePlace, limit = 30): Promise<{ unread: number; items: Notice[] }> {
   const rows = await typedRows(
@@ -186,6 +189,17 @@ export async function unreadNotices(accountId: string, place: NoticePlace): Prom
     sql`select count(*)::int as n from commerce.assistant_notices n where n.account_id = ${accountId}::uuid and n.read_at is null and ${placeWhere(place)}`,
   );
   return row?.n ?? 0;
+}
+
+/** The badge's count in one statement: the person's unread notices in a place, and whether one of their approvals waits there (step 2.34). */
+export async function noticeCount(accountId: string, place: NoticePlace): Promise<{ unread: number; waiting: boolean }> {
+  const [row] = await typedRows(
+    z.object({ n: col.int, waiting: col.bool }),
+    sql`select
+      (select count(*)::int from commerce.assistant_notices n where n.account_id = ${accountId}::uuid and n.read_at is null and ${placeWhere(place)}) as n,
+      exists (select 1 from commerce.assistant_approvals a where a.account_id = ${accountId}::uuid and a.status = 'pending' and ${approvalPlace(place)}) as waiting`,
+  );
+  return { unread: row?.n ?? 0, waiting: row?.waiting ?? false };
 }
 
 /** Marks a person's own notices read: the ones given, or every one in the place. Returns how many changed. */

@@ -171,12 +171,12 @@ commit as the fix.
 | 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Open | |
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Open | |
-| 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | In progress | Local, not pushed: 4 commits; product page 12 to 1 statements (breaks 3, schemes 2), cart 32 to 30. Journey KNOWN_READS 2.13 entries stay. |
+| 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Done | 19 Nov, 4cc84650, D779: product page 12 to 1 statements; buy facts one cached read. |
 | 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | Open | |
 | 2.15 | Let tagged reads live until their tag is refreshed | SD-8, CA-10 | M | strong | 2.14, 1.11, 1.25 | Open | |
 | 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | Done | 18 Nov, 64e5b620, D775: title, titles by language and remembered modal in generated columns. |
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | In progress | 18 Nov, 13522625, D778: lists 100 a page from columns, grids from SQL; a week's statistics to read. |
-| 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | In progress | Local: frame.store 5 (5 before), siteCookies 1 statement (9), frame.platform 17 to 11, search 6 to 5; cold home 1 (already). |
+| 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | Done | 19 Nov, 38759d01, D780: platform frame 17 to 11 statements, cookie scan 14 to 7. |
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | Open | |
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Open | |
@@ -191,8 +191,8 @@ commit as the fix.
 | 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | Open | |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
-| 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | Local: commit 1 (reconcile migration; admit() sets mirror from getUser, fails closed). Commit 2 stopped: old gate cases hold aal1 on an empty mirror. JWT key answer owed. |
-| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | Open | |
+| 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
+| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | In progress | 19 Nov, c30c7d23, D783: untouched tab 60 to 6 asks an hour; a day's statistics to read. |
 | 2.35 | Answer a store's own domain without a deployment | SF-13 | L | strong | 2.20, 1.8, 1.29 | Open | |
 | 2.36 | Send the AI manager a lean default round | AI-1, AI-9, AI-11, FT-4, AI-6, GAP-ai-s1, GAP-ai-2 | M | strong | 1.19, 0.5, 0.11 | Open | |
 | 2.37 | Slim the tool schemas, so no first round is over 56,000 characters | AI-8 | M | strong | 1.19, 2.36 | Open | |
@@ -200,13 +200,13 @@ commit as the fix.
 | 2.39 | Give small jobs a quick model | AI-7, GAP-ai-s4 | M | strong | 1.19, 2.38 | Open | |
 | 2.40 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | cheap | 0.41, 1.1 | Open | |
 | 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | Open | |
-| 2.42 | Shorten the gate's type check | TC-4, TC-9 | M | review | 0.38, 1.20 | Open | |
+| 2.42 | Shorten the gate's type check | TC-4, TC-9 | M | review | 0.38, 1.20 | In progress | Commit 1: native TS 7 trial in static until 25 Nov. Local: TS 7 via dlx 27 s, 11 errors tsc 6.0.3 lacks; tsc 0. |
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
 | 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | Open | |
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
 | 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
-| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Open | |
+| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Done | 19 Nov, 0e649cc0, D782: +2 statements a line, history-free, warm triggers under 2.9 ms; no gates. |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
 | 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | Open | |
 
@@ -340,6 +340,9 @@ Change log:
 - 18 Nov 2026: step 2.2 Done (b3a90442, D776): a store page sends its layout once; the home's document 135,935 to 105,599 bytes.
 - 18 Nov 2026: step 2.3 Done (d0aa131f, D777): the breakpoint sheet is drawn once by the layout and a page's rows share one part stylesheet.
 - 18 Nov 2026: step 2.17 on main (13522625, D778): page lists, pickers and grids read columns and cards, not documents; Done after a week's statistics.
+- 19 Nov 2026: step 2.13 Done (4cc84650, D779); step 2.18 Done (38759d01, D780); step 2.33 commit 1 on main (00d7bddd, D781), commit 2 waits for the owner.
+- 19 Nov 2026: step 2.48 Done (0e649cc0, D782): a placed order's ceilings held; no trigger gated, as each would change what an order writes.
+- 19 Nov 2026: step 2.34 on main (c30c7d23, D783): an untouched admin tab asks for notices every ten minutes; Done after a day's statistics.
 - 18 Nov 2026: step 2.17 carried out locally in five commits (the Pages list in SQL with pageTitles(), pages of 100, the grid's and the
   feed's cards in SQL, the index for the static params and search picker, the pageDocuments list); waiting for review and the D-row.
 - 18 Nov 2026: step 1.6 written up (D758), In progress until its production check after phase 2; step 1.19 commits 1 to 3 on main (D760), commits 4 and 5 wait for the owner's eval run.

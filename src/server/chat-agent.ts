@@ -197,7 +197,8 @@ export type ChatEmbed = { id: string; host: string; privacyUrl: string | null };
  * Where the agent talks: a store in one of its countries, or Kaizen's site; with `embed`, in the chat that desk shows on a site of its
  * own (D582), where only the knowledge base is searched and nothing of the shop, its pages or a customer's orders is offered.
  */
-export type ChatSite = { kind: "store"; store: Store; market: Market; embed?: ChatEmbed } | { kind: "kaizen"; embed?: ChatEmbed };
+/** Kaizena Flow's own site answers in English unless `lang` says another of its languages (an email written in it, D332). */
+export type ChatSite = { kind: "store"; store: Store; market: Market; embed?: ChatEmbed } | { kind: "kaizen"; embed?: ChatEmbed; lang?: string };
 
 /** Rounds of tools before the model must answer. */
 const ROUNDS = 4;
@@ -565,6 +566,8 @@ export async function runChat(
     email?: boolean;
     /** By email, from the address the customer's orders were placed with (`docs/100-day-challenge.md` B1). */
     emailOrders?: boolean;
+    /** By email on Kaizena Flow's own desks, from a Kaizena Flow account's address: its stores' tools (`emailAccount()`). */
+    emailAccount?: boolean;
     /**
      * The answer as it is written (PSI PERF-08): its finished sentences so far, cleaned (`shownSoFar()`), each time they grow; empty
      * again when the model turns to tools after all. The reply returned is the whole answer, cleaned, as without it.
@@ -572,7 +575,7 @@ export async function runChat(
     onText?: (shown: string) => void;
   } = {},
 ): Promise<ChatReply> {
-  const lang = site.kind === "store" ? site.market.lang : "en";
+  const lang = site.kind === "store" ? site.market.lang : (site.lang ?? "en");
   const m = t(lang);
   const messages: ToolChatMessage[] = [
     {
@@ -587,11 +590,13 @@ export async function runChat(
         path: request.path ?? null,
         today: new Date().toISOString().slice(0, 10),
         handoff: options.handoff,
-        support: Boolean(options.support?.definitions.length) && !options.admin,
+        // The rules for a customer's orders belong to a store's desk; Kaizena Flow's own site has only an account's stores' tools.
+        support: Boolean(options.support?.definitions.length) && !options.admin && site.kind === "store",
         admin: options.admin,
         // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
         email: options.email,
         emailOrders: Boolean(options.email && options.emailOrders),
+        emailAccount: Boolean(options.email && options.emailAccount),
         voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
         embed: site.embed ? { host: site.embed.host } : null,
       }),

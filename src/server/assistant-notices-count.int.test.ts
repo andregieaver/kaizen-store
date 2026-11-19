@@ -38,6 +38,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db().execute(sql`delete from commerce.assistant_approvals where account_id = ${store.account.id}::uuid`);
+  await db().execute(sql`delete from commerce.assistant_conversations where account_id = ${store.account.id}::uuid`);
   await db().execute(sql`delete from commerce.assistant_notices where account_id = ${store.account.id}::uuid`);
   await closeDb();
 });
@@ -47,5 +49,26 @@ describe("the notice badge", () => {
     sent.n = 0;
     expect(await notices.unreadNotices(store.account.id, store.id)).toBe(1);
     expect(sent.n).toBe(1);
+  });
+
+  it("the badge's count with the waiting approval is still one statement", async () => {
+    sent.n = 0;
+    expect(await notices.noticeCount(store.account.id, store.id)).toEqual({ unread: 1, waiting: false });
+    expect(sent.n).toBe(1);
+  });
+
+  it("a pending approval makes it wait", async () => {
+    const [conversation] = await db().execute<{ id: string }>(sql`
+      insert into commerce.assistant_conversations (store_id, account_id, title) values (${store.id}::uuid, ${store.account.id}::uuid, 'Waiting') returning id
+    `);
+    const [approval] = await db().execute<{ id: string }>(sql`
+      insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category)
+      values (${store.id}::uuid, ${String(conversation.id)}::uuid, ${store.account.id}::uuid, 'create_product', '{}', 'x', 'public') returning id
+    `);
+    expect((await notices.noticeCount(store.account.id, store.id)).waiting).toBe(true);
+    expect((await notices.noticeCount(store.account.id, "all")).waiting).toBe(true);
+    expect((await notices.noticeCount(store.account.id, null)).waiting).toBe(false);
+    await db().execute(sql`update commerce.assistant_approvals set status = 'done' where id = ${String(approval.id)}::uuid`);
+    expect((await notices.noticeCount(store.account.id, store.id)).waiting).toBe(false);
   });
 });
