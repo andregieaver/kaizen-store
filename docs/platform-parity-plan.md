@@ -159,7 +159,7 @@ designing it:
 Website (`SiteSwitchCard`) and read by the proxy every few seconds; the platform's own first segments are `PLATFORM_ROUTES` and
 `PLATFORM_ROUTES_NB` in `src/lib/house-routing.ts`, held to the folders of `src/app` by a test; Norwegian at `/no/` is the address alias
 `HOUSE_ALIASES`; the store's pages name their languages `en` and `nb` as the site did; the sitemap, robots.txt and llms.txt read the store
-while it is on; the platform's own routes ask with the store's consent, and the store's pages keep Kaizena Flow's chat until step 6. Turning
+while it is on; the platform's own routes ask with the store's consent, and the store's pages kept Kaizena Flow's chat until step 6 (since 19 November 2026 the site's visitors, on the store's pages and the platform's own routes alike, meet the store's assistant and desk, where support@kaizenaflow.com also comes; owners asking from their admin stay on the platform's desk). Turning
 it on makes the store public; turning it off makes it private again and brings the platform's pages back at once. While it is on, the copy is
 not made again and the platform's own pages and articles do not save (the theme store's do). **To switch:** copy the site again, look at it
 in the store, run `node scripts/site-compare.mjs https://kaizenaflow.com > before.json`, switch, then run it again with

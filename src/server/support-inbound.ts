@@ -28,7 +28,7 @@ import {
   routeOf,
   type Headers,
 } from "@/lib/inbound-email";
-import { homeMarket } from "@/lib/markets";
+import { homeMarket, inView } from "@/lib/markets";
 import { NO_SIGNALS } from "@/lib/recommendations";
 import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
 
@@ -379,9 +379,15 @@ const placeOf = (site: ChatSite): ChatPlace =>
  */
 export function inEmailLanguage(site: ChatSite, text: string): ChatSite {
   if (site.kind === "store") {
-    const lang = emailLanguage(text, site.store.markets.map((market) => market.lang));
-    const market = lang && lang !== site.market.lang ? site.store.markets.find((candidate) => candidate.lang === lang) : undefined;
-    return market ? { ...site, market } : site;
+    // The store's languages: those it offers (a country may be shown in another of them, as Kaizena Flow's Norway is in English and
+    // Norwegian), and each country's own.
+    const offered = [...new Set([...site.store.localization.locales, ...site.store.markets.map((market) => market.locale)])];
+    const lang = emailLanguage(text, offered);
+    if (!lang || lang === site.market.lang) return site;
+    const market = site.store.markets.find((candidate) => candidate.lang === lang);
+    if (market) return { ...site, market };
+    const locale = offered.find((candidate) => candidate.split("-")[0].toLowerCase() === lang);
+    return locale ? { ...site, market: inView(site.market, { locale }) } : site;
   }
   const lang = emailLanguage(text, PLATFORM_LANGS);
   return lang && lang !== (site.lang ?? "en") ? { ...site, lang } : site;

@@ -346,6 +346,9 @@ describe("email into the desk", () => {
     expect(await inbound.emailAccount(systemDesk(houseId), settings, String(stranger.conversation_id))).toBeNull();
     expect(turns.at(-1)).not.toHaveProperty("account");
     expect(await inbound.emailAccount(systemDesk(houseId), support.settingsOf({ sensitive: true }), String(row.conversation_id))).toBeNull();
+    // Its Norway is English first with Norwegian beside it: an email in Norwegian is kept and answered in Norwegian.
+    const { row: norsk } = await receive(houseAddress, "owner.kari@inbound.example", { subject: "Nettsider", text: "Hei!\n\nHvor mange nettsider har jeg registrert hos dere?" });
+    expect(await conversation(norsk.conversation_id)).toMatchObject({ locale: "nb-NO" });
 
     // The platform's own desk: the account too.
     await support.ensureDesk(systemDesk(null));
