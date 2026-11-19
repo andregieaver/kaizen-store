@@ -828,6 +828,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D823 | **Admin redesign round 62: Kaizena Flow's VAT rates, accounts and data retention on a phone** | 2026-11-19 | [text](decisions/D823.md) |
 | D824 | **Reading a page loads the page reader alone** | 2026-11-19 | [text](decisions/D824.md) |
 | D825 | **Crawlers get the cached page; only link previews keep the blocking render** | 2026-11-19 | [text](decisions/D825.md) |
+| D826 | **Every storefront link states what it may fetch ahead** | 2026-11-19 | [text](decisions/D826.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
