@@ -62,8 +62,6 @@ export type GridPlace = {
   route?: StoreRoute;
   /** In a product layout (D79), the product the page is for: a grid that recommends (D139) recommends around it. */
   product?: string;
-  /** The page holds a note about the shopper's basket, so its tiles' Add to cart redraws it (bloat review step 2.4); absent answers the count. */
-  redraw?: boolean;
   /** On the store's All products page (D83): a product archive, which a grid that recommends reads the chosen filters of. */
   archive?: boolean;
   /** On a category or tag page (D140): the term the page is for, which a grid that recommends recommends around. */

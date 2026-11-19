@@ -69,6 +69,17 @@ describe("profit for the autopilot", () => {
     await expect(profitOverviewTool({ store: store.member.store }, { period: "since" })).rejects.toThrow("first day");
   });
 
+  it("adds the campaigns report and the books' budget when asked, and says why when there is none (E3, D785)", async () => {
+    const plain = await profitOverviewTool({ store: store.member.store }, { period: "30d" });
+    expect(plain).not.toHaveProperty("campaigns");
+    expect(plain).not.toHaveProperty("budget");
+    const both = await profitOverviewTool({ store: store.member.store }, { period: "30d", campaigns: true, budget: true });
+    expect(both.campaigns).toBeDefined();
+    expect(both.campaigns).toSatisfy((c: Record<string, unknown>) => "rows" in c || "note" in c);
+    // The store keeps no books here: the budget says so instead of a figure.
+    expect(both.budget).toEqual({ note: "The store keeps no books here, so there is no budget to read." });
+  });
+
   it("measures goals of contribution and margin, and since a first day", async () => {
     const f = await goalFigures(store.member.store, new Date(), [today]);
     expect(f.contribution30d).not.toBeNull();

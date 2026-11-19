@@ -11,7 +11,6 @@ import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/(shop)/
 import { AffiliateField } from "./affiliate-field";
 import { RecommendField } from "./recommend-field";
 import { useOpenCartAfterAdd } from "./cart-drawer";
-import { setCart } from "./shopper-own";
 import { useChosenPlan } from "./purchase-options";
 import { trackedItem, useShopTrack } from "./shop-track";
 import { useKeepFocus } from "./keep-focus";
@@ -38,18 +37,10 @@ export type QuantityOffer = { rule: QuantityRule; buttons: boolean; labels: Quan
 
 const initial: AddToCartState = { outcome: "idle", quantity: 0 };
 
-/** Adds, and puts the cart's new count in the header as the answer arrives, even if the tile that asked has left the page meanwhile (bloat review step 2.4). */
-async function addAndCount(previous: AddToCartState, form: FormData): Promise<AddToCartState> {
-  const result = await addToCart(previous, form);
-  if (typeof result.count === "number") setCart(result.count);
-  return result;
-}
-
 export function AddToCart({
   store,
   market,
   cartHref,
-  redraw = false,
   variantId,
   disabled,
   labels,
@@ -60,8 +51,6 @@ export function AddToCart({
   store: string;
   market: string;
   cartHref: string;
-  /** The page draws the cart (a basket note, the cart's own upsells): the add redraws it (bloat review step 2.4). */
-  redraw?: boolean;
   variantId: string;
   disabled: boolean;
   labels: AddToCartLabels;
@@ -72,7 +61,7 @@ export function AddToCart({
   /** How many to add, chosen by the shopper (D430); absent adds one. */
   quantity?: QuantityOffer;
 }) {
-  const [state, action, pending] = useActionState(addAndCount, initial);
+  const [state, action, pending] = useActionState(addToCart, initial);
   const keepFocus = useKeepFocus(pending);
   useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
@@ -109,7 +98,6 @@ export function AddToCart({
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />
-      {redraw && <input type="hidden" name="redraw" value="1" />}
       {!quantity && <input type="hidden" name="quantity" value="1" />}
       <AffiliateField store={store} />
       <RecommendField />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cartSaving, drawsCartNote, freeShippingState, lineSaving, productSaving } from "./shop-notes";
+import { cartSaving, freeShippingState, lineSaving, productSaving } from "./shop-notes";
 import { drawsOn, noteRolesOf } from "./store-parts";
 
 const rate = { amountMinor: 9900, freeOverMinor: 100_000 };
@@ -59,18 +59,5 @@ describe("where the notes draw and are offered", () => {
     expect(noteRolesOf(["category"])).toBe(true);
     expect(noteRolesOf(["blog"])).toBe(false);
     expect(noteRolesOf([])).toBe(false);
-  });
-});
-
-describe("a page that draws the basket (bloat review step 2.4)", () => {
-  it("is one with a basket note: the product layout's free-shipping part, or either note of a working page", () => {
-    expect(drawsCartNote([{ type: "product", part: "free_shipping" }])).toBe(true);
-    expect(drawsCartNote([{ type: "heading" }, { type: "storePart", part: "you_saved" }])).toBe(true);
-    expect(drawsCartNote([{ type: "storePart", part: "free_shipping" }])).toBe(true);
-  });
-
-  it("is not one with the product's own saving or no note at all", () => {
-    expect(drawsCartNote([{ type: "product", part: "you_saved" }, { type: "product", part: "buy" }])).toBe(false);
-    expect(drawsCartNote([])).toBe(false);
   });
 });

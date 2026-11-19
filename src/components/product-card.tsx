@@ -21,7 +21,6 @@ export function ProductCard({
   market,
   m,
   store,
-  storeId,
   base,
   tracked = false,
   notices,
@@ -37,8 +36,6 @@ export function ProductCard({
   m: Messages;
   /** The store's slug and the market's path, for the wishlist heart (D34). */
   store: string;
-  /** The store's id, for the heart's marker cookie. */
-  storeId: string;
   base: string;
   /** The store's campaigns (D115): the offer on this product shows as a badge. */
   notices?: CampaignNotices;
@@ -50,7 +47,7 @@ export function ProductCard({
       <WishlistHeart
         store={store}
         market={market.slug}
-        storeId={storeId}
+        base={base}
         productId={product.id}
         labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
       />

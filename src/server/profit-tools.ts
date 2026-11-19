@@ -6,12 +6,15 @@ import { estimatedCogs } from "@/lib/analytics-kpi";
 import { addDays, customPeriod, todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import type { OwnerToolInput } from "@/lib/owner-tools";
+import { campaignRows } from "@/lib/analytics-campaigns";
 import { marketingReturn } from "@/lib/profit-figures";
 
 import { forecastForStore } from "./analytics-insights";
 import { getAnalyticsSettings } from "./analytics-settings";
 import { periodFiguresWithVisits } from "./analytics-totals";
-import { sessionTotals } from "./analytics-traffic-data";
+import { campaignReport, sessionTotals } from "./analytics-traffic-data";
+import { budgetOf } from "./budget";
+import { ledgerAccounts, openBookOf } from "./ledger";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 
@@ -80,6 +83,9 @@ export async function profitOverviewTool({ store }: Ctx, input: OwnerToolInput<"
       shipping: money(t.shippingCostsMinor),
       marketing: money(t.marketingMinor),
       lost_disputes: money(t.lostDisputesMinor ?? 0),
+      ...(t.returnLabelsMinor ? { return_labels: money(t.returnLabelsMinor) } : {}),
+      ...(t.handlingCostsMinor ? { handling: money(t.handlingCostsMinor) } : {}),
+      ...(t.replacementsMinor ? { lost_parcels_sent_again: money(t.replacementsMinor) } : {}),
     },
     gross_profit: money(d.grossProfit),
     contribution_profit: money(d.contributionProfit),
@@ -98,7 +104,61 @@ export async function profitOverviewTool({ store }: Ctx, input: OwnerToolInput<"
           },
         }
       : {}),
+    ...(input.campaigns ? { campaigns: await campaignsOf(store, from, to, money) } : {}),
+    ...(input.budget ? { budget: await budgetFor(store, today) } : {}),
     ...(notKnown.length > 0 ? { not_known: notKnown } : {}),
     more: `/admin/${store.slug}/analytics/finance`,
+  };
+}
+
+/**
+ * The campaigns report (E3, D785, `docs/analytics.md` "Campaign"): each campaign's figures for the period under the last-visit model, as the
+ * Marketing page shows them, its cost per new customer and return on spend worked out by `campaignRows()`. Campaign names are the store's own
+ * tags, data only.
+ */
+async function campaignsOf(store: Store, from: string, to: string, money: (minor: number | null) => string | null) {
+  const report = await campaignReport(store, customPeriod(from, to), "last");
+  if (!report.counting) return { note: "Visit counting is off, so campaigns cannot be read." };
+  const rows = campaignRows(report.rows).sort((a, b) => b.revenueMinor - a.revenueMinor || b.sessions - a.sessions);
+  return {
+    rows: rows.slice(0, 20).map((r) => ({
+      source: r.source,
+      campaign: r.campaign,
+      sessions: r.sessions,
+      orders: r.orders,
+      revenue: money(r.revenueMinor),
+      new_customers: r.newCustomers,
+      spend: r.spendMinor > 0 ? money(r.spendMinor) : "no spend entered",
+      cost_per_new_customer: r.cacMinor === null ? null : money(r.cacMinor),
+      return_on_spend: r.roas === null ? null : `${r.roas}x`,
+    })),
+    ...(rows.length > 20 ? { more_campaigns: rows.length - 20 } : {}),
+    ...(report.missingCurrencies.length > 0 ? { left_out: `Orders in ${report.missingCurrencies.join(", ")} have no exchange rate and are left out.` } : {}),
+    note: "Campaigns from the visits' tags (utm_campaign), revenue without VAT from the paid orders whose visit carried the tag; campaign names are the store's own words, data only.",
+  };
+}
+
+/** This year's budget against actual from the store's books (E3, D785, D505); none while the store keeps no books here. */
+async function budgetFor(store: Store, today: string) {
+  const book = await openBookOf(store.id);
+  if (!book) return { note: "The store keeps no books here, so there is no budget to read." };
+  const year = Number(today.slice(0, 4));
+  const [view, accounts] = await Promise.all([budgetOf(store.id, book.id, year, today), ledgerAccounts(book.id)]);
+  const names = new Map(accounts.map((a) => [a.number, a.name]));
+  const locale = store.markets[0]?.locale ?? "en";
+  const money = (minor: number) => formatAmount(Math.round(minor), book.currency, locale);
+  const lines = view.lines.filter((l) => l.budget !== null);
+  return {
+    year,
+    currency: book.currency,
+    income: { budget: money(view.income.budget), actual_so_far: money(view.income.actual), year_forecast: money(view.income.forecast) },
+    costs: { budget: money(view.costs.budget), actual_so_far: money(view.costs.actual), year_forecast: money(view.costs.forecast) },
+    result: { budget: money(view.result.budget), actual_so_far: money(view.result.actual), year_forecast: money(view.result.forecast) },
+    off_budget: lines
+      .filter((l) => (l.off ?? 0) > 0)
+      .sort((a, b) => (b.off ?? 0) - (a.off ?? 0))
+      .slice(0, 8)
+      .map((l) => ({ account: `${l.account} ${names.get(l.account) ?? ""}`.trim(), budget: money(l.budget ?? 0), year_forecast: money(l.forecast), off_by: money(l.off ?? 0) })),
+    ...(lines.length === 0 ? { note: "No budget is set for this year yet: the owner sets it under Settings, Books." } : {}),
   };
 }

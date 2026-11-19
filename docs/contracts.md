@@ -176,6 +176,12 @@ the signers in order with their role, name and dates, and the dates; never an em
 deliveries about the person's contracts, a signed one's too: the contract is kept under bookkeeping law, the copies sent out are not.
 Kaizena Flow's own deals are in its store (D466), so the platform gets the events as a store. API contract 1.36.
 
+*Found in production (19 November 2026):* the first *Send for signing* failed with "The PDF could not be made": the HTML was written by
+`react-dom/server` loaded from disk at run time, and the Vercel function did not carry it (`Cannot find module 'react-dom/server'`). No
+invoice had been made in production either, so the same latent fault sat under the invoices' PDFs. The documents are now written by
+`staticMarkup()` (`src/lib/static-markup.ts`), which needs no package from disk; `static-markup.test.ts` and the order documents' tests
+hold every view's output to `renderToStaticMarkup()`'s.
+
 ## 8. The owner's answers (16 November 2026)
 
 - **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.

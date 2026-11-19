@@ -376,10 +376,10 @@ const DETAILS: Record<KnownCookieName, Omit<KnownCookie, "name" | "pattern" | "c
     // The online shop's (D178 step 5): a website sets none of it.
     feature: "shop",
     purpose: {
-      en: "Tells the page that you have a cart, saved products or an account here, so it asks for them only then. It holds no identifier.",
-      nb: "Forteller siden at du har en handlekurv, lagrede produkter eller en konto her, slik at den bare spør etter dem da. Den inneholder ingen identifikator.",
-      sv: "Talar om för sidan att du har en varukorg, sparade produkter eller ett konto här, så att den bara frågar efter dem då. Den innehåller ingen identifierare.",
-      da: "Fortæller siden, at du har en kurv, gemte produkter eller en konto her, så den kun spørger efter dem da. Den indeholder ingen identifikator.",
+      en: "Tells the page that you have saved products or an account here, so it asks for them only then.",
+      nb: "Forteller siden at du har lagrede produkter eller en konto her, slik at den bare spør etter dem da.",
+      sv: "Talar om för sidan att du har sparade produkter eller ett konto här, så att den bara frågar efter dem då.",
+      da: "Fortæller siden, at du har gemte produkter eller en konto her, så den kun spørger efter dem da.",
     },
   },
   "buyer_…": {

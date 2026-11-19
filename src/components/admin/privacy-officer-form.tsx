@@ -3,10 +3,12 @@ import { fillWords } from "@/lib/admin-fill";
 import type { PrivacyOfficerMessages } from "@/lib/admin-messages/privacy-officer.en";
 import { officerSummary, type Officer, type OfficerChoice } from "@/lib/privacy-officer";
 import type { TeamPerson } from "@/server/privacy-officers";
+import { PickOnInput } from "@/components/admin/pick-on-input";
 
 /**
  * Who the data protection officer is (D763): on Your account for all the account's stores, or on a store's Company page, where the
- * first choice is its account's. Homer picks one line; the person's details show only under "Someone else".
+ * first choice is its account's. Homer picks one line; typing a name or address under "Someone else" picks that line, so what he wrote
+ * is saved (a save of "Nobody yet" with them filled in named nobody, 19 November 2026).
  */
 
 const choiceRow = "flex items-start gap-2 text-sm";
@@ -58,7 +60,7 @@ export function PrivacyOfficerForm({ words: w, action, store, choice, people, cu
           <input type="radio" name="officer" value="person" defaultChecked={choice.kind === "person"} className="mt-1" />
           <span>{w.someoneElse}</span>
         </label>
-        <div className="grid gap-3 pl-6 sm:grid-cols-2">
+        <PickOnInput name="officer" value="person" className="grid gap-3 pl-6 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             {w.name}
             <input name="name" defaultValue={person?.name ?? ""} maxLength={200} className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm" />
@@ -75,7 +77,7 @@ export function PrivacyOfficerForm({ words: w, action, store, choice, people, cu
             {w.firm}
             <input name="firm" defaultValue={person?.firm ?? ""} maxLength={200} className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm" />
           </label>
-        </div>
+        </PickOnInput>
       </fieldset>
       <p className="text-xs text-muted">{w.hint}</p>
       <div>

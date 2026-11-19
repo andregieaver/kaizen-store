@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, pageBlocks, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow, type StorePartBlock, type ThemeStoreBlock } from "@/lib/page-content";
+import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow, type StorePartBlock, type ThemeStoreBlock } from "@/lib/page-content";
 import { phoneShare } from "@/lib/column-share";
 import { inlineMarkOf } from "@/lib/inline-edit";
 
@@ -9,7 +9,6 @@ import { t } from "@/lib/i18n";
 import { blockTarget, motionNeeds, partFx } from "@/lib/motion-attrs";
 import { flowRows } from "@/lib/page-modal";
 import { rowWidthStyle } from "@/lib/part-css";
-import { drawsCartNote } from "@/lib/shop-notes";
 import { ROW_GAP, meetsAbove, rowAbove } from "@/lib/row-join";
 import type { ThemeLayers } from "@/lib/section-styles";
 import { themedRows } from "@/lib/theme-elements";
@@ -96,7 +95,7 @@ async function ReadArticleStyles({ rows, place }: { rows: PageRow[]; place: Grid
  */
 export function PageArticle({
   content: given,
-  place: givenPlace = { pageId: null, owner: null },
+  place = { pageId: null, owner: null },
   titled = false,
   renderBlock,
   storePart,
@@ -122,8 +121,6 @@ export function PageArticle({
 }) {
   // A preview draws what the blocks hold; a block still bound to a field is drawn only if it keeps its own content (D118).
   const content = inAdmin ? withoutBindings(given) : given;
-  // A page with a note about the shopper's basket is drawn again when a tile on it adds to the cart (bloat review step 2.4).
-  const place = givenPlace.owner && drawsCartNote(pageBlocks(content)) ? { ...givenPlace, redraw: true } : givenPlace;
   const rows = content.rows.filter((row) => rowShows(row) && !themeRowLeftOut(row, place));
   // Without a main heading in the rows (`mainHeadingIn()`), the title is the page's, for screen readers.
   const hasMainHeading = mainHeadingIn(rows, place.themeSlug);

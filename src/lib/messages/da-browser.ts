@@ -2,8 +2,6 @@
 import type { BrowserMessages } from "./en-browser";
 
 export const daBrowser: BrowserMessages = {
-cart: "Kurv",
-cartCount: (n: number) => `Kurv (${n})`,
 /** The Cookies page's button that deletes this browser's recordings of visits on the shop (D656). */
 recordings: { delete: "Slet mine optagelser", deleted: "Optagelserne, som denne browser lavede i denne butik, er slettet." },
 pageError: {
