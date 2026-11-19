@@ -1,14 +1,14 @@
 {
   "largestCycle": 23,
   "entries": {
-    "proxy": 325,
+    "proxy": 57,
     "start-hook": 1,
     "health": 13,
     "beacon-visit": 116,
     "beacon-touch": 116,
     "beacon-speed": 130,
     "beacon-own-speed": 118,
-    "beacon-recommendation-events": 112,
+    "beacon-recommendation-events": 113,
     "shop-tiles": 320,
     "store-layout": 596,
     "store-home": 488,
@@ -21,13 +21,7 @@
     "docs-feedback": 282
   },
   "exceptions": {
-    "proxy": [
-      "src/lib/admin-messages/",
-      "src/server/ai.ts",
-      "src/server/auth.ts",
-      "src/server/pages.ts",
-      "src/server/seo.ts"
-    ],
+    "proxy": [],
     "start-hook": [],
     "health": [],
     "beacon-visit": [

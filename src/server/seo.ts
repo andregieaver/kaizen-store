@@ -11,6 +11,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
+import { STORES_TAG } from "@/lib/cache-tags";
 import { t } from "@/lib/i18n";
 import { languageChoices, localizationOf } from "@/lib/localization";
 import { LEGAL_ROLES } from "@/lib/legal-roles";
@@ -62,8 +63,7 @@ type Row = Record<string, unknown>;
 
 /** Revalidate after Kaizen's own search settings change. */
 export const PLATFORM_SEO_TAG = "platform-seo";
-/** Revalidate after a store opens, closes or changes its search settings. */
-export const STORES_TAG = "stores";
+export { STORES_TAG } from "@/lib/cache-tags";
 
 export type SeoInput = z.infer<typeof storeSeoInput>;
 

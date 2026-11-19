@@ -237,7 +237,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   store routes' `notFound()` and the catch-all `[market]/[...rest]` call it, and `src/proxy.ts` calls it for a path with **no
   market** of a store that sells in several countries (`storeRequestAnswer()`, `parseLegacyRequest()`; D181's `STORE_MATCHER` kept
   in step by a test): never add a redirect lookup to a path that can be a live page. Imports and exports of redirects are D165
-  jobs (`redirect_import`, `redirect_export`, Shopify's `Redirect from` and `Redirect to`), never a second pipeline. The 404
+  jobs (`redirect_import`, `redirect_export`, Shopify's `Redirect from` and `Redirect to`), never a second pipeline. A hit is
+  counted by `countHit()` in `src/server/redirect-live.ts`, and a miss recorded by `recordNotFound()` in
+  `src/server/not-found-record.ts`, the one caller of `record_not_found()` (leaf files the proxy imports, bloat review step 2.20). The 404
   report (`commerce.not_found_hits`, `record_not_found()`, `recordablePath()`) keeps the address, the day and counts only: never
   an IP, user agent, cookie, referrer or query string, never a working page's, a token's or a person's address (eight or more
   digits, spelled any way, are a number a person could own: `recordablePath()`); `pruneNotFound()` in the daily cron. Categories'

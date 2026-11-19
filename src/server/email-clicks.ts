@@ -50,6 +50,27 @@ export async function keepClick(storeId: string, broadcastId: string, link: stri
 }
 
 /**
+ * Keeps a press in a flow's email (D767) by the subscriber the reference names (signed with the flow's id), as `keepClick()`. Never throws.
+ */
+export async function keepFlowClick(storeId: string, flowId: string, stepId: string, link: string, ref: string | null): Promise<boolean> {
+  try {
+    const key = clickKey();
+    const subscriberId = key ? readPersonRef(key, flowId, ref) : null;
+    if (!subscriberId) return false;
+    const rows = await db().execute(sql`
+      insert into commerce.email_clicks (store_id, subscriber_id, flow_id, step_id, link)
+      select s.store_id, s.id, ${flowId}::uuid, ${stepId}, ${link} from commerce.marketing_subscribers s
+       where s.store_id = ${storeId}::uuid and s.id = ${subscriberId}::uuid and s.status = 'subscribed'
+      returning id
+    `);
+    return rows.length > 0;
+  } catch (error) {
+    log("error", "email_clicks.keep_failed", { storeId, flowId }, error);
+    return false;
+  }
+}
+
+/**
  * The delete of presses older than 180 days, as a statement for a `with` (a data-changing `with` runs once whether read or not): the daily
  * prune of broadcasts' recipients carries it, so the daily route makes no statement more (`pruneBroadcastRecipients()`).
  */
@@ -61,7 +82,7 @@ const clickRow = z.object({
   clicked_at: col.timestamp,
 });
 
-/** A person's presses for their export: the broadcast's name, the link's key and when, by the subscriber rows the person's addresses or account own. */
+/** A person's presses for their export: the broadcast's or flow's name, the link's key and when, by the subscriber rows the person's addresses or account own. */
 export async function clicksOf(
   storeId: string,
   addresses: string[],
@@ -69,9 +90,10 @@ export async function clicksOf(
 ): Promise<{ broadcast: string; link: string; clickedAt: string }[]> {
   const rows = await typedRows(
     clickRow,
-    sql`select b.title as broadcast, c.link, c.clicked_at from commerce.email_clicks c
+    sql`select coalesce(b.title, f.name, '') as broadcast, c.link, c.clicked_at from commerce.email_clicks c
           join commerce.marketing_subscribers m on m.store_id = c.store_id and m.id = c.subscriber_id
-          join commerce.broadcasts b on b.store_id = c.store_id and b.id = c.broadcast_id
+          left join commerce.broadcasts b on b.store_id = c.store_id and b.id = c.broadcast_id
+          left join commerce.flows f on f.store_id = c.store_id and f.id = c.flow_id
          where c.store_id = ${storeId}::uuid
            and (lower(m.email) = any(${textList(addresses)}) or m.customer_id = ${customerId}::uuid)
          order by c.clicked_at`,

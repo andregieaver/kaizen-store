@@ -37,8 +37,8 @@
     },
     "proxy": {
       "route": ".next/server/middleware.js",
-      "bytes": 2253770,
-      "max": 2343921
+      "bytes": 585983,
+      "max": 1048576
     },
     "instrumentation": {
       "route": ".next/server/instrumentation.js",

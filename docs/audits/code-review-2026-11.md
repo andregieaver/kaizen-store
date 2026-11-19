@@ -117,7 +117,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.10 | Cache tags per product | FF3 | M | Open | |
 | 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
-| 3.13 | Domain folders | FV4, FH6 | L | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach |
+| 3.13 | Domain folders | FV4, FH6 | L | Open || the cycle of src/server cut from 229 to 15 files (bloat step 0.6, 12 Nov); `src/server/route-load.graph.test.ts` (step 1.8) holds what 18 entries reach; when a feature gets its folder, its reads and writes become two files (bloat step 2.20) |
 | 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only |
 | 3.15 | Keep the big tables lean | FD7, FD8 | M | Open | The 13 duplicate indexes dropped by bloat step 0.26, 15 November 2026, commit f1c57b2f; hot-table index counts held by the surface budget. |
 | 3.16 | One error shape for the API | FD10 | M | Open | |
@@ -791,3 +791,4 @@ scale. `statement_timeout` on a role behind the transaction pooler (FD9) needs a
 - 17 November 2026: bloat step 1.18: the surface budget (`src/lib/surface-budget.baseline.json`) holds the hot tables' index and trigger counts and a new store's rows; step 3.15 stays Open.
 - 18 November 2026: bloat review step 1.20: `scripts/timed.mjs` records every CI check's seconds, `scripts/next-build.mjs` ends with `Build: N s, peak memory X GB`, and the two source-map switches are measured under an 8 GB cap (`docs/build-memory.md`: `serverSourceMaps: false` stays on Vercel, `enablePrerenderSourceMaps` gained nothing); row 1.8's status unchanged.
 - 19 November 2026: bloat review step 2.40: every decision is its own file in `docs/decisions/` with `docs/decisions.md` a generated index (`scripts/decisions.mjs`); the Migration versions list is `docs/decisions/migration-versions.md`; 1.10 Done.
+- 19 November 2026: bloat review step 2.20: the proxy's readers are leaf files beside their features' writers; step 3.13's note gains the rule that a feature's reads and writes become two files when it gets its folder.

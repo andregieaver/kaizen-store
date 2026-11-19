@@ -7,6 +7,7 @@ import { z } from "zod";
 import { readDb } from "@/db/client";
 import { cookieNoteInput, parseScannedItems, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { REFERRAL_DEFAULTS } from "@/lib/referrals";
+import { cookiesTag } from "@/lib/cache-tags";
 
 import { affiliateCapture, affiliateTag } from "./affiliates";
 import { chatTag } from "./chat-agent";
@@ -31,8 +32,7 @@ import { col, typedRow } from "./typed-rows";
  * field here and its tag, not a read. The per-feature readers stay for their own screens and parts.
  */
 
-/** Revalidate after a site's scan finishes or its notes change (kept here so `site-cookies.ts`, which re-exports it, and this file share it). */
-export const cookiesTag = (storeId: string | null) => `cookies:${storeId ?? "kaizen"}`;
+export { cookiesTag } from "@/lib/cache-tags";
 
 export type SiteFacts = {
   /** The store's features (D178); null for Kaizena Flow's own site. */

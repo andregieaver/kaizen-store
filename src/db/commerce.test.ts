@@ -192,6 +192,18 @@ describe("reference data", () => {
     const browse = await insert("customer.browsed", 1);
     await db.query("delete from commerce.flows where id = $1", [(browse.rows[0] as { id: string }).id]);
   });
+
+  it("keeps a press for a broadcast or a flow's step, never both or neither (D767)", async () => {
+    const press = (broadcast: boolean, flow: boolean, step: boolean) =>
+      db.query(
+        `insert into commerce.email_clicks (store_id, subscriber_id, broadcast_id, flow_id, step_id, link)
+         values ($1, gen_random_uuid(), ${broadcast ? "gen_random_uuid()" : "null"}, ${flow ? "gen_random_uuid()" : "null"}, ${step ? "'e1'" : "null"}, 'nb-NO.1')`,
+        [store],
+      );
+    await expect(press(false, false, false)).rejects.toThrow(/email_clicks_source/);
+    await expect(press(true, true, true)).rejects.toThrow(/email_clicks_source/);
+    await expect(press(false, true, false)).rejects.toThrow(/email_clicks_source/);
+  });
 });
 
 describe("sequential order numbering", () => {

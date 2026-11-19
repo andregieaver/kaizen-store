@@ -281,7 +281,8 @@ the path, component or table you change, or list the rules with a search for lin
 - **Private mode (wave 7 unit E, D339, `docs/wave-7-storefront.md` E)**: whether a store is private is `stores.private_mode` (its password a scrypt hash
   in `private_password`, its `private_version`), written only by `src/server/private-mode.ts` (audited); a store template or demo store never is.
   The proxy serves a private store's pages to a visitor without the unlock pass (`kaizen_unlock_{storeId}`, `src/lib/unlock-pass.ts`, checked by
-  `unlocks()`) from its landing page (`privateGate()` over `privateDecision()`, the page role `private` at `/s/{store}/private/{market}` under a
+  `unlocks()`) from its landing page (`privateGate()` over `privateDecision()`, read from the store's few-second facts in `src/server/store-facts.ts`
+  that the address decisions read too, bloat review step 2.20; the page role `private` at `/s/{store}/private/{market}` under a
   layout of its own): a new path a buyer reaches after the sale goes in `PRIVATE_OPEN_SEGMENTS`, and a new route a visitor reaches outside the
   pages (the proxy never sees `/api`) asks `lockedOut()`. A private store is never `indexable` and its robots.txt shuts everything. A new store
   is private until `completeSetup()` opens it; the test databases start stores public, so a test of it switches it on.

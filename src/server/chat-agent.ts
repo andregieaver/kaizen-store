@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { headers } from "next/headers";
 
 import { db, readDb } from "@/db/client";
+import { chatTag } from "@/lib/cache-tags";
 import { cleanReply, embedTools, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, shownSoFar, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
 import { brandVoiceGuide } from "@/lib/brand";
 import { chatAgentInput, navigateArgs, type ChatRequest } from "@/lib/chat-schema";
@@ -69,7 +70,7 @@ export type ChatAgent = {
   dailyLimit: number;
 };
 
-export const chatTag = (storeId: string | null) => (storeId ? `chat:${storeId}` : "chat:kaizen");
+export { chatTag } from "@/lib/cache-tags";
 
 function toAgent(row: Row): ChatAgent {
   return {

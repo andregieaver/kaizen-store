@@ -45,6 +45,7 @@ import { listTiers } from "./customer-tiers";
 import { BATCH_MAX, deliverBatch, emailSettings, sendEmail, type Delivery, type SendOutcome } from "./email";
 import { getContactPolicy, recentContacts } from "./contact-policy";
 import { clickRef, emailClicksPrune, keepClick } from "./email-clicks";
+import { recordFlowClick } from "./flows";
 import { flowRunsPrune } from "./flows";
 import { log } from "./log";
 import { sendCredit } from "./order-credit";
@@ -696,6 +697,8 @@ async function finishDone(only: string | null): Promise<number> {
  * still on the list (`ref`, M1.3, D754) the press is kept as theirs too.
  */
 export async function recordClick(broadcastId: string, key: string, marketSlug: string | null, ref: string | null = null): Promise<string | null> {
+  // A flow's email's link (`{step}~{link}`, D767): the same route, its own lookup.
+  if (key.includes("~")) return recordFlowClick(broadcastId, key, marketSlug, ref);
   if (!z.uuid().safeParse(broadcastId).success || key.length > 20) return null;
   const [row] = await db().execute<Row>(sql`
     select store_id, content from commerce.broadcasts where id = ${broadcastId}::uuid and status in ('sending', 'sent', 'cancelled')

@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const storeRequestAnswer = vi.fn();
 const recordNotFound = vi.fn();
-vi.mock("@/server/redirect-resolve", () => ({ storeRequestAnswer: (...args: unknown[]) => storeRequestAnswer(...args), privateGate: async () => null }));
-vi.mock("@/server/not-found", () => ({ recordNotFound: (...args: unknown[]) => recordNotFound(...args) }));
-vi.mock("@/server/holding", () => ({ holdingFor: async () => null }));
+vi.mock("@/server/redirect-resolve", () => ({ storeRequestAnswer: (...args: unknown[]) => storeRequestAnswer(...args) }));
+vi.mock("@/server/store-facts", () => ({ privateGate: async () => null }));
+vi.mock("@/server/not-found-record", () => ({ recordNotFound: (...args: unknown[]) => recordNotFound(...args) }));
+vi.mock("@/server/holding-read", () => ({ holdingFor: async () => null }));
 vi.mock("@/server/instance-start", () => ({ noteFirstRequest: () => undefined }));
-vi.mock("@/server/experiments", () => ({ runningExperiments: async () => [], storeIdOfSlug: async () => null }));
+vi.mock("@/server/experiments-running", () => ({ runningExperiments: async () => [], storeIdOfSlug: async () => null }));
 const siteStore = vi.fn(async (): Promise<string | null> => null);
-vi.mock("@/server/house-switch", () => ({ siteStore: () => siteStore() }));
+vi.mock("@/server/site-switch-read", () => ({ siteStore: () => siteStore() }));
 
 import { proxy } from "./proxy";
 

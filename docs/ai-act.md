@@ -41,7 +41,9 @@ No use is a prohibited practice (Art. 5), and none is high-risk (Art. 6 and Anne
    pixel) and back at its own path, so no page's address changes; `media.ai_marked_at` records it (migration `media_ai_marked`), and new
    pictures are recorded as marked when they are made. Production held 190 such pictures (all `ai_made`, 17 to 30 October), about 95
    minutes of runs. Storage's CDN refreshes an overwritten file within about a minute (Supabase Smart CDN, Pro plan and above); a browser
-   that cached the old copy keeps it until its cache ends, which can be a year for library pictures.
+   that cached the old copy keeps it until its cache ends, which can be a year for library pictures. Since 19 November 2026 a picture
+   copied into another library (a theme's, a template's, a store copy) carries its `ai_marked_at` (`copyToLibrary()`, D807), so the job
+   never meets a copy again.
 2. A short AI-literacy note for Kaizena Flow's own staff (Art. 4).
 3. The lawyer's confirmation of this classification, with the DPIA.
 

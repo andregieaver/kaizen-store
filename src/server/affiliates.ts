@@ -9,6 +9,7 @@ import { AFFILIATE_DEFAULTS, affiliateCookie, friendLabel, makeAffiliateCode, no
 import { affiliateSettingsInput } from "@/lib/affiliates-schema";
 import { convertCredits } from "@/lib/bonus";
 import type { Market } from "@/lib/markets";
+import { affiliateTag } from "@/lib/cache-tags";
 
 import { audit, type Account } from "./auth";
 import { bonusProgram, roleIn, type BonusProgram, type Runner } from "./bonus";
@@ -24,8 +25,7 @@ type Row = Record<string, unknown>;
  * `placeOrder()`.
  */
 
-/** Revalidate when a store's program is switched on or off, or its settings change. */
-export const affiliateTag = (storeId: string) => `affiliate:${storeId}`;
+export { affiliateTag } from "@/lib/cache-tags";
 
 // ---------------------------------------------------------------------------
 // The program: settings, and whether it is on (its own switch and the bonus program's)

@@ -7,6 +7,7 @@ import { readDb } from "@/db/client";
 import { NO_NOTICES, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";
 import { tiersIn } from "@/lib/campaigns";
 import { shown, type Market } from "@/lib/markets";
+import { campaignsTag } from "@/lib/cache-tags";
 
 import { storeAndMarket } from "./content-grid";
 
@@ -20,7 +21,7 @@ import { storeAndMarket } from "./content-grid";
  * (`CampaignEnds`). Only what is the same for every shopper is announced.
  */
 
-export const campaignsTag = (storeId: string) => `campaigns:${storeId}`;
+export { campaignsTag } from "@/lib/cache-tags";
 
 type Row = Record<string, unknown>;
 
