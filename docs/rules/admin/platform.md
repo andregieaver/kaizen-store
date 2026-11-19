@@ -236,7 +236,7 @@ under *What the router fetches ahead*.
 ## Accounts that own stores (D748, `docs/extensions.md`)
 
 - **Accounts (E1)**: plans, billing and paid extensions belong to the account that owns a store, `commerce.organisations` (steps E1 to E11;
-  E1 to E5 built). `stores.organisation_id` is set by the database at commit (`commerce.place_store()`): Kaizena Flow's own stores in the
+  E1 to E5 built, E6 begun). `stores.organisation_id` is set by the database at commit (`commerce.place_store()`): Kaizena Flow's own stores in the
   one `platform` organisation, every other in its creator's (`commerce.account_organisation()`, named after the store, never a person). No
   code writes it by hand; screens say "account", never "organisation". `src/db/organisations.test.ts` holds the rules.
 - **The catalogue (E2, `src/lib/extensions.ts`, `src/server/extensions.ts`, Platform → Plans → Extensions)**: ids are fixed in
@@ -264,6 +264,8 @@ under *What the router fetches ahead*.
   moved or given its row (one made later gets it from `organisation_billed_after_launch`), and a 60-day trial of each extension an account's
   records show it uses (`USED`) and its plan lacks. After it no account is billed store by store: a trial goes on the account's row
   (`writeTrial()`), the platform's plan buttons on a store act on its account, and `daily.extension-trials` emails at 30, 14 and 3 days.
+- **The cheapest way (E6)**: what an account buys beside its plan is `accountCover()`'s answer, never a list made elsewhere: each
+  extension once, never one the plan includes.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

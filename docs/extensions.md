@@ -384,6 +384,21 @@ plan buttons on a store act on its account. The daily run's `daily.extension-tri
 30, 14 and 3 days before a trial ends (`trialReminderDue()`: only reminders shorter than the trial, the latest due after a missed day), one
 email per account for trials ending together, each once (its key kept with the email).
 
+**E6, planned in two parts (19 November 2026).** 1. Bundles and the cheapest way: `cheapestCover()`, a bundle's price on the account's
+subscription, and every add, end and plan change buying the cheapest cover. 2. Founding prices: timed prices (D524) for extensions and
+bundles, locked for 12 months for those who start while one runs.
+
+**E6 as built, part one (19 November 2026).** `cheapestCover()` (`src/lib/extension-cover.ts`) tries every set of bundles that share no
+extension, with the rest bought one by one, and keeps the cheapest (then the fewest things to buy); a bundle holding an extension the plan
+includes, or one the owner is ending, is never offered, and a bundle covers its members at their smallest size only. `accountCover()`
+(`src/server/account-cover.ts`) works it out for an account in its plan's currency and interval: adding an extension, ending one
+(`setAccountExtension()`) and a plan change keeping what is bought (`"kept"`) all buy its answer. A subscription item may be a bundle's
+price (`itemProblems()` refuses an extension twice, on its own and in a bundle, or a bundle holding one the plan includes); bundles are
+Stripe products (`bundle:<id>`) beside the extensions; Stripe's word makes each member a `bundle` row with the bundle, and a member no
+longer covered ends with its grace period. Account → Extensions says when adding one is cheapest as a bundle ("Cheapest as the Customers
+bundle: …, … less than one by one", `bundleHints()`, read once for every row) and ends one in a bundle too; Account → Billing names the
+bundle.
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.

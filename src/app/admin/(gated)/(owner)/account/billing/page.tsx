@@ -147,7 +147,7 @@ async function AccountPlan({
               <ul className="list-disc pl-5">
                 {extensions.map((e) => (
                   <li key={e.extensionId}>
-                    {e.endedAt ? fillWords(words.extensionEnds, { name: e.name, size: e.size, date: adminDate(PLATFORM_TIME_ZONE, e.endedAt, "day", lang) }) : fillWords(words.extensionLine, { name: e.name, size: e.size })}
+                    {e.endedAt ? fillWords(words.extensionEnds, { name: e.name, size: e.size, date: adminDate(PLATFORM_TIME_ZONE, e.endedAt, "day", lang) }) : e.bundle ? fillWords(words.extensionInBundle, { name: e.name, bundle: e.bundle }) : fillWords(words.extensionLine, { name: e.name, size: e.size })}
                   </li>
                 ))}
               </ul>

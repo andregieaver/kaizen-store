@@ -23,6 +23,14 @@ describe("itemProblems", () => {
     // Without the plan, the plan's grants do not count.
     expect(itemProblems(null, [work], ["work"])).toEqual([]);
   });
+
+  it("takes a bundle, and refuses one holding an extension bought on its own too, or one the plan includes (E6)", () => {
+    const customers = { id: "customers-eur-m", currency: "EUR", interval: "month" as const, bundleId: "customers", members: ["support_desk", "email_automation", "deals"] as const };
+    expect(itemProblems(plan, [work], [], [customers])).toEqual([]);
+    expect(itemProblems(plan, [deals], [], [customers])).toEqual(["Deals and contracts is chosen twice."]);
+    expect(itemProblems(plan, [], ["support_desk"], [customers])).toEqual(["A bundle holds AI support desk, which is in the plan already."]);
+    expect(itemProblems(plan, [], [], [{ ...customers, currency: "NOK" }])).toEqual(["Everything on the account's plan is billed in one currency."]);
+  });
 });
 
 describe("itemChanges", () => {
