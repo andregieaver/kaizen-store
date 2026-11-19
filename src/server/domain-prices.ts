@@ -39,7 +39,7 @@ export async function latestEurRates(): Promise<{ rates: EurRates; day: string |
 /** The currency a store pays Kaizena Flow in for domains: its plan's, else its own country's, among the priced currencies. */
 export async function storeDomainCurrency(storeId: string, priced: readonly string[]): Promise<string | null> {
   const [row] = await db().execute<Row>(sql`
-    select (select pp.currency from commerce.store_billing b join commerce.plan_prices pp on pp.id = b.price_id where b.store_id = s.id) as plan_currency,
+    select (select pp.currency from commerce.store_plans b join commerce.plan_prices pp on pp.id = b.price_id where b.store_id = s.id) as plan_currency,
            (select m.currency from commerce.markets m where m.store_id = s.id and m.code = commerce.home_market(s.id) limit 1) as home_currency
       from commerce.stores s where s.id = ${storeId}::uuid
   `);

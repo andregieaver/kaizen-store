@@ -23,6 +23,7 @@ import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
 import { getCustomer } from "./customers";
+import { markMine } from "./mine-marker";
 import { LIST_PRICED, STORE_AUDIENCE, offeredTo, plansOffered } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { refreshTag } from "./refresh";
@@ -725,6 +726,8 @@ export async function setCartCookie(shop: Shop, id: string): Promise<void> {
     path: "/",
     maxAge: CART_TTL_DAYS * 24 * 60 * 60,
   });
+  // The page asks for the cart's count only when this marker says there may be one (bloat review step 2.4); the cart id stays httpOnly (D14).
+  await markMine(shop.storeId);
 }
 
 /**

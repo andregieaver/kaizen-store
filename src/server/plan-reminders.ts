@@ -219,7 +219,7 @@ export async function sendDuePlanReminders(): Promise<{ sent: number; failed: nu
   // A store already on a plan (chosen another way, or assigned by an admin) counts as paid.
   await db().execute(sql`
     update commerce.abandoned_plan_checkouts a set recovered_at = now(), updated_at = now()
-    from commerce.store_billing b
+    from commerce.store_plans b
     where b.store_id = a.store_id and b.status in (${onPlan}) and a.recovered_at is null
   `);
   const due = await db().execute<Row>(sql`

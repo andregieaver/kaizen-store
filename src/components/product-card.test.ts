@@ -31,6 +31,7 @@ const card = (product: Partial<ProductSummary>) =>
       market,
       m,
       store: "demo",
+      storeId: "00000000-0000-4000-8000-000000000001",
       base: "/s/demo/no",
     }),
   );

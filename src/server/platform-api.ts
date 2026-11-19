@@ -38,7 +38,7 @@ const STORE_SELECT = sql`
   select s.id, s.slug, s.name, s.country, s.status::text as status, s.created_at, s.setup_completed_at,
     p.name as plan_name, pp.interval, pp.amount_minor, pp.currency, b.status::text as billing_status, b.current_period_end, b.cancel_at_period_end
   from commerce.stores s
-  left join commerce.store_billing b on b.store_id = s.id
+  left join commerce.store_plans b on b.store_id = s.id
   left join commerce.plans p on p.id = b.plan_id
   left join commerce.plan_prices pp on pp.id = b.price_id
 `;

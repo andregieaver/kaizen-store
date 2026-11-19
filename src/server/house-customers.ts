@@ -129,7 +129,7 @@ function people(runner: Tx): Promise<Person[]> {
         from commerce.accounts a
         join commerce.store_members m on m.account_id = a.id and m.role = 'owner' and m.disabled_at is null
         join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
-        left join commerce.store_billing b on b.store_id = s.id
+        left join commerce.store_plans b on b.store_id = s.id
         left join commerce.plans p on p.id = b.plan_id
         where a.disabled_at is null and a.email not like '%.invalid'
       ),
@@ -145,7 +145,7 @@ function people(runner: Tx): Promise<Person[]> {
         select distinct on (lower(r.email)) r.id as request_id, lower(r.email) as email, coalesce(r.name, '') as name, r.locale as lang,
                r.store_name, r.status::text as status,
                coalesce((select s.setup_completed_at is not null from commerce.stores s where s.id = r.store_id), false) as store_opened,
-               coalesce((select b.status in ('active', 'past_due') and b.mode = 'live' from commerce.store_billing b where b.store_id = r.store_id), false) as plan_paid
+               coalesce((select b.status in ('active', 'past_due') and b.mode = 'live' from commerce.store_plans b where b.store_id = r.store_id), false) as plan_paid
         from commerce.access_requests r
         where r.email not like '%.invalid' and (not r.self_serve or r.confirmed_at is not null)
         order by lower(r.email), r.created_at desc, r.id

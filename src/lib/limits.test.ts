@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { effectiveLimit, fromTyped, GIB, LIMIT_KEYS, LIMITS, limitState, parseLimitsForm, roomLeft, toTyped, wouldPass } from "./limits";
+import { effectiveLimit, fromTyped, GIB, LIMIT_KEYS, LIMITS, limitState, parseLimitsForm, roomLeft, toTyped, widestSource, wouldPass } from "./limits";
 import { USAGE_METRICS } from "./usage-metrics";
 
 describe("effectiveLimit", () => {
@@ -13,6 +13,14 @@ describe("effectiveLimit", () => {
   it("tells a row meaning unlimited from no row", () => {
     expect(effectiveLimit({ override: { value: null }, plan: { value: 2 } })).toEqual({ value: null, origin: "override" });
     expect(effectiveLimit({})).toEqual({ value: null, origin: "none" });
+  });
+});
+
+describe("widestSource", () => {
+  it("takes unlimited over any number, else the largest, and none when nothing is set", () => {
+    expect(widestSource([])).toBeUndefined();
+    expect(widestSource([undefined, { value: 3 }, { value: 9 }])).toEqual({ value: 9 });
+    expect(widestSource([{ value: 3 }, { value: null }])).toEqual({ value: null });
   });
 });
 

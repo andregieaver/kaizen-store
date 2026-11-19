@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CartCountSeed } from "@/components/cart-count-seed";
 import { WishlistView } from "@/components/lazy/shop";
 import type { WishlistItemView } from "@/components/wishlist-view";
 import { optionLabel, t } from "@/lib/i18n";
@@ -10,6 +11,7 @@ import { withWords } from "@/lib/price-words";
 import { canOffer } from "@/lib/stock-words";
 import { shownAmount } from "@/lib/pricing";
 import { getBuyer } from "@/server/b2b";
+import { getCartCount } from "@/server/cart";
 import { marketPath } from "@/lib/paths";
 import { getProduct, getVariantStock } from "@/server/catalog";
 import { getCustomer } from "@/server/customers";
@@ -33,7 +35,8 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
   const m = t(market.lang);
   const w = m.wishlist;
   const base = marketPath(store.slug, market.slug);
-  const [lists, customer, buyer] = await Promise.all([listWishlists(store.id), getCustomer(store.id), getBuyer(store)]);
+  // The cart's count too: moving a list to the cart redraws this page (`refresh()`), and the header's count follows (bloat review step 2.4).
+  const [lists, customer, buyer, count] = await Promise.all([listWishlists(store.id), getCustomer(store.id), getBuyer(store), getCartCount({ storeId: store.id, market })]);
   const wanted = (await query).list;
   const current = lists.find((l) => l.id === wanted) ?? lists[0] ?? null;
 
@@ -83,6 +86,7 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
 
   return (
     <>
+      <CartCountSeed count={count} />
       <h1 className="text-3xl font-heading tracking-tight">{w.title}</h1>
       {!customer && (
         <p className="text-sm text-muted">

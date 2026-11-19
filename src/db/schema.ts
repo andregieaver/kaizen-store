@@ -2434,6 +2434,48 @@ export const storeBilling = commerce.table(
   ],
 );
 
+/**
+ * An account billed through its account (D748 step E4, `docs/extensions.md` 13): one plan and one subscription for all its stores, the
+ * account's trial, and the limits counted across its stores. An account without a row is billed store by store (`store_billing`), as every
+ * account was before launch. What counts for a store is read through the view `commerce.store_plans`, never from either table alone.
+ */
+export const organisationBilling = commerce.table(
+  "organisation_billing",
+  {
+    organisationId: uuid("organisation_id")
+      .primaryKey()
+      .references(() => organisations.id),
+    planId: uuid("plan_id").references(() => plans.id),
+    priceId: uuid("price_id").references(() => planPrices.id),
+    mode: paymentMode("mode"),
+    subscriptionId: text("subscription_id"),
+    /** Stripe's subscription status: trialing, active, past_due, canceled, … */
+    status: text("status"),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    /** Kaizena Flow's fee on the account's sales; a store's own override (`store_billing`) still wins for that store. */
+    saleFeeBpsOverride: integer("sale_fee_bps_override"),
+    platformDiscountId: uuid("platform_discount_id").references(() => platformDiscountCodes.id, { onDelete: "set null" }),
+    discountAppliedAt: timestamp("discount_applied_at", { withTimezone: true }),
+    /** The end of the account's trial: a plan chosen before then costs nothing until then. */
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    /** The Stripe account billed (Accounts v2 `customer_account`), in `mode`: a store's own or one made for the account. */
+    customerAccount: text("customer_account"),
+    /** When the account's stores moved here from being billed one by one (step E4's move); null for an account billed so from the start. */
+    movedAt: timestamp("moved_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("organisation_billing_subscription_key").on(t.mode, t.subscriptionId),
+    check("organisation_billing_fee_range", sql`${t.saleFeeBpsOverride} is null or ${t.saleFeeBpsOverride} between 0 and 2000`),
+    index("organisation_billing_plan_idx").on(t.planId),
+    index("organisation_billing_price_idx").on(t.priceId),
+    index("organisation_billing_platform_discount_idx").on(t.platformDiscountId),
+    index("organisation_billing_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Markets
 // ---------------------------------------------------------------------------

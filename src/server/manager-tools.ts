@@ -325,8 +325,8 @@ async function platformOverview() {
         count(*) filter (where s.status = 'active')::int as open,
         count(*) filter (where s.status = 'setup')::int as in_setup,
         count(*) filter (where s.status not in ('active', 'setup', 'closed'))::int as other,
-        (select count(*)::int from commerce.store_billing b where b.status in ('active', 'trialing')) as on_plan,
-        (select count(*)::int from commerce.store_billing b where b.status in ('past_due', 'unpaid')) as plan_overdue,
+        (select count(*)::int from commerce.store_plans b where b.status in ('active', 'trialing')) as on_plan,
+        (select count(*)::int from commerce.store_plans b where b.status in ('past_due', 'unpaid')) as plan_overdue,
         (select count(*)::int from commerce.access_requests r where r.status = 'pending') as requests_waiting
       from commerce.stores s where not (s.is_template or s.starter or s.sandbox or s.house)
     `),

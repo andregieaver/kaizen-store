@@ -47,12 +47,16 @@ export async function planAnalytics(days = 30): Promise<PlanAnalytics> {
     typedRows(
       lineRow,
       sql`
-        select b.status, b.mode::text as mode, p.name as plan_name, pp.currency, pp.interval, pp.amount_minor::int as amount_minor,
-               coalesce(b.cancel_at_period_end, false) as cancelling
-        from commerce.store_billing b
+        -- One line per subscription: an account billed through its account (D748 E4) has one for all its stores.
+        select distinct on (coalesce(b.mode::text || ':' || b.subscription_id, b.store_id::text))
+               b.status, b.mode::text as mode, p.name as plan_name, pp.currency, pp.interval, pp.amount_minor::int as amount_minor,
+               b.cancel_at_period_end as cancelling
+        from commerce.store_plans b
         join commerce.stores s on s.id = b.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
         left join commerce.plans p on p.id = b.plan_id
         left join commerce.plan_prices pp on pp.id = b.price_id
+        where b.status is not null or b.plan_id is not null
+        order by coalesce(b.mode::text || ':' || b.subscription_id, b.store_id::text), b.store_id
       `,
     ),
     typedRows(
@@ -73,7 +77,7 @@ export async function planAnalytics(days = 30): Promise<PlanAnalytics> {
                count(*) filter (where b.status in ('active', 'past_due'))::int as paying
         from commerce.access_requests r
         left join commerce.stores s on s.id = r.store_id
-        left join commerce.store_billing b on b.store_id = r.store_id
+        left join commerce.store_plans b on b.store_id = r.store_id
         where r.created_at >= now() - make_interval(days => ${period})
           and (not r.self_serve or r.confirmed_at is not null) and r.email not like '%.invalid'
       `,

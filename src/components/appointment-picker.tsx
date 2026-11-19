@@ -56,6 +56,7 @@ export function AppointmentPicker({
   store,
   market,
   cartHref,
+  redraw = false,
   productId,
   variants,
   staff,
@@ -67,6 +68,8 @@ export function AppointmentPicker({
   store: string;
   market: string;
   cartHref: string;
+  /** The page draws the cart (a basket note, the cart's own upsells): the add redraws it (bloat review step 2.4). */
+  redraw?: boolean;
   productId: string;
   /** The appointment's options (a longer session, a package), each with its price drawn by the page. */
   variants: { id: string; label: string; price: ReactNode; image?: VariantPicture | null }[];
@@ -249,6 +252,7 @@ export function AppointmentPicker({
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variantId} />
+        {redraw && <input type="hidden" name="redraw" value="1" />}
         <input type="hidden" name="quantity" value="1" />
         <AffiliateField store={store} />
         <RecommendField />

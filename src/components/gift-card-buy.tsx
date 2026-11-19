@@ -25,6 +25,7 @@ export function GiftCardBuy({
   store,
   market,
   cartHref,
+  redraw = false,
   amounts,
   today,
   labels,
@@ -34,6 +35,8 @@ export function GiftCardBuy({
   store: string;
   market: string;
   cartHref: string;
+  /** The page draws the cart (a basket note, the cart's own upsells): the add redraws it (bloat review step 2.4). */
+  redraw?: boolean;
   /** Each amount: its variant and its price as the market shows it. */
   amounts: { variantId: string; label: string }[];
   /** The store's day, `YYYY-MM-DD`: the earliest day a card can be sent. */
@@ -88,6 +91,7 @@ export function GiftCardBuy({
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />
+      {redraw && <input type="hidden" name="redraw" value="1" />}
       <input type="hidden" name="quantity" value="1" />
       {amounts.length > 1 && (
         <fieldset>

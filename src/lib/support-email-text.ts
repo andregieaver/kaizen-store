@@ -25,6 +25,10 @@ export type SupportEmailText = {
   aiLabel: string;
   /** Under an email that holds an answer by AI. */
   aiNote: string;
+  /** The closing over the AI's signature, in an email that holds only the AI's answers (D332). */
+  signoff: string;
+  /** Under the AI's signature: that the answer is the AI's (AI Act Art. 50), in place of the label before it. */
+  aiSigned: string;
 };
 
 const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
@@ -44,6 +48,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     orReply: "Du kan også svare på denne e-posten.",
     aiLabel: "Svar fra KI:",
     aiNote: "Svar merket «Svar fra KI» er skrevet av kunstig intelligens og kan inneholde feil. Skriv i svaret ditt hvis du vil snakke med et menneske.",
+    signoff: "Med vennlig hilsen",
+    aiSigned: "Dette svaret er skrevet av en KI-assistent og kan inneholde feil. Skriv i svaret ditt hvis du vil snakke med et menneske.",
   },
   sv: {
     subject: (desk) => `Svar från ${desk}`,
@@ -61,6 +67,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     orReply: "Du kan också svara på det här mejlet.",
     aiLabel: "Svar från AI:",
     aiNote: "Svar märkta ”Svar från AI” är skrivna av artificiell intelligens och kan innehålla fel. Skriv i ditt svar om du vill prata med en människa.",
+    signoff: "Med vänliga hälsningar",
+    aiSigned: "Det här svaret är skrivet av en AI-assistent och kan innehålla fel. Skriv i ditt svar om du vill prata med en människa.",
   },
   da: {
     subject: (desk) => `Svar fra ${desk}`,
@@ -78,6 +86,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     orReply: "Du kan også svare på denne e-mail.",
     aiLabel: "Svar fra AI:",
     aiNote: "Svar markeret ”Svar fra AI” er skrevet af kunstig intelligens og kan indeholde fejl. Skriv i dit svar, hvis du vil tale med et menneske.",
+    signoff: "Med venlig hilsen",
+    aiSigned: "Dette svar er skrevet af en AI-assistent og kan indeholde fejl. Skriv i dit svar, hvis du vil tale med et menneske.",
   },
   en: {
     subject: (desk) => `An answer from ${desk}`,
@@ -95,6 +105,8 @@ const TEXT: Record<"nb" | "sv" | "da" | "en", SupportEmailText> = {
     orReply: "You can also answer by replying to this email.",
     aiLabel: "Answer by AI:",
     aiNote: "Answers marked \"Answer by AI\" are written by artificial intelligence and may contain mistakes. Say so in your reply if you want to talk to a person.",
+    signoff: "Kind regards",
+    aiSigned: "This answer was written by an AI assistant and may contain mistakes. Say so in your reply if you want to talk to a person.",
   },
 };
 

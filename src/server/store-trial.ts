@@ -42,7 +42,7 @@ export async function grantTrial(storeId: string, accountId: string | null, via:
 
 /** A store's trial end, or null when it never had one. */
 export async function trialEndOf(storeId: string): Promise<Date | null> {
-  const row = await typedRow(z.object({ trial_ends_at: col.timestampOrNull }), sql`select trial_ends_at from commerce.store_billing where store_id = ${storeId}::uuid`);
+  const row = await typedRow(z.object({ trial_ends_at: col.timestampOrNull }), sql`select trial_ends_at from commerce.store_plans where store_id = ${storeId}::uuid`);
   return row?.trial_ends_at ? new Date(row.trial_ends_at) : null;
 }
 
@@ -63,11 +63,14 @@ export async function trialPausedAt(storeId: string): Promise<Date | null> {
 export async function pausedAfter(storeId: string): Promise<"trial" | "plan" | null> {
   const row = await typedRow(
     z.object({ trial_paused_at: col.timestampOrNull, had_plan: col.bool }),
-    sql`select trial_paused_at, subscription_id is not null as had_plan from commerce.store_billing where store_id = ${storeId}::uuid`,
+    sql`select trial_paused_at, subscription_id is not null as had_plan from commerce.store_plans where store_id = ${storeId}::uuid`,
   );
   if (!row?.trial_paused_at) return null;
   return row.had_plan ? "plan" : "trial";
 }
+
+/** An open store the trial's end may make private: never a store template or a demo store. */
+const OPEN_STORE = sql`s.setup_completed_at is not null and s.status = 'active' and not s.private_mode and not (s.is_template or s.starter)`;
 
 /** At most this many stores each way a run: the dispatcher comes back in five minutes. */
 const PER_RUN = 50;
@@ -79,11 +82,18 @@ const PER_RUN = 50;
 export async function settleTrials(): Promise<{ paused: number; reopened: number }> {
   const ended = await typedRows(
     z.object({ id: col.uuid, slug: col.text }),
+    // The two kinds of billing asked apart (D748 E4), each from its own small table: through `store_plans` every store would be read.
     sql`
-      select s.id, s.slug from commerce.store_billing b join commerce.stores s on s.id = b.store_id
-      where b.trial_ends_at <= now() and coalesce(b.status, '') not in ('trialing', 'active', 'past_due')
-        and s.setup_completed_at is not null and s.status = 'active' and not s.private_mode and not (s.is_template or s.starter)
-      order by b.trial_ends_at limit ${PER_RUN}
+      select x.id, x.slug from (
+        select s.id, s.slug, b.trial_ends_at from commerce.store_billing b join commerce.stores s on s.id = b.store_id
+        where b.trial_ends_at <= now() and coalesce(b.status, '') not in ('trialing', 'active', 'past_due')
+          and not exists (select 1 from commerce.organisation_billing ob where ob.organisation_id = s.organisation_id)
+          and ${OPEN_STORE}
+        union all
+        select s.id, s.slug, ob.trial_ends_at from commerce.organisation_billing ob join commerce.stores s on s.organisation_id = ob.organisation_id
+        where ob.trial_ends_at <= now() and coalesce(ob.status, '') not in ('trialing', 'active', 'past_due') and ${OPEN_STORE}
+      ) x
+      order by x.trial_ends_at limit ${PER_RUN}
     `,
   );
   let paused = 0;
@@ -93,7 +103,8 @@ export async function settleTrials(): Promise<{ paused: number; reopened: number
     z.object({ id: col.uuid, slug: col.text }),
     sql`
       select s.id, s.slug from commerce.store_billing b join commerce.stores s on s.id = b.store_id
-      where b.trial_paused_at is not null and b.status in ('trialing', 'active', 'past_due')
+        join commerce.store_plans p on p.store_id = b.store_id
+      where b.trial_paused_at is not null and p.status in ('trialing', 'active', 'past_due')
       order by b.trial_paused_at limit ${PER_RUN}
     `,
   );

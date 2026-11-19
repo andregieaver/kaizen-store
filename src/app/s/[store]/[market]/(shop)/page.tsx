@@ -131,6 +131,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
               market={market}
               m={m}
               store={store.slug}
+              storeId={store.id}
               base={marketPath(store.slug, market.slug)}
               notices={notices}
             />

@@ -128,7 +128,7 @@ export async function platformSnapshot(now = new Date(), options: { house?: bool
           (select count(*)::int from commerce.access_requests where (created_at at time zone ${OSLO})::date = ${today}::date) as asked_today,
           (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date = ${today}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as opened_today,
           (select count(*)::int from commerce.stores s where (s.setup_completed_at at time zone ${OSLO})::date >= ${month}::date and not (s.is_template or s.starter or s.sandbox or s.house)) as new_stores,
-          (select count(*)::int from commerce.store_billing b where b.mode::text = 'live' and b.status = 'trialing' and b.trial_ends_at between now() and now() + interval '3 days') as trials_ending,
+          (select count(distinct b.subscription_id)::int from commerce.store_plans b where b.mode::text = 'live' and b.status = 'trialing' and b.trial_ends_at between now() and now() + interval '3 days') as trials_ending,
           (select count(*)::int from commerce.access_requests where status = 'pending') as waiting,
           (select extract(epoch from now() - min(created_at)) / 3600 from commerce.access_requests where status = 'pending')::float8 as oldest_hours,
           -- E5.4 (D757): what Kaizena Flow's own chat assistant could not answer, counted as its Questions page lists them.

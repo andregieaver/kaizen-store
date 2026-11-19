@@ -14,7 +14,7 @@ import { activeAccount, audit, passMembership } from "./auth";
 import { log } from "./log";
 import { markSent, refundOrder, getOrderAdmin } from "./order-admin";
 import { decideApproval, runTurn, type Principal } from "./owner-assistant";
-import { PAGES_TAG } from "./pages";
+import { pagesTag } from "./pages";
 import { memberCan } from "./permissions";
 import { readMissingPaymentFacts } from "./payment-facts";
 import { writePlatformLegalPages } from "./platform-legal";
@@ -264,7 +264,7 @@ async function legalPagesDrill(requestedBy: string | null): Promise<DrillResult>
   const admin = requestedBy ? await activeAccount(requestedBy) : null;
   if (!admin?.platformAdmin) return { kind: "platform_legal_pages", outcome: "skipped", detail: "Only a platform admin can ask for Kaizena Flow's legal pages." };
   const outcomes = await writePlatformLegalPages(admin);
-  if (outcomes.some((o) => o.outcome === "made" || o.outcome === "written")) refreshTag(PAGES_TAG);
+  for (const owner of new Set(outcomes.filter((o) => o.outcome === "made" || o.outcome === "written").map((o) => o.owner))) refreshTag(pagesTag(owner));
   const failed = outcomes.filter((o) => o.outcome === "failed");
   return {
     kind: "platform_legal_pages",
