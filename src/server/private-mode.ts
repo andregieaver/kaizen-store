@@ -121,7 +121,8 @@ export async function pauseAfterTrial(store: { id: string; slug: string }): Prom
     with paused as (
       update commerce.stores set private_mode = true where id = ${store.id}::uuid and not private_mode returning id
     )
-    update commerce.store_billing set trial_paused_at = coalesce(trial_paused_at, now()) where store_id in (select id from paused)
+    insert into commerce.store_billing (store_id, trial_paused_at) select id, now() from paused
+    on conflict (store_id) do update set trial_paused_at = coalesce(store_billing.trial_paused_at, now())
     returning store_id`);
   if (!row) return false;
   await audit(null, store.id, "store.private_mode", { on: true, via: "trial_ended" }, { changes: { privateMode: { from: false, to: true } } });

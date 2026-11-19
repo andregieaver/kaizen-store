@@ -133,3 +133,41 @@ describe("recordings of visits (D656)", () => {
     }
   });
 });
+
+describe("an account billed through its account (D748 E4)", () => {
+  it("takes the account's plan, its stores' overrides at their widest, their use together, and counts its stores", async () => {
+    const [sibling] = await db().execute<Row>(sql`
+      insert into commerce.stores (slug, name, created_by) values (${`limits-sibling-${run}`}, 'Sibling', ${store.owner}::uuid) returning id`);
+    const siblingId = String(sibling.id);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${siblingId}::uuid, ${store.owner}::uuid, 'owner')`);
+    const [org] = await db().execute<Row>(sql`select organisation_id from commerce.stores where id = ${store.id}::uuid`);
+    const organisation = String(org.organisation_id);
+    try {
+      limits.forgetLimitMemos();
+      const ownSeats = await limits.usageNow(store.id, "staff_seats");
+      const siblingSeats = await limits.usageNow(siblingId, "staff_seats");
+      expect((await limits.storeLimits(store.id)).account).toBeNull();
+
+      await db().execute(sql`insert into commerce.organisation_billing (organisation_id, plan_id, status) values (${organisation}::uuid, ${plan}::uuid, 'active')`);
+      limits.forgetLimitMemos();
+      const read = await limits.storeLimits(store.id);
+      expect(read.account?.organisationId).toBe(organisation);
+      expect(new Set(read.account?.stores)).toEqual(new Set([store.id, siblingId]));
+      expect(read.limits.products).toEqual({ value: 50, origin: "plan" });
+      expect(await limits.usageNow(store.id, "staff_seats")).toBe(ownSeats + siblingSeats);
+
+      await db().execute(sql`insert into commerce.limit_overrides (store_id, key, value, reason) values (${siblingId}::uuid, 'products', 900, 'Launch')`);
+      limits.forgetLimitMemos();
+      expect((await limits.storeLimits(store.id)).limits.products).toEqual({ value: 900, origin: "override" });
+
+      expect(await limits.ownerLimitFor(store.owner, "stores_owned")).toEqual({ value: 2, origin: "plan" });
+      expect(await limits.ownedStoreCount(store.owner)).toBe(2);
+      expect(await limits.checkOwnerStores(store.owner)).toEqual({ ok: false, key: "stores_owned", limit: 2, used: 2 });
+    } finally {
+      await db().execute(sql`delete from commerce.limit_overrides where store_id = ${siblingId}::uuid`);
+      await db().execute(sql`delete from commerce.organisation_billing where organisation_id = ${organisation}::uuid`);
+      await db().execute(sql`update commerce.stores set status = 'closed' where id = ${siblingId}::uuid`);
+      limits.forgetLimitMemos();
+    }
+  });
+});

@@ -64,7 +64,7 @@ export async function signUpFunnel(months = 6, now = new Date()): Promise<SignUp
            count(s.id) filter (where b.mode::text = 'live' and b.status in ('active', 'past_due'))::int as paying
     from commerce.access_requests r
     left join commerce.stores s on s.id = r.store_id
-    left join commerce.store_billing b on b.store_id = s.id
+    left join commerce.store_plans b on b.store_id = s.id
     where r.created_at >= ${now.toISOString()}::timestamptz - make_interval(months => ${months})
   `);
   return { asked: row?.asked ?? 0, opened: row?.opened ?? 0, setUp: row?.set_up ?? 0, paying: row?.paying ?? 0 };

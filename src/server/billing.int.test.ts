@@ -678,4 +678,29 @@ describe("owners choosing their own plan", () => {
     // A store never billed has no invoices, rather than Stripe being unreachable.
     expect(await billing.listStoreInvoices("00000000-0000-4000-8000-000000000000")).toEqual([]);
   });
+
+  it("shows the account's plan for a store billed through its account, and refuses the store's own plan actions (D748 E4)", async () => {
+    const own = await billing.getStoreBilling(ownerStore);
+    expect(own).toMatchObject({ byAccount: false });
+    const plan = (await billing.listPlans()).find((p) => p.active && p.prices.some((x) => x.active));
+    const price = plan?.prices.find((x) => x.active);
+    expect(price).toBeDefined();
+    const [org] = await db().execute<Row>(sql`select organisation_id from commerce.stores where id = ${ownerStore}::uuid`);
+    await db().execute(sql`
+      insert into commerce.organisation_billing (organisation_id, plan_id, price_id, status, sale_fee_bps_override)
+      values (${String(org.organisation_id)}::uuid, ${plan?.id as string}::uuid, ${price?.id as string}::uuid, 'active', 111)`);
+    try {
+      const billed = await billing.getStoreBilling(ownerStore);
+      expect(billed).toMatchObject({ byAccount: true, planId: plan?.id, status: "active", subscriptionId: null, feeBps: 111 });
+      const updates = calls("subscriptions.update").length;
+      expect(await billing.choosePlan(owner, ownerSlug, price?.id as string, "https://kaizen.test")).toEqual({ ok: false, problems: [billing.ACCOUNT_BILLED] });
+      expect(await billing.cancelPlan(owner, ownerStore, "now")).toEqual({ ok: false, problems: [billing.ACCOUNT_BILLED] });
+      expect(await billing.applyPlanDiscount(owner, ownerStore, "ANY")).toEqual({ ok: false, problems: [billing.ACCOUNT_BILLED] });
+      expect(await billing.portalUrl(ownerStore, "https://kaizen.test")).toEqual({ ok: false, problem: billing.ACCOUNT_BILLED });
+      expect(calls("subscriptions.update")).toHaveLength(updates);
+    } finally {
+      await db().execute(sql`delete from commerce.organisation_billing where organisation_id = ${String(org.organisation_id)}::uuid`);
+    }
+    expect(await billing.getStoreBilling(ownerStore)).toMatchObject({ byAccount: false, planId: own?.planId, subscriptionId: own?.subscriptionId });
+  });
 });

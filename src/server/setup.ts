@@ -67,7 +67,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
       where r.store_id = ${store.id}::uuid
     `),
     db().execute<Row>(sql`
-      select status in ('trialing', 'active', 'past_due') as on_plan, trial_ends_at <= now() as trial_over from commerce.store_billing
+      select status in ('trialing', 'active', 'past_due') as on_plan, trial_ends_at <= now() as trial_over from commerce.store_plans
       where store_id = ${store.id}::uuid
     `),
     db().execute<Row>(sql`

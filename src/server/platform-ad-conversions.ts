@@ -76,7 +76,7 @@ async function conversionOf(requestId: string, event: PlatformAdEvent, enhanced:
   const [sale] = await typedRows(
     z.object({ id: col.uuid, paid_at: col.timestamp, currency: col.currency, net_minor: col.minor, plan: col.textOrNull }),
     sql`
-      select p.id, p.paid_at, p.currency, p.net_minor, (select b.plan_id::text from commerce.store_billing b where b.store_id = p.buyer_store_id) as plan
+      select p.id, p.paid_at, p.currency, p.net_minor, (select b.plan_id::text from commerce.store_plans b where b.store_id = p.buyer_store_id) as plan
       from commerce.platform_sales p
       where p.buyer_store_id = ${request.store_id}::uuid and p.mode = 'live' and p.kind = 'plan'
       order by p.paid_at, p.id limit 1

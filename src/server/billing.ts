@@ -400,6 +400,11 @@ export type StoreBilling = {
   status: string | null;
   /** The store's own status (D171): open, suspended or closed. */
   storeStatus: "active" | "suspended" | "closed";
+  /**
+   * The store's account is billed through its account (D748 step E4): the plan, price, subscription and trial here are the account's, and
+   * the store's own plan actions refuse (`ACCOUNT_BILLED`).
+   */
+  byAccount: boolean;
   planId: string | null;
   planName: string | null;
   priceId: string | null;
@@ -424,7 +429,7 @@ export type StoreBilling = {
 };
 
 const billingQuery = (where: ReturnType<typeof sql>) => sql`
-  select s.id as store_id, s.slug, s.name, s.country, s.status as store_status,
+  select s.id as store_id, s.slug, s.name, s.country, s.status as store_status, b.by_account,
          b.plan_id, p.name as plan_name, p.sale_fee_bps as plan_fee_bps, b.price_id,
          pp.currency, pp.interval, pp.amount_minor, b.mode, b.subscription_id, b.status,
          b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancel_at_period_end,
@@ -434,7 +439,7 @@ const billingQuery = (where: ReturnType<typeof sql>) => sql`
            'duration', d.duration, 'durationMonths', d.duration_months) end as discount,
          o.email as owner_email, o.name as owner_name
   from commerce.stores s
-  left join commerce.store_billing b on b.store_id = s.id
+  left join commerce.store_plans b on b.store_id = s.id
   left join commerce.plans p on p.id = b.plan_id
   left join commerce.plan_prices pp on pp.id = b.price_id
   left join commerce.platform_discount_codes d on d.id = b.platform_discount_id
@@ -458,6 +463,7 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
     country: row.country ? String(row.country) : null,
     status,
     storeStatus: row.store_status === "closed" ? "closed" : row.store_status === "suspended" ? "suspended" : "active",
+    byAccount: row.by_account === true,
     planId: row.plan_id ? String(row.plan_id) : null,
     planName: row.plan_name ? String(row.plan_name) : null,
     priceId: row.price_id ? String(row.price_id) : null,
@@ -633,10 +639,14 @@ export async function applySubscription(
   return true;
 }
 
+/** Why a store's own plan actions refuse once its account is billed through its account (D748 step E4). */
+export const ACCOUNT_BILLED = "This store is billed through its account: its plan is the account's, changed on the account's Billing page.";
+
+/** The store's own subscription; a store billed through its account has none of its own (its actions refuse before asking). */
 async function currentSubscription(storeId: string) {
   const billing = await getStoreBilling(storeId);
   const live =
-    billing?.subscriptionId && billing.mode && !["canceled", "incomplete_expired"].includes(billing.status ?? "");
+    !billing?.byAccount && billing?.subscriptionId && billing.mode && !["canceled", "incomplete_expired"].includes(billing.status ?? "");
   return { billing, live: Boolean(live) };
 }
 
@@ -666,6 +676,7 @@ async function prepare(
   if (!mode || !stripe) return { ok: false, problems: ["Plans cannot be chosen right now."] };
   const store = await getStore(storeSlug);
   if (!store) return { ok: false, problems: ["Unknown store."] };
+  if ((await getStoreBilling(store.id))?.byAccount) return { ok: false, problems: [ACCOUNT_BILLED] };
   // The country decides the plan's VAT: never assumed (a store gives it with its business details).
   if (!store.details.country) return { ok: false, problems: [NO_COUNTRY] };
 
@@ -758,6 +769,7 @@ export async function applyPlanDiscount(actor: Account, storeId: string, text: s
   const stripe = mode && platformStripe(mode);
   if (!mode || !stripe) return { ok: false, problems: ["Discount codes cannot be used right now."] };
   const { billing, live } = await currentSubscription(storeId);
+  if (billing?.byAccount) return { ok: false, problems: [ACCOUNT_BILLED] };
   const running = live && billing?.mode === mode && billing.subscriptionId ? billing.subscriptionId : null;
   const found = await findPlatformDiscount(text, mode, running ? (billing?.price?.currency ?? null) : null);
   if (!found.ok) return { ok: false, problems: [found.problem] };
@@ -1002,6 +1014,7 @@ export async function cancelPlan(
   when: "period_end" | "now" | "undo",
 ): Promise<SaveResult> {
   const { billing, live } = await currentSubscription(storeId);
+  if (billing?.byAccount) return { ok: false, problems: [ACCOUNT_BILLED] };
   const stripe = billing?.mode && platformStripe(billing.mode);
   if (!live || !billing?.subscriptionId || !billing.mode || !stripe) {
     return { ok: false, problems: ["The store has no plan to cancel."] };
@@ -1043,6 +1056,7 @@ export async function portalUrl(
   returnUrl: string,
 ): Promise<{ ok: true; url: string } | { ok: false; problem: string }> {
   const billing = await getStoreBilling(storeId);
+  if (billing?.byAccount) return { ok: false, problem: ACCOUNT_BILLED };
   const mode = billing?.mode ?? billingMode();
   const stripe = mode && platformStripe(mode);
   if (!mode || !stripe || !billing?.subscriptionId) return { ok: false, problem: "Your store has no plan with Kaizena Flow yet." };

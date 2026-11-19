@@ -151,7 +151,7 @@ export async function refreshExtensionFacts(scope: { organisationId: string } | 
             sql`
               select distinct s.id, s.slug from commerce.stores s
                where s.organisation_id in (
-                 select s2.organisation_id from commerce.stores s2 join commerce.store_billing b on b.store_id = s2.id
+                 select s2.organisation_id from commerce.stores s2 join commerce.store_plans b on b.store_id = s2.id
                   where b.plan_id in (${sql.join(scope.planIds.map((id) => sql`${id}::uuid`), sql`, `)}) and s2.organisation_id is not null
                )
             `,
