@@ -7,7 +7,7 @@ import { formatBps, priceLabel } from "@/lib/plans";
 import { countStoreBilling, listStoreBilling } from "@/server/billing";
 import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
 import { requirePlatformReader } from "@/server/auth";
-import { AdminLink, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, Pager, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -121,21 +121,15 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
             </ListRow>
           ))}
         </List>
-        {total > PAGE_SIZE && (
-          <nav aria-label={w.title} className="flex flex-wrap items-center gap-4 px-1 pt-3 text-body">
-            <p className="text-muted">{fillWords(w.shownOf, { shown: String(Math.min((page - 1) * PAGE_SIZE + stores.length, total)), total: String(total) })}</p>
-            {page > 1 && (
-              <AdminLink href={page === 2 ? "/admin/platform/stores" : `/admin/platform/stores?page=${page - 1}`} className="underline">
-                {w.previous}
-              </AdminLink>
-            )}
-            {page * PAGE_SIZE < total && (
-              <AdminLink href={`/admin/platform/stores?page=${page + 1}`} className="underline">
-                {w.next}
-              </AdminLink>
-            )}
-          </nav>
-        )}
+        <Pager
+          words={{ ...adminText(lang, "kit").pager, shownOf: w.shownOf, previous: w.previous, next: w.next }}
+          label={w.title}
+          base="/admin/platform/stores"
+          page={page}
+          size={PAGE_SIZE}
+          shown={stores.length}
+          total={total}
+        />
       </Card>
     </>
   );

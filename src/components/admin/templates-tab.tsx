@@ -10,7 +10,8 @@ import { useAdminText } from "./admin-text";
 
 import { forPage, groupTemplates, noneActivated, blockedReason } from "./templates-helpers";
 import type { TemplateController } from "./templates-lists";
-import { CardButtons, EmptyState, Problems, Publisher, groupHeading } from "./templates-parts";
+import { CardButtons, Problems, Publisher, groupHeading } from "./templates-parts";
+import { EmptyState } from "./ui/empty-state";
 import type { TemplateUse } from "./templates-use";
 
 /**
@@ -93,7 +94,9 @@ export function TemplatesTab({
           {w.loading}
         </p>
       ) : groups.length === 0 ? (
-        <EmptyState title={empty.title} hint={empty.hint} />
+        <EmptyState compact title={empty.title}>
+          {empty.hint}
+        </EmptyState>
       ) : (
         groups.map((group) => (
           <section

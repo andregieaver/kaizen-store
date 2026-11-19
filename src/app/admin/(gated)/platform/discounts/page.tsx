@@ -18,7 +18,7 @@ import { platformModes } from "@/server/stripe";
 import { createPlatformDiscountAction, deletePlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
 import { deleteQuestion, PlatformDiscountFields } from "./discount-fields";
 import { requirePlatformReader } from "@/server/auth";
-import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, EmptyState, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -101,10 +101,7 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
 
       {discounts.length === 0 ? (
         <Card title={w.liveTitle} compact>
-          <p className="flex flex-col">
-            <span className="text-body text-ink">{w.liveNone}</span>
-            <span className="text-caption text-ink-2">{w.liveNoneSub}</span>
-          </p>
+          <EmptyState title={w.liveNone}>{w.liveNoneSub}</EmptyState>
         </Card>
       ) : (
         <Card title={w.liveTitle} compact>

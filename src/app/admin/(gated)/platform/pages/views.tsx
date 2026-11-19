@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagePlaceForm } from "@/components/admin/page-place-form";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
-import { ListPager } from "@/components/admin/list-pager";
 import { PagesTable } from "@/components/admin/pages-table";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
@@ -15,7 +13,7 @@ import { countPages, listPages, pageTitles } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, PageHeader, Pager } from "@/components/admin/ui";
 import { PlatformLegalCard, platformLegalLead } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
@@ -71,7 +69,6 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
     type === "header" || type === "footer" ? siteLayoutChoice(null) : Promise.resolve(null),
   ]);
   const layoutCurrent = layoutChoice && (type === "header" || type === "footer") ? layoutChoice[type] : null;
-  const pagerWords = adminText(lang, "website").storePages;
   const officer = legal && platform
     ? await Promise.all([storedChoice(platform, null), officerCandidates(platform, null), accountOfficer(platform)]).then(([choice, people, current]) => ({ choice, people, current }))
     : null;
@@ -112,19 +109,19 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
-            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+            <ButtonLink size="header" href={`${base}/categories`}>
               {w.pages.categories}
-            </Link>
+            </ButtonLink>
           )}
           {type === "page" && count > 0 && (
-            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+            <ButtonLink size="header" href={`${base}/ai`}>
               {w.pages.createAi}
-            </Link>
+            </ButtonLink>
           )}
           {!(type === "page" && count === 0) && (
-            <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
+            <ButtonLink kind="main" size="header" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           )}
         </div>
       </div>
@@ -149,12 +146,12 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
             <span className="text-caption text-ink-2">{w.pages.firstPageSub}</span>
           </span>
           <span className="flex flex-wrap gap-3">
-            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+            <ButtonLink size="header" href={`${base}/ai`}>
               {w.pages.createAi}
-            </Link>
-            <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
+            </ButtonLink>
+            <ButtonLink kind="main" size="header" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           </span>
         </section>
       ) : pages.length === 0 ? (
@@ -173,7 +170,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           duplicate={duplicatePageAction.bind(null, type)}
         />
       )}
-      {total > all.length && <ListPager words={pagerWords} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={all.length} total={total} />}
+      <Pager words={adminText(lang, "kit").pager} label={tw.list} base={base} query={query} page={page} size={PAGE_SIZE} shown={all.length} total={total} />
       {legal && <PlatformLegalCard lang={adminLangOf(admin.adminLocale)} overview={legal} write={writeLegalPagesAction} />}
       {officer && (
         <section className="flex max-w-xl flex-col gap-3" aria-labelledby="platform-officer" id="privacy-officer">

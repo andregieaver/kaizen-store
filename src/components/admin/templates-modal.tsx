@@ -21,7 +21,8 @@ import {
   type TemplateFilters,
 } from "./templates-helpers";
 import type { TemplateController } from "./templates-lists";
-import { CardButtons, EmptyState, PageTypeBadge, Problems, Publisher, groupHeading } from "./templates-parts";
+import { CardButtons, PageTypeBadge, Problems, Publisher, groupHeading } from "./templates-parts";
+import { EmptyState } from "./ui/empty-state";
 import type { TemplateUse } from "./templates-use";
 
 /**
@@ -183,16 +184,20 @@ function Browser({
             {w.loading}
           </p>
         ) : list.items.length === 0 ? (
-          <EmptyState title={nothing.title} hint={nothing.hint} />
+          <EmptyState compact title={nothing.title}>
+            {nothing.hint}
+          </EmptyState>
         ) : shown.length === 0 ? (
-          <EmptyState title={w.noMatch.title} hint={w.noMatch.hint}>
-            <button
-              type="button"
-              onClick={() => setFilters(NO_FILTERS)}
-              className="min-h-9 rounded-pill border border-edge px-3 text-xs"
-            >
-              {w.clear}
-            </button>
+          <EmptyState
+            compact
+            title={w.noMatch.title}
+            action={
+              <button type="button" onClick={() => setFilters(NO_FILTERS)} className="min-h-9 rounded-pill border border-edge px-3 text-xs">
+                {w.clear}
+              </button>
+            }
+          >
+            {w.noMatch.hint}
           </EmptyState>
         ) : (
           shown.map((group) => (

@@ -7,7 +7,8 @@ import type { AssignmentChoice } from "@/server/work-choices";
 import { FormDialogButton } from "./client-actions";
 import { LogTimeForm } from "./log-time-form";
 import { useWorkTimerApi } from "./timer-context";
-import { Field, control, primaryButton } from "./work-parts";
+import { control, primaryButton } from "./work-parts";
+import { Field } from "../ui/field";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { useAdminText } from "@/components/admin/admin-text";
 

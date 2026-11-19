@@ -91,9 +91,6 @@ export const websiteEn = {
    * `list.roles`), held to it by `website.test.ts`.
    */
   storePages: {
-    shownOf: "{shown} of {total}",
-    next: "Next 100",
-    previous: "Previous 100",
     types: {
       page: {
         list: "Pages",

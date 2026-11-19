@@ -70,8 +70,8 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.9 | Test what gets owners paid | FH9 | M | Done | 19 Nov 2026, da190c63, 372c047e, 7f0eb225, D794: `connect.int.test.ts` (47 tests) and `cron-auth.test.ts`; the untested money modules listed in D794 |
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Done | 19 Nov: CLAUDE.md by bloat step 2.1 (7742afff, 10,102 bytes); decisions split by bloat step 2.40 (779 files, none over 500 characters a line). |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
-| 1.12 | Build the admin kit | FS4 | L | Open | |
-| 1.13 | One way to search and page a list | FS2 | M | Open | Paged at 100 with a count: Stores (2.10; bloat 0.19, 14 Nov), Pages and Articles of stores and platform (bloat 2.17, 18 Nov, local). Products and Customers not yet (redesign); the shared kit remains. |
+| 1.12 | Build the admin kit | FS4 | L | Done | 19 Nov 2026, 98e69ecf, a9c04344, 2e294c71, ba7c3331, dd56e77b, d6283f4f, 5820b511, b6db7cd6, D818: seven pieces in `A/ui`; 17 list pages; field boxes and pill links per file and `confirmFiles` (42 to 32) in the ratchet; see Notes below |
+| 1.13 | One way to search and page a list | FS2 | M | Open | Stores, Pages and Articles page at 100 with a count (bloat 0.19, 2.17), on `Pager` since D818; Orders, Customers, gift cards and reviews search with `ListSearch` (D818). Customers, Products, Invoices and Returns still to page. |
 | 1.14 | One date formatter | FS5 | M | Done | 19 Nov 2026, 9cec7211, b1b85b24, D786: `adminDate()`/`adminDay()` in `src/lib/admin-date.ts`; `admin-dates.scan.test.ts`; see Notes below |
 | 1.15 | Forms that answer | FS6 | M | Open | |
 | 1.16 | Unsaved work survives | FB5 | M | Done | 19 Nov 2026, 45b40b6d, 27683588, D787: one leave guard in eight editors; drafts in the builder and product editor; see Notes below |
@@ -186,6 +186,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 19 November 2026: bloat review step 2.29 (local, not yet pushed): row 3.4's Tiptap part is done (the rich text editor, markup field and inline editors load after the builder's first paint); FB8's fix names them; the dialogs remain.
 - 19 November 2026: FH9's next (D811): `payment-session.ts`, `payment-providers/stripe.ts`, `draft-sessions.ts`, `billing-tools.ts`, `api-idempotency.ts` and `stripe.ts` (`createPlatformWebhooks()`) have tests, on one Stripe stand-in (`stripe-test-support.ts`); still without: `limits-admin.ts`, `house-switch.ts`, `admin-api-orders.ts` (reached only through the Admin API's route) and most of `market-price-tools.ts`.
 - 19 November 2026: D811's found fault fixed (D815): the platform's Stripe webhooks are replaced new first, so a failure part way leaves the working ones.
+- 19 November 2026: step 1.12 done (D818, finding FS4): the admin kit (Field, TextInput, Select, EmptyState, ConfirmButton, Pager, ListSearch) in `A/ui`; 17 list pages on it; the ratchet lists hand-made field boxes and pill links per file; `confirmFiles` 42 to 32.
 
 **Notes on the steps**
 
@@ -362,6 +363,20 @@ platform's webhooks, refusals, and no secret or address in a log). It found one 
 twice. Still without a test of their own, most important first: `payment-session.ts`, `payment-providers/stripe.ts`,
 `admin-api-orders.ts`, `billing-tools.ts`, `draft-sessions.ts`, `createPlatformWebhooks`, `limits-admin.ts`, `market-price-tools.ts`,
 `house-switch.ts`, `api-idempotency.ts`.
+
+**Step 1.12.** 19 Nov 2026, D818: `src/components/admin/ui` gains `Field` (label, hint, the problem under it with `aria-describedby`
+and `aria-invalid`, required mark), `TextInput`, `Select`, `TextArea`, `EmptyState`, `ConfirmButton` (the admin's `Modal`, the
+question's first sentence as its title; an action, or its form submitted as the submitter), `Pager` (by number or by cursor) and
+`ListSearch` (the Orders bar as a GET form). Only `ConfirmButton` is a client part, imported from its own file (the index reaches every route), its dialog loaded on the first hover or press;
+the words are a server area, `kit`, and `common.form.cancel`. The list pages are the store's Orders, Customers, Pages, Articles,
+Discounts, Redirects, Gift cards, Reviews, Text messages and Settings, API, and the platform's Stores, Customers, Pages, Articles,
+Discounts, API and Workflows. One of each: the Work forms' `Field`, the Templates' `EmptyState`, `ListPager` and the builder's field
+box are the kit's. `window.confirm` is gone from discounts, keys, apps, webhooks, workflows, texts, form responses, reminders and the
+order page (a refund asks only when money is sent; Keep the order / Cancel order); Remove access and Disconnect Mollie now ask. The
+ratchet's `adminFiles` lists hand-written field boxes (304 to 295) and pill links (166 to 150) per file in `src/app/admin` (the
+platform's pages included) and `src/components/admin`; `confirmFiles` 42 to 32, now over `.ts` too. Left for later steps: the 295
+boxes and 150 pills burn down as screens are touched; step 1.13 pages Customers, Products, Invoices and Returns; step 2.9 the other
+empty screens.
 
 **Step 1.20.** 19 Nov 2026, D796: `src/lib/dates.ts` gives D786's formatter neutral names for code outside the admin
 (`dateIn(where, instant, style, locale)`, `calendarDate(day, style, locale)`) and `storeZoneOf(row.time_zone)` for an untyped row.

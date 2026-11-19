@@ -120,8 +120,8 @@ test("an owner makes a contract on a deal from the template, sees it filled in, 
 
   // Deleted, the deal is as it was.
   await page.getByRole("link", { name: new RegExp(TITLE) }).filter({ hasText: "Draft" }).click();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete the draft" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete the draft" }).click();
   await expect(page.getByText("No contract yet.")).toBeVisible({ timeout: 30_000 });
 });
 
@@ -216,8 +216,8 @@ test("an owner adds a contract template from the deals board, changes its words 
   await expect(page.getByText("Version 2")).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("contract-template.png"), fullPage: true });
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Put the template away" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Put the template away" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Contract templates" })).toBeVisible({ timeout: 30_000 });
   // The list no longer offers it (the page left behind stays in the document, hidden, so only what a person sees is counted).
   await expect(page.getByRole("link", { name: new RegExp(`Service agreement ${run}`) })).toHaveCount(0);

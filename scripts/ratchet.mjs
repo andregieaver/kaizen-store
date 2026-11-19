@@ -13,6 +13,7 @@
 // And the files that import next/link directly (bloat review step 2.6): a link goes through PolicyLink or AdminLink, and the list only falls.
 //
 // And five counts of the admin's hand-made repeats (bloat review step 1.17): action files off storeAction()/platformAction(), tables, native selects, literal Europe/Oslo and confirm( calls.
+// And, per file, the admin's hand-made field boxes and pill links (code review step 1.12, D818: `adminFiles.rawFields`, `adminFiles.pillLinks`), the kit in src/components/admin/ui aside.
 //
 // It refuses to raise a number: a file with more unchecked reads than its baseline, a file that had none, or a total that
 // went up is said and nothing is written. Make the new read typed (`typedRows()`) or the cast unneeded instead.
@@ -46,6 +47,10 @@ if (before && !process.argv.includes("--first")) {
     const was = before.adminRepeats?.[key];
     if (was !== undefined && n > was) raised.push(`admin ${key}: ${was} → ${n}; use the shared part (see src/server/ratchet.scan.test.ts), or accept it on purpose with node scripts/ratchet.mjs --first`);
   }
+  for (const [key, files] of Object.entries(now.adminFiles)) {
+    const was = before.adminFiles?.[key];
+    if (was) for (const [file, n] of Object.entries(files)) if (n > (was[file] ?? 0)) raised.push(`${file}: ${was[file] ?? 0} → ${n} ${key}; use the admin kit (src/components/admin/ui), or accept it on purpose with node scripts/ratchet.mjs --first`);
+  }
   if (raised.length > 0) {
     console.error(`The ratchet only falls. Not written:\n  ${raised.join("\n  ")}`);
     process.exit(1);
@@ -59,5 +64,5 @@ console.log(
     `${sum(now.byIdWrites)} writes by id without the store in ${Object.keys(now.byIdWrites).length} files, ${now.unknownCasts} as unknown as, ` +
     `${now.anySuppressed} suppressed any, ${now.filesOver100Kb} files over 100 KB, ${now.filesOver2000Lines} over 2,000 lines, ` +
     `${sum(now.notDistinctStore)} store_id is not distinct from in ${Object.keys(now.notDistinctStore).length} files; ` +
-    `${sum(now.pageDocumentReads)} whole page documents read in ${Object.keys(now.pageDocumentReads).length} files, ${sum(now.pagesTagRefreshes)} refreshes of a store's whole pages tag in ${Object.keys(now.pagesTagRefreshes).length} files; ${Object.keys(now.directLinks).length} files import next/link directly; admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
+    `${sum(now.pageDocumentReads)} whole page documents read in ${Object.keys(now.pageDocumentReads).length} files, ${sum(now.pagesTagRefreshes)} refreshes of a store's whole pages tag in ${Object.keys(now.pagesTagRefreshes).length} files; ${Object.keys(now.directLinks).length} files import next/link directly; admin repeats: ${Object.entries(now.adminRepeats).map(([k, v]) => `${k} ${v}`).join(", ")}; admin files: ${Object.entries(now.adminFiles).map(([k, files]) => `${k} ${sum(files)} in ${Object.keys(files).length}`).join(", ")}.`,
 );

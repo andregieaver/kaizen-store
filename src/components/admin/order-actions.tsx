@@ -6,6 +6,7 @@ import { useAdminText } from "@/components/admin/admin-text";
 import { useActionState, useRef, useState, type ReactNode } from "react";
 
 import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
+import { ConfirmButton } from "@/components/admin/ui/confirm-button";
 import {
   addNoteAction,
   cancelOrderAction,
@@ -93,15 +94,7 @@ export function RefundForm({
   const mayMove = canRefund && !(outside && !outside.allowed);
   const named = whole ? refundableLabel : `${currency} ${part.trim()}`.trim();
   return (
-    <form
-      action={action}
-      onSubmit={(event) => {
-        // Money that leaves is confirmed, naming how much (audit D454 H3/H5); recording a refund made outside asks nothing.
-        if (outside || !amount.trim()) return;
-        if (!window.confirm(fillWords(w.confirmRefund, { amount: named }))) event.preventDefault();
-      }}
-      className="flex flex-col gap-4"
-    >
+    <form action={action} className="flex flex-col gap-4">
       {outside && !outside.allowed && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
           {w.paidOutsideOwner}
@@ -206,7 +199,16 @@ export function RefundForm({
       </details>
       {hasEmail && mayMove && (notifyOff ? <NotifySwitchedOff href={notifyOff}>{w.emailRefund}</NotifySwitchedOff> : <Notify>{w.emailRefund}</Notify>)}
       <div className="flex flex-col gap-2">
-        <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className="min-h-12 w-full rounded-pill bg-inverse px-4 text-sm font-medium text-inverse-ink disabled:opacity-50 sm:w-auto sm:min-w-56 sm:self-start">
+        {/* Money that leaves is confirmed in the admin's dialog, naming how much (audit D454 H3/H5, code review 1.12); recording a refund made outside asks nothing. */}
+        <ConfirmButton
+          kind="none"
+          ask={!outside && Boolean(amount.trim())}
+          question={fillWords(w.confirmRefund, { amount: named })}
+          confirm={fillWords(w.refundAmount, { amount: named })}
+          busy={outside ? w.recording : w.refunding}
+          disabled={pending || Boolean(outside && !outside.allowed)}
+          className="min-h-12 w-full rounded-pill bg-inverse px-4 text-sm font-medium text-inverse-ink disabled:opacity-50 sm:w-auto sm:min-w-56 sm:self-start"
+        >
           {pending
             ? outside
               ? w.recording
@@ -216,7 +218,7 @@ export function RefundForm({
                 ? w.recordRefund
                 : w.refund
               : fillWords(outside ? w.recordAmount : w.refundAmount, { amount: named })}
-        </button>
+        </ConfirmButton>
         {outside && outside.allowed && <p className="text-xs text-muted">{w.creditNoteSelf}</p>}
         <Result state={state} />
       </div>
@@ -273,19 +275,9 @@ export function CancelForm({
 }) {
   const [state, action, pending] = useActionState(cancelOrderAction.bind(null, storeSlug, orderId), initial);
   const w = useAdminText("order").forms;
+  const question = unpaid ? w.confirmCancelUnpaid : outside ? fillWords(w.confirmCancelOutside, { amount: amountLabel }) : fillWords(w.confirmCancel, { amount: amountLabel });
   return (
-    <form
-      action={action}
-      onSubmit={(event) => {
-        const question = unpaid
-          ? w.confirmCancelUnpaid
-          : outside
-            ? fillWords(w.confirmCancelOutside, { amount: amountLabel })
-            : fillWords(w.confirmCancel, { amount: amountLabel });
-        if (!window.confirm(question)) event.preventDefault();
-      }}
-      className="flex flex-col gap-3"
-    >
+    <form action={action} className="flex flex-col gap-3">
       <p className="text-sm text-muted">
         {unpaid ? (
           w.cancelUnpaidText
@@ -303,9 +295,9 @@ export function CancelForm({
       </label>
       {hasEmail && (notifyOff ? <NotifySwitchedOff href={notifyOff}>{w.emailCancelled}</NotifySwitchedOff> : <Notify>{w.emailCancelled}</Notify>)}
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={secondary}>
+        <ConfirmButton kind="none" question={question} confirm={w.cancelOrder} cancel={w.keepOrder} busy={w.cancelling} disabled={pending} className={secondary}>
           {pending ? w.cancelling : w.cancelOrder}
-        </button>
+        </ConfirmButton>
         <Result state={state} />
       </div>
     </form>

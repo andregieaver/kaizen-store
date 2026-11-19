@@ -1,10 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
-
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
-/** Deletes a cart reminder after asking; carts already reminded keep their history. */
+import { ConfirmButton } from "./ui/confirm-button";
+
+/** Deletes a cart reminder after asking in the admin's dialog (`ConfirmButton`, code review 1.12); carts already reminded keep their history. */
 export function DeleteReminderButton({
   action,
   words,
@@ -13,19 +13,11 @@ export function DeleteReminderButton({
   /** The account's words (D312 A11). */
   words: PlatformMessages["deleteReminder"];
 }) {
-  const [pending, start] = useTransition();
   return (
     <div className="border-t border-line pt-4">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          if (window.confirm(words.question)) start(async () => void (await action()));
-        }}
-        className="text-sm text-danger-text underline disabled:opacity-50"
-      >
-        {pending ? words.deleting : words.delete}
-      </button>
+      <ConfirmButton kind="none" question={words.question} confirm={words.delete} action={action} busy={words.deleting} className="text-sm text-danger-text underline disabled:opacity-50">
+        {words.delete}
+      </ConfirmButton>
     </div>
   );
 }
