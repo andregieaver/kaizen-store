@@ -32,6 +32,7 @@ import { featureOn } from "@/lib/store-features";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
+import { t } from "@/lib/i18n";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { fillWords } from "@/lib/drafts-words";
 import { dealsOn } from "@/lib/extensions";
@@ -82,6 +83,8 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
   const locale = preview.market?.locale ?? draft.locale;
   const lang = adminLangOf(member.account.adminLocale);
   const words = adminText(lang, "drafts");
+  // Unit names for the summary's unit prices, read here: the editor's scripts never hold a storefront language.
+  const bases = t(lang).unitPrice.bases;
   const builtInVat: Record<string, { label: string } | undefined> = adminText(lang, "product").vatCategory.builtIn;
   const addedVat: Record<string, { label: string } | undefined> = adminText(lang, "common").vatCategories;
   const vatCategoryName = (code: string, nameEn: string) => builtInVat[code]?.label ?? addedVat[code]?.label ?? nameEn;
@@ -123,6 +126,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
               ? { note: draft.requestNote, company: draft.requestCompany, declinedAt: draft.quoteDeclinedAt, reply: draft.quoteReply, decline: declineQuoteAction.bind(null, store.slug, draftId) }
               : null,
           timeZone: store.timeZone,
+          bases,
           actions: {
             save: saveDraftAction.bind(null, store.slug, draftId),
             searchVariants: searchDraftVariantsAction.bind(null, store.slug),
@@ -152,6 +156,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
           timeZone: store.timeZone,
           canWrite,
           mayRecordOutside,
+          bases,
         }}
         sentActions={{
           resend: resendDraftLinkAction.bind(null, store.slug, draftId),

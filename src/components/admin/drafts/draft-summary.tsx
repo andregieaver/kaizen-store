@@ -1,6 +1,6 @@
 import { hint } from "@/components/admin/data/ui";
 import { formatMoney } from "@/lib/money";
-import { t } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { unitPrice } from "@/lib/unit-price";
 import type { DraftProblemWords } from "@/app/admin/(gated)/[store]/orders/drafts/actions";
 import type { DraftSummary } from "@/server/draft-orders";
@@ -21,6 +21,7 @@ export function DraftSummaryPanel({
   currency,
   locale,
   state,
+  bases,
 }: {
   summary: DraftSummary | null;
   problems: DraftProblemWords[];
@@ -28,11 +29,12 @@ export function DraftSummaryPanel({
   locale: string;
   /** `fresh`: these are the saved draft's figures; `stale`: there are changes not yet saved; `working`: being saved. */
   state: "fresh" | "stale" | "working";
+  /** The unit names of a unit price ('per kg'), read on the server: the admin's browser never imports a storefront language. */
+  bases: Messages["unitPrice"]["bases"];
 }) {
   const lang = useAdminLang();
   const w = useAdminText("drafts").summary;
   const money = (minor: number) => formatMoney(minor, currency, locale);
-  const bases = t(lang).unitPrice.bases;
   const blocking = problems.filter((p) => p.blocking);
   const notes = problems.filter((p) => !p.blocking);
   return (
