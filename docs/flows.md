@@ -40,7 +40,7 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    (`welcomeSeries()`, `src/lib/flow-recipes.ts`); a flow's page reads it as sentences (`storyLines()`, `src/lib/flow-story.ts`) with each
    email drawn as its subject and first words, Test and Switch on. *Part b, the same day:* under each email, Change edits its subject and
    words in its first language and the days of the wait before it (`withEmailWords()`, `withWaitDays()`), each save a new version switched
-   off until tested again. *Part c, the same day:* Customise opens the canvas (`canvas.tsx`): every step as a tree, a step of any kind
+   off until tested again. *Part c, the same day:* Customise opens the canvas (now drawn and dragged, below): every step, a step of any kind
    added after another or first in a branch, one removed (an `if` with both branches, said on its button), an `if`'s condition chosen
    (`insertStep()`, `removeStep()`, `withCondition()`). *Part d, 19 November:* under Change, every language of the store side by side,
    each saved on its own, and each email names the languages not yet written (their readers get the store's first language, `languageFor()`). Slice 2 is done.
@@ -68,3 +68,11 @@ both: a trigger, a tree of steps a person moves along, and goals that end it ear
    *Part d:* the date trigger `customer.browsed` (1 to 5 days after a signed-in subscriber's latest product view, nothing paid since,
    once per day viewed; `enterBrowsed()`) and the goal Remind them what they looked at (`browseReminder()`, replacing the browse
    automation). Views are kept while the browse automation or such a flow is on (`BROWSE_ON`), and go when the last is off (D691).
+
+## The canvas (19 November 2026, the owner's ask: "a drag and drop canvas, as ActiveCampaign has")
+
+Customise draws the flow as a chart (`flow-board.tsx`, `@dnd-kit`): the trigger's card at the top, each step a card joined by a line,
+an `if` opening into its Yes and No columns. A card is dragged onto a place between cards, into a branch or above the first step
+(`moveStep()`, never into its own branch), a kind is dragged from the palette onto a place (or added by a place's + from the keyboard),
+and a card pressed opens its settings beside the chart (words, picks, days, condition, what starts it, Remove). Each change is a new
+version, off until tested; the story above is drawn from the same tree.

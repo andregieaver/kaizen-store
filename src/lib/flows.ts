@@ -216,11 +216,15 @@ export function newStep(steps: readonly FlowStep[], kind: "email" | "wait" | "if
   return { id, kind };
 }
 
+/** Where a step goes (the canvas, slice 2 and its drag and drop): first in the flow, right after a step, or first in a branch. */
+export type FlowPlace = { start: true } | { afterId: string } | { into: string; branch: "then" | "else" };
+
 /**
- * The tree with `step` placed right after the step `afterId` in its own list, or first in a branch (`into`: the `if` and which branch).
- * The same tree when no such place exists. Pure.
+ * The tree with `step` placed first (`start`), right after the step `afterId` in its own list, or first in a branch (`into`: the `if`
+ * and which branch). The same tree when no such place exists. Pure.
  */
-export function insertStep(steps: readonly FlowStep[], step: FlowStep, place: { afterId: string } | { into: string; branch: "then" | "else" }): FlowStep[] {
+export function insertStep(steps: readonly FlowStep[], step: FlowStep, place: FlowPlace): FlowStep[] {
+  if ("start" in place) return [step, ...steps];
   const out: FlowStep[] = [];
   for (const s of steps) {
     if ("into" in place && s.id === place.into && s.kind === "if") {
@@ -231,6 +235,28 @@ export function insertStep(steps: readonly FlowStep[], step: FlowStep, place: { 
     if ("afterId" in place && s.id === place.afterId) out.push(step);
   }
   return out;
+}
+
+/** The step with this id anywhere in the tree, or null. Pure. */
+export function findStep(steps: readonly FlowStep[], id: string): FlowStep | null {
+  for (const { step } of walk(steps)) if (step.id === id) return step;
+  return null;
+}
+
+/**
+ * The tree with one step moved to a place (drag and drop on the canvas). The same tree when the step or the place is missing, or the
+ * place is the step itself or inside it (an `if` never goes into its own branch). Pure.
+ */
+export function moveStep(steps: readonly FlowStep[], id: string, place: FlowPlace): FlowStep[] {
+  const step = findStep(steps, id);
+  if (!step) return [...steps];
+  const target = "afterId" in place ? place.afterId : "into" in place ? place.into : null;
+  if (target !== null) {
+    if (target === id) return [...steps];
+    const inside = step.kind === "if" ? [...walk([...step.then, ...step.else])].some((x) => x.step.id === target) : false;
+    if (inside || !findStep(steps, target)) return [...steps];
+  }
+  return insertStep(removeStep(steps, id), step, place);
 }
 
 /** The tree without one step (an `if` goes with both its branches). Pure. */

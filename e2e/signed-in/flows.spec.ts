@@ -68,7 +68,7 @@ test("a welcome series is started with one press, read as a story, tested and sw
 test("an email's words and its wait are changed where they are, and the flow waits to be tested again", async ({ page }) => {
   await page.goto(`/admin/${STORE}/flows`);
   await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
-  const best = page.getByLabel("Email: What others like best");
+  const best = page.locator("[data-flow-story]").getByLabel("Email: What others like best");
   await best.getByText("Change", { exact: true }).click();
   // Its languages side by side (the store's own and its markets'); English is the store's first.
   const english = best.getByRole("group", { name: "English" });
@@ -77,7 +77,7 @@ test("an email's words and its wait are changed where they are, and the flow wai
   await english.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();
-  const changed = page.getByLabel("Email: Our favourites");
+  const changed = page.locator("[data-flow-story]").getByLabel("Email: Our favourites");
   await expect(changed).toContainText("See what others buy most.");
   await changed.getByText("Change", { exact: true }).click();
   await changed.getByLabel("Days later").fill("5");
@@ -86,40 +86,57 @@ test("an email's words and its wait are changed where they are, and the flow wai
   await page.reload();
   await expect(page.locator("[data-flow-story]")).toContainText("5 days later, if they have not ordered");
   await expect(page.getByText("Test it before switching it on.")).toBeVisible();
-  await page.getByLabel("Email: Our favourites").getByText("Change", { exact: true }).click();
+  await page.locator("[data-flow-story]").getByLabel("Email: Our favourites").getByText("Change", { exact: true }).click();
   await page.screenshot({ path: "test-results/flow-change.png", fullPage: true });
 });
 
-test("under Customise, a step is added in a branch and removed, and the story follows", async ({ page }) => {
+test("on the canvas, a step is added in a branch, dragged to a new place, changed and removed, and the story follows", async ({ page }) => {
   await page.goto(`/admin/${STORE}/flows`);
   await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
   const canvas = page.locator("[data-flow-canvas]");
   await canvas.getByText("Customise", { exact: true }).click();
-  await expect(canvas.locator("[data-canvas-step=if]")).toHaveCount(1);
-  const no = canvas.locator("[data-canvas-branch=else]").first();
-  await no.getByRole("group", { name: "First when no" }).first().getByRole("button", { name: "Email" }).click();
-  await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
-  await page.reload();
+  const board = page.locator("[data-flow-board]");
+  await expect(board.locator("[data-board-card=if]")).toHaveCount(1);
+  const saved = board.getByRole("status");
+
+  // Added by the keyboard path: the + first in the No branch, then Email.
+  const no = board.locator("[data-board-branch=else]").first();
+  await no.locator("[data-board-place]").first().getByRole("button", { name: "Add" }).click();
+  await no.getByRole("group", { name: "Add" }).getByRole("button", { name: "Email" }).click();
+  await expect(saved).toHaveText("Saved. The flow is off until you test it again.");
   await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toBeVisible();
-  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+
+  // Dragged: the new email onto the place first in the flow, above the welcome.
+  const card = board.getByRole("button", { name: "Email: A new email" });
+  const target = board.locator("[data-board-place]").first();
+  const from = await card.boundingBox();
+  const to = await target.boundingBox();
+  if (!from || !to) throw new Error("the canvas is not drawn");
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 - 20, { steps: 5 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
+  await page.mouse.up();
+  await expect(page.locator("[data-flow-story] li").first()).toContainText("A new email");
+
+  // Changed in the panel: the if's condition.
+  await board.locator("[data-board-card=if]").click();
   await page.getByRole("group", { name: "Change the condition to" }).getByRole("button", { name: "if they pressed a link" }).click();
-  await expect(page.locator("[data-flow-story]")).toContainText("5 days later, if they did not press a link");
-  await page.reload();
-  await page.locator("[data-flow-canvas]").getByText("Customise", { exact: true }).click();
+  await expect(page.locator("[data-flow-story]")).toContainText("if they did not press a link");
   await page.screenshot({ path: "test-results/flow-canvas.png", fullPage: true });
 
-  // The email's own row: its Remove, not the branch's that holds it. Gone from the story is the answer.
-  const row = page.locator("[data-canvas-row]").filter({ has: page.getByText("Email: A new email", { exact: true }) });
-  await row.getByRole("button", { name: "Remove" }).click();
+  // Removed in the panel: gone from the story.
+  await board.getByRole("button", { name: "Email: A new email" }).click();
+  await page.locator("[data-board-panel]").getByRole("button", { name: "Remove" }).click();
   await expect(page.locator("[data-flow-story]").getByLabel("Email: A new email")).toHaveCount(0);
-  await expect(page.locator("[data-canvas-step=if]")).toHaveCount(1);
+  await expect(board.locator("[data-board-card=if]")).toHaveCount(1);
 });
 
 test("an email's words are written in each of the store's languages side by side, and the missing one is named", async ({ page }) => {
   // The store writes English; its Norwegian market brings Norwegian (localization's locales).
   await page.goto(`/admin/${STORE}/flows`);
   await page.getByRole("list", { name: "Flows" }).getByRole("link", { name: "Welcome series" }).first().click();
-  const welcome = page.getByLabel("Email: Welcome!");
+  const welcome = page.locator("[data-flow-story]").getByLabel("Email: Welcome!");
   await expect(welcome).toContainText("Not written in Norsk bokmål yet; those readers get it in English.");
   await welcome.getByText("Change", { exact: true }).click();
   const norsk = welcome.getByRole("group", { name: "Norsk bokmål" });
@@ -129,7 +146,7 @@ test("an email's words are written in each of the store's languages side by side
   await norsk.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("Email: Welcome!")).not.toContainText("Not written in");
+  await expect(page.locator("[data-flow-story]").getByLabel("Email: Welcome!")).not.toContainText("Not written in");
 });
 
 test("a goal whose automation the owner already wrote starts from their words, days and follow-ups", async ({ page }) => {
@@ -178,6 +195,7 @@ test("your own flow starts from one email, and what starts it is chosen under Cu
   await expect(page.locator("[data-flow-story]")).toContainText("When an order is sent:");
   const canvas = page.locator("[data-flow-canvas]");
   await canvas.getByText("Customise", { exact: true }).click();
+  await canvas.locator("[data-board-trigger]").click();
   await canvas.getByRole("group", { name: "Starts when" }).getByRole("button", { name: "A form is sent" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();
@@ -195,6 +213,7 @@ test("sell more to buyers shows products picked for each reader, chosen per emai
   await expect(story.getByLabel("Email: Goes well together")).toContainText("With what others bought with their order.");
   const canvas = page.locator("[data-flow-canvas]");
   await canvas.getByText("Customise", { exact: true }).click();
+  await canvas.getByRole("button", { name: "Email: Goes well together" }).click();
   await canvas.getByRole("group", { name: "Products for each reader" }).getByRole("button", { name: "Buy again" }).click();
   await expect(page.getByText("Saved. The flow is off until you test it again.")).toBeVisible();
   await page.reload();

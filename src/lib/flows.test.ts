@@ -111,3 +111,21 @@ describe("products picked for each reader (D767 slice 4)", () => {
     expect(checkFlow(on)).toEqual([]);
   });
 });
+
+describe("moving a step on the canvas (drag and drop)", () => {
+  it("moves a step after another, first in the flow or first in a branch, and never into itself", async () => {
+    const { moveStep } = await import("./flows");
+    expect(moveStep(tree, "last", { start: true }).map((s) => s.id)).toEqual(["last", "welcome", "w1", "q"]);
+    expect(moveStep(tree, "welcome", { afterId: "w1" }).map((s) => s.id)).toEqual(["w1", "welcome", "q", "last"]);
+    const intoBranch = moveStep(tree, "last", { into: "q", branch: "then" });
+    expect(stepAt(intoBranch, ["2", "then", "0"])).toMatchObject({ id: "last" });
+    expect(intoBranch.map((s) => s.id)).toEqual(["welcome", "w1", "q"]);
+    // Out of a branch to the top level.
+    expect(moveStep(tree, "thanks", { afterId: "welcome" }).map((s) => s.id)).toEqual(["welcome", "thanks", "w1", "q", "last"]);
+    // An if never into its own branch, a step never after itself, a missing place changes nothing.
+    expect(moveStep(tree, "q", { into: "q", branch: "else" })).toEqual(tree);
+    expect(moveStep(tree, "q", { afterId: "best" })).toEqual(tree);
+    expect(moveStep(tree, "w1", { afterId: "w1" })).toEqual(tree);
+    expect(moveStep(tree, "w1", { afterId: "nope" })).toEqual(tree);
+  });
+});
