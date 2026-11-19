@@ -6,9 +6,9 @@ These were the tallest store pages on a phone that no round had reworked.
 
 | Page | Before | After |
 |---|---|---|
-| Saved replies (`/support/replies`) | 1,158 px | measured after the build |
-| Media library (`/media`) | 1,156 px | measured after the build |
-| Share this look as a theme (`/settings/design/share`) | 1,155 px | measured after the build |
+| Saved replies (`/support/replies`) | 1,158 px | 664 px |
+| Media library (`/media`) | 1,156 px | 841 px |
+| Share this look as a theme (`/settings/design/share`) | 1,155 px | 816 px |
 
 Below 640 px wide, each page changes as described here. From 640 px it is as before.
 
@@ -58,3 +58,7 @@ Below 640 px wide, each page changes as described here. From 640 px it is as bef
 
 - Lint and types pass.
 - All unit tests pass.
+- `theme-submissions.spec.ts` passes against a local build.
+- No spec visits Saved replies or the Media library. On a local build both platform pages render at 664 px on a phone.
+- The Norwegian owner's and platform admin's sign-in steps still fail against this local database, as in round 51. The spec ran
+  without them.
