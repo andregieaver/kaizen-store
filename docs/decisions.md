@@ -792,6 +792,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D787 | **Unsaved work survives** | 2026-11-19 | [text](decisions/D787.md) |
 | D788 | **Admin redesign round 52** | 2026-11-19 | [text](decisions/D788.md) |
 | D789 | **Database tests share a worker; component tests keep a fresh one** | 2026-11-19 | [text](decisions/D789.md) |
+| D790 | **One file per decision, with a generated index** | 2026-11-19 | [text](decisions/D790.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
