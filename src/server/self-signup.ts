@@ -18,7 +18,7 @@ import { afterAnswer } from "./after-answer";
 import { offerLinkByEmail } from "./kaizen-life-accounts";
 import { startDreamRun } from "./dream-factory";
 import { log } from "./log";
-import { TRIAL_DAYS } from "./store-trial";
+import { TRIAL_DAYS, writeTrial } from "./store-trial";
 import { adminAuth } from "./supabase-admin";
 import { approveAccessRequest, createAccessRequest, isSlugTaken, sendAccessEmail, type AccessRequestInput } from "./platform";
 import { sameEmail } from "@/lib/email-address";
@@ -221,10 +221,7 @@ export async function confirmSelfSignup(
       log("error", "self_signup.store_failed", { requestId, problems: made.problems.length });
       return { ok: false, problem: "failed" };
     }
-    await db().execute(sql`
-      insert into commerce.store_billing (store_id, trial_ends_at) values (${made.storeId}::uuid, now() + make_interval(days => ${TRIAL_DAYS}))
-      on conflict (store_id) do update set trial_ends_at = excluded.trial_ends_at
-    `);
+    await writeTrial(made.storeId);
     const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where lower(email) = lower(${made.email})`);
     await audit(owner ? String(owner.id) : null, made.storeId, "store.self_signup", { requestId, trialDays: TRIAL_DAYS }, { area: "settings", target: { type: "store", id: made.storeId } });
     log("info", "self_signup.store_made", { requestId, storeId: made.storeId });

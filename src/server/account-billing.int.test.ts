@@ -339,5 +339,7 @@ describe("the move to one plan (D748 E4 part four)", () => {
     const [mail] = await db().execute<Row>(sql`select count(*)::int as n from commerce.email_messages where kind = 'billing.account_moved' and lower(to_address) = ${`move-${tag}@example.com`}`);
     expect(mail.n).toBe(1);
     expect(await moves.moveAccount(admin, moved)).toEqual({ ok: false, problems: ["That account is billed through its account already."] });
+    // Left as found for the files after this one (the launch's test counts the accounts still billed store by store).
+    await db().execute(sql`delete from commerce.organisation_billing where organisation_id = ${moved}::uuid`);
   });
 });

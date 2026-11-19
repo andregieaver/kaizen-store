@@ -10,6 +10,7 @@ import type { AdminLang } from "@/lib/admin-lang";
 import { parseBundleForm, parseExtensionForm, parseGrantsForm, type FormProblem } from "@/lib/extension-form";
 import { ALLOWANCES_OF, EXTENSION_IDS, isExtensionId, type ExtensionId } from "@/lib/extensions";
 import { listPlans } from "@/server/billing";
+import { launchExtensions } from "@/server/extension-launch";
 import { extensionCurrencies, getExtensionCatalogue, saveBundle, saveExtension, savePlanGrants } from "@/server/extensions";
 import { platformAction } from "@/server/store-action";
 
@@ -72,5 +73,18 @@ export async function savePlanGrantsAction(_state: FormState, form: FormData): P
     if (!result.ok) return { status: "error", messages: result.problems };
     refresh();
     return { status: "ok", messages: [words(lang).saved] };
+  });
+}
+
+/** Launches extensions (D748 step E5): every account moved to one plan, the 60-day trials started, extensions sold from now on. */
+export async function launchExtensionsAction(_state: FormState, form: FormData): Promise<FormState> {
+  return platformAction({ area: "plans", action: "platform.extensions_launch", answer: (message): FormState => ({ status: "error", messages: [message] }) }, async (account, lang) => {
+    const w = words(lang).launch;
+    if (form.get("understand") !== "on") return { status: "error", messages: [w.tick] };
+    const result = await launchExtensions(account);
+    if (!result.ok) return { status: "error", messages: result.problems };
+    refresh();
+    const done = fillWords(w.launched, { moved: String(result.moved ?? 0), trials: String(result.trials ?? 0) });
+    return { status: "ok", messages: result.note ? [done, fillWords(w.notes, { notes: result.note })] : [done] };
   });
 }

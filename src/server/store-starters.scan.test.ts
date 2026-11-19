@@ -56,6 +56,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/design-presets.ts": "template",
   "src/server/cookie-scans.ts": "real",
   "src/server/experiments-running.ts": "real",
+  "src/server/extension-launch.ts": "real",
   // Usage and limits (D314): templates and demo stores are never limited, and only real stores count towards an owner's stores.
   "src/server/limits.ts": "real",
   // An account's first open store: its Stripe account is the account's customer (D748 E4).

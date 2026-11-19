@@ -708,6 +708,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "referral.credit_applied": "staff",
   /** An owner told their stores now share one plan (D748 E4): the plan's name and the stores' names. */
   "billing.account_moved": "staff",
+  "billing.extension_trial_ending": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",
   "privacy.owners_notice": "staff",

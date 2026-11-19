@@ -10,6 +10,24 @@ import { featureOn } from "./store-features";
 /** Days an extension's own trial lasts (section 2 of the spec): once per account per extension. */
 export const EXTENSION_TRIAL_DAYS = 14;
 
+/** Days of the trial an account gets at launch for each extension it already uses and its plan does not include (D748 E5). */
+export const LAUNCH_TRIAL_DAYS = 60;
+
+/** Days before a trial ends that its owner is emailed, longest first: a reminder is sent only when the trial is longer than it. */
+export const TRIAL_REMINDER_DAYS = [30, 14, 3] as const;
+
+/**
+ * The reminder due for a trial at `now` (days before its end), or null: the nearest of `TRIAL_REMINDER_DAYS` the trial has reached and
+ * is longer than, so a 60-day trial is reminded at 30, 14 and 3 days and a 14-day one at 3; a day the job missed sends only the latest.
+ */
+export function trialReminderDue(startedAt: Date, endsAt: Date, now: Date): number | null {
+  const left = endsAt.getTime() - now.getTime();
+  if (left <= 0) return null;
+  const length = endsAt.getTime() - startedAt.getTime();
+  const due = TRIAL_REMINDER_DAYS.filter((days) => length > days * 86_400_000 && left <= days * 86_400_000);
+  return due.length > 0 ? Math.min(...due) : null;
+}
+
 /** The extensions, in the order the owner named them. A new one is an id here, its row in a migration and its gates (step E3). */
 export const EXTENSION_IDS = ["ab_testing", "support_desk", "email_automation", "work", "deals"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];

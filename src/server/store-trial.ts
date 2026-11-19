@@ -27,6 +27,38 @@ export const TRIAL_DAYS = 14;
  * Dream Factory again never gives a store a second trial. Returns whether a trial was started; audited as `store.trial_started`.
  */
 export async function grantTrial(storeId: string, accountId: string | null, via: "dream_factory" | "self_signup"): Promise<boolean> {
+  const started = await writeTrial(storeId);
+  if (started) await audit(accountId, storeId, "store.trial_started", { days: TRIAL_DAYS, via }, { area: "settings", target: { type: "store", id: storeId } });
+  return started;
+}
+
+/**
+ * Writes a trial where the store's plan is kept: on the store's own row while extensions are not sold, and on its account's row once they
+ * are (D748 E5: an account made after the launch is billed through its account from its first day), never for Kaizena Flow's own. Either
+ * row is left alone once it had a trial or is on a plan.
+ */
+export async function writeTrial(storeId: string): Promise<boolean> {
+  const placed = await typedRow(
+    z.object({ organisation_id: col.uuid.nullable(), launched: col.bool }),
+    sql`
+      select s.organisation_id,
+             coalesce((select ps.extensions_launched_at <= now() from commerce.platform_settings ps), false)
+               and not coalesce((select o.platform from commerce.organisations o where o.id = s.organisation_id), true) as launched
+        from commerce.stores s where s.id = ${storeId}::uuid
+    `,
+  );
+  if (placed?.launched && placed.organisation_id) {
+    const started = await typedRow(
+      z.object({ organisation_id: col.uuid }),
+      sql`
+        insert into commerce.organisation_billing (organisation_id, trial_ends_at) values (${placed.organisation_id}::uuid, now() + make_interval(days => ${TRIAL_DAYS}))
+        on conflict (organisation_id) do update set trial_ends_at = excluded.trial_ends_at, updated_at = now()
+          where organisation_billing.trial_ends_at is null and coalesce(organisation_billing.status, '') not in ('trialing', 'active', 'past_due')
+        returning organisation_id
+      `,
+    );
+    return Boolean(started);
+  }
   const started = await typedRow(
     z.object({ store_id: col.uuid }),
     sql`
@@ -36,7 +68,6 @@ export async function grantTrial(storeId: string, accountId: string | null, via:
       returning store_id
     `,
   );
-  if (started) await audit(accountId, storeId, "store.trial_started", { days: TRIAL_DAYS, via }, { area: "settings", target: { type: "store", id: storeId } });
   return Boolean(started);
 }
 

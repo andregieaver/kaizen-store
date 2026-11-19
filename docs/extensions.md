@@ -370,6 +370,20 @@ free, add (Stripe Checkout when the account pays for nothing yet, else an item o
 Until launch every account has every extension: the page says so and offers nothing, and no marker or banner shows. Markers on other
 screens, and their dismissal for good (`extension_marker_dismissals`), wait until a screen needs one.
 
+**E5 as built, part two (19 November 2026).** The launch (`launchExtensions()` in `src/server/extension-launch.ts`): Platform → Plans →
+Extensions shows, until it is pressed, what it would do now (the accounts that move and the store plans that end, the trials per extension
+and their end) and one button behind a box to tick. It moves each account with an open store (`moveAccount()`, one by one: a refused move
+stops it before anything is sold, and pressing again goes on), then in one transaction holding the platform's settings row gives every
+other account its row (keeping its stores' latest trial), writes a 60-day trial (`LAUNCH_TRIAL_DAYS`, grace 14 days after) of each
+extension an account uses and its plan does not include, and sets `extensions_launched_at`; every store's cached read is refreshed. Use is
+an account's records in an open store: an A/B test; the desk on (`support_settings.mode` not `off`); a broadcast, automation or flow; a Work
+client, invoice or time entry, or books opened; a deal or contract (a pipeline or template a page makes on a visit is not use). From then on
+no account is billed store by store: an account made later gets its row as it is made (migration `20261119185908_accounts_billed_after_launch`,
+the trigger `organisation_billed_after_launch`), sign-up and the Dream Factory write the 14-day trial on it (`writeTrial()`), and the platform's
+plan buttons on a store act on its account. The daily run's `daily.extension-trials` (`src/server/extension-reminders.ts`) emails the owner
+30, 14 and 3 days before a trial ends (`trialReminderDue()`: only reminders shorter than the trial, the latest due after a missed day), one
+email per account for trials ending together, each once (its key kept with the email).
+
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 
 - E1: `20261117235828_organisations`, `20261117235841_organisations_rules`, applied by CI 18 November 2026 04:48 UTC; all 60 stores placed.
