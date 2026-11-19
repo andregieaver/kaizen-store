@@ -107,7 +107,7 @@ export const MANAGER_TOOLS = [
   // The autopilot (D309, `docs/ai-autopilot.md` 7): goals, and plans whose steps run in the background in the person's name.
   tool(
     "set_goal",
-    "Keeps one of the owner's goals for the business: their vision in their words and up to five targets measured from the store's own figures (net sales or orders in 30 days, conversion, open by a date, active products, published pages; on Kaizena Flow's own site published pages and open stores). Give goal to change an existing one. Use it when they say what they want to achieve; then offer a plan for it.",
+    "Keeps one of the owner's goals for the business: their vision in their words and up to five targets measured from the store's own figures (net sales or orders in 30 days, conversion, open by a date, active products, published pages; on Kaizena Flow's own site published pages, open stores and sign-ups). Give goal to change an existing one. Use it when they say what they want to achieve; then offer a plan for it.",
     z.object({
       goal: z.uuid().optional().describe("To change an existing goal: its id from list_goals."),
       title: z.string().trim().min(1).max(120).describe("A short name, such as 'First 100 orders'."),
