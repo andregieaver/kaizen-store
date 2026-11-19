@@ -45,13 +45,13 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/(owner)/account/notices/page.tsx#assistant": {
+    "src/app/admin/(gated)/(owner)/account/notices/page.tsx#assistantBar": {
       "areas": [
-        "assistant"
+        "assistantBar"
       ],
       "handed": {
-        "en": 19051,
-        "nb": 31947
+        "en": 1581,
+        "nb": 1618
       },
       "named": {
         "en": 1261,
@@ -476,6 +476,23 @@
       },
       "whole": [],
       "unnamed": []
+    },
+    "src/app/admin/(gated)/[store]/assistant/actions.ts#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 19051,
+        "nb": 31947
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "assistant"
+      ]
     },
     "src/app/admin/(gated)/[store]/assistant/autopilot/page.tsx#assistant": {
       "areas": [
@@ -1448,20 +1465,20 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/layout.tsx#assistant": {
+    "src/app/admin/(gated)/[store]/layout.tsx#assistantBar": {
       "areas": [
-        "assistant"
+        "assistantBar"
       ],
       "handed": {
-        "en": 19051,
-        "nb": 31947
+        "en": 1581,
+        "nb": 1618
       },
       "named": {
-        "en": 19051,
-        "nb": 31947
+        "en": 1581,
+        "nb": 1618
       },
       "whole": [
-        "assistant"
+        "assistantBar"
       ],
       "unnamed": []
     },
@@ -2879,6 +2896,23 @@
       "whole": [],
       "unnamed": []
     },
+    "src/app/admin/(gated)/platform/assistant/actions.ts#assistant": {
+      "areas": [
+        "assistant"
+      ],
+      "handed": {
+        "en": 19051,
+        "nb": 31947
+      },
+      "named": {
+        "en": 0,
+        "nb": 0
+      },
+      "whole": [],
+      "unnamed": [
+        "assistant"
+      ]
+    },
     "src/app/admin/(gated)/platform/assistant/autopilot/page.tsx#assistant": {
       "areas": [
         "assistant"
@@ -3136,20 +3170,20 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/layout.tsx#assistant": {
+    "src/app/admin/(gated)/platform/layout.tsx#assistantBar": {
       "areas": [
-        "assistant"
+        "assistantBar"
       ],
       "handed": {
-        "en": 19051,
-        "nb": 31947
+        "en": 1581,
+        "nb": 1618
       },
       "named": {
-        "en": 19051,
-        "nb": 31947
+        "en": 1581,
+        "nb": 1618
       },
       "whole": [
-        "assistant"
+        "assistantBar"
       ],
       "unnamed": []
     },

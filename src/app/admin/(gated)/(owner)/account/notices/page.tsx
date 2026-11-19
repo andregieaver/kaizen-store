@@ -18,7 +18,7 @@ export default async function NoticesPage() {
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "assistant").notices;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+    <AdminTextScope texts={adminTexts(lang, ["assistantBar"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.pageTitle} description={w.pageDescription} />
         <Card>

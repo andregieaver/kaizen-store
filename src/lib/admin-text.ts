@@ -235,6 +235,8 @@ export type AdminAreaMessages = {
   /** Cuts (bloat review step 2.27, `cut()` below): some groups of an area, the same objects, for screens whose parts read only those. */
   builderText: Pick<BuilderMessages, "richText" | "textStyles" | "responsive">;
   websitePick: Pick<WebsiteMessages, "picker" | "pictureMaker">;
+  /** The AI manager's button and notices, on every screen; the chat's words (`assistant`) come with its start call. */
+  assistantBar: Pick<AssistantMessages, "name" | "launcher" | "notices">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -346,6 +348,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   houseAutopilot: HOUSE_AUTOPILOT_WORDS,
   builderText: cut({ en: builderEn, nb: builderNb }, ["richText", "textStyles", "responsive"]),
   websitePick: cut(WEBSITE_WORDS, ["picker", "pictureMaker"]),
+  assistantBar: cut(ASSISTANT_WORDS, ["name", "launcher", "notices"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

@@ -95,7 +95,7 @@ export function useNoticeCount(place: string): [number, () => void] {
 
 /** The count on a button: nothing at zero, else the number with its words for screen readers. */
 export function NoticeBadge({ count }: { count: number }) {
-  const w = useAdminText("assistant").notices;
+  const w = useAdminText("assistantBar").notices;
   if (count <= 0) return null;
   return (
     <span data-notice-count={count} className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-danger-soft px-1 text-caption text-danger-text tabular-nums">
@@ -107,7 +107,7 @@ export function NoticeBadge({ count }: { count: number }) {
 
 /** A notice's words, from its kind's template and its facts. */
 export function useNoticeWords() {
-  const w = useAdminText("assistant").notices;
+  const w = useAdminText("assistantBar").notices;
   return (item: Pick<NoticeItem, "kind" | "facts">) => {
     const key = noticeWordKey(item.kind, item.facts) as keyof typeof w.kinds;
     return noticeText(w.kinds[key] ?? w.kinds[item.kind], item.facts);
@@ -119,7 +119,7 @@ export function useNoticeWords() {
  * read as it opens; *Mark all as read* clears the count.
  */
 export function NoticeList({ place, onOpen, onChange, showPlace = false }: { place: string; onOpen?: () => void; onChange?: () => void; showPlace?: boolean }) {
-  const w = useAdminText("assistant").notices;
+  const w = useAdminText("assistantBar").notices;
   const words = useNoticeWords();
   const [items, setItems] = useState<NoticeItem[] | null>(null);
 

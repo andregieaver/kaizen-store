@@ -12,6 +12,9 @@ const READERS: { file: string; whole: string[] }[] = [
   { file: "text-styles.tsx", whole: ["builder"] },
   { file: "picture-maker.tsx", whole: ["website"] },
   { file: "media-picker.tsx", whole: ["website"] },
+  // On every screen, beside the AI manager's button: the chat's words come with its start call.
+  { file: "ai-manager-launcher.tsx", whole: ["assistant"] },
+  { file: "ai-notices.tsx", whole: ["assistant"] },
 ];
 
 describe("parts drawn on cut-only screens", () => {

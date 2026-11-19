@@ -3,6 +3,8 @@
 import { updateTag } from "next/cache";
 import { after } from "next/server";
 
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminTexts } from "@/lib/admin-text";
 import { type Membership } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
 import type { Approval, Conversation } from "@/server/owner-assistant";
@@ -23,7 +25,8 @@ export async function startAssistantAction(storeSlug: string) {
   const member = await requireOwner(storeSlug);
   const { assistantAbilities, listConversations } = await assistant();
   const [abilities, conversations] = await Promise.all([assistantAbilities(member.store.id), listConversations(member)]);
-  return { abilities, conversations };
+  // The chat's words come with its start, not with every screen (bloat review step 2.27).
+  return { abilities, conversations, texts: adminTexts(adminLangOf(member.account.adminLocale ?? null), ["assistant"]) };
 }
 
 export async function loadConversationAction(storeSlug: string, conversationId: string): Promise<Conversation | null> {

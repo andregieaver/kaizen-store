@@ -75,6 +75,8 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   builderText: () =>
     import("@/lib/admin-messages/builder.en").then((m) => ({ richText: m.builderEn.richText, textStyles: m.builderEn.textStyles, responsive: m.builderEn.responsive })),
   websitePick: () => import("@/lib/admin-messages/website.en").then((m) => ({ picker: m.websiteEn.picker, pictureMaker: m.websiteEn.pictureMaker })),
+  assistantBar: () =>
+    import("@/lib/admin-messages/assistant.en").then((m) => ({ name: m.assistantEn.name, launcher: m.assistantEn.launcher, notices: m.assistantEn.notices })),
 };
 
 /** A fetch React can read with `use()`; one that is already settled (`settledEnglish()`) is read at once. */

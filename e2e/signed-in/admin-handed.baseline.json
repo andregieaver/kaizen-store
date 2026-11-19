@@ -2,11 +2,11 @@
   "en": {
     "home": {
       "document": 215768,
-      "handed": 67199,
-      "scriptByIdle": 812820,
+      "handed": 50093,
+      "scriptByIdle": 783232,
       "named": null,
       "areas": [
-        "assistant",
+        "assistantBar",
         "common",
         "home",
         "shell"
@@ -14,22 +14,22 @@
     },
     "orders": {
       "document": 202030,
-      "handed": 33723,
-      "scriptByIdle": 798324,
+      "handed": 16617,
+      "scriptByIdle": 782433,
       "named": null,
       "areas": [
-        "assistant",
+        "assistantBar",
         "common",
         "shell"
       ]
     },
     "product": {
-      "document": 301606,
-      "handed": 126075,
+      "document": 282578,
+      "handed": 108608,
       "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
-        "assistant",
+        "assistantBar",
         "builderText",
         "common",
         "fields",
@@ -40,13 +40,13 @@
       ]
     },
     "builder": {
-      "document": 558409,
-      "handed": 274030,
+      "document": 538576,
+      "handed": 256563,
       "scriptByIdle": 2747092,
       "named": null,
       "areas": [
         "animation",
-        "assistant",
+        "assistantBar",
         "backdrops",
         "blocks",
         "blog",
@@ -63,12 +63,12 @@
       ]
     },
     "platform": {
-      "document": 123638,
-      "handed": 33723,
+      "document": 105532,
+      "handed": 16617,
       "scriptByIdle": 755351,
       "named": null,
       "areas": [
-        "assistant",
+        "assistantBar",
         "common",
         "shell"
       ]
@@ -76,35 +76,35 @@
   },
   "nb": {
     "home": {
-      "document": 205247,
-      "handed": 82220,
-      "scriptByIdle": 812820,
+      "document": 171401,
+      "handed": 52297,
+      "scriptByIdle": 783232,
       "named": null,
       "areas": [
-        "assistant",
+        "assistantBar",
         "common",
         "home",
         "shell"
       ]
     },
     "orders": {
-      "document": 189379,
-      "handed": 47103,
-      "scriptByIdle": 798324,
+      "document": 157901,
+      "handed": 17180,
+      "scriptByIdle": 782433,
       "named": null,
       "areas": [
-        "assistant",
+        "assistantBar",
         "common",
         "shell"
       ]
     },
     "product": {
-      "document": 318993,
-      "handed": 142626,
+      "document": 286388,
+      "handed": 112300,
       "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
-        "assistant",
+        "assistantBar",
         "builderText",
         "common",
         "fields",
@@ -115,13 +115,13 @@
       ]
     },
     "builder": {
-      "document": 582298,
-      "handed": 298628,
+      "document": 549693,
+      "handed": 268302,
       "scriptByIdle": 2747092,
       "named": null,
       "areas": [
         "animation",
-        "assistant",
+        "assistantBar",
         "backdrops",
         "blocks",
         "blog",
@@ -138,19 +138,19 @@
       ]
     },
     "platform": {
-      "document": 138023,
-      "handed": 47103,
+      "document": 106488,
+      "handed": 17180,
       "scriptByIdle": 755351,
       "named": null,
       "areas": [
-        "assistant",
+        "assistantBar",
         "common",
         "shell"
       ]
     }
   },
   "saves": {
-    "product": 190938,
+    "product": 173407,
     "builder": 1122
   }
 }
