@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { testDb } from "./db";
+import { testDb, testStore } from "./db";
 
 /**
  * Goes to the cart by its link and waits until it is ready for the shopper's hand. Entering the cart from another page loads it afresh
@@ -33,6 +33,31 @@ test("on a wide screen the header's cart link loads the cart page at once, and n
   await page.waitForURL(/\/cart$/);
   expect(seen.filter((entry) => entry.doc && isCart(entry))).toHaveLength(1);
   expect(seen.filter((entry) => entry.rsc && isCart(entry))).toHaveLength(0);
+});
+
+test("a store page served as a static file shows one visitor's cart to that visitor only", async ({ page, browser }) => {
+  // The front page is one file for everyone (bloat review step 2.4): the count is asked by each browser for itself.
+  await page.goto("/s/demo/no/p/demo-handlenett");
+  await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
+  await page.goto("/s/demo/no");
+  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
+
+  const other = await browser.newContext();
+  try {
+    const stranger = await other.newPage();
+    const response = await stranger.goto("/s/demo/no");
+    expect(response?.headers()["x-nextjs-cache"]).toBe("HIT");
+    await stranger.waitForLoadState("networkidle");
+    await expect(stranger.getByRole("link", { name: "Handlekurv", exact: true }).first()).toBeAttached();
+    await expect(stranger.getByRole("link", { name: /Handlekurv \(\d+\)/ })).toHaveCount(0);
+    // The marker says only yes; the cart's id stays out of the page's reach (D14).
+    const cookies = await page.context().cookies();
+    expect(cookies.find((c) => c.name.startsWith("kaizen_mine_"))).toMatchObject({ value: "1", httpOnly: false });
+    expect(cookies.find((c) => c.name.startsWith("cart_"))).toMatchObject({ httpOnly: true });
+  } finally {
+    await other.close();
+  }
 });
 
 test("add to cart, change quantity within stock, and remove", async ({ page }) => {
@@ -109,6 +134,90 @@ test.describe("on a phone", () => {
     await expect(direct.getByRole("heading", { level: 1, name: "Varukorg" })).toBeVisible();
     await expect(direct.getByRole("dialog", { name: "Varukorg" })).toHaveCount(0);
   });
+});
+
+test.describe("on a phone, Add to cart", () => {
+  test.use({ viewport: { width: 390, height: 800 }, hasTouch: true });
+
+  test("one Add to cart is one small request", async ({ page }) => {
+    // The first add makes the cart and sets its cookies, and Next empties the router's cache after an action that sets a cookie: the cart is
+    // made first, so the add measured is a shopper's usual one.
+    await page.goto("/s/demo/no/p/demo-keramikkopp");
+    const variants = page.getByRole("region", { name: "Varianter" });
+    await variants.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+    await expect(variants.getByRole("status").first()).toContainText("Lagt i handlekurven.");
+    await page.reload();
+    await expect(page.locator("header").getByRole("link", { name: "Handlekurv (1)" })).toBeVisible();
+    await page.waitForTimeout(3000);
+    const seen: { url: string; method: string; headers: Record<string, string> }[] = [];
+    page.on("request", (request) => seen.push({ url: request.url(), method: request.method(), headers: request.headers() }));
+    // The action's answer is a stream the browser does not keep: read it on its way.
+    let body = "";
+    await page.route("**/s/demo/no/p/demo-keramikkopp", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      const response = await route.fetch();
+      body = await response.text();
+      await route.fulfill({ response, body });
+    });
+    await variants.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+    await expect.poll(() => body).not.toBe("");
+    await page.waitForTimeout(3000);
+    // The action answers the count (bloat review step 2.4); the page is not drawn again, and nothing is fetched ahead.
+    expect(seen.map((r) => `${r.method} ${new URL(r.url).pathname}`)).toEqual(["POST /s/demo/no/p/demo-keramikkopp"]);
+    expect(seen.filter((r) => r.headers["next-router-prefetch"] || r.headers["rsc"])).toHaveLength(0);
+    expect(body.length).toBeLessThan(5000);
+    expect(body).toContain('"count":2');
+    await expect(page.locator("header").getByRole("link", { name: "Handlekurv (2)" })).toBeVisible();
+  });
+});
+
+test("an add on a page with a free-shipping note draws the note again", async ({ page }) => {
+  const { slug, id } = await testStore("redraw");
+  const sql = testDb();
+  try {
+    const content = {
+      title: "produkt",
+      slug: "produkt",
+      thumbnail: null,
+      seo: { title: "", description: "" },
+      searchEngines: true,
+      aiAssistants: true,
+      categories: [],
+      tags: [],
+      rows: [
+        {
+          id: "row",
+          type: "row",
+          layout: "1",
+          columns: [
+            {
+              id: "column",
+              blocks: [
+                { id: "title", type: "product", part: "title" },
+                { id: "free", type: "product", part: "free_shipping" },
+                { id: "buy", type: "product", part: "buy" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const [layout] = await sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+      values (${id}, 'product_layout', 'produkt', ${sql.json(content)}, ${sql.json(content)}, now()) returning id`;
+    await sql`update commerce.stores set product_layout_id = ${layout.id} where id = ${id}`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/s/${slug}/p/demo-handlenett`);
+  const note = page.locator('[data-shop-note="free_shipping"]');
+  const before = (await note.textContent()) ?? "";
+  expect(before).not.toBe("");
+  await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+  // The form says the page draws the cart (`redraw`), so the note follows the cart.
+  await expect(note).toContainText("til for fri frakt");
+  await expect(note).not.toHaveText(before);
+  await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
 });
 
 test.describe("on a phone, in a store that opens the cart on adding", () => {

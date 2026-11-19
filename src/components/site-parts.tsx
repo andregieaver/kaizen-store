@@ -27,7 +27,7 @@ import { ReportContentLink } from "./report-content-link";
 import { LanguageSwitch } from "./lazy/blocks";
 import { BuyerSwitch } from "./buyer";
 import { StoreColorSwitch } from "./store-color-switch";
-import { CartLink, CartLinkShell } from "./cart-link";
+import { CartLink } from "./cart-link-live";
 import { Icon } from "./icons";
 import { ArticleStyles, PageRowView } from "./page-article";
 import { GradientLayer } from "./page-parts";
@@ -170,15 +170,13 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       return (
         <Link href={`${base}/wishlist`} className={`relative ${ICON_LINK}`}>
           <Icon name="heart" />
-          <WishlistCount base={base} />
+          <WishlistCount store={store.slug} market={market.slug} storeId={store.id} />
           <span className="sr-only">{m.wishlist.title}</span>
         </Link>
       );
     case "cart":
       return (
-        <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
-          <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
-        </Suspense>
+        <CartLink storeId={store.id} storeSlug={store.slug} market={market.slug} lang={market.lang} href={marketPath(store.slug, market.slug, "/cart")} hinted={store.markets.length > 1} />
       );
     case "markets":
       // With one country offered (D178) the list is of the languages and currencies, where there is a choice of them.

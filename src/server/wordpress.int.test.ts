@@ -471,7 +471,9 @@ describe("a cart held on the site", () => {
     expect(open.status).toBe(303);
     expect(open.headers.get("location")).toBe(`/s/${slug}/checkout`);
     expect(open.headers.get("cache-control")).toBe("no-store");
-    expect(jar.size).toBe(1);
+    // The cart's cookie, and the marker that tells the page to ask for the cart's count (bloat review step 2.4).
+    expect([...jar.keys()].filter((name) => !name.startsWith("kaizen_mine_"))).toHaveLength(1);
+    expect([...jar.keys()].filter((name) => name.startsWith("kaizen_mine_"))).toHaveLength(1);
     const cart = await cartModule.getCart({ storeId: (await stores.getStore(slug))!.id, market: (await stores.getStore(slug))!.markets.find((m) => m.slug === quote.market.slug)! });
     expect(cart.lines.map((l) => [l.variantId, l.quantity, l.status])).toEqual(
       expect.arrayContaining([[goods[0].variantId, 2, "ok"], [goods[1].variantId, 1, "ok"]]),

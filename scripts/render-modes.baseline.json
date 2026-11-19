@@ -48,8 +48,8 @@
       "titleInHead": true
     },
     "/s/demo/no": {
-      "compute": "resuming",
-      "holes": 3,
+      "compute": "static",
+      "holes": 0,
       "platformTags": [
         "catalog"
       ],
@@ -57,22 +57,22 @@
       "titleInHead": true
     },
     "/s/demo/no/om-oss": {
-      "compute": "resuming",
-      "holes": 3,
+      "compute": "static",
+      "holes": 0,
       "platformTags": [],
       "revalidate": 3600,
       "titleInHead": true
     },
     "/s/demo/no/blog/nye-produkter": {
-      "compute": "resuming",
-      "holes": 3,
+      "compute": "static",
+      "holes": 0,
       "platformTags": [],
       "revalidate": 3600,
       "titleInHead": true
     },
     "/s/demo/no/products": {
       "compute": "resuming",
-      "holes": 4,
+      "holes": 1,
       "platformTags": [
         "catalog"
       ],
@@ -81,7 +81,7 @@
     },
     "/s/demo/no/category/belysning": {
       "compute": "resuming",
-      "holes": 4,
+      "holes": 1,
       "platformTags": [
         "catalog"
       ],
@@ -90,7 +90,7 @@
     },
     "/s/demo/no/p/demo-keramikkopp": {
       "compute": "resuming",
-      "holes": 4,
+      "holes": 1,
       "platformTags": [
         "buy-platform",
         "catalog"
@@ -100,14 +100,14 @@
     },
     "/s/demo/no/search": {
       "compute": "resuming",
-      "holes": 4,
+      "holes": 1,
       "platformTags": [],
       "revalidate": 3600,
       "titleInHead": true
     },
     "/s/demo/no/cart": {
       "compute": "resuming",
-      "holes": 3,
+      "holes": 1,
       "platformTags": [],
       "revalidate": 3600,
       "titleInHead": true
@@ -117,12 +117,12 @@
     "entries": 267,
     "withList": 0,
     "withBothTags": 0,
-    "medianBytes": 12824
+    "medianBytes": 12597
   },
   "totals": {
     "routesByCompute": {
-      "static": 570,
-      "resuming": 268,
+      "static": 627,
+      "resuming": 211,
       "blocking": 2
     },
     "dynamicPatternsWithoutFallback": 139

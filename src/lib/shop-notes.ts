@@ -55,3 +55,15 @@ export function cartSaving(lines: readonly SavingLine[], discountMinor: number):
 export function productSaving(price: { amountMinor: number; referenceMinor: number | null }): number {
   return price.referenceMinor !== null && price.referenceMinor > price.amountMinor ? price.referenceMinor - price.amountMinor : 0;
 }
+
+/**
+ * Whether a page's blocks draw a note about the shopper's basket: the free-shipping note of a product layout, or either note of a working
+ * page. Such a page is drawn again when something is added from it; any other answers the cart's count (bloat review step 2.4).
+ */
+export function drawsCartNote(blocks: readonly { type: string; part?: unknown }[]): boolean {
+  return blocks.some(
+    (block) =>
+      (block.type === "product" && block.part === "free_shipping") ||
+      (block.type === "storePart" && (block.part === "free_shipping" || block.part === "you_saved")),
+  );
+}

@@ -101,7 +101,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
       <h1 className="mb-4 text-3xl font-heading tracking-tight">{m.allProducts}</h1>
       <Suspense
         fallback={
-          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} notices={notices} />
+          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} storeId={store.id} base={base} notices={notices} />
         }
       >
         <ProductListingFor store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} />

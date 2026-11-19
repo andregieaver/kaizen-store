@@ -259,8 +259,9 @@ the path, component or table you change, or list the rules with a search for lin
   label for one country is the label key `{locale}@{COUNTRY}`, read only by `menuLabel()` given the market's country and kept by `cleanLabels()`.
   A country's own domain is `store_domains.market` (written only by `setDomainCountry()`; never with language domains, never the primary):
   `countryHostDecision()` routes it before `languageHostDecision()`, and `marketHost()`/`marketPath()` write a market on it without its country,
-  so full addresses still come only from `marketUrl()` and `marketMetaPath()`. The country suggestion is `CountryHintSection` (per request in its
-  `<Suspense>`, off the pay routes, never a crawler, never a redirect, dismissal in memory only).
+  so full addresses still come only from `marketUrl()` and `marketMetaPath()`. The country suggestion (`CountryHintSlot`) is asked by
+  the browser from `/api/shop/mine`, one small call a page load, only in a store with several countries; still off the pay routes, never for a
+  crawler, never a redirect, dismissal in memory only.
 
 ## Private mode (wave 7 unit E, D339, `docs/wave-7-storefront.md` E)
 
@@ -668,7 +669,9 @@ the path, component or table you change, or list the rules with a search for lin
 
 - The cart (`src/server/cart.ts`) is per store and market, identified by an httpOnly
   cookie. Adding checks live stock and caps the quantity; stock is only held
-  once checkout starts. Mutations are server actions that call `refresh()`.
+  once checkout starts. Mutations are server actions that call `refresh()` where the page draws the cart (the cart page, the drawer, a page
+  with a basket note: the form sends `redraw`); adding from any other page answers the new count, which `useOpenCartAfterAdd()` puts in the
+  header (`src/components/shopper-own.tsx`, bloat review step 2.4).
   Its contents (`cart/cart-contents.tsx`) are the cart page and, on phones,
   the slide-out cart (D64): the `@drawer` slot of the `(shop)` route group (`src/app/s/[store]/[market]/(shop)/layout.tsx`, one level under the market layout, because a slot on a root layout makes Next draw the layout twice) intercepts
   `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
@@ -711,8 +714,9 @@ the path, component or table you change, or list the rules with a search for lin
   is added in the browser: necessary code at once, the rest by
   `ConsentManager` after consent. Pass it through `liveCustomCode()`, which
   gives none until stores have their own hosts (P7).
-  The wishlist (D34) hearts ask `/wishlist/saved` only when the marker cookie `kaizen_mine_{storeId}` (necessary, declared in
-  `KNOWN_COOKIES`, set on a first save and on sign-in) is present.
+  The wishlist (D34) hearts and the header's cart count come from `/api/shop/mine`, which the page asks only when the marker cookie
+  `kaizen_mine_{storeId}` (necessary, declared in `KNOWN_COOKIES`, set on a first save, with a cart and on sign-in) is present, or for the
+  country suggestion; so store pages with nothing per visitor are static files (bloat review step 2.4).
   Heatmaps and recordings (D656, `docs/heatmaps-and-recordings.md`): `recordings` is a fourth optional category, asked about only while a
   store records visits; its bit is written into the consent cookie only when the version names it, so every other cookie keeps its three
   bits. Heatmaps run under statistics and add the token `heat` to the version (`consentVersion(categories, extras)`, extras from
