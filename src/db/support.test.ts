@@ -173,16 +173,19 @@ describe("support in the database (D216)", () => {
     }
   });
 
-  it("keeps a contact form's message with people (D382): queued on any desk that is on, never on one that is off, never given to the AI, no summary", async () => {
+  it("keeps a contact form's message with people (D382) unless it starts with the AI first (D797): never on a desk that is off, never given to the AI later, no summary", async () => {
     const form = async () =>
       (await one<{ id: string }>("insert into commerce.support_conversations (store_id, source, handler, locale) values ($1, 'form', 'queue', 'en') returning id", [store])).id;
+    const withAi = () => db.query("insert into commerce.support_conversations (store_id, source, handler, locale) values ($1, 'form', 'ai', 'en') returning id", [store]);
     await setMode("off");
     expect(await refusal(form())).toBe("support_off");
+    await setMode("people");
+    // People only: it starts in the queue, never with the AI.
+    expect(await refusal(withAi())).toBe("support_bad_event");
     await setMode("ai_first");
-    // With the AI first it still starts in the queue, and never with the AI.
-    expect(await refusal(db.query("insert into commerce.support_conversations (store_id, source, handler, locale) values ($1, 'form', 'ai', 'en')", [store]))).toBe(
-      "support_bad_event",
-    );
+    // With the AI first it may start with the AI (the code decides by the desk's form_ai, or the challenge, D797), or in the queue.
+    const started = String(((await withAi()).rows[0] as { id: string }).id);
+    expect(await stateOf(started)).toMatchObject({ status: "open", handler: "ai" });
     const id = await form();
     expect(await stateOf(id)).toMatchObject({ status: "open", handler: "queue" });
     await transition(id, "claim", { kind: "agent", id: agentA });

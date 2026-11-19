@@ -1,6 +1,6 @@
 {
-  "id": "3466f172-e3af-40ad-933e-f5b7cf6287eb",
-  "prevId": "6c628259-45f2-4509-9754-b7ab539bf849",
+  "id": "3e3f69fc-1b04-44c7-a7e8-6bd8c58f5e63",
+  "prevId": "b9556715-0393-47db-ab24-e6aaecbc848f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -90969,6 +90969,13 @@
         },
         "email_orders": {
           "name": "email_orders",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "form_ai": {
+          "name": "form_ai",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

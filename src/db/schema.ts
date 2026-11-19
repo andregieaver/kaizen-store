@@ -16296,6 +16296,12 @@ export const supportSettings = commerce.table(
      * while the store is in the challenge.
      */
     emailOrders: boolean("email_orders").notNull().default(false),
+    /**
+     * The AI answers a store's form messages while the desk works AI first (`docs/100-day-challenge.md` B2, D797): as on the site's chat it
+     * reads no orders, as a form's address is only typed; a reply by email from that address, its DMARC check not failed, lets it read that
+     * customer's orders as B1 does. Off: a form's message waits for a person (D382). On by itself while the store is in the challenge.
+     */
+    formAi: boolean("form_ai").notNull().default(false),
     toneAlert: smallint("tone_alert").default(-40),
     toneHandoff: smallint("tone_handoff").default(-60),
     notifyAfterMinutes: smallint("notify_after_minutes").notNull().default(5),

@@ -9,32 +9,29 @@ import { db } from "@/db/client";
 import type { ContractAudit } from "@/components/documents/contract-document-view";
 import { signingText } from "@/lib/contract-signing-text";
 import { renderEmail } from "@/lib/email-layout";
-import { cutoffInstant } from "@/lib/retention";
 
-import { notifyNext, type Mailer } from "./contract-signing";
+import type { Mailer } from "./contract-signing";
 import { appendPages, platformSeal, sealPdf } from "./contract-seal";
 import { contractPdfPath, type PdfRenderer } from "./contracts";
+import { contractUpkeep, type UpkeepResult } from "./contract-upkeep";
 import { contractAuditHtml } from "./document-html";
 import { sendEmail } from "./email";
 import { documentStorage, type DocumentStorage } from "./invoice-storage";
 import { log } from "./log";
-import { retentionRule } from "./retention";
 import { emailContext, emailFooter, storeById } from "./shopper-emails";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * The contracts' jobs (D695 step 3), run with the PDFs of invoices from `/api/cron/document-pdfs`, which carries Chromium and hands its
- * renderer in: the signed PDF of each contract everyone has signed (the sent PDF, checked against its SHA-256, the signing record's page
- * after it, sealed, kept once, emailed to every signer), the contracts whose time to sign has passed, reminders to a signer who has not
- * signed, used and lapsed codes, and signed contracts past their retention period, with their files.
+ * The contracts' sealed PDFs (D695 step 3), made by `/api/cron/document-pdfs`, which carries Chromium and hands its renderer in: the
+ * signed PDF of each contract everyone has signed (the sent PDF, checked against its SHA-256, the signing record's page after it,
+ * sealed, kept once, emailed to every signer). The dispatcher asks the route when one waits (`runContractUpkeep()`, D795); the upkeep
+ * that needs no Chromium (expiry, reminders, codes, retention) is `src/server/contract-upkeep.ts`.
  */
 
 export type JobDeps = { render: PdfRenderer; storage?: DocumentStorage | null; mail?: Mailer; now?: Date };
 
 const ATTEMPTS = 5;
 const PER_RUN = 3;
-const REMINDER_DAYS = 3;
-const MAX_REMINDERS = 3;
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
@@ -179,13 +176,10 @@ async function sendSigned(storeId: string, contractId: string, title: string, la
   }
 }
 
-export type ContractJobResult = { signedPdfs: number; expired: number; reminded: number; codes: number; pruned: number };
-
-/** One run of the contracts' jobs; each part is caught on its own so one failing leaves the rest done. */
-export async function contractJob(deps: JobDeps): Promise<ContractJobResult> {
+/** Signed contracts waiting for their sealed PDF, at most `PER_RUN` a run, each tried again five minutes after a failure. */
+export async function signedPdfJob(deps: JobDeps): Promise<number> {
   const now = deps.now ?? new Date();
-  const result: ContractJobResult = { signedPdfs: 0, expired: 0, reminded: 0, codes: 0, pruned: 0 };
-
+  let made = 0;
   try {
     const due = await typedRows(
       z.object({ store_id: col.uuid, id: col.uuid }),
@@ -194,77 +188,18 @@ export async function contractJob(deps: JobDeps): Promise<ContractJobResult> {
             and (signed_pdf_tried_at is null or signed_pdf_tried_at < ${now.toISOString()}::timestamptz - interval '5 minutes')
           order by completed_at limit ${PER_RUN}`,
     );
-    for (const c of due) if (await buildSignedPdf(c.store_id, c.id, { ...deps, now })) result.signedPdfs += 1;
+    for (const c of due) if (await buildSignedPdf(c.store_id, c.id, { ...deps, now })) made += 1;
   } catch (error) {
     log("error", "contracts.job_signed_failed", {}, error);
   }
-
-  try {
-    const expired = await typedRows(
-      z.object({ id: col.uuid }),
-      sql`update commerce.contracts set status = 'expired', closed_at = now(), updated_at = now()
-          where status = 'sent' and expires_at <= ${now.toISOString()}::timestamptz returning id`,
-    );
-    result.expired = expired.length;
-  } catch (error) {
-    log("error", "contracts.job_expire_failed", {}, error);
-  }
-
-  try {
-    // The signer whose turn it is, on the customer's side, asked at least the contract's reminder days ago (three by default), three times at most.
-    const waiting = await typedRows(
-      z.object({ store_id: col.uuid, contract_id: col.uuid }),
-      sql`
-        select g.store_id, g.contract_id from commerce.contract_signers g
-        join commerce.contracts c on c.store_id = g.store_id and c.id = g.contract_id
-        where c.status = 'sent' and g.role <> 'store' and g.signed_at is null and g.declined_at is null and g.reminders < ${MAX_REMINDERS}
-          -- Deals and contracts is a paid extension (D748): no signer is reminded while the account does not have it.
-          and commerce.extension_on(g.store_id, 'deals')
-          and g.notified_at < ${now.toISOString()}::timestamptz - make_interval(days => coalesce(c.reminder_days, ${REMINDER_DAYS}))
-          and not exists (select 1 from commerce.contract_signers e where e.store_id = g.store_id and e.contract_id = g.contract_id
-                          and e.position < g.position and e.signed_at is null)
-        limit 50`,
-    );
-    for (const w of waiting) {
-      await notifyNext(w.store_id, w.contract_id, { reminder: true, mail: deps.mail });
-      result.reminded += 1;
-    }
-  } catch (error) {
-    log("error", "contracts.job_remind_failed", {}, error);
-  }
-
-  try {
-    const gone = await typedRows(
-      z.object({ id: col.uuid }),
-      sql`delete from commerce.contract_codes where (used_at is not null or expires_at < now()) and created_at < ${now.toISOString()}::timestamptz - interval '1 day' returning id`,
-    );
-    result.codes = gone.length;
-  } catch (error) {
-    log("error", "contracts.job_codes_failed", {}, error);
-  }
-
-  try {
-    result.pruned = await pruneContracts(now, deps.storage === undefined ? documentStorage() : deps.storage);
-  } catch (error) {
-    log("error", "contracts.job_prune_failed", {}, error);
-  }
-  return result;
+  return made;
 }
 
-/** Signed contracts past the `contracts` retention period (from their signing), deleted with their signers, events and both PDFs. */
-export async function pruneContracts(now: Date, storage: Pick<DocumentStorage, "remove"> | null): Promise<number> {
-  const period = await retentionRule("contracts", null, now.toISOString().slice(0, 10));
-  const before = cutoffInstant(period, now);
-  return db().transaction(async (tx) => {
-    await tx.execute(sql`select set_config('commerce.contract_retention', 'on', true)`);
-    const gone = await typedRows(
-      z.object({ store_id: col.uuid, pdf_path: col.textOrNull, signed_pdf_path: col.textOrNull }),
-      sql`delete from commerce.contracts where status = 'signed' and completed_at < ${before.toISOString()}::timestamptz
-          returning store_id, pdf_path, signed_pdf_path`,
-      tx,
-    );
-    const files = gone.flatMap((g) => [g.pdf_path, g.signed_pdf_path].filter((p): p is string => typeof p === "string" && p.startsWith(`${g.store_id}/contracts/`)));
-    if (files.length > 0 && storage && !(await storage.remove(files))) log("error", "contracts.prune_files_left", { files: files.length });
-    return gone.length;
-  });
+export type ContractJobResult = { signedPdfs: number } & UpkeepResult;
+
+/** The sealed PDFs and the upkeep in one run, as a test runs them; production runs the upkeep in the dispatcher (D795). */
+export async function contractJob(deps: JobDeps): Promise<ContractJobResult> {
+  const signedPdfs = await signedPdfJob(deps);
+  return { signedPdfs, ...(await contractUpkeep(deps)) };
 }
+

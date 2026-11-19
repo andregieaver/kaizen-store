@@ -340,7 +340,7 @@ preview (its open stores and their plans, the kept subscription, the plans that 
 a store limit it is above) and the move. The kept subscription is the running one on the highest plan: the plan's position, then its price
 a month (Plus and Advanced share position 2 in production, so Plus wins), then the oldest store. The move writes the account's row first,
 inside a transaction where `commerce.billing_move` keeps the plan's history and events quiet (the kept subscription only changes hands;
-migration `20261119131133_billing_move`); the store's own row keeps its plan as history and drops its subscription. Then Stripe: the kept
+migration `20261119135417_billing_move`); the store's own row keeps its plan as history and drops its subscription. Then Stripe: the kept
 subscription names the account, each other running one ends now with credit for the unused time (its end is a plan move, as it is), the
 owner gets an email in their language, and the facts and limits are refreshed. An account above its plan's store limit keeps every store
 and adds one only on a bigger plan. Platform → Plans → Accounts shows each account's preview and "Move this account" (the box to tick
