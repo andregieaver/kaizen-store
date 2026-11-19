@@ -33,7 +33,7 @@ export function StockUpload({
   register: (input: { path: string; name: string }) => Promise<Registered>;
 }) {
   const router = useRouter();
-  const w = useAdminText("inventory").import.upload;
+  const w = useAdminText("inventoryImport").import.upload;
   const pw = useAdminText("inventory").phone;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const formatBytes = (n: number) => bytesIn(n, locale);
@@ -115,7 +115,7 @@ export function StockUpload({
 
 /** The dry run's button (step 2): there are no options, so it is only *Check the file*, or *Check the file again* after a check. */
 export function StockCheck({ check, checked }: { check: () => Promise<Step>; checked: boolean }) {
-  const w = useAdminText("inventory").import.check;
+  const w = useAdminText("inventoryImport").import.check;
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
@@ -155,7 +155,7 @@ export function StockImportApply({
   apply: () => Promise<Step>;
   cancel: () => Promise<Step>;
 }) {
-  const w = useAdminText("inventory").import.apply;
+  const w = useAdminText("inventoryImport").import.apply;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const wholeNumber = (n: number) => numberIn(Math.round(n), locale);
   const [confirming, setConfirming] = useState(false);

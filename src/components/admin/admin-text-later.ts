@@ -115,6 +115,12 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   platformCopy: () => import("@/lib/admin-messages/platform.en").then((m) => pick(m.platformEn, ["copyWizard", "copyProgress"])),
   platformDocsGuide: () => import("@/lib/admin-messages/platform.en").then((m) => pick(m.platformEn, ["docsGuide"])),
   platformReminders: () => import("@/lib/admin-messages/platform.en").then((m) => pick(m.platformEn, ["reminderEditor"])),
+  builderVersions: () => import("@/lib/admin-messages/builder.en").then((m) => pick(m.builderEn, ["differences", "blockNames"])),
+  websiteStaging: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["staging"])),
+  websiteMedia: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["media"])),
+  websiteMenus: () => import("@/lib/admin-messages/website.en").then((m) => pick(m.websiteEn, ["menus"])),
+  inventoryImport: () => import("@/lib/admin-messages/inventory.en").then((m) => pick(m.inventoryEn, ["import"])),
+  customersStaff: () => import("@/lib/admin-messages/customers.en").then((m) => pick(m.customersEn, ["staff"])),
 };
 
 /** A fetch React can read with `use()`; one that is already settled (`settledEnglish()`) is read at once. */

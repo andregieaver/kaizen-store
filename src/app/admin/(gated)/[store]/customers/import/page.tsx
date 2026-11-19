@@ -70,7 +70,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </p>
         </Notice>
       ) : (
-        <AdminTextScope texts={adminTexts(lang, ["inventory", "customers"])}>
+        <AdminTextScope texts={adminTexts(lang, ["customersStaff", "inventoryImport"])}>
           <CustomerUpload slug={store.slug} rowsMax={CUSTOMER_FILE_ROWS_MAX} words={{ fileLabel: w.fileLabel, hint: w.hint, phoneHint: w.phone.hint }} start={startCustomerUploadAction.bind(null, store.slug)} register={registerCustomerUploadAction.bind(null, store.slug)} />
         </AdminTextScope>
       )}

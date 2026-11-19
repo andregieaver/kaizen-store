@@ -88,7 +88,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   const count = type === "page" ? choices.length : total;
   const offered = (role: PlatformRole) => choices.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
   return (
-    <AdminTextScope texts={adminTexts(lang, ["websiteList", "platformSite"])}>
+    <AdminTextScope texts={adminTexts(lang, ["websiteList"])}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title={<>{tw.list}</>}

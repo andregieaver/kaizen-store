@@ -62,6 +62,12 @@ const READERS: { file: string; whole: string[] }[] = [
   { file: "store-copy-progress.tsx", whole: ["platform"] },
   { file: "docs-guide-form.tsx", whole: ["platform"] },
   { file: "reminder-editor.tsx", whole: ["platform"] },
+  { file: "version-differences.tsx", whole: ["builder"] },
+  { file: "site-staging.tsx", whole: ["website"] },
+  { file: "media-library.tsx", whole: ["website"] },
+  { file: "menu-editor.tsx", whole: ["website"] },
+  { file: "customer-import-flow.tsx", whole: ["inventory"] },
+  { file: "customer-import-flow.tsx", whole: ["customers"] },
 ];
 
 describe("parts drawn on cut-only screens", () => {

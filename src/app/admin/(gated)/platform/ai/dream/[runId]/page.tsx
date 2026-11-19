@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AdminTextScope } from "@/components/admin/admin-text";
 import { DreamFeed, DreamMade, DreamProgress, DreamSketch, DreamTimeline } from "@/components/admin/dream/dream-showcase";
 import { RefreshWhile } from "@/components/admin/refresh-while";
 import { ButtonLink, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText, adminTexts } from "@/lib/admin-text";
+import { adminText } from "@/lib/admin-text";
 import { ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
 import { passMembership, requirePlatformReader } from "@/server/auth";
@@ -51,7 +50,7 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
   const name = run.brief?.storeName || store.name;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["home"])}>
+    <>
       {going && <RefreshWhile seconds={REFRESH_SECONDS} />}
       <div className="flex max-w-6xl flex-col gap-6">
         <p className="text-sm">
@@ -105,7 +104,7 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
           </div>
         </div>
       </div>
-    </AdminTextScope>
+    </>
   );
 }
 

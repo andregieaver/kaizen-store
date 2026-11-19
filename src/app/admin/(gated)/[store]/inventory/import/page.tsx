@@ -83,7 +83,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
           </p>
         </Notice>
       ) : (
-        <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
+        <AdminTextScope texts={adminTexts(lang, ["inventory", "inventoryImport"])}>
           <StockUpload slug={store.slug} start={startStockUploadAction.bind(null, store.slug)} register={registerStockUploadAction.bind(null, store.slug)} />
         </AdminTextScope>
       )}

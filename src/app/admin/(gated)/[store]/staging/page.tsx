@@ -60,7 +60,7 @@ export default async function StagingPage({ params }: PageProps<"/admin/[store]/
     publish: publishStagingAction.bind(null, slug),
   };
   return (
-    <AdminTextScope texts={adminTexts(lang, ["website", "builder", "schedules"])}>
+    <AdminTextScope texts={adminTexts(lang, ["schedules", "builderVersions", "websiteStaging"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
         <SiteStaging view={view} canWrite={memberCan(member, "website:write")} actions={actions} />

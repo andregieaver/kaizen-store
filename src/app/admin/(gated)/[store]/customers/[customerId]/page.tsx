@@ -154,7 +154,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const menuItem = "flex min-h-10 w-full items-center rounded-panel px-3 text-left text-body text-ink hover:bg-sunken";
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["customers", "privacy", "loyalty", "builderText"])}>
+    <AdminTextScope texts={adminTexts(lang, ["privacy", "loyalty", "builderText"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/customers`, label: words.back }}

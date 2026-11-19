@@ -263,6 +263,12 @@ export type AdminAreaMessages = {
   platformCopy: Pick<PlatformMessages, "copyWizard" | "copyProgress">;
   platformDocsGuide: Pick<PlatformMessages, "docsGuide">;
   platformReminders: Pick<PlatformMessages, "reminderEditor">;
+  builderVersions: Pick<BuilderMessages, "differences" | "blockNames">;
+  websiteStaging: Pick<WebsiteMessages, "staging">;
+  websiteMedia: Pick<WebsiteMessages, "media">;
+  websiteMenus: Pick<WebsiteMessages, "menus">;
+  inventoryImport: Pick<InventoryMessages, "import">;
+  customersStaff: Pick<CustomersMessages, "staff">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -399,6 +405,12 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   platformCopy: cut(PLATFORM_WORDS, ["copyWizard", "copyProgress"]),
   platformDocsGuide: cut(PLATFORM_WORDS, ["docsGuide"]),
   platformReminders: cut(PLATFORM_WORDS, ["reminderEditor"]),
+  builderVersions: cut({ en: builderEn, nb: builderNb }, ["differences", "blockNames"]),
+  websiteStaging: cut(WEBSITE_WORDS, ["staging"]),
+  websiteMedia: cut(WEBSITE_WORDS, ["media"]),
+  websiteMenus: cut(WEBSITE_WORDS, ["menus"]),
+  inventoryImport: cut({ en: inventoryEn, nb: inventoryNb }, ["import"]),
+  customersStaff: cut(CUSTOMERS_WORDS, ["staff"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

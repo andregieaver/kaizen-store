@@ -52,7 +52,7 @@ const FIELD = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 /** The staging page (D358): start a set, tick pages, choose a theme, stage menus, compare each, and make them live together. */
 export function SiteStaging({ view, canWrite, actions }: { view: StagingView; canWrite: boolean; actions: StagingActions }) {
-  const w = useAdminText("website").staging;
+  const w = useAdminText("websiteStaging").staging;
   const lookWords = useAdminText("schedules").versions.areas;
   const [pending, run] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);

@@ -373,7 +373,7 @@ describe("the stock file", () => {
 
 describe("the Inventory pages in Norwegian (D312 A5)", () => {
   const inNb = (children: ReactNode) =>
-    html(createElement(AdminTextProvider, { lang: "nb", texts: adminTexts("nb", ["inventory"]) } as Parameters<typeof AdminTextProvider>[0], children));
+    html(createElement(AdminTextProvider, { lang: "nb", texts: adminTexts("nb", ["inventory", "inventoryImport"]) } as Parameters<typeof AdminTextProvider>[0], children));
 
   it("names the tabs, the list and its figures in Norwegian", () => {
     const head = html(createElement(InventoryHead, { slug: "shop", active: "list", title: "Lager", intro: "x", lang: "nb" }));

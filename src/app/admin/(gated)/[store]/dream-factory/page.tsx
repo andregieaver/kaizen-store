@@ -48,7 +48,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
   // A rework (D527): changes to a store that exists, prepared as drafts and made live on the owner's press.
   if (run && run.kind === "rework" && run.status !== "stopped") {
     return (
-      <AdminTextScope texts={adminTexts(lang, ["home", "builder"])}>
+      <AdminTextScope texts={adminTexts(lang, ["builderVersions"])}>
         <ReworkRun store={store} run={run} words={w} />
       </AdminTextScope>
     );
@@ -58,7 +58,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
     // An open store is changed, never built again: its one form asks what to change.
     if (store.setupCompletedAt) {
       return (
-        <AdminTextScope texts={adminTexts(lang, ["home"])}>
+        <>
           <div className="flex max-w-2xl flex-col gap-6">
             <PageHeader
               title={w.rework.title}
@@ -72,11 +72,11 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
             {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
             <ReworkStart slug={slug} storeId={store.id} words={w} wish={wish} />
           </div>
-        </AdminTextScope>
+        </>
       );
     }
     return (
-      <AdminTextScope texts={adminTexts(lang, ["home"])}>
+      <>
         <div className="flex max-w-2xl flex-col gap-6">
           <PageHeader title={w.title} description={<>{w.description}</>} />
           {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
@@ -99,7 +99,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
             </div>
           </details>
         </div>
-      </AdminTextScope>
+      </>
     );
   }
 
@@ -123,7 +123,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
   const front = store.frontPageId ?? show.pages.find((page) => page.pageId)?.pageId ?? null;
   const ready = run.status === "ready" || run.status === "open";
   return (
-    <AdminTextScope texts={adminTexts(lang, ["home"])}>
+    <>
       {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} drawn={dreamFingerprint(run)} />}
       <div className="flex max-w-6xl flex-col gap-6">
         <PageHeader title={w.title} description={<>{runWords}</>} status={run.test ? <Chip signal="insight">{w.test}</Chip> : undefined} />
@@ -314,7 +314,7 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
           </details>
         )}
       </div>
-    </AdminTextScope>
+    </>
   );
 }
 
