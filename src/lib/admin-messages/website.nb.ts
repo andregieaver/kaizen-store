@@ -59,6 +59,10 @@ export const websiteNb: WebsiteMessages = {
     copyOf: "Kopi av",
     copyFailed: "Kopien kunne ikke lages.",
     layoutNames: { header: "topptekst", footer: "bunntekst" },
+    /** Runde 60 (D820): et nettsteds topp- og bunntekster på en telefon, for en butikk og Kaizena Flow. */
+    phoneIntro: { header: "Toppen av hver side: logo, menyer, søk, konto og handlekurv.", footer: "Bunnen av hver side: logo, menyer, firmaopplysninger, lenken til informasjonskapsler." },
+    phoneChange: "Endre",
+    phoneClose: "Lukk",
     inUseTitle: { header: "Toppteksten som brukes", footer: "Bunnteksten som brukes" },
     inUseHint: {
       header: "{site} viser denne toppteksten på hver side. Publiser en topptekst for å velge den; standardteksten ser ut som den alltid har gjort.",

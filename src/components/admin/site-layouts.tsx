@@ -11,6 +11,7 @@ import { fillWords } from "@/lib/admin-fill";
 import type { ScheduleChip } from "@/lib/page-schedules";
 
 import { useAdminLang, useAdminText } from "./admin-text";
+import { PhoneRow } from "./phone-row";
 import { ScheduleChipView } from "./pages-table";
 
 /**
@@ -37,9 +38,13 @@ export function SiteLayoutChoice({
   const w = useAdminText("websiteList").list;
   const choices = layouts.filter((layout) => layout.state !== "draft" || layout.id === current);
   const unpublished = layouts.find((layout) => layout.id === current)?.state === "draft";
+  const inUse = layouts.find((layout) => layout.id === current);
+  // Round 60 (D820): on a phone the choice is one row saying which is in use; from sm up the card as before.
   return (
+    <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+    <PhoneRow flat last title={w.inUseTitle[type]} sub={inUse ? inUse.title || w.untitled : w.standard[type]} change={w.phoneChange} done={w.phoneClose}>
     <ActionForm action={action} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
-      <h2 className="text-title text-ink">{w.inUseTitle[type]}</h2>
+      <h2 className="text-title text-ink max-sm:sr-only">{w.inUseTitle[type]}</h2>
       <p className="max-w-2xl text-sm text-muted">{fillWords(w.inUseHint[type], { site: siteName })}</p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
@@ -58,6 +63,8 @@ export function SiteLayoutChoice({
       </div>
       {unpublished && <p className="text-sm text-muted">{w.layoutUnpublished[type]}</p>}
     </ActionForm>
+    </PhoneRow>
+    </div>
   );
 }
 

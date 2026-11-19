@@ -48,6 +48,8 @@ export const draftsNb: DraftsMessages = {
     listTitle: "Utkast til bestillinger",
     listDescription:
       "Et utkast er en bestilling du lager for en kunde: produkter eller egne varer, dine egne priser, en rabatt og frakt. Send det, så får kunden en lenke for å betale på Stripes side, eller registrer at kunden betalte deg utenom Kaizena Flow.",
+    /** Runde 60 (D820): linjen under tittelen på en telefon. */
+    phoneLead: "En bestilling du lager for en kunde, som betaler den via en lenke.",
     newTitle: "Nytt utkast til bestilling",
     newDescription: "Velg først hvor bestillingen er for: det avgjør valutaen, prisene, merverdiavgiften og fraktprisen.",
     newNoWrite: "Du kan se utkast til bestillinger, men ikke lage ett: det krever retten til å endre bestillinger.",
@@ -67,6 +69,9 @@ export const draftsNb: DraftsMessages = {
     newDraft: "Nytt utkast til bestilling",
     openCount:
       "{count} av {max} åpne utkast. Et utkast holder ikke av noe på lager og får ikke et bestillingsnummer før det sendes; et sendt utkast holder av varene til lenken utløper.",
+    /** Runde 60 (D820): grensen på en telefon, og den tomme listen på en linje. */
+    phoneOpenCount: "{count} av {max} åpne utkast. Et utkast holder ikke av lager før det er sendt.",
+    phoneNone: "Ingen utkast ennå.",
     noneOfStatus: "Ingen utkast med status {status}.",
     none: "Ingen utkast til bestillinger ennå. Et utkast er en bestilling du lager for en kunde, som betaler den gjennom en lenke.",
     showAll: "Vis alle utkast",

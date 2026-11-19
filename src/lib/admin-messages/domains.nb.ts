@@ -303,6 +303,16 @@ export const domainsNb: DomainsMessages = {
     title: "Flytt {domain}",
     intro: "Velg hva du vil. Hvert steg sjekker seg selv, så du vet når det neste er trygt.",
     back: "Domener",
+    /** Runde 60 (D820): siden på en telefon, hvert valg en rad som sier hva det innebærer. */
+    phone: {
+      lead: "Velg hva du vil. Hvert steg sjekker seg selv.",
+      subs: {
+        registrar: "Overføringskoden, så tar den nye registraren det over",
+        dns: "Last ned postene, sjekk dem der, bytt",
+        elsewhere: "Til et annet nettsted eller en annen butikk",
+        leave: "Både DNS-en og registreringen flyttes ut",
+      },
+    },
     goals: {
       registrar: "La det virke her, flytt registreringen til en annen registrar",
       dns: "Flytt DNS-en til en annen leverandør",

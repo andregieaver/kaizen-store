@@ -65,6 +65,10 @@ export const websiteEn = {
     copyOf: "Copy of",
     copyFailed: "The copy could not be made.",
     layoutNames: { header: "header", footer: "footer" },
+    /** Round 60 (D820): a site's headers and footers on a phone, for a store and Kaizena Flow alike. */
+    phoneIntro: { header: "The top of every page: logo, menus, search, account and cart.", footer: "The bottom of every page: logo, menus, business details, the cookies link." },
+    phoneChange: "Change",
+    phoneClose: "Close",
     inUseTitle: { header: "The header in use", footer: "The footer in use" },
     inUseHint: {
       header: "{site} shows this header on every page. Publish a header to choose it; the standard one looks as it always has.",

@@ -74,7 +74,8 @@ export function DraftsListView({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label={w.statusNav} className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm">
+        {/* Round 60 (D820): on a phone the views are one line that scrolls, the limit is a line and an empty list offers New draft order once. */}
+        <nav aria-label={w.statusNav} className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm max-sm:-mr-4 max-sm:w-[calc(100%+1rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:border-b-0 max-sm:pb-0 max-sm:pr-4 max-sm:*:shrink-0">
           <Link href={href({ status: null, quotes: false })} aria-current={status === null && !quotes ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
             {w.all}
           </Link>
@@ -95,19 +96,33 @@ export function DraftsListView({
           </Link>
         )}
       </div>
-      <p className={hint}>{fillWords(w.openCount, { count: openCount, max: DRAFTS_OPEN_MAX })}</p>
+      <p className={hint}>
+        <span className="sm:hidden">{fillWords(w.phoneOpenCount, { count: openCount, max: DRAFTS_OPEN_MAX })}</span>
+        <span className="max-sm:hidden">{fillWords(w.openCount, { count: openCount, max: DRAFTS_OPEN_MAX })}</span>
+      </p>
       {quotesWaiting > 0 && !quotes && <p className="text-sm">{countWords(quotesWaiting, w.quotesWaiting)}</p>}
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm">
-          <p>{quotes ? w.noQuotes : status ? fillWords(w.noneOfStatus, { status: labels[status].toLowerCase() }) : w.none}</p>
+        <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm max-sm:p-4">
+          <p>
+            {quotes ? (
+              w.noQuotes
+            ) : status ? (
+              fillWords(w.noneOfStatus, { status: labels[status].toLowerCase() })
+            ) : (
+              <>
+                <span className="sm:hidden">{w.phoneNone}</span>
+                <span className="max-sm:hidden">{w.none}</span>
+              </>
+            )}
+          </p>
           {status || quotes ? (
             <Link href={base} className={secondary}>
               {w.showAll}
             </Link>
           ) : (
             canWrite && (
-              <Link href={`${base}/new`} className={primary}>
+              <Link href={`${base}/new`} className={`${primary} max-sm:hidden`}>
                 {w.first}
               </Link>
             )

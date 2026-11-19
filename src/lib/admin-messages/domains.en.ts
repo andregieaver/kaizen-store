@@ -310,6 +310,16 @@ export const domainsEn = {
     title: "Move {domain}",
     intro: "Choose what you want. Each step checks itself, so you know when the next one is safe.",
     back: "Domains",
+    /** Round 60 (D820): the page on a phone, each choice a row saying what it involves. */
+    phone: {
+      lead: "Choose what you want. Each step checks itself.",
+      subs: {
+        registrar: "The transfer code, then the new registrar takes it",
+        dns: "Download the records, check them there, switch",
+        elsewhere: "For another site or shop",
+        leave: "Its DNS and its registration both move out",
+      },
+    },
     goals: {
       registrar: "Keep it working here, move the registration to another registrar",
       dns: "Move its DNS to another provider",
