@@ -148,7 +148,7 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
                 <h1 className="mb-6 text-3xl font-heading tracking-tight">{m.products}</h1>
                 <ul className="grid grid-cols-2 gap-6 md:grid-cols-4">
                   {products.slice(0, 8).map((p) => (
-                    <ProductCard key={p.handle} product={p} href={`${home}/p/${p.handle}`} market={market} m={m} store={store.slug} base={home} notices={notices} />
+                    <ProductCard key={p.handle} product={p} href={`${home}/p/${p.handle}`} market={market} m={m} store={store.slug} storeId={store.id} base={home} notices={notices} />
                   ))}
                 </ul>
               </div>

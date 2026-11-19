@@ -170,7 +170,7 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       return (
         <Link href={`${base}/wishlist`} className={`relative ${ICON_LINK}`}>
           <Icon name="heart" />
-          <WishlistCount base={base} />
+          <WishlistCount store={store.slug} market={market.slug} storeId={store.id} />
           <span className="sr-only">{m.wishlist.title}</span>
         </Link>
       );
