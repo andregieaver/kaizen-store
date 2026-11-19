@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { OAuthConsentForm } from "@/components/admin/oauth-consent";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { oauthEn } from "@/lib/admin-messages/oauth.en";
 import { adminText } from "@/lib/admin-text";
@@ -118,14 +119,14 @@ async function Authorize({ searchParams }: { searchParams: PageProps<"/admin/oau
       {stores.length === 0 ? (
         <>
           <p className="text-body text-ink">{w.consent.noStores}</p>
-          <form action={decideAuthorizationAction}>
+          <QuietActionForm action={decideAuthorizationAction}>
             {Object.entries(hidden).map(([name, value]) => (
               <input key={name} type="hidden" name={name} value={value} />
             ))}
             <button type="submit" name="decision" value="deny" className="min-h-11 rounded-pill border border-edge px-5 text-sm font-medium">
               {w.consent.cancel}
             </button>
-          </form>
+          </QuietActionForm>
         </>
       ) : (
         <OAuthConsentForm

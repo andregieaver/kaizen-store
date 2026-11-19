@@ -10,6 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { connectionsOf } from "@/server/wordpress";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { revokeConnectionAction } from "./actions";
 
@@ -63,11 +64,11 @@ export default async function WordpressPage() {
                     {fillWords(w.connected, { at: adminDate(PLATFORM_TIME_ZONE, site.connectedAt, "dayTime", lang) || w.never, read: adminDate(PLATFORM_TIME_ZONE, site.lastUsedAt, "dayTime", lang) || w.never })}
                   </p>
                 </div>
-                <form action={revokeConnectionAction.bind(null, site.id)}>
+                <QuietActionForm action={revokeConnectionAction.bind(null, site.id)}>
                   <button type="submit" className={secondaryButton}>
                     {w.disconnect}
                   </button>
-                </form>
+                </QuietActionForm>
               </li>
             ))}
           </ul>

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, FocusFrame } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
@@ -43,10 +44,10 @@ export default async function TryPage({ searchParams }: PageProps<"/admin/try">)
           {w.back}
         </ButtonLink>
       ) : settings.on ? (
-        <form action={startSandboxAction} className="flex flex-col">
+        <QuietActionForm action={startSandboxAction} className="flex flex-col">
           {demo && <input type="hidden" name="demo" value={demo.id} />}
           <SubmitButton>{w.button}</SubmitButton>
-        </form>
+        </QuietActionForm>
       ) : (
         !problem && <p className="text-body text-ink-2">{w.off}</p>
       )}

@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextProvider } from "@/components/admin/admin-text-context";
 import { FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminLang } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -95,10 +96,10 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
 
 function SignOut({ lang }: { lang: AdminLang }) {
   return (
-    <form action={leaveTwoStepAction}>
+    <QuietActionForm action={leaveTwoStepAction}>
       <button type="submit" className="text-sm underline">
         {adminText(lang, "signIn").twoStep.signOut}
       </button>
-    </form>
+    </QuietActionForm>
   );
 }

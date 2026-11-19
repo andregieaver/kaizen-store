@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { buttonClass, FocusFrame, FocusHeading } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -103,7 +104,7 @@ export async function AppInstall({
         )}
         {app.supportEmail && <span className="text-ink-2">{fillWords(w.consent.app.support, { email: app.supportEmail })}</span>}
       </p>
-      <form action={decideInstallAction} className="flex flex-col gap-4">
+      <QuietActionForm action={decideInstallAction} className="flex flex-col gap-4">
         {Object.entries(hidden).map(([name, value]) => (
           <input key={name} type="hidden" name={name} value={value} />
         ))}
@@ -139,7 +140,7 @@ export async function AppInstall({
             {w.consent.cancel}
           </button>
         </div>
-      </form>
+      </QuietActionForm>
       <p className="text-xs text-muted">
         {w.consent.app.later}{" "}
         <Link href="/admin/account/connected" className="underline">

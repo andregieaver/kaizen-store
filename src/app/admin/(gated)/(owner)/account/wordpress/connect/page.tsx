@@ -10,6 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { storesOf } from "@/server/wordpress";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 
 import { answerApprovalAction } from "../actions";
 
@@ -70,7 +71,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
         </ul>
         <p className="mt-2 text-muted">{w.anyTime}</p>
       </section>
-      <form action={answerApprovalAction} className="flex flex-wrap gap-3">
+      <QuietActionForm action={answerApprovalAction} className="flex flex-wrap gap-3">
         <input type="hidden" name="site" value={request.site} />
         <input type="hidden" name="name" value={request.name} />
         <input type="hidden" name="return" value={request.returnTo.toString()} />
@@ -82,7 +83,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
         <button type="submit" name="answer" value="deny" className={secondaryButton}>
           {w.cancel}
         </button>
-      </form>
+      </QuietActionForm>
     </div>
   );
 }

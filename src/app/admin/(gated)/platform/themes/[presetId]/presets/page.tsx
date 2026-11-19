@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PreviewLink } from "@/components/admin/preview-link";
 import { ButtonLink, Card, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { VARIATIONS_MAX, designPreviewPath, designTabHref } from "@/lib/design-presets";
 import { listVariations } from "@/server/design-variations";
 import { shownDesignDetails } from "@/server/design-presets";
@@ -49,13 +50,13 @@ export default async function DesignPresetsPage({ params }: PageProps<"/admin/pl
                 <ListRow key={preset.key}>
                   <RowLead title={preset.name} href={`${designTabHref(presetId, "presets")}/${preset.key}`} sub={fillWords(p.address, { key: preset.key })} />
                   <RowActions>
-                    <form action={moveVariationAction.bind(null, presetId, preset.key, "up")}>
+                    <QuietActionForm action={moveVariationAction.bind(null, presetId, preset.key, "up")}>
                       <button type="submit" disabled={index === 0} className="min-h-10 rounded-pill px-3 text-sm hover:bg-sunken disabled:opacity-40">
                         {p.moveUp}
                         <span className="sr-only">: {preset.name}</span>
                       </button>
-                    </form>
-                    <form action={moveVariationAction.bind(null, presetId, preset.key, "down")}>
+                    </QuietActionForm>
+                    <QuietActionForm action={moveVariationAction.bind(null, presetId, preset.key, "down")}>
                       <button
                         type="submit"
                         disabled={index === presets.length - 1}
@@ -64,7 +65,7 @@ export default async function DesignPresetsPage({ params }: PageProps<"/admin/pl
                         {p.moveDown}
                         <span className="sr-only">: {preset.name}</span>
                       </button>
-                    </form>
+                    </QuietActionForm>
                     <ButtonLink href={`${designTabHref(presetId, "presets")}/${preset.key}`} size="dense">
                       {p.edit}
                       <span className="sr-only"> {preset.name}</span>

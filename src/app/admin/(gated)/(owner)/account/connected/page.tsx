@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import Link from "next/link";
 
 import { Card, CARD_CLASS, PageHeader, buttonClass, chipClass } from "@/components/admin/ui";
+import { QuietActionForm } from "@/components/admin/quiet-action-form";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -60,11 +61,11 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
                     {w.kaizenLife.open} ↗
                   </a>
                 ) : null}
-                <form action={unlinkKaizenLifeAction}>
+                <QuietActionForm action={unlinkKaizenLifeAction}>
                   <button type="submit" className={buttonClass("danger")}>
                     {w.kaizenLife.unlink}
                   </button>
-                </form>
+                </QuietActionForm>
               </div>
             </div>
           </Card>
@@ -81,11 +82,11 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
                   </p>
                 ) : null}
               </div>
-              <form action={switchAssistantsAction.bind(null, !life.assistants)}>
+              <QuietActionForm action={switchAssistantsAction.bind(null, !life.assistants)}>
                 <button type="submit" className={buttonClass(life.assistants ? "secondary" : "main")}>
                   {life.assistants ? w.kaizenLife.assistants.turnOff : w.kaizenLife.assistants.turnOn}
                 </button>
-              </form>
+              </QuietActionForm>
             </div>
           </Card>
           {life.assistants || tasks.length > 0 ? (
@@ -119,11 +120,11 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
                           </Link>
                         ) : null}
                         {task.open && task.direction === "to_life" ? (
-                          <form action={takeBackLifeTaskAction.bind(null, task.id)}>
+                          <QuietActionForm action={takeBackLifeTaskAction.bind(null, task.id)}>
                             <button type="submit" className={buttonClass("secondary", "dense")}>
                               {w.kaizenLife.assistants.tasks.takeBack}
                             </button>
-                          </form>
+                          </QuietActionForm>
                         ) : null}
                       </div>
                     </li>
@@ -154,11 +155,11 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
                       {grant.lastUsedAt ? fillWords(w.connected.lastUsed, { when: when(grant.lastUsedAt) }) : w.connected.neverUsed}
                     </p>
                   </div>
-                  <form action={disconnectGrantAction.bind(null, grant.id)}>
+                  <QuietActionForm action={disconnectGrantAction.bind(null, grant.id)}>
                     <button type="submit" className={buttonClass("danger")}>
                       {w.connected.disconnect}
                     </button>
-                  </form>
+                  </QuietActionForm>
                 </div>
               </Card>
             </li>
