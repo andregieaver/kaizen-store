@@ -851,6 +851,15 @@ export const analyticsNb: AnalyticsMessages = {
     screen: "Skjerm",
     tooFew: "{n} av {min} sidelastinger",
     notMeasured: "Hva denne rapporten ikke kan måle",
+    phone: {
+      lead: "Hvor raskt sidene dine lastes for dem som åpner dem.",
+      offSub: "Hastighet måles bare mens den er på",
+      figures: "Hva de tre tallene betyr",
+      limits: "Hva den ikke kan måle",
+      limitsSub: "Stille sider, kassen, besøkende som reserverer seg",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     notMeasuredItems: [
       "Sider med færre enn 20 sidelastinger på 28 dager: tallet deres utelates, det gjettes aldri.",
       "Handlekurven, kassen og ordresidene: ingenting ekstra kjører der en kunde betaler.",

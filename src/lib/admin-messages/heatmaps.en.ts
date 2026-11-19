@@ -49,6 +49,13 @@ export const heatmapsEn = {
     noneStuck: "No page has enough views yet to say where visitors get stuck.",
     frontPage: "Front page",
     watch: "Watch recordings",
+    phone: {
+      lead: "Where visitors click, scroll and look, page by page.",
+      recordings: "Recordings",
+      stuck: "stuck",
+      reached: "reached half",
+      views: "views",
+    },
   },
   map: {
     back: "Heatmaps",

@@ -25,7 +25,7 @@ export default async function AnalyticsSpeedPage({ params, searchParams }: PageP
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
       <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
         <div className="flex flex-col gap-8">
-          <AnalyticsHeader ctx={ctx} path="/analytics/speed" title={words.speed.title} description={words.speed.description} picker={false} showCompare={false} />
+          <AnalyticsHeader ctx={ctx} path="/analytics/speed" title={words.speed.title} description={<><span className="sm:hidden">{words.speed.phone.lead}</span><span className="max-sm:hidden">{words.speed.description}</span></>} picker={false} showCompare={false} />
           <SpeedView base={ctx.base} locale={ctx.locale} report={report} words={words} />
         </div>
       </ExportScope>
