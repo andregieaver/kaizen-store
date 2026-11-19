@@ -21,7 +21,7 @@ import { expressProblemText } from "@/lib/checkout-labels";
 import type { ExpressProblem } from "@/lib/express-checkout";
 import { marketPath } from "@/lib/paths";
 import { rememberAffiliate } from "@/server/affiliates";
-import { changeLine, readCartId, setCartCompany, setCartGift, setCartVatNumber } from "@/server/cart";
+import { changeLine, getCartCount, readCartId, setCartCompany, setCartGift, setCartVatNumber } from "@/server/cart";
 import { viesClientKey } from "@/server/vat-checks";
 import { getCustomer } from "@/server/customers";
 import { addCartCode, removeCartCode } from "@/server/discounts";
@@ -58,6 +58,8 @@ const lineInput = z
 export type AddToCartState = {
   outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error" | "gift_card";
   quantity: number;
+  /** The cart's units after the add, for the header's count (bloat review step 2.4). */
+  count?: number;
   /** What was wrong with *Send it to someone* (D300), field by field; the card was not added. */
   giftCardProblems?: GiftCardProblem[];
 };
@@ -136,10 +138,11 @@ export async function addToCart(
     }
   }
   refresh();
+  const count = await getCartCount(input.shop);
   // Adding follows the variant's rule (D323) and is never refused by it; only setting a line can be.
   return result.outcome === "removed" || result.outcome === "quantity"
-    ? { outcome: "error", quantity: 0 }
-    : { outcome: result.outcome, quantity: result.quantity };
+    ? { outcome: "error", quantity: 0, count }
+    : { outcome: result.outcome, quantity: result.quantity, count };
 }
 
 /** Sets a cart line's quantity; 0 removes the line. */

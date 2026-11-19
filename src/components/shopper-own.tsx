@@ -18,9 +18,11 @@ export type Hint = {
  */
 let cart: number | null = null;
 let saved: Set<string> | null = null;
+let hint: Hint | null = null;
 /** The store and market the values are for: a client navigation to another market starts them again. */
 let current = "";
-/** Bumped by `setSaved()`, so an answer asked for before a save never overwrites what came after. */
+/** Bumped by `setCart()` and `setSaved()`, so an answer asked for before an add or a save never overwrites what came after. */
+let cartEdits = 0;
 let savedEdits = 0;
 const listeners = new Set<() => void>();
 /** The store and market pairs whose answer was asked for; only a request blocks a later call (the cart link may run before the hint). */
@@ -33,6 +35,12 @@ function changed() {
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+export function setCart(count: number) {
+  cartEdits += 1;
+  cart = count;
+  changed();
 }
 
 export function setSaved(products: string[]) {
@@ -49,6 +57,7 @@ export function loadOwn({ store, market, storeId, hinted }: { store: string; mar
     current = key;
     cart = null;
     saved = null;
+    hint = null;
     started.clear();
     changed();
   }
@@ -63,13 +72,14 @@ export function loadOwn({ store, market, storeId, hinted }: { store: string; mar
     return;
   }
   started.add(key);
-  const asked = savedEdits;
+  const asked = { cart: cartEdits, saved: savedEdits };
   fetch(`/api/shop/mine?store=${encodeURIComponent(store)}&market=${encodeURIComponent(market)}`, { cache: "no-store" })
     .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
     .then((data: { cart: number; saved: string[]; hint: Hint | null }) => {
       if (key !== current) return;
-      cart = data.cart;
-      if (asked === savedEdits) saved = new Set(data.saved);
+      if (asked.cart === cartEdits) cart = data.cart;
+      if (asked.saved === savedEdits) saved = new Set(data.saved);
+      hint = data.hint;
       changed();
     })
     .catch(() => {
@@ -77,4 +87,6 @@ export function loadOwn({ store, market, storeId, hinted }: { store: string; mar
     });
 }
 
+export const useCart = (): number | null => useSyncExternalStore(subscribe, () => cart, () => null);
 export const useSaved = (): Set<string> | null => useSyncExternalStore(subscribe, () => saved, () => null);
+export const useHint = (): Hint | null => useSyncExternalStore(subscribe, () => hint, () => null);

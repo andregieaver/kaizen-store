@@ -45,14 +45,24 @@ test("a shopper saves products with the heart, sorts them into lists and adds a 
 });
 
 test("a visitor who saved nothing is not asked for", async ({ page }) => {
-  const asked: string[] = [];
+  const mine: string[] = [];
+  const old: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/wishlist/saved") || request.url().includes("/api/shop/mine")) asked.push(request.url());
+    if (request.url().includes("/api/shop/mine")) mine.push(request.url());
+    if (request.url().includes("/wishlist/saved")) old.push(request.url());
   });
-  await page.goto("/s/demo/no");
+  // Kaizena Flow's own site has one country and no shop: nothing of the visitor's to ask for.
+  await page.goto("/");
   await page.waitForLoadState("load");
   await page.waitForTimeout(3000);
-  expect(asked).toHaveLength(0);
+  expect(mine).toHaveLength(0);
+  // The demo store sells in several countries, so its page asks once, for the country suggestion; with no marker, nothing is in it.
+  const answer = page.waitForResponse((response) => response.url().includes("/api/shop/mine"));
+  await page.goto("/s/demo/no");
+  expect(await (await answer).json()).toMatchObject({ cart: 0, saved: [] });
+  await page.waitForTimeout(3000);
+  expect(mine).toHaveLength(1);
+  expect(old).toHaveLength(0);
 });
 
 test("a saved product is asked for after a reload, in one small call", async ({ page }) => {
