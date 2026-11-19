@@ -70,7 +70,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.9 | Test what gets owners paid | FH9 | M | Done | 19 Nov 2026, da190c63, 372c047e, 7f0eb225, D794: `connect.int.test.ts` (47 tests) and `cron-auth.test.ts`; the untested money modules listed in D794 |
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Done | 19 Nov: CLAUDE.md by bloat step 2.1 (7742afff, 10,102 bytes); decisions split by bloat step 2.40 (779 files, none over 500 characters a line). |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
-| 1.12 | Build the admin kit | FS4 | L | Done | 19 Nov 2026, 98e69ecf, a9c04344, 2e294c71, ba7c3331, dd56e77b, d6283f4f, 5820b511, D818: seven pieces in `A/ui`; 17 list pages; field boxes and pill links per file and `confirmFiles` (42 to 32) in the ratchet; see Notes below |
+| 1.12 | Build the admin kit | FS4 | L | Done | 19 Nov 2026, 98e69ecf, a9c04344, 2e294c71, ba7c3331, dd56e77b, d6283f4f, 5820b511, b6db7cd6, D818: seven pieces in `A/ui`; 17 list pages; field boxes and pill links per file and `confirmFiles` (42 to 32) in the ratchet; see Notes below |
 | 1.13 | One way to search and page a list | FS2 | M | Open | Stores, Pages and Articles page at 100 with a count (bloat 0.19, 2.17), on `Pager` since D818; Orders, Customers, gift cards and reviews search with `ListSearch` (D818). Customers, Products, Invoices and Returns still to page. |
 | 1.14 | One date formatter | FS5 | M | Done | 19 Nov 2026, 9cec7211, b1b85b24, D786: `adminDate()`/`adminDay()` in `src/lib/admin-date.ts`; `admin-dates.scan.test.ts`; see Notes below |
 | 1.15 | Forms that answer | FS6 | M | Open | |
