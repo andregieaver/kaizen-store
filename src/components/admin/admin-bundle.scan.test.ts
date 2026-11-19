@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { SRC, chain, directive, files, read, reach, rel, resolve, specifiersOf } from "@/test/import-walk";
+import { PACKAGES, SRC, chain, directive, files, read, reach, rel, resolve, specifiersOf } from "@/test/import-walk";
 
 import baseline from "./admin-bundle.baseline.json";
 
@@ -17,7 +17,7 @@ import baseline from "./admin-bundle.baseline.json";
  *      schema to a `-schema.ts` file beside the helper, or read the helper from a module without zod. Rewrite the list, once a module
  *      has stopped (or when growth is accepted on purpose, shown in the diff), with
  *      `WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts`.
- * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`.
+ * Steps 2.26, 2.29 and 2.46 add their rules through `clientsReaching()`; step 2.26's is rule 3 below.
  */
 const WRITE = process.env.WRITE_ADMIN_BUNDLE_BASELINE === "1";
 
@@ -91,6 +91,70 @@ const ends = (line: string) => `${line.split(" -> ")[0]} -> ${line.split(" -> ")
 
 const zodReach = () => clientsReaching("zod");
 
+/**
+ * 3. Catalogues (bloat review step 2.26): every `importer -> catalogue` by which an admin client module reaches an area's catalogue file
+ *    (`src/lib/admin-messages/{area}.{en,nb}.ts`) through value imports, a lib module on the way too. `common.en` and `sign-in.en` are
+ *    allowed, and `admin-text-later.ts`, whose `import()` per area is the designed late fetch. CATALOGUE_SITES is what the code held when
+ *    the rule came in; it only shrinks, and step 2.26 works it down to empty.
+ */
+const SITE_CATALOGUE = /admin-messages\/([\w-]+\.(?:en|nb))$/;
+const ALLOWED_CATALOGUES = ["common.en", "sign-in.en"];
+const LATE_FETCH = "components/admin/admin-text-later.ts";
+const CATALOGUE_SITES: string[] = [
+  "src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx -> gift-cards.en",
+  "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx -> gift-cards.en",
+  "src/components/admin/company-fields.tsx -> customers.en",
+  "src/components/admin/delete-reminder-button.tsx -> platform.en",
+  "src/components/admin/demo-content-card.tsx -> home.en",
+  "src/components/admin/modal-fields.tsx -> blocks.en",
+  "src/components/admin/orders/order-table.tsx -> orders.en",
+  "src/components/admin/orders/send-parcel.tsx -> order.en",
+  "src/components/admin/orders/view-tools.tsx -> orders.en",
+  "src/components/admin/privacy/styles.ts -> privacy.en",
+  "src/components/admin/support/conversation-actions.tsx -> support.en",
+  "src/components/admin/templates-helpers.ts -> builder.en",
+  "src/lib/affiliate-admin.ts -> loyalty.en",
+  "src/lib/analytics-words.ts -> analytics.en",
+  "src/lib/analytics-words.ts -> analytics.nb",
+  "src/lib/bonus-admin.ts -> loyalty.en",
+  "src/lib/campaigns.ts -> discounts.en",
+  "src/lib/control-center.ts -> home.en",
+  "src/lib/discounts.ts -> discounts.en",
+  "src/lib/drafts-words.ts -> drafts.en",
+  "src/lib/experiment-results.ts -> experiments.en",
+  "src/lib/experiment-words.ts -> experiments.en",
+  "src/lib/field-group-editor.ts -> fields.en",
+  "src/lib/order-list-words.ts -> orders.en",
+  "src/lib/redirect-admin.ts -> redirects.en",
+  "src/lib/redirect-words.ts -> redirects.en",
+  "src/lib/redirects.ts -> redirects.en",
+  "src/lib/return-admin.ts -> returns.en",
+  "src/lib/segments.ts -> marketing.en",
+  "src/lib/shipping-method-form.ts -> shipping.en",
+  "src/lib/store-copy-wizard.ts -> platform.en",
+  "src/lib/support-inbox-text.ts -> support.en",
+  "src/lib/tax-profile.ts -> tax.en",
+  "src/lib/work-timer-ui.ts -> work.en",
+  "src/lib/work-ui.ts -> work.en",
+];
+
+function catalogueSites(planted?: Map<string, string[]>): string[] {
+  const walked = new Set<string>();
+  for (const client of CLIENTS) for (const file of reach(client, { planted }).keys()) walked.add(file);
+  const sites = new Set<string>();
+  for (const file of walked) {
+    // A file the walk met but did not walk into (a server action file, a server-only module) is a reference in the browser, not its code.
+    if (PACKAGES.includes(file) || rel(file) === LATE_FETCH) continue;
+    const specifiers = specifiersOf(file, planted);
+    if (directive(read(file), "use server") || specifiers.includes("server-only")) continue;
+    for (const specifier of specifiers) {
+      const catalogue = SITE_CATALOGUE.exec(specifier)?.[1];
+      if (catalogue && !ALLOWED_CATALOGUES.includes(catalogue)) sites.add(`src/${rel(file)} -> ${catalogue}`);
+    }
+  }
+  return [...sites].sort();
+}
+
 describe.runIf(WRITE)("the baseline writer", () => {
   it("writes the baseline", () => {
     writeFileSync(join(SRC, "components/admin/admin-bundle.baseline.json"), JSON.stringify({ zodReach: zodReach() }, null, 2) + "\n");
@@ -120,6 +184,17 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     ).toEqual([]);
     const gone = baseline.zodReach.filter((name) => !now.includes(name));
     expect(gone, "These no longer reach zod: take them off with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts").toEqual([]);
+  });
+
+  it("no client module reaches an area's catalogue that is not on the list, and the list only shrinks", () => {
+    const now = catalogueSites();
+    const known = new Set(CATALOGUE_SITES);
+    expect(
+      now.filter((site) => !known.has(site)),
+      "An admin client module reaches an area's catalogue: pass the words as an argument or read them with useAdminText(); see docs/platform-admin-i18n.md 3.3",
+    ).toEqual([]);
+    const live = new Set(now);
+    expect(CATALOGUE_SITES.filter((site) => !live.has(site)), "These no longer reach their catalogue: take them off CATALOGUE_SITES").toEqual([]);
   });
 
   it("would notice: zod planted on a part of the frame", () => {
