@@ -439,6 +439,10 @@ is left for when it is redesigned.
 - E5 part two: `20261119192530_accounts_billed_after_launch`, applied by CI 19 November 2026 20:10 UTC (run 1724, commit 42df6db7). In
   production: the trigger is in place, `extensions_launched_at` is null and no account has a row, so nothing changes until the launch is pressed.
   Advisors: INFO only, nothing on the new function or trigger; no new warning.
+- E6 part two: `20261119214939_plain_vulcan`, `20261119214941_founding_price_sheet`, applied by CI 19 November 2026 (run 1741, commit
+  3a7f447c, held back from run 1738 while main was red over a bundle budget not of this change). In production: all 32 extension prices
+  and 8 bundle prices carry the price sheet's founding prices; no founding offer is set (`extension_founding_until` null), so none is sold
+  yet. E8 (the Extensions block) deployed with it; it needs no migration. Advisors: INFO only, nothing new on the changed tables.
 
 The platform parity rule: the platform admin has every extension from E2; Kaizena Flow's own site sells them from E8.
 
