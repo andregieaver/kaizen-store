@@ -611,6 +611,7 @@ export const platformSiteEn = {
     },
     media: {
       title: "Media library",
+      lead: "Every picture and video on Kaizena Flow's own site.",
       description:
         "Every picture and video uploaded for Kaizena Flow's own site, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let the AI write them), and see where each one is used on the site.",
     },

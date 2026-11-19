@@ -446,6 +446,15 @@ export const supportEn = {
     notPlaceholder: "Not a placeholder, so it stays as written:",
     save: "Save",
     add: "Add saved reply",
+    phone: {
+      lead: "Type / in the inbox to put one in.",
+      newRow: "New reply",
+      newSub: "A title, the text, a shortcut if you like",
+      helpRow: "What / fills in",
+      helpSub: "The customer's name, your name, the store",
+      open: "Open",
+      done: "Done",
+    },
   },
   settings: {
     whoAnswers: "Who answers your customers",

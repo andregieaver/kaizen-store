@@ -610,6 +610,7 @@ export const platformSiteNb: PlatformSiteMessages = {
     },
     media: {
       title: "Mediebibliotek",
+      lead: "Alle bilder og videoer på Kaizena Flows eget nettsted.",
       description:
         "Alle bilder og videoer lastet opp til Kaizena Flows eget nettsted, her eller i en hvilken som helst redigering. Legg til mange på en gang, finn dem etter navn eller alternativ tekst, gi bildene alternativ tekst (eller la KI skrive den), og se hvor hvert er brukt på nettstedet.",
     },

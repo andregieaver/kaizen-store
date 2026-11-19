@@ -481,6 +481,15 @@ export const designNb: DesignMessages = {
     notHere: "En demobutikks eller startinnholds utseende deles fra Kaizena Flows temasider.",
     closed: "Bare en åpen butikks utseende kan deles.",
     yours: "Dine temaer",
+    phone: {
+      lead: "Utseendet ditt går til Kaizena Flow for gjennomgang; tekstene og produktene dine forblir dine.",
+      more: "Beskrivelse, forfatter og demosider",
+      by: "Av {name}",
+      sentRow: "Hva som sendes",
+      sentSub: "Innstillinger, toppfelt, bunnfelt, produktside, CSS",
+      open: "Åpne",
+      done: "Ferdig",
+    },
     problems: {
       title: "Gi det et navn på høyst 80 tegn.",
       summary: "Hold linjen på høyst 200 tegn.",

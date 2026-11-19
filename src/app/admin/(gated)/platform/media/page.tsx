@@ -40,7 +40,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
     <>
       <PageHeader
         title={w.misc.media.title}
-        description={w.misc.media.description}
+        description={<><span className="sm:hidden">{w.misc.media.lead}</span><span className="max-sm:hidden">{w.misc.media.description}</span></>}
       />
       {/* The search in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>

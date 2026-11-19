@@ -41,7 +41,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
   return (
     <AdminTextScope texts={adminTexts(lang, ["website"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
+      <PageHeader title={w.title} description={<><span className="sm:hidden">{fillWords(w.lead, { store: store.name })}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The search in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Library storeSlug={store.slug} searchParams={searchParams} />
