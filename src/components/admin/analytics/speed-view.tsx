@@ -4,6 +4,7 @@ import { Chip } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { analyticsEn, type AnalyticsMessages } from "@/lib/admin-messages/analytics.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { metricsToFix, MIN_SPEED_SAMPLES, SPEED_METRICS, speedValueText, type SpeedCell, type SpeedRating, type SpeedRow } from "@/lib/speed";
 import type { SpeedReport } from "@/server/analytics-speed";
 
@@ -45,13 +46,27 @@ export function SpeedView({ base, locale, report: r, words = analyticsEn }: { ba
   const toFix = metricsToFix(r.rows);
   return (
     <div className="flex flex-col gap-8">
+      {/* Round 54 (D802): on a phone visit counting off is a strip with Turn on, and how the figures are made and what is not measured are rows. */}
       {!r.collecting && (
+        <div className="flex items-center justify-between gap-3 rounded-panel bg-card p-4 sm:hidden">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-body text-ink">{words.live.phone.off}</span>
+            <span className="text-caption text-ink-2">{w.phone.offSub}</span>
+          </span>
+          <Link href={`${base}/analytics/settings#visits`} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-line px-4 text-sm text-ink no-underline">
+            {words.live.phone.turnOn}
+          </Link>
+        </div>
+      )}
+      {!r.collecting && (
+        <div className="max-sm:hidden">
         <Note tone="warning">
           {w.off}{" "}
           <Link href={`${base}/analytics/settings`} className="underline">
             {w.offLink}
           </Link>
         </Note>
+        </div>
       )}
       <AnalyticsSection
         id="speed"
@@ -64,6 +79,8 @@ export function SpeedView({ base, locale, report: r, words = analyticsEn }: { ba
         }
       >
         {r.rows.length === 0 ? <p className="text-sm text-muted">{w.none}</p> : <DataTable caption={w.table} columns={columns} rows={r.rows} rowKey={(row) => `${row.screen}:${row.kind}`} exportId="speed.figures" />}
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow last title={w.phone.figures} sub={SPEED_METRICS.map((metric) => w.metrics[metric].short).join(", ")} change={w.phone.open} done={w.phone.done}>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           {SPEED_METRICS.map((metric) => (
             <div key={metric}>
@@ -72,6 +89,8 @@ export function SpeedView({ base, locale, report: r, words = analyticsEn }: { ba
             </div>
           ))}
         </dl>
+        </PhoneRow>
+        </div>
       </AnalyticsSection>
       {r.rows.length > 0 && (
         <AnalyticsSection id="speed-fix" title={w.fixTitle}>
@@ -94,6 +113,8 @@ export function SpeedView({ base, locale, report: r, words = analyticsEn }: { ba
           )}
         </AnalyticsSection>
       )}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow last title={w.phone.limits} sub={w.phone.limitsSub} change={w.phone.open} done={w.phone.done}>
       <AnalyticsSection id="speed-limits" title={w.notMeasured}>
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
           {w.notMeasuredItems.map((item) => (
@@ -101,6 +122,8 @@ export function SpeedView({ base, locale, report: r, words = analyticsEn }: { ba
           ))}
         </ul>
       </AnalyticsSection>
+      </PhoneRow>
+      </div>
     </div>
   );
 }

@@ -119,7 +119,7 @@
   },
   "bigRules": {
     "docs/rules/storefront.md#The chat agent (D81, `src/lib/chat.ts`, `src/server/chat-agent.ts`, `src/server/knowledge.ts`, `ChatWidget`)": 5104,
-    "docs/rules/storefront.md#Support (D216, `docs/support.md`, built in steps; §11 says what each step found)": 11224,
+    "docs/rules/storefront.md#Support (D216, `docs/support.md`, built in steps; §11 says what each step found)": 11188,
     "docs/rules/admin/ai.md#The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`, `AiManagerLauncher`)": 8022,
     "docs/rules/admin/ai.md#The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)": 4613,
     "docs/rules/admin/commerce.md#Inventory (wave 3, D172, `docs/wave-3-inventory.md`)": 4597,

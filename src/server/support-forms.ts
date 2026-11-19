@@ -3,26 +3,34 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 
 import { db } from "@/db/client";
 import type { Answer } from "@/lib/forms";
 import { homeMarket } from "@/lib/markets";
 import { MESSAGE_MAX } from "@/lib/support-rules";
 
+import { autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
 import { getOpenStore } from "./stores";
 import { addMessage, deskSettings } from "./support";
 import { systemDesk } from "./support-desk";
+import { answer, type InboundDeps } from "./support-inbound";
 import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
 /**
- * A store's email form's message in its support inbox (wave 11 unit C, D382): a conversation of source `form`, people only (the
- * database starts it in the queue and never lets it go to the AI, and no model reads it: no tone, summary, brief or partner), with
- * the form's email address as its contact, never tied to a customer by it. A person's answer goes back by email from the desk, as a
- * conversation by email's does (`sendReplyEmails()`), and a reply to that email continues it. Only while the desk is on and its
- * `form_messages` is not `email`; otherwise the form emails its recipients as before (D93).
+ * A store's email form's message in its support inbox (wave 11 unit C, D382): a conversation of source `form`, with the form's email
+ * address as its contact, never tied to a customer by it. A person's answer goes back by email from the desk, as a conversation by email's
+ * does (`sendReplyEmails()`), and a reply to that email continues it. Only while the desk is on and its `form_messages` is not `email`;
+ * otherwise the form emails its recipients as before (D93).
+ *
+ * People answer it (no tone, summary, brief or partner reads it), unless the desk works AI first and its *form_ai* is on, or the store is
+ * in the challenge (`docs/100-day-challenge.md` B2, D797): then it starts with the AI, which answers as an email's (`answer()`) once the
+ * form's response is sent, by email to the form's address. It reads no orders by that address, which is only typed; a reply by email from
+ * it lets the AI read that customer's orders as B1 (`emailCustomer()`). Without an email answer it stays with people; the database never
+ * lets it go to the AI later.
  */
 
 /** A form's message is cut into customer messages of the inbox's length, at most this many; a longer one is also emailed in full. */
@@ -72,6 +80,8 @@ export async function formToInbox(
   answers: readonly Answer[],
   /** The form's first email answer, and its name answer as typed: the conversation's contact, never proof of who wrote. */
   contact: { email: string | null; name: string | null },
+  /** The AI's turn, for tests (`answer()`'s). */
+  deps: Pick<InboundDeps, "turn"> = {},
 ): Promise<FormInbox> {
   if (!storeId) return { kept: false };
   try {
@@ -89,15 +99,21 @@ export async function formToInbox(
     if (parts.length === 0) return { kept: false };
     const email = contact.email && contact.email.length <= CONTACT_MAX ? normaliseEmail(contact.email) : null;
     const name = contact.name?.replace(/\s+/g, " ").trim().slice(0, NAME_MAX) || null;
+    const ai = Boolean(email) && settings.mode === "ai_first" && !settings.sensitive && (settings.formAi || (await autonomyFor(storeId)).challenge);
     const [created] = await db().execute<Row>(sql`
       insert into commerce.support_conversations (store_id, source, handler, market, locale, contact_email, contact_name, reply_key, email_subject, page_path)
-      values (${storeId}::uuid, 'form', 'queue', ${market.slug}, ${market.locale.slice(0, 16)}, ${email}, ${name}, ${newKey()},
+      values (${storeId}::uuid, 'form', ${ai ? "ai" : "queue"}, ${market.slug}, ${market.locale.slice(0, 16)}, ${email}, ${name}, ${newKey()},
         ${form.subject.slice(0, SUBJECT_MAX)}, ${form.path.slice(0, PATH_MAX)})
       returning id
     `);
     const conversationId = String(created.id);
     for (const [n, part] of parts.entries()) {
       await addMessage(desk, conversationId, "customer", null, part, n === 0 ? { data: { form: { block: form.blockId, path: form.path, cut } } } : {});
+    }
+    // The AI's answer after the form's response, as an email's: a failure or a hand-over gives it to a person (`answer()`).
+    if (ai && email) {
+      const site = { kind: "store" as const, store, market };
+      after(() => answer(desk, settings, site, conversationId, email, deps).catch((error) => log("error", "support.form_answer_failed", { storeId }, error)));
     }
     return { kept: true, conversationId, emailToo: route === "both" || cut };
   } catch (error) {

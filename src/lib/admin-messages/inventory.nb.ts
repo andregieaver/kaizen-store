@@ -32,6 +32,8 @@ export const inventoryNb: InventoryMessages = {
     addSupplierSub: "Et navn og hvor den sender fra",
     waitSub: "{minutes} min, for en rask kansellering",
     seller: "Du er selgeren: mva, fakturaer, angrerett og refusjoner er dine.",
+    exportLead: "En rad for hver variant på hvert lager, til å telle og sende tilbake.",
+    aboutSub: "Kolonnene, å telle fra den, tall under null",
     locationsLead: "Hvor lageret ditt holdes. Ordrer tas fra den øverste først.",
     pickRow: "Hvordan ordrer velger lager",
     pickRank: "Øverst først, samlet der det går",

@@ -61,7 +61,7 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
           ctx={ctx}
           path="/analytics/heatmaps"
           title={words.hub.title}
-          description={words.hub.description}
+          description={<><span className="sm:hidden">{words.hub.phone.lead}</span><span className="max-sm:hidden">{words.hub.description}</span></>}
           lead={pages.length > 0 ? fillWords(words.hub.lead, { pages: formatCount(pages.length), views: formatCount(views) }) : undefined}
           showCompare={false}
         />

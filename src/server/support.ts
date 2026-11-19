@@ -121,6 +121,8 @@ export type DeskSettings = {
   formMessages: FormMessages;
   /** The AI answers an email about the sender's own orders (`docs/100-day-challenge.md` B1); never for a sensitive store. */
   emailOrders: boolean;
+  /** The AI answers a store's form messages while the desk works AI first (`docs/100-day-challenge.md` B2, D797); never for a sensitive store. */
+  formAi: boolean;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -154,6 +156,7 @@ export function settingsOf(row: Row): DeskSettings {
     aiActions: Array.isArray(row.ai_actions) ? (row.ai_actions as string[]).filter(isCustomerAction) : null,
     formMessages: (FORM_MESSAGES as readonly string[]).includes(String(row.form_messages)) ? (String(row.form_messages) as FormMessages) : "inbox_and_email",
     emailOrders: row.sensitive !== true && row.email_orders === true,
+    formAi: row.sensitive !== true && row.form_ai === true,
   };
 }
 
