@@ -368,3 +368,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 17:18 2.20 pushed 8af4efe0d..5f85cefad (reviewed, rebased, lint/tc/full unit 1393 pass). Check at 18:19 (trig_012U5rZQNiL7SKfMv7iXxWVL): CI hosts job, theme-switch, money path (lower 20->16 if 15), then D-row 2.20.
 - kz-d: 2.21 Opus ad1291ddd1d547e4b, brief $S/run/kz-d-2.21.md (ports 3300-3304, scripts in scratchpad/kzd-221/).
 - Note: another session pushed "bloat review step 3.7 commit 1" (332f47e30): someone else is on phase 3.
+- 18:0x 2.27 commits 1-4 pushed (632a5da42..b5c6cf6de; lint/tc/full unit 1394 pass). Shared words 16,617/17,180 held (brief 15.5/16 KB; rule 0.43). Executor resumed (a345a7655ca1d69c1) for commit 5 (68 sites; 5a/5b..., ~2h cap). D-row 2.27 later. Product editor doc 431,497->241,677; builder 606,658->468,351; home 165,942->134,689.
