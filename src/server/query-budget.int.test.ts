@@ -423,12 +423,19 @@ describe("query budget with 20 stores", () => {
   }, T);
 
   it("holds the ledger's statements with 20 open books, so one more per book fails", async () => {
-    const held = support.readBaseline().twenty?.["dispatcher.ledger"];
+    // The busy tick has its own name: dispatcher.ledger above is the idle one, where a book looked at is not listed again (step 3.22).
+    const held = support.readBaseline().twenty?.["dispatcher.ledger.busy"];
     const books = await db().execute<{ n: number }>(sql`select count(*)::int as n from commerce.ledger_books where closed_on is null`);
     expect(books[0].n).toBeGreaterThanOrEqual(20);
     await runLedgerPosting();
+    // A busy tick: every book due (bloat review step 3.22 skips an idle book between hourly looks).
+    await db().execute(sql`update commerce.ledger_books set checked_at = null where closed_on is null`);
     const now = await support.measure(() => runLedgerPosting());
-    // The baseline holds what 20 books cost; a statement more per book is 20 more and fails dispatcher.ledger above.
+    // An idle tick lists no book, so it costs what one store's does.
+    const idle = await support.measure(() => runLedgerPosting());
+    expect(idle.statements).toBe(measured.one["dispatcher.ledger"]!.statements);
+    measured.twenty["dispatcher.ledger.busy"] = { statements: now.statements, rowsRead: now.rowsRead };
+    // The baseline holds what 20 due books cost; a statement more per book is 20 more and fails here.
     if (!WRITE) expect(now.statements).toBe(held!.statements);
     expect(now.statements - measured.one["dispatcher.ledger"]!.statements).toBeGreaterThanOrEqual(20);
   }, T);

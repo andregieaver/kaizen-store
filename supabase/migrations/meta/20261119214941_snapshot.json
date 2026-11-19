@@ -1,6 +1,6 @@
 {
-  "id": "547b45f8-416d-4523-9cd7-fcb792082d29",
-  "prevId": "fea3bdd6-f2fc-4fde-9bea-d3d15c213187",
+  "id": "80695b95-c051-4c48-b41d-9d7717ca749c",
+  "prevId": "018f7a2b-12b5-464d-9b1f-0db0dd847a39",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -43462,6 +43462,19 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "behind": {
+          "name": "behind",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",

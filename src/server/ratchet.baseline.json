@@ -1125,8 +1125,12 @@
         "rowsRead": 39700
       },
       "dispatcher.ledger": {
-        "statements": 52,
-        "rowsRead": 240
+        "statements": 2,
+        "rowsRead": 20
+      },
+      "dispatcher.ledger.busy": {
+        "statements": 53,
+        "rowsRead": 260
       },
       "dispatcher.legal-sources": {
         "statements": 6,
@@ -1503,8 +1507,8 @@
         "rowsRead": 39700
       },
       "dispatcher.ledger": {
-        "statements": 50,
-        "rowsRead": 240
+        "statements": 0,
+        "rowsRead": 20
       },
       "dispatcher.legal-sources": {
         "statements": 0,

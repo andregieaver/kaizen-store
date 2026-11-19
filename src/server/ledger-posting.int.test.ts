@@ -543,3 +543,81 @@ describe("a store's documents, posted to its books", () => {
     expect(bank.n).toBe(0);
   });
 });
+
+describe("the ledger job's turns", () => {
+  // Earlier tests leave books in the same database: each case reads only its own.
+  const dueOf = async (ids: string[]) => (await ledger.ledgerBooksDue()).map((b) => b.id).filter((id) => ids.includes(id));
+  const stateOf = async (id: string) => {
+    const [row] = await db().execute<Row>(sql`select checked_at, behind from commerce.ledger_books where id = ${id}::uuid`);
+    return { checkedAt: new Date(String(row.checked_at)).getTime(), behind: row.behind === true };
+  };
+  const handled = async (id: string) => {
+    const [row] = await db().execute<Row>(sql`
+      select (select count(*) from commerce.ledger_entries where book_id = ${id}::uuid and source_kind is not null)::int
+           + (select count(*) from commerce.ledger_waiting where book_id = ${id}::uuid)::int as n`);
+    return Number(row.n);
+  };
+  const shopWithBook = async (label: string) => {
+    const shop = await fx.makeStore(`ldg-${label}-${run}`);
+    const book = await openBook(shop.storeId, shop.ownerId);
+    return { shop, book };
+  };
+
+  it("a book cut short stays listed behind the others, and all three are caught up within three runs", async () => {
+    const a = await shopWithBook("turn-a");
+    const b = await shopWithBook("turn-b");
+    const c = await shopWithBook("turn-c");
+    for (let i = 0; i < 3; i += 1) await fx.paidOrder(a.shop, [["DEMO-MUG-WHITE", 1]]);
+    await fx.paidOrder(b.shop, [["DEMO-MUG-WHITE", 1]]);
+    await fx.paidOrder(c.shop, [["DEMO-MUG-WHITE", 1]]);
+    const ids = [a.book.id, b.book.id, c.book.id];
+
+    await ledger.runLedgerPosting({ limit: 3 });
+    expect(await handled(a.book.id)).toBe(3);
+    expect(await handled(b.book.id)).toBe(2);
+    expect(await handled(c.book.id)).toBe(2);
+    const [sa, sb, sc] = await Promise.all(ids.map(stateOf));
+    expect([sa.behind, sb.behind, sc.behind]).toEqual([true, false, false]);
+    expect(sa.checkedAt).toBeGreaterThan(sb.checkedAt);
+    expect(sa.checkedAt).toBeGreaterThan(sc.checkedAt);
+    expect(await dueOf(ids)).toEqual([a.book.id]);
+
+    // Something new in B's and C's stores: both are listed again, before A.
+    await fx.paidOrder(b.shop, [["DEMO-MUG-WHITE", 1]]);
+    await fx.paidOrder(c.shop, [["DEMO-MUG-WHITE", 1]]);
+    const listed = await dueOf(ids);
+    expect(listed).toHaveLength(3);
+    expect(listed.indexOf(a.book.id)).toBe(2);
+
+    await ledger.runLedgerPosting({ limit: 3 });
+    await ledger.runLedgerPosting({ limit: 3 });
+    for (const id of ids) expect((await stateOf(id)).behind).toBe(false);
+    expect(await dueOf(ids)).toEqual([]);
+    for (const x of [a, b, c]) expect(await ledger.postDueDocuments(x.shop.storeId, x.book)).toEqual({ posted: 0, waiting: 0 });
+  });
+
+  it("an idle book is not listed until something is issued or an hour has passed", async () => {
+    const d = await shopWithBook("turn-d");
+    await fx.paidOrder(d.shop, [["DEMO-MUG-WHITE", 1]]);
+    await ledger.runLedgerPosting();
+    expect(await dueOf([d.book.id])).toEqual([]);
+    await fx.paidOrder(d.shop, [["DEMO-MUG-WHITE", 1]]);
+    expect(await dueOf([d.book.id])).toEqual([d.book.id]);
+    await ledger.runLedgerPosting();
+    expect(await dueOf([d.book.id])).toEqual([]);
+    await db().execute(sql`update commerce.ledger_books set checked_at = now() - interval '61 minutes' where id = ${d.book.id}::uuid`);
+    expect(await dueOf([d.book.id])).toEqual([d.book.id]);
+  });
+
+  it("a book opened earlier is posted from the next tick", async () => {
+    const e = await shopWithBook("turn-e");
+    await fx.paidOrder(e.shop, [["DEMO-MUG-WHITE", 1]]);
+    await ledger.runLedgerPosting();
+    expect(await dueOf([e.book.id])).toEqual([]);
+    const member = { account: { id: e.shop.ownerId }, store: { id: e.shop.storeId, timeZone: "Europe/Oslo" } } as unknown as Membership;
+    const day = new Date(Date.now() - 40 * 86_400_000).toISOString().slice(0, 10);
+    expect(await ledger.openLedgerBookEarlier(member, day)).toMatchObject({ ok: true });
+    expect((await stateOf(e.book.id)).behind).toBe(true);
+    expect(await dueOf([e.book.id])).toEqual([e.book.id]);
+  });
+});

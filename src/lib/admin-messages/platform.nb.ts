@@ -295,6 +295,19 @@ export const platformNb: PlatformMessages = {
     title: "Utvidelser",
     description:
       "De betalte utvidelsene: hva hver heter, om den også selges uten en butikk, størrelsene med hva de gir og prisene, pakkene, og hva hver plan gir uten ekstra kostnad. Prisene er uten mva. En endret pris blir en ny pris: kontoer på den gamle beholder den. Til utvidelsene selges, har hver konto alle utvidelsene.",
+    /** Runde 63 (D827): utvidelsene på en telefon, hver en rad. */
+    phone: {
+      lead: "Hva hver utvidelse koster og inneholder. Prisene er uten mva.",
+      notSold: "Ikke i salg ennå",
+      notSoldSub: "Alle kontoer har alle utvidelser til lanseringen",
+      launch: "Lanser",
+      sizes: { one: "{n} størrelse", many: "{n} størrelser" },
+      offered: "tilbys",
+      notOffered: "tilbys ikke",
+      edit: "Rediger",
+      open: "Åpne",
+      close: "Lukk",
+    },
     notLaunched: "Selges ikke ennå: hver konto har alle utvidelsene til de lanseres.",
     launched: "Solgt siden {date}.",
     name: "Navn",
@@ -1023,6 +1036,9 @@ export const platformNb: PlatformMessages = {
     next: "Neste 100 butikker",
     previous: "Forrige 100 butikker",
     title: "Butikker",
+    /** Runde 63 (D827): sandkasseraden på en telefon. */
+    phoneOpen: "Åpne",
+    phoneClose: "Lukk",
     description:
       "Abonnementet hver butikk har hos Kaizena Flow og gebyret per salg. Åpne en butikk for å starte, endre eller avslutte abonnementet, eller gi den et eget gebyr.",
     dreamLink: "Bygg en butikk med KI",

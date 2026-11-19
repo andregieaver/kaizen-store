@@ -3,9 +3,10 @@ import { AdminLink as Link } from "@/components/admin/ui/link";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { adminText } from "@/lib/admin-text";
@@ -58,20 +59,53 @@ export default async function ExtensionsPage() {
 
   return (
     <>
-      <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title} description={w.description} />
+      <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{w.phone.lead}</span>
+            <span className="max-sm:hidden">{w.description}</span>
+          </>
+        }
+      />
+      {/* Round 63 (D827): on a phone the launch, each extension, the bundles and what plans include are rows, each opening its form. */}
       {preview ? (
-        <LaunchCard preview={preview} catalogue={catalogue.extensions} lang={lang} w={w} />
+        <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+          <PhoneRow flat last title={w.phone.notSold} sub={w.phone.notSoldSub} change={w.phone.launch} done={w.phone.close}>
+            <LaunchCard preview={preview} catalogue={catalogue.extensions} lang={lang} w={w} />
+          </PhoneRow>
+        </div>
       ) : (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           {launchedAt ? fillWords(w.launched, { date: adminDate(PLATFORM_TIME_ZONE, launchedAt, "long", lang) }) : w.notLaunched}
         </p>
       )}
 
-      <FoundingCard founding={founding} lang={lang} w={w} />
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow
+          flat
+          last
+          title={w.founding.title}
+          sub={founding.until ? adminDate(PLATFORM_TIME_ZONE, new Date(founding.until.getTime() - 1), "long", lang) : w.founding.notOffered}
+          change={w.phone.edit}
+          done={w.phone.close}
+        >
+          <FoundingCard founding={founding} lang={lang} w={w} />
+        </PhoneRow>
+      </div>
 
-      {catalogue.extensions.map((extension) => (
-        <section key={extension.id} aria-labelledby={`ext-${extension.id}`} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
-          <h2 id={`ext-${extension.id}`} className="text-title text-ink">
+      <PhoneRows>
+      {catalogue.extensions.map((extension, index) => (
+        <PhoneRow
+          key={extension.id}
+          flat
+          last={index === catalogue.extensions.length - 1}
+          title={extension.name}
+          sub={`${countWords(extension.sizes.length, w.phone.sizes, { n: extension.sizes.length })} · ${extension.active ? w.phone.offered : w.phone.notOffered}`}
+          change={w.phone.edit}
+          done={w.phone.close}
+        >
+        <section aria-labelledby={`ext-${extension.id}`} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
+          <h2 id={`ext-${extension.id}`} className="text-title text-ink max-sm:sr-only">
             {extension.name}
           </h2>
           <ActionForm action={saveExtensionAction.bind(null, extension.id)} className="flex flex-col gap-4">
@@ -81,8 +115,12 @@ export default async function ExtensionsPage() {
             </div>
           </ActionForm>
         </section>
+        </PhoneRow>
       ))}
+      </PhoneRows>
 
+      <PhoneRows>
+      <PhoneRow flat title={w.bundles} sub={w.bundlesHint} change={w.phone.open} done={w.phone.close}>
       <section aria-labelledby="bundles" className="flex flex-col gap-4">
         <div>
           <h2 id="bundles" className="text-title text-ink">
@@ -111,7 +149,8 @@ export default async function ExtensionsPage() {
           </ActionForm>
         </div>
       </section>
-
+      </PhoneRow>
+      <PhoneRow flat last title={w.included} sub={w.includedHint} change={w.phone.open} done={w.phone.close}>
       <section aria-labelledby="included" className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
         <div>
           <h2 id="included" className="text-title text-ink">
@@ -156,6 +195,8 @@ export default async function ExtensionsPage() {
           </ActionForm>
         )}
       </section>
+      </PhoneRow>
+      </PhoneRows>
     </>
   );
 }

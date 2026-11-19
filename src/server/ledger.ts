@@ -188,7 +188,7 @@ export async function openLedgerBookEarlier(member: Membership, openedOn: string
   try {
     const moved = await db().transaction(async (tx) => {
       const rows = await tx.execute(sql`
-        update commerce.ledger_books set opened_on = ${openedOn}::date, updated_at = now()
+        update commerce.ledger_books set opened_on = ${openedOn}::date, behind = true, updated_at = now()
          where id = ${book.id}::uuid and store_id = ${member.store.id}::uuid and closed_on is null and opened_on = ${book.openedOn}::date
            and locked_through is null
         returning id`);
@@ -485,6 +485,8 @@ export async function ledgerVatByCode(bookId: string, from: string, to: string):
 
 /** How many documents a book posts in one go, and how long the dispatcher's job may take. */
 const DOCS_A_ROUND = 100;
+/** How many entries a book compares with Tripletex in one go (compareWithTripletex()'s own default). */
+const COMPARE_A_ROUND = 25;
 const BUDGET_MS = 40_000;
 
 /** Where a store's documents are posted: its Tripletex settings' accounts where it books there (so the two compare), else Norway's. */
@@ -1035,32 +1037,63 @@ export async function postDueDocuments(
  * The dispatcher's `ledger` job (D478 steps 2 and 4): each store's books, open or closed in the last 60 days, post the documents issued in
  * their days, and the open ones compare what is posted with Tripletex, store after store within 40 seconds.
  */
-export async function runLedgerPosting(options: { budgetMs?: number } = {}): Promise<{ books: number; posted: number; waiting: number; compared: number }> {
-  const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
-  const books = await typedRows(
-    z.object({ id: col.uuid, store_id: col.uuid, currency: col.currency, opened_on: col.text, closed_on: col.textOrNull }),
-    sql`select id, store_id, currency, opened_on::text, closed_on::text from commerce.ledger_books
-         where (closed_on is null or closed_on >= current_date - 60)
+/**
+ * The books the ledger job looks at, in their turn: open or closed in the last 60 days, and never looked at, behind, last looked at over an
+ * hour ago, or with a shop invoice or credit note issued since; the least recently looked at first (bloat review step 3.22).
+ */
+export async function ledgerBooksDue() {
+  return typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, currency: col.currency, opened_on: col.text, closed_on: col.textOrNull, listed_at: col.text }),
+    sql`select b.id, b.store_id, b.currency, b.opened_on::text, b.closed_on::text, now()::text as listed_at
+         from commerce.ledger_books b
+         where (b.closed_on is null or b.closed_on >= current_date - 60)
            -- The books are part of Work, a paid extension (D748): nothing is posted while the account does not have it.
-           and commerce.extension_on(store_id, 'work')
-         order by updated_at`,
+           and commerce.extension_on(b.store_id, 'work')
+           -- The issued_on bound lets each exists() use invoices_issued_idx and credit_notes_issued_idx (store_id, issued_on); issued_at decides.
+           -- Everything else (Work's documents, payments that change state later, payouts, dispute lines) is taken at the hourly look.
+           and (b.checked_at is null or b.behind or b.checked_at < now() - interval '1 hour'
+             or exists (select 1 from commerce.invoices i where i.store_id = b.store_id and i.issued_on >= (b.checked_at - interval '1 day')::date and i.issued_at > b.checked_at)
+             or exists (select 1 from commerce.credit_notes c where c.store_id = b.store_id and c.issued_on >= (b.checked_at - interval '1 day')::date and c.issued_at > b.checked_at))
+         order by b.checked_at nulls first, b.id`,
   );
+}
+
+export async function runLedgerPosting(options: { budgetMs?: number; limit?: number } = {}): Promise<{ books: number; posted: number; waiting: number; compared: number }> {
+  const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
+  const limit = options.limit ?? DOCS_A_ROUND;
+  const books = await ledgerBooksDue();
   let posted = 0;
   let waiting = 0;
   let compared = 0;
   let done = 0;
+  const marks: { id: string; storeId: string; behind: boolean; at: string }[] = [];
   for (const book of books) {
     if (Date.now() > deadline) break;
+    let behind = false;
     try {
-      const r = await postDueDocuments(book.store_id, book, { deadline });
+      const r = await postDueDocuments(book.store_id, book, { limit, deadline });
       posted += r.posted;
       waiting += r.waiting;
       // Step 4: what is posted here, compared with what Tripletex holds for it.
-      if (book.closed_on === null) compared += (await compareWithTripletex(book.store_id, book, { deadline })).compared;
+      const c = book.closed_on === null ? (await compareWithTripletex(book.store_id, book, { deadline, limit: COMPARE_A_ROUND })).compared : 0;
+      compared += c;
+      // Stopped short (the round's limit, the comparison's, or the deadline): the book stays listed until it is caught up.
+      behind = r.posted + r.waiting >= limit || c >= COMPARE_A_ROUND || Date.now() > deadline;
       done += 1;
     } catch (error) {
       log("error", "ledger.posting_failed", { storeId: book.store_id, bookId: book.id }, error);
     }
+    marks.push({ id: book.id, storeId: book.store_id, behind, at: book.listed_at });
+  }
+  // The books looked at, marked in one statement: a caught-up book with the list's time, so anything issued after the list lists it again; a
+  // behind one with its turn's end, so the books caught up in this run come before it next time. A turn that threw is not behind: it is
+  // tried again at the hourly look. Books the loop did not reach keep their mark and come first next run; updated_at is the owner's.
+  if (marks.length > 0) {
+    const rows = marks.map((m) => sql`(${m.id}::uuid, ${m.storeId}::uuid, ${m.behind}::boolean, ${m.at}::timestamptz)`);
+    await db().execute(sql`
+      update commerce.ledger_books b set checked_at = case when m.behind then now() else m.at end, behind = m.behind
+        from (values ${sql.join(rows, sql`, `)}) as m(id, store_id, behind, at)
+       where b.id = m.id and b.store_id = m.store_id`);
   }
   // B4: bank lines matched to what was just posted (a payout's entry may come after the statement that shows it).
   if (Date.now() < deadline) {

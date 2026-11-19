@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { PhoneRow } from "@/components/admin/phone-row";
 import Link from "next/link";
 import { connection } from "next/server";
 
@@ -48,6 +50,9 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
         }
       />
       {/* The page builder's sandbox (D457 S4): how far visitors who tried it went, beside the stores they became. */}
+      {/* Round 63 (D827): on a phone the sandbox is one row saying whether it is on, and each store one row of two lines. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={f.title} sub={sandbox.on ? f.on : f.off} change={w.phoneOpen} done={w.phoneClose}>
       <Card
         compact
         title={f.title}
@@ -84,6 +89,8 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
           </tbody>
         </table>
       </Card>
+      </PhoneRow>
+      </div>
       <Card compact>
         <List label={w.title}>
           {stores.map((store) => (
@@ -93,10 +100,16 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
                 href={`/admin/platform/stores/${store.slug}`}
                 sub={
                   <>
-                    {store.slug} · {store.ownerEmail ? (store.ownerName ? `${store.ownerName}, ${store.ownerEmail}` : store.ownerEmail) : w.noOwner}
+                    <span className="max-sm:hidden">
+                      {store.slug} · {store.ownerEmail ? (store.ownerName ? `${store.ownerName}, ${store.ownerEmail}` : store.ownerEmail) : w.noOwner}
+                    </span>
+                    <span className="sm:hidden">
+                      {store.slug} · {store.planName ?? w.noPlan} · {fillWords(w.aSale, { fee: formatBps(store.feeBps, locale) })}
+                    </span>
                   </>
                 }
               />
+              <span className="contents max-sm:hidden">
               <RowFact
                 sub={[
                   store.status ? (billingWords.statuses[store.status] ?? store.status) : null,
@@ -109,15 +122,18 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
               >
                 {store.planName ? `${store.planName}${store.price ? `, ${priceLabel(store.price.amountMinor, store.price.currency, store.price.interval, billingWords.intervals)}` : ""}` : w.noPlan}
               </RowFact>
+              </span>
               {store.storeStatus !== "active" && (
                 <Chip signal={store.storeStatus === "closed" ? "neutral" : "danger"} dot>
                   {store.storeStatus === "closed" ? w.closed : w.suspended}
                 </Chip>
               )}
+              <span className="contents max-sm:hidden">
               <RowAmount>
                 {fillWords(w.aSale, { fee: formatBps(store.feeBps, locale) })}
                 {store.saleFeeBpsOverride !== null && <span className="block text-caption text-muted">{w.ownFee}</span>}
               </RowAmount>
+              </span>
             </ListRow>
           ))}
         </List>

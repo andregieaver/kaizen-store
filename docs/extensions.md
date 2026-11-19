@@ -400,7 +400,7 @@ bundle: …, … less than one by one", `bundleHints()`, read once for every row
 bundle.
 
 **E6 as built, part two (19 November 2026).** Founding prices: each extension and bundle price may carry a founding price below it
-(`founding_minor`, part of the price, so a change is a new row; migration `20261119210826_short_husk`, and `20261119210841_founding_price_sheet`
+(`founding_minor`, part of the price, so a change is a new row; migration `20261119214939_plain_vulcan`, and `20261119214941_founding_price_sheet`
 seeds the first price sheet's founding prices on every price still at the sheet's amount). Platform → Plans → Extensions sets the offer's last
 day and how many months an account keeps its founding price (`platform_settings.extension_founding_until`, `extension_founding_months`,
 12), and each price's founding price beside it. They are not D524's campaign coupons: those take one amount or percent per campaign, the

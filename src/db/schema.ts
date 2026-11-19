@@ -20778,6 +20778,10 @@ export const ledgerBooks = commerce.table(
     /** How long its VAT terms are (D496): `two_months` (the rule) or `year` (a small business Skatteetaten allows to report yearly). */
     vatTerm: text("vat_term").notNull().default("two_months"),
     openedBy: uuid("opened_by").references(() => accounts.id, { onDelete: "set null" }),
+    /** When the ledger job last looked at the book: what was issued after it lists the book again. */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    /** The last turn stopped before the book was caught up, so the job keeps it listed. */
+    behind: boolean("behind").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

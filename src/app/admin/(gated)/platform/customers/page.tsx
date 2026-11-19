@@ -61,10 +61,11 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
                     <>
                       {c.name && `${c.email}`}
                       {c.disabled && w.disabled}
+                      {c.stores[0] && <span className="sm:hidden"> · {c.stores[0].name}{c.stores.length > 1 ? ` +${c.stores.length - 1}` : ""}</span>}
                     </>
                   }
                 />
-                <span className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5 text-body">
+                <span className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5 text-body max-sm:hidden">
                   {c.stores.map((s) => (
                     <span key={s.slug}>
                       <Link href={`/admin/platform/stores/${s.slug}`} className="text-ink underline-offset-2 hover:underline">
@@ -76,7 +77,9 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
                     </span>
                   ))}
                 </span>
-                <RowDate>{fillWords(w.since, { date: date(c.createdAt) })}</RowDate>
+                <span className="contents max-sm:hidden">
+                  <RowDate>{fillWords(w.since, { date: date(c.createdAt) })}</RowDate>
+                </span>
               </ListRow>
             ))}
           </List>
