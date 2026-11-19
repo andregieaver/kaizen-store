@@ -382,17 +382,24 @@ values (${q(blackWeek.id)}, ${q(S)}, ${q(blackWeek.name)}, 'percent', ${blackWee
   for (const [month, list] of byMonth) {
     const body = [];
     for (const o of list) body.push(...orderSql(o));
-    body.push(`-- Alerts and order rules for these orders were handled when they came in.
-update commerce.store_events set alerts_done_at = coalesce(alerts_done_at, now()), rules_done_at = coalesce(rules_done_at, now())
- where store_id = ${q(S)} and created_at = now();`);
-    body.push(`-- Every movement written here is dated when it happened.
-set local session_replication_role = replica;
-update commerce.inventory_movements m set created_at = d.at, note = d.final from (values
-${moves.splice(0).map(([key, at, final]) => `  (${q(key)}, ${ts(at)}, ${q(final)})`).join(",\n")}
-) d(key, at, final) where m.store_id = ${q(S)} and m.note = d.key and m.created_at = now();
-set local session_replication_role = origin;`);
+    body.push(...ordersTrailer());
     file(`${fileNo}-orders-${month}.sql`, body.join("\n"));
     fileNo += 1;
+  }
+
+  /** What closes a file of orders: their alerts and rules marked handled, and every stock movement written in it dated when it happened. */
+  function ordersTrailer() {
+    const out = [`-- Alerts and order rules for these orders were handled when they came in.
+update commerce.store_events set alerts_done_at = coalesce(alerts_done_at, now()), rules_done_at = coalesce(rules_done_at, now())
+ where store_id = ${q(S)} and created_at = now();`];
+    const list = moves.splice(0);
+    if (list.length) out.push(`-- Every movement written here is dated when it happened.
+set local session_replication_role = replica;
+update commerce.inventory_movements m set created_at = d.at, note = d.final from (values
+${list.map(([key, at, final]) => `  (${q(key)}, ${ts(at)}, ${q(final)})`).join(",\n")}
+) d(key, at, final) where m.store_id = ${q(S)} and m.note = d.key and m.created_at = now();
+set local session_replication_role = origin;`);
+    return out;
   }
 
   function stockSql(o, variant, delta, reason, source, at, note) {
@@ -410,7 +417,7 @@ update commerce.inventory_levels set on_hand = on_hand + (${delta}) where store_
     const status = o.fate === "unpaid" ? "cancelled" : o.fate === "paid" ? "paid" : o.fate === "cancelled_paid" ? "cancelled" : "fulfilled";
     // Restock what is about to run short, a few days before.
     for (const l of o.lines) {
-      if (stock[l.p.variant] - l.quantity < 6 && o.fate !== "unpaid") {
+      if (!l.service && stock[l.p.variant] - l.quantity < 6 && o.fate !== "unpaid") {
         const qty = 40 + 10 * between(0, 3);
         sql.push(stockSql(null, l.p.variant, qty, "received", "inventory_page", addDays(o.at, -between(2, 6)), "New batch from the kiln"));
       }
@@ -423,10 +430,21 @@ insert into commerce.orders (id, store_id, number, market_code, currency, locale
   billing_address, shipping_address, placed_at, created_at, delivered_at, delivered_source, discount_code_id, discount_code, campaign_discount_minor, campaign_label,
   delivery, standard_shipping_minor, return_cost_payer, vat_kind, shipping_tax_rate, vat_treatment, source, delivery_method, entered_codes)
 values (${q(o.id)}, ${q(S)}, (select s.prefix || commerce.next_document_number(${q(S)}, 'order')::text from commerce.document_series s where s.store_id = ${q(S)} and s.series = 'order'),
-  ${q(o.market)}, ${q(m.currency)}, ${q(m.locale)}, ${q(customerId)}, ${q(o.cart)}, ${q(buyer.email)}, ${q(status === "fulfilled" ? "paid" : status === "cancelled" && o.fate === "cancelled_paid" ? "paid" : status === "cancelled" ? "pending_payment" : status)},
+  ${q(o.market)}, ${q(m.currency)}, ${q(m.locale)}, ${q(customerId)}, ${q(o.cart)}, ${q(buyer.email)}, ${q(o.terms ? "pending_payment" : status === "fulfilled" ? "paid" : status === "cancelled" && o.fate === "cancelled_paid" ? "paid" : status === "cancelled" ? "pending_payment" : status)},
   ${o.subtotal}, ${o.shipping}, ${o.discount}, ${o.tax}, ${o.total}, ${j(buyer.address)}, ${j(buyer.address)}, ${ts(o.at)}, ${ts(o.at)}, null, null,
   ${q(o.code?.id ?? null)}, ${q(o.code?.code ?? null)}, ${o.campaign ? o.discount : 0}, ${q(o.campaign ? o.campaign.name : null)},
   ${j({ kind: "flat", label: "Shipping", postalCode: buyer.address.postalCode })}, ${ctx.shipping[o.market].amount}, 'shopper', 'standard', 0.25, ${j(vat)}, 'checkout', 'ship', ${q(o.code ? `{${o.code.code}}` : "{}")});`);
+    if (o.lines.some((l) => l.extended)) {
+      // A booked service or a subscription's line (phase three): its own VAT rate, delivery and plan.
+      sql.push(`insert into commerce.order_lines (id, store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code,
+  withdrawal_exclusion, delivery, selling_plan_id, plan_interval, plan_interval_count, booked_count, unit_cost_minor, list_price_minor) values
+${o.lines
+  .map(
+    (l) =>
+      `  (${q(l.id)}, ${q(S)}, ${q(o.id)}, ${q(l.p.variant)}, ${q(l.p.sku)}, ${q(l.p.title)}, ${l.quantity}, ${l.unit}, ${l.discount}, ${l.total}, ${l.tax}, ${l.rate ?? 0.25}, ${q(l.taxCode ?? "txcd_99999999")}, ${q(l.service ? "dated_service" : "none")}, ${q(l.service ? "service" : "physical")}, ${q(l.plan?.id ?? null)}, ${q(l.plan?.interval ?? null)}, ${l.plan ? l.plan.count : "null"}, ${l.nights ?? "null"}, ${l.service ? "null" : Math.round(l.p.prices.NO * 0.32)}, ${l.list ?? l.unit})`,
+  )
+  .join(",\n")};`);
+    } else
     sql.push(`insert into commerce.order_lines (id, store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code,
   withdrawal_exclusion, delivery, campaign_discount_minor, campaign_id, campaign_parts, unit_cost_minor, list_price_minor) values
 ${o.lines
@@ -435,10 +453,13 @@ ${o.lines
       `  (${q(l.id)}, ${q(S)}, ${q(o.id)}, ${q(l.p.variant)}, ${q(l.p.sku)}, ${q(l.p.title)}, ${l.quantity}, ${l.unit}, ${l.discount}, ${l.total}, ${l.tax}, 0.25, 'txcd_99999999', 'none', 'physical', ${l.campaign}, ${q(l.campaign ? o.campaign.id : null)}, ${l.campaign ? j([{ id: o.campaign.id, minor: l.campaign }]) : "'[]'::jsonb"}, ${Math.round(l.p.prices.NO * 0.32) * 1}, ${l.unit})`,
   )
   .join(",\n")};`);
+    if (o.afterLines) sql.push(o.afterLines);
     if (o.code) sql.push(`insert into commerce.order_discount_codes (store_id, order_id, position, code, discount_id, amount_minor, created_at) values (${q(S)}, ${q(o.id)}, 1, ${q(o.code.code)}, ${q(o.code.id)}, ${o.discount}, ${ts(o.at)});`);
     const paymentId = uuid();
     const paid = o.fate !== "unpaid";
     const fee = Math.round(o.total * 0.024) + 200;
+    if (o.terms) sql.push(termsPlacedSql(o));
+    else
     sql.push(`insert into commerce.payments (id, store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status, created_at, updated_at, kaizen_fee_minor, test_mode,
   method_type, wallet, card_brand, risk_level, risk_score, facts_read_at, provider_fee_minor, fee_currency)
 values (${q(paymentId)}, ${q(S)}, ${q(o.id)}, 'stripe', ${q(o.reference)}, ${q(ctx.stripeAccount)}, ${o.total}, ${q(m.currency)}, ${q(paid ? "captured" : "cancelled")}, ${ts(o.at)}, ${ts(paid ? o.paidAt : addMinutes(o.at, 60))},
@@ -454,7 +475,7 @@ ${events.map(([at, type, data, actor]) => `  (${q(S)}, ${q(o.id)}, ${q(type)}, $
       return sql;
     }
     // The sale draws the stock.
-    for (const l of o.lines) sql.push(stockSql(o, l.p.variant, -l.quantity, "sale", "checkout", o.paidAt));
+    for (const l of o.lines) if (!l.service) sql.push(stockSql(o, l.p.variant, -l.quantity, "sale", "checkout", o.paidAt));
     // The invoice, dated the day it was paid.
     const issued = day(o.paidAt);
     sql.push(`select set_config('commerce.issuing_document', ${q(o.id)}, true);
@@ -508,7 +529,31 @@ insert into commerce.order_events (store_id, order_id, type, data, actor, create
       sql.push(refundSql(o, paymentId, amount, `${l.p.title} arrived chipped`, addDays(o.deliveredAt, between(1, 3)), false));
     }
     if (o.fate === "returned") sql.push(...returnSql(o, paymentId));
+    if (o.terms) sql.push(termsPaidSql(o));
     return sql;
+  }
+
+  /** A company's order on payment terms (phase three): placed owing, the terms recorded, then moved to paid as checkout does. */
+  function termsPlacedSql(o) {
+    const due = day(addDays(o.at, 30));
+    return `update commerce.orders set company_name = ${q(o.terms.company)}, organisation_number = ${q(o.terms.number)}, balance_minor = ${o.total} where store_id = ${q(S)} and id = ${q(o.id)};
+insert into commerce.order_payment_terms (store_id, order_id, company_id, terms, due_on, created_at) values (${q(S)}, ${q(o.id)}, ${q(o.terms.id)}, 'net_30', ${q(due)}, ${ts(o.at)});
+insert into commerce.order_events (store_id, order_id, type, data, actor, created_at) values (${q(S)}, ${q(o.id)}, 'order.terms_placed', ${j({ terms: "net_30", dueOn: due })}, 'shopper', ${ts(addMinutes(o.at, 0.1))});
+insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, created_at, updated_at, kaizen_fee_minor)
+values (${q(S)}, ${q(o.id)}, 'terms', ${q(`terms_${hex(24)}`)}, ${o.total}, ${q(markets[o.market].currency)}, 'pending', ${ts(o.at)}, ${ts(o.at)}, 0);
+update commerce.orders set status = 'paid' where store_id = ${q(S)} and id = ${q(o.id)};`;
+  }
+
+  /** The company paid the invoice by bank transfer within its terms. */
+  function termsPaidSql(o) {
+    const at = addDays(o.at, between(12, 29));
+    if (at > now) return "";
+    return `insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, created_at, updated_at, kaizen_fee_minor, method, recorded_by, received_on)
+values (${q(S)}, ${q(o.id)}, 'manual', ${q(`manual_terms_${uuid()}`)}, ${o.total}, ${q(markets[o.market].currency)}, 'captured', ${ts(at)}, ${ts(at)}, 0, 'bank_transfer', ${q(ctx.owner)}, ${q(day(at))});
+update commerce.orders set balance_minor = 0 where store_id = ${q(S)} and id = ${q(o.id)};
+update commerce.order_payment_terms set paid_at = ${ts(at)} where store_id = ${q(S)} and order_id = ${q(o.id)};
+update commerce.payments set status = 'cancelled' where store_id = ${q(S)} and order_id = ${q(o.id)} and provider = 'terms';
+insert into commerce.order_events (store_id, order_id, type, data, actor, created_at) values (${q(S)}, ${q(o.id)}, 'order.terms_paid', ${j({ via: "outside", amount: o.total, method: "bank_transfer", receivedOn: day(at) })}, 'staff', ${ts(at)});`;
   }
 
   function refundSql(o, paymentId, amount, reason, at, restock) {
@@ -670,6 +715,347 @@ where v.store_id = ${q(S)} and v.product_views > 0 and v.day >= '${day(start)}'
 group by v.day, p.id, p.w
 on conflict (store_id, day, product_id) do update set views = excluded.views;`,
   );
+
+  // --- 90…: the selling features (phase three) ------------------------------------------------------------------------------------------
+  // Subscriptions, a subscription box, a class taught by two people and a guest room, each with its own orders, written like the year's.
+  // Their orders are numbered after the year's (the numbers follow the order they are written in, not their dates).
+
+  function newOrder(at, market, buyer, lines, service = false) {
+    const ls = lines.map((l) => ({ id: uuid(), discount: 0, campaign: 0, extended: true, ...l }));
+    for (const l of ls) {
+      l.total = l.unit * l.quantity;
+      const r = l.rate ?? 0.25;
+      l.tax = Math.round((l.total * r) / (1 + r));
+    }
+    const subtotal = ls.reduce((s, l) => s + l.total, 0);
+    const rate = ctx.shipping[market];
+    const shipping = service || subtotal >= rate.freeOver ? 0 : rate.amount;
+    const paidAt = addMinutes(at, between(1, 4));
+    const sentAt = addMinutes(at, 1440 + between(-300, 240));
+    const deliveredAt = addMinutes(sentAt, between(1, 3) * 1440 + between(-200, 200));
+    const age = (now - at) / 86_400_000;
+    let fate = service ? "paid" : age < 1.2 ? "paid" : deliveredAt > now ? "sent" : "delivered";
+    if (!service && fate === "sent" && sentAt > now) fate = "paid";
+    const method = weighted([["card", 72], ["klarna", 18], ["link", 5], ["apple_pay", 5]]);
+    return {
+      id: uuid(), at, market, buyer, lines: ls, subtotal, discount: 0, shipping, total: subtotal + shipping,
+      tax: ls.reduce((s, l) => s + l.tax, 0) + Math.round(shipping / 5), code: null, campaign: null, fate, cart: null, paidAt,
+      sentAt: sentAt > now ? addMinutes(now, -30) : sentAt, deliveredAt: deliveredAt > now ? null : deliveredAt, method,
+      brand: method === "card" || method === "apple_pay" ? weighted(CARD_BRANDS) : null, reference: `cs_test_${token(58)}`,
+      tracking: market === "NO" ? `370${between(100000, 999999)}${between(100000, 999999)}${between(100, 999)}` : `00370${between(100000, 999999)}${between(100000, 999999)}${between(0, 9)}`,
+    };
+  }
+  const ordersFile = (name, head, orders, tail) => {
+    orders.sort((a, b) => a.at - b.at);
+    const body = [...head];
+    for (const o of orders) body.push(...orderSql(o));
+    body.push(...tail, ...ordersTrailer());
+    file(name, body.join("\n"));
+  };
+  const byHandle = Object.fromEntries(products.map((p) => [p.handle, p]));
+  const members = people.filter((p) => p.account && p.signedUp && p.market === "NO");
+  const used = new Set();
+  const member = (before) => {
+    const list = members.filter((p) => p.signedUp < before && !used.has(p.id));
+    const p = pick(list);
+    used.add(p.id);
+    return p;
+  };
+  const addMonths = (d, n) => {
+    const x = new Date(d);
+    x.setUTCMonth(x.getUTCMonth() + n);
+    return x;
+  };
+  const oslo = (dayString, hhmm) => `(${q(`${dayString} ${hhmm}`)}::timestamp at time zone 'Europe/Oslo')`;
+
+  function features() {
+    // Subscriptions: cups every two months, bud vases every three, both a little cheaper for subscribers.
+    const plans = [
+      { id: uuid(), p: byHandle.cups, count: 2, percent: 10 },
+      { id: uuid(), p: byHandle["bud-vases"], count: 3, percent: 15 },
+    ].filter((x) => x.p);
+    const head = [`insert into commerce.selling_plans (id, store_id, product_id, "interval", interval_count, discount_percent, position, active, created_at) values
+${plans.map((x, i) => `  (${q(x.id)}, ${q(S)}, ${q(x.p.id)}, 'month', ${x.count}, ${x.percent}, ${i}, true, ${ts(new Date("2025-11-20T09:00:00Z"))})`).join(",\n")};`];
+    const subOrders = [];
+    const tail = [];
+    for (let i = 0; i < 25 && plans.length; i += 1) {
+      const plan = weighted(plans.map((x) => [x, x.count === 2 ? 60 : 40]));
+      const startAt = new Date(new Date("2025-11-25T00:00:00Z").getTime() + rand() * (addDays(now, -40) - new Date("2025-11-25T00:00:00Z")));
+      const who = member(startAt);
+      const status = i < 15 ? "active" : i < 19 ? "paused" : "cancelled";
+      const unit = Math.round((plan.p.prices.NO * (100 - plan.percent)) / 100);
+      const line = { p: plan.p, unit, quantity: 1, plan: { id: plan.id, interval: "month", count: plan.count }, list: plan.p.prices.NO };
+      const stopAt = status === "cancelled" ? addDays(startAt, between(70, 200)) : status === "paused" ? addDays(now, -between(5, 40)) : now;
+      const orders = [];
+      for (let k = 0, at = startAt; at < stopAt && at < now; k += 1, at = addMonths(startAt, plan.count * k)) {
+        if (k > 0) orders.push(newOrder(addMinutes(at, between(0, 60)), "NO", who, [line]));
+        else orders.push(newOrder(at, "NO", who, [line]));
+      }
+      if (!orders.length) continue;
+      subOrders.push(...orders);
+      let next = startAt;
+      while (next <= now) next = addMonths(next, plan.count);
+      const last = orders.at(-1).at;
+      const id = uuid();
+      const shipping = unit >= ctx.shipping.NO.freeOver ? 0 : ctx.shipping.NO.amount;
+      const tax = Math.round(unit / 5) + Math.round(shipping / 5);
+      const cancelled = status === "cancelled" ? addDays(last, between(3, 30)) : null;
+      const periodEnd = status === "cancelled" ? addMonths(last, plan.count) : next;
+      tail.push(`insert into commerce.subscriptions (id, store_id, number, status, market_code, currency, locale, email, shipping_address, "interval", interval_count, subtotal_minor, shipping_minor, total_minor, tax_minor,
+  first_order_id, provider, current_period_end, cancel_at_period_end, cancelled_at, manage_token, created_at, updated_at, customer_id, paused_until, reminded_for)
+values (${q(id)}, ${q(S)}, (select number from commerce.orders where store_id = ${q(S)} and id = ${q(orders[0].id)}), ${q(status)}, 'NO', 'NOK', ${q(markets.NO.locale)}, ${q(who.email)}, ${j(who.address)}, 'month', ${plan.count},
+  ${unit}, ${shipping}, ${unit + shipping}, ${tax}, ${q(orders[0].id)}, 'stripe', ${ts(periodEnd)}, ${status === "active" && i < 2}, ${cancelled ? ts(cancelled) : "null"}, ${q(hex(64))}, ${ts(startAt)}, ${ts(cancelled ?? last)},
+  ${q(who.id)}, ${status === "paused" ? ts(addDays(now, between(14, 60))) : "null"}, ${status === "active" ? ts(periodEnd) : "null"});
+insert into commerce.subscription_lines (store_id, subscription_id, variant_id, selling_plan_id, sku, title, quantity, unit_price_minor, total_minor, tax_rate, tax_code, delivery)
+values (${q(S)}, ${q(id)}, ${q(plan.p.variant)}, ${q(plan.id)}, ${q(plan.p.sku)}, ${q(plan.p.title)}, 1, ${unit}, ${unit}, 0.25, 'txcd_99999999', 'physical');
+update commerce.orders set subscription_id = ${q(id)} where store_id = ${q(S)} and id in (${orders.map((o) => q(o.id)).join(", ")});`);
+    }
+    ordersFile("90-subscriptions.sql", head, subOrders, tail);
+
+    // A subscription box: a Friday delivery for Oslo, lists that customers keep, and their past boxes. No list has consented to the
+    // automatic orders (consent_at is null), so no job makes new box orders or charges a card; the lists look as they did.
+    const schedule = uuid();
+    const boxHead = [`insert into commerce.delivery_schedules (id, store_id, market_code, currency, name, delivery_weekday, cutoff_days, cutoff_time, active, created_at, updated_at)
+values (${q(schedule)}, ${q(S)}, 'NO', 'NOK', 'Friday delivery, Oslo', 5, 2, '23:59', true, ${ts(new Date("2026-04-20T09:00:00Z"))}, ${ts(new Date("2026-04-20T09:00:00Z"))});`];
+    const boxOrders = [];
+    const boxTail = [];
+    for (let i = 0; i < 14; i += 1) {
+      const created = new Date(new Date("2026-05-01T00:00:00Z").getTime() + rand() * (addDays(now, -60) - new Date("2026-05-01T00:00:00Z")));
+      const who = member(created);
+      const status = i < 11 ? "active" : i < 13 ? "paused" : "cancelled";
+      const list = uuid();
+      const items = new Set();
+      const k = between(1, 3);
+      while (items.size < k) items.add(weighted(products.map((x) => [x, x.weight])));
+      const lines = [...items].map((x) => ({ p: x, quantity: x.handle === "cups" ? 2 : 1 }));
+      const cancelled = status === "cancelled" ? addDays(created, between(40, 90)) : null;
+      boxHead.push(`insert into commerce.standing_orders (id, store_id, customer_id, schedule_id, status, shipping_address, stripe_account, mode, payment_method, card_label, created_at, updated_at, cancelled_at)
+values (${q(list)}, ${q(S)}, ${q(who.id)}, ${q(schedule)}, ${q(status)}, ${j(who.address)}, ${q(ctx.stripeAccount)}, 'test', ${q(`pm_demo_${hex(20)}`)}, ${q(`${pick(["Visa", "Mastercard"])} •••• ${between(1000, 9999)}`)}, ${ts(created)}, ${ts(cancelled ?? created)}, ${cancelled ? ts(cancelled) : "null"});
+insert into commerce.standing_order_lines (store_id, standing_order_id, variant_id, quantity, created_at, updated_at) values
+${lines.map((l) => `  (${q(S)}, ${q(list)}, ${q(l.p.variant)}, ${l.quantity}, ${ts(created)}, ${ts(created)})`).join(",\n")};`);
+      // Every fourth Friday a box went out; now and then one was skipped.
+      let friday = addDays(created, 7);
+      while (friday.getUTCDay() !== 5) friday = addDays(friday, 1);
+      const end = cancelled ?? (status === "paused" ? addDays(now, -between(10, 30)) : addDays(now, -3));
+      for (; friday < end; friday = addDays(friday, 28)) {
+        const date = day(friday);
+        if (chance(0.12)) {
+          boxTail.push(`insert into commerce.standing_deliveries (store_id, standing_order_id, delivery_date, outcome, created_at) values (${q(S)}, ${q(list)}, ${q(date)}, 'skipped', ${ts(addDays(friday, -2))});`);
+          continue;
+        }
+        const o = newOrder(addDays(friday, -2), "NO", who, lines.map((l) => ({ p: l.p, quantity: l.quantity, unit: l.p.prices.NO })));
+        boxOrders.push(o);
+        boxTail.push(`insert into commerce.standing_deliveries (store_id, standing_order_id, delivery_date, outcome, order_id, left_out, created_at) values (${q(S)}, ${q(list)}, ${q(date)}, 'ordered', ${q(o.id)}, '[]'::jsonb, ${ts(o.at)});`);
+      }
+    }
+    ordersFile("91-boxes.sql", boxHead, boxOrders, boxTail);
+
+    // A wheel-throwing class: two hours, up to six at the wheel, Thursday evenings with Ingrid and Saturday mornings with Lars.
+    const opened = new Date("2026-01-02T09:00:00Z");
+    const classP = { id: uuid(), variant: uuid(), handle: "wheel-throwing-class", sku: "CLASS-WHEEL-2H", title: "Wheel-throwing class, 2 hours", prices: { NO: 95000, SE: 95000, DK: 69500 } };
+    const ingrid = uuid();
+    const lars = uuid();
+    const week = (days) => ({ week: Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((d) => [d, days[d] ?? null])), exceptions: [] });
+    const classHead = [`insert into commerce.booking_resources (id, store_id, kind, name, email, hours, capacity, position, created_at, updated_at) values
+  (${q(ingrid)}, ${q(S)}, 'staff', 'Ingrid', '', ${j(week({ thu: { open: "17:00", close: "21:00" } }))}, 6, 0, ${ts(opened)}, ${ts(opened)}),
+  (${q(lars)}, ${q(S)}, 'staff', 'Lars', '', ${j(week({ sat: { open: "10:00", close: "15:00" } }))}, 6, 1, ${ts(opened)}, ${ts(opened)});
+insert into commerce.products (id, store_id, handle, tax_code, kind, vat_category, delivery, withdrawal_exclusion, status, created_at, updated_at)
+values (${q(classP.id)}, ${q(S)}, ${q(classP.handle)}, 'txcd_20030000', 'appointment', 'standard', 'service', 'dated_service', 'draft', ${ts(opened)}, ${ts(opened)});
+insert into commerce.product_translations (store_id, product_id, locale, title, description)
+values (${q(S)}, ${q(classP.id)}, ${q(markets.NO.locale)}, ${q(classP.title)}, 'Two hours at the wheel in our Oslo studio, for beginners and the curious. Clay, glaze and firing included; we post your pieces when they are fired.');
+insert into commerce.product_media (store_id, product_id, url, position, alt) values (${q(S)}, ${q(classP.id)}, '/demo/themes/atelier/story.webp', 0, ${j({ [markets.NO.locale]: "Hands shaping clay on a potter's wheel" })});
+insert into commerce.product_variants (id, store_id, product_id, sku, options, delivery, created_at) values (${q(classP.variant)}, ${q(S)}, ${q(classP.id)}, ${q(classP.sku)}, '{}', 'service', ${ts(opened)});
+select commerce.set_price(${q(classP.variant)}, 'NO', 95000, ${ts(opened)}), commerce.set_price(${q(classP.variant)}, 'SE', 95000, ${ts(opened)}), commerce.set_price(${q(classP.variant)}, 'DK', 69500, ${ts(opened)});
+insert into commerce.appointment_settings (product_id, store_id, duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes, min_notice_minutes, max_days_ahead, payment, cancel_hours, no_show_percent)
+values (${q(classP.id)}, ${q(S)}, 120, 0, 15, 30, 1440, 90, 'now', 48, 0);
+insert into commerce.product_resources (store_id, product_id, resource_id) values (${q(S)}, ${q(classP.id)}, ${q(ingrid)}), (${q(S)}, ${q(classP.id)}, ${q(lars)});
+update commerce.products set status = 'active', first_active_at = ${ts(opened)} where store_id = ${q(S)} and id = ${q(classP.id)};`];
+    const classOrders = [];
+    for (let d = new Date("2026-01-08T00:00:00Z"); d < addDays(now, 21); d = addDays(d, 1)) {
+      const wd = d.getUTCDay();
+      if (wd !== 4 && wd !== 6) continue;
+      const [teacher, time] = wd === 4 ? [ingrid, "18:00"] : [lars, "11:00"];
+      const seats = Math.min(6, poisson(d.getUTCMonth() === 10 || d.getUTCMonth() === 0 ? 1.8 : 1.3));
+      for (let k = 0; k < seats; k += 1) {
+        const at = addDays(d, -between(2, 20));
+        if (at > now) continue;
+        const who = pick(people.filter((p) => p.market === "NO" && p.since < at));
+        if (!who) continue;
+        const o = newOrder(addMinutes(at, between(400, 1300)), "NO", who, [{ p: classP, unit: 95000, quantity: 1, service: true, taxCode: "txcd_20030000" }], true);
+        if (o.at > now) continue;
+        const date = day(d);
+        // Upcoming by its start (Oslo is UTC+1 in winter, +2 in summer; an hour early is close enough to say which side of now it is).
+        const upcoming = addMinutes(d, (wd === 4 ? 17 : 10) * 60) > now;
+        o.afterLines = `insert into commerce.bookings (store_id, product_id, variant_id, resource_id, starts_at, ends_at, blocked_from, blocked_to, status, order_id, order_line_id, created_at, updated_at, reminded_at)
+values (${q(S)}, ${q(classP.id)}, ${q(classP.variant)}, ${q(teacher)}, ${oslo(date, time)}, ${oslo(date, time)} + interval '120 minutes', ${oslo(date, time)}, ${oslo(date, time)} + interval '135 minutes',
+  'confirmed', ${q(o.id)}, ${q(o.lines[0].id)}, ${ts(o.at)}, ${ts(o.at)}, ${upcoming ? ts(o.at) : "null"});`;
+        classOrders.push(o);
+      }
+    }
+    ordersFile("92-classes.sql", classHead, classOrders, []);
+
+    // A guest room above the studio, by the night; one stay at a time.
+    const roomOpened = new Date("2026-03-01T09:00:00Z");
+    const roomP = { id: uuid(), variant: uuid(), handle: "studio-guest-room", sku: "ROOM-STUDIO", title: "Studio guest room", prices: { NO: 85000, SE: 85000, DK: 62000 } };
+    const room = uuid();
+    const allDay = { open: "00:00", close: "23:59" };
+    const roomHead = [`insert into commerce.booking_resources (id, store_id, kind, name, email, hours, capacity, position, created_at, updated_at)
+values (${q(room)}, ${q(S)}, 'unit', 'Studio guest room', '', ${j(week({ mon: allDay, tue: allDay, wed: allDay, thu: allDay, fri: allDay, sat: allDay, sun: allDay }))}, 1, 2, ${ts(roomOpened)}, ${ts(roomOpened)});
+insert into commerce.products (id, store_id, handle, tax_code, kind, vat_category, delivery, withdrawal_exclusion, status, created_at, updated_at)
+values (${q(roomP.id)}, ${q(S)}, ${q(roomP.handle)}, 'txcd_20030000', 'stay', 'accommodation', 'service', 'dated_service', 'draft', ${ts(roomOpened)}, ${ts(roomOpened)});
+insert into commerce.product_translations (store_id, product_id, locale, title, description)
+values (${q(S)}, ${q(roomP.id)}, ${q(markets.NO.locale)}, ${q(roomP.title)}, 'A quiet room above the studio in Oslo, with a double bed, our own tableware and coffee in the morning. Check in from 15:00, out by 11:00.');
+insert into commerce.product_media (store_id, product_id, url, position, alt) values (${q(S)}, ${q(roomP.id)}, '/demo/themes/atelier/hero.webp', 0, ${j({ [markets.NO.locale]: "Ceramics on a table in soft daylight" })});
+insert into commerce.product_variants (id, store_id, product_id, sku, options, delivery, created_at) values (${q(roomP.variant)}, ${q(S)}, ${q(roomP.id)}, ${q(roomP.sku)}, '{}', 'service', ${ts(roomOpened)});
+select commerce.set_price(${q(roomP.variant)}, 'NO', 85000, ${ts(roomOpened)}), commerce.set_price(${q(roomP.variant)}, 'SE', 85000, ${ts(roomOpened)}), commerce.set_price(${q(roomP.variant)}, 'DK', 62000, ${ts(roomOpened)});
+insert into commerce.appointment_settings (product_id, store_id, min_notice_minutes, max_days_ahead, check_in_time, check_out_time, min_nights, max_nights, payment, deposit_percent, cancel_hours, booking_fee)
+values (${q(roomP.id)}, ${q(S)}, 0, 365, '15:00', '11:00', 1, 14, 'now', 30, 72, '{}');
+insert into commerce.product_resources (store_id, product_id, resource_id) values (${q(S)}, ${q(roomP.id)}, ${q(room)});
+update commerce.products set status = 'active', first_active_at = ${ts(roomOpened)} where store_id = ${q(S)} and id = ${q(roomP.id)};`];
+    const stayOrders = [];
+    const ACC = { NO: 0.12, SE: 0.12, DK: 0.25 };
+    for (let checkIn = addDays(roomOpened, between(10, 20)); checkIn < addDays(now, 40); ) {
+      const nights = weighted([[1, 25], [2, 40], [3, 20], [4, 10], [6, 5]]);
+      const market = weighted([["NO", 55], ["SE", 25], ["DK", 20]]);
+      const at = addDays(checkIn, -between(5, 45));
+      const who = pick(people.filter((p) => p.market === market && p.since < at));
+      if (at <= now && who) {
+        const price = roomP.prices[market] * nights;
+        const o = newOrder(addMinutes(at, between(400, 1300)), market, who, [{ p: roomP, unit: price, quantity: 1, service: true, rate: ACC[market], nights, taxCode: "txcd_20030000" }], true);
+        const inDay = day(checkIn);
+        const outDay = day(addDays(checkIn, nights));
+        o.afterLines = `insert into commerce.bookings (store_id, product_id, variant_id, resource_id, starts_at, ends_at, blocked_from, blocked_to, status, order_id, order_line_id, created_at, updated_at, reminded_at)
+values (${q(S)}, ${q(roomP.id)}, ${q(roomP.variant)}, ${q(room)}, ${oslo(inDay, "15:00")}, ${oslo(outDay, "11:00")}, ${oslo(inDay, "15:00")}, ${oslo(outDay, "11:00")},
+  'confirmed', ${q(o.id)}, ${q(o.lines[0].id)}, ${ts(o.at)}, ${ts(o.at)}, ${checkIn > now ? ts(o.at) : "null"});`;
+        if (o.at <= now) stayOrders.push(o);
+      }
+      checkIn = addDays(checkIn, nights + between(2, 14));
+    }
+    ordersFile("93-stays.sql", roomHead, stayOrders, []);
+  }
+
+  function features2() {
+    // Trade customers: four companies with their people and places, a trade price list, and orders on 30 days' terms, each paid in time.
+    const companies = [
+      ["Kafé Kollektivet AS", "923456781", "Oslo", "Markveien 35", "0554", ["Café", "Back office"]],
+      ["Hotel Fjordlys AS", "918273645", "Bergen", "Strandkaien 12", "5013", ["Hotel", "Restaurant"]],
+      ["Butikk Form AS", "927364518", "Oslo", "Bogstadveien 21", "0355", ["Shop"]],
+      ["Bakeriet på hjørnet AS", "912837465", "Trondheim", "Kongens gate 8", "7011", ["Bakery"]],
+    ];
+    const listId = uuid();
+    const head = [`insert into commerce.price_lists (id, store_id, name, percent, active, exclusive, created_at, updated_at) values (${q(listId)}, ${q(S)}, 'Trade prices', 15, true, false, ${ts(new Date("2026-02-01T09:00:00Z"))}, ${ts(new Date("2026-02-01T09:00:00Z"))});`];
+    const termsOrders = [];
+    for (const [name, number, city, street, postal, places] of companies) {
+      const id = uuid();
+      const since = addDays(new Date("2026-02-10T09:00:00Z"), between(0, 120));
+      const owner = member(since);
+      const staff = [member(since), ...(chance(0.6) ? [member(since)] : [])];
+      head.push(`insert into commerce.customer_companies (id, store_id, name, organisation_number, payment_terms, credit_limit_minor, credit_currency, active, created_at, updated_at)
+values (${q(id)}, ${q(S)}, ${q(name)}, ${q(number)}, 'net_30', 5000000, 'NOK', true, ${ts(since)}, ${ts(since)});
+update commerce.customers set company_id = ${q(id)}, company_role = 'owner', company_name = ${q(name)}, organisation_number = ${q(number)} where store_id = ${q(S)} and id = ${q(owner.id)};
+update commerce.customers set company_id = ${q(id)}, company_role = 'employee' where store_id = ${q(S)} and id in (${staff.map((p) => q(p.id)).join(", ")});
+insert into commerce.price_list_assignments (store_id, list_id, company_id) values (${q(S)}, ${q(listId)}, ${q(id)});`);
+      for (const place of places) {
+        const loc = uuid();
+        const address = { name: `${name}, ${place}`, line1: street, line2: null, postalCode: postal, city, country: "NO" };
+        head.push(`insert into commerce.company_locations (id, store_id, company_id, name, billing_address, shipping_address, created_at, updated_at) values (${q(loc)}, ${q(S)}, ${q(id)}, ${q(place)}, ${j(address)}, ${j(address)}, ${ts(since)}, ${ts(since)});
+insert into commerce.company_location_buyers (store_id, location_id, customer_id, role, created_at) values ${staff.map((p) => `(${q(S)}, ${q(loc)}, ${q(p.id)}, 'orderer', ${ts(since)})`).join(", ")};`);
+      }
+      for (let at = addDays(since, between(3, 20)); at < addDays(now, -35); at = addDays(at, between(25, 60))) {
+        const items = new Set();
+        const k = between(1, 3);
+        while (items.size < k) items.add(weighted(products.map((x) => [x, x.weight])));
+        const who = pick([owner, ...staff]);
+        const o = newOrder(addMinutes(at, between(480, 960)), "NO", who, [...items].map((x) => ({ p: x, unit: Math.round(x.prices.NO * 0.85), list: x.prices.NO, quantity: x.handle === "moon-jar" ? 2 : between(4, 12) })));
+        if (o.fate !== "delivered") continue;
+        o.terms = { id, company: name, number };
+        termsOrders.push(o);
+      }
+    }
+    ordersFile("94-companies.sql", head, termsOrders, []);
+
+    // Refer a friend: a dozen customers share their link; their friends' first orders earned them credits.
+    const rf = [`insert into commerce.affiliate_settings (store_id, enabled, reward_bps, reward_orders, friend_percent, cookie_days, updated_at, updated_by)
+values (${q(S)}, true, 500, 1, 10, 30, ${ts(new Date("2026-01-15T10:00:00Z"))}, ${q(ctx.owner)}) on conflict (store_id) do nothing;`];
+    const toNok = { NOK: 1, SEK: 11.7 / 11.25, DKK: 11.7 / 7.46 };
+    const programFrom = new Date("2026-01-15T10:00:00Z");
+    const referrers = [];
+    const codes = new Set();
+    const firsts = built.filter((o) => o.at > addDays(programFrom, 5) && o.fate !== "unpaid" && o.fate !== "cancelled_paid" && o.buyer.orders[0].at === o.at && o.buyer.account && o.buyer.signedUp && o.buyer.signedUp <= o.at);
+    const loyalBuyers = people.filter((p) => p.account && p.signedUp && p.signedUp < programFrom && p.orders.length >= 2);
+    for (let i = 0; i < 12 && loyalBuyers.length; i += 1) {
+      const p = pick(loyalBuyers);
+      if (referrers.some((r) => r.p === p)) continue;
+      let code = `${ascii(p.name.split(" ")[0]).replace(/[^a-z]/g, "")}${between(10, 99)}`;
+      while (code.length < 6 || codes.has(code)) code += between(0, 9);
+      codes.add(code);
+      const joined = addDays(programFrom, between(0, 60));
+      referrers.push({ p, code, joined });
+      rf.push(`insert into commerce.affiliates (store_id, customer_id, code, created_at) values (${q(S)}, ${q(p.id)}, ${q(code)}, ${ts(joined)});`);
+    }
+    for (const o of firsts) {
+      if (!chance(o.at > addDays(now, -30) ? 0.3 : 0.08)) continue;
+      const r = pick(referrers.filter((x) => x.joined < addDays(o.at, -1) && x.p !== o.buyer));
+      if (!r) continue;
+      const reward = Math.floor((o.lines.reduce((s2, l) => s2 + l.total, 0) * 500 * toNok[markets[o.market].currency]) / 10000);
+      if (reward <= 0) continue;
+      const at = addMinutes(o.paidAt, 1);
+      const available = addDays(at, 14);
+      rf.push(`update commerce.customers set referred_by_customer_id = ${q(r.p.id)} where store_id = ${q(S)} and id = ${q(o.buyer.id)} and referred_by_customer_id is null;
+insert into commerce.affiliate_attributions (store_id, order_id, affiliate_customer_id, friend_customer_id, code, discount_minor, reward_minor, status, rewarded_at, created_at)
+values (${q(S)}, ${q(o.id)}, ${q(r.p.id)}, ${q(o.buyer.id)}, ${q(r.code)}, 0, ${reward}, 'rewarded', ${ts(at)}, ${ts(o.at)});
+insert into commerce.bonus_entries (store_id, customer_id, kind, amount_minor, available_at, expires_at, note, idempotency_key, created_at)
+values (${q(S)}, ${q(r.p.id)}, 'referral', ${reward}, ${ts(available)}, ${ts(addDays(available, 365))}, '', ${q(`referral:${o.id}`)}, ${ts(at)});`);
+    }
+    const visitRows = [];
+    for (const r of referrers) {
+      for (let d = new Date(r.joined); d < now; d = addDays(d, between(1, 6))) visitRows.push(`  (${q(S)}, ${q(r.code)}, ${q(day(d))}, ${between(1, 9)})`);
+    }
+    if (visitRows.length) rf.push(`insert into commerce.referral_visits (store_id, code, day, visits) values\n${visitRows.join(",\n")}\non conflict do nothing;`);
+    file("95-referrals.sql", rf.join("\n"));
+
+    // Two A/B tests on the front page, each run for three weeks and ended by the owner. Each runs in this one transaction, so no
+    // visitor ever meets it running; neither is applied, so the live front page stays as it is.
+    const tests = [
+      { name: "A shorter headline on the front page", hypothesis: "Saying what we make in the headline gets more people to add a piece to the cart.", from: "Made slowly, for <em>everyday</em> rituals", to: "Handmade stoneware for <em>everyday</em> use", start: new Date("2026-05-04T08:00:00Z"), lift: [0.031, 0.036], learning: "The plainer headline added a little more to carts, but not enough to be sure. We kept the original voice." },
+      { name: "Collection heading as a call to action", hypothesis: "A heading that invites people to shop leads more of them to checkout.", from: "Pieces for the table and the shelf", to: "Find a piece for your table", start: new Date("2026-08-24T08:00:00Z"), lift: [0.019, 0.017], learning: "No difference worth keeping: people found the collection either way." },
+    ];
+    const ab = [];
+    tests.forEach((t, i) => {
+      const id = uuid();
+      const page = uuid();
+      const end = addDays(t.start, 21);
+      const slug = `ab-${id.slice(0, 8)}-b`;
+      const visitors = 2600 + between(0, 900);
+      ab.push(`-- ${t.name}
+insert into commerce.experiments (id, store_id, name, hypothesis, target_page_id, status, primary_goal, goal_params, min_visitors, min_days, created_by, updated_by, created_at, updated_at)
+values (${q(id)}, ${q(S)}, ${q(t.name)}, ${q(t.hypothesis)}, (select front_page_id from commerce.stores where id = ${q(S)}), 'draft', 'cart', '{}', 1000, 14, ${q(ctx.owner)}, ${q(ctx.owner)}, ${ts(addDays(t.start, -2))}, ${ts(addDays(t.start, -2))});
+insert into commerce.pages (id, store_id, slug, type, draft, published, published_at, first_published_at, created_at, created_by, updated_at, updated_by)
+select ${q(page)}, ${q(S)}, ${q(slug)}, 'variant', v.content, v.content, ${ts(addDays(t.start, -1))}, ${ts(addDays(t.start, -1))}, ${ts(addDays(t.start, -2))}, ${q(ctx.owner)}, ${ts(addDays(t.start, -1))}, ${q(ctx.owner)}
+from commerce.pages f, lateral (select jsonb_set(jsonb_set(replace(f.published::text, ${q(JSON.stringify(t.from).slice(1, -1))}, ${q(JSON.stringify(t.to).slice(1, -1))})::jsonb, '{slug}', to_jsonb(${q(slug)}::text)), '{title}', to_jsonb(coalesce(f.published ->> 'title', 'Front page') || ' (B)')) as content) v
+where f.id = (select front_page_id from commerce.stores where id = ${q(S)});
+insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values (${q(S)}, ${q(id)}, 'a', 'Original', null, 0.5), (${q(S)}, ${q(id)}, 'b', 'Version B', ${q(page)}, 0.5);
+update commerce.experiments set status = 'running', started_at = ${ts(t.start)}, planned_end = ${ts(end)}, updated_at = ${ts(t.start)} where store_id = ${q(S)} and id = ${q(id)};
+select setseed(${(0.11 + i * 0.37).toFixed(2)});
+insert into commerce.experiment_exposures (store_id, experiment_id, visitor, variant, market, device, "returning", first_seen)
+select ${q(S)}, ${q(id)}, substr(md5(${q(id)} || g::text), 1, 22), case when random() < 0.5 then 'a' else 'b' end,
+  (array['NO','NO','NO','NO','SE','SE','DK'])[1 + floor(random() * 7)::int], (array['mobile','mobile','mobile','desktop','desktop','tablet'])[1 + floor(random() * 6)::int],
+  random() < 0.22, ${ts(t.start)} + random() * interval '21 days'
+from generate_series(1, ${visitors}) g;
+insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref, occurred_at)
+select e.store_id, e.experiment_id, e.visitor, e.variant, 'cart', '', e.first_seen + interval '3 minutes'
+from commerce.experiment_exposures e where e.experiment_id = ${q(id)} and random() < case e.variant when 'a' then ${t.lift[0]} else ${t.lift[1]} end;
+insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref, occurred_at)
+select e.store_id, e.experiment_id, e.visitor, e.variant, 'checkout', '', e.occurred_at + interval '4 minutes'
+from commerce.experiment_events e where e.experiment_id = ${q(id)} and e.goal = 'cart' and random() < 0.55;
+update commerce.experiments set status = 'stopped', stopped_at = ${ts(end)}, stop_reason = 'person', updated_at = ${ts(end)} where store_id = ${q(S)} and id = ${q(id)};
+update commerce.experiments set status = 'discarded', learning = ${q(t.learning)}, updated_at = ${ts(addMinutes(end, 30))} where store_id = ${q(S)} and id = ${q(id)};`);
+    });
+    file("96-ab-tests.sql", ab.join("\n"));
+  }
+
+  features();
+  features2();
 
   out.summary = {
     orders: built.length,
