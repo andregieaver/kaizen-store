@@ -30,7 +30,7 @@ import { isScheduledType } from "@/lib/page-schedules";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { listTerms } from "@/server/taxonomy";
-import { buttonClass, Card, CARD_CLASS, Chip, CountBadge, PageHeader, Pager } from "@/components/admin/ui";
+import { buttonClass, ButtonLink, Card, CARD_CLASS, Chip, CountBadge, PageHeader, Pager, Select } from "@/components/admin/ui";
 import { commentCounts } from "@/server/blog-comments";
 
 import {
@@ -125,16 +125,16 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           />
           <div className="flex flex-wrap gap-2">
             <MoreMenu label={w.cards.more}>
-              <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+              <ButtonLink kind="quiet" href={`${base}/categories`}>
                 {w.categories}
-              </Link>
+              </ButtonLink>
             </MoreMenu>
-            <Link href={`${base}/ai`} className="inline-flex h-11 items-center rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken">
+            <ButtonLink size="header" href={`${base}/ai`}>
               {w.createAi}
-            </Link>
-            <Link href={`${base}/new`} className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+            </ButtonLink>
+            <ButtonLink kind="main" size="header" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           </div>
         </div>
       ) : type === "article" ? (
@@ -158,20 +158,20 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           />
           <div className="flex flex-wrap gap-2">
             <MoreMenu label={blogWords.list.more}>
-              <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+              <ButtonLink kind="quiet" href={`${base}/categories`}>
                 {w.categories}
-              </Link>
-              <Link href={`${base}/blogs`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+              </ButtonLink>
+              <ButtonLink kind="quiet" href={`${base}/blogs`}>
                 {blogWords.links.blogs}
-              </Link>
-              <Link href={`${base}/comments`} className="inline-flex min-h-10 items-center gap-2 rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+              </ButtonLink>
+              <ButtonLink kind="quiet" href={`${base}/comments`}>
                 {blogWords.links.comments}
                 {waitingComments > 0 && <CountBadge count={waitingComments} />}
-              </Link>
+              </ButtonLink>
             </MoreMenu>
-            <Link href={`${base}/new`} className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+            <ButtonLink kind="main" size="header" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           </div>
         </div>
       ) : (
@@ -179,16 +179,11 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           <PageHeader title={tw.list} description={tw.intro} />
           <div className="flex flex-wrap gap-2">
             {!LAYOUT_TYPES.includes(type) && (
-              <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
-                {w.categories}
-              </Link>
+              <ButtonLink href={`${base}/categories`}>{w.categories}</ButtonLink>
             )}
-            <Link
-              href={`${base}/new`}
-              className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
-            >
+            <ButtonLink kind="main" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           </div>
         </div>
       )}
@@ -412,7 +407,7 @@ function FrontPageForm({
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {f.label}
-          <select name="frontPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
+          <Select name="frontPage" defaultValue={current ?? ""}>
             <option value="">{f.all}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
@@ -420,7 +415,7 @@ function FrontPageForm({
                 {page.state === "draft" ? shared.notPublished : ""}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <SubmitButton>{shared.save}</SubmitButton>
       </div>
@@ -455,7 +450,7 @@ function ProductsPageForm({
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {f.label}
-          <select name="productsPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
+          <Select name="productsPage" defaultValue={current ?? ""}>
             <option value="">{f.standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
@@ -463,7 +458,7 @@ function ProductsPageForm({
                 {page.state === "draft" ? shared.notPublished : ""}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <SubmitButton>{shared.save}</SubmitButton>
       </div>
@@ -501,7 +496,7 @@ function PageRoleForm({
       <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {fillWords(words.role.shows, { name })}
-          <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
+          <Select name="page" defaultValue={current ?? ""}>
             <option value="">{standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
@@ -509,7 +504,7 @@ function PageRoleForm({
                 {page.state === "draft" ? shared.notPublished : ""}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <SubmitButton>{shared.save}</SubmitButton>
       </ActionForm>

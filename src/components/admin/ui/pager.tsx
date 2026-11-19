@@ -15,6 +15,7 @@ export type PagerWords = { label: string; shownOf: string; previous: string; nex
 type Query = Record<string, string | string[] | undefined>;
 
 type ByNumber = {
+  words: PagerWords;
   /** The list's address. */
   base: string;
   /** The address's query: its other values are kept, the page's is replaced. */
@@ -31,6 +32,8 @@ type ByNumber = {
 };
 
 type ByCursor = {
+  /** No count: a list paged by cursor says how many match where it says what it shows. */
+  words: Omit<PagerWords, "shownOf">;
   /** The address of the page before, or none on the first page. */
   previous?: string | null;
   /** The way back leads to the first page (the word says so). */
@@ -39,7 +42,7 @@ type ByCursor = {
   next?: string | null;
 };
 
-export type PagerProps = { words: PagerWords; label?: string; className?: string } & (ByNumber | (ByCursor & { base?: undefined }));
+export type PagerProps = { label?: string; className?: string } & (ByNumber | (ByCursor & { base?: undefined }));
 
 /** The address of page `to` of a list paged by number: the query's other values kept, page 1 without the parameter. */
 export function pageAddress(base: string, query: Query, to: number, param = "page"): string {
@@ -60,7 +63,7 @@ export function Pager(props: PagerProps) {
   if (props.base !== undefined) {
     const { base, query = {}, page, size, shown, total, param = "page" } = props;
     if (page <= 1 && shown >= total) return null;
-    count = fillWords(words.shownOf, { shown: Math.min((page - 1) * size + shown, total), total });
+    count = fillWords(props.words.shownOf, { shown: Math.min((page - 1) * size + shown, total), total });
     if (page > 1) previous = { href: pageAddress(base, query, page - 1, param), text: fillWords(words.previous, { n: size }) };
     if (page * size < total) next = { href: pageAddress(base, query, page + 1, param), text: fillWords(words.next, { n: size }) };
   } else {

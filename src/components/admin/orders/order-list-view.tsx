@@ -1,6 +1,9 @@
 import { AdminLink } from "../ui/link";
 import Link from "next/link";
 
+import { EmptyState } from "../ui/empty-state";
+import { Pager } from "../ui/pager";
+
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
@@ -87,9 +90,9 @@ export function OrderListView({
       </p>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm">
-          <p>
-            {params.q !== ""
+        <EmptyState
+          title={
+            params.q !== ""
               ? fillWords(w.noMatch, {
                   q: params.q,
                   filters: filtered && params.q !== "" && (params.pay.length || params.ship.length || params.tag.length || params.status.length || params.range || params.from || params.to) ? w.withFilters : "",
@@ -104,18 +107,20 @@ export function OrderListView({
                       ? w.noArchived
                       : filtered
                         ? w.noFilterMatch
-                        : w.none}
-          </p>
-          {filtered ? (
-            <AdminLink href={base} className={secondary}>
-              {w.clear}
-            </AdminLink>
-          ) : (
-            <Link href={`/admin/${slug}/orders/drafts/new`} className={primary}>
-              {words.page.makeDraft}
-            </Link>
-          )}
-        </div>
+                        : w.none
+          }
+          action={
+            filtered ? (
+              <AdminLink href={base} className={secondary}>
+                {w.clear}
+              </AdminLink>
+            ) : (
+              <Link href={`/admin/${slug}/orders/drafts/new`} className={primary}>
+                {words.page.makeDraft}
+              </Link>
+            )
+          }
+        />
       ) : (
         <OrderTable
           slug={slug}
@@ -133,20 +138,12 @@ export function OrderListView({
         />
       )}
 
-      {(hasPrevious || nextCursor) && (
-        <nav aria-label={w.pages} className="flex flex-wrap items-center gap-4 text-sm">
-          {hasPrevious && (
-            <AdminLink href={pageHref(base, params, previousCursor)} rel="prev" className="underline underline-offset-2">
-              {previousCursor ? w.previous : w.first}
-            </AdminLink>
-          )}
-          {nextCursor && (
-            <AdminLink href={pageHref(base, params, nextCursor)} rel="next" className="underline underline-offset-2">
-              {w.next}
-            </AdminLink>
-          )}
-        </nav>
-      )}
+      <Pager
+        words={{ label: w.pages, previous: w.previous, next: w.next, first: w.first }}
+        previous={hasPrevious ? pageHref(base, params, previousCursor) : null}
+        first={!previousCursor}
+        next={nextCursor ? pageHref(base, params, nextCursor) : null}
+      />
 
     </div>
   );

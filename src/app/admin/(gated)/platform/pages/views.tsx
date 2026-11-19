@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
@@ -14,7 +13,7 @@ import { countPages, listPages, pageTitles } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
-import { CARD_CLASS, PageHeader, Pager } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, EmptyState, PageHeader, Pager } from "@/components/admin/ui";
 import { PlatformLegalCard, platformLegalLead } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
@@ -101,19 +100,19 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
-            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+            <ButtonLink size="header" href={`${base}/categories`}>
               {w.pages.categories}
-            </Link>
+            </ButtonLink>
           )}
           {type === "page" && count > 0 && (
-            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+            <ButtonLink size="header" href={`${base}/ai`}>
               {w.pages.createAi}
-            </Link>
+            </ButtonLink>
           )}
           {!(type === "page" && count === 0) && (
-            <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
+            <ButtonLink kind="main" size="header" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           )}
         </div>
       </div>
@@ -138,18 +137,16 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
             <span className="text-caption text-ink-2">{w.pages.firstPageSub}</span>
           </span>
           <span className="flex flex-wrap gap-3">
-            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+            <ButtonLink size="header" href={`${base}/ai`}>
               {w.pages.createAi}
-            </Link>
-            <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
+            </ButtonLink>
+            <ButtonLink kind="main" size="header" href={`${base}/new`}>
               {tw.new}
-            </Link>
+            </ButtonLink>
           </span>
         </section>
       ) : pages.length === 0 ? (
-        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          {tw.none}
-        </p>
+        <EmptyState title={tw.none} />
       ) : type === "header" || type === "footer" ? (
         <SiteLayoutsTable layouts={pages} adminBase={base} current={layoutCurrent} timeZone={PLATFORM_TIME_ZONE} />
       ) : (
