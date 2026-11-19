@@ -12,6 +12,7 @@ import { EVENT_TRIGGERS } from "@/lib/flow-triggers";
 import {
   advance,
   checkFlow,
+  findStep,
   flowInputSchema,
   flowStepSchema,
   pathOf,
@@ -21,7 +22,9 @@ import {
   type FlowPath,
   type FlowStep,
 } from "@/lib/flows";
+import { linkTarget } from "@/lib/broadcasts";
 import { roomLeft } from "@/lib/limits";
+import { siteUrl } from "@/lib/site";
 import { nextSendTime } from "@/lib/sms";
 
 import { PAID } from "./analytics-sql";
@@ -30,8 +33,9 @@ import { getContactPolicy, recentContacts } from "./contact-policy";
 import { sendEmail } from "./email";
 import { advanceCursor, readEventsAfter } from "./event-log";
 import { limitFor, usageNow } from "./limits";
+import { clickRef, keepFlowClick } from "./email-clicks";
 import { log } from "./log";
-import { factsForEmail, marketingEmail } from "./marketing-email";
+import { factsForEmail, marketingEmail, marketSlugFor, resolverFor } from "./marketing-email";
 import { segmentsOfAddress } from "./segment-membership";
 import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
@@ -282,6 +286,7 @@ const dueRow = z.object({
   id: col.uuid,
   store_id: col.uuid,
   flow_id: col.uuid,
+  subscriber_id: col.uuid,
   path: col.textOrNull,
   entered_at: col.timestamp,
   steps: z.unknown(),
@@ -314,7 +319,7 @@ export async function runFlows(options: { now?: Date; only?: string } = {}): Pro
               order by wake_at limit ${RUN_BATCH} for update skip locked)
           returning r.id, r.store_id, r.flow_id, r.version, r.path, r.entered_at, r.subscriber_id
         )
-        select c.id, c.store_id, c.flow_id, c.path, c.entered_at, v.steps, v.goals, s.email, s.locale, s.market_code, s.token, s.status
+        select c.id, c.store_id, c.flow_id, c.subscriber_id, c.path, c.entered_at, v.steps, v.goals, s.email, s.locale, s.market_code, s.token, s.status
           from claimed c
           join commerce.flow_versions v on v.flow_id = c.flow_id and v.version = c.version
           join commerce.marketing_subscribers s on s.store_id = c.store_id and s.id = c.subscriber_id`,
@@ -356,8 +361,13 @@ async function factsFor(run: z.infer<typeof dueRow>, steps: FlowStep[], store: E
   );
   const named = JSON.stringify(steps).match(/"segmentId":"([0-9a-f-]{36})"/g)?.map((m) => m.slice(13, -1)) ?? [];
   const segments = named.length > 0 && store ? await segmentsOfAddress(store, run.email, named) : new Set<string>();
-  // Clicks in a flow's emails are not tracked per person yet (slice 2): the condition holds for nobody until then.
-  return { orderedSinceEntry: (ordered?.n ?? 0) > 0, clickedFlowEmail: false, segments };
+  // A press on a link in this flow's emails since they entered (D767, kept per person as broadcasts' are, D754).
+  const clicked = await typedRow(
+    z.object({ n: col.int }),
+    sql`select count(*)::int as n from commerce.email_clicks k where k.store_id = ${run.store_id}::uuid and k.flow_id = ${run.flow_id}::uuid
+          and k.subscriber_id = ${run.subscriber_id}::uuid and k.clicked_at >= ${run.entered_at}::timestamptz`,
+  );
+  return { orderedSinceEntry: (ordered?.n ?? 0) > 0, clickedFlowEmail: (clicked?.n ?? 0) > 0, segments };
 }
 
 async function moveOn(
@@ -425,7 +435,17 @@ async function moveOn(
   }
   if (!held && picked) {
     const facts = await factsForEmail(store, content, run.locale, run.market_code);
-    const email = marketingEmail({ store, content, locale: run.locale, marketCode: run.market_code, token: run.token, facts });
+    // Its links count presses, the reader's kept as theirs (D754); an email with picks keeps its links plain (the picks move its blocks).
+    const tracked = !move.step.picks;
+    const email = marketingEmail({
+      store,
+      content,
+      locale: run.locale,
+      marketCode: run.market_code,
+      token: run.token,
+      facts,
+      link: tracked ? (linkKey, _target, marketSlug) => flowClickUrl(run.flow_id, move.step.id, linkKey, marketSlug, run.subscriber_id) : undefined,
+    });
     const sent = email
       ? await sendEmail({
           storeId: run.store_id,
@@ -575,4 +595,43 @@ export const BROWSE_ON = (store: ReturnType<typeof sql>) => sql`(
 /** Deletes the store's product views when no browse email is on any more (D691: nothing kept for an email that will not go). */
 export async function dropProductViewsUnlessBrowsing(storeId: string): Promise<void> {
   await db().execute(sql`delete from commerce.customer_product_views where store_id = ${storeId}::uuid and not ${BROWSE_ON(sql`${storeId}::uuid`)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Presses on a flow's links (D767): counted through the broadcasts' click route, kept per person (D754)
+// ---------------------------------------------------------------------------
+
+/** The click address of a link in a flow's email: the flow, its step and the link (`{step}~{link}`), the market, the reader's signed reference. */
+export function flowClickUrl(flowId: string, stepId: string, linkKey: string, marketSlug: string, subscriberId: string): string {
+  const ref = clickRef(flowId, subscriberId);
+  const query = [marketSlug && `m=${encodeURIComponent(marketSlug)}`, ref && `p=${encodeURIComponent(ref)}`].filter(Boolean).join("&");
+  return `${siteUrl()}/api/marketing/c/${flowId}/${encodeURIComponent(`${stepId}~${linkKey}`)}${query ? `?${query}` : ""}`;
+}
+
+/**
+ * The address a link of a flow's email goes to, keeping the press as the reader's when their reference is genuine; null when there is no
+ * such link. The link is looked up in the flow's own saved words (the newest version holding the step), never where the store did not write.
+ */
+export async function recordFlowClick(flowId: string, key: string, marketSlug: string | null, ref: string | null): Promise<string | null> {
+  const tilde = key.indexOf("~");
+  const stepId = key.slice(0, tilde);
+  const linkKey = key.slice(tilde + 1);
+  if (!z.uuid().safeParse(flowId).success || !/^[a-z0-9-]{1,24}$/.test(stepId) || linkKey.length > 20) return null;
+  const versions = await typedRows(
+    z.object({ store_id: col.uuid, steps: z.unknown() }),
+    sql`select v.store_id, v.steps from commerce.flow_versions v where v.flow_id = ${flowId}::uuid order by v.version desc limit 20`,
+  );
+  for (const v of versions) {
+    const parsed = z.array(flowStepSchema).safeParse(v.steps);
+    const step = parsed.success ? findStep(parsed.data, stepId) : null;
+    if (!step || step.kind !== "email") continue;
+    const target = linkTarget(step.content, linkKey);
+    if (!target) return null;
+    const store = await storeById(v.store_id);
+    if (!store) return null;
+    const market = marketSlug && store.markets.some((m) => m.code.toLowerCase() === marketSlug) ? marketSlug : marketSlugFor(store, null);
+    if (ref) await keepFlowClick(v.store_id, flowId, stepId, linkKey, ref);
+    return resolverFor(store, market)(target);
+  }
+  return null;
 }

@@ -1,6 +1,6 @@
 {
-  "id": "94695b33-b696-4682-b288-72c5dc4464cb",
-  "prevId": "3e3f69fc-1b04-44c7-a7e8-6bd8c58f5e63",
+  "id": "891dca38-23a9-461e-b410-4289388c989f",
+  "prevId": "94695b33-b696-4682-b288-72c5dc4464cb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -32635,7 +32635,19 @@
           "name": "broadcast_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "flow_id": {
+          "name": "flow_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "step_id": {
+          "name": "step_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "link": {
           "name": "link",
@@ -32652,6 +32664,27 @@
         }
       },
       "indexes": {
+        "email_clicks_flow_idx": {
+          "name": "email_clicks_flow_idx",
+          "columns": [
+            {
+              "expression": "flow_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "email_clicks_subscriber_idx": {
           "name": "email_clicks_subscriber_idx",
           "columns": [
@@ -32762,12 +32795,32 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "email_clicks_flow_fk": {
+          "name": "email_clicks_flow_fk",
+          "tableFrom": "email_clicks",
+          "tableTo": "flows",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "flow_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "email_clicks_source": {
+          "name": "email_clicks_source",
+          "value": "(\"commerce\".\"email_clicks\".\"broadcast_id\" is null) <> (\"commerce\".\"email_clicks\".\"flow_id\" is null) and (\"commerce\".\"email_clicks\".\"flow_id\" is null) = (\"commerce\".\"email_clicks\".\"step_id\" is null)"
+        },
         "email_clicks_link": {
           "name": "email_clicks_link",
           "value": "\"commerce\".\"email_clicks\".\"link\" ~ '^[a-z]{2}(-[A-Z]{2})?[.][0-9]{1,2}$'"

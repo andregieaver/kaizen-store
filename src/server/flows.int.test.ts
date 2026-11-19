@@ -281,4 +281,43 @@ describe("flows (D767)", () => {
     const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.customer_product_views where store_id = ${storeId}::uuid`);
     expect(left.n).toBe(0);
   });
+
+  it("keeps a press on a flow email's link as the reader's, and the branch on pressing a link takes it (D754, D767)", async () => {
+    vi.stubEnv("SETTINGS_ENCRYPTION_KEY", Buffer.alloc(32, 7).toString("base64"));
+    const bc = await import("./broadcasts");
+    const ida = await subscriber(`clicks-ida-${run}@example.com`);
+    const withButton: FlowStep = {
+      id: "look",
+      kind: "email",
+      content: { "nb-NO": { subject: "Se her", preview: "", blocks: [{ type: "paragraph", text: "Hei" }, { type: "button", text: "Se", url: "https://example.com/look" }] } },
+    };
+    const steps: FlowStep[] = [
+      withButton,
+      { id: "w", kind: "wait", hours: 1 },
+      { id: "q", kind: "if", condition: { kind: "clicked_flow_email" }, then: [email("yes", "Takk for besøket")], else: [email("no", "Ikke sett")] },
+    ];
+    const saved = await fl.saveFlow(storeId, owner, null, { name: `Clicks ${run}`, trigger: "subscriber.subscribed", steps, goals: [] });
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    await joined(ida);
+    await fl.enterFlows();
+    const [entered] = await db().execute<Row>(sql`select id from commerce.flow_runs where flow_id = ${saved.id}::uuid and subscriber_id = ${ida}::uuid`);
+    const start = Date.now() + 5000;
+    await fl.runFlows({ only: storeId, now: new Date(start) });
+    // The reader presses the button, through the broadcasts' click route.
+    const url = new URL(fl.flowClickUrl(saved.id, "look", "nb-NO.1", "no", ida));
+    const key = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+    expect(await bc.recordClick(saved.id, key, "no", url.searchParams.get("p"))).toContain("example.com/look");
+    expect(await bc.recordClick(saved.id, "look~nb-NO.9", "no", null)).toBeNull();
+    // The wait begins when the run reaches it: it is passed an hour after that.
+    await fl.runFlows({ only: storeId, now: new Date(start + 1000) });
+    await fl.runFlows({ only: storeId, now: new Date(start + 2 * HOUR) });
+    expect(await stepsOf(String(entered.id))).toEqual([
+      ["look", "logged"],
+      ["yes", "logged"],
+    ]);
+    await fl.switchFlow(storeId, owner, saved.id, false);
+    vi.unstubAllEnvs();
+  });
 });
