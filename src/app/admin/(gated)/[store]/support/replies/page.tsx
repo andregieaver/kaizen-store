@@ -36,7 +36,7 @@ export default async function SupportRepliesPage({
       <div className="flex flex-col gap-6">
         <PageHeader
           title={t.pages.storeReplies.title}
-          description={t.pages.storeReplies.description}
+          description={<><span className="sm:hidden">{t.replies.phone.lead}</span><span className="max-sm:hidden">{t.pages.storeReplies.description}</span></>}
         />
         <RepliesManager
           replies={replies}

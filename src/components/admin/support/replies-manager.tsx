@@ -18,6 +18,7 @@ import {
 } from "@/lib/support-replies";
 
 import { fillWords } from "@/lib/admin-fill";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 import { useAdminText } from "../admin-text";
 
@@ -40,40 +41,50 @@ export function RepliesManager({
 }) {
   const w = useAdminText("support").replies;
   const placeholderWords = w.placeholders as Record<string, string>;
+  const help = (
+    <section className="rounded-panel bg-sunken p-4 text-sm">
+      <p>
+        {w.introBefore}{" "}
+        <kbd className="rounded border border-line px-1 font-mono">/</kbd>{" "}
+        {w.introAfter}
+      </p>
+      <ul className="mt-2 flex flex-col gap-1">
+        {Object.entries(PLACEHOLDERS).map(([name, words]) => (
+          <li key={name}>
+            <code className="font-mono">{`{${name}}`}</code>{" "}
+            <span className="text-muted">
+              {placeholderWords[name] ?? words}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-muted">{w.unknownName}</p>
+    </section>
+  );
+  // Round 52 (D788): on a phone the replies come first, then the new one and the placeholders as rows; from `sm` up as before.
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-panel bg-sunken p-4 text-sm">
-        <p>
-          {w.introBefore}{" "}
-          <kbd className="rounded border border-line px-1 font-mono">/</kbd>{" "}
-          {w.introAfter}
-        </p>
-        <ul className="mt-2 flex flex-col gap-1">
-          {Object.entries(PLACEHOLDERS).map(([name, words]) => (
-            <li key={name}>
-              <code className="font-mono">{`{${name}}`}</code>{" "}
-              <span className="text-muted">
-                {placeholderWords[name] ?? words}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-muted">{w.unknownName}</p>
-      </section>
-      {save && (
-        <section aria-labelledby="new-reply" className="flex flex-col gap-2">
-          <h2 id="new-reply" className="text-title text-ink">
-            {w.newTitle}
-          </h2>
-          <ReplyForm languages={languages} save={save} />
-        </section>
-      )}
-      <section aria-labelledby="all-replies" className="flex flex-col gap-3">
-        <h2 id="all-replies" className="text-title text-ink">
+      <PhoneRows className="max-sm:order-2">
+        {save && (
+          <PhoneRow id="new-reply-form" title={w.phone.newRow} sub={w.phone.newSub} change={w.phone.open} done={w.phone.done}>
+            <section aria-labelledby="new-reply" className="flex flex-col gap-2">
+              <h2 id="new-reply" className="text-title text-ink max-sm:sr-only">
+                {w.newTitle}
+              </h2>
+              <ReplyForm languages={languages} save={save} />
+            </section>
+          </PhoneRow>
+        )}
+        <PhoneRow title={w.phone.helpRow} sub={w.phone.helpSub} change={w.phone.open} done={w.phone.done} flat last>
+          {help}
+        </PhoneRow>
+      </PhoneRows>
+      <section aria-labelledby="all-replies" className="flex flex-col gap-3 max-sm:order-1">
+        <h2 id="all-replies" className={`text-title text-ink ${replies.length === 0 ? "max-sm:sr-only" : ""}`}>
           {fillWords(w.allTitle, { n: replies.length })}
         </h2>
         {replies.length === 0 ? (
-          <p className="text-muted">{w.none}</p>
+          <p className="text-muted max-sm:rounded-panel max-sm:bg-card max-sm:p-4 max-sm:text-ink">{w.none}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {replies.map((reply) => (

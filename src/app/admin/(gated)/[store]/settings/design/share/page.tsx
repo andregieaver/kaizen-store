@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -10,6 +11,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { authoredThemes } from "@/server/theme-submissions";
 
 import { submitThemeAction } from "./actions";
+import { ShareMore } from "./share-more";
 
 export const metadata: Metadata = { title: "Share this look as a theme" };
 
@@ -26,7 +28,7 @@ export default async function ShareLookPage({ params }: PageProps<"/admin/[store
   const field = "rounded-md border border-line bg-card px-3 py-2";
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${store.slug}/settings/design`, label: adminText(adminLangOf(member.account.adminLocale), "design").page.title }} title={w.title} description={w.description} />
+      <PageHeader back={{ href: `/admin/${store.slug}/settings/design`, label: adminText(adminLangOf(member.account.adminLocale), "design").page.title }} title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
       {refusal ? (
         <Card>
           <p className="text-sm text-ink-2">{refusal}</p>
@@ -55,40 +57,52 @@ export default async function ShareLookPage({ params }: PageProps<"/admin/[store
               {w.summary}
               <input name="summary" maxLength={SUBMISSION_LIMITS.summary} className={field} />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              {w.about}
-              <textarea name="description" rows={4} maxLength={SUBMISSION_LIMITS.description} className={field} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              {w.author}
-              <input name="authorName" required maxLength={SUBMISSION_LIMITS.authorName} defaultValue={member.account.name ?? ""} aria-describedby="share-author-hint" className={field} />
-              <span id="share-author-hint" className="text-caption text-muted">
-                {w.authorHint}
-              </span>
-            </label>
-            {mine.length > 0 && (
+            <ShareMore title={w.phone.more} sub={member.account.name ? fillWords(w.phone.by, { name: member.account.name }) : w.author} change={w.phone.open} done={w.phone.done}>
               <label className="flex flex-col gap-1 text-sm">
-                {w.notes}
-                <textarea name="notes" rows={3} maxLength={SUBMISSION_LIMITS.notes} aria-describedby="share-notes-hint" className={field} />
-                <span id="share-notes-hint" className="text-caption text-muted">
-                  {w.notesHint}
+                {w.about}
+                <textarea name="description" rows={4} maxLength={SUBMISSION_LIMITS.description} className={field} />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                {w.author}
+                <input name="authorName" required maxLength={SUBMISSION_LIMITS.authorName} defaultValue={member.account.name ?? ""} aria-describedby="share-author-hint" className={field} />
+                <span id="share-author-hint" className="text-caption text-muted">
+                  {w.authorHint}
                 </span>
               </label>
-            )}
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" name="pages" className="mt-0.5 size-4" aria-describedby="share-pages-hint" />
-              <span className="flex flex-col gap-1">
-                {w.pages}
-                <span id="share-pages-hint" className="text-caption text-muted">
-                  {w.pagesHint}
+              {mine.length > 0 && (
+                <label className="flex flex-col gap-1 text-sm">
+                  {w.notes}
+                  <textarea name="notes" rows={3} maxLength={SUBMISSION_LIMITS.notes} aria-describedby="share-notes-hint" className={field} />
+                  <span id="share-notes-hint" className="text-caption text-muted">
+                    {w.notesHint}
+                  </span>
+                </label>
+              )}
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="pages" className="mt-0.5 size-4" aria-describedby="share-pages-hint" />
+                <span className="flex flex-col gap-1">
+                  {w.pages}
+                  <span id="share-pages-hint" className="text-caption text-muted">
+                    {w.pagesHint}
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+            </ShareMore>
             <div>
               <SubmitButton>{w.submit}</SubmitButton>
             </div>
           </ActionForm>
         </Card>
+      )}
+      {/* Round 52 (D788): on a phone the full terms are a row after the form. */}
+      {!refusal && (
+        <div className="sm:hidden">
+          <PhoneRows>
+            <PhoneRow inset={false} last title={w.phone.sentRow} sub={w.phone.sentSub} change={w.phone.open} done={w.phone.done}>
+              <p className="text-sm text-ink-2">{w.description}</p>
+            </PhoneRow>
+          </PhoneRows>
+        </div>
       )}
       <div>
         <ButtonLink href="/admin/account/themes">

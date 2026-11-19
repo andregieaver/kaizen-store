@@ -1247,14 +1247,16 @@ const ALL_OWNER_TOOLS = [
   ),
   tool(
     "profit_overview",
-    "What a period earned after what it cost (docs/100-day-challenge.md E3), counted in code as the Analytics pages count it: net sales, the cost of goods, payment and platform fees, shipping, marketing and lost disputes, gross and contribution profit, contribution margin, profit per krone of marketing (contribution before marketing per krone spent) and revenue and contribution per visitor; for 30 days or this month also the month's sales forecast with its 80 % range. A figure that cannot be known says why (costs missing, visit counting off, no marketing recorded), never zero. Amounts are in the store's main currency without VAT. Use it before deciding on prices, offers or ad budgets, and to judge a goal of profit or margin; quote it, never add up or compare figures yourself.",
+    "What a period earned after its costs, counted in code as Analytics counts it: net sales, cost of goods, fees, shipping, marketing, lost disputes, gross and contribution profit and margin, profit per krone of marketing, revenue and contribution per visitor; for 30 days or this month the month's forecast with an 80 % range. campaigns adds each campaign's sessions, orders, revenue, spend, cost per new customer and return on spend; budget adds this year's budget against actual from the books. A figure that cannot be known says why, never zero. Main currency, without VAT. Use it before deciding prices, offers or ad budgets and to judge profit goals; quote it, never add up or compare yourself.",
     z.object({
-      period: z.enum(["7d", "30d", "month", "last_month", "since"]).default("30d").describe("The last 7 or 30 days (today included), this month so far, the whole of last month, or since a first day."),
+      period: z.enum(["7d", "30d", "month", "last_month", "since"]).default("30d").describe("Last 7 or 30 days, this month, last month, or since a first day."),
       since: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .optional()
-        .describe("For period since: the first day counted, YYYY-MM-DD (the challenge's Day 1)."),
+        .describe("For since: the first day, YYYY-MM-DD."),
+      campaigns: z.boolean().optional().describe("Add the campaigns."),
+      budget: z.boolean().optional().describe("Add the budget."),
     }),
   ),
   tool(
