@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { fillWords } from "./admin-fill";
-import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
+import type { DiscountsMessages } from "./admin-messages/discounts.en";
 import { memberLineOff } from "./customer-tiers";
 import { planPrice } from "./subscriptions";
 
@@ -552,7 +552,7 @@ export function describeCampaign(
   campaign: Pick<Campaign, "kind" | "percent" | "buyQuantity" | "payQuantity" | "thresholds"> &
     Partial<Pick<Campaign, "amounts" | "tierBasis" | "tiers" | "buyMinQuantity" | "buyMinAmounts" | "getQuantity" | "getKind" | "getPercent" | "getAmounts">>,
   money: (minor: number, marketCode: string) => string,
-  words: DiscountsMessages["describe"] = discountsEn.describe,
+  words: DiscountsMessages["describe"],
 ): string {
   const per = (values: Record<string, number>) => Object.entries(values).map(([market, minor]) => money(minor, market)).join(" / ");
   const over = per(campaign.thresholds);

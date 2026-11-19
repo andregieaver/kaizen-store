@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { countWords, fillWords } from "./admin-fill";
-import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.en";
+import type { MarketingMessages } from "./admin-messages/marketing.en";
 import { RFM_SEGMENTS, type RfmSegment } from "./analytics-customers";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "./marketing-consent";
 import { tagKey } from "./order-tags";
@@ -280,7 +280,7 @@ export type DescribeContext = {
   /** A product's and a product category's name (ecosystem plan E3.6, D718); without them a condition says how many it names. */
   productName?: (id: string) => string | undefined;
   categoryName?: (id: string) => string | undefined;
-  words?: DescribeWords;
+  words: DescribeWords;
 };
 
 /** The products or categories a condition names, in words: by name where the reader knows them, else how many. */
@@ -297,7 +297,7 @@ function namedList(ids: readonly string[], name: ((id: string) => string | undef
 
 /** A condition in staff's words: *Ordered at least 2 times*. */
 export function describeCondition(c: Condition, ctx: DescribeContext): string {
-  const w = ctx.words ?? marketingEn.describe;
+  const w = ctx.words;
   const times = (n: number) => countWords(n, w.times);
   const days = (n: number) => countWords(n, w.days);
   switch (c.kind) {
@@ -350,7 +350,7 @@ export function describeCondition(c: Condition, ctx: DescribeContext): string {
 
 /** The rules as one line: the conditions joined by "and" or "or"; *Everyone* without any. */
 export function describeRules(rules: SegmentRules, ctx: DescribeContext): string {
-  const w = ctx.words ?? marketingEn.describe;
+  const w = ctx.words;
   if (rules.conditions.length === 0) return w.everyone;
   return rules.conditions.map((c) => describeCondition(c, ctx)).join(rules.match === "all" ? w.andJoin : w.orJoin);
 }

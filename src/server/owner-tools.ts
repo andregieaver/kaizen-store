@@ -296,6 +296,7 @@ import {
   setPagePlaceTool,
 } from "./site-tools";
 import { draftStore } from "./store-drafts";
+import { discountsEn } from "@/lib/admin-messages/discounts.en";
 
 type Row = Record<string, unknown>;
 
@@ -981,7 +982,7 @@ async function listCampaignsTool({ store }: OwnerToolContext) {
     campaigns: rows.map((c) => ({
       name: c.name,
       status: campaignStatus(c),
-      gives: describeCampaign(c, (minor, marketCode) => money(store, minor, store.markets.find((m) => m.code === marketCode)?.currency ?? "NOK")),
+      gives: describeCampaign(c, (minor, marketCode) => money(store, minor, store.markets.find((m) => m.code === marketCode)?.currency ?? "NOK"), discountsEn.describe),
       free_product: c.giftTitle,
       applies_to: c.productIds.length + c.termIds.length === 0 ? "everything" : [...c.productIds.map((id) => name(products, id)), ...c.termIds.map((id) => name(terms, id))],
       only_for_customer_groups: c.tierIds.length > 0 ? c.tierIds.length : undefined,

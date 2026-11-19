@@ -105,23 +105,13 @@ const CATALOGUE_SITES: string[] = [
   "src/lib/analytics-words.ts -> analytics.en",
   "src/lib/analytics-words.ts -> analytics.nb",
   "src/lib/bonus-admin.ts -> loyalty.en",
-  "src/lib/campaigns.ts -> discounts.en",
-  "src/lib/discounts.ts -> discounts.en",
   "src/lib/drafts-words.ts -> drafts.en",
-  "src/lib/experiment-results.ts -> experiments.en",
   "src/lib/experiment-words.ts -> experiments.en",
-  "src/lib/order-list-words.ts -> orders.en",
-  "src/lib/redirect-admin.ts -> redirects.en",
   "src/lib/redirect-words.ts -> redirects.en",
-  "src/lib/redirects.ts -> redirects.en",
   "src/lib/return-admin.ts -> returns.en",
-  "src/lib/segments.ts -> marketing.en",
-  "src/lib/shipping-method-form.ts -> shipping.en",
   "src/lib/store-copy-wizard.ts -> platform.en",
   "src/lib/support-inbox-text.ts -> support.en",
   "src/lib/tax-profile.ts -> tax.en",
-  "src/lib/work-timer-ui.ts -> work.en",
-  "src/lib/work-ui.ts -> work.en",
 ];
 
 function catalogueSites(planted?: Map<string, string[]>): string[] {

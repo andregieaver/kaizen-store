@@ -1,6 +1,6 @@
 import { ReminderEditor } from "@/components/admin/reminder-editor";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminTexts } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import type { ReminderText } from "@/lib/cart-reminders";
 import { describeDiscount } from "@/lib/discounts";
@@ -48,7 +48,7 @@ export async function ReminderForm({
           .map((d) => ({
             id: d.id,
             code: d.code,
-            gives: describeDiscount(d, money),
+            gives: describeDiscount(d, money, adminText(lang, "discounts").describe),
           }))}
         save={saveReminderStepAction.bind(null, store.slug, step.id)}
         sendTest={

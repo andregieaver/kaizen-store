@@ -165,7 +165,7 @@ export function ClientAssignments({
                   {formatDuration(s.loggedMinutes)}
                   {s.estimatedMinutes !== null && (
                     <span
-                      className={`block text-xs ${STAGE_STYLES[progressView(s.loggedMinutes, s.estimatedMinutes, a.estimateAlertMinutes).stage].text}`}
+                      className={`block text-xs ${STAGE_STYLES[progressView(s.loggedMinutes, s.estimatedMinutes, a.estimateAlertMinutes, workText().labels.remaining).stage].text}`}
                     >
                       {fillWords(workText().clientDetail.ofEstimate, { time: formatDuration(s.estimatedMinutes) })}
                     </span>

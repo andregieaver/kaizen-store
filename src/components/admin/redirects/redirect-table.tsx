@@ -44,7 +44,7 @@ const STATUS_STYLE: Record<RedirectStatus, string> = {
 /** The status of a row in words, never by colour alone. */
 export function StatusText({ status, more }: { status: RedirectStatus; more: number }) {
   const w = useAdminText("redirects");
-  return <span className={STATUS_STYLE[status]}>{redirectStatusWords(status, more, w)}</span>;
+  return <span className={STATUS_STYLE[status]}>{redirectStatusWords(status, w, more)}</span>;
 }
 
 /** The row's target: the current address of the thing for an automatic redirect, and what the shopper meets when it is not live. */

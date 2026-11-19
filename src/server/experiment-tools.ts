@@ -50,6 +50,7 @@ import { salesFunnel } from "./owner-insights";
 import { heatPages } from "./page-heat-read";
 import { savePage } from "./pages";
 import type { Store } from "./stores";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 type Row = Record<string, unknown>;
 type Ctx = { account: import("./auth").Account; store: Store; invalidate: (tag: string) => void };
@@ -324,7 +325,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     // The goals the tools offer (`TOOL_GOALS`): a sign-up to Kaizena Flow is its own store's, chosen on the new-test form (D757).
     const days = Object.fromEntries(
       COUNTED_GOALS.filter((goal) => !isHouseGoal(goal)).map((goal) => {
-        const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2 });
+        const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2, words: experimentsEn });
         return [goal, e ? (e.days > MAX_RUN_DAYS ? "longer than a test may run" : `about ${e.days} days`) : "no figure to work from"];
       }),
     );
@@ -354,7 +355,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
   );
   const estimate =
     input.visitors_per_day && input.current_rate_percent
-      ? estimateRuntime({ baseline: input.current_rate_percent / 100, relativeChange: input.change_percent / 100, versions: 2, eligiblePerDay: input.visitors_per_day, trafficShare: 1 })
+      ? estimateRuntime({ baseline: input.current_rate_percent / 100, relativeChange: input.change_percent / 100, versions: 2, eligiblePerDay: input.visitors_per_day, trafficShare: 1, words: experimentsEn })
       : null;
   return {
     can_be_tested: candidates,

@@ -12,7 +12,7 @@
  */
 import { countWords } from "./admin-fill";
 import { handleChangedSentence } from "./address-change";
-import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
+import type { RedirectsMessages } from "./admin-messages/redirects.en";
 import { finding, type Finding } from "./data-job";
 import { REDIRECTS_MAX, REDIRECT_HOPS_MAX } from "./data-limits";
 import { isWorkingPath, normaliseSource, normaliseTarget, pathOfTarget, type AddressContext, type SourceReading, type TargetReading } from "./redirect-path";
@@ -256,7 +256,7 @@ export function redirectStatus(row: Pick<RedirectRow, "kind" | "source" | "targe
 }
 
 /** What the list says for a status. */
-export function redirectStatusWords(status: RedirectStatus, more = 0, w: RedirectsMessages = redirectsEn): string {
+export function redirectStatusWords(status: RedirectStatus, w: RedirectsMessages, more = 0): string {
   switch (status) {
     case "active":
       return w.status.active;

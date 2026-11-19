@@ -3,6 +3,7 @@ import type { Signal } from "./admin-schemes";
 import type { CardState, ExperimentCard } from "./experiment-card";
 import { eligiblePerDay, findableChange, recommendedGoal, weeksOf, type TrafficFacts } from "./experiment-traffic";
 import type { ExperimentStatus, Goal } from "./experiments";
+import type { ExperimentsMessages } from "./admin-messages/experiments.en";
 
 /**
  * The list of a store's A/B tests as a person reads it (D148 phase 15, `docs/ab-testing-usability.md` step 4): grouped by what each asks of
@@ -88,13 +89,13 @@ export const IDEAS_SHOWN = 3;
  * change to try and how soon it would answer. A page already in a test (a draft, scheduled or running) is left out, and so is a footer, which
  * few visitors look at, and a working page, which is tested by a part only and begins in the builder.
  */
-export function testIdeas(input: { targets: readonly IdeaTarget[]; facts: TrafficFacts; busy: ReadonlySet<string>; limit?: number }): TestIdea[] {
+export function testIdeas(input: { targets: readonly IdeaTarget[]; facts: TrafficFacts; busy: ReadonlySet<string>; limit?: number; words: ExperimentsMessages }): TestIdea[] {
   const ideas = input.targets
     .filter((t) => !input.busy.has(t.id) && !t.partOnly && t.kind !== "footer")
     .map((t, index): TestIdea & { index: number } => {
-      const goal = recommendedGoal(input.facts, t.id);
+      const goal = recommendedGoal(input.facts, t.id, input.words);
       const perDay = eligiblePerDay(input.facts, t.id);
-      const found = findableChange({ facts: input.facts, targetId: t.id, goal, trafficShare: 1, versions: 2 });
+      const found = findableChange({ facts: input.facts, targetId: t.id, goal, trafficShare: 1, versions: 2, words: input.words });
       const button = t.buttons[0] ?? null;
       const change: IdeaChange = t.kind === "layout" ? "layout" : t.kind === "header" ? "header" : button ? "button" : "heading";
       return {

@@ -15,6 +15,7 @@ import {
   type Campaign,
   type CampaignLine,
 } from "./campaigns";
+import { discountsEn } from "@/lib/admin-messages/discounts.en";
 
 let n = 0;
 const campaign = (over: Partial<Campaign>): Campaign => ({
@@ -288,9 +289,9 @@ describe("the admin's form", () => {
   });
   it("is described for the list", () => {
     const money = (minor: number, code: string) => `${code} ${minor / 100}`;
-    expect(describeCampaign({ kind: "percent", percent: 20, buyQuantity: 3, payQuantity: 2, thresholds: {} }, money)).toBe("20 % off");
-    expect(describeCampaign({ kind: "multi_buy", percent: 0, buyQuantity: 3, payQuantity: 2, thresholds: {} }, money)).toBe("3 for 2");
-    expect(describeCampaign({ kind: "gift", percent: 0, buyQuantity: 3, payQuantity: 2, thresholds: { NO: 50000 } }, money)).toBe("Free product over NO 500");
+    expect(describeCampaign({ kind: "percent", percent: 20, buyQuantity: 3, payQuantity: 2, thresholds: {} }, money, discountsEn.describe)).toBe("20 % off");
+    expect(describeCampaign({ kind: "multi_buy", percent: 0, buyQuantity: 3, payQuantity: 2, thresholds: {} }, money, discountsEn.describe)).toBe("3 for 2");
+    expect(describeCampaign({ kind: "gift", percent: 0, buyQuantity: 3, payQuantity: 2, thresholds: { NO: 50000 } }, money, discountsEn.describe)).toBe("Free product over NO 500");
   });
 });
 
@@ -410,13 +411,13 @@ describe("campaigns in depth (D299 E3)", () => {
   it("is described for the list", () => {
     const money = (minor: number, code: string) => `${code} ${minor / 100}`;
     const plain = { percent: 0, buyQuantity: 0, payQuantity: 0 };
-    expect(describeCampaign({ ...plain, kind: "amount", amounts: { NO: 10000 }, thresholds: { NO: 50000 } }, money)).toBe("NO 100 off over NO 500");
-    expect(describeCampaign({ ...plain, kind: "free_shipping", thresholds: {} }, money)).toBe("Free shipping");
+    expect(describeCampaign({ ...plain, kind: "amount", amounts: { NO: 10000 }, thresholds: { NO: 50000 } }, money, discountsEn.describe)).toBe("NO 100 off over NO 500");
+    expect(describeCampaign({ ...plain, kind: "free_shipping", thresholds: {} }, money, discountsEn.describe)).toBe("Free shipping");
     expect(
-      describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] }, money),
+      describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 10 }, { quantity: 4, amounts: {}, percent: 20 }] }, money, discountsEn.describe),
     ).toBe("10 % from 2 items, 20 % from 4 items");
     expect(
-      describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 0, off: { NO: 5000 } }] }, money),
+      describeCampaign({ ...plain, kind: "tiered", thresholds: {}, tierBasis: "quantity", tiers: [{ quantity: 2, amounts: {}, percent: 0, off: { NO: 5000 } }] }, money, discountsEn.describe),
     ).toBe("NO 50 off from 2 items");
   });
 });
@@ -480,8 +481,8 @@ describe("buy X get Y (D299 E4)", () => {
     expect(campaignInput.safeParse({ ...base, usesPerOrder: "" }).data?.usesPerOrder).toBeNull();
     const money = (minor: number, code: string) => `${code} ${minor / 100}`;
     const plain = { percent: 0, buyQuantity: 0, payQuantity: 0, thresholds: {} };
-    expect(describeCampaign({ ...plain, kind: "bxgy", buyMinQuantity: 2, getQuantity: 1, getKind: "free" }, money)).toBe("Buy 2, get 1 free");
-    expect(describeCampaign({ ...plain, kind: "bxgy", buyMinQuantity: null, buyMinAmounts: { NO: 50000 }, getQuantity: 1, getKind: "percent", getPercent: 50 }, money)).toBe(
+    expect(describeCampaign({ ...plain, kind: "bxgy", buyMinQuantity: 2, getQuantity: 1, getKind: "free" }, money, discountsEn.describe)).toBe("Buy 2, get 1 free");
+    expect(describeCampaign({ ...plain, kind: "bxgy", buyMinQuantity: null, buyMinAmounts: { NO: 50000 }, getQuantity: 1, getKind: "percent", getPercent: 50 }, money, discountsEn.describe)).toBe(
       "Spend NO 500, get 1 at 50 % off",
     );
   });

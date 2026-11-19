@@ -20,6 +20,7 @@ import {
   type TimerSync,
   type TimerTarget,
 } from "./work-timer-ui";
+import { workEn } from "@/lib/admin-messages/work.en";
 
 const MIN = 60_000;
 const STARTED = "2026-09-29T10:00:00.000Z";
@@ -268,11 +269,11 @@ describe("estimate warnings", () => {
 
   it("says what the popup is about", () => {
     const timer = timerAt(0);
-    expect(alertMessage("near", timer)).toEqual({
+    expect(alertMessage("near", timer, workEn.labels.alert)).toEqual({
       title: "Nearly at the estimate",
       body: "The estimate for Design (1h) is nearly used up.",
     });
-    const over = alertMessage("over", { ...timer, taskTitle: null });
+    const over = alertMessage("over", { ...timer, taskTitle: null }, workEn.labels.alert);
     expect(over.title).toBe("Estimate used up");
     expect(over.body).toContain("Website");
   });

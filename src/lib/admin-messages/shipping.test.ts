@@ -44,9 +44,9 @@ describe("the shipping catalogue (D312 A8)", () => {
 
   it("writes a rate block's problems in the words given, English unless given", () => {
     const block = { zoneId: null, profileId: null, basis: "flat" as const, flat: "", tiers: [] };
-    expect(groupsFromBlocks([block], "NOK").problems[0].message).toBe("Enter the price in NOK.");
+    expect(groupsFromBlocks([block], "NOK", shippingEn.method).problems[0].message).toBe("Enter the price in NOK.");
     expect(groupsFromBlocks([block], "NOK", shippingNb.method).problems[0].message).toBe("Skriv inn prisen i NOK.");
-    expect(notOfferedWords("Rest of country", "General")).toBe("This method is not offered to a basket with General products sent to Rest of country.");
+    expect(notOfferedWords("Rest of country", "General", shippingEn.method)).toBe("This method is not offered to a basket with General products sent to Rest of country.");
     expect(notOfferedWords("Resten av landet", "Generelt", shippingNb.method)).toContain("tilbys ikke");
   });
 });
