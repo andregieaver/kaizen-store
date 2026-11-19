@@ -796,6 +796,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D791 | **The migrations ledger is the record** | 2026-11-19 | [text](decisions/D791.md) |
 | D792 | **Mail to reserved test domains is logged, never sent** | 2026-11-19 | [text](decisions/D792.md) |
 | D793 | **A stale eval recording or a long wait never holds back a release that passed** | 2026-11-19 | [text](decisions/D793.md) |
+| D794 | **Tests for how owners get paid: Stripe Connect against a stand-in (code review 1.9, FH9)** | 2026-11-19 | [text](decisions/D794.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
