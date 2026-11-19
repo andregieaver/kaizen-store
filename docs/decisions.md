@@ -820,6 +820,8 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D815 | **Kaizena Flow's Stripe webhooks are replaced new first: the old ones go only after the new secrets are saved** | 2026-11-19 | [text](decisions/D815.md) |
 | D816 | **The proxy imports leaf readers only** | 2026-11-19 | [text](decisions/D816.md) |
 | D817 | **Contracts sent a month on Usage and limits: a count, and a soft limit nobody sets yet** | 2026-11-19 | [text](decisions/D817.md) |
+| D818 | **The admin kit: Field, TextInput, Select, EmptyState, ConfirmButton, Pager and ListSearch in the admin's ui (code review** | 2026-11-19 | [text](decisions/D818.md) |
+| D819 | **Admin redesign round 59: add a customer, bring a domain here and recordings on a phone** | 2026-11-19 | [text](decisions/D819.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

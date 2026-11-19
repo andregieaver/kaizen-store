@@ -1,6 +1,6 @@
 {
-  "id": "891dca38-23a9-461e-b410-4289388c989f",
-  "prevId": "94695b33-b696-4682-b288-72c5dc4464cb",
+  "id": "3e9586b1-c283-4ab0-8345-869f1fbbc704",
+  "prevId": "891dca38-23a9-461e-b410-4289388c989f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -32667,6 +32667,12 @@
         "email_clicks_flow_idx": {
           "name": "email_clicks_flow_idx",
           "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
             {
               "expression": "flow_id",
               "isExpression": false,

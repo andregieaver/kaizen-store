@@ -30,8 +30,16 @@ export default async function NewCustomerPage({ params }: PageProps<"/admin/[sto
   return (
     <AdminTextScope texts={adminTexts(lang, ["customers"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader back={{ href: `/admin/${store.slug}/customers`, label: w.newPage.back }} title={w.newPage.title} description={w.newPage.description} />
-        <Card title={w.newPage.details}>
+        <PageHeader back={{ href: `/admin/${store.slug}/customers`, label: w.newPage.back }} title={w.newPage.title}
+          description={
+            <>
+              <span className="sm:hidden">{w.newPage.phoneLead}</span>
+              <span className="max-sm:hidden">{w.newPage.description}</span>
+            </>
+          }
+        />
+        {/* Round 59 (D819): on a phone the form's one card has no heading, so Add customer is on the first screen. */}
+        <Card title={w.newPage.details} className="max-sm:p-4 max-sm:[&>header]:sr-only">
           <CustomerForm action={createCustomerAction.bind(null, store.slug)} values={EMPTY_CUSTOMER_FORM} words={w.form} submit={w.form.create} />
         </Card>
       </div>

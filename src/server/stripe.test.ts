@@ -30,7 +30,7 @@ vi.mock("stripe", async (importActual) => {
 
 const { stripe, stripeRefusal } = await import("./stripe-test-support");
 built.answer = (key) => stripe.platform(key.startsWith("sk_live") ? "live" : "test");
-const { platformStripe, createPlatformWebhooks, STRIPE_API_VERSION, WEBHOOK_EVENTS, BILLING_EVENTS, ACCOUNT_EVENTS } = await import("./stripe");
+const { platformStripe, createPlatformWebhooks, retirePlatformWebhooks, STRIPE_API_VERSION, WEBHOOK_EVENTS, BILLING_EVENTS, ACCOUNT_EVENTS } = await import("./stripe");
 
 const origin = "https://kaizenaflow.test";
 
@@ -83,16 +83,38 @@ describe("the platform's webhooks (createPlatformWebhooks)", () => {
     ]);
   });
 
-  it("replaces the endpoints at its own addresses when connected again, and leaves every other endpoint alone", async () => {
+  it("makes the new endpoints first, names the earlier ones at its own addresses, and retires only those (D815)", async () => {
     const elsewhere = await (stripe.platform("live") as unknown as { webhookEndpoints: { create: (p: object) => Promise<{ id: string }> } }).webhookEndpoints.create({ url: "https://books.example/stripe", enabled_events: ["invoice.paid"] });
-    const before = [...stripe.endpoints.keys()];
+    const before = [...stripe.endpoints.keys()].filter((id) => id !== elsewhere.id);
+    const beforeDestinations = [...stripe.destinations.keys()];
     const result = await createPlatformWebhooks("live", origin);
-    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.problem);
+    // Until the new secrets are saved, the earlier endpoints keep working beside the new ones.
+    expect(before.every((id) => stripe.endpoints.has(id))).toBe(true);
+    expect(beforeDestinations.every((id) => stripe.destinations.has(id))).toBe(true);
+    expect([...result.earlier.endpoints].sort()).toEqual([...before].sort());
+    expect(result.earlier.destinations).toEqual(beforeDestinations);
+
+    expect(await retirePlatformWebhooks("live", result.earlier)).toBe(0);
     const urls = [...stripe.endpoints.values()].map((e) => e.url).sort();
     expect(urls).toEqual([`${origin}/api/stripe/billing/live`, `${origin}/api/stripe/connect/live`, "https://books.example/stripe"].sort());
     expect(stripe.endpoints.has(elsewhere.id)).toBe(true);
-    expect(before.filter((id) => id !== elsewhere.id).some((id) => stripe.endpoints.has(id))).toBe(false);
+    expect(before.some((id) => stripe.endpoints.has(id))).toBe(false);
     expect([...stripe.destinations.values()].map((d) => d.webhook_endpoint.url)).toEqual([`${origin}/api/stripe/connect/live/accounts`]);
+  });
+
+  it("keeps the working endpoints when Stripe fails part way, and deletes what it made (D815)", async () => {
+    const endpoints = new Set(stripe.endpoints.keys());
+    const destinations = new Set(stripe.destinations.keys());
+    stripe.failNext.set("eventDestinations.create", stripeRefusal("You have reached the maximum of 16 test webhook endpoints."));
+    expect(await createPlatformWebhooks("live", origin)).toEqual({ ok: false, problem: "You have reached the maximum of 16 test webhook endpoints." });
+    expect(new Set(stripe.endpoints.keys())).toEqual(endpoints);
+    expect(new Set(stripe.destinations.keys())).toEqual(destinations);
+
+    stripe.failNext.set("webhookEndpoints.del", new Error("socket hang up"));
+    const made = await createPlatformWebhooks("live", origin);
+    if (!made.ok) throw new Error(made.problem);
+    expect(await retirePlatformWebhooks("live", made.earlier)).toBe(1);
   });
 
   it("makes each mode's endpoints on that mode's account", async () => {

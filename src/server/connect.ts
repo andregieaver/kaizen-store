@@ -12,7 +12,7 @@ import { accountStatus, requirementNotes, type AccountStatus, type PaymentModeNa
 
 import { audit, type Account, type Membership } from "./auth";
 import type { SaveResult } from "./settings";
-import { createPlatformWebhooks, platformStripe, type WebhookKind } from "./stripe";
+import { createPlatformWebhooks, platformStripe, retirePlatformWebhooks, type WebhookKind } from "./stripe";
 import { refreshBuyFacts, refreshBuyPlatform } from "./buy-facts";
 import { log } from "./log";
 import { perRequest } from "./request-memo";
@@ -445,7 +445,10 @@ export async function getPlatformWebhookSecret(mode: PaymentModeName, kind: Webh
   return row ? decryptSecret(String(row.secret_ciphertext), key) : null;
 }
 
-/** Creates Kaizen's webhooks in its Stripe account and saves their secrets. */
+/**
+ * Creates Kaizena Flow's webhooks in its Stripe account and saves their secrets, then retires the earlier ones (D815): new first, so a
+ * Stripe failure part way leaves the webhooks that already work, and the old endpoints go only once every new secret is saved.
+ */
 export async function connectPlatformWebhooks(
   account: Account,
   mode: PaymentModeName,
@@ -466,6 +469,8 @@ export async function connectPlatformWebhooks(
         updated_at = now(), updated_by = excluded.updated_by
     `);
   }
+  const left = await retirePlatformWebhooks(mode, created.earlier);
+  if (left > 0) log("warn", "stripe.webhooks_left", { mode, left });
   await audit(account.id, null, "platform.stripe_webhooks_connected", { mode, origin });
   return { ok: true };
 }
