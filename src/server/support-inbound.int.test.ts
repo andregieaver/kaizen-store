@@ -46,7 +46,7 @@ const env = { SUPPORT_INBOUND_DOMAIN: DOMAIN, RESEND_API_KEY: "re_test" };
 let store: Awaited<ReturnType<typeof makeStore>>;
 let deskAddress: string;
 const emails = new Map<string, ReceivedEmail>();
-const turns: { email?: boolean; customer: unknown }[] = [];
+const turns: { email?: boolean; customer: unknown; account?: unknown }[] = [];
 
 /** Resend refusing our key (a sending-only key) while true. */
 let keyRefused = false;
@@ -58,7 +58,7 @@ const fakeFetch = (async (url: string) => {
 }) as unknown as typeof fetch;
 
 const fakeTurn: NonNullable<InboundDeps["turn"]> = async (desk, _context, conversationId, _input, customer, _admin, channel) => {
-  turns.push({ email: channel?.email, customer });
+  turns.push({ email: channel?.email, customer, ...(channel?.account ? { account: channel.account } : {}) });
   await support.addMessage(desk, conversationId, "ai", null, "Your parcel is on its way.");
   return { reply: null };
 };
@@ -319,6 +319,48 @@ describe("email into the desk", () => {
     // Never for a store with sensitive information, whatever the switch.
     expect(support.settingsOf({ sensitive: true, email_orders: true }).emailOrders).toBe(false);
     await db().execute(sql`update commerce.support_settings set email_orders = false where store_id = ${store.id}::uuid`);
+  });
+
+  it("gives the AI a Kaizena Flow account's own stores by email only on Kaizena Flow's own desks, for the one account with the sender's address", async () => {
+    await db().execute(sql`delete from commerce.accounts where lower(email) = 'owner.kari@inbound.example'`);
+    const [account] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values ('Owner.Kari@inbound.example', 'Kari') returning id`);
+    const expected = { id: String(account.id), email: "Owner.Kari@inbound.example", name: "Kari", platformAdmin: false };
+    const settings = support.settingsOf({});
+    // Another store's desk: never, even from the account's own address.
+    const { row: own } = await receive(deskAddress, "owner.kari@inbound.example", { subject: "My stores" });
+    expect(await inbound.emailAccount(systemDesk(store.id), settings, String(own.conversation_id))).toBeNull();
+
+    // Kaizena Flow's own store: the account, and through the AI's turn.
+    const [house] = await db().execute<Row>(sql`select commerce.make_house_store() as id`);
+    const houseId = String(house.id);
+    await support.ensureDesk(systemDesk(houseId));
+    await db().execute(sql`update commerce.support_settings set mode = 'ai_first', tone_on = false, summaries_on = false where store_id = ${houseId}::uuid`);
+    await db().execute(sql`insert into commerce.chat_agents (store_id, enabled, name) values (${houseId}::uuid, true, 'Flo') on conflict do nothing`);
+    background.aiStores.add(houseId);
+    const houseAddress = (await inbound.deskEmailAddress(systemDesk(houseId), env))!;
+    const { row } = await receive(houseAddress, "owner.kari@inbound.example", { subject: "How many websites?" });
+    expect(await inbound.emailAccount(systemDesk(houseId), settings, String(row.conversation_id))).toEqual(expected);
+    expect(turns.at(-1)).toMatchObject({ email: true, account: expected });
+    // Someone else's address is no account's; a desk for sensitive information never reads one.
+    const { row: stranger } = await receive(houseAddress, "stranger@inbound.example", { subject: "Hello" });
+    expect(await inbound.emailAccount(systemDesk(houseId), settings, String(stranger.conversation_id))).toBeNull();
+    expect(turns.at(-1)).not.toHaveProperty("account");
+    expect(await inbound.emailAccount(systemDesk(houseId), support.settingsOf({ sensitive: true }), String(row.conversation_id))).toBeNull();
+
+    // The platform's own desk: the account too.
+    await support.ensureDesk(systemDesk(null));
+    const [before] = await db().execute<Row>(sql`select mode, tone_on, summaries_on from commerce.support_settings where store_id is null`);
+    await db().execute(sql`update commerce.support_settings set mode = 'people', tone_on = false, summaries_on = false where store_id is null`);
+    try {
+      const platformAddress = (await inbound.deskEmailAddress(systemDesk(null), env))!;
+      const { row: platform } = await receive(platformAddress, "owner.kari@inbound.example", { subject: "My plan" });
+      expect(await inbound.emailAccount(systemDesk(null), settings, String(platform.conversation_id))).toEqual(expected);
+    } finally {
+      await db().execute(sql`update commerce.support_settings set mode = ${before.mode}, tone_on = ${before.tone_on}, summaries_on = ${before.summaries_on} where store_id is null`);
+    }
+
+    await db().execute(sql`delete from commerce.support_inbound_emails where from_address like '%@inbound.example'`);
+    await db().execute(sql`delete from commerce.accounts where id = ${String(account.id)}::uuid`);
   });
 });
 

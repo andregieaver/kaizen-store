@@ -13,7 +13,7 @@ import type { ChatContext } from "./chat-route";
 import { addMessage, historyForAi } from "./support";
 import type { Desk } from "./support-desk";
 import type { Account } from "./auth";
-import { aboutStoreOf, kaizenToolsFor } from "./support-kaizen";
+import { aboutStoreOf, joinTools, kaizenToolsFor } from "./support-kaizen";
 import { supportToolsFor, type SupportCustomer } from "./support-tools";
 import { chatPromptVersion } from "./prompt-versions";
 import { gapOf } from "@/lib/unanswered-questions";
@@ -45,8 +45,10 @@ export async function runSupportTurn(
   admin: { requester: Account } | null = null,
   /** A conversation by email (D332): the AI is told so and has no tool that needs a button, nor one that needs a signed-in customer unless
    * `customer` is the sender's own (B1, `emailCustomer()`). `onText`: the
-   * answer's finished sentences as they are written, for the chat to show (PSI PERF-08); the message is kept whole, as without it. */
-  channel: { email?: boolean; onText?: (shown: string) => void } = {},
+   * answer's finished sentences as they are written, for the chat to show (PSI PERF-08); the message is kept whole, as without it.
+   * `account`: by email on Kaizena Flow's own desks, the account whose address the sender's is (`emailAccount()`): its stores' tools, which
+   * only read. */
+  channel: { email?: boolean; onText?: (shown: string) => void; account?: Account | null } = {},
 ): Promise<SupportTurn> {
   const m = t(context.lang);
   if (!context.agent || !context.connection) return { reply: null, error: m.chat.sorry };
@@ -64,13 +66,14 @@ export async function runSupportTurn(
   };
   let reply: ChatReply;
   try {
+    const accountTools = channel.email && channel.account ? kaizenToolsFor(channel.account, null, { email: true }) : null;
     const support =
       // On a site of the owner's own (D582) nobody can sign in, so none of support's tools for a customer's orders is offered there.
       context.site.kind === "store" && !context.site.embed
-        ? await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId, email: channel.email })
+        ? joinTools(await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId, email: channel.email }), accountTools)
         : admin
           ? kaizenToolsFor(admin.requester, await aboutStoreOf(conversationId))
-          : null;
+          : accountTools;
     reply = await runChat(context.site, context.agent, request, context.connection, {
       handoff: context.settings.mode === "ai_first",
       ...(support ? { support } : {}),
@@ -78,6 +81,7 @@ export async function runSupportTurn(
       email: channel.email,
       // By email a customer is given only when the sender's address is theirs (`emailCustomer()` in `support-inbound.ts`).
       emailOrders: Boolean(channel.email && customer),
+      emailAccount: Boolean(accountTools),
       ...(channel.onText ? { onText: channel.onText } : {}),
     });
   } catch (error) {

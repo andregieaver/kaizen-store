@@ -1305,6 +1305,13 @@ back, at most `THREAD_IDS_MAX`), found by the conversation's first Message-ID or
 only when it comes from the conversation's own address; otherwise, or with no ids it knows, it starts a new conversation as before.
 The 24 hours of `REOPEN_HOURS` still apply.
 
+**An account's own stores by email.** On Kaizena Flow's own desks (the platform's and the house store's, D484), an email from the address of
+a Kaizena Flow account gives the AI `my_stores` and `store_status` for that account (`emailAccount()`, joined with the house store's own
+tools by `joinTools()`), so "how many websites do I have?" is answered instead of handed over. Only one account may have the address, never
+on a desk for sensitive information; as with the orders of B1, the email reached the AI only with a DMARC check that did not fail, the
+answer goes to that address alone and the tools only read. `find_admin_page` is left out by email (its links are buttons). Every email
+answer is written in the language of the customer's last email, whatever the site's language.
+
 **Receiving.** Resend's `email.received` event reaches the signed webhook that already takes delivery events
 (`/api/resend/webhook`, `RESEND_WEBHOOK_SECRET`). The event is kept at once as a row of `commerce.support_inbound_emails` (Resend's id
 unique, so a repeated event does nothing; from, subject, Message-ID, when) and the work runs after the answer (`after()`) and every
