@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { conversionFactor, type Rates } from "./currency";
+import { PLATFORM_TIME_ZONE } from "./dates";
 import type { PageBlock, PageColumn, PageRow } from "./page-content";
 
 /**
@@ -619,7 +620,7 @@ export type VisibilityChoices = {
 
 export const KAIZEN_CHOICES: VisibilityChoices = {
   owner: "kaizen",
-  timeZone: "Europe/Oslo",
+  timeZone: PLATFORM_TIME_ZONE,
   currency: "EUR",
   groups: [],
   companies: null,

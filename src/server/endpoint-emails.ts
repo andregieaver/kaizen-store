@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
+import { dateIn } from "@/lib/dates";
 import { renderEmail, type RenderedEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 
@@ -20,7 +21,7 @@ type Row = Record<string, unknown>;
  * endpoint's page says it was switched off anyway.
  */
 export async function notifyEndpointOff(
-  store: { id: string; slug: string; name: string },
+  store: { id: string; slug: string; name: string; /** When it began failing is read on the store's clock (D796). */ timeZone: string },
   endpoint: { id: string; name: string; hint: string; since: string; error: string },
 ): Promise<void> {
   try {
@@ -35,7 +36,7 @@ export async function notifyEndpointOff(
       if (!emails.has(lang)) {
         const words = STAFF_EMAILS_WORDS[lang];
         const w = words.endpointOff;
-        const since = new Date(endpoint.since).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+        const since = dateIn(store, endpoint.since, "dayTime", lang);
         const facts = { name: endpoint.name, hint: endpoint.hint, store: store.name, since, error: endpoint.error.slice(0, 200) || "-" };
         emails.set(
           lang,

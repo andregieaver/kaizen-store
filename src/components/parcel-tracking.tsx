@@ -1,3 +1,4 @@
+import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import {
   EVENTS_SHOWN,
@@ -52,12 +53,12 @@ export function ParcelTracking({
   tracking: ParcelTrackingRow | undefined;
   m: Pick<Messages, "tracking">;
   locale: string;
-  timeZone?: string;
+  /** The store's zone (D796): never left out, so a page drawn on the server does not fall back to UTC's clock. */
+  timeZone: string;
 }) {
   if (!tracking || !tracking.followed) return null;
   const w = m.tracking;
   const carrier = CARRIER_NAMES[tracking.followed] ?? tracking.followed;
-  const zone = timeZone ? { timeZone } : {};
   const events = [...tracking.events].sort((a, b) =>
     a.at < b.at ? 1 : a.at > b.at ? -1 : 0,
   );
@@ -69,14 +70,8 @@ export function ParcelTracking({
     );
   }
   const phase = trackingPhaseLine(events);
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(locale, {
-      dateStyle: "medium",
-      timeStyle: "short",
-      ...zone,
-    });
-  const day = (iso: string) =>
-    new Date(iso).toLocaleDateString(locale, { dateStyle: "long", ...zone });
+  const when = (iso: string) => dateIn(timeZone, iso, "dayTime", locale);
+  const day = (iso: string) => dateIn(timeZone, iso, "long", locale);
   const line = (() => {
     if (!phase) return null;
     if (phase === "delivered")

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { dateIn } from "@/lib/dates";
 import type { EmailBlock } from "@/lib/email-layout";
 import { editLabel } from "@/lib/order-edit-status";
 
@@ -101,7 +102,7 @@ export async function sendOrderChangePayLink(storeId: string, editId: string, to
     const words = text.orderChanged;
     // Nothing has changed yet (CRD Art. 22: the change is applied only when the customer pays): the subject, heading, intro and lines say it is proposed.
     const reason = edit.reason === "other" ? null : words.proposedReasons[edit.reason];
-    const until = new Date(edit.expiresAt as string).toLocaleDateString(order.locale, { dateStyle: "long" });
+    const until = dateIn(store, edit.expiresAt, "long", order.locale);
     return {
       subject: words.proposedSubject(store.name, order.number),
       heading: words.proposedHeading,

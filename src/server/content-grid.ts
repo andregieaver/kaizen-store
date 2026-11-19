@@ -7,6 +7,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { readDb } from "@/db/client";
 import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
 import { customGridData } from "@/lib/custom-grid";
+import { PLATFORM_TIME_ZONE } from "@/lib/dates";
 import { assertNever, sourceTraits } from "@/lib/grid-source";
 import { tileFieldIds } from "@/lib/tile-fields";
 import { type ContentGridBlock, type PageContent, type PageType, termContentOf } from "@/lib/page-content";
@@ -225,7 +226,10 @@ async function gridPages(
   const wanted = filter.blog ? blogs.find((b) => b.id === filter.blog) : undefined;
   if (filter.blog && !wanted) return { ...EMPTY_GRID };
   const inWanted = wanted ? articleInBlog(wanted) : sql`true`;
-  const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: PLATFORM_LANG_FACTS[lang].messages, locale: PLATFORM_LANG_FACTS[lang].locale };
+  // An article's day is the store's own, the platform's on Kaizena Flow's pages (D796): the store is already at hand, no read more.
+  const language = shop
+    ? { lang: shop.market.lang, locale: shop.market.locale, timeZone: shop.store.timeZone }
+    : { lang: PLATFORM_LANG_FACTS[lang].messages, locale: PLATFORM_LANG_FACTS[lang].locale, timeZone: PLATFORM_TIME_ZONE };
   const terms = await currentTerms(owner, termContentOf(type));
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tags = knownIds(terms, "tag", filter.tags);

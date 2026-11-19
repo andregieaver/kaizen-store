@@ -8,6 +8,7 @@ import type Stripe from "stripe";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@/lib/booking-ranges";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
@@ -448,7 +449,7 @@ export async function placeOrder(
       needsServiceRequest(
         lines.map((l) => ({ delivery: String(l.delivery), startsAt: l.starts_at ? new Date(String(l.starts_at)) : null, withdrawalExclusion: String(l.withdrawal_exclusion) })),
         new Date(),
-        String(cart.time_zone ?? "Europe/Oslo"),
+        storeZoneOf(cart.time_zone),
       );
 
     const rate = await typedRow(
@@ -565,7 +566,7 @@ export async function placeOrder(
     const asked = flatRateOnly
       ? { answers: [], missing: [] }
       : cleanAnswers(await askedFields(tx, storeId, cartId, market, { customerId, basketValueMinor }), answersByField(cart.checkout_answers), {
-          today: todayInZone(String(cart.time_zone ?? "Europe/Oslo")),
+          today: todayInZone(storeZoneOf(cart.time_zone)),
           country: market.code,
         });
     if (asked.missing.length > 0) return { ok: false, problem: "checkout_fields" };

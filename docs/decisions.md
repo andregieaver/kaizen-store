@@ -798,7 +798,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D793 | **A stale eval recording or a long wait never holds back a release that passed** | 2026-11-19 | [text](decisions/D793.md) |
 | D794 | **Tests for how owners get paid** | 2026-11-19 | [text](decisions/D794.md) |
 | D795 | **Contracts' upkeep runs in the five-minute dispatcher, and it calls the PDF route only when a signed contract waits for its seal** | 2026-11-19 | [text](decisions/D795.md) |
-| D796 | **Dates shoppers see in the store's own time zone: storefront, shopper emails and contracts (code review 1.14's next, FS11** | 2026-11-19 | [text](decisions/D796.md) |
+| D796 | **Dates shoppers see in the store's own time zone** | 2026-11-19 | [text](decisions/D796.md) |
 | D797 | **The AI answers a store's form messages (100-day B2)** | 2026-11-19 | [text](decisions/D797.md) |
 | D798 | **Admin redesign round 53: live, stock locations and authors on a phone** | 2026-11-19 | [text](decisions/D798.md) |
 | D799 | **No English catalogue in the admin's client code** | 2026-11-19 | [text](decisions/D799.md) |
@@ -812,6 +812,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D807 | **Invoices' and credit notes' PDFs are made ahead: the dispatcher asks the PDF route when a document waits** | 2026-11-19 | [text](decisions/D807.md) |
 | D808 | **A/B tests: the platform's page leads to Kaizena Flow's own site's tests** | 2026-11-19 | [text](decisions/D808.md) |
 | D809 | **Admin redesign round 56: new segment, Google reviews and wishlists on a phone** | 2026-11-19 | [text](decisions/D809.md) |
+| D810 | **Contracts in the Admin API: read-only, the webhooks' fields and drafts, under customers:read** | 2026-11-19 | [text](decisions/D810.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

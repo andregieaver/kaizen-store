@@ -47,12 +47,12 @@ describe("referral credits in the ledger's views", () => {
 
   it("count as credits that become usable later, never more than the balance says is pending", () => {
     const earn: BonusEntry = { ...referral, id: "e1", kind: "earn", amountMinor: 600, availableAt: "2026-10-14T00:00:00Z" };
-    expect(pendingParts([referral, earn], 3_100, now)).toEqual([
+    expect(pendingParts([referral, earn], 3_100, now, "Europe/Oslo")).toEqual([
       { availableAt: "2026-10-13T00:00:00Z", amountMinor: 2_500 },
       { availableAt: "2026-10-14T00:00:00Z", amountMinor: 600 },
     ]);
     // A part of it was taken back: the later credits are cut first.
-    expect(pendingParts([referral, earn], 2_800, now)).toEqual([
+    expect(pendingParts([referral, earn], 2_800, now, "Europe/Oslo")).toEqual([
       { availableAt: "2026-10-13T00:00:00Z", amountMinor: 2_500 },
       { availableAt: "2026-10-14T00:00:00Z", amountMinor: 300 },
     ]);
@@ -71,7 +71,7 @@ describe("referral credits in the ledger's views", () => {
       signupMinor: 0,
       birthdayMinor: 0,
     };
-    const words = renderToString(createElement(BonusAccountView, { bonus, m: t("en"), locale: "en-IE", base: "/s/demo/ie", orderIds: {}, now }))
+    const words = renderToString(createElement(BonusAccountView, { bonus, m: t("en"), locale: "en-IE", timeZone: "Europe/Dublin", base: "/s/demo/ie", orderIds: {}, now }))
       .replace(/<!-- -->/g, "")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ");

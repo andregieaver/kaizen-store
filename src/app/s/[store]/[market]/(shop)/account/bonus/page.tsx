@@ -63,6 +63,7 @@ async function AccountBonus({ params, searchParams }: { params: Props["params"];
       bonus={bonus}
       m={t(market.lang)}
       locale={market.locale}
+      timeZone={store.timeZone}
       base={base}
       orderIds={Object.fromEntries(orders.map((order) => [order.number, order.id]))}
       decimals={market.priceStyle?.decimals}
@@ -74,6 +75,7 @@ async function AccountBonus({ params, searchParams }: { params: Props["params"];
       birthdayMinor={bonus.birthdayMinor}
       currency={bonus.currency}
       locale={market.locale}
+      timeZone={store.timeZone}
       m={t(market.lang)}
       outcome={outcome}
       redeem={redeemRewardAction.bind(null, store.slug, market.slug)}

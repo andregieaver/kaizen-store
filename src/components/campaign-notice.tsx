@@ -1,18 +1,20 @@
 import { CampaignEnds } from "@/components/campaign-ends";
 import { cardNotices, noticeText, type CampaignNotice } from "@/lib/campaign-notices";
+import { dateIn } from "@/lib/dates";
 import type { Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 
 /**
  * A store's campaigns on a product's page (D115): each with its name, what
- * it offers, that it is taken off in the cart, and until when. Plain HTML in
+ * it offers, that it is taken off in the cart, and until when, on the store's
+ * own day (D796: one ending at 23:59 in New York ends that day). Plain HTML in
  * the page's cached shell.
  */
-export function CampaignNotices({ notices, market, m }: { notices: CampaignNotice[]; market: Market; m: Messages }) {
+export function CampaignNotices({ notices, market, timeZone, m }: { notices: CampaignNotice[]; market: Market; timeZone: string; m: Messages }) {
   if (notices.length === 0) return null;
   const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => dateIn(timeZone, iso, "long", market.locale);
   return (
     <ul className="flex flex-col gap-2" aria-label={notices.map((notice) => notice.name).join(", ")}>
       {notices.map((notice) => (

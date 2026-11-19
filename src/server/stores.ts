@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { isAccountsMode, type AccountsMode } from "@/lib/customer-accounts";
 import { isContactMode, type CheckoutContactSettings } from "@/lib/checkout-contact";
 import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
@@ -360,7 +361,7 @@ async function readStore(slug: string): Promise<Store | null> {
     workOn: ((row.modules ?? []) as string[]).includes("work"),
     organisationId: text(row.organisation_id),
     extensionFacts: row.extension_facts ?? null,
-    timeZone: String(row.time_zone ?? "Europe/Oslo"),
+    timeZone: storeZoneOf(row.time_zone),
     bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
     ...localized(row),
     seo: parseStoreSeo(row.seo),

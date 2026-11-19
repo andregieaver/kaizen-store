@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
+import { zoneOf } from "@/lib/dates";
 import { dueFrom, dueWords, FOLLOW_UP_REPEATS, FOLLOW_UPS_MAX, TASK_MAX } from "@/lib/follow-ups";
 import { RULE_LIMITS } from "@/lib/order-rules";
 import { can } from "@/lib/permissions";
@@ -24,7 +25,8 @@ const fail = (message: string): never => {
   throw new OwnerToolError(message);
 };
 
-const timeZoneOf = (ctx: Pick<ManagerContext, "store">) => ctx.store?.timeZone ?? "Europe/Oslo";
+/** The store's zone; the platform's for the platform's own assistant, which has no store (D796). */
+const timeZoneOf = (ctx: Pick<ManagerContext, "store">) => zoneOf(ctx.store);
 const inArea = (ctx: Pick<ManagerContext, "store">) => (ctx.store ? sql`store_id = ${ctx.store.id}::uuid` : sql`store_id is null`);
 
 const WAITING_ROW = z.object({ id: col.uuid, task: col.text, due_at: col.timestamp, repeat: z.enum(FOLLOW_UP_REPEATS) });

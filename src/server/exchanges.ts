@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { adjustmentOf } from "@/lib/credit-allocation";
 import { checkCash } from "@/lib/cash-limits";
 import { lineWithdrawal } from "@/lib/checkout";
@@ -900,7 +901,7 @@ export async function proposeExchange(
   if (options.createLink && ret.kind === "withdrawal") return refuse("link_withdrawal");
   if (ret.kind === "withdrawal" && (await emailChangedSinceReturn(storeId, returnId))) return refuse("email_changed");
   const zone = await typedRow(ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  const end = exchangeDeadline({ kind: ret.kind, step: "proposal", now: options.now ?? new Date(), refundDeadline: ret.refundDeadline, timeZone: String(zone?.time_zone ?? "Europe/Oslo") });
+  const end = exchangeDeadline({ kind: ret.kind, step: "proposal", now: options.now ?? new Date(), refundDeadline: ret.refundDeadline, timeZone: storeZoneOf(zone?.time_zone) });
   if (!end.ok) return refuse("deadline_near");
   const { token, hash } = newExchangeToken();
   const done = await guarded(() =>
@@ -1202,7 +1203,7 @@ export async function processExchange(storeId: string, actor: OrderActor, exchan
   const outcome = exchangeOutcome(credit.amountMinor, x.totalMinor);
   if (!creditStillHolds(x.differenceMinor, outcome.differenceMinor)) return refuse("credit_changed");
   const zone = await typedRow(ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  const payEnd = exchangeDeadline({ kind: ret.kind, step: "pay", now, refundDeadline: ret.refundDeadline, timeZone: String(zone?.time_zone ?? "Europe/Oslo") });
+  const payEnd = exchangeDeadline({ kind: ret.kind, step: "pay", now, refundDeadline: ret.refundDeadline, timeZone: storeZoneOf(zone?.time_zone) });
   if (outcome.toPayMinor > 0 && !payEnd.ok) return refuse("deadline_near");
   const holdUntil: { at: Date } | { minutes: number } = outcome.toPayMinor > 0 && payEnd.ok ? { at: payEnd.expiresAt } : { minutes: EXCHANGE_SETTLE_HOLD_MINUTES };
   const lines = x.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity, unitPriceMinor: l.unitPriceMinor }));

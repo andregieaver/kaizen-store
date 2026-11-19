@@ -143,7 +143,7 @@ export async function pausedStores(): Promise<{ storeId: string | null; name: st
 async function tellOwners(storeId: string | null, reason: GuardReason, counts: GuardCounts, since: Date): Promise<void> {
   if (!storeId) return;
   try {
-    const store = await typedRow(z.object({ name: col.text, slug: col.text }), sql`select name, slug from commerce.stores where id = ${storeId}::uuid`);
+    const store = await typedRow(z.object({ name: col.text, slug: col.text, time_zone: col.text }), sql`select name, slug, time_zone from commerce.stores where id = ${storeId}::uuid`);
     if (!store) return;
     const owners = await typedRows(
       z.object({ id: col.uuid, email: col.text, admin_locale: col.textOrNull }),
@@ -160,7 +160,7 @@ async function tellOwners(storeId: string | null, reason: GuardReason, counts: G
         storeId,
         kind: "marketing.paused",
         to: owner.email,
-        email: renderEmail(pausedEmail({ storeName: store.name, reason, counts, since, url: `${siteUrl()}/admin/${store.slug}/marketing` }, STAFF_EMAILS_WORDS[lang], lang)),
+        email: renderEmail(pausedEmail({ storeName: store.name, timeZone: store.time_zone, reason, counts, since, url: `${siteUrl()}/admin/${store.slug}/marketing` }, STAFF_EMAILS_WORDS[lang], lang)),
         fromName: "Kaizena Flow",
         idempotencyKey: `marketing.paused:${storeId}:${owner.id}:${at}`,
       });

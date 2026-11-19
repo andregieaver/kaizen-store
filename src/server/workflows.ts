@@ -445,7 +445,7 @@ export async function queueScheduledRuns(now = new Date()): Promise<number> {
   );
   let queued = 0;
   for (const flow of due) {
-    const key = scheduleDue(flow.schedule as WorkflowSchedule, localNow(flow.time_zone || "Europe/Oslo", now));
+    const key = scheduleDue(flow.schedule as WorkflowSchedule, localNow(flow.time_zone, now));
     if (!key) continue;
     const rows = await db().execute(sql`
       insert into commerce.workflow_runs (store_id, workflow_id, event, event_key)

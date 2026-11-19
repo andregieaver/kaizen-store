@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { storeZoneOf } from "@/lib/dates";
 import { dayIn, noonOf } from "@/lib/work-dates";
 
 import { markSentWithin as sendWithin } from "./order-admin";
@@ -62,7 +63,7 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
       }
       // Goods ordered together and delivered separately are received when the last one is (CRD Art. 9(2)(b), D174): a partly sent order has no receipt yet.
       if (status === "paid") return refusal("not_sent_in_full", "Record the receipt when the last parcel has arrived: part of this order is still to send.");
-      const zone = String(order.time_zone ?? "Europe/Oslo");
+      const zone = storeZoneOf(order.time_zone);
       const day = on ?? dayIn(now, zone);
       let at = noonOf(day, zone);
       if (at.getTime() > now.getTime()) {

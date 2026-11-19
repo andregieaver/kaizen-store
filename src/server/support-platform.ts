@@ -21,9 +21,9 @@ type Row = Record<string, unknown>;
 export type StoreSupportTotals = { store: { id: string; slug: string; name: string }; mode: SupportMode; waiting: number; report: SupportReport };
 
 /**
- * The platform's per-store totals (2.8, *Stores*): every store with a support desk or a conversation in the period, over Europe/Oslo
- * days. Reads only `support_conversations`' counted columns and `support_settings`' mode: never a message, a summary's words, a
- * customer or a request's text.
+ * The platform's per-store totals (2.8, *Stores*): every store with a support desk or a conversation in the period, over the
+ * platform's days (`KAIZEN_TIME_ZONE`, Kaizena Flow's own clock for a screen that spans stores). Reads only `support_conversations`'
+ * counted columns and `support_settings`' mode: never a message, a summary's words, a customer or a request's text.
  */
 export async function storeTotals(period: Pick<AnalyticsPeriod, "from" | "to">): Promise<{ stores: StoreSupportTotals[]; cut: boolean }> {
   const [rows, stores] = await Promise.all([

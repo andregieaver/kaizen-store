@@ -32,6 +32,7 @@ import { contactLang } from "@/lib/staff-email-lang";
 import { lineUnitPriceText } from "@/lib/unit-price-text";
 import type { PlaceholderValues } from "@/lib/email-template";
 import { notificationOf } from "@/lib/notifications";
+import { dateIn, storeZoneOf } from "@/lib/dates";
 import { dayWords } from "@/lib/payment-terms";
 import { orderUpdateWords, type OrderUpdate } from "@/lib/order-update-email";
 
@@ -53,12 +54,15 @@ type Row = Record<string, unknown>;
  * language and kept in `email_messages`, sent or not.
  */
 
-/** What an email needs of its store, read fresh (webhooks and jobs run outside the page cache). */
-export type EmailStore = Pick<Store, "id" | "slug" | "name" | "details" | "markets" | "localization">;
+/**
+ * What an email needs of its store, read fresh (webhooks and jobs run outside the page cache). `timeZone` is the clock every date in its
+ * emails is read on (D796), read with the store, never on its own.
+ */
+export type EmailStore = Pick<Store, "id" | "slug" | "name" | "details" | "markets" | "localization" | "timeZone">;
 
 async function storeById(storeId: string): Promise<EmailStore | null> {
   const [row] = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.locales,
+    select s.id, s.slug, s.name, s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.locales, s.time_zone,
       (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
          from commerce.store_currencies c where c.store_id = s.id) as currencies,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale,
@@ -88,6 +92,7 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
       postalAddress: text(row.postal_address),
       country: text(row.country),
     },
+    timeZone: storeZoneOf(row.time_zone),
     markets,
     localization: localizationOf(
       ((row.locales ?? []) as string[]).map(String),
@@ -157,7 +162,7 @@ async function termsBlocks(storeId: string, order: OrderView, store: EmailStore,
     const url = record && record.snapshots.length > 0 ? await orderUrl(storeId, store, market, order.id) : null;
     if (!record || !url) return [];
     const key = new URL(url).searchParams.get("session_id") ?? "";
-    const date = record.acceptedAt.toLocaleDateString(market.locale, { dateStyle: "long" });
+    const date = dateIn(store, record.acceptedAt, "long", market.locale);
     return [
       { type: "paragraph", text: `${m.terms.orderHeading}\n${record.mode === "checkbox" ? m.terms.orderTicked(date) : m.terms.orderShown(date)}` },
       ...record.snapshots.map((shown) => ({
@@ -280,7 +285,7 @@ function companyText(order: OrderView, m: Messages): string | null {
   return order.company ? `${order.company.name}\n${m.company.number}: ${order.company.number}` : null;
 }
 
-function addressText(order: OrderView, m?: Messages, timeZone = "Europe/Oslo"): string | null {
+function addressText(order: OrderView, timeZone: string, m?: Messages): string | null {
   const a = order.shippingAddress;
   if (!order.ships || !a.line1) return null;
   const point = order.delivery?.pickupPoint;
@@ -328,7 +333,7 @@ export async function sendOrderConfirmation(
     { ...commonValues(order, store), order_total: money(order.totalMinor) },
   );
   const url = await orderUrl(storeId, store, market, orderId);
-  const address = addressText(order, m);
+  const address = addressText(order, store.timeZone, m);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const booked = bookedLines(order);
   // The invoice (D159): its number and a link, issued in the payment's own transaction; nothing when there is none (waiting, test, copied).
@@ -357,7 +362,7 @@ export async function sendOrderConfirmation(
     // Customs and duties (D343): what was paid at checkout (DDP), or that the recipient pays the carrier (DAP) with the estimate. Hand-written words.
     ...[orderCustomsSentence(order.customs, customsText(order.locale), money)].flatMap((customs) => (customs ? [{ type: "paragraph" as const, text: customs }] : [])),
     // The credits this order earned (D130), once it is paid: when they can be used.
-    ...[orderBonusEarned(text, order.bonus, money, (iso) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" }))].flatMap((earned) =>
+    ...[orderBonusEarned(text, order.bonus, money, (iso) => dateIn(store, iso, "long", market.locale))].flatMap((earned) =>
       earned ? [{ type: "paragraph" as const, text: earned }] : [],
     ),
     ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
@@ -603,7 +608,7 @@ export async function sendShipped(
     "order.sent",
     key,
     ({ order, text, store, m }) => {
-      const address = addressText(order, m);
+      const address = addressText(order, store.timeZone, m);
       const partial = contents.left > 0;
       return {
         subject: text.shippedSubject(store.name, order.number),
@@ -721,7 +726,7 @@ export const sendParcelDelivered = (storeId: string, orderId: string, shipmentId
  */
 export async function sendReadyForPickup(storeId: string, orderId: string, key = `order-ready:${orderId}`): Promise<SendOutcome | null> {
   const [facts] = await db().execute<Row>(sql`
-    select o.delivery_method, s.time_zone from commerce.orders o join commerce.stores s on s.id = o.store_id
+    select o.delivery_method from commerce.orders o
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `);
   if (!facts || facts.delivery_method !== "pickup") return null;
@@ -744,7 +749,7 @@ export async function sendReadyForPickup(storeId: string, orderId: string, key =
             number: order.number,
             lines: lines.filter((l) => Number(l.left_units) > 0).map((l) => ({ title: String(l.title), quantity: Number(l.left_units) })),
             locale: order.locale,
-            timeZone: String(facts.time_zone ?? "Europe/Oslo"),
+            timeZone: store.timeZone,
             now,
           })
         : [],
@@ -956,7 +961,7 @@ export async function sendCompanyInvite(
       { type: "paragraph", text: c.inviteIntro(invite.inviter, invite.company, store.name) },
       ...(invite.percent ? [{ type: "paragraph" as const, text: c.inviteDiscount(String(invite.percent)) }] : []),
       { type: "button", text: c.inviteButton, url },
-      { type: "paragraph", text: c.inviteExpires(new Date(invite.expiresAt).toLocaleDateString(market.locale, { dateStyle: "medium" })) },
+      { type: "paragraph", text: c.inviteExpires(dateIn(store, invite.expiresAt, "day", market.locale)) },
       { type: "paragraph", text: c.inviteIgnore },
     ],
   });
@@ -1092,8 +1097,7 @@ export async function sendSubscriptionChanged(
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
-  const date = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" }) : "";
+  const date = (value: string | null) => dateIn(store, value, "long", market.locale);
   const intro =
     change === "cancel"
       ? text.changes.cancel(date(subscription.endsAt))
@@ -1140,7 +1144,7 @@ export async function sendRenewalReminder(
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
-  const date = chargeAt.toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
+  const date = dateIn(store, chargeAt, "long", market.locale);
   const amount = money(subscription.totalMinor);
   const intro = kind === "trial" ? text.trialIntro(date, amount) : text.reminderIntro(date, amount);
   const email = renderEmail({
@@ -1556,7 +1560,7 @@ export async function sendDeliveryPrepared(storeId: string, listId: string, date
             },
           ]
         : []),
-      ...(order ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${addressText(order) ?? ""}` }] : []),
+      ...(order ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${addressText(order, store.timeZone) ?? ""}` }] : []),
       { type: "button", text: d.manage, url: ctx.listUrl },
     ],
   });

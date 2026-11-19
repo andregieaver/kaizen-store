@@ -8,6 +8,7 @@ import { PageArticle } from "@/components/page-article";
 import { ScopedCss } from "@/components/custom-css";
 import { PreviewBreakpoints } from "@/components/part-styles";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { PageType } from "@/lib/page-content";
 import { requirePlatformReader } from "@/server/auth";
 import { getPlatformChrome } from "@/server/platform-navigation";
@@ -70,6 +71,7 @@ export async function PreviewPageView({ type, params, searchParams, themeStore =
             byline={page.draft.author || "Kaizena Flow"}
             lang="en"
             locale="en-GB"
+            timeZone={PLATFORM_TIME_ZONE}
             place={{ pageId: page.id, owner: null }}
             inAdmin
           />

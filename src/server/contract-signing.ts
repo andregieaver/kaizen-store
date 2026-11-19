@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import type { ContractSnapshot } from "@/lib/contract-fields";
 import { maskEmail, signingText } from "@/lib/contract-signing-text";
+import { dateIn } from "@/lib/dates";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { marketUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
@@ -189,8 +190,6 @@ const signUrl = (storeSlug: string, marketSlug: string, token: string) => market
 const adminContractUrl = (storeSlug: string, dealId: string | null, contractId: string) =>
   dealId ? `${siteUrl()}/admin/${storeSlug}/deals/${dealId}/contracts/${contractId}` : `${siteUrl()}/admin/${storeSlug}/deals`;
 
-const dayIn = (iso: string, locale: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
-
 /**
  * Asks the next signer who has not been asked, if it is their turn: the customer's by an email with their link, the store's by an email to
  * the admin unless they are the one who just acted (`skipAccount`, who is on the page already). Marks them asked. Never throws: a failed
@@ -232,7 +231,7 @@ export async function notifyNext(storeId: string, contractId: string, options: S
         : [
             { type: "heading", text: words.toSign.heading },
             { type: "paragraph", text: options.reminder ? words.reminder.intro(store.name, next.title) : words.toSign.intro(store.name, next.title) },
-            ...(next.expires_at ? [{ type: "paragraph" as const, text: words.toSign.until(dayIn(next.expires_at, locale)) }] : []),
+            ...(next.expires_at ? [{ type: "paragraph" as const, text: words.toSign.until(dateIn(store, next.expires_at, "long", locale)) }] : []),
             { type: "button", text: words.toSign.button, url: signUrl(store.slug, home.slug, next.token) },
             { type: "paragraph", text: words.toSign.notYou },
           ];

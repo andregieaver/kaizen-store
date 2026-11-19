@@ -1,5 +1,6 @@
 import { browserText } from "@/lib/browser-text";
 import type { BlogCommentSetting } from "@/lib/blogs";
+import { dateIn } from "@/lib/dates";
 import type { ShownComment } from "@/server/blog-comments";
 
 import { BlogCommentForm } from "./blog-comment-form";
@@ -17,6 +18,7 @@ export function BlogComments({
   article,
   lang,
   locale,
+  timeZone,
 }: {
   setting: BlogCommentSetting;
   comments: readonly ShownComment[];
@@ -25,10 +27,11 @@ export function BlogComments({
   article: string;
   lang: string;
   locale: string;
+  /** The store's zone, which each comment's day is read in (D796). */
+  timeZone: string;
 }) {
   if (setting === "off") return null;
   const m = browserText(lang).blogComments;
-  const day = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   return (
     <section aria-labelledby="comments-heading" data-blog-comments="" className="mx-auto mt-12 flex w-full max-w-(--content-width) flex-col gap-6 px-4">
       <h2 id="comments-heading" className="text-2xl font-heading tracking-tight">
@@ -44,7 +47,7 @@ export function BlogComments({
                 <span className="font-medium">{comment.name}</span>
                 <span className="text-muted">
                   {" · "}
-                  <time dateTime={comment.createdAt}>{day.format(new Date(comment.createdAt))}</time>
+                  <time dateTime={comment.createdAt}>{dateIn(timeZone, comment.createdAt, "long", locale)}</time>
                 </span>
               </p>
               <p className="mt-2 whitespace-pre-line break-words">{comment.body}</p>
