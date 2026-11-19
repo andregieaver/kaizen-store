@@ -60,6 +60,11 @@ export const screensNb: ScreensMessages = {
     title: "Kontoer",
     description:
       "Hver kontos fakturering. Ved lansering får hver konto som fortsatt faktureres butikk for butikk ett abonnement: abonnementet til butikken med det høyeste, beholdt som det er; de andre butikkenes abonnementer avsluttes med kreditt for tiden som ikke er brukt, og eieren får en e-post. Flytt én konto først for å prøve.",
+    /** Runde 62 (D823): kontoene på en telefon, hver en rad. */
+    phoneLead: "Ved lansering flyttes hver konto til én plan; flytt én først for å prøve.",
+    phoneLeft: { one: "{n} konto faktureres fortsatt butikk for butikk", many: "{n} kontoer faktureres fortsatt butikk for butikk" },
+    phoneLeftSub: "Hver eier får en e-post og kreditt for tiden som ikke er brukt",
+    phoneMove: "Flytt",
     list: "Kontoer",
     none: "Ingen konto har en åpen butikk.",
     owner: "Eier: {email}",

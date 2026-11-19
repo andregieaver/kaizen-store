@@ -90,6 +90,7 @@ test.describe("the platform admin", () => {
   test("reads the retention schedule", async ({ page }) => {
     await page.goto("/admin/platform/retention");
     await expect(page.getByRole("heading", { level: 1, name: "Data retention" })).toBeVisible();
-    await expect(page.getByText("Orders, invoices and payments (bookkeeping)").first()).toBeVisible();
+    // The section's heading: on a phone the same words are also its row's title (round 62, D823), hidden from the small breakpoint up.
+    await expect(page.getByRole("heading", { level: 2, name: "Orders, invoices and payments (bookkeeping)" })).toBeVisible();
   });
 });
