@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PolicyLink } from "./policy-link";
 import { Suspense, type ReactNode } from "react";
 
 import { accountsShown } from "@/lib/customer-accounts";
@@ -154,25 +154,25 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       return <MenuButton label={m.openMenu} block={block} />;
     case "search":
       return (
-        <Link href={`${base}/search`} className={ICON_LINK}>
+        <PolicyLink policy="intent" href={`${base}/search`} className={ICON_LINK}>
           <Icon name="search" />
           <span className="sr-only">{m.search.title}</span>
-        </Link>
+        </PolicyLink>
       );
     case "account":
       return (
-        <Link href={`${base}/account`} className={ICON_LINK}>
+        <PolicyLink policy="intent" href={`${base}/account`} className={ICON_LINK}>
           <Icon name="user" />
           <span className="sr-only">{m.account.title}</span>
-        </Link>
+        </PolicyLink>
       );
     case "wishlist":
       return (
-        <Link href={`${base}/wishlist`} className={`relative ${ICON_LINK}`}>
+        <PolicyLink policy="intent" href={`${base}/wishlist`} className={`relative ${ICON_LINK}`}>
           <Icon name="heart" />
           <WishlistCount store={store.slug} market={market.slug} storeId={store.id} />
           <span className="sr-only">{m.wishlist.title}</span>
-        </Link>
+        </PolicyLink>
       );
     case "cart":
       return (
@@ -186,16 +186,15 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
           <ul className={column ? "flex flex-col gap-1" : "flex flex-wrap gap-x-4 gap-y-1"}>
             {store.markets.map((other) => (
               <li key={other.slug}>
-                <Link
+                <PolicyLink policy="never"
                   href={marketHome(store.slug, other.slug)}
-                  prefetch={false}
                   hrefLang={other.lang}
                   lang={other.lang}
                   aria-current={other.slug === market.slug ? "page" : undefined}
                   className={`${COLUMN_LINK} aria-[current=page]:font-semibold`}
                 >
                   {other.name}
-                </Link>
+                </PolicyLink>
               </li>
             ))}
           </ul>
@@ -221,9 +220,9 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       // What the store stores in the browser, and the choice about it (D58); spaced, never run together.
       return (
         <span className={LINK_ROW}>
-          <Link href={marketPath(store.slug, market.slug, "/cookies")} prefetch={false} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+          <PolicyLink policy="intent" href={marketPath(store.slug, market.slug, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
-          </Link>
+          </PolicyLink>
           {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
           <ReportContentLink lang={market.lang} absolute />
         </span>
@@ -238,9 +237,9 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       // Kaizena Flow's own store (D484): its sign-up, in the visitor's language where Kaizena Flow's site has it.
       const lang = langOfLocale(market.lang) ?? "en";
       return (
-        <Link href={platformPath(lang, "/sign-up")} prefetch={false} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
+        <PolicyLink policy="sight" href={platformPath(lang, "/sign-up")} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
           {builtIn(lang).signUp}
-        </Link>
+        </PolicyLink>
       );
     }
   }
@@ -258,16 +257,16 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       return <MenuButton label={m.openMenu} block={block} />;
     case "account":
       return (
-        <Link href="/admin" prefetch={false} className={ICON_LINK}>
+        <PolicyLink policy="intent" href="/admin" className={ICON_LINK}>
           <Icon name="user" />
           <span className="sr-only">{nav.signIn}</span>
-        </Link>
+        </PolicyLink>
       );
     case "signUp":
       return (
-        <Link href={platformPath(lang, "/sign-up")} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
+        <PolicyLink policy="sight" href={platformPath(lang, "/sign-up")} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
           {nav.signUp}
-        </Link>
+        </PolicyLink>
       );
     case "business": {
       const b = chrome.business;
@@ -280,13 +279,13 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       return (
         <span className={LINK_ROW}>
           {legalPages(chrome, lang).map((page) => (
-            <Link key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+            <PolicyLink policy="intent" key={page.slug} href={platformPath(lang, `/${page.slug}`)} className="inline-flex min-h-6 w-fit items-center text-muted underline">
               {page.title}
-            </Link>
+            </PolicyLink>
           ))}
-          <Link href={platformPath(lang, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+          <PolicyLink policy="intent" href={platformPath(lang, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
-          </Link>
+          </PolicyLink>
           <ReportContentLink lang={PLATFORM_LANG_FACTS[lang].messages} />
         </span>
       );

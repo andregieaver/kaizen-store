@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui/link";
 import { Suspense } from "react";
 
 import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";

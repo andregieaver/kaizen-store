@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, CONFIRM_CALL, OSLO_ZONE, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ANY_SUPPRESSED, CONFIRM_CALL, DIRECT_LINK, OSLO_ZONE, PAGE_DOCUMENT_READ, PAGES_TAG_REFRESH, SELECT_TAG, TABLE_TAG, TEST_SUPPORT, USE_SERVER_FIRST, WRAPPED_ACTION, BIG_FILE_BYTES, LONG_FILE_LINES, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import { selectsDocument } from "./page-documents-test-support";
 import baseline from "./ratchet.baseline.json";
 
@@ -24,6 +24,7 @@ const now = ratchetCounts(process.cwd()) as {
   notDistinctStore: Record<string, number>;
   pageDocumentReads: Record<string, number>;
   pagesTagRefreshes: Record<string, number>;
+  directLinks: Record<string, number>;
   adminRepeats: Record<string, number>;
 };
 const recorded: Record<string, number> = baseline.untypedReads;
@@ -32,6 +33,7 @@ const recordedNotDistinct: Record<string, number> = baseline.notDistinctStore;
 const recordedDocuments: Record<string, number> = baseline.pageDocumentReads;
 const recordedRefreshes: Record<string, number> = baseline.pagesTagRefreshes;
 const recordedRepeats: Record<string, number> = baseline.adminRepeats;
+const recordedLinks: Record<string, number> = baseline.directLinks;
 
 /** What to do instead, per count (bloat review step 1.17). A repeat made on purpose is accepted by `node scripts/ratchet.mjs --first`, shown in the diff. */
 const REPEAT_FIX: Record<string, string> = {
@@ -47,6 +49,13 @@ describe("the ratchet (code review 1.2)", () => {
     const raised = Object.entries(now.untypedReads)
       .filter(([file, n]) => n > (recorded[file] ?? 0))
       .map(([file, n]) => `${file}: ${n} unchecked reads, baseline ${recorded[file] ?? 0}. Read through typedRows()/typedRow().`);
+    expect(raised).toEqual([]);
+  });
+
+  it("adds no direct import of next/link: a file not in the baseline imports it not at all (use PolicyLink or AdminLink)", () => {
+    const raised = Object.keys(now.directLinks)
+      .filter((file) => !(file in recordedLinks))
+      .map((file) => `${file}: imports next/link directly. Use PolicyLink (src/components/policy-link.tsx) or AdminLink (src/components/admin/ui/link.tsx), which state what the link may fetch ahead (bloat review step 2.6).`);
     expect(raised).toEqual([]);
   });
 
@@ -104,6 +113,9 @@ describe("the ratchet (code review 1.2)", () => {
       ...Object.entries(recordedNotDistinct)
         .filter(([file, n]) => (now.notDistinctStore[file] ?? 0) < n)
         .map(([file, n]) => `${file}: ${now.notDistinctStore[file] ?? 0} uses of store_id is not distinct from, baseline ${n}`),
+      ...Object.keys(recordedLinks)
+        .filter((file) => !(file in now.directLinks))
+        .map((file) => `${file}: no longer imports next/link directly, baseline lists it; run node scripts/ratchet.mjs`),
       ...(now.unknownCasts < baseline.unknownCasts ? [`as unknown as: ${now.unknownCasts}, baseline ${baseline.unknownCasts}`] : []),
       ...(now.anySuppressed < baseline.anySuppressed ? [`suppressed any: ${now.anySuppressed}, baseline ${baseline.anySuppressed}`] : []),
       ...(now.filesOver100Kb < baseline.filesOver100Kb ? [`source files over 100 KB: ${now.filesOver100Kb}, baseline ${baseline.filesOver100Kb}`] : []),
@@ -131,6 +143,8 @@ describe("the ratchet (code review 1.2)", () => {
     expect(n("where a.store_id is not distinct from ${x}::uuid and store_id\n  IS NOT DISTINCT FROM ${y}", NOT_DISTINCT_STORE)).toBe(2);
     expect(n("where ${owned(storeId)} and p.account_id is not distinct from ${a}::uuid", NOT_DISTINCT_STORE)).toBe(0);
     expect(n("// eslint-disable-next-line @typescript-eslint/no-explicit-any", ANY_SUPPRESSED)).toBe(1);
+    expect(n('import Link from "next/link";', DIRECT_LINK)).toBe(1);
+    expect(n('import { PolicyLink } from "./policy-link";', DIRECT_LINK)).toBe(0);
     // A whole page document: the column draft or published read from commerce.pages (bloat review step 1.3).
     expect(n("select id, draft from commerce.pages where id = 1", PAGE_DOCUMENT_READ)).toBe(1);
     expect(n("select p.published from commerce.pages p", PAGE_DOCUMENT_READ)).toBe(1);

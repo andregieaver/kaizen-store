@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { PolicyLink } from "./policy-link";
 
 import { Suspense, type CSSProperties, type ReactNode } from "react";
 
@@ -74,7 +74,7 @@ export function MenuTreeView({
     ) : (
       list
     );
-  const anchor = (node: MenuLinkNode, className: string, chevron = false, picture = false) => {
+  const anchor = (node: MenuLinkNode, className: string, chevron = false, picture = false, policy: "sight" | "intent" = "intent") => {
     const body = (
       <>
         {picture && node.image && (
@@ -98,9 +98,9 @@ export function MenuTreeView({
         {body}
       </a>
     ) : (
-      <Link href={node.href} className={className}>
+      <PolicyLink policy={policy} href={node.href} className={className}>
         {body}
-      </Link>
+      </PolicyLink>
     );
   };
 
@@ -126,7 +126,7 @@ export function MenuTreeView({
       return (
         <li key={node.key} className={`group/menu ${item}`} data-mega-menu data-menu-item>
           {/* The link reaches down to the panel's edge, so the panel stays open on the way to it. */}
-          {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-6`, true)}
+          {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-6`, true, false, "sight")}
           {/* In a header, globals.css lays it along the whole header's bottom edge (`data-mega-panel`). */}
           <div data-mega-panel data-menu-panel className="invisible absolute inset-x-0 top-full z-40 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
             <div className="border-y border-border bg-background text-foreground shadow-lg">
@@ -161,7 +161,7 @@ export function MenuTreeView({
         <MenuCloser />
         {nodes.map((node) => node.mega && node.children.length > 0 ? mega(node, node.mega) : (
           <li key={node.key} className={`group/menu relative ${item}`} data-menu-item>
-            {anchor(node, `${linkClassName} gap-1`, node.children.length > 0)}
+            {anchor(node, `${linkClassName} gap-1`, node.children.length > 0, false, "sight")}
             {node.children.length > 0 && (
               // `pt-1` bridges the gap, so the list stays open on the way down to it.
               <div data-menu-panel className="invisible absolute top-full left-0 z-40 min-w-52 pt-1 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">

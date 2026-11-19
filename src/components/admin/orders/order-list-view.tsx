@@ -1,5 +1,4 @@
 import { AdminLink } from "../ui/link";
-import Link from "next/link";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -111,9 +110,9 @@ export function OrderListView({
               {w.clear}
             </AdminLink>
           ) : (
-            <Link href={`/admin/${slug}/orders/drafts/new`} className={primary}>
+            <AdminLink href={`/admin/${slug}/orders/drafts/new`} className={primary}>
               {words.page.makeDraft}
-            </Link>
+            </AdminLink>
           )}
         </div>
       ) : (

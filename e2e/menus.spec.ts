@@ -80,6 +80,31 @@ test("a menu's links under a link open below it in the header, and show nested i
   await expect(row).toHaveCSS("background-color", /rgba\(255, 255, 255, 0\.6\)|color\(srgb 1 1 1 \/ 0\.6\)/);
 });
 
+// A router prefetch is a request carrying one of these headers (the test `e2e/prefetch.spec.ts`'s `watch()` makes, bloat review step 2.6).
+const PREFETCH_HEADERS = ["next-router-prefetch", "next-router-segment-prefetch"];
+
+test("a sub-link in a closed drop-down is not fetched ahead until the pointer reaches it", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const slug = await storeWithMenus();
+  const asked: Promise<string | null>[] = [];
+  page.on("request", (request) => {
+    if (!request.url().includes("demo-notatbok")) return;
+    asked.push(request.allHeaders().then((headers) => (PREFETCH_HEADERS.some((name) => name in headers) ? new URL(request.url()).pathname : null)));
+  });
+  const routerRequests = async () => (await Promise.all(asked)).filter((path) => path !== null);
+  await page.goto(`/s/${slug}`);
+  const main = page.getByRole("navigation", { name: "Hovedmeny" });
+  await expect(main.getByRole("link", { name: "Utvalg" })).toBeVisible();
+  await page.waitForTimeout(3000);
+  expect(await routerRequests(), "router requests for the sub-link before the pointer reaches it").toHaveLength(0);
+  await main.getByRole("link", { name: "Utvalg" }).hover();
+  const under = main.getByRole("link", { name: "Skrivesaker" });
+  await expect(under).toBeVisible();
+  await under.hover();
+  await page.waitForTimeout(1000);
+  expect((await routerRequests()).length, "router requests for the sub-link once the pointer is on it").toBeGreaterThanOrEqual(1);
+});
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

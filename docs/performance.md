@@ -23,6 +23,16 @@ with its processor slowed four times, and a computer.
 
 ## The rules
 
+- **Only link-preview fetchers get a blocking per-request render** (bloat review step 2.5). Next renders a page per request, a static one
+  included, for a user agent on its `htmlLimitedBots` list, so that the metadata is in the head. The default list held Bing, Apple, Yandex,
+  Google's shop and ads fetchers and Meta's catalogue, so each of them cost a render that was not kept. The pattern in `next.config.ts`
+  keeps only the fetchers that run no scripts and come once per shared link (Facebook, Twitter, LinkedIn, Slack, Discord and the like); the
+  others get the cached page, as Googlebot always did. That is safe because `scripts/render-modes.mjs` holds that every prerendered public
+  page has its title in the head of its static file, and `e2e/crawlers.spec.ts` reads a home, product, category and article page as a crawler
+  without scripts and holds the head tags, the price and the JSON-LD. A crawler whose tool later shows a missing price or availability is put
+  back on the list by adding its name to the pattern.
+  Share of page runs by listed crawlers: to be measured after opening
+
 - **The footer is pinned only near the page's end** (`FooterRevealGuard`): only after a scroll that brings the end within a screen,
   never at the first paint. Pinned while the end is still below the screen, the switch cannot be seen.
 - **Pictures that may be on the first screen load at once.** A row is `eager` when it is the first of a page or a header (never a
@@ -142,8 +152,8 @@ chunks (`route.mjs`) from 223,068 to 216,992.
     351,687), the late script files (one more fails) and their bytes with room of max(2,000, 2 %) (the front page 3 files, 61,416 bytes), the page's own calls, no other host;
   - no zod, lightbox or checkout form in the front page's scripts; no language's whole interface text; the first grid's and the first
     row's pictures eager and the next ones lazy; a blurred background from its small copy; an embedded frame named.
-- `e2e/prefetch.spec.ts` holds a table of five pages' router requests on a phone, each the measured count plus 2 (the front page 21, a product page
-  20, a listing 22, the cart 22, the front door 0).
+- `e2e/prefetch.spec.ts` holds a table of six pages' router requests on a phone (the front page, a product page, a content page, a listing and
+  the cart 6 each since step 2.6, the front door 0; *What the router fetches ahead*).
 - A budget only falls: a change that lowers a figure by more than its room lowers the budget in the same change, and a change that needs one
   raised says why in docs/decisions.md.
 - These run in CI's full checks, which report beside the deploy of a push without a migration (D526), not before it.
@@ -377,6 +387,8 @@ without them (`src/lib/typing-in.ts`, `src/lib/public-env.ts`, `src/lib/push-sch
 and the Supabase client arrives by `import()`.
 
 The admin fetches a link's page when it is pointed at, not when it is in view (bloat review step 0.13, `AdminLink`). Router prefetches in the 3 s after load, held by `e2e/signed-in/prefetch.spec.ts` (home 28 before, product editors on the Products list 8 before): home 0, orders 8 (none an order or customer row), products 8 (none a product's editor), pages 6, settings 16, a product's editor 2, the builder 0, the platform home 0 (its two section links are AdminLinks too); hovering a rail link 2.
+Since bloat review step 2.6 all eight screens make 0 (the orders list's new-draft link, the products and pages lists' toolbar links and the
+product editor's way back are AdminLinks; 2, 2, 4 and 2 before it).
 
 Every place the admin hands words to the browser (each `adminTexts()` call and `<AdminAreas>`) is in `src/components/admin/admin-words-handed.baseline.json` with the bytes
 handed in English and Norwegian and the bytes its client parts name (229 sites on 17 November 2026, 80 handing over 50 KB). A site may not hand more than its
@@ -702,6 +714,27 @@ and none in the next 2 s. At each Next upgrade read `optimistic-routes.js` for t
 
 `partialPrefetching` is false as a recorded choice: unset, Next treats it as false and prints a warning on every build and start,
 and the next major release turns it on for everyone. Step 2.8 of the bloat review decides adoption by trial.
+
+## What the router fetches ahead (bloat review step 2.6)
+
+A link states what it may fetch ahead through `PolicyLink` (`src/components/policy-link.tsx`) or, in the admin, `AdminLink`; each takes one of
+three policies. `e2e/prefetch.spec.ts` holds the counts per page.
+
+| Policy | What it does | Links |
+| --- | --- | --- |
+| sight | Next's default: fetched when it scrolls into view | the cart link on phones, a header menu's top links, product tiles (bounded by step 2.8), the site's sign-up button |
+| intent | fetched when the pointer, a touch or the focus reaches it | the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, every admin link (`AdminLink`) |
+| never | not fetched ahead | countries, languages and currencies, links that leave their root layout, file links, the cart link from 768 px (a plain anchor) |
+
+A link states its policy through `PolicyLink` or `AdminLink` and `next/link` is imported only by them (ratchet count `directLinks`, in
+`src/server/ratchet.baseline.json`: a new file may not import it, and the old ones move as they are touched). A server action that sets a
+cookie or revalidates makes the router ask again for every link in view, so the number of sight links is also the cost of every such action.
+
+Measured on 19 November 2026 on a phone, read to the footer (two runs, the same but where noted): the front page, a product page and a
+content page 3 router requests each (19, 18 and 20 before), the listing 4 (20), the cart 5 (20); the first Add to cart 7 in the next 4 s (32
+before), the second 0; the home at 1280 px 6 and 7 (47 on the phone home before step 0.12). The money path of `e2e/performance.spec.ts`: the
+two-line cart 7 (15 before), the checkout 3 (18). Held at 6 on each phone page, 8 on the home at 1280 px and 10 after the first add (the
+step's figures), and 9 and 5 on the money path (the count plus 2).
 
 ## What is static (bloat review step 1.11)
 

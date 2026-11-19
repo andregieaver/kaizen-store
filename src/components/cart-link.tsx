@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PolicyLink } from "./policy-link";
 
 import { browserText } from "@/lib/browser-text";
 
@@ -32,14 +32,14 @@ export function CartLinkShell({
   const name = count > 0 ? m.cartCount(count) : m.cart;
   if (variant === "bar") {
     return (
-      <Link href={href} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs">
+      <PolicyLink policy="sight" href={href} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs">
         <span className="relative">
           <Icon name="bag" />
           {badge}
         </span>
         <span aria-hidden="true">{m.cart}</span>
         <span className="sr-only">{name}</span>
-      </Link>
+      </PolicyLink>
     );
   }
   const inner = (
@@ -53,9 +53,9 @@ export function CartLinkShell({
   // on a phone and so never fetched ahead, and is not in the accessibility tree while hidden (D64, bloat review step 2.2).
   return (
     <>
-      <Link href={href} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5 md:hidden">
+      <PolicyLink policy="sight" href={href} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5 md:hidden">
         {inner}
-      </Link>
+      </PolicyLink>
       <a href={href} className="relative hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex">
         {inner}
       </a>

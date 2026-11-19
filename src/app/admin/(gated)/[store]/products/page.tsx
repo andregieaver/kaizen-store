@@ -1,6 +1,6 @@
 import { AdminLink } from "@/components/admin/ui/link";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui/link";
 import { Suspense } from "react";
 
 import { AdminTextScope } from "@/components/admin/admin-text";

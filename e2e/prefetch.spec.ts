@@ -13,12 +13,17 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
  * waiting until no router request has started for three seconds. Each is the measured count plus 2 (counts wobble by one or two with what is in view),
  * or the number step 0.12 set where that is stricter (the home page's 23, the front door's 0). `E2E_MEASURE=1` prints `[router] path count`.
  * Measured on the build of 17 November 2026: the front page 19, a product page 18, a listing 20, the cart 20, the front door 0.
+ * Bloat review step 2.6 (links state what they may fetch ahead, `docs/performance.md` *What the router fetches ahead*): the front page, a product page, a
+ * content page and the cart are held to 6 (measured 19 November 2026 after it: 3, 3, 3 and 5; before it 19, 18 and 20, and 47 on the home before step 0.12),
+ * and the listing too (4 after it, 20 before).
+ * A change that passes a budget is a regression to look at, not a number to raise.
  */
 const ROUTER_REQUESTS: Record<string, number> = {
-  "/s/demo/no": 21,
-  "/s/demo/no/p/demo-keramikkopp": 20,
-  "/s/demo/no/products": 22,
-  "/s/demo/no/cart": 22,
+  "/s/demo/no": 6,
+  "/s/demo/no/p/demo-keramikkopp": 6,
+  "/s/demo/no/om-oss": 6,
+  "/s/demo/no/products": 6,
+  "/s/demo/no/cart": 6,
   "/s/demo": 0,
 };
 const MEASURE = process.env.E2E_MEASURE === "1";
@@ -192,5 +197,88 @@ test.describe("a store page goes quiet", () => {
       const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([line, n]) => `${n} x ${line}`).join("\n");
       expect(all.length - first, `router prefetches after the first 3 s of ${path} (total ${all.length}); most repeated:\n${top}`).toBe(0);
     });
+  }
+});
+
+/**
+ * Bloat review step 2.6. A computer's home page fetches little ahead (the header's top links and the plain cart anchor are not in view as links to fetch), a footer link
+ * waits to be pointed at, and the first Add to cart makes the router ask again for little (32 links in view before; a server action that sets a cookie makes the router
+ * ask again for every link in view, so the number of links on sight is the cost of each one).
+ */
+test("the home on a computer fetches little ahead", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
+  try {
+    const seen = watch(page);
+    await page.goto("/s/demo/no");
+    const giveUp = Date.now() + 30_000;
+    while (seen.quietFor() < 3_000) {
+      if (Date.now() > giveUp) throw new Error("the router never went quiet");
+      await page.waitForTimeout(250);
+    }
+    const prefetches = await seen.prefetches();
+    if (MEASURE) console.log(`[router] computer home ${prefetches.length}`);
+    else expect(prefetches.length, `router requests of the home at 1280 px:\n${prefetches.join("\n")}`).toBeLessThanOrEqual(8);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a footer link waits to be pointed at", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { context, page } = await phone(browser);
+  try {
+    const seen = watch(page);
+    await page.goto("/s/demo/no");
+    await readToFooter(page);
+    const cookies = page.getByRole("contentinfo").getByRole("link", { name: "Informasjonskapsler" });
+    await expect(cookies).toBeVisible();
+    const cookieRequests = async () => (await seen.prefetches()).filter((path) => path.includes("/cookies"));
+    expect(await cookieRequests(), "router requests for the cookies page before it is pointed at").toEqual([]);
+    await cookies.hover();
+    await page.waitForTimeout(1500);
+    expect((await cookieRequests()).length, "router requests for the cookies page once it is pointed at").toBeGreaterThanOrEqual(1);
+    let documents = 0;
+    page.on("request", (request) => {
+      if (request.resourceType() === "document") documents++;
+    });
+    await cookies.click();
+    await expect(page).toHaveURL(/\/s\/demo\/no\/cookies$/);
+    expect(documents, "document requests of the press").toBe(0);
+    // Let the requests the press started finish being read before the page closes.
+    await page.waitForTimeout(1500);
+    await seen.all();
+  } finally {
+    await context.close();
+  }
+});
+
+test("the first add to cart asks for little again", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { context, page } = await phone(browser);
+  try {
+    const seen = watch(page);
+    await page.goto("/s/demo/no/p/demo-handlenett");
+    await page.waitForTimeout(3000);
+    const add = page.getByRole("button", { name: "Legg i handlekurven" }).first();
+    // A press before the page has come alive does nothing, so wait for the button to be live as a shopper would.
+    await expect(add).toBeEnabled();
+    const press = async () => {
+      const before = (await seen.prefetches()).length;
+      await add.click();
+      await page.waitForTimeout(4000);
+      return (await seen.prefetches()).length - before;
+    };
+    const first = await press();
+    const second = await press();
+    if (MEASURE) {
+      console.log(`[router] first add ${first}, second ${second}`);
+      return;
+    }
+    expect(first, "router requests in the 4 s after the first Add to cart (32 before step 2.6)").toBeLessThanOrEqual(10);
+    expect(second, "router requests in the 4 s after the second Add to cart").toBe(0);
+  } finally {
+    await context.close();
   }
 });

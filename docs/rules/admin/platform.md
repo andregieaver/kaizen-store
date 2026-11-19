@@ -83,6 +83,12 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   in the admin's frame or a list row is an `AdminLink`, not `next/link`'s `Link`; a raw `Link` there is fetched on sight and
   breaks `e2e/signed-in/prefetch.spec.ts`.
 
+## The admin's links say what they may fetch ahead (bloat review step 2.6)
+
+An admin link is an `AdminLink` (`src/components/admin/ui/link.tsx`: on top of `PolicyLink`, fetched on intent unless a policy is given),
+and a new file may not import `next/link` (the ratchet count `directLinks` only falls). The table of policies is in `docs/performance.md`
+under *What the router fetches ahead*.
+
 ## Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
 
 - Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`): a store's admin lists each section's everyday pages in **Basic**, the default for every account, and every page in

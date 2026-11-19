@@ -41,6 +41,8 @@ const SKIP_TYPECHECK = ON_VERCEL || process.env.SKIP_BUILD_TYPECHECK === "1";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Next renders every page per request, static ones included, for user agents on this list, so their metadata is in the head. Our prerendered pages already hold title and description in the head (scripts/render-modes.mjs checks it), so the list keeps only link-preview fetchers, which never run scripts and come once per shared link. Bing, Apple, Yandex, Google's shop and ads fetchers and Meta's catalogue then get the cached page, as Googlebot always has (bloat review step 2.5). Setting it replaces Next's default list (html-bots.js).
+  htmlLimitedBots: /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|redditbot|quora link preview|vkShare|tumblr|bitlybot/i,
   // A recorded choice, not an oversight: unset, Next treats it as false and warns on every build and start. The next major release turns it on
   // for everyone; step 2.8 of docs/audits/bloat-review-2026-11 decides adoption by trial.
   partialPrefetching: false,

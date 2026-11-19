@@ -131,7 +131,7 @@ describe("entering a pay route", () => {
       if (rel(file).startsWith("components/admin/")) continue;
       const text = readFileSync(file, "utf8");
       // A <Link> whose href names the checkout; the cart's own `Link` back from the checkout is to the cart and is fine.
-      if (/<Link[^>]*href=\{[^}]*\/checkout[`"'/}]/.test(text)) offenders.push(`${rel(file)}: a Link to /checkout`);
+      if (/<(?:Link|PolicyLink|BlockLink|AdminLink)[^>]*href=\{[^}]*\/checkout[`"'/}]/.test(text)) offenders.push(`${rel(file)}: a Link or wrapper to /checkout`);
       if (/router\.(push|replace)\([^)]*\/checkout/.test(text)) offenders.push(`${rel(file)}: the router goes to /checkout`);
     }
     expect(offenders).toEqual([]);
