@@ -6,6 +6,7 @@ import { attentionFor } from "@/lib/control-center";
 import { formatMoney } from "@/lib/money";
 
 import type { Account } from "./auth";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -213,7 +214,7 @@ describe("pickup_orders and the control center", () => {
     const center = (await controlCenter(await accountOf(store), store.slug)).stores[0];
     expect(center.toSend).toBe(1);
     expect(center.handOver).toMatchObject({ pickup: 2, local: 2 });
-    const texts = attentionFor([center]).map((i) => [i.text, i.href]);
+    const texts = attentionFor([center], undefined, homeEn.attention).map((i) => [i.text, i.href]);
     expect(texts).toContainEqual([expect.stringContaining("2 orders are waiting to be collected"), `/admin/${store.slug}/orders?show=to-hand-over`]);
     expect(texts).toContainEqual([expect.stringContaining("2 local deliveries are not delivered yet"), `/admin/${store.slug}/orders?show=local`]);
     // Another store with no handovers gets no figure, never a 0.

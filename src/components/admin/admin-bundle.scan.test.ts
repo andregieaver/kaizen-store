@@ -101,22 +101,11 @@ const SITE_CATALOGUE = /admin-messages\/([\w-]+\.(?:en|nb))$/;
 const ALLOWED_CATALOGUES = ["common.en", "sign-in.en"];
 const LATE_FETCH = "components/admin/admin-text-later.ts";
 const CATALOGUE_SITES: string[] = [
-  "src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx -> gift-cards.en",
-  "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx -> gift-cards.en",
-  "src/components/admin/company-fields.tsx -> customers.en",
-  "src/components/admin/delete-reminder-button.tsx -> platform.en",
-  "src/components/admin/demo-content-card.tsx -> home.en",
-  "src/components/admin/orders/order-table.tsx -> orders.en",
-  "src/components/admin/orders/send-parcel.tsx -> order.en",
-  "src/components/admin/orders/view-tools.tsx -> orders.en",
-  "src/components/admin/privacy/styles.ts -> privacy.en",
-  "src/components/admin/support/conversation-actions.tsx -> support.en",
   "src/lib/affiliate-admin.ts -> loyalty.en",
   "src/lib/analytics-words.ts -> analytics.en",
   "src/lib/analytics-words.ts -> analytics.nb",
   "src/lib/bonus-admin.ts -> loyalty.en",
   "src/lib/campaigns.ts -> discounts.en",
-  "src/lib/control-center.ts -> home.en",
   "src/lib/discounts.ts -> discounts.en",
   "src/lib/drafts-words.ts -> drafts.en",
   "src/lib/experiment-results.ts -> experiments.en",

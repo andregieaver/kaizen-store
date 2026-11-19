@@ -2,6 +2,8 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { homeEn } from "@/lib/admin-messages/home.en";
+
 import { DemoContentCard, type DemoCardSummary } from "./demo-content-card";
 
 /** *Remove demo content* on a store's Home (`docs/theme-showcase-phase-1.md` step 4b): one sentence and one press, the list a step away. */
@@ -18,7 +20,7 @@ const summary: DemoCardSummary = {
 
 describe("the demo content card", () => {
   it("says what the store came with and offers one press, with what goes and what stays behind What it removes", () => {
-    const html = renderToString(createElement(DemoContentCard, { summary, action }));
+    const html = renderToString(createElement(DemoContentCard, { summary, action, words: homeEn.demo }));
     expect(html).toContain("6 products and 2 pages");
     expect(html).toContain("Anything you changed stays.");
     expect(html.match(/<button[^>]*type="submit"/g)).toHaveLength(1);
@@ -31,6 +33,6 @@ describe("the demo content card", () => {
   });
 
   it("shows nothing when the store has no demo content", () => {
-    expect(renderToString(createElement(DemoContentCard, { summary: null, action }))).toBe("");
+    expect(renderToString(createElement(DemoContentCard, { summary: null, action, words: homeEn.demo }))).toBe("");
   });
 });

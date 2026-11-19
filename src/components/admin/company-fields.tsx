@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
+import type { CustomersMessages } from "@/lib/admin-messages/customers.en";
 import type { BrregCompany } from "@/lib/brreg";
 import type { BrregLookup as Lookup, BrregSearch as Search } from "@/server/brreg";
 
@@ -21,7 +21,7 @@ export function CompanyFields({
   values,
   lookup,
   search,
-  words = customersEn.fields,
+  words,
   stepped = false,
   submit,
 }: {
@@ -35,7 +35,7 @@ export function CompanyFields({
   lookup?: (input: string) => Promise<Lookup>;
   search?: (input: string) => Promise<Search>;
   /** The form's words in the admin's language (D312 A6); English when not given. */
-  words?: CustomersMessages["fields"];
+  words: CustomersMessages["fields"];
 }) {
   const [name, setName] = useState(values?.name ?? "");
   const [organisationNumber, setOrganisationNumber] = useState(values?.organisationNumber ?? "");

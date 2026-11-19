@@ -18,17 +18,8 @@ const ROOT = join(__dirname, "../../..");
  */
 const ALREADY: readonly string[] = [
   "src/components/admin/admin-text.tsx",
-  "src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx",
-  "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx",
   "src/components/admin/admin-text-context.tsx",
   "src/components/admin/sign-in-text.tsx",
-  "src/components/admin/company-fields.tsx",
-  "src/components/admin/delete-reminder-button.tsx",
-  "src/components/admin/demo-content-card.tsx",
-  "src/components/admin/orders/order-table.tsx",
-  "src/components/admin/orders/send-parcel.tsx",
-  "src/components/admin/orders/view-tools.tsx",
-  "src/components/admin/support/conversation-actions.tsx",
 ];
 
 function files(dir: string): string[] {

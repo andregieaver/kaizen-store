@@ -6,6 +6,7 @@ import { customPeriod } from "@/lib/analytics-period";
 import { attentionFor } from "@/lib/control-center";
 
 import type { Account } from "./auth";
+import { homeEn } from "@/lib/admin-messages/home.en";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -300,11 +301,11 @@ describe("parcels and changes waiting in the figures (Owed, the control center)"
     expect(view.partlySent).toMatchObject({ orders: 1 });
     expect(view.partlySent!.oldestFirstParcelAt).not.toBeNull();
     expect(view.orderChanges).toEqual({ waiting: 1, expiringSoon: 0 });
-    const texts = attentionFor([view]).map((i) => [i.text, i.href]);
+    const texts = attentionFor([view], undefined, homeEn.attention).map((i) => [i.text, i.href]);
     expect(texts).toContainEqual([expect.stringContaining("1 order is partly sent"), `/admin/${period.slug}/orders?ship=partly_sent`]);
     expect(texts).toContainEqual([expect.stringContaining("1 order change is waiting for the customer's payment"), `/admin/${period.slug}/orders?ship=edit_pending`]);
     // A member whose role may not read orders: the figures are left out, never shown as 0.
-    expect(attentionFor([{ ...view, hides: ["sales"] }]).some((i) => /partly sent|order change/.test(i.text))).toBe(false);
+    expect(attentionFor([{ ...view, hides: ["sales"] }], undefined, homeEn.attention).some((i) => /partly sent|order change/.test(i.text))).toBe(false);
   });
 });
 

@@ -11,6 +11,7 @@ import { ConversationContext, ConversationView, SummaryPanel } from "./conversat
 import { conversationHref } from "./desk-context";
 import { PartnerPanel } from "./partner-panel";
 import { SupportSettingsForm } from "./settings-form";
+import { supportEn } from "@/lib/admin-messages/support.en";
 
 /** What a person reads: comment markers out, entities made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -224,20 +225,20 @@ describe("what a person may do with a conversation (step 4)", () => {
   const base = { status: "open" as const, handler: "ai" as const, assignee: null, me: "me", canWrite: true, mode: "ai_first" as const, store: { slug: "demo", name: "Demo" }, signedIn: false, source: "site" as const };
 
   it("offers Take over while the AI or the queue has it, and the rest once it is yours", () => {
-    expect(availableActs(base)).toMatchObject({ claim: true, reply: false, note: true, handBack: false, why: null });
-    expect(availableActs({ ...base, handler: "queue" }).claim).toBe(true);
-    const mine = availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" } });
+    expect(availableActs(base, supportEn.actions.why)).toMatchObject({ claim: true, reply: false, note: true, handBack: false, why: null });
+    expect(availableActs({ ...base, handler: "queue" }, supportEn.actions.why).claim).toBe(true);
+    const mine = availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" } }, supportEn.actions.why);
     expect(mine).toMatchObject({ claim: false, reply: true, transfer: true, end: true, handBack: true, askSignIn: true });
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, mode: "people" }).handBack).toBe(false);
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, signedIn: true }).askSignIn).toBe(false);
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, store: null }).askSignIn).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, mode: "people" }, supportEn.actions.why).handBack).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, signedIn: true }, supportEn.actions.why).askSignIn).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, store: null }, supportEn.actions.why).askSignIn).toBe(false);
   });
 
   it("says who has it, and why nothing can be done", () => {
-    expect(availableActs({ ...base, handler: "human", assignee: { id: "ola", name: "Ola" } })).toMatchObject({ claim: false, reply: false, note: true, why: "Ola has this conversation." });
-    expect(availableActs({ ...base, mode: "off" })).toMatchObject({ claim: false, note: true, why: expect.stringContaining("switched off") });
-    expect(availableActs({ ...base, canWrite: false })).toMatchObject({ note: false, why: expect.stringContaining("not answer") });
-    expect(availableActs({ ...base, status: "ended" })).toMatchObject({ claim: false, reply: false, why: "This conversation has ended." });
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "ola", name: "Ola" } }, supportEn.actions.why)).toMatchObject({ claim: false, reply: false, note: true, why: "Ola has this conversation." });
+    expect(availableActs({ ...base, mode: "off" }, supportEn.actions.why)).toMatchObject({ claim: false, note: true, why: expect.stringContaining("switched off") });
+    expect(availableActs({ ...base, canWrite: false }, supportEn.actions.why)).toMatchObject({ note: false, why: expect.stringContaining("not answer") });
+    expect(availableActs({ ...base, status: "ended" }, supportEn.actions.why)).toMatchObject({ claim: false, reply: false, why: "This conversation has ended." });
   });
 
   it("draws the buttons and a composer that says when a text is an internal note", () => {
@@ -349,9 +350,9 @@ describe("summaries, briefs and ratings (step 7)", () => {
 
   it("offers a brief while open and correcting the summary once ended", () => {
     const base = { status: "open" as const, handler: "ai" as const, assignee: null, me: "me", canWrite: true, mode: "ai_first" as const, store: { slug: "demo", name: "Demo" }, signedIn: false, source: "site" as const };
-    expect(availableActs(base)).toMatchObject({ brief: true, editSummary: false });
-    expect(availableActs({ ...base, status: "ended" })).toMatchObject({ brief: false, editSummary: true });
-    expect(availableActs({ ...base, status: "ended", canWrite: false })).toMatchObject({ editSummary: false });
+    expect(availableActs(base, supportEn.actions.why)).toMatchObject({ brief: true, editSummary: false });
+    expect(availableActs({ ...base, status: "ended" }, supportEn.actions.why)).toMatchObject({ brief: false, editSummary: true });
+    expect(availableActs({ ...base, status: "ended", canWrite: false }, supportEn.actions.why)).toMatchObject({ editSummary: false });
   });
 });
 

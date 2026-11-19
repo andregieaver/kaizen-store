@@ -7,7 +7,7 @@ import { field, hint, primary } from "@/components/admin/data/ui";
 import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
 import { useAdminText } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
+import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
 /** A physical line as the *Send* card shows it (D174 2.1): what was ordered, sent, withdrawn before sending and what is left. */
 export type ParcelRow = {
@@ -30,7 +30,7 @@ export type ParcelRow = {
 const initial: OrderActionState = { ok: false, message: null };
 
 /** Why a line has nothing in this parcel, in words. */
-function nothingLeft(row: ParcelRow, w: OrderMessages["send"] = orderEn.send): string {
+function nothingLeft(row: ParcelRow, w: OrderMessages["send"]): string {
   if ((row.closed ?? 0) > 0) return row.sent === 0 ? w.willNotBeSent : w.restWillNotBeSent;
   if (row.withdrawn > 0 && row.sent === 0) return w.withdrawnBefore;
   if (row.withdrawn > 0) return w.restWithdrawn;

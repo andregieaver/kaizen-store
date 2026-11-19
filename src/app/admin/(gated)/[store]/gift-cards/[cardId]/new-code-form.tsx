@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/admin/ui";
-import { giftCardsEn, type GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
+import type { GiftCardsMessages } from "@/lib/admin-messages/gift-cards.en";
 
 import type { NewCodeState } from "../actions";
 
@@ -13,10 +13,10 @@ import type { NewCodeState } from "../actions";
  */
 export function NewCodeForm({
   action,
-  words: w = giftCardsEn.card,
+  words: w,
 }: {
   action: (state: NewCodeState, form: FormData) => Promise<NewCodeState>;
-  words?: GiftCardsMessages["card"];
+  words: GiftCardsMessages["card"];
 }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" });
   const [copied, setCopied] = useState(false);

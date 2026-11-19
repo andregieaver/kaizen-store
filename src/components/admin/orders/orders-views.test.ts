@@ -2,6 +2,8 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { ordersEn } from "@/lib/admin-messages/orders.en";
+
 import { parseOrderListParams } from "@/lib/order-list";
 import { tableRowsOf } from "@/lib/order-list-admin";
 import type { OrderListItem } from "@/lib/order-list-row";
@@ -248,7 +250,7 @@ describe("the bulk result", () => {
   });
 
   it("says how many it applied to and lists each refusal with its reason", () => {
-    const text = plain(renderToString(h(ResultPanel, { result: result() })));
+    const text = plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: result() })));
     expect(text).toContain("Applied to 41 of 43 orders");
     expect(text).toContain("2 orders not changed:");
     expect(text).toContain("It is paid and still has to be sent.");
@@ -256,15 +258,15 @@ describe("the bulk result", () => {
   });
 
   it("never names an order that was not this store's", () => {
-    const text = plain(renderToString(h(ResultPanel, { result: result({ refused: [{ id: "zzz", number: null, reason: "not_found" }] }) })));
+    const text = plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: result({ refused: [{ id: "zzz", number: null, reason: "not_found" }] }) })));
     expect(text).toContain("an order that was not found");
     expect(text).not.toContain("zzz");
   });
 
   it("says how many customers were emailed when the send told them", () => {
-    expect(plain(renderToString(h(ResultPanel, { result: result({ action: "mark_sent", emailed: 37, refused: [] }) })))).toContain("37 customers were emailed.");
-    expect(plain(renderToString(h(ResultPanel, { result: result({ action: "mark_sent", emailed: 1, refused: [] }) })))).toContain("1 customer was emailed.");
-    expect(plain(renderToString(h(ResultPanel, { result: result({ refused: [] }) })))).not.toContain("emailed");
+    expect(plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: result({ action: "mark_sent", emailed: 37, refused: [] }) })))).toContain("37 customers were emailed.");
+    expect(plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: result({ action: "mark_sent", emailed: 1, refused: [] }) })))).toContain("1 customer was emailed.");
+    expect(plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: result({ refused: [] }) })))).not.toContain("emailed");
   });
 
   it("offers the labels Book labels made to print together, and names a carrier's own refusal with its order (D374)", () => {
@@ -276,15 +278,15 @@ describe("the bulk result", () => {
         { orderId: "o2", number: "1002", shipmentId: "s2", carrier: "Helthjem" },
       ],
     });
-    const html = renderToString(h(ResultPanel, { result: booked, labelsHref: "/admin/shop/orders/labels?ids=s1,s2" }));
+    const html = renderToString(h(ResultPanel, { words: ordersEn.bulk, result: booked, labelsHref: "/admin/shop/orders/labels?ids=s1,s2" }));
     const text = plain(html);
     expect(text).toContain("Print the 2 labels");
     expect(html).toContain('href="/admin/shop/orders/labels?ids=s1,s2"');
     expect(text).toContain("The carrier did not book it:");
     expect(text).toContain("#1007 (Unknown customer number)");
     // Without labels, or without the page to show them, no link.
-    expect(plain(renderToString(h(ResultPanel, { result: booked })))).not.toContain("Print the");
-    expect(plain(renderToString(h(ResultPanel, { result: { ...booked, labels: [] }, labelsHref: "/x" })))).not.toContain("Print the");
+    expect(plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: booked })))).not.toContain("Print the");
+    expect(plain(renderToString(h(ResultPanel, { words: ordersEn.bulk, result: { ...booked, labels: [] }, labelsHref: "/x" })))).not.toContain("Print the");
   });
 });
 
@@ -294,7 +296,7 @@ describe("the saved views tools", () => {
     { id: "33333333-3333-4333-8333-333333333333", title: "Late" },
   ];
   it("saves the list as a view under a name with a limit, and can replace one", () => {
-    const html = renderToString(h(ViewTools, { views, query: "pay=paid", actions: viewActions }));
+    const html = renderToString(h(ViewTools, { words: ordersEn.saved, views, query: "pay=paid", actions: viewActions }));
     const text = plain(html);
     expect(text).toContain("Save this list as a view");
     expect(html).toContain('maxLength="40"');
@@ -305,7 +307,7 @@ describe("the saved views tools", () => {
   });
   it("says so when the store has the most views it can", () => {
     const many = Array.from({ length: 30 }, (_, i) => ({ id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`, title: `View ${i}` }));
-    const html = renderToString(h(ViewTools, { views: many, query: "", actions: viewActions }));
+    const html = renderToString(h(ViewTools, { words: ordersEn.saved, views: many, query: "", actions: viewActions }));
     expect(plain(html)).toContain("A store has at most 30 saved views");
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Save view/);
   });

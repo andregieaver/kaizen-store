@@ -8,7 +8,7 @@ import { useId, useMemo, useState, useTransition } from "react";
 import type { BulkActionResponse } from "@/app/admin/(gated)/[store]/orders/list-actions";
 import { field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
+import type { OrdersMessages } from "@/lib/admin-messages/orders.en";
 import type { BulkResult } from "@/lib/order-bulk";
 import { appliedWords, refusalGroups, shipCellWords } from "@/lib/order-list-words";
 import { labelsPageHref, pickListHref, selectionBanner, printHref } from "@/lib/order-list-admin";
@@ -37,7 +37,7 @@ export type OrderTableProps = {
   /** The bound server action of the bulk bar. */
   bulk: (request: { action: string; ids?: string[]; matchingQuery?: string; tags?: string[]; notify?: boolean }) => Promise<BulkActionResponse>;
   /** The `orders` catalogue in the account's language (D312 A4), the order statuses' words, and the number format. */
-  words?: OrdersMessages;
+  words: OrdersMessages;
   statusWords?: Record<keyof typeof ORDER_STATUS_LABELS, string>;
   locale?: string;
 };
@@ -61,7 +61,7 @@ export function OrderTable({
   canWrite,
   suggestions,
   bulk,
-  words = ordersEn,
+  words,
   statusWords = ORDER_STATUS_LABELS,
   locale = "en",
 }: OrderTableProps) {
@@ -489,12 +489,12 @@ function OrderRow({
 export function ResultPanel({
   result,
   onClose,
-  words: b = ordersEn.bulk,
+  words: b,
   labelsHref = null,
 }: {
   result: BulkResult;
   onClose?: () => void;
-  words?: OrdersMessages["bulk"];
+  words: OrdersMessages["bulk"];
   /** Book labels (D374): the page that shows the labels booked, one after another, to print. */
   labelsHref?: string | null;
 }) {
@@ -545,7 +545,7 @@ export function ResultPanel({
 
 
 /** The *Delivery* cell (D237): the label kept on the order; a pickup place says *Collect at*, a local delivery where it goes and the start of the note. */
-export function DeliveryText({ cell, words: t = ordersEn.table }: { cell: DeliveryCell | undefined; words?: OrdersMessages["table"] }) {
+export function DeliveryText({ cell, words: t }: { cell: DeliveryCell | undefined; words: OrdersMessages["table"] }) {
   if (!cell || (!cell.label && cell.method === "ship")) return <span className="text-muted">–</span>;
   if (cell.method === "pickup") return <>{fillWords(t.collectAt, { place: cell.label ?? t.yourPlace })}</>;
   if (cell.method === "local") {
