@@ -280,6 +280,13 @@ export const staffEmailsNb: StaffEmailsMessages = {
     customer: "Kunde: {customer}\nBestilling {order}",
     button: "Se bestillingen",
   },
+  accountMoved: {
+    subject: "Butikkene dine har nå ett abonnement",
+    plan: "Fra i dag har alle butikkene i kontoen din ett abonnement: {plan}. Du betaler for det én gang, på én faktura.",
+    noPlan: "Fra i dag deler butikkene dine ett abonnement, som velges ett sted. Kontoen din har ikke noe abonnement ennå.",
+    ended: "Abonnementene til {stores} er avsluttet, og tiden du hadde betalt for og ikke brukt, er kreditert.",
+    limits: "Det abonnementet ditt gir, som produkter og lagring, gjelder nå for butikkene dine samlet. Endre abonnementet her:",
+  },
   planReminder: {
     line: "Kaizena Flow {plan}, betalt {interval}",
     yearly: "årlig",

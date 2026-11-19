@@ -60,6 +60,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/limits.ts": "real",
   // An account's first open store: its Stripe account is the account's customer (D748 E4).
   "src/server/account-billing.ts": "real",
+  // The stores an account moves to one plan: its open ones (D748 E4).
+  "src/server/account-move.ts": "real",
   "src/server/usage-alerts.ts": "real",
   "src/server/usage.ts": "real",
   "src/server/manager-tools.ts": "real",

@@ -130,7 +130,7 @@ export async function receiveInboundEvent(event: InboundEvent, deps: InboundDeps
   let routed = false;
   if (route?.kind === "desk") {
     const [desk] = await db().execute<Row>(sql`select store_id from commerce.support_settings where email_key = ${route.key}`);
-    if (desk) [storeId, routed] = [desk.store_id ? String(desk.store_id) : null, true];
+    if (desk) [storeId, routed] = [desk.store_id ? String(desk.store_id) : (await houseEmailDesk()), true];
   } else if (route?.kind === "filing") {
     // A store's filing address (S5, D476): filed on its people by `fileReceived()`, never a conversation.
     const filingStore = await storeOfFilingKey(route.key);
@@ -156,8 +156,44 @@ export async function receiveInboundEvent(event: InboundEvent, deps: InboundDeps
   `);
   if (!row) return { id: null, status: "duplicate" };
   const id = String(row.id);
+  // The same email reaching the desk twice (forwarded to two of its addresses, such as Kaizena Flow's two desks): only the first is answered.
+  if (routed && route?.kind === "desk" && (await secondCopy(id, storeId, messageIdOf(data.message_id)))) return { id, status: "refused" };
   if (routed) after(() => processInboundEmails({ ...deps, only: id }).then(() => undefined));
   return { id, status: String(row.status) };
+}
+
+/**
+ * Kaizena Flow's own store's desk, while kaizenaflow.com is served from that store (D484) and its desk takes email, or null. Email to the
+ * platform's desk then goes there (step 6 of `docs/platform-parity-plan.md`: one desk for the site's visitors), so a support address
+ * forwarded to both desks is answered once, by the store's assistant.
+ */
+async function houseEmailDesk(): Promise<string | null> {
+  const house = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`select s.id from commerce.platform_settings p
+        join commerce.stores s on s.house and s.status = 'active'
+        join commerce.support_settings d on d.store_id = s.id and d.email_key is not null and d.mode <> 'off'
+        where p.site_from_store`,
+  );
+  return house?.id ?? null;
+}
+
+/**
+ * Whether a received email is a second copy of one the same desk already has (the same Message-ID within a day), and if so keeps it as
+ * refused (`duplicate`). Of two that arrive together, the later row stands down: each sees the other, and only one is later.
+ */
+async function secondCopy(id: string, storeId: string | null, messageId: string | null): Promise<boolean> {
+  if (!messageId) return false;
+  const earlier = await typedRow(z.object({ one: z.number() }), sql`
+    select 1 as one from commerce.support_inbound_emails e, commerce.support_inbound_emails me
+    where me.id = ${id}::uuid and e.id <> me.id and ${owned(storeId, sql`e.store_id`)} and e.message_id = ${messageId} and e.purpose = 'support'
+      and e.created_at > now() - interval '1 day' and (e.created_at, e.id) < (me.created_at, me.id)
+    limit 1
+  `);
+  if (!earlier) return false;
+  await db().execute(sql`update commerce.support_inbound_emails set status = 'refused', reason = 'duplicate', finished_at = now()
+    where id = ${id}::uuid and ${owned(storeId)} and status = 'pending'`);
+  return true;
 }
 
 export type InboundRun = { done: number; refused: number; failed: number };

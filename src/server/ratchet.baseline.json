@@ -662,6 +662,10 @@
         "statements": 4,
         "rowsRead": 313
       },
+      "dispatcher.contracts": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.data-jobs": {
         "statements": 1,
         "rowsRead": 0
@@ -1032,6 +1036,10 @@
         "statements": 4,
         "rowsRead": 8442
       },
+      "dispatcher.contracts": {
+        "statements": 1,
+        "rowsRead": 0
+      },
       "dispatcher.data-jobs": {
         "statements": 1,
         "rowsRead": 0
@@ -1401,6 +1409,10 @@
       "dispatcher.content-moderation": {
         "statements": 0,
         "rowsRead": 8129
+      },
+      "dispatcher.contracts": {
+        "statements": 0,
+        "rowsRead": 0
       },
       "dispatcher.data-jobs": {
         "statements": 0,

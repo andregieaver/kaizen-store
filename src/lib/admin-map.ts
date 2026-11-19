@@ -1290,6 +1290,9 @@ const PAGES: readonly AdminPage[] = [
   platform("plan-extensions", "/plans/extensions", "Extensions", "Platform", "The paid extensions (D748): each one's words and whether it is also sold without a store, its sizes with what they include and their prices in every currency, the bundles, and what each plan includes at no extra cost.", {
     keywords: ["extensions", "add-ons", "addons", "bundles", "a/b testing", "support desk", "email automation", "work", "deals", "pricing"],
   }),
+  platform("plan-accounts", "/plans/accounts", "Accounts", "Platform", "Each account's billing (D748 E4): store by store or one plan for all its stores, and for one still billed store by store what the move to one plan does (the plan it keeps, the plans that end with credit, the money a month before and after), with a button to move it.", {
+    keywords: ["accounts", "organisations", "account billing", "one plan", "move"],
+  }),
   platform("plan-analytics", "/plans/analytics", "Plan analytics", "Platform", "What the stores' plans earn every month in live and test payments, how that moved (started, upgraded, downgraded, paused, resumed, cancelled), the way from an application to a paying store, and each plan's stores; what Kaizena Flow sold by month with its VAT, its own Stripe payouts, and the books that hold its money.", {
     keywords: ["mrr", "monthly recurring revenue", "churn", "revenue", "funnel", "conversion", "trials", "sales", "vat", "payouts", "books"],
   }),

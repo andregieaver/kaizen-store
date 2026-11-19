@@ -1322,6 +1322,11 @@ Chat assistant, and the site's logo linking to the site) and, under it, one line
 `/api/email-picture` (`src/lib/email-picture.ts`): the media library's WebP and AVIF become PNG at the size the email draws, a person's
 picture cut square, as Outlook and older mail apps show neither format nor CSS cropping; only addresses Kaizena Flow signed are served.
 
+**Kaizena Flow's two desks, one answer.** While kaizenaflow.com is served from Kaizena Flow's own store (D484) and that store's desk takes
+email, an email to the platform's desk address goes to the store's desk (`houseEmailDesk()`), and a second copy of the same email (the same
+Message-ID within a day, such as support@ forwarded to both addresses) is kept as refused, `duplicate` (`secondCopy()`): of two that arrive
+together, the later row stands down. Owners asking from their admin stay on the platform's desk.
+
 **Receiving.** Resend's `email.received` event reaches the signed webhook that already takes delivery events
 (`/api/resend/webhook`, `RESEND_WEBHOOK_SECRET`). The event is kept at once as a row of `commerce.support_inbound_emails` (Resend's id
 unique, so a repeated event does nothing; from, subject, Message-ID, when) and the work runs after the answer (`after()`) and every

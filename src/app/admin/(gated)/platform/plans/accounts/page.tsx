@@ -1,0 +1,108 @@
+import type { Metadata } from "next";
+import { connection } from "next/server";
+
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
+import { adminText } from "@/lib/admin-text";
+import { formatMoney } from "@/lib/money";
+import { movePreviews, type MovePreview } from "@/server/account-move";
+import { requirePlatformReader } from "@/server/auth";
+
+import { moveAccountAction } from "./actions";
+
+export const metadata: Metadata = { title: "Accounts" };
+
+/**
+ * Platform → Plans → Accounts (D748 step E4, `docs/extensions.md` 13): each account's billing, and for one still billed store by store what
+ * the move to one plan does (the plan it keeps, the plans that end, the money a month before and after, a store limit it is above), with
+ * "Move this account" to try it on one. Launch (step E5) moves the rest.
+ */
+export default async function AccountsPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
+  const account = await requirePlatformReader();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "screens").platformAccounts;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const previews = await movePreviews();
+  const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium" });
+  const money = (totals: MovePreview["before"]) => totals.map((t) => formatMoney(t.minor, t.currency, locale)).join(" + ") || formatMoney(0, "EUR", locale);
+
+  return (
+    <>
+      <PageHeader back={{ href: "/admin/platform/plans", label: w.plans }} title={w.title} description={w.description} />
+      {previews.length === 0 ? (
+        <p className="rounded-panel border border-line bg-card p-4 text-sm">{w.none}</p>
+      ) : (
+        <List label={w.list}>
+          {previews.map((p) => (
+            <ListRow key={p.organisationId}>
+              <RowLead
+                title={p.name}
+                sub={[p.ownerEmail ? fillWords(w.owner, { email: p.ownerEmail }) : null, countWords(p.stores.length, w.stores, { n: p.stores.length })].filter(Boolean).join(" · ")}
+              />
+              {p.billed ? (
+                <RowFact>
+                  <Chip signal="positive" dot>
+                    {p.movedAt ? fillWords(w.oneSince, { date: day(p.movedAt) }) : w.oneFromStart}
+                  </Chip>
+                </RowFact>
+              ) : (
+                <>
+                  <RowFact sub={<MoveFacts preview={p} w={w} day={day} money={money} />}>
+                    <Chip dot>{w.storeByStore}</Chip>
+                  </RowFact>
+                  <RowActions>
+                    <ActionForm action={moveAccountAction.bind(null, p.organisationId)} className="flex flex-col items-end gap-2">
+                      {/* The box only where the move ends a store's plan; otherwise there is nothing to understand first. */}
+                      {p.ending.length > 0 ? (
+                        <label className="flex items-center gap-2 text-caption">
+                          <input type="checkbox" name="understand" required />
+                          {w.understand}
+                        </label>
+                      ) : (
+                        <input type="hidden" name="understand" value="on" />
+                      )}
+                      <SubmitButton variant="secondary">{w.move}</SubmitButton>
+                    </ActionForm>
+                  </RowActions>
+                </>
+              )}
+            </ListRow>
+          ))}
+        </List>
+      )}
+    </>
+  );
+}
+
+/** What the move does for one account, in a few lines. */
+function MoveFacts({
+  preview: p,
+  w,
+  day,
+  money,
+}: {
+  preview: MovePreview;
+  w: ScreensMessages["platformAccounts"];
+  day: (iso: string) => string;
+  money: (totals: MovePreview["before"]) => string;
+}) {
+  const lines = [
+    p.kept ? fillWords(w.keeps, { plan: p.kept.planName ?? "?", store: p.kept.name }) : w.keepsNone,
+    p.ending.length > 0 ? countWords(p.ending.length, w.ends, { n: p.ending.length }) : null,
+    p.kept ? fillWords(w.money, { before: money(p.before), after: money(p.after) }) : null,
+    !p.kept && p.trialEndsAt ? fillWords(p.trialEnded ? w.trialEnded : w.trial, { date: day(p.trialEndsAt) }) : null,
+    p.overLimit ? fillWords(w.overLimit, { n: p.stores.length, plan: p.kept?.planName ?? "?", limit: p.storeLimit ?? 0 }) : null,
+  ].filter((line): line is string => line !== null);
+  return (
+    <span className="flex flex-col">
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </span>
+  );
+}

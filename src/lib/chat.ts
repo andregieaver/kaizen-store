@@ -317,7 +317,8 @@ export function cleanReply(raw: string, fallback: string): string {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  const sentences = plain.match(/[^.!?\n]+(?:[.!?]+|\n+|$)/g) ?? [plain];
+  // A line break after a sentence's stop is a match of its own: without it, "aktiv.\n\nGi" lost its break and ran together as "aktiv.Gi".
+  const sentences = plain.match(/[^.!?\n]+(?:[.!?]+|\n+|$)|\n+/g) ?? [plain];
   const kept = sentences.filter((sentence) => !findClaims(sentence).some((claim) => BANNED_CLAIMS.has(claim.kind)));
   const text = kept.join("").replace(/\s+([.!?])/g, "$1").trim();
   return text || fallback;
