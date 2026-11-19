@@ -1,110 +1,110 @@
-import { ADMIN_LANGS, type AdminLang } from "./admin-lang";
+import type { AdminLang } from "./admin-lang";
 import type { CommonMessages } from "./admin-messages/common.en";
 import { COMMON_WORDS } from "./admin-words/common";
-import { domainsEn, type DomainsMessages } from "./admin-messages/domains.en";
-import { domainsNb } from "./admin-messages/domains.nb";
-import { ordersEn, type OrdersMessages } from "./admin-messages/orders.en";
-import { ordersNb } from "./admin-messages/orders.nb";
+import type { DomainsMessages } from "./admin-messages/domains.en";
+import { DOMAINS_WORDS } from "./admin-words/domains";
+import type { OrdersMessages } from "./admin-messages/orders.en";
+import { ORDERS_WORDS } from "./admin-words/orders";
 import type { OrderMessages } from "./admin-messages/order.en";
 import { ORDER_WORDS } from "./admin-words/order";
-import { draftsEn, type DraftsMessages } from "./admin-messages/drafts.en";
-import { draftsNb } from "./admin-messages/drafts.nb";
-import { returnsEn, type ReturnsMessages } from "./admin-messages/returns.en";
-import { returnsNb } from "./admin-messages/returns.nb";
+import type { DraftsMessages } from "./admin-messages/drafts.en";
+import { DRAFTS_WORDS } from "./admin-words/drafts";
+import type { ReturnsMessages } from "./admin-messages/returns.en";
+import { RETURNS_WORDS } from "./admin-words/returns";
 import type { InvoicesMessages } from "./admin-messages/invoices.en";
 import { INVOICES_WORDS } from "./admin-words/invoices";
-import { productsEn, type ProductsMessages } from "./admin-messages/products.en";
-import { productsNb } from "./admin-messages/products.nb";
-import { productEn, type ProductMessages } from "./admin-messages/product.en";
-import { productNb } from "./admin-messages/product.nb";
-import { inventoryEn, type InventoryMessages } from "./admin-messages/inventory.en";
-import { inventoryNb } from "./admin-messages/inventory.nb";
-import { giftCardsEn, type GiftCardsMessages } from "./admin-messages/gift-cards.en";
-import { giftCardsNb } from "./admin-messages/gift-cards.nb";
-import { reviewsEn, type ReviewsMessages } from "./admin-messages/reviews.en";
-import { reviewsNb } from "./admin-messages/reviews.nb";
-import { contentEn, type ContentMessages } from "./admin-messages/content.en";
-import { contentNb } from "./admin-messages/content.nb";
-import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
-import { fieldsNb } from "./admin-messages/fields.nb";
+import type { ProductsMessages } from "./admin-messages/products.en";
+import { PRODUCTS_WORDS } from "./admin-words/products";
+import type { ProductMessages } from "./admin-messages/product.en";
+import { PRODUCT_WORDS } from "./admin-words/product";
+import type { InventoryMessages } from "./admin-messages/inventory.en";
+import { INVENTORY_WORDS } from "./admin-words/inventory";
+import type { GiftCardsMessages } from "./admin-messages/gift-cards.en";
+import { GIFT_CARDS_WORDS } from "./admin-words/gift-cards";
+import type { ReviewsMessages } from "./admin-messages/reviews.en";
+import { REVIEWS_WORDS } from "./admin-words/reviews";
+import type { ContentMessages } from "./admin-messages/content.en";
+import { CONTENT_WORDS } from "./admin-words/content";
+import type { FieldsMessages } from "./admin-messages/fields.en";
+import { FIELDS_WORDS } from "./admin-words/fields";
 import type { CustomersMessages } from "./admin-messages/customers.en";
 import { CUSTOMERS_WORDS } from "./admin-words/customers";
-import { privacyEn, type PrivacyMessages } from "./admin-messages/privacy.en";
-import { privacyNb } from "./admin-messages/privacy.nb";
-import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.en";
-import { marketingNb } from "./admin-messages/marketing.nb";
-import { discountsEn, type DiscountsMessages } from "./admin-messages/discounts.en";
-import { discountsNb } from "./admin-messages/discounts.nb";
-import { builderEn, type BuilderMessages } from "./admin-messages/builder.en";
-import { builderNb } from "./admin-messages/builder.nb";
-import { blocksEn, type BlocksMessages } from "./admin-messages/blocks.en";
-import { blocksNb } from "./admin-messages/blocks.nb";
+import type { PrivacyMessages } from "./admin-messages/privacy.en";
+import { PRIVACY_WORDS } from "./admin-words/privacy";
+import type { MarketingMessages } from "./admin-messages/marketing.en";
+import { MARKETING_WORDS } from "./admin-words/marketing";
+import type { DiscountsMessages } from "./admin-messages/discounts.en";
+import { DISCOUNTS_WORDS } from "./admin-words/discounts";
+import type { BuilderMessages } from "./admin-messages/builder.en";
+import { BUILDER_WORDS } from "./admin-words/builder";
+import type { BlocksMessages } from "./admin-messages/blocks.en";
+import { BLOCKS_WORDS } from "./admin-words/blocks";
 import type { WebsiteMessages } from "./admin-messages/website.en";
 import { WEBSITE_WORDS } from "./admin-words/website";
-import { designEn, type DesignMessages } from "./admin-messages/design.en";
-import { designNb } from "./admin-messages/design.nb";
-import { movingEn, type MovingMessages } from "./admin-messages/moving.en";
-import { movingNb } from "./admin-messages/moving.nb";
-import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
-import { redirectsNb } from "./admin-messages/redirects.nb";
-import { formsEn, type FormsMessages } from "./admin-messages/forms.en";
-import { formsNb } from "./admin-messages/forms.nb";
-import { formTemplatesEn, type FormTemplatesMessages } from "./admin-messages/form-templates.en";
-import { formTemplatesNb } from "./admin-messages/form-templates.nb";
+import type { DesignMessages } from "./admin-messages/design.en";
+import { DESIGN_WORDS } from "./admin-words/design";
+import type { MovingMessages } from "./admin-messages/moving.en";
+import { MOVING_WORDS } from "./admin-words/moving";
+import type { RedirectsMessages } from "./admin-messages/redirects.en";
+import { REDIRECTS_WORDS } from "./admin-words/redirects";
+import type { FormsMessages } from "./admin-messages/forms.en";
+import { FORMS_WORDS } from "./admin-words/forms";
+import type { FormTemplatesMessages } from "./admin-messages/form-templates.en";
+import { FORM_TEMPLATES_WORDS } from "./admin-words/form-templates";
 import type { ExperimentsMessages } from "./admin-messages/experiments.en";
 import { EXPERIMENTS_WORDS } from "./admin-words/experiments";
-import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
-import { settingsNb } from "./admin-messages/settings.nb";
-import { taxEn, type TaxMessages } from "./admin-messages/tax.en";
-import { taxNb } from "./admin-messages/tax.nb";
-import { paymentsEn, type PaymentsMessages } from "./admin-messages/payments.en";
-import { paymentsNb } from "./admin-messages/payments.nb";
-import { shippingEn, type ShippingMessages } from "./admin-messages/shipping.en";
-import { shippingNb } from "./admin-messages/shipping.nb";
-import { carriersEn, type CarriersMessages } from "./admin-messages/carriers.en";
-import { carriersNb } from "./admin-messages/carriers.nb";
-import { fikenEn, type FikenMessages } from "./admin-messages/fiken.en";
-import { fikenNb } from "./admin-messages/fiken.nb";
-import { consoleEn, type ConsoleMessages } from "./admin-messages/console.en";
-import { consoleNb } from "./admin-messages/console.nb";
-import { businessEn, type BusinessMessages } from "./admin-messages/business.en";
-import { businessNb } from "./admin-messages/business.nb";
+import type { SettingsMessages } from "./admin-messages/settings.en";
+import { SETTINGS_WORDS } from "./admin-words/settings";
+import type { TaxMessages } from "./admin-messages/tax.en";
+import { TAX_WORDS } from "./admin-words/tax";
+import type { PaymentsMessages } from "./admin-messages/payments.en";
+import { PAYMENTS_WORDS } from "./admin-words/payments";
+import type { ShippingMessages } from "./admin-messages/shipping.en";
+import { SHIPPING_WORDS } from "./admin-words/shipping";
+import type { CarriersMessages } from "./admin-messages/carriers.en";
+import { CARRIERS_WORDS } from "./admin-words/carriers";
+import type { FikenMessages } from "./admin-messages/fiken.en";
+import { FIKEN_WORDS } from "./admin-words/fiken";
+import type { ConsoleMessages } from "./admin-messages/console.en";
+import { CONSOLE_WORDS } from "./admin-words/console";
+import type { BusinessMessages } from "./admin-messages/business.en";
+import { BUSINESS_WORDS } from "./admin-words/business";
 import type { BooksMessages } from "./admin-messages/books.en";
 import { BOOKS_WORDS } from "./admin-words/books";
-import { dealsEn, type DealsMessages } from "./admin-messages/deals.en";
-import { dealsNb } from "./admin-messages/deals.nb";
+import type { DealsMessages } from "./admin-messages/deals.en";
+import { DEALS_WORDS } from "./admin-words/deals";
 import type { ScreensMessages } from "./admin-messages/screens.en";
 import { SCREENS_WORDS } from "./admin-words/screens";
-import { storePartsEn, type StorePartsMessages } from "./admin-messages/store-parts.en";
-import { storePartsNb } from "./admin-messages/store-parts.nb";
-import { backdropsEn, type BackdropsMessages } from "./admin-messages/backdrops.en";
-import { backdropsNb } from "./admin-messages/backdrops.nb";
-import { animationEn, type AnimationMessages } from "./admin-messages/animation.en";
-import { heatmapsEn, type HeatmapsMessages } from "./admin-messages/heatmaps.en";
-import { heatmapsNb } from "./admin-messages/heatmaps.nb";
-import { recordingsEn, type RecordingsMessages } from "./admin-messages/recordings.en";
-import { privacyOfficerEn, type PrivacyOfficerMessages } from "./admin-messages/privacy-officer.en";
-import { privacyOfficerNb } from "./admin-messages/privacy-officer.nb";
-import { flowsEn, type FlowsMessages } from "./admin-messages/flows.en";
-import { flowsNb } from "./admin-messages/flows.nb";
-import { recordingsNb } from "./admin-messages/recordings.nb";
-import { animationNb } from "./admin-messages/animation.nb";
-import { automaticEn, type AutomaticMessages } from "./admin-messages/automatic.en";
-import { automaticNb } from "./admin-messages/automatic.nb";
-import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
-import { notificationsNb } from "./admin-messages/notifications.nb";
-import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
-import { legalNb } from "./admin-messages/legal.nb";
-import { staffEn, type StaffMessages } from "./admin-messages/staff.en";
-import { staffNb } from "./admin-messages/staff.nb";
-import { billingEn, type BillingMessages } from "./admin-messages/billing.en";
-import { billingNb } from "./admin-messages/billing.nb";
-import { analyticsEn, type AnalyticsMessages } from "./admin-messages/analytics.en";
-import { analyticsNb } from "./admin-messages/analytics.nb";
-import { financeEn, type FinanceMessages } from "./admin-messages/finance.en";
-import { financeNb } from "./admin-messages/finance.nb";
-import { taxReportsEn, type TaxReportsMessages } from "./admin-messages/tax-reports.en";
-import { taxReportsNb } from "./admin-messages/tax-reports.nb";
+import type { StorePartsMessages } from "./admin-messages/store-parts.en";
+import { STORE_PARTS_WORDS } from "./admin-words/store-parts";
+import type { BackdropsMessages } from "./admin-messages/backdrops.en";
+import { BACKDROPS_WORDS } from "./admin-words/backdrops";
+import type { AnimationMessages } from "./admin-messages/animation.en";
+import { ANIMATION_WORDS } from "./admin-words/animation";
+import type { HeatmapsMessages } from "./admin-messages/heatmaps.en";
+import { HEATMAPS_WORDS } from "./admin-words/heatmaps";
+import type { RecordingsMessages } from "./admin-messages/recordings.en";
+import { RECORDINGS_WORDS } from "./admin-words/recordings";
+import type { PrivacyOfficerMessages } from "./admin-messages/privacy-officer.en";
+import { PRIVACY_OFFICER_WORDS } from "./admin-words/privacy-officer";
+import type { FlowsMessages } from "./admin-messages/flows.en";
+import { FLOWS_WORDS } from "./admin-words/flows";
+import type { AutomaticMessages } from "./admin-messages/automatic.en";
+import { AUTOMATIC_WORDS } from "./admin-words/automatic";
+import type { NotificationsMessages } from "./admin-messages/notifications.en";
+import { NOTIFICATIONS_WORDS } from "./admin-words/notifications";
+import type { LegalMessages } from "./admin-messages/legal.en";
+import { LEGAL_WORDS } from "./admin-words/legal";
+import type { StaffMessages } from "./admin-messages/staff.en";
+import { STAFF_WORDS } from "./admin-words/staff";
+import type { BillingMessages } from "./admin-messages/billing.en";
+import { BILLING_WORDS } from "./admin-words/billing";
+import type { AnalyticsMessages } from "./admin-messages/analytics.en";
+import { ANALYTICS_WORDS } from "./admin-words/analytics";
+import type { FinanceMessages } from "./admin-messages/finance.en";
+import { FINANCE_WORDS } from "./admin-words/finance";
+import type { TaxReportsMessages } from "./admin-messages/tax-reports.en";
+import { TAX_REPORTS_WORDS } from "./admin-words/tax-reports";
 import type { ReportsMessages } from "./admin-messages/reports.en";
 import { REPORTS_WORDS } from "./admin-words/reports";
 import type { CustomReportsMessages } from "./admin-messages/custom-reports.en";
@@ -121,36 +121,70 @@ import type { PlatformMessages } from "./admin-messages/platform.en";
 import { PLATFORM_WORDS } from "./admin-words/platform";
 import type { PlatformSiteMessages } from "./admin-messages/platform-site.en";
 import { PLATFORM_SITE_WORDS } from "./admin-words/platform-site";
-import { platformToolsEn, type PlatformToolsMessages } from "./admin-messages/platform-tools.en";
-import { platformToolsNb } from "./admin-messages/platform-tools.nb";
-import { bookingsEn, type BookingsMessages } from "./admin-messages/bookings.en";
-import { bookingsNb } from "./admin-messages/bookings.nb";
-import { capacityEn, type CapacityMessages } from "./admin-messages/capacity.en";
-import { capacityNb } from "./admin-messages/capacity.nb";
-import { loyaltyEn, type LoyaltyMessages } from "./admin-messages/loyalty.en";
-import { loyaltyNb } from "./admin-messages/loyalty.nb";
-import { homeEn, type HomeMessages } from "./admin-messages/home.en";
-import { homeNb } from "./admin-messages/home.nb";
-import { platformLegalEn, type PlatformLegalMessages } from "./admin-messages/platform-legal.en";
-import { platformLegalNb } from "./admin-messages/platform-legal.nb";
-import { shellEn, type ShellMessages } from "./admin-messages/shell.en";
-import { shellNb } from "./admin-messages/shell.nb";
-import { setupEn, type SetupMessages } from "./admin-messages/setup.en";
-import { setupNb } from "./admin-messages/setup.nb";
+import type { PlatformToolsMessages } from "./admin-messages/platform-tools.en";
+import { PLATFORM_TOOLS_WORDS } from "./admin-words/platform-tools";
+import type { BookingsMessages } from "./admin-messages/bookings.en";
+import { BOOKINGS_WORDS } from "./admin-words/bookings";
+import type { CapacityMessages } from "./admin-messages/capacity.en";
+import { CAPACITY_WORDS } from "./admin-words/capacity";
+import type { LoyaltyMessages } from "./admin-messages/loyalty.en";
+import { LOYALTY_WORDS } from "./admin-words/loyalty";
+import type { HomeMessages } from "./admin-messages/home.en";
+import { HOME_WORDS } from "./admin-words/home";
+import type { PlatformLegalMessages } from "./admin-messages/platform-legal.en";
+import { PLATFORM_LEGAL_WORDS } from "./admin-words/platform-legal";
+import type { ShellMessages } from "./admin-messages/shell.en";
+import { SHELL_WORDS } from "./admin-words/shell";
+import type { SetupMessages } from "./admin-messages/setup.en";
+import { SETUP_WORDS } from "./admin-words/setup";
 import type { SignInMessages } from "./admin-messages/sign-in.en";
 import { SIGN_IN_WORDS } from "./admin-words/sign-in";
-import { blogEn, type BlogMessages } from "./admin-messages/blog.en";
-import { blogNb } from "./admin-messages/blog.nb";
-import { schedulesEn, type SchedulesMessages } from "./admin-messages/schedules.en";
-import { schedulesNb } from "./admin-messages/schedules.nb";
+import type { BlogMessages } from "./admin-messages/blog.en";
+import { BLOG_WORDS } from "./admin-words/blog";
+import type { SchedulesMessages } from "./admin-messages/schedules.en";
+import { SCHEDULES_WORDS } from "./admin-words/schedules";
 import type { OauthMessages } from "./admin-messages/oauth.en";
 import { OAUTH_WORDS } from "./admin-words/oauth";
 import type { SandboxMessages } from "./admin-messages/sandbox.en";
 import { SANDBOX_WORDS } from "./admin-words/sandbox";
 import type { HouseAutopilotMessages } from "./admin-messages/house-autopilot.en";
 import { HOUSE_AUTOPILOT_WORDS } from "./admin-words/house-autopilot";
-import { kitEn, type KitMessages } from "./admin-messages/kit.en";
-import { kitNb } from "./admin-messages/kit.nb";
+import type { KitMessages } from "./admin-messages/kit.en";
+import { KIT_WORDS } from "./admin-words/kit";
+import { BUILDER_TEXT_WORDS } from "./admin-words/builder-text";
+import { WEBSITE_PICK_WORDS } from "./admin-words/website-pick";
+import { ASSISTANT_BAR_WORDS } from "./admin-words/assistant-bar";
+import { HOME_DRAFTS_WORDS } from "./admin-words/home-drafts";
+import { WEBSITE_LIST_WORDS } from "./admin-words/website-list";
+import { FIELDS_EDITOR_WORDS } from "./admin-words/fields-editor";
+import { PRODUCTS_EDITOR_WORDS } from "./admin-words/products-editor";
+import { DESIGN_EDITOR_WORDS } from "./admin-words/design-editor";
+import { BLOG_EDITOR_WORDS } from "./admin-words/blog-editor";
+import { SCHEDULES_EDITOR_WORDS } from "./admin-words/schedules-editor";
+import { NOTIFICATIONS_INTEGRATIONS_WORDS } from "./admin-words/notifications-integrations";
+import { NOTIFICATIONS_GOOGLE_WORDS } from "./admin-words/notifications-google";
+import { NOTIFICATIONS_TOKENS_WORDS } from "./admin-words/notifications-tokens";
+import { NOTIFICATIONS_WORKFLOWS_WORDS } from "./admin-words/notifications-workflows";
+import { SETTINGS_HOURS_WORDS } from "./admin-words/settings-hours";
+import { SETTINGS_AI_WORDS } from "./admin-words/settings-ai";
+import { SETTINGS_PRODUCER_WORDS } from "./admin-words/settings-producer";
+import { SETTINGS_COMPANY_WORDS } from "./admin-words/settings-company";
+import { SETTINGS_PRICE_RULES_WORDS } from "./admin-words/settings-price-rules";
+import { SETTINGS_FEATURES_WORDS } from "./admin-words/settings-features";
+import { SETTINGS_PRICES_WORDS } from "./admin-words/settings-prices";
+import { SUPPORT_SETTINGS_WORDS } from "./admin-words/support-settings";
+import { ANALYTICS_EXPORT_WORDS } from "./admin-words/analytics-export";
+import { REPORTS_CAMPAIGNS_WORDS } from "./admin-words/reports-campaigns";
+import { PLATFORM_COPY_WORDS } from "./admin-words/platform-copy";
+import { PLATFORM_DOCS_GUIDE_WORDS } from "./admin-words/platform-docs-guide";
+import { PLATFORM_REMINDERS_WORDS } from "./admin-words/platform-reminders";
+import { BUILDER_VERSIONS_WORDS } from "./admin-words/builder-versions";
+import { WEBSITE_STAGING_WORDS } from "./admin-words/website-staging";
+import { WEBSITE_MEDIA_WORDS } from "./admin-words/website-media";
+import { WEBSITE_MENUS_WORDS } from "./admin-words/website-menus";
+import { INVENTORY_IMPORT_WORDS } from "./admin-words/inventory-import";
+import { CUSTOMERS_STAFF_WORDS } from "./admin-words/customers-staff";
+import { BLOCKS_FORM_WORDS } from "./admin-words/blocks-form";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -236,7 +270,7 @@ export type AdminAreaMessages = {
   houseAutopilot: HouseAutopilotMessages;
   /** The admin kit's own words (code review 1.12, D818): `Pager` and `ListSearch`, drawn on the server. */
   kit: KitMessages;
-  /** Cuts (bloat review step 2.27, `cut()` below): some groups of an area, the same objects, for screens whose parts read only those. */
+  /** Cuts (bloat review step 2.27, `cut()` in `src/lib/admin-area.ts`, each a module in `src/lib/admin-words`): some groups of an area, the same objects, for screens whose parts read only those. */
   builderText: Pick<BuilderMessages, "richText" | "textStyles" | "responsive">;
   websitePick: Pick<WebsiteMessages, "picker" | "pictureMaker">;
   /** The AI manager's button and notices, on every screen; the chat's words (`assistant`) come with its start call. */
@@ -297,127 +331,120 @@ export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
 export type HandedArea = "storeParts" | "backdrops" | "animation";
 
 /**
- * A cut of an area (bloat review step 2.27, `docs/platform-admin-i18n.md` 3.3): some of its top-level groups, the same objects in each
- * language, so no string moves and no catalogue file is added. A cut is handed where a page's parts read only those groups; a part that
- * reads a group outside its cut does not compile.
+ * Going away (bloat review step 2.25): read an area as its module in src/lib/admin-words indexed by the language (<AREA>_WORDS[lang]),
+ * several with areaTexts(); this table is deleted when no caller is left.
  */
-const cut = <T extends object, K extends keyof T>(source: Record<AdminLang, T>, keys: readonly K[]): Record<AdminLang, Pick<T, K>> =>
-  Object.fromEntries(ADMIN_LANGS.map((lang) => [lang, Object.fromEntries(keys.map((key) => [key, source[lang][key]])) as Pick<T, K>])) as Record<
-    AdminLang,
-    Pick<T, K>
-  >;
-
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: COMMON_WORDS,
-  domains: { en: domainsEn, nb: domainsNb },
-  home: { en: homeEn, nb: homeNb },
+  domains: DOMAINS_WORDS,
+  home: HOME_WORDS,
   customers: CUSTOMERS_WORDS,
-  privacy: { en: privacyEn, nb: privacyNb },
-  marketing: { en: marketingEn, nb: marketingNb },
-  discounts: { en: discountsEn, nb: discountsNb },
-  loyalty: { en: loyaltyEn, nb: loyaltyNb },
+  privacy: PRIVACY_WORDS,
+  marketing: MARKETING_WORDS,
+  discounts: DISCOUNTS_WORDS,
+  loyalty: LOYALTY_WORDS,
   platform: PLATFORM_WORDS,
   platformSite: PLATFORM_SITE_WORDS,
-  platformTools: { en: platformToolsEn, nb: platformToolsNb },
-  bookings: { en: bookingsEn, nb: bookingsNb },
+  platformTools: PLATFORM_TOOLS_WORDS,
+  bookings: BOOKINGS_WORDS,
   support: SUPPORT_WORDS,
   work: WORK_WORDS,
   assistant: ASSISTANT_WORDS,
   staffEmails: STAFF_EMAILS_WORDS,
-  analytics: { en: analyticsEn, nb: analyticsNb },
-  finance: { en: financeEn, nb: financeNb },
-  taxReports: { en: taxReportsEn, nb: taxReportsNb },
+  analytics: ANALYTICS_WORDS,
+  finance: FINANCE_WORDS,
+  taxReports: TAX_REPORTS_WORDS,
   reports: REPORTS_WORDS,
   customReports: CUSTOM_REPORTS_WORDS,
-  settings: { en: settingsEn, nb: settingsNb },
-  tax: { en: taxEn, nb: taxNb },
-  payments: { en: paymentsEn, nb: paymentsNb },
-  shipping: { en: shippingEn, nb: shippingNb },
-  carriers: { en: carriersEn, nb: carriersNb },
-  fiken: { en: fikenEn, nb: fikenNb },
-  deals: { en: dealsEn, nb: dealsNb },
-  console: { en: consoleEn, nb: consoleNb },
-  business: { en: businessEn, nb: businessNb },
+  settings: SETTINGS_WORDS,
+  tax: TAX_WORDS,
+  payments: PAYMENTS_WORDS,
+  shipping: SHIPPING_WORDS,
+  carriers: CARRIERS_WORDS,
+  fiken: FIKEN_WORDS,
+  deals: DEALS_WORDS,
+  console: CONSOLE_WORDS,
+  business: BUSINESS_WORDS,
   books: BOOKS_WORDS,
   screens: SCREENS_WORDS,
-  storeParts: { en: storePartsEn, nb: storePartsNb },
-  backdrops: { en: backdropsEn, nb: backdropsNb },
-  animation: { en: animationEn, nb: animationNb },
-  heatmaps: { en: heatmapsEn, nb: heatmapsNb },
-  recordings: { en: recordingsEn, nb: recordingsNb },
-  privacyOfficer: { en: privacyOfficerEn, nb: privacyOfficerNb },
-  flows: { en: flowsEn, nb: flowsNb },
-  notifications: { en: notificationsEn, nb: notificationsNb },
-  automatic: { en: automaticEn, nb: automaticNb },
-  legal: { en: legalEn, nb: legalNb },
-  staff: { en: staffEn, nb: staffNb },
-  billing: { en: billingEn, nb: billingNb },
-  capacity: { en: capacityEn, nb: capacityNb },
-  builder: { en: builderEn, nb: builderNb },
-  blocks: { en: blocksEn, nb: blocksNb },
+  storeParts: STORE_PARTS_WORDS,
+  backdrops: BACKDROPS_WORDS,
+  animation: ANIMATION_WORDS,
+  heatmaps: HEATMAPS_WORDS,
+  recordings: RECORDINGS_WORDS,
+  privacyOfficer: PRIVACY_OFFICER_WORDS,
+  flows: FLOWS_WORDS,
+  notifications: NOTIFICATIONS_WORDS,
+  automatic: AUTOMATIC_WORDS,
+  legal: LEGAL_WORDS,
+  staff: STAFF_WORDS,
+  billing: BILLING_WORDS,
+  capacity: CAPACITY_WORDS,
+  builder: BUILDER_WORDS,
+  blocks: BLOCKS_WORDS,
   website: WEBSITE_WORDS,
-  design: { en: designEn, nb: designNb },
-  redirects: { en: redirectsEn, nb: redirectsNb },
-  forms: { en: formsEn, nb: formsNb },
-  formTemplates: { en: formTemplatesEn, nb: formTemplatesNb },
-  moving: { en: movingEn, nb: movingNb },
+  design: DESIGN_WORDS,
+  redirects: REDIRECTS_WORDS,
+  forms: FORMS_WORDS,
+  formTemplates: FORM_TEMPLATES_WORDS,
+  moving: MOVING_WORDS,
   experiments: EXPERIMENTS_WORDS,
-  products: { en: productsEn, nb: productsNb },
-  product: { en: productEn, nb: productNb },
-  inventory: { en: inventoryEn, nb: inventoryNb },
-  giftCards: { en: giftCardsEn, nb: giftCardsNb },
-  reviews: { en: reviewsEn, nb: reviewsNb },
-  fields: { en: fieldsEn, nb: fieldsNb },
-  content: { en: contentEn, nb: contentNb },
-  orders: { en: ordersEn, nb: ordersNb },
+  products: PRODUCTS_WORDS,
+  product: PRODUCT_WORDS,
+  inventory: INVENTORY_WORDS,
+  giftCards: GIFT_CARDS_WORDS,
+  reviews: REVIEWS_WORDS,
+  fields: FIELDS_WORDS,
+  content: CONTENT_WORDS,
+  orders: ORDERS_WORDS,
   order: ORDER_WORDS,
-  drafts: { en: draftsEn, nb: draftsNb },
-  returns: { en: returnsEn, nb: returnsNb },
+  drafts: DRAFTS_WORDS,
+  returns: RETURNS_WORDS,
   invoices: INVOICES_WORDS,
-  platformLegal: { en: platformLegalEn, nb: platformLegalNb },
-  setup: { en: setupEn, nb: setupNb },
-  shell: { en: shellEn, nb: shellNb },
+  platformLegal: PLATFORM_LEGAL_WORDS,
+  setup: SETUP_WORDS,
+  shell: SHELL_WORDS,
   signIn: SIGN_IN_WORDS,
-  blog: { en: blogEn, nb: blogNb },
-  schedules: { en: schedulesEn, nb: schedulesNb },
+  blog: BLOG_WORDS,
+  schedules: SCHEDULES_WORDS,
   oauth: OAUTH_WORDS,
   sandbox: SANDBOX_WORDS,
   houseAutopilot: HOUSE_AUTOPILOT_WORDS,
-  kit: { en: kitEn, nb: kitNb },
-  builderText: cut({ en: builderEn, nb: builderNb }, ["richText", "textStyles", "responsive"]),
-  websitePick: cut(WEBSITE_WORDS, ["picker", "pictureMaker"]),
-  assistantBar: cut(ASSISTANT_WORDS, ["name", "launcher", "notices"]),
-  homeDrafts: cut({ en: homeEn, nb: homeNb }, ["drafts"]),
-  websiteList: cut(WEBSITE_WORDS, ["list", "pageJobs", "demoHomes"]),
-  fieldsEditor: cut({ en: fieldsEn, nb: fieldsNb }, ["form", "pickers", "linkKinds"]),
-  productsEditor: cut({ en: productsEn, nb: productsNb }, ["terms", "termFields", "termPage", "termRules", "termSeo"]),
-  designEditor: cut({ en: designEn, nb: designNb }, ["fonts", "changes"]),
-  blogEditor: cut({ en: blogEn, nb: blogNb }, ["editor"]),
-  schedulesEditor: cut({ en: schedulesEn, nb: schedulesNb }, ["dialog", "nouns", "share"]),
-  notificationsIntegrations: cut({ en: notificationsEn, nb: notificationsNb }, ["integrations"]),
-  notificationsGoogle: cut({ en: notificationsEn, nb: notificationsNb }, ["google"]),
-  notificationsTokens: cut({ en: notificationsEn, nb: notificationsNb }, ["apiTokens", "customApps", "storefrontTokens"]),
-  notificationsWorkflows: cut({ en: notificationsEn, nb: notificationsNb }, ["workflows"]),
-  settingsHours: cut({ en: settingsEn, nb: settingsNb }, ["hours"]),
-  settingsAi: cut({ en: settingsEn, nb: settingsNb }, ["ai", "common"]),
-  settingsProducer: cut({ en: settingsEn, nb: settingsNb }, ["producer"]),
-  settingsCompany: cut({ en: settingsEn, nb: settingsNb }, ["company"]),
-  settingsPriceRules: cut({ en: settingsEn, nb: settingsNb }, ["priceRules"]),
-  settingsFeatures: cut({ en: settingsEn, nb: settingsNb }, ["features"]),
-  settingsPrices: cut({ en: settingsEn, nb: settingsNb }, ["common", "prices"]),
-  supportSettings: cut(SUPPORT_WORDS, ["settings"]),
-  analyticsExport: cut({ en: analyticsEn, nb: analyticsNb }, ["exportButton"]),
-  reportsCampaigns: cut(REPORTS_WORDS, ["campaigns", "channels"]),
-  platformCopy: cut(PLATFORM_WORDS, ["copyWizard", "copyProgress"]),
-  platformDocsGuide: cut(PLATFORM_WORDS, ["docsGuide"]),
-  platformReminders: cut(PLATFORM_WORDS, ["reminderEditor"]),
-  builderVersions: cut({ en: builderEn, nb: builderNb }, ["differences", "blockNames"]),
-  websiteStaging: cut(WEBSITE_WORDS, ["staging"]),
-  websiteMedia: cut(WEBSITE_WORDS, ["media"]),
-  websiteMenus: cut(WEBSITE_WORDS, ["menus"]),
-  inventoryImport: cut({ en: inventoryEn, nb: inventoryNb }, ["import"]),
-  customersStaff: cut(CUSTOMERS_WORDS, ["staff"]),
-  blocksForm: cut({ en: blocksEn, nb: blocksNb }, ["form", "lists"]),
+  kit: KIT_WORDS,
+  builderText: BUILDER_TEXT_WORDS,
+  websitePick: WEBSITE_PICK_WORDS,
+  assistantBar: ASSISTANT_BAR_WORDS,
+  homeDrafts: HOME_DRAFTS_WORDS,
+  websiteList: WEBSITE_LIST_WORDS,
+  fieldsEditor: FIELDS_EDITOR_WORDS,
+  productsEditor: PRODUCTS_EDITOR_WORDS,
+  designEditor: DESIGN_EDITOR_WORDS,
+  blogEditor: BLOG_EDITOR_WORDS,
+  schedulesEditor: SCHEDULES_EDITOR_WORDS,
+  notificationsIntegrations: NOTIFICATIONS_INTEGRATIONS_WORDS,
+  notificationsGoogle: NOTIFICATIONS_GOOGLE_WORDS,
+  notificationsTokens: NOTIFICATIONS_TOKENS_WORDS,
+  notificationsWorkflows: NOTIFICATIONS_WORKFLOWS_WORDS,
+  settingsHours: SETTINGS_HOURS_WORDS,
+  settingsAi: SETTINGS_AI_WORDS,
+  settingsProducer: SETTINGS_PRODUCER_WORDS,
+  settingsCompany: SETTINGS_COMPANY_WORDS,
+  settingsPriceRules: SETTINGS_PRICE_RULES_WORDS,
+  settingsFeatures: SETTINGS_FEATURES_WORDS,
+  settingsPrices: SETTINGS_PRICES_WORDS,
+  supportSettings: SUPPORT_SETTINGS_WORDS,
+  analyticsExport: ANALYTICS_EXPORT_WORDS,
+  reportsCampaigns: REPORTS_CAMPAIGNS_WORDS,
+  platformCopy: PLATFORM_COPY_WORDS,
+  platformDocsGuide: PLATFORM_DOCS_GUIDE_WORDS,
+  platformReminders: PLATFORM_REMINDERS_WORDS,
+  builderVersions: BUILDER_VERSIONS_WORDS,
+  websiteStaging: WEBSITE_STAGING_WORDS,
+  websiteMedia: WEBSITE_MEDIA_WORDS,
+  websiteMenus: WEBSITE_MENUS_WORDS,
+  inventoryImport: INVENTORY_IMPORT_WORDS,
+  customersStaff: CUSTOMERS_STAFF_WORDS,
+  blocksForm: BLOCKS_FORM_WORDS,
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */
