@@ -20,16 +20,17 @@ const STORE = `/admin/${E2E_STORE}`;
  * The eight screens: their address (`{product}` and `{page}` are one of the store's own), who opens it, `prefetches` (the most router prefetch
  * requests allowed in the 3 s after load; each ceiling was written at the count measured then and may only fall) and `fetches` (the exact
  * paths, without query, of every other fetch or XHR request made in those 3 s, as the first run showed them).
- * Held at the count of 14 November 2026; may only fall. The products list's 8 are its own toolbar links (export, import, categories, new), never a product's editor;
- * the orders list's 8 its toolbar links (a new draft, drafts, emails, export), never an order or a customer of a row, so neither count grows with the rows.
+ * Held at the count of 14 November 2026, then at 0 on every screen by bloat review step 2.6 (19 November 2026: the orders list's new-draft link, the products
+ * and pages lists' toolbar links and the product editor's way back are AdminLinks too; measured before it: orders 2, products 2, pages 4, a product's editor 2). A list still
+ * never prefetches a product's editor, an order or a customer of a row, so no count grows with the rows.
  */
 const SCREENS: { name: string; address: string; as: typeof OWNER | typeof ADMIN; prefetches: number; fetches: string[] }[] = [
   { name: "home", address: STORE, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
-  { name: "orders", address: `${STORE}/orders`, as: OWNER, prefetches: 8, fetches: ["/admin/account/notices/feed"] },
-  { name: "products", address: `${STORE}/products`, as: OWNER, prefetches: 8, fetches: ["/admin/account/notices/feed"] },
-  { name: "pages", address: `${STORE}/pages`, as: OWNER, prefetches: 6, fetches: ["/admin/account/notices/feed"] },
-  { name: "settings", address: `${STORE}/settings`, as: OWNER, prefetches: 16, fetches: ["/admin/account/notices/feed"] },
-  { name: "a product's editor", address: `${STORE}/products/{product}`, as: OWNER, prefetches: 2, fetches: ["/admin/account/notices/feed"] },
+  { name: "orders", address: `${STORE}/orders`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
+  { name: "products", address: `${STORE}/products`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
+  { name: "pages", address: `${STORE}/pages`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
+  { name: "settings", address: `${STORE}/settings`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
+  { name: "a product's editor", address: `${STORE}/products/{product}`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
   { name: "the builder", address: `${STORE}/pages/{page}`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed", `${STORE}/pages/{page}`] },
   { name: "the platform home", address: "/admin/platform", as: ADMIN, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
 ];

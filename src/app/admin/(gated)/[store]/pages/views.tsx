@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink as Link } from "@/components/admin/ui/link";
 import type { ReactNode } from "react";
 
 import { requireFeature } from "@/components/admin/feature-off";
