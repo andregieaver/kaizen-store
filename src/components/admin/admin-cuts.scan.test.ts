@@ -23,6 +23,21 @@ const READERS: { file: string; whole: string[] }[] = [
   { file: "page-jobs-panel.tsx", whole: ["website"] },
   { file: "demo-home-pages.tsx", whole: ["website"] },
   { file: "demo-home-take.tsx", whole: ["website"] },
+  // The page editor hands cuts of fields, products, design, blog and schedules; these parts read them there and wherever else they are drawn.
+  { file: "entity-fields-card.tsx", whole: ["fields"] },
+  { file: "entity-fields.tsx", whole: ["fields"] },
+  { file: "fields-form.tsx", whole: ["fields"] },
+  { file: "field-pickers.tsx", whole: ["fields"] },
+  { file: "terms.tsx", whole: ["products"] },
+  { file: "term-fields.tsx", whole: ["products"] },
+  { file: "term-page-fields.tsx", whole: ["products"] },
+  { file: "term-rules-fields.tsx", whole: ["products"] },
+  { file: "term-seo-fields.tsx", whole: ["products"] },
+  { file: "font-picker.tsx", whole: ["design"] },
+  { file: "page-builder-fields.tsx", whole: ["design"] },
+  { file: "page-editor.tsx", whole: ["blog"] },
+  { file: "schedule-dialog.tsx", whole: ["schedules"] },
+  { file: "share-links.tsx", whole: ["schedules"] },
 ];
 
 describe("parts drawn on cut-only screens", () => {

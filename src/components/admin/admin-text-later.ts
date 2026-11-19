@@ -80,6 +80,20 @@ const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   homeDrafts: () => import("@/lib/admin-messages/home.en").then((m) => ({ drafts: m.homeEn.drafts })),
   websiteList: () =>
     import("@/lib/admin-messages/website.en").then((m) => ({ list: m.websiteEn.list, pageJobs: m.websiteEn.pageJobs, demoHomes: m.websiteEn.demoHomes })),
+  fieldsEditor: () =>
+    import("@/lib/admin-messages/fields.en").then((m) => ({ form: m.fieldsEn.form, pickers: m.fieldsEn.pickers, linkKinds: m.fieldsEn.linkKinds })),
+  productsEditor: () =>
+    import("@/lib/admin-messages/products.en").then((m) => ({
+      terms: m.productsEn.terms,
+      termFields: m.productsEn.termFields,
+      termPage: m.productsEn.termPage,
+      termRules: m.productsEn.termRules,
+      termSeo: m.productsEn.termSeo,
+    })),
+  designEditor: () => import("@/lib/admin-messages/design.en").then((m) => ({ fonts: m.designEn.fonts, changes: m.designEn.changes })),
+  blogEditor: () => import("@/lib/admin-messages/blog.en").then((m) => ({ editor: m.blogEn.editor })),
+  schedulesEditor: () =>
+    import("@/lib/admin-messages/schedules.en").then((m) => ({ dialog: m.schedulesEn.dialog, nouns: m.schedulesEn.nouns, share: m.schedulesEn.share })),
 };
 
 /** A fetch React can read with `use()`; one that is already settled (`settledEnglish()`) is read at once. */

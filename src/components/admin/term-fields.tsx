@@ -35,7 +35,7 @@ export function TermFieldsButton({
   term: { id: string; name: string; kind: string };
   setup: TermFieldsSetup;
 }) {
-  const w = useAdminText("products").termFields;
+  const w = useAdminText("productsEditor").termFields;
   const kind = term.kind === "tag" ? "tag" : "category";
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState<{ groups: FieldGroup[]; data: FieldData; lookups: FieldLookups } | null>(null);

@@ -2015,7 +2015,7 @@ function ArticleBlogFields({
   authorId: string | undefined;
   onChange: (patch: Partial<PageContent>) => void;
 }) {
-  const bw = useAdminText("blog").editor;
+  const bw = useAdminText("blogEditor").editor;
   const main = choices.blogs.find((b) => b.main);
   const current = choices.blogs.some((b) => b.id === blogId) ? blogId! : (main?.id ?? "");
   return (

@@ -89,7 +89,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const hasUpdates = updates.available.length > 0 || updates.made.length > 0 || updates.installs.length > 0;
   const canShare = canChange && !store.isTemplate && !store.starter;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["design", "schedules"])}>
+    <AdminTextScope texts={adminTexts(lang, ["design", "designEditor", "schedules"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}

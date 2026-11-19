@@ -185,7 +185,7 @@ commit as the fix.
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
 | 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
 | 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Done | 19 Nov, D799: catalogue sites 35 to 0; 83 routes fell 4.86 MB; five screens 634-664 KB; admin median 643,240 B. aaa201926..589fb73de. |
-| 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | 19 Nov local, c1-3: shared words 33,723 to 16,617 (nb 47,103 to 17,180); home 134,689; product 431,497 to 282,578; builder 606,658 to 538,576 |
+| 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | In progress | 19 Nov local c1-4: shared words 33,723 to 16,617 B (target 15.5 KB missed); product doc 241,677; builder 468,351. Stopped before c5 |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Open | |
 | 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | In progress | D800: builder 2,791,016 to 2,007,139 B; ProseMirror 26 routes to 0; drafts to 840,961. Owner: a press on production. |
 | 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |

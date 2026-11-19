@@ -239,6 +239,12 @@ export type AdminAreaMessages = {
   assistantBar: Pick<AssistantMessages, "name" | "launcher" | "notices">;
   homeDrafts: Pick<HomeMessages, "drafts">;
   websiteList: Pick<WebsiteMessages, "list" | "pageJobs" | "demoHomes">;
+  /** The page editor's cuts: the groups its parts read, also handed where those parts are drawn on their own (a product, a category). */
+  fieldsEditor: Pick<FieldsMessages, "form" | "pickers" | "linkKinds">;
+  productsEditor: Pick<ProductsMessages, "terms" | "termFields" | "termPage" | "termRules" | "termSeo">;
+  designEditor: Pick<DesignMessages, "fonts" | "changes">;
+  blogEditor: Pick<BlogMessages, "editor">;
+  schedulesEditor: Pick<SchedulesMessages, "dialog" | "nouns" | "share">;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -353,6 +359,11 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   assistantBar: cut(ASSISTANT_WORDS, ["name", "launcher", "notices"]),
   homeDrafts: cut({ en: homeEn, nb: homeNb }, ["drafts"]),
   websiteList: cut(WEBSITE_WORDS, ["list", "pageJobs", "demoHomes"]),
+  fieldsEditor: cut({ en: fieldsEn, nb: fieldsNb }, ["form", "pickers", "linkKinds"]),
+  productsEditor: cut({ en: productsEn, nb: productsNb }, ["terms", "termFields", "termPage", "termRules", "termSeo"]),
+  designEditor: cut({ en: designEn, nb: designNb }, ["fonts", "changes"]),
+  blogEditor: cut({ en: blogEn, nb: blogNb }, ["editor"]),
+  schedulesEditor: cut({ en: schedulesEn, nb: schedulesNb }, ["dialog", "nouns", "share"]),
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

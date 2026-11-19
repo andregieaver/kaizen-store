@@ -79,7 +79,7 @@ export function TermPicker({
   create: TermActions["create"];
   manageHref: string;
 }) {
-  const w = useAdminText("products").terms;
+  const w = useAdminText("productsEditor").terms;
   const tree = categoryTree(terms);
   const tags = terms.filter((t) => t.kind === "tag").sort(byName);
   const toggle = (kind: TermKind, id: string, on: boolean) => {
@@ -151,7 +151,7 @@ function QuickAdd({
   create: TermActions["create"];
   onCreated: (id: string, terms: Term[]) => void;
 }) {
-  const w = useAdminText("products").terms;
+  const w = useAdminText("productsEditor").terms;
   const id = useId();
   const [name, setName] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
@@ -204,7 +204,7 @@ export type UnitPriceCategories = { gaps: Record<string, number>; needsHref: str
 
 /** The checkbox of the mark, with what it does. */
 function UnitPriceMark({ id, checked, onChange }: { id: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  const w = useAdminText("products").terms;
+  const w = useAdminText("productsEditor").terms;
   return (
     <div className="flex flex-col gap-0.5 text-sm">
       <label className="flex items-center gap-2" htmlFor={id}>
@@ -238,7 +238,7 @@ export function TermsManager({
   /** Only a store's product categories and tags (wave 6 unit A, D319): a picture, a description, names in other languages and the order of products. */
   page?: TermPageSetup;
 }) {
-  const w = useAdminText("products").terms;
+  const w = useAdminText("productsEditor").terms;
   const [terms, setTerms] = useState(initial);
   const tree = categoryTree(terms);
   const tags = terms.filter((t) => t.kind === "tag").sort(byName);
@@ -295,7 +295,7 @@ function ParentSelect({
   onChange: (value: string | null) => void;
   exclude: Set<string>;
 }) {
-  const w = useAdminText("products").terms;
+  const w = useAdminText("productsEditor").terms;
   return (
     <select id={id} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)} className={input}>
       <option value="">{w.top}</option>
@@ -325,7 +325,7 @@ function NewTerm({
   /** Offer the unit price mark (a store's product categories). */
   unitPrice?: boolean;
 }) {
-  const w = useAdminText("products").terms;
+  const w = useAdminText("productsEditor").terms;
   const id = useId();
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<string | null>(null);
@@ -400,8 +400,8 @@ function TermRow({
   /** Set on a store's product categories and tags (D319): its own page and its products' order. */
   page?: TermPageSetup;
 }) {
-  const w = useAdminText("products").terms;
-  const rw = useAdminText("products").termRules;
+  const w = useAdminText("productsEditor").terms;
+  const rw = useAdminText("productsEditor").termRules;
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);

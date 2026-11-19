@@ -1,7 +1,7 @@
 {
   "en": {
     "home": {
-      "document": 215768,
+      "document": 189565,
       "handed": 17862,
       "scriptByIdle": 783232,
       "named": null,
@@ -13,9 +13,9 @@
       ]
     },
     "orders": {
-      "document": 202030,
+      "document": 188197,
       "handed": 16617,
-      "scriptByIdle": 782433,
+      "scriptByIdle": 781750,
       "named": null,
       "areas": [
         "assistantBar",
@@ -24,24 +24,24 @@
       ]
     },
     "product": {
-      "document": 282578,
-      "handed": 108608,
+      "document": 241677,
+      "handed": 64711,
       "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
         "assistantBar",
         "builderText",
         "common",
-        "fields",
+        "fieldsEditor",
         "product",
-        "products",
+        "productsEditor",
         "shell",
         "websitePick"
       ]
     },
     "builder": {
-      "document": 538576,
-      "handed": 256563,
+      "document": 468351,
+      "handed": 182315,
       "scriptByIdle": 2747092,
       "named": null,
       "areas": [
@@ -49,14 +49,14 @@
         "assistantBar",
         "backdrops",
         "blocks",
-        "blog",
+        "blogEditor",
         "builder",
         "builderText",
         "common",
-        "design",
-        "fields",
-        "products",
-        "schedules",
+        "designEditor",
+        "fieldsEditor",
+        "productsEditor",
+        "schedulesEditor",
         "shell",
         "storeParts",
         "websitePick"
@@ -99,24 +99,24 @@
       ]
     },
     "product": {
-      "document": 286388,
-      "handed": 112300,
+      "document": 237325,
+      "handed": 66737,
       "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
         "assistantBar",
         "builderText",
         "common",
-        "fields",
+        "fieldsEditor",
         "product",
-        "products",
+        "productsEditor",
         "shell",
         "websitePick"
       ]
     },
     "builder": {
-      "document": 549693,
-      "handed": 268302,
+      "document": 465973,
+      "handed": 190465,
       "scriptByIdle": 2747092,
       "named": null,
       "areas": [
@@ -124,14 +124,14 @@
         "assistantBar",
         "backdrops",
         "blocks",
-        "blog",
+        "blogEditor",
         "builder",
         "builderText",
         "common",
-        "design",
-        "fields",
-        "products",
-        "schedules",
+        "designEditor",
+        "fieldsEditor",
+        "productsEditor",
+        "schedulesEditor",
         "shell",
         "storeParts",
         "websitePick"
@@ -150,7 +150,7 @@
     }
   },
   "saves": {
-    "product": 173407,
-    "builder": 1122
+    "product": 134598,
+    "builder": 1087
   }
 }

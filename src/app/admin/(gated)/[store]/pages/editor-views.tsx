@@ -31,7 +31,7 @@ import { saveStagedPageAction } from "./staging-actions";
 import { requireExtension } from "@/components/admin/extension-off";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
-const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "blog", "schedules", "storeParts", "backdrops", "animation", "builderText", "websitePick"] as const;
+const EDITOR_AREAS = ["builder", "blocks", "fieldsEditor", "productsEditor", "designEditor", "blogEditor", "schedulesEditor", "storeParts", "backdrops", "animation", "builderText", "websitePick"] as const;
 
 /**
  * A store's page editor and preview (D53, D57), apart from its lists (`views.tsx`): a list's route loads every client component its

@@ -323,6 +323,26 @@ and fails on any. Its first runs found the platform's docs guide (`website`) and
 Besides every screen without an id in its address, the test follows each screen's links to one screen of each kind behind them (an
 order, a product, a type made from a preset), at most 150 for each person.
 
+**Cuts: each page hands only the groups its parts read (19 November 2026, bloat review step 2.27).** A page hands its client parts a cut of
+an area, some of its top-level groups (`cut()` in `src/lib/admin-text.ts`, `docs/platform-admin-i18n.md` 3.3), where they read few of
+them: the rich text editor and text styles read `builderText`, the pickers `websitePick`, the AI manager's button and notices
+`assistantBar` (the chat's words come with its start call), the home's drafts card `homeDrafts`, the page lists' rows `websiteList`,
+and the page editor's parts `fieldsEditor`, `productsEditor`, `designEditor`, `blogEditor` and `schedulesEditor`. Measured on a local
+signed-in build (`e2e/signed-in/admin-scripts.spec.ts`; the English home's document after the whole suite, as CI reads it):
+
+| Screen | Figure | Before (baseline of 18 November) | After |
+|---|---|---:|---:|
+| Every store and platform screen | Shared words handed, English / Norwegian | 33,723 / 47,103 | 16,617 / 17,180 |
+| The store's home | Document, after the suite / on a fresh store | 215,768 / 165,942 | 189,565 / 134,689 |
+| Orders | Document, after the suite | 202,030 | 188,197 |
+| A product's editor | Document / words handed | 431,497 / 246,259 | 241,677 / 64,711 |
+| The builder | Document / words handed | 606,658 / 319,551 | 468,351 / 182,315 |
+| Platform home | Document | 123,638 | 106,804 |
+
+The product editor's save answers 134,598 bytes (311,274 before), as it sends its words back (step 2.28). The shared words miss the
+plan's 15.5 KB (16 KB in Norwegian): `common` and `shell`, which every screen reads, are 15 KB together today. The words baseline
+(`admin-words-handed.baseline.json`) fell from 13,219,401 to 10,881,284 bytes handed in English over 231 sites.
+
 **Three stray imports go (13 November 2026, bloat review step 0.9).** Three imports put 481 KB on 432 of 449 admin routes: the session
 listener and every upload imported the Supabase client (`GoTrueClient`), the shortcut sheet took the page builder's English through
 `typingIn()`, and the gated layout's service worker took zod through the push schema; sign-in's English sat in the shared text module and

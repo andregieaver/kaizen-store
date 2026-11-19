@@ -1069,37 +1069,41 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/fields/[groupId]/page.tsx#fields": {
+    "src/app/admin/(gated)/[store]/fields/[groupId]/page.tsx#fields+fieldsEditor": {
       "areas": [
-        "fields"
+        "fields",
+        "fieldsEditor"
       ],
       "handed": {
-        "en": 25224,
-        "nb": 26334
+        "en": 29463,
+        "nb": 30684
       },
       "named": {
-        "en": 25224,
-        "nb": 26334
+        "en": 29463,
+        "nb": 30684
       },
       "whole": [
-        "fields"
+        "fields",
+        "fieldsEditor"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/fields/new/page.tsx#fields": {
+    "src/app/admin/(gated)/[store]/fields/new/page.tsx#fields+fieldsEditor": {
       "areas": [
-        "fields"
+        "fields",
+        "fieldsEditor"
       ],
       "handed": {
-        "en": 25224,
-        "nb": 26334
+        "en": 29463,
+        "nb": 30684
       },
       "named": {
-        "en": 25224,
-        "nb": 26334
+        "en": 29463,
+        "nb": 30684
       },
       "whole": [
-        "fields"
+        "fields",
+        "fieldsEditor"
       ],
       "unnamed": []
     },
@@ -1118,21 +1122,21 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/fields/store/page.tsx#fields+builderText": {
+    "src/app/admin/(gated)/[store]/fields/store/page.tsx#fieldsEditor+builderText": {
       "areas": [
-        "fields",
+        "fieldsEditor",
         "builderText"
       ],
       "handed": {
-        "en": 29495,
-        "nb": 30880
+        "en": 8510,
+        "nb": 8896
       },
       "named": {
-        "en": 25224,
-        "nb": 26334
+        "en": 4239,
+        "nb": 4350
       },
       "whole": [
-        "fields"
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
@@ -1666,11 +1670,11 @@
       "areas": [
         "builder",
         "blocks",
-        "fields",
-        "products",
-        "design",
-        "blog",
-        "schedules",
+        "fieldsEditor",
+        "productsEditor",
+        "designEditor",
+        "blogEditor",
+        "schedulesEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -1678,17 +1682,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 243925,
-        "nb": 255376
+        "en": 169647,
+        "nb": 177509
       },
       "named": {
-        "en": 186867,
-        "nb": 195618
+        "en": 165882,
+        "nb": 173634
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -1700,11 +1704,11 @@
       "areas": [
         "builder",
         "blocks",
-        "fields",
-        "products",
-        "design",
-        "blog",
-        "schedules",
+        "fieldsEditor",
+        "productsEditor",
+        "designEditor",
+        "blogEditor",
+        "schedulesEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -1712,17 +1716,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 243925,
-        "nb": 255376
+        "en": 169647,
+        "nb": 177509
       },
       "named": {
-        "en": 186867,
-        "nb": 195618
+        "en": 165882,
+        "nb": 173634
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -1734,11 +1738,11 @@
       "areas": [
         "builder",
         "blocks",
-        "fields",
-        "products",
-        "design",
-        "blog",
-        "schedules",
+        "fieldsEditor",
+        "productsEditor",
+        "designEditor",
+        "blogEditor",
+        "schedulesEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -1746,17 +1750,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 243925,
-        "nb": 255376
+        "en": 169647,
+        "nb": 177509
       },
       "named": {
-        "en": 186867,
-        "nb": 195618
+        "en": 165882,
+        "nb": 173634
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -1764,13 +1768,13 @@
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/[store]/pages/terms-views.tsx#products": {
+    "src/app/admin/(gated)/[store]/pages/terms-views.tsx#productsEditor": {
       "areas": [
-        "products"
+        "productsEditor"
       ],
       "handed": {
-        "en": 28551,
-        "nb": 29506
+        "en": 5627,
+        "nb": 5915
       },
       "named": {
         "en": 5567,
@@ -1842,25 +1846,25 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/products/[productId]/page.tsx#product+products+fields+builderText+websitePick": {
+    "src/app/admin/(gated)/[store]/products/[productId]/page.tsx#product+productsEditor+fieldsEditor+builderText+websitePick": {
       "areas": [
         "product",
-        "products",
-        "fields",
+        "productsEditor",
+        "fieldsEditor",
         "builderText",
         "websitePick"
       ],
       "handed": {
-        "en": 91927,
-        "nb": 95056
+        "en": 48018,
+        "nb": 49481
       },
       "named": {
-        "en": 64645,
-        "nb": 66832
+        "en": 43660,
+        "nb": 44848
       },
       "whole": [
         "product",
-        "fields"
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
@@ -1915,22 +1919,22 @@
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/products/categories/page.tsx#products+fields+builderText": {
+    "src/app/admin/(gated)/[store]/products/categories/page.tsx#productsEditor+fieldsEditor+builderText": {
       "areas": [
-        "products",
-        "fields",
+        "productsEditor",
+        "fieldsEditor",
         "builderText"
       ],
       "handed": {
-        "en": 58046,
-        "nb": 60386
+        "en": 14137,
+        "nb": 14811
       },
       "named": {
-        "en": 30791,
-        "nb": 32189
+        "en": 9806,
+        "nb": 10205
       },
       "whole": [
-        "fields"
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
@@ -1966,25 +1970,25 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/products/new/page.tsx#product+products+fields+builderText+websitePick": {
+    "src/app/admin/(gated)/[store]/products/new/page.tsx#product+productsEditor+fieldsEditor+builderText+websitePick": {
       "areas": [
         "product",
-        "products",
-        "fields",
+        "productsEditor",
+        "fieldsEditor",
         "builderText",
         "websitePick"
       ],
       "handed": {
-        "en": 91927,
-        "nb": 95056
+        "en": 48018,
+        "nb": 49481
       },
       "named": {
-        "en": 64645,
-        "nb": 66832
+        "en": 43660,
+        "nb": 44848
       },
       "whole": [
         "product",
-        "fields"
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
@@ -2314,36 +2318,39 @@
         "settings"
       ]
     },
-    "src/app/admin/(gated)/[store]/settings/design/page.tsx#design+schedules": {
+    "src/app/admin/(gated)/[store]/settings/design/page.tsx#design+designEditor+schedules": {
       "areas": [
         "design",
+        "designEditor",
         "schedules"
       ],
       "handed": {
-        "en": 30876,
-        "nb": 32992
+        "en": 33929,
+        "nb": 36361
       },
       "named": {
-        "en": 26428,
-        "nb": 28230
+        "en": 27469,
+        "nb": 29373
       },
       "whole": [
         "design"
       ],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/settings/design/themes/[install]/page.tsx#design+schedules": {
+    "src/app/admin/(gated)/[store]/settings/design/themes/[install]/page.tsx#design+designEditor+schedules+schedulesEditor": {
       "areas": [
         "design",
-        "schedules"
+        "designEditor",
+        "schedules",
+        "schedulesEditor"
       ],
       "handed": {
-        "en": 30876,
-        "nb": 32992
+        "en": 36804,
+        "nb": 39436
       },
       "named": {
-        "en": 27498,
-        "nb": 29402
+        "en": 28539,
+        "nb": 30545
       },
       "whole": [
         "design"
@@ -2710,14 +2717,14 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/[store]/support/widgets/[id]/page.tsx#support+design": {
+    "src/app/admin/(gated)/[store]/support/widgets/[id]/page.tsx#support+designEditor": {
       "areas": [
         "support",
-        "design"
+        "designEditor"
       ],
       "handed": {
-        "en": 61603,
-        "nb": 65486
+        "en": 39452,
+        "nb": 41923
       },
       "named": {
         "en": 5763,
@@ -2990,17 +2997,18 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/fonts/page.tsx#design": {
+    "src/app/admin/(gated)/platform/fonts/page.tsx#design+designEditor": {
       "areas": [
-        "design"
+        "design",
+        "designEditor"
       ],
       "handed": {
-        "en": 25204,
-        "nb": 26932
+        "en": 28257,
+        "nb": 30301
       },
       "named": {
-        "en": 7219,
-        "nb": 7651
+        "en": 8260,
+        "nb": 8794
       },
       "whole": [],
       "unnamed": []
@@ -3250,11 +3258,11 @@
     "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS": {
       "areas": [
         "platformSite",
-        "design",
+        "designEditor",
         "builder",
         "blocks",
-        "fields",
-        "products",
+        "fieldsEditor",
+        "productsEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -3262,17 +3270,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 278963,
-        "nb": 291623
+        "en": 212903,
+        "nb": 222485
       },
       "named": {
-        "en": 183885,
-        "nb": 192430
+        "en": 162900,
+        "nb": 170446
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -3284,11 +3292,11 @@
     "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#2": {
       "areas": [
         "platformSite",
-        "design",
+        "designEditor",
         "builder",
         "blocks",
-        "fields",
-        "products",
+        "fieldsEditor",
+        "productsEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -3296,17 +3304,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 278963,
-        "nb": 291623
+        "en": 212903,
+        "nb": 222485
       },
       "named": {
-        "en": 183885,
-        "nb": 192430
+        "en": 162900,
+        "nb": 170446
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -3318,11 +3326,11 @@
     "src/app/admin/(gated)/platform/pages/editor-views.tsx#PLATFORM_SITE_AREAS#3": {
       "areas": [
         "platformSite",
-        "design",
+        "designEditor",
         "builder",
         "blocks",
-        "fields",
-        "products",
+        "fieldsEditor",
+        "productsEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -3330,17 +3338,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 278963,
-        "nb": 291623
+        "en": 212903,
+        "nb": 222485
       },
       "named": {
-        "en": 183885,
-        "nb": 192430
+        "en": 162900,
+        "nb": 170446
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -3349,14 +3357,14 @@
         "backdrops"
       ]
     },
-    "src/app/admin/(gated)/platform/pages/terms-views.tsx#products+platformSite": {
+    "src/app/admin/(gated)/platform/pages/terms-views.tsx#productsEditor+platformSite": {
       "areas": [
-        "products",
+        "productsEditor",
         "platformSite"
       ],
       "handed": {
-        "en": 74829,
-        "nb": 77710
+        "en": 51905,
+        "nb": 54119
       },
       "named": {
         "en": 5567,
@@ -3432,18 +3440,19 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/site-design/[install]/page.tsx#design+platformSite": {
+    "src/app/admin/(gated)/platform/site-design/[install]/page.tsx#design+designEditor+platformSite": {
       "areas": [
         "design",
+        "designEditor",
         "platformSite"
       ],
       "handed": {
-        "en": 71482,
-        "nb": 75136
+        "en": 74535,
+        "nb": 78505
       },
       "named": {
-        "en": 25204,
-        "nb": 26932
+        "en": 26245,
+        "nb": 28075
       },
       "whole": [
         "design"
@@ -3553,14 +3562,14 @@
         "support"
       ]
     },
-    "src/app/admin/(gated)/platform/support/widgets/[id]/page.tsx#support+design": {
+    "src/app/admin/(gated)/platform/support/widgets/[id]/page.tsx#support+designEditor": {
       "areas": [
         "support",
-        "design"
+        "designEditor"
       ],
       "handed": {
-        "en": 61603,
-        "nb": 65486
+        "en": 39452,
+        "nb": 41923
       },
       "named": {
         "en": 5763,
@@ -3584,23 +3593,24 @@
       "whole": [],
       "unnamed": []
     },
-    "src/app/admin/(gated)/platform/themes/[presetId]/shell.tsx#DESIGN_SHELL_AREAS": {
+    "src/app/admin/(gated)/platform/themes/[presetId]/shell.tsx#platformSite+designEditor+builder+blocks+fieldsEditor+productsEditor+storeParts+backdrops+animation+builderText+websitePick+design": {
       "areas": [
         "platformSite",
-        "design",
+        "designEditor",
         "builder",
         "blocks",
-        "fields",
-        "products",
+        "fieldsEditor",
+        "productsEditor",
         "storeParts",
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "design"
       ],
       "handed": {
-        "en": 278963,
-        "nb": 291623
+        "en": 238107,
+        "nb": 249417
       },
       "named": {
         "en": 0,
@@ -3609,16 +3619,17 @@
       "whole": [],
       "unnamed": [
         "platformSite",
-        "design",
+        "designEditor",
         "builder",
         "blocks",
-        "fields",
-        "products",
+        "fieldsEditor",
+        "productsEditor",
         "storeParts",
         "backdrops",
         "animation",
         "builderText",
-        "websitePick"
+        "websitePick",
+        "design"
       ]
     },
     "src/app/admin/(gated)/platform/themes/page.tsx#platformSite": {
@@ -3750,11 +3761,11 @@
       "areas": [
         "builder",
         "blocks",
-        "fields",
-        "products",
-        "design",
-        "blog",
-        "schedules",
+        "fieldsEditor",
+        "productsEditor",
+        "designEditor",
+        "blogEditor",
+        "schedulesEditor",
         "storeParts",
         "backdrops",
         "animation",
@@ -3762,17 +3773,17 @@
         "websitePick"
       ],
       "handed": {
-        "en": 243925,
-        "nb": 255376
+        "en": 169647,
+        "nb": 177509
       },
       "named": {
-        "en": 186867,
-        "nb": 195618
+        "en": 165882,
+        "nb": 173634
       },
       "whole": [
         "builder",
         "blocks",
-        "fields",
+        "fieldsEditor",
         "storeParts",
         "animation"
       ],
@@ -3830,67 +3841,71 @@
       "whole": [],
       "unnamed": []
     },
-    "src/components/admin/content-entry-views.tsx#content+fields+builderText+websitePick": {
+    "src/components/admin/content-entry-views.tsx#content+fieldsEditor+builderText+websitePick": {
       "areas": [
         "content",
-        "fields",
+        "fieldsEditor",
         "builderText",
         "websitePick"
       ],
       "handed": {
-        "en": 36619,
-        "nb": 38309
+        "en": 15634,
+        "nb": 16325
       },
       "named": {
-        "en": 26929,
-        "nb": 28095
+        "en": 5944,
+        "nb": 6111
       },
       "whole": [
-        "fields"
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
       ]
     },
-    "src/components/admin/content-type-views.tsx#content+fields+builderText+websitePick": {
+    "src/components/admin/content-type-views.tsx#content+fields+fieldsEditor+builderText+websitePick": {
       "areas": [
         "content",
         "fields",
+        "fieldsEditor",
         "builderText",
         "websitePick"
       ],
       "handed": {
-        "en": 36619,
-        "nb": 38309
+        "en": 40858,
+        "nb": 42659
       },
       "named": {
-        "en": 27426,
-        "nb": 28664
+        "en": 31665,
+        "nb": 33014
       },
       "whole": [
-        "fields"
+        "fields",
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
       ]
     },
-    "src/components/admin/content-type-views.tsx#content+fields+builderText+websitePick#2": {
+    "src/components/admin/content-type-views.tsx#content+fields+fieldsEditor+builderText+websitePick#2": {
       "areas": [
         "content",
         "fields",
+        "fieldsEditor",
         "builderText",
         "websitePick"
       ],
       "handed": {
-        "en": 36619,
-        "nb": 38309
+        "en": 40858,
+        "nb": 42659
       },
       "named": {
-        "en": 27426,
-        "nb": 28664
+        "en": 31665,
+        "nb": 33014
       },
       "whole": [
-        "fields"
+        "fields",
+        "fieldsEditor"
       ],
       "unnamed": [
         "builderText"
@@ -3930,13 +3945,13 @@
         "content"
       ]
     },
-    "src/components/admin/staff-fields-section.tsx#fields": {
+    "src/components/admin/staff-fields-section.tsx#fieldsEditor": {
       "areas": [
-        "fields"
+        "fieldsEditor"
       ],
       "handed": {
-        "en": 25224,
-        "nb": 26334
+        "en": 4239,
+        "nb": 4350
       },
       "named": {
         "en": 0,
@@ -3944,7 +3959,7 @@
       },
       "whole": [],
       "unnamed": [
-        "fields"
+        "fieldsEditor"
       ]
     }
   }

@@ -59,7 +59,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
           {w.archived}
         </p>
       )}
-      <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builderText", "websitePick"])}>
+      <AdminTextScope texts={adminTexts(lang, ["product", "productsEditor", "fieldsEditor", "builderText", "websitePick"])}>
         <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} insight={insight} />
       </AdminTextScope>
       <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
