@@ -8,6 +8,7 @@ import { compareVersions, type PageDifference } from "@/lib/version-compare";
 
 import { useAdminLang, useAdminText } from "./admin-text";
 import { Modal } from "./modal";
+import { VersionLabel } from "./version-label";
 import { VersionDifferences } from "./version-differences";
 import { fillWords } from "@/lib/admin-fill";
 import { adminDate } from "@/lib/admin-date";
@@ -134,17 +135,7 @@ export function PageVersionsDialog({
           <ol aria-label={w.listLabel} className="flex flex-col divide-y divide-line">
             {items?.map((item, index) => (
               <li key={item.id} className="flex flex-wrap items-center gap-3 py-2">
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-sm text-ink">
-                    {w.kinds[item.kind]}
-                    {index === 0 && <span className="ml-2 text-xs text-muted">{w.newest}</span>}
-                  </span>
-                  <span className="text-xs text-muted">
-                    {when(item.at)}
-                    {item.by ? ` · ${item.by}` : ""}
-                    {item.title ? ` · ${item.title}` : ""}
-                  </span>
-                </div>
+                <VersionLabel kind={w.kinds[item.kind]} newest={index === 0 ? w.newest : null} when={when(item.at)} by={item.by} title={item.title} />
                 {current && (
                   <button type="button" onClick={() => void compare(item)} disabled={taking !== null} className={small}>
                     {w.compare}
