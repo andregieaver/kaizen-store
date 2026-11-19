@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import type { RenderedEmail } from "@/lib/email-layout";
 import { emailSettings, type EmailSettings } from "@/lib/email-settings";
 import { emailClassOf } from "@/lib/personal-data";
+import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
 
 import { senderFor } from "./sending-domains";
 import { deskReplyTo } from "./support-reply-to";
@@ -262,19 +263,23 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
       return "suppressed";
     }
     const hide = message.logAddress === false;
+    // An address no person can have (D792: a demo store's made-up customers, a test's) is kept whole as logged and never handed to Resend.
+    const reserved = isReservedAddress(message.to);
     const kept = (text: string) => (message.secrets ?? []).filter((secret) => secret !== "").reduce((out, secret) => out.split(secret).join(SECRET), text);
     const [row] = await db().execute<Row>(sql`
       insert into commerce.email_messages (
-        store_id, kind, idempotency_key, to_address, subject, html, text, order_id, subscription_id
+        store_id, kind, idempotency_key, to_address, subject, html, text, order_id, subscription_id, status, error
       ) values (
         ${message.storeId}::uuid, ${message.kind}, ${message.idempotencyKey ?? null}, ${hide ? REMOVED : message.to},
         ${hide ? REMOVED : kept(message.email.subject)}, ${kept(message.email.html)}, ${kept(message.email.text)},
-        ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid
+        ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid,
+        ${reserved ? "logged" : "queued"}::commerce.email_status, ${reserved ? RESERVED_NOTE : null}
       )
       on conflict (idempotency_key) do nothing
       returning id
     `);
     if (!row) return "duplicate";
+    if (reserved) return "logged";
     id = String(row.id);
   } catch {
     return "failed";

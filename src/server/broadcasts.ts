@@ -56,6 +56,7 @@ import { isPaused } from "./sending-guard";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { RULES_STAND, UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { marketingEn } from "@/lib/admin-messages/marketing.en";
+import { isReservedAddress, RESERVED_NOTE } from "@/lib/reserved-address";
 
 type Row = Record<string, unknown>;
 
@@ -592,10 +593,13 @@ async function sendBatch(
       result.failed += 1;
       continue;
     }
-    // Kept first, under the recipient's own key: a batch that is tried again finds the same row and never sends twice.
+    // Kept first, under the recipient's own key: a batch that is tried again finds the same row and never sends twice. An address no person
+    // can have (D792) is kept as logged, so the branch below counts it sent and it is never delivered.
+    const reserved = isReservedAddress(r.email);
     await db().execute(sql`
-      insert into commerce.email_messages (store_id, kind, idempotency_key, to_address, subject, html, text)
-      values (${r.storeId}::uuid, 'marketing.broadcast', ${keyOf(r)}, ${r.email}, ${email.subject}, ${email.html}, ${email.text})
+      insert into commerce.email_messages (store_id, kind, idempotency_key, to_address, subject, html, text, status, error)
+      values (${r.storeId}::uuid, 'marketing.broadcast', ${keyOf(r)}, ${r.email}, ${email.subject}, ${email.html}, ${email.text},
+        ${reserved ? "logged" : "queued"}::commerce.email_status, ${reserved ? RESERVED_NOTE : null})
       on conflict (idempotency_key) do nothing
     `);
     const [kept] = await db().execute<Row>(sql`

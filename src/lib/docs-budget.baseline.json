@@ -1,10 +1,10 @@
 {
   "claudeOutsideIndex": 13164,
   "claude": {
-    "bytes": 10098,
-    "lines": 133
+    "bytes": 10152,
+    "lines": 134
   },
-  "loaded": 10777,
+  "loaded": 10831,
   "imports": [
     "AGENTS.md"
   ],
