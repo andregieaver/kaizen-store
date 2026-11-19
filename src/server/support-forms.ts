@@ -10,12 +10,11 @@ import type { Answer } from "@/lib/forms";
 import { homeMarket } from "@/lib/markets";
 import { MESSAGE_MAX } from "@/lib/support-rules";
 
-import { autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
 import { getOpenStore } from "./stores";
 import { addMessage, deskSettings } from "./support";
 import { systemDesk } from "./support-desk";
-import { answer, type InboundDeps } from "./support-inbound";
+import type { InboundDeps } from "./support-inbound";
 import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
@@ -99,7 +98,12 @@ export async function formToInbox(
     if (parts.length === 0) return { kept: false };
     const email = contact.email && contact.email.length <= CONTACT_MAX ? normaliseEmail(contact.email) : null;
     const name = contact.name?.replace(/\s+/g, " ").trim().slice(0, NAME_MAX) || null;
-    const ai = Boolean(email) && settings.mode === "ai_first" && !settings.sensitive && (settings.formAi || (await autonomyFor(storeId)).challenge);
+    // Loaded only here: a form is on product pages, and the challenge's settings and the email desk are large (route-load budget).
+    const ai =
+      Boolean(email) &&
+      settings.mode === "ai_first" &&
+      !settings.sensitive &&
+      (settings.formAi || (await (await import("./autopilot-settings")).autonomyFor(storeId)).challenge);
     const [created] = await db().execute<Row>(sql`
       insert into commerce.support_conversations (store_id, source, handler, market, locale, contact_email, contact_name, reply_key, email_subject, page_path)
       values (${storeId}::uuid, 'form', ${ai ? "ai" : "queue"}, ${market.slug}, ${market.locale.slice(0, 16)}, ${email}, ${name}, ${newKey()},
@@ -113,7 +117,8 @@ export async function formToInbox(
     // The AI's answer after the form's response, as an email's: a failure or a hand-over gives it to a person (`answer()`).
     if (ai && email) {
       const site = { kind: "store" as const, store, market };
-      after(() => answer(desk, settings, site, conversationId, email, deps).catch((error) => log("error", "support.form_answer_failed", { storeId }, error)));
+      after(() =>
+        import("./support-inbound").then(({ answer }) => answer(desk, settings, site, conversationId, email, deps)).catch((error) => log("error", "support.form_answer_failed", { storeId }, error)));
     }
     return { kept: true, conversationId, emailToo: route === "both" || cut };
   } catch (error) {

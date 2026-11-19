@@ -17,14 +17,14 @@ export function RedirectExportForm({ slug, words = redirectsEn, exportWords }: {
           <input type="radio" name="scope" value="manual" defaultChecked className="mt-1" />
           <span>
             {w.own}
-            <span className={`${hint} block`}>{w.ownHelp}</span>
+            <span className={`${hint} block max-sm:hidden`}>{w.ownHelp}</span>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="radio" name="scope" value="all" className="mt-1" />
           <span>
             {w.all}
-            <span className={`${hint} block`}>{w.allHelp}</span>
+            <span className={`${hint} block max-sm:hidden`}>{w.allHelp}</span>
           </span>
         </label>
       </fieldset>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { FeedAddress } from "@/components/admin/feed-address";
 import { requireFeature } from "@/components/admin/feature-off";
@@ -42,50 +43,92 @@ export default async function FeedsPage({ params }: PageProps<"/admin/[store]/fe
   const address = (market: string, channel: (typeof FEED_CHANNELS)[number]) =>
     `${siteUrl()}/api/feeds/${settings?.token ?? ""}/${feedFileName(market, channel)}`;
 
+  // A row's one press on a phone (round 55, D806): the same action as the card's button.
+  const row = (action: Parameters<typeof ActionForm>[0]["action"], done: string, label: string) => (
+    <ActionForm action={action} successMessage={done}>
+      <SubmitButton variant="secondary">{label}</SubmitButton>
+    </ActionForm>
+  );
+
   return (
     <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={w.description} />
-        <Card title={wa.title} description={wa.description}>
-          <div className="flex flex-col gap-3" data-shopping-agents={store.shoppingAgents ? "on" : "off"}>
-            <p className="text-sm text-ink-2">{store.shoppingAgents ? wa.on : wa.off}</p>
-            {store.shoppingAgents && agentBlock && agentBlock !== "off" && <p className="text-sm text-warning-text">{wa.blocked[agentBlock]}</p>}
-            {store.shoppingAgents && agentBlock === null && (
-              <>
-                <FeedAddress label={wa.profile} address={agentProfileUrl(store.slug)} />
-                <FeedAddress label={wa.endpoint} address={agentEndpoint(store.slug)} />
-              </>
-            )}
-            {canWrite && (
-              <ActionForm action={shoppingAgentsAction.bind(null, store.slug, !store.shoppingAgents)} successMessage={store.shoppingAgents ? wa.turnedOff : wa.turnedOn}>
-                <SubmitButton>{store.shoppingAgents ? wa.turnOff : wa.turnOn}</SubmitButton>
-              </ActionForm>
-            )}
-          </div>
-        </Card>
-        <Card title={wa.chatgpt} description={wa.chatgptNote}>
-          {canWrite ? (
-            <ActionForm
-              action={chatgptFeedAction.bind(null, store.slug, !settings?.channels.includes("openai"))}
-              successMessage={settings?.channels.includes("openai") ? wa.chatgptTurnedOff : wa.chatgptTurnedOn}
-            >
-              <SubmitButton>{settings?.channels.includes("openai") ? wa.chatgptOff : wa.chatgptOn}</SubmitButton>
-            </ActionForm>
-          ) : (
-            <p className="text-sm text-muted">{settings?.channels.includes("openai") ? wa.chatgptTurnedOn : wa.chatgptTurnedOff}</p>
-          )}
-        </Card>
-        {!on ? (
-          <Card title={w.off}>
+        <PageHeader title={w.title} description={<><span className="sm:hidden">{w.phone.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
+        {/* Round 55 (D806): on a phone each switch is a row saying whether it is on, with its one press beside it; the card opens under it. */}
+        <div className="flex flex-col gap-6 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow
+          title={wa.title}
+          sub={`${store.shoppingAgents ? w.phone.on : w.phone.off} · ${w.phone.agents}`}
+          change={w.phone.open}
+          done={w.phone.done}
+          flat
+          action={canWrite && !store.shoppingAgents ? row(shoppingAgentsAction.bind(null, store.slug, true), wa.turnedOn, w.phone.letIn) : undefined}
+        >
+          <Card title={wa.title} description={wa.description}>
+            <div className="flex flex-col gap-3" data-shopping-agents={store.shoppingAgents ? "on" : "off"}>
+              <p className="text-sm text-ink-2">{store.shoppingAgents ? wa.on : wa.off}</p>
+              {store.shoppingAgents && agentBlock && agentBlock !== "off" && <p className="text-sm text-warning-text">{wa.blocked[agentBlock]}</p>}
+              {store.shoppingAgents && agentBlock === null && (
+                <>
+                  <FeedAddress label={wa.profile} address={agentProfileUrl(store.slug)} />
+                  <FeedAddress label={wa.endpoint} address={agentEndpoint(store.slug)} />
+                </>
+              )}
+              {canWrite && (
+                <ActionForm action={shoppingAgentsAction.bind(null, store.slug, !store.shoppingAgents)} successMessage={store.shoppingAgents ? wa.turnedOff : wa.turnedOn}>
+                  <SubmitButton>{store.shoppingAgents ? wa.turnOff : wa.turnOn}</SubmitButton>
+                </ActionForm>
+              )}
+            </div>
+          </Card>
+        </PhoneRow>
+        <PhoneRow
+          title={wa.chatgpt}
+          sub={`${settings?.channels.includes("openai") ? w.phone.on : w.phone.off} · ${w.phone.chatgpt}`}
+          change={w.phone.open}
+          done={w.phone.done}
+          flat
+          last
+          action={canWrite && !settings?.channels.includes("openai") ? row(chatgptFeedAction.bind(null, store.slug, true), wa.chatgptTurnedOn, w.phone.turnOn) : undefined}
+        >
+          <Card title={wa.chatgpt} description={wa.chatgptNote}>
             {canWrite ? (
-              <ActionForm action={feedsOnAction.bind(null, store.slug)} successMessage={w.on}>
-                <SubmitButton>{w.turnOn}</SubmitButton>
+              <ActionForm
+                action={chatgptFeedAction.bind(null, store.slug, !settings?.channels.includes("openai"))}
+                successMessage={settings?.channels.includes("openai") ? wa.chatgptTurnedOff : wa.chatgptTurnedOn}
+              >
+                <SubmitButton>{settings?.channels.includes("openai") ? wa.chatgptOff : wa.chatgptOn}</SubmitButton>
               </ActionForm>
             ) : (
-              <p className="text-sm text-muted">{w.readOnly}</p>
+              <p className="text-sm text-muted">{settings?.channels.includes("openai") ? wa.chatgptTurnedOn : wa.chatgptTurnedOff}</p>
             )}
           </Card>
-        ) : (
+        </PhoneRow>
+        {!on ? (
+          <div className="max-sm:order-first max-sm:border-b max-sm:border-line">
+          <PhoneRow
+            title={w.title}
+            sub={`${w.phone.off} · ${w.phone.feeds}`}
+            change={w.phone.open}
+            done={w.phone.done}
+            flat
+            last
+            action={canWrite ? row(feedsOnAction.bind(null, store.slug), w.on, w.phone.turnOn) : undefined}
+          >
+              <Card title={w.off}>
+                {canWrite ? (
+                  <ActionForm action={feedsOnAction.bind(null, store.slug)} successMessage={w.on}>
+                    <SubmitButton>{w.turnOn}</SubmitButton>
+                  </ActionForm>
+                ) : (
+                  <p className="text-sm text-muted">{w.readOnly}</p>
+                )}
+              </Card>
+          </PhoneRow>
+          </div>
+        ) : null}
+        </div>
+        {on ? (
           <>
             {feeds.map(({ market, feed }) => (
               <Card
@@ -142,7 +185,7 @@ export default async function FeedsPage({ params }: PageProps<"/admin/[store]/fe
               </details>
             ) : null}
           </>
-        )}
+        ) : null}
       </div>
     </AdminTextScope>
   );

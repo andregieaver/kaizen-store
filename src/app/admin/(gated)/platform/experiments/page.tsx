@@ -11,6 +11,8 @@ import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformReader } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
+import { siteStore } from "@/server/house-switch";
+import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -32,7 +34,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   const ex = adminText(lang, "experiments");
   const { show } = await searchParams;
   const everything = show === "all";
-  const [{ tests, overview, truncated }, own] = await Promise.all([platformExperiments(everything), platformUnitTests()]);
+  const [{ tests, overview, truncated }, own, house] = await Promise.all([platformExperiments(everything), platformUnitTests(), siteStore()]);
   const now = new Date();
 
   return (
@@ -125,6 +127,21 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
         </Card>
       )}
       {truncated && <p className="text-sm text-muted">{w.newest}</p>}
+
+      {/* Kaizena Flow's own pages (the parity rule): served from its store, they are tested in that store's admin like any store's. */}
+      <section aria-labelledby="house" className={`flex flex-wrap items-center justify-between gap-3 p-5 ${CARD_CLASS}`}>
+        <div className="flex min-w-0 flex-1 basis-80 flex-col gap-1">
+          <h2 id="house" className="text-title text-ink">
+            {w.house}
+          </h2>
+          <p className="max-w-2xl text-sm text-muted">{house ? w.houseOn : w.houseOff}</p>
+        </div>
+        {house && (
+          <Link href={`/admin/${HOUSE_STORE_SLUG}/experiments`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+            {w.houseTests}
+          </Link>
+        )}
+      </section>
 
       <section aria-labelledby="own" className="flex flex-col gap-3">
         <div>

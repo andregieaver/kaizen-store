@@ -344,7 +344,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   reference is a passage the text as read holds. Never cite from a model's memory or a person's typing: pages read
   `currentLegalTexts()`. The writer (`src/lib/legal-writer.ts` pure, `src/server/legal-writer.ts`, the only writer of
   `commerce.legal_ai_writes`) plans a page's topics and passages in code, the model writes sentences only with tokens for every
-  fact, link and body, `readWriterAnswer()` reads a cite's keys out of what the model writes after them (its heading or text), `checkLegalDraft()` refuses a quote not word for word (`quoteIn()` lets go of the model's own end mark and a shortening whose pieces are each word for word, in order), a number in no cited quote, an address written out,
+  fact, link and body, `readWriterAnswer()` reads a cite's keys out of what the model writes after them (its heading or text), `checkLegalDraft()` refuses a quote not word for word (`quoteIn()` lets go of the model's own end mark and a shortening whose pieces are each word for word, in order; up to 1,200 characters, where the prompt asks for 300), a number in no cited quote, an address written out,
   a missing needed token, the ODR platform and claims, and code fills the tokens from `starterFactWords()` (the starters' own
   words), copies the model form from the law and adds Sources; a page is saved only by `savePageOf()` without the review notice
   (L3, 8.12): into the kind's page only while it is the AI's and unchanged since (`saved_hash`) or handed back, else a draft
@@ -619,7 +619,8 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   a SKU with an open purchase order. Since D675 a confirmed exchange is an `exchange_confirmed` event (tools `get_order`,
   `process_exchange`, `add_order_note`), and in challenge mode `autonomyDecision()` runs `process_exchange` itself only when
   `exchangeRefundOf()` (the refund of `exchangeOutcome()` on the exchange as confirmed) is 0, area `messages`; one that refunds is
-  kept for the owner.
+  kept for the owner. D804: so too `change_order` when `orderChangeMoneyOf()` is `none`, and `set_market_price_rule` within
+  `priceChangePercent` and the margin floor (`priceRuleAutopilotFacts()`).
 
 ## The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
 

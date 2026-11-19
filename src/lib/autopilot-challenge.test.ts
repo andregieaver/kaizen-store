@@ -81,6 +81,29 @@ describe("decisions in challenge mode", () => {
     expect(autonomyDecision(DEFAULT_AUTONOMY, "send_replacement", "spend", { replacementProblem: null })).toEqual({ run: false, why: "This always waits for your yes." });
   });
 
+  it("makes a change to an order that moves no money itself, keeps a refund or a link to pay more, and never outside the challenge (A2, D804)", () => {
+    expect(autonomyDecision(on, "change_order", "spend", { orderChangeMoney: "none" })).toMatchObject({ run: true, area: "messages" });
+    expect(autonomyDecision(on, "change_order", "spend", { orderChangeMoney: "refund" })).toEqual({ run: false, why: "The change gives money back to the customer, which waits for you." });
+    expect(autonomyDecision(on, "change_order", "spend", { orderChangeMoney: "charge" })).toEqual({ run: false, why: "The change asks the customer to pay more, which waits for you." });
+    expect(autonomyDecision(on, "change_order", "spend", { orderChangeMoney: null })).toMatchObject({ run: false });
+    expect(autonomyDecision(DEFAULT_AUTONOMY, "change_order", "spend", { orderChangeMoney: "none" })).toEqual({ run: false, why: "This always waits for your yes." });
+  });
+
+  it("sets a country's price rule itself within the largest price change and the margin floor, and never outside the challenge (A2, D5, D804)", () => {
+    expect(autonomyDecision(on, "set_market_price_rule", "public", { priceChangePercent: 8, lowestMarginPercent: 40 })).toMatchObject({ run: true, area: "catalogue" });
+    expect(autonomyDecision(on, "set_market_price_rule", "public", { priceChangePercent: 30, lowestMarginPercent: 40 })).toEqual({
+      run: false,
+      why: "It changes a price by 30 %, more than your limit of 15 %.",
+    });
+    expect(autonomyDecision(on, "set_market_price_rule", "public", { priceChangePercent: 8, lowestMarginPercent: 4 })).toMatchObject({ run: false, why: expect.stringContaining("margin of 4 %") });
+    // A product with no cost cannot be measured against the floor: it waits.
+    expect(autonomyDecision(on, "set_market_price_rule", "public", { priceChangePercent: 8, lowestMarginPercent: null })).toMatchObject({ run: false });
+    // Taking a rule away changes no price.
+    expect(autonomyDecision(on, "set_market_price_rule", "public", { priceChangePercent: 0, marginUntouched: true })).toMatchObject({ run: true });
+    expect(autonomyDecision(on, "set_market_price_rule", "public", { priceChangePercent: null })).toMatchObject({ run: false });
+    expect(autonomyDecision(DEFAULT_AUTONOMY, "set_market_price_rule", "public", { priceChangePercent: 0, marginUntouched: true })).toEqual({ run: false, why: "This always waits for your yes." });
+  });
+
   it("sends a broadcast itself within the week's budget, and asks past it", () => {
     expect(autonomyDecision(on, "send_broadcast", "send", { broadcastsThisWeek: 1 })).toEqual({ run: true, tell: false, area: "marketing" });
     expect(autonomyDecision(on, "send_broadcast", "send", { broadcastsThisWeek: 2 })).toMatchObject({ run: false });
