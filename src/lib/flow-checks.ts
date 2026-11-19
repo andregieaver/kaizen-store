@@ -1,4 +1,5 @@
 import type { FlowsMessages } from "./admin-messages/flows.en";
+import type { BroadcastContent } from "./broadcasts";
 import type { FlowStep } from "./flows";
 import { languageName } from "./localization";
 
@@ -35,22 +36,28 @@ function* emails(steps: readonly FlowStep[]): Generator<Extract<FlowStep, { kind
   }
 }
 
+/** One email's words (a flow step's, or a broadcast's): what is wrong with them, by language. A broadcast's send checks warn with it (M3.6). */
+export function contentChecks(content: BroadcastContent, main: string): Omit<FlowCheck, "stepId" | "subject">[] {
+  const out: Omit<FlowCheck, "stepId" | "subject">[] = [];
+  const first = content[main];
+  if (!first?.subject || first.blocks.length === 0) out.push({ kind: "main_missing", locale: main, blocking: true });
+  for (const [locale, c] of Object.entries(content)) {
+    if (locale !== main && Boolean(c.subject) !== c.blocks.length > 0) out.push({ kind: "half_written", locale, blocking: true });
+    for (const block of c.blocks) {
+      if (block.type !== "image") continue;
+      if (!block.alt.trim()) out.push({ kind: "picture_alt", locale, blocking: false });
+      if (UNSHOWN.test(block.url)) out.push({ kind: "picture_format", locale, blocking: false });
+    }
+    if (new TextEncoder().encode(JSON.stringify(c)).length > WORDS_WARN_BYTES) out.push({ kind: "too_big", locale, blocking: false });
+  }
+  return out;
+}
+
 export function flowChecks(steps: readonly FlowStep[], main: string): FlowCheck[] {
   const out: FlowCheck[] = [];
   for (const step of emails(steps)) {
     const subject = step.content[main]?.subject || Object.values(step.content)[0]?.subject || step.id;
-    const add = (kind: FlowCheck["kind"], locale: string | null, blocking: boolean) => out.push({ stepId: step.id, subject, kind, locale, blocking });
-    const first = step.content[main];
-    if (!first?.subject || first.blocks.length === 0) add("main_missing", main, true);
-    for (const [locale, c] of Object.entries(step.content)) {
-      if (locale !== main && Boolean(c.subject) !== c.blocks.length > 0) add("half_written", locale, true);
-      for (const block of c.blocks) {
-        if (block.type !== "image") continue;
-        if (!block.alt.trim()) add("picture_alt", locale, false);
-        if (UNSHOWN.test(block.url)) add("picture_format", locale, false);
-      }
-      if (new TextEncoder().encode(JSON.stringify(c)).length > WORDS_WARN_BYTES) add("too_big", locale, false);
-    }
+    for (const check of contentChecks(step.content, main)) out.push({ stepId: step.id, subject, ...check });
   }
   return out;
 }

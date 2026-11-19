@@ -90,5 +90,5 @@ keeps its links plain: the picks move its blocks, so a link's key would not name
 `flowChecks()` (`src/lib/flow-checks.ts`, pure) lists, above Test and Switch on, each email's problem as a line saying what to fix:
 blocking, an email not written in the store's first language (its readers in a missing language would get nothing) or a language half
 written; warning, a picture without a description, one in a format many mail apps do not show, an email near Gmail's 102 KB
-clipping. Switch on is refused while a blocking one stands, in the same words. Links need no check (refused when saved). Broadcasts'
-send checks are the step's next part.
+clipping. Switch on is refused while a blocking one stands, in the same words. Links need no check (refused when saved). A broadcast's
+page shows the same warnings before sending (`contentChecks()`); what blocks a send is refused by `sendProblems()` as before.

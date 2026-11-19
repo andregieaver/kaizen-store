@@ -51,3 +51,11 @@ describe("checks before a flow is switched on (D767, M3.6)", () => {
     ]);
   });
 });
+
+describe("a broadcast's words (M3.6)", () => {
+  it("are checked as a flow email's are", async () => {
+    const { contentChecks } = await import("./flow-checks");
+    const content = { "nb-NO": words("Hei", [{ type: "image" as const, url: "https://example.com/a.png", alt: "", href: null }]) };
+    expect(contentChecks(content, "nb-NO")).toEqual([{ kind: "picture_alt", locale: "nb-NO", blocking: false }]);
+  });
+});
