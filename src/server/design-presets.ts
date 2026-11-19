@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { db, readDb } from "@/db/client";
+import { DESIGNS_TAG } from "@/lib/cache-tags";
 import { cssProblem } from "@/lib/custom-css";
 import { canonicalJson, deleteBlocker, type ListFilter } from "@/lib/lifecycle";
 import {
@@ -77,8 +78,7 @@ import { PLATFORM_INSTALLS_MAX, platformInstallCount, type PlatformLook } from "
 
 type Row = Record<string, unknown>;
 
-/** The cache tag of what owners, the sign-up form and the preview are offered: every change to a profile's details, order or publishing updates it. */
-export const DESIGNS_TAG = "design-presets";
+export { DESIGNS_TAG } from "@/lib/cache-tags";
 
 export type DesignResult<T = Record<never, never>> = ({ ok: true } & T) | { ok: false; problems: string[] };
 

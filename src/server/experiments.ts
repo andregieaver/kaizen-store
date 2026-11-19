@@ -22,6 +22,7 @@ import {
   type Device,
   type Goal,
 } from "@/lib/experiments";
+import { experimentsTag } from "@/lib/cache-tags";
 
 import { log } from "./log";
 import { col, typedRows } from "./typed-rows";
@@ -36,12 +37,7 @@ type Row = Record<string, unknown>;
  * as claims to check, and nothing records anyone who has not accepted statistics cookies.
  */
 
-/** Refreshed when a test starts, stops or changes: the pages that show a test's marker are drawn again. */
-/**
- * The cache tag of a store's tests. Every storefront read of running tests also asks `commerce.extension_on(store, 'ab_testing')` (D748): while
- * the account does not have A/B testing, visitors see the original; `refreshExtensionFacts()` refreshes this tag with the store's.
- */
-export const experimentsTag = (storeId: string) => `experiments:${storeId}`;
+export { experimentsTag } from "@/lib/cache-tags";
 
 /** The slug of a variant's page (type `variant`, which has no address on the site): a key, not a place. */
 export const variantSlug = (experimentId: string, key: string) => `ab-${experimentId.slice(0, 8)}-${key}`;

@@ -23,6 +23,7 @@ import { type TrackingSettings } from "@/lib/cookie-consent";
 import { parseTracking } from "@/lib/cookie-consent-schema";
 import { parseSiteFonts, type SiteFonts } from "@/lib/fonts-schema";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import { PLATFORM_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 import { audit, type Account } from "./auth";
 import { ownMenus, standardMenusInput } from "./navigation";
@@ -32,8 +33,7 @@ import type { SaveResult } from "./settings";
 
 type Row = Record<string, unknown>;
 
-/** Revalidate after Kaizen's logo, menus or business details change. */
-export const PLATFORM_NAVIGATION_TAG = "platform-navigation";
+export { PLATFORM_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 /** Everything Kaizen's header and footer show (D42). */
 export type PlatformChrome = {
