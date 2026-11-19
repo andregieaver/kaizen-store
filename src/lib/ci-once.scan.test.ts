@@ -150,8 +150,9 @@ describe("the unit tests load only what they use (bloat review 0.39)", async () 
     expect(existsSync(join(root, "vitest.config.mts"))).toBe(true);
   });
 
-  it("keeps a fresh worker per file where a trial showed it needed (bloat review 2.44)", () => {
+  it("shares a worker only where a trial showed it safe (bloat review 2.44)", () => {
     // Flip one of these only with a new timed trial: three runs, one shuffled, every file green.
+    expect(named("db")?.isolate).toBe(false);
     expect(named("components")?.isolate).toBeUndefined();
     expect(named("unit")?.isolate).toBeUndefined();
   });
