@@ -10,9 +10,9 @@ export { FocusFrame, FocusHeading } from "./focus-frame";
 export { AdminLink, type AdminLinkProps } from "./link";
 // The kit of code review step 1.12 (D818): fields, the empty state, a list's pager and search. Its client part, `ConfirmButton`, is
 // imported from "./confirm-button" itself, never through here: this index is reached by the server code of every route (the storefront's
-// too), and each client module it names is in every route's first scripts. Only the type is named here.
-export { Field, TextInput, Select, TextArea, fieldClass, type FieldControl } from "./field";
+// too), and each client module it names is in every route's first scripts. `TextArea`, `fieldClass()` and `pageAddress()` are read from
+// their files by the client parts that use them.
+export { Field, TextInput, Select } from "./field";
 export { EmptyState } from "./empty-state";
-export type { ConfirmButtonProps } from "./confirm-button";
-export { Pager, pageAddress, type PagerWords } from "./pager";
+export { Pager } from "./pager";
 export { ListSearch } from "./list-search";
