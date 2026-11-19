@@ -1,0 +1,13 @@
+{
+ "id": "0.23",
+ "rating": "cheap-then-review",
+ "why": "The filter rewrite is a precise rule (owned(x) for a JavaScript value, aliased form, a comment for column-to-column) and counts per file are right (122 in 40), but it is the tenant separation of 40 files: a wrong variable passed to owned(), or a column-to-column join filtered on one side only, compiles and many int tests would not notice. Commit 3 also rewrites the cookie scan's claim query with a new back-off and ordering and adds a migration; the per-site judgement on column-to-column lines (is the owner available in this function?) is bounded but real.",
+ "harm_if_wrong": "A read filtered on the wrong owner shows one store's pages, forms, support threads or AI settings to another store, or the platform's null branch is lost and Kaizena Flow's own site draws empty.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "List, for each column-to-column line (menus 233, saved-parts 40, support-email 267 and any other), the exact replacement text, so no per-site judgement is left; the tenant risk still needs a reader of the diff.",
+ "brief_problems": [
+  "owned('') silently turns an empty store id into the platform's rows where the old SQL would have failed on ''::uuid; the brief documents it as intended without asking whether any caller can pass ''."
+ ]
+}

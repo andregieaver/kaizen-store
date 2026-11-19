@@ -1,0 +1,26 @@
+{
+ "id": "0.6",
+ "fixed": [
+  "storeObligations() located exactly: doc comment line 83, function 87 to 117 (was 'near line 83').",
+  "store-closure.ts keeps Row/Tx/Executor (lines 40-42) definitely, since storeState() and later functions use them; store-features.ts's own copies named and left alone.",
+  "bought-sql.ts: server-only is now a fixed first line, not a choice.",
+  "encryption-key.ts's imports given literally (parseKey only); settings.ts's secret-box import edit given; all 18 importers use './settings' (no @ form).",
+  "docs line about code-review 4.2 no longer conditional: the function reads process.env.",
+  "--why checks say 'no chain printed' instead of an output text step 0.1's walker does not define.",
+  "Commit 7 no longer offers to make step 0.5's follow-ups.ts edit (0.5 is not a dependency and owns it).",
+  "stop_if added for a missing import-reach.mjs, and one stopping a cheap model at commit 6/7."
+ ],
+ "rejected": [
+  {
+   "problem": "The done-when's module and megabyte figures assume step 0.4 has landed.",
+   "why": "depends_on already names 0.4 for exactly that reason."
+  },
+  {
+   "problem": "Commit 7 is one entry that asks for many commits (one per edge).",
+   "why": "It is the strong model's part and says so; splitting it into separate briefed commits would need the per-edge judgement the step reserves for the stronger model."
+  }
+ ],
+ "cheaper": "not applied: moving commits 6 and 7 into a separate step changes the plan's step structure and what 0.6 closes; instead cheap_commits [2,4,8] and a stop_if hand the rest to the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

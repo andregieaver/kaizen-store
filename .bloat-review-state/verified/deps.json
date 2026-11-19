@@ -1,0 +1,381 @@
+{
+ "headline": "The dependency list is lean and none of this review's case rests on what stores use today: 51 runtime packages, none without an importer, and every heavy browser library (3D viewer, video and AVIF encoders, code editor, Stripe elements) loads only on the press that needs it, so a shopper's first scripts hold no third-party library beyond React, Next and a 25 KB icon chunk. The cost is in when server code loads, and most of it is the app's own code, not the packages. Measured here in a fresh process, a route on the import hub (the page-view beacon, the Stripe webhook, the tile API) takes about 1.0 s and 170 MB to load before its first answer; a lean route (health, consent) takes 0.25 s and 65 MB. Only 28 of 830 routes are lean. The named packages explain about a quarter of the second: building zod schemas at import (167 ms in the profile), 481 table definitions for a query API nobody calls (about 100-170 ms with its set-up), sharp and a font parser (45-60 ms), the Stripe and Supabase SDKs (about 35 ms, half the auditor's figure). The beacon sits on the hub through one re-export: four files importing sameSite from its own module would take it from 1,308 source files to 145. In the admin, supabase-js with its realtime client and zod are 35% of every screen's first scripts (the auditor counted 29% and missed a 57 KB chunk), and the rich text editor is sent to 21 list and detail screens whether or not it is drawn. All of this is paid per new function instance (after each deploy, on scale-up, after idle) or per admin page load, so it grows with shoppers, owners and deploys, not with which features a store has switched on. Every fix is small, and none needs data to be moved.",
+ "metrics": [
+  {
+   "name": "Direct dependencies",
+   "value": "51 runtime, 17 dev; 0 without an importer (three and @tiptap/pm are required peers). Source is 768,000 non-test lines, not the 473,000 in the auditor's headline.",
+   "how": "node -e over package.json; rg per package over src, scripts, e2e and config files; m/dead.md package table; find + wc -l over src"
+  },
+  {
+   "name": "Installed size",
+   "value": "922 MB in node_modules/.pnpm, 606 package folders; lockfile 758 entries, 322 reachable from runtime dependencies. Largest: next 209 MB, @sparticuz/chromium 67, @google/model-viewer 43, lucide-react 43, pglite 27, simple-icons 26, three 24, typescript 24.",
+   "how": "du -sm, ls | wc -l, the auditor's dp-lock.mjs re-run, du -sh per package"
+  },
+  {
+   "name": "Cold load of a built route handler (new, measured by the skeptic)",
+   "value": "Hub routes (/api/visit, the Stripe webhook, /api/shop/tiles): 996-1,052 ms, +92-95 MB heap, +166-180 MB RSS (270-290 ms to load 117 chunks, 720-770 ms to evaluate the route's modules; sharp is loaded). Lean routes (/api/health, /api/consent): 209-268 ms, +23 MB heap, +63-65 MB RSS. This sandbox, Node 22, warm disk; an order of magnitude for Vercel, not its figure.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sk-deps/cold3.cjs: a fresh node process requires .next/server/app/<route>/route.js, then awaits routeModule.ensureUserland() (what the first request does); 3 runs per route"
+  },
+  {
+   "name": "Where a hub route's cold load goes (new)",
+   "value": "Of 1,255 sampled ms for /api/visit (profiler on): Turbopack's module runtime 402 ms, Node internals (compiling 10.8 MB, file reads) 358, zod's own code building schemas 167, the chunk holding the 481 tables 79, garbage collection 65, sharp's files and dlopen about 10. For /api/health (298 ms sampled): schema chunk 66, zod 10.",
+   "how": "node --cpu-prof on cold3.cjs, self time summed by script file with /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sk-deps/prof-sum.cjs"
+  },
+  {
+   "name": "Server JS a route loads and evaluates on its first request",
+   "value": "median 11.6 MB (p25 10.8, max 12.2) over 830 route entries; 28 routes under 3 MB; /api/visit evaluates 1,415 of 1,456 modules, the storefront home 1,791 of 1,851, /api/health 207 of 215 (1.16 MB)",
+   "how": "re-ran the auditor's dp-route-libs.mjs (copy in work/sk-deps/route-libs.mjs) and dp-eval.mjs; same figures"
+  },
+  {
+   "name": "Share of the 830 routes whose chunks hold each package",
+   "value": "zod 99% (822), the 481-table schema 98% (816), Stripe SDK 97% (804), supabase-js 97% (803), opentype.js 89% (740), a module importing sharp 89% (740; sharp is in 741 file traces), web-push 1% (7), playwright-core and Chromium in 12 traces",
+   "how": "route-libs.mjs marker strings in built chunks; the auditor's dp-nft.mjs re-run over every .nft.json"
+  },
+  {
+   "name": "Cold-load cost per package (this sandbox, 3 runs each)",
+   "value": "schema.ts 105-138 ms and 10-16 MB heap, plus 36-37 ms and 2.2 MB for drizzle({schema}) against 0.04 ms without (auditor: 31 ms, 5.8 MB); sharp 31-35 ms and 21.5 MB RSS; opentype.js 11-12 ms unbundled, 16-23 bundled; seek-bzip 2-3 ms; stripe 41-76 ms unbundled but 18-28 ms as one bundled file, which is how the build holds it; supabase-js 24-39 unbundled, 14 bundled; zod 40-42; drizzle-orm 28-36; pg 16-17; playwright-core 238-279 (lazy)",
+   "how": "auditor's dp-time-schema.cjs and dp-time2.cjs on work/schema.nozod.cjs; work/sk-deps/time-req.cjs per package; work/sk-deps/bundle.mjs (esbuild, minified single file) with time-file.cjs for the bundled figures"
+  },
+  {
+   "name": "How much of drizzle-orm is used",
+   "value": "637 files import `sql`, 48 the `SQL` type, 2 `SQLWrapper`; about 5,190 execute() calls (auditor: 5,163, a regex difference); 0 query-builder or relational calls outside tests; 0 relations(); schema.ts has one run-time importer, client.ts. Bundled, drizzle-orm is 70 KB without the schema and 90 KB with it.",
+   "how": "rg over src excluding tests; work/client.without.meta.json and client.with.meta.json"
+  },
+  {
+   "name": "Admin shell first scripts",
+   "value": "15 scripts, 1,011,291 bytes raw / 300,929 gzip. supabase-js 179,419 / 44,575, its realtime client in a second chunk 57,349 / 16,687 (missed by the auditor), zod 116,870 / 32,996: together 353,638 raw / 94,258 gzip = 35% raw, 31% gzip (auditor: 29% and 26%). All three chunks are named by 432 admin route manifests and 0 storefront ones.",
+   "how": "script tags of .next/server/app/admin.html, each chunk read and gzipped in node; rg of chunk names over the 830 client-reference manifests; the same chunks found in the captured admin pages in m/html"
+  },
+  {
+   "name": "Storefront first scripts",
+   "value": "11 scripts, 600,199 bytes raw / 187,316 gzip on the prerendered store page; no third-party run-time library but React/Next and a 25.5 KB lucide chunk; no zod, Supabase or tiptap",
+   "how": "script tags of .next/server/app/s/demo.html with marker strings"
+  },
+  {
+   "name": "Heavy browser libraries loaded only on demand",
+   "value": "model-viewer + three 1,077 KB (300 KB gzip), mediabunny 575 KB (145), CodeMirror 392 KB (129), AVIF encoder 3.49 MB wasm, motion's scroll() 8.4 KB: each in 0 route manifests",
+   "how": "marker strings in .next/static/chunks, rg of the chunk names over the manifests, import() sites read in source"
+  },
+  {
+   "name": "Rich text editor (tiptap) reach",
+   "value": "one chunk, 435,421 bytes raw / 136,315 gzip, in the entry script list of 73 admin routes; 21 are lists or detail pages. Next emits a script tag for every file in a page's entry list whether or not the component is drawn.",
+   "how": "rg of chunk 3lclkawi229rq.js over the manifests; entryJSFiles read from nine page manifests; node_modules/next/dist/server/app-render/create-component-styles-and-scripts.js; the chunk is in m/html/admin-pages.html"
+  },
+  {
+   "name": "simple-icons use",
+   "value": "26 of 3,467 icons, 19,982 bytes of path data, from a 26 MB package whose entry module is 5.25 MB; no unused icon is in any client or server chunk",
+   "how": "node -e over require('simple-icons'); du; ls -la; rg of six unused icons' paths over .next chunks"
+  },
+  {
+   "name": "File trace per route",
+   "value": "/api/visit 47.3 MB (sharp and libvips 18.8, taxonomy data 12.7, chunks 14.0); /api/health 15.5 MB (12.7 of it taxonomy data); the three every-minute Chromium cron routes 125.4 MB each (Chromium 66.8, playwright-core 11.1)",
+   "how": "work/sk-deps/nftsize.mjs: sizes of the files listed in each route's .nft.json, grouped"
+  },
+  {
+   "name": "Routes that reach the hub only through chat-route.ts (new)",
+   "value": "55 files import @/server/chat-route; 40 take only sameSite or fail. Importing sameSite from src/lib/same-site.ts, where it is defined, takes the four beacon routes from about 1,308 source files to 145-149 (no sharp, Supabase or opentype.js) and six admin export and docs routes to 325-424.",
+   "how": "work/sk-deps/sgraph.mjs and sgraph-skip.mjs: a walk of static value imports with and without the chat-route.ts edge"
+  }
+ ],
+ "clean": [
+  "No dead dependency: every package in package.json has an importer in src, scripts, e2e or a config file (re-checked with rg and against m/dead.md). three and @tiptap/pm have no import of their own but are required peers of @google/model-viewer and tiptap.",
+  "Heavy browser libraries are behind import() at the point of use: @google/model-viewer with three (product-gallery.tsx:349), mediabunny (video-compress.ts:25, :51; animation-make.ts:36), @jsquash/avif (avif-encode.ts:13), the six @codemirror packages (css-panel.tsx:22), the four @stripe browser packages (through the lazy wrappers), web-vitals (speed-beacon.tsx:53) and motion (only scroll(), 8.4 KB). Each is in 0 route manifests.",
+  "@supabase/realtime-js is on demand for the storefront chat (use-support-channel.ts:41; 0 storefront manifests). Correction to the auditor: in the admin it is not on demand, it arrives in every screen's first scripts with supabase-js (see DP-4).",
+  "Shoppers get no third-party run-time library in their first scripts, held by two checks: src/lib/storefront-bundle.scan.test.ts and e2e/performance.spec.ts.",
+  "Tree-shaking works where it matters: no unused simple-icons icon is in any client or server chunk (six unused icons' paths searched), zod's locales are in no chunk, zod is in exactly one client chunk (the admin's), and postgres.js and PGlite are in no server chunk.",
+  "lucide-react is imported by name in 24 files, never as a namespace.",
+  "Server-side single-purpose packages are loaded on demand, so their cost follows use: playwright-core and @sparticuz/chromium (browser.ts:11, :15; in 12 route traces only), mammoth and unpdf (knowledge.ts:70, :75; bill-reading.ts:54), subset-font, fontverter and HarfBuzz's wasm (one route, the dispatcher), web-push (static in push.ts but reached by 7 routes only). The auditor's remark that their features have no rows in production is not evidence of anything before opening and is dropped; what counts is that a store which does not use them pays nothing per request.",
+  "drizzle-orm is used as a `sql` tag plus drizzle-kit's migration differ. Bundled it is 70 KB without the schema, 90 KB with. That is a sound use. Only the schema's presence at run time is waste (DP-1).",
+  "Two Postgres drivers have a recorded reason (client.ts:56-63, D37): pg is the run-time driver; postgres.js serves the build's host read (store-hosts-build.ts), the migration scripts and tests, and is in no function's chunks or trace.",
+  "pnpm-workspace.yaml: five overrides, each with its advisory and reason; one 7.8 KB patch to Next (D423). CI runs pnpm audit --prod (ci.yml:75).",
+  "@supabase/ssr needs supabase-js as a peer, and realtime-js is the version supabase-js already brings; they are not duplicates of each other.",
+  "No hand-rolled copy of an installed package was found: Stripe webhook signatures use the SDK's constructEvent (three routes), QR codes exist once (lib/qr.ts).",
+  "On Vercel, Next does not preload every route at start (next-server.js:468: only outside minimal mode), so a route's modules load on its first request in an instance, as the measurements assume. Routes that share a function also share loaded modules, so which request pays depends on Vercel's grouping, which was not measured."
+ ],
+ "findings": [
+  {
+   "id": "DP-1",
+   "title": "481 table definitions are loaded and indexed in every function for a query API nobody calls",
+   "kind": "eager",
+   "where": [
+    "src/db/client.ts:11",
+    "src/db/client.ts:31",
+    "src/db/client.ts:78",
+    "src/db/schema.ts:1-19614",
+    "node_modules/.pnpm/drizzle-orm@0.45.4_@electric-sql+pglite@0.5.13_@types+pg@8.23.1_pg@8.23.1_postgres@3.4.9/node_modules/drizzle-orm/node-postgres/driver.js:36-47",
+    "docs/audits/code-review-2026-11.md:116",
+    "docs/audits/code-review-2026-11.md:268"
+   ],
+   "evidence": "client.ts line 11 imports all of schema.ts and line 78 passes it to drizzle(). In drizzle's driver the schema is used only to build the relational query config. Outside tests there are 0 query-builder or db.query calls, 0 relations(), and client.ts is the only run-time importer of schema.ts; 637 files import just the `sql` tag and there are about 5,190 execute() calls. Built, the schema module is 614,815 bytes inside a 797,650-byte chunk that 816 of 830 route entries load. Timed here, 3 runs each: evaluating a bundle of schema.ts 105-138 ms and 10-16 MB heap; drizzle({schema}) 36-37 ms and 2.2 MB against 0.04 ms without. In a CPU profile of the built /api/health route's cold load, 66 of 298 sampled ms ran inside the schema's chunk.",
+   "cost": "About 100-170 ms and 12-18 MB of heap per cold start (this sandbox; an estimate for Vercel) and 615 KB of server JS compiled, in 816 of 830 routes. It is most of what a lean route such as /api/health evaluates, and about a tenth of a hub route's 1.0 s.",
+   "who_pays": "The server once per new function instance: after each deploy, on scale-up and after idle. The first shopper, webhook or cron call to reach that instance waits. More traffic means more instances, so this grows with shoppers and with deploys, not with features used.",
+   "fix": "Three lines in src/db/client.ts: delete the schema import, call drizzle({ client: pool }), type Database as NodePgDatabase. schema.ts stays as drizzle-kit's source (drizzle.config.ts) and for store-export.scan.test.ts. Do it now as its own step; the file split that step 3.14 pairs it with can follow. Then pnpm db:check must write no migration.",
+   "saving": "Measured here: about 100-170 ms and 12-18 MB heap less per cold start; 615 KB less server JS in 816 routes; /api/health's JS falls from 1.16 MB to about 0.54 MB (the auditor's 0.35 MB assumed the whole chunk goes; drizzle's own code in it stays). Estimate for Vercel.",
+   "effort": "S",
+   "risk": "Low. No run-time code uses db.query or the typed tables; the type check shows any stray use.",
+   "confidence": "high",
+   "already_tracked": "docs/audits/code-review-2026-11.md step 3.14 (FD5), Open. It names the fix but ties it to splitting the file (effort M) in phase 3; nothing is measured there.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened client.ts, drizzle's driver.js and the plan's lines. Re-counted importers and calls with rg. Re-ran the route-share script (816 of 830) and both timing scripts; added a profile of the built health route. Changed: drizzle init heap is 2.2 MB not 5.8; the health route would fall to about 0.54 MB, not 0.35; the saving range is stated as 100-170 ms. Nothing in this finding rests on production use."
+  },
+  {
+   "id": "DP-2",
+   "title": "sharp's native library and a font parser load on nearly every cold start",
+   "kind": "eager",
+   "where": [
+    "src/server/theme-highlights.ts:3",
+    "src/server/product-import.ts:6",
+    "src/server/picture-editor.ts:3",
+    "src/server/page-looks.ts:4",
+    "src/server/ai-pictures.ts:3",
+    "src/server/brand-marks.ts:3",
+    "src/server/ai-vision.ts:3",
+    "src/server/content-packs.ts:7",
+    "src/server/replicate.ts:6",
+    "src/server/replicate-images.ts:3",
+    "src/server/theme-shot-files.ts:3",
+    "src/server/ai-picture-marks.ts:4",
+    "src/server/font-outlines.ts:4",
+    "src/server/legal-sources.ts:6",
+    "src/app/s/[store]/[market]/layout.tsx",
+    "src/server/seo.ts",
+    "src/server/theme-store.ts",
+    "src/server/theme-shots.ts"
+   ],
+   "evidence": "Twelve server modules start with `import sharp from \"sharp\"` (43 call sites), and they sit on static import chains from almost everything. My own walk of static value imports confirms the chains: the storefront layout and page reach sharp through seo.ts, theme-store.ts, theme-shots.ts, theme-highlights.ts; checkout, the Stripe webhook and the admin orders page through customers.ts, privacy-erasure.ts, data-jobs.ts, product-import.ts. Direct proof: loading the built /api/visit route in a fresh process and asking for its modules, as the first request does, loads sharp; /api/health does not. sharp and libvips (18.8 MB) are in the file trace of 741 of 830 routes; a module importing sharp, and opentype.js (226 KB, used to draw a brand mark for the AI manager), are in the chunks of 740. seek-bzip is on the same chains but costs 2-3 ms and is not worth a change alone.",
+   "cost": "sharp 31-35 ms and 21.5 MB RSS per cold start; opentype.js 11-23 ms and about 2 MB (timed here, 3 runs). Together about 45-60 ms and 24 MB, roughly 5% of a hub route's 1.0 s cold load, for requests that never touch a picture or a font. Plus 18.8 MB of native files in 741 routes' traces.",
+   "who_pays": "The server once per new function instance: shoppers' first page or beacon after a deploy or idle spell, webhooks, owners' first admin page. Grows with instances, so with traffic and deploys.",
+   "fix": "Load each at its call site: one helper (for example src/server/sharp-load.ts with `export const loadSharp = async () => (await import(\"sharp\")).default`), `import type` for the types, `await loadSharp()` inside the 12 modules' functions; the same in font-outlines.ts for opentype.js. Add sharp and opentype.js to the server scan of DP-6. Do the hub cuts first (DP-10, and the storefront-data review's cuts at customers.ts): they take sharp off many routes at once, and this change covers the routes that stay on the hub.",
+   "saving": "Estimate from the timings here: 45-60 ms and about 24 MB RSS per cold start on roughly 740 routes. The trace still lists sharp until the import chains are cut; the load cost goes at once.",
+   "effort": "S",
+   "risk": "Low. The first picture job in an instance pays the 30-35 ms instead of every instance. 43 call sites change; a helper that returns a sharp pipeline synchronously must become async. No test mocks sharp today.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened all 14 import lines. Wrote my own import walker (work/sk-deps/sgraph.mjs) and reproduced the chains; re-ran the trace count (741) and the chunk share (740). Re-timed: sharp 31-35 ms (auditor 37-56), opentype.js 11-23, seek-bzip 2-3 ms, so the bzip reader is dropped from the title and the total is 45-60 ms, not 50-70. Added the direct load test and the share of the total (about 5%). Not based on production use."
+  },
+  {
+   "id": "DP-3",
+   "title": "The Stripe and Supabase SDKs are evaluated by 97% of routes; reading a store imports the Stripe SDK to see if two keys exist",
+   "kind": "eager",
+   "where": [
+    "src/server/stripe.ts:3",
+    "src/server/stripe.ts:33-46",
+    "src/server/stripe.ts:58-60",
+    "src/server/stores.ts:182",
+    "src/server/stores.ts:300",
+    "src/server/media.ts:5",
+    "src/server/settings.ts:16",
+    "src/lib/stripe-account.ts"
+   ],
+   "evidence": "getStore() computes paymentsOn with platformModes() (stores.ts:300), which calls platformStripe(mode) and so builds, once per instance, a Stripe client just to learn whether two environment keys are set. stores.ts therefore imports stripe.ts, whose first line imports the SDK; stores.ts reaches only 130 source files, so on a lean route this one edge is what brings the SDK. In the build the Stripe SDK module (212 KB) is in the chunks of 804 of 830 routes and supabase-js (206 KB, reached through custom-fields.ts and media.ts) in 803, and both are evaluated on the first request of the storefront home and of /api/visit. Counts: 44 files import stripe.ts, 6 files import the SDK as a value, 65 calls to stripeFor() or platformStripe(), 8 `instanceof Stripe.` checks, 21 files already use `import type`.",
+   "cost": "As the build holds them (one bundled module each), Stripe evaluates in 18-28 ms and supabase-js in about 14 ms here: about 35 ms per cold start, 3-4% of a hub route's 1.0 s. The auditor's 70-105 ms was an unbundled require of hundreds of small files, which is not what a function runs. 418 KB of JS compiled in 97% of routes.",
+   "who_pays": "The server once per new function instance. Small beside the hub itself.",
+   "fix": "Step 1 (S, worth doing with the hub cuts): move platformModes() to a key-presence check in src/lib/stripe-account.ts, which already holds platformKey, so stores.ts and settings.ts no longer import stripe.ts. After DP-10 this is what keeps the Stripe SDK out of the page-view beacon. Step 2 (M, only if a measurement after step 1 and the hub cuts still shows it): make stripeFor() and platformStripe() async with `await import(\"stripe\")` inside, and the same for the storage client in media.ts.",
+   "saving": "Estimate: about 18-28 ms (Stripe) and 14 ms (supabase-js) per cold start on routes that do not use them. Step 1 saves nothing on routes still on the hub, where other chains reach stripe.ts; it pays on lean routes that read a store.",
+   "effort": "M",
+   "risk": "Step 1: low. Step 2: medium, 65 call sites gain an await and webhook verification builds a client per request; before opening is the cheapest time to touch payment code, but the gain is small.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened stripe.ts, stores.ts, settings.ts, media.ts; reproduced the route shares (804, 803) and the chains with my walker. Corrected: the per-package times are about half the auditor's once measured as bundled single files (work/sk-deps/bundle.mjs, time-file.cjs); the client is cached after the first call, so the waste is the SDK import, not a client per read; counts are 44 files, 65 calls and 8 instanceof checks, not 43, 67 and 6. Step 2 is demoted to 'measure first'. Not based on production use."
+  },
+  {
+   "id": "DP-4",
+   "title": "supabase-js, its realtime client and zod are 35% of the first scripts of every admin page",
+   "kind": "eager",
+   "where": [
+    "src/app/admin/(gated)/layout.tsx:10",
+    "src/app/admin/(gated)/layout.tsx:47",
+    "src/components/admin/session.tsx:8",
+    "src/components/admin/session.tsx:22",
+    "src/lib/supabase/client.ts:1",
+    "src/lib/env.ts:1",
+    "src/lib/push.ts:1",
+    "src/lib/typography.ts:1",
+    "src/lib/storefront-bundle.scan.test.ts:16",
+    "docs/performance.md:34",
+    "docs/audits/psi-followups.md:481",
+    "e2e/signed-in/admin-scripts.spec.ts:36"
+   ],
+   "evidence": "The prerendered admin shell (.next/server/app/admin.html) has 15 scripts, 1,011,291 bytes raw and 300,929 gzip. Three are libraries: the supabase-js chunk (179,419 raw, 44,575 gzip), a second chunk with Supabase's realtime client that supabase-js imports (57,349, 16,687; the auditor missed it), and the zod chunk (116,870, 32,996). All three are named by 432 admin route manifests and by no storefront one, and appear in every captured admin page in m/html. supabase-js is there because SessionKeeper, drawn by the gated layout, statically imports the browser client to keep the token fresh; that client is the whole SDK. zod reaches the shell by three chains only: session.tsx to supabase/client.ts to env.ts (two strings checked), push-settings.tsx to lib/push.ts, and shortcut-sheet.tsx to responsive-edit.tsx to responsive.ts to typography.ts. A walk of the client components of the admin home, orders, products, customers, analytics, settings and discounts pages finds no other path to zod.",
+   "cost": "354 KB raw / 94 KB gzip of script downloaded, parsed and run before the admin is usable, on every admin page: 35% of the shell's first scripts.",
+   "who_pays": "An owner's browser on every full admin page load (the download once per deploy that changes the chunks, the parse and run each time). Grows with the number of owners.",
+   "fix": "(1) In session.tsx load the client inside the effects: `const { createClient } = await import(\"@/lib/supabase/client\")`; this defers both Supabase chunks. (2) Give publicEnv() a zod-free home (two plain checks). (3) Move the schemas of lib/push.ts and lib/typography.ts (three exports, one importer: page-content.ts) into push-schema.ts and typography-schema.ts, the convention docs/performance.md:34 sets for visitors. (4) Extend storefront-bundle.scan.test.ts with a second entry set, the admin layouts' client components, so zod cannot come back. Lower the budgets in e2e/signed-in/admin-scripts.spec.ts after.",
+   "saving": "117 KB raw / 33 KB gzip gone from the first scripts of admin pages whose own forms do not use zod; 237 KB raw / 61 KB gzip of Supabase moved off the critical path to after first paint (still fetched, since the session keeper needs it). Measured chunk sizes; the effect on paint time is not measured.",
+   "effort": "S",
+   "risk": "Low. The session keeper starts a moment later; its try/catch already tolerates failure. Pages with zod-based forms (builder, product editor, pages list, media) still load zod.",
+   "confidence": "high",
+   "already_tracked": "Partly: docs/audits/psi-followups.md PERF-01 (open) sets the goal of cutting the admin's shared scripts; it does not name these libraries. Its 3.93 s p75 was read before the 10 November cut and comes from the team's own use, so it is a reason to measure again, not a baseline. The visitor-side rule exists (performance.md:34) and stops at the admin.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-read admin.html's script tags and sized each chunk; opened session.tsx, client.ts, env.ts, push.ts, typography.ts and the gated layout; re-ran the auditor's dp-shell.mjs on the layouts and ten pages, plus error, loading and not-found files. Corrected: a 57 KB realtime chunk belongs to the Supabase share, so the total is 354 KB / 94 KB gzip (35% / 31%), not 296 / 77 (29% / 26%). Not based on production use."
+  },
+  {
+   "id": "DP-5",
+   "title": "The rich text editor is sent to 21 admin lists and detail pages that may never show it",
+   "kind": "eager",
+   "where": [
+    "src/components/admin/term-page-fields.tsx:10",
+    "src/components/admin/term-page-fields.tsx:98",
+    "src/components/admin/terms.tsx:23",
+    "src/app/admin/(gated)/[store]/pages/views.tsx:9",
+    "src/components/admin/fields-form.tsx:41",
+    "src/components/admin/fields-form.tsx:451",
+    "src/components/admin/staff-fields-section.tsx:31",
+    "src/components/admin/css-panel.tsx:22",
+    "node_modules/next/dist/server/app-render/create-component-styles-and-scripts.js",
+    "docs/performance.md:38",
+    "e2e/signed-in/admin-scripts.spec.ts:36"
+   ],
+   "evidence": "The tiptap/ProseMirror chunk is 435,421 bytes raw, 136,315 gzip, and 73 admin routes list it among their page's entry scripts. 21 of them are not editors: the lists of pages, articles, headers, footers, product layouts and content, the category screens, and the order, customer and deal detail pages. Two static imports cause all of it: terms.tsx to term-page-fields.tsx to RichTextEditor (a category's description) and fields-form.tsx to RichTextEditor (a rich-text custom field). Next writes a script tag for every file in a page's entry list whether or not the component is drawn (create-component-styles-and-scripts.js), so the order page sends the editor even when StaffFieldsSection returns null because the store has no field group, and the pages list sends it although the categories manager is drawn only on the categories view. The captured pages list (m/html/admin-pages.html) carries the chunk. The CSS editor in the same folder is already loaded with next/dynamic (css-panel.tsx:22). The budget file shows the price: the pages list's first scripts are 2,093,288 bytes against 1,284,745 for the admin home.",
+   "cost": "435 KB raw / 136 KB gzip of script on 21 screens whether or not an editor is drawn.",
+   "who_pays": "An owner's browser on the page, article and content lists and on every order, customer and deal page. Order and customer pages are what staff open most once a store sells, so this grows with real use.",
+   "fix": "Wrap RichTextEditor in next/dynamic (ssr: false, a textarea-sized placeholder) where term-page-fields.tsx and fields-form.tsx use it, as css-panel.tsx does for CodeMirror. This follows the rule docs/performance.md already has for visitors (a client component only some pages draw is loaded where it is drawn). Then lower the /pages budget in admin-scripts.spec.ts and add /orders/{order} to it.",
+   "saving": "435 KB raw / 136 KB gzip off the first scripts of 21 routes (measured chunk size; every chain to tiptap on the ten pages I walked goes through these two imports).",
+   "effort": "S",
+   "risk": "Low. The editor appears a moment after the form; the builder's own pages are untouched.",
+   "confidence": "high",
+   "already_tracked": "Adjacent: code review step 3.4 (FB8), Open, loads the builder's dialogs on demand; it does not cover these lists and detail pages.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Sized the chunk, counted the 73 manifests and the 21 non-editors, read entryJSFiles of nine page manifests, read Next's script emission, and walked the client components of ten pages to tiptap. Removed the auditor's remark that field_values has never held a row: before opening that says nothing, and the finding does not need it. The cost is real for a store with no custom fields at all, which is the point."
+  },
+  {
+   "id": "DP-6",
+   "title": "Nothing limits what a route's server function loads, so nearly every route came to load everything",
+   "kind": "process",
+   "where": [
+    "src/lib/storefront-bundle.scan.test.ts:1",
+    "e2e/performance.spec.ts:21",
+    "e2e/signed-in/admin-scripts.spec.ts:36",
+    "next.config.ts:69",
+    ".github/workflows/ci.yml:75",
+    "src/server/document-readers.test.ts:11"
+   ],
+   "evidence": "The browser side has three guards (a static import scan for visitors, byte budgets for visitor routes, byte budgets for seven admin screens) and they have worked: shoppers' scripts are clean. The server side has none beyond one module-level check for invoice-pdf.ts. Result, read from the build: the median route loads 11.6 MB of server JS and only 28 of 830 routes load under 3 MB; /api/visit evaluates 1,415 of 1,456 modules and its trace is 47.3 MB; /api/health's trace is 15.5 MB, 12.7 MB of it product-taxonomy data that one `/**` line (next.config.ts:69) adds to all 830 routes. Measured cold load: a hub route takes about 1.0 s and 166-180 MB RSS in a fresh process, a lean route 0.21-0.27 s and 65 MB; in the profile most of the second is the app's own modules being compiled and instantiated, not any one package. There is no unused-dependency check in CI (only pnpm audit). docs/performance.md, capacity.md and build-memory.md say nothing about cold start or trace size.",
+   "cost": "No direct cost. It is why DP-1, DP-2, DP-3 and DP-10 could grow unnoticed, and each new feature added to a hub module now lands in every function.",
+   "who_pays": "Every later change; CI would carry the check (seconds: it reads source files, or files the build already wrote).",
+   "fix": "Two checks, to be one step with the storefront-data review's same finding (SD-13). (1) A scan test like storefront-bundle.scan.test.ts for server entries: the storefront layout and page, the /api/visit routes, /api/health and the Stripe webhook may not statically reach sharp, opentype.js, playwright-core, chat-route.ts, owner-tools.ts or dream-factory.ts, and each entry's module count may only fall. (2) A post-build script in CI's build job that reads each listed route's chunk list and .nft.json and fails over a byte budget (today's figure plus 4%, as the admin budgets do) or on a new external. Working prototypes: /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/dp-route-libs.mjs, dp-eval.mjs, dp-nft.mjs and work/sk-deps/sgraph.mjs, cold3.cjs.",
+   "saving": "Holds the gains of DP-1, DP-2, DP-3 and DP-10 and makes the hub's size a number that can only fall. None by itself.",
+   "effort": "S",
+   "risk": "Low. Budgets need raising on purpose now and then; that is the point.",
+   "confidence": "high",
+   "already_tracked": "no (code review step 4.1, lint rules for the boundaries, is the nearest and is Open; it does not measure what a route loads). Same gap as SD-13 of this review's storefront-data dimension: merge them.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened the three guards, next.config.ts:69 and ci.yml:75; searched the five docs for cold start or trace size (only FD5 mentions it). Re-ran the route sizes and module walks. Added the measured cold load and the count of lean routes (28), and found one existing module-level server check (document-readers.test.ts). Not based on production use."
+  },
+  {
+   "id": "DP-7",
+   "title": "Three Chromium routes are woken every minute whether or not there is work",
+   "kind": "eager",
+   "where": [
+    "next.config.ts:54",
+    "next.config.ts:56",
+    "next.config.ts:58",
+    "src/app/api/cron/theme-shots/route.ts:36",
+    "src/app/api/cron/cookie-scan/route.ts:19",
+    "src/server/cookie-scans.ts:72-86",
+    "src/lib/cron-health.ts:26-36",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:96",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:101",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:103"
+   ],
+   "evidence": "pg_cron calls /api/cron/cookie-scan, /api/cron/page-looks and /api/cron/theme-shots every minute (migration lines 96, 101, 103). Each route's trace is 125.4 MB (Chromium 66.8, playwright-core 11.1, sharp 18.8, taxonomy 12.7, chunks 14.0). Chromium is only started when there is work (browser.ts uses import()), which is well done. Production's cron_jobs rows give their last runs as 26 ms, 0 ms and 0 ms. Before opening that is expected; it shows what an idle wake costs, not that the features are unwanted. Because the routes are called every minute they stay warm, so the 125 MB is paid at each deploy's cold start, not per call. The cookie-scan call runs two updates and a read of cookie_scans every time (cookie-scans.ts:72-86).",
+   "cost": "4,320 function calls a day, each with a net.http_post, a cron_jobs upsert and, for the cookie scan, three statements. Fixed: it does not grow with stores. Small in money.",
+   "who_pays": "The server (Vercel invocations) and the database (writes and scans each minute). Once stores exist more wakes will find work: a weekly scan per store fills about 10% of the cookie-scan's minutes at 1,000 stores (estimate).",
+   "fix": "Let the scheduler ask the database first: one SQL statement per route that calls it only when its queue has a due row, or have the five-minute dispatcher start them when it sees work. Two things the auditor's fix left out: the cookie scan's due rule is not just status = 'queued' (claimScan also fails stale runs and picks sites due their weekly scan), so the condition must mirror it or move into a SQL function; and cron health marks a one-minute job late after eleven minutes without a run (cron-health.ts), so these routes need a longer interval or a heartbeat. Belongs with the scheduling review's step for the nine every-minute routes; do it there, once.",
+   "saving": "Estimate: most of 4,320 calls a day while queues are mostly empty, falling as stores arrive. No cold-start saving.",
+   "effort": "M",
+   "risk": "Low to medium: a queued job starts up to one tick later; a wrong condition leaves a scan waiting; the platform home shows the routes as late unless cron health is changed with it.",
+   "confidence": "medium",
+   "already_tracked": "no in the existing plans; duplicated by this review's scheduling (cron) dimension, which should own it.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened the migration lines, the three routes, cookie-scans.ts, browser.ts and cron-health.ts; re-sized the three traces (125.4 MB). Corrected: these are routes with 125 MB traces, not known to be three separate functions; they stay warm, so the weight is not paid per call; effort is M, not S, because of the weekly-due rule and cron health; the saving shrinks as stores arrive. Read under the owner's clarification: this is a fixed idle cost of scheduling, kept; nothing here argues against the features."
+  },
+  {
+   "id": "DP-8",
+   "title": "A 26 MB icon package is installed and parsed each build for 26 paths",
+   "kind": "oversize",
+   "where": [
+    "src/components/brand-icon.tsx:1-28",
+    "src/components/brand-icon.tsx:33-35",
+    "package.json:69"
+   ],
+   "evidence": "brand-icon.tsx imports 26 named icons from simple-icons, which holds 3,467. The 26 paths total 19,982 bytes. The package is 26 MB installed and its entry module, which the bundler reads on every build to pick those 26, is 5.25 MB. LinkedIn's mark is already hand-kept in the same file because the package dropped it. Tree-shaking works: none of six unused icons I searched for is in any client or server chunk, and the used paths sit in one admin chunk.",
+   "cost": "26 MB of install, a 5.25 MB module parsed per build, and a caret-ranged dependency that removes brands in major versions. Nothing at run time.",
+   "who_pays": "The build and CI installs; nobody's browser or function.",
+   "fix": "Copy the 26 paths and hex colours into a small data file beside brand-icon.tsx (as LinkedIn's already is) and remove simple-icons from package.json. The licence is CC0.",
+   "saving": "26 MB less to install; one 5.25 MB parse less per build. The time and memory saved are small and not measured; this is tidiness, not speed.",
+   "effort": "S",
+   "risk": "Low. A brand that redraws its mark must be updated by hand.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened brand-icon.tsx; counted exports (3,467) and path bytes (19,982) with node; sized the package (26 MB) and its entry (5,255,349 bytes); searched the built chunks for unused icons. No change. Low priority: it costs the build only."
+  },
+  {
+   "id": "DP-9",
+   "title": "The existing plan's dependency item (FH12) points at the wrong Postgres driver, and its note on three is incomplete",
+   "kind": "process",
+   "where": [
+    "docs/audits/code-review-2026-11.md:294-296",
+    "docs/audits/code-review-2026-11.md:501",
+    "src/db/client.ts:7",
+    "src/db/client.ts:56",
+    "src/lib/store-hosts-build.ts:1",
+    "package.json:60",
+    "package.json:62",
+    "package.json:72",
+    "node_modules/@google/model-viewer/package.json:89-91",
+    "docs/wave-6-catalogue.md:838",
+    "e2e/product-media.spec.ts"
+   ],
+   "evidence": "FH12 says `pg` is kept beside `postgres` for one module, and step 4.4 (Open) says to take `pg` out of production dependencies. That is backwards: `pg` is the production driver (client.ts:7, reason at :56-63); the driver with one module in src is `postgres`, imported by the build's host read (store-hosts-build.ts:1), five scripts and tests, and found in no server chunk or trace. FH12 also says `three` is a dependency nothing imports. That is literally true of src, but @google/model-viewer needs it as a required peer (wave-6-catalogue.md:838 says so); step 4.4 only asks for `pnpm why three`, which would show this, so it is incomplete, not wrong. One real detail: the peer range is ^0.183.0 and 0.187.0 is installed, outside it for a 0.x version; e2e/product-media.spec.ts covers the 3D viewer, so the pairing is exercised.",
+   "cost": "No run-time cost. A plan step that, followed as written, removes the database driver from the list.",
+   "who_pays": "Whoever picks up step 4.4; an agent's session reading the plan.",
+   "fix": "Correct FH12 and step 4.4 in the change that touches them (the plan's own rule): `pg` stays; `postgres` may move to devDependencies only if the Vercel build keeps installing them (next.config.ts needs it at build time), otherwise leave it and say why, since it reaches no function either way; `three` stays as a peer, with a note that 0.187 is outside model-viewer's stated range and is held by the e2e test.",
+   "saving": "None in bytes. Removes a wrong instruction from the working plan.",
+   "effort": "S",
+   "risk": "None for the doc fix.",
+   "confidence": "high",
+   "already_tracked": "docs/audits/code-review-2026-11.md step 4.4 (FH12), Open, wrong as written about pg",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened FH12 (lines 294-296) and step 4.4 (line 501), client.ts, store-hosts-build.ts, model-viewer's package.json and the lockfile; searched the build for postgres.js (none). Corrected: the plan is wrong once (pg), not twice; its line on three is incomplete rather than wrong, and step 4.4 does not say to remove it. Added that an e2e spec covers the 3D viewer, so the peer mismatch is a note, not a risk to act on."
+  },
+  {
+   "id": "DP-10",
+   "title": "The page-view beacon loads the whole server through a one-line re-export",
+   "kind": "eager",
+   "where": [
+    "src/app/api/visit/route.ts:3",
+    "src/app/api/visit/touch/route.ts:4",
+    "src/app/api/visit/speed/route.ts:3",
+    "src/app/api/visit/speed/own/route.ts:3",
+    "src/server/chat-route.ts:7-11",
+    "src/server/chat-route.ts:38",
+    "src/lib/same-site.ts",
+    "src/components/store-visits.tsx:14"
+   ],
+   "evidence": "sameSite() is a ten-line pure function in src/lib/same-site.ts. chat-route.ts re-exports it (line 38, 'kept here for the routes that import it from here') and also imports the chat agent, AI, support and the shop. 55 files import @/server/chat-route; 40 of them take only sameSite or fail. Through that edge the four beacon routes reach about 1,308 source files, sharp, Supabase and opentype.js included; without it they reach 145-149 and none of those three. Six more routes (five admin exports and the docs feedback route) fall to 325-424 files. Built, /api/visit loads 117 chunks, 10.8 MB, and evaluates 1,415 of 1,456 modules. Loaded in a fresh process it takes 996-1,011 ms, 92-95 MB heap and 166-179 MB RSS before it can answer; /api/health, which is what a lean route looks like, takes 209-268 ms and 63 MB.",
+   "cost": "About 1.0 s and 170 MB to cold-load a route whose job is one insert, against about 0.25 s and 65 MB for a lean route (this sandbox; an estimate for Vercel).",
+   "who_pays": "The server per new function instance whose first request is a beacon; every shopper page view sends one while a store counts visits, so this is the dynamic call that will grow fastest once shoppers arrive. On Vercel routes are grouped into functions and share loaded modules, so the real number of slow starts depends on that grouping, which was not measured.",
+   "fix": "In the 40 files that take only sameSite (and fail), import sameSite from @/lib/same-site; move the three-line fail() to a small module for those that use it. Start with the four /api/visit routes. Then DP-3 step 1 takes the Stripe SDK off them and DP-1 the schema. Add 'the visit routes may not reach chat-route.ts' to the scan of DP-6.",
+   "saving": "Estimate: about 0.7 s and 100 MB less per cold start of the four beacon routes (the graph falls from 1,308 to 145-149 source files; the milliseconds are inferred from the lean route's measured figure, not measured after the change).",
+   "effort": "S",
+   "risk": "Low. It is the same function from the file that defines it. The 30 other importers that stay on the hub through other chains gain nothing but lose nothing.",
+   "confidence": "medium",
+   "already_tracked": "no. The storefront-data dimension's SD-1 names other hub chains (customers.ts, admin-text.ts, the proxy), not this one; code review 3.13 (domain folders, FV4/FH6, Open) is the general cure.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Added by the skeptic; not in the auditor's report. Found while checking DP-2's chain for /api/visit. Opened the four routes, chat-route.ts and same-site.ts; walked static imports with and without the chat-route.ts edge for all 55 importers (work/sk-deps/sgraph.mjs, sgraph-skip.mjs); timed the built route in a fresh process three times (work/sk-deps/cold3.cjs). The graph numbers are measured; the saving in milliseconds is an estimate until the change is built."
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "id": "0.37",
+ "fixed": [
+  "The three lines to replace in add_demo_appointment, add_demo_rental and add_demo_stay are quoted with the baseline's indentation (2, 5 and 3 spaces) and line numbers, with a search key and an rg check that none is left.",
+  "Pushing commit 3 only after commit 2 is live is now commit 3's title, a first check that reads production's /api/health commit, and a stop_if, instead of a sentence inside one change's how."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer offered none; the trigger, function and constraint migration keeps the review on commit 3.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

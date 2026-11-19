@@ -1,0 +1,13 @@
+{
+ "id": "2.12",
+ "fixed": [
+  "term-listing.tsx and products/page.tsx now at their (shop) paths with made_by 2.2 (read_first and the done_when rg updated); the conditional path search is gone.",
+  "Step 2.10's m prop kept unconditionally (2.10 is a dependency).",
+  "CSS rule placement decided: base.css if step 2.11's src/app/_styles/base.css exists, else globals.css.",
+  "Payload form of data-item-id given exactly (data-item-id\\\":\\\"<id>\\\" inside the flight string) with the JS expression to count it, and a stop_if if it matches nothing, instead of 'copy what you see'."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,19 @@
+{
+ "id": "0.23",
+ "fixed": [
+  "Commit 1: the ratchet regex counts 124 uses (page-jobs.ts:50 and site-tools.ts:377 hold two each); the brief said they sum to 122 and its check expected 122.",
+  "The end count was '3 or fewer' (goal, commit 5 check, done_when, stop_if), but 12 column-to-column lines besides cookie-scans exist and 9 of them have no owner in code; the count is now 9, each line named.",
+  "Commit 5: support.ts 813 (owned(desk.storeId, ss.store_id)), 484 and 537 (left), support-email 99, 119, 382 (left) and 341 (owned), autopilot-runner 70 (left), autopilot-reviews 86, 96 (left) and 262 (owned(due.store_id)) are now named one by one; before, only support-email 267 was, and the generic rule left the rest to judgement.",
+  "Commit 5: added an rg -B1 check that every remaining hit has the comment above it.",
+  "Added a stop_if: if step 0.43 holds CLAUDE.md’s size and the commit 5 sentence makes docs-budget.scan.test.ts fail, push commit 5 without the CLAUDE.md edit rather than raise the baseline."
+ ],
+ "rejected": [
+  {
+   "problem": "owned('') turns an empty store id into the platform's rows where the old SQL failed on ''::uuid; the brief does not ask whether a caller can pass ''.",
+   "why": "Every value passed is typed string | null and comes from a membership, a desk, a row or a context, not from a form; six private copies of owned() in the tree already treat '' as the platform's, and a stricter helper would change those callers. The unit test pins the behaviour and the review of the diff covers a new caller."
+  }
+ ],
+ "cheaper": "applied: each column-to-column line now has its exact replacement or 'leave with the comment' (menus 233, saved-parts 40, support 813 filtered; nine named lines left), so no per-site judgement remains; the rating stays review because it is the tenant filter of 40 files and a migration.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "0.22",
+  "rating": "cheap-then-review",
+  "why": "The step changes how the cart and checkout work out the money: a memo keyed by session token for getCustomer(), a cached list of checkout rules (cacheLife hours) for the cart summary while placeOrder() keeps the live read, and a feature switch that skips bonus and referral reads. A wrong key or a stale cached rule could pass the unit tests and make the cart show a total the order does not charge, or answer one shopper with another's customer row. Choices are left too: build bonusProgramOff() 'from its defaults', check the credits part and stop, and fall back to an int test above about 15 mocks.",
+  "harm_if_wrong": "The cart or checkout shows totals, credits or rules that differ from what placeOrder() charges, or a memo hands a signed-in customer's data to the wrong render.",
+  "cheap_commits": [],
+  "make_it_cheaper": "Write out bonusProgramOff()'s exact returned object, and pass the checkout's own cartId and customerId into requestCartSummary() (or state that they always equal the cookie's), so no money path is left to inference.",
+  "brief_problems": [
+    "requestCartSummary() calls cartSummary(shop, cart, { features }) with no cartId or customerId, but checkout-section.tsx passes its own cartId to readCartBonus (line 73) and deliveryView passes { cartId, customerId }; if the checkout's cart id can differ from the cookie's, the shared summary is for a different cart",
+    "bonusProgramOff(market) is described rather than given: the executor has to read bonusProgram() and invent its defaults",
+    "Checkout rules are cached for hours in the cart while placeOrder() reads them live; the brief relies on the four writers' refreshTag, and a time-dependent rule (if any) is not discussed"
+  ]
+}

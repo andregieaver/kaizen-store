@@ -1,0 +1,12 @@
+{
+  "id": "3.18",
+  "rating": "strong",
+  "why": "Commit 3 says 'decide the shape from numbers': it compares job medians from the recorder to pick one job or a build handed over with a JSON database dump, then shards or reverts. Commit 1 asks the executor to rewrite failing e2e expectations so they hold in both builds, which invites the 'make the test pass' habit. Commit 2 changes whether lint and the type check run before a release.",
+  "harm_if_wrong": "A push to main deploys without lint or the type check, browser specs quietly stop running, or tests are loosened until they no longer check the admin without a session.",
+  "cheap_commits": [],
+  "make_it_cheaper": "Read the recorder's medians first and write the chosen shape (A or B) and the list of e2e tests that fail in the stand-in build into the brief, so commits 1 and 3 become specified edits.",
+  "brief_problems": [
+    "scripts/timed.mjs, scripts/ci-budgets.json and src/lib/ci-once.scan.test.ts come from steps 1.20 and 0.38 and do not exist yet",
+    "Shape B asks for a new database dump and load script (scripts/e2e-db.mjs) that is specified in prose only"
+  ]
+}

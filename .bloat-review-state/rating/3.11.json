@@ -1,0 +1,11 @@
+{
+ "id": "3.11",
+ "rating": "strong",
+ "why": "It folds order rules into Workflows, which needs choices the brief leaves: mapping all 13 rule condition kinds to workflow facts so 'every condition order rules could express must be expressible', and an editor whose Homer view and pickers are described, not specified. It also replaces commerce.queue_integration_event (called on every paid order) by hand-copied SQL, changes when the staff's new-order alert is claimed, removes an AI tool (eval re-record) and finally drops two production tables.",
+ "harm_if_wrong": "A paid order that should be held is not (a fraud safeguard lost), the new-order alert is held back or goes out before the hold, or a mistyped copy of queue_integration_event breaks queuing for every paid order.",
+ "cheap_commits": [],
+ "make_it_cheaper": "Give the exact facts field list (name, type, operators) mapped from each of the 13 condition kinds and the editor's layout and words; the step would then be cheap-then-review, the hot SQL function and alert ordering still needing a reader.",
+ "brief_problems": [
+  "Commit 1 depends on step 3.10's workflow-engine.ts and its store scope's payloadOf, with a fallback 'if 3.10 is not done' that leaves two places to edit."
+ ]
+}

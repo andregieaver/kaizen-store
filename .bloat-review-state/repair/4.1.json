@@ -1,0 +1,13 @@
+{
+ "id": "4.1",
+ "fixed": [
+  "src/lib/local-guards.scan.test.ts is now created in commit 3 (in the last file's commit), with its rules and a planted case.",
+  "dream-factory/actions.ts: dreamStateAction() already runs through storeAction() with answer () => null (step 0.17 as repaired); left as it is.",
+  "Added a per-file key check (before/after lists of keys, pasted into each commit message) and a stop_if for a different or wider key.",
+  "Work's three change() files are left to step 3.14 (depends_on) with a stop_if if they remain."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (create the scan, per-file key check, dreamStateAction's null answer); commit 3 stays reviewed because it moves permission guards.",
+ "executor_before": "strong",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "1.24",
+  "rating": "cheap",
+  "why": "The ratchet change is a few named lines with a test and a baseline written by the script. The session-load script is a standalone tool with its input shapes, output keys, privacy rule and test cases all given. Nothing deployed changes, and a mistake shows as a wrong count in a docs folder.",
+  "harm_if_wrong": "A session-load file miscounts bytes, or at worst carries a path it should not, inside a docs folder that is kept out of searches.",
+  "cheap_commits": [
+    1,
+    2
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "The ignore files of step 0.40 do not exist yet (only .gitignore and .vercelignore), and the target is given as a brace set {.ignore,docs/.ignore,docs/audits/.ignore} for the executor to resolve"
+  ]
+}

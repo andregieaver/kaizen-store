@@ -1,0 +1,16 @@
+{
+  "id": "2.20",
+  "rating": "cheap-then-review",
+  "why": "Most of the step is pure moves with re-exports, and the type check catches a missed name. The second commit changes behaviour on the proxy's path, though: shared in-flight reads, a forget that must also drop loads in flight, and the held-domain memo moved into a shared 2,000-entry cap. That path is the one D339's 10-second private-mode bound depends on. It also touches 17 files of cache tag names, where a mistyped constant that the tag test does not cover would leave pages stale.",
+  "harm_if_wrong": "A private store or a held domain stays visible longer than its bound, a redirect change is served from a stale read, or a page's cache tag no longer matches its writer.",
+  "cheap_commits": [
+    1,
+    5
+  ],
+  "make_it_cheaper": "State that redirect-live.ts clears by prefix today (forgetRedirects), and give the exact forgetWhere() body (clearing memory and loading), plus the import line that includes it.",
+  "brief_problems": [
+    "redirect-live.ts's forgetRedirects() already iterates the memory Map by prefix, so forgetWhere is required, yet commit 2's import and re-export line names only forgetRemembered, remembered and MEMORY_MS; forgetWhere must also drop in-flight loads",
+    "experiments.ts's private remembered(key, ms, load) has a different argument order; the brief notes it, but the int tests are the only guard on the swap",
+    "cache-tags.test.ts checks the builders but not the constants STORES_TAG, CATALOG_TAG, PAGES_TAG, SITE_STORE_TAG, DESIGNS_TAG, STARTERS_TAG and PLATFORM_NAVIGATION_TAG"
+  ]
+}

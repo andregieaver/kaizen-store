@@ -1,0 +1,13 @@
+{
+ "id": "1.7",
+ "fixed": [
+  "The key question is settled by the code: paymentConnection() (payment-session.ts line 108) uses only platformStripe(); the garbled 'second server is NOT an option: then stop' is replaced by a plain stop before commit 2 with the two ways forward for the owner or a stronger model.",
+  "The stand-in's server-side calls are listed with their lines (checkout.sessions.create, coupons.create; sessions.retrieve and payment_method_domains not reached on this path).",
+  "docs/rules/budgets.md is now an edit with made_by 1.3, placed under the '## The visitor's pages' section that step 1.3 adds.",
+  "measure-routes.mjs's new argument is written out: moneyState, moneyCart, moneyCheckout, a stateFile on the two entries and the one-line change in measure()."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: settling the key path needs the owner's choice between platform keys for the whole e2e server and a second server; the Stripe.js checkout stub's methods still need reading. Added as a stop_if instead.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

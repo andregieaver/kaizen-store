@@ -1,0 +1,12 @@
+{
+ "id": "1.14",
+ "fixed": [
+  "live-perf.yml: 'the launch-theme demo store that step 1.6 chose, in production' replaced by three addresses the owner gives (1.6 seeds e2e-orbit only in CI; no production launch-theme store is named in the repository).",
+  "stop_if: commit 2 waits for the owner's three addresses; never demo.kaizenstore.site or a derived address.",
+  "depends_on 1.6's reason corrected to what 1.6 really does."
+ ],
+ "rejected": [],
+ "cheaper": "applied in the only way the code allows: the judge's edit_brief asks for the three exact production URLs of the store the owner picks; they are not in the repository, so the brief now asks the owner for them before commit 2 instead of sending the executor to look in step 1.6.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

@@ -1,0 +1,171 @@
+{
+ "key": "server-graph",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/server-graph.json",
+ "validator": "OK: 18 findings, 0 refuted, 18 metrics",
+ "headline": "One import cycle of 229 files in src/server makes 181 of 268 route handlers, 559 of 562 pages and the proxy each load about 10 MB of server code: a fat route takes 0.9 to 1.3 s and 97 MB of heap to load cold on this machine against 0.16 to 0.24 s and 26 MB for /api/health, and every instance first pays 0.27 to 0.30 s for a start hook and about 0.09 s to read a 10.4 MB list of server references. None of it depends on what a store uses, so it grows with stores, traffic and the deploy on every push once the platform opens. The cure is a few dozen small import changes, not removed features (all simulated on the build's own module graph): the visit beacon 10.4 -> 1.9 MB with one import path, a storefront page 11.3 -> about 3.5 MB, the proxy 9.2 -> 2.4 MB (0.8 MB with its readers split), and 2.2 MB off 384 admin pages. Three things the report missed are added (a three-line key reader that brings the Stripe SDK to storefront pages, the theme store's server code in every store's page renderer, and the manifest read at every cold start), and a scan test plus a byte budget must land with the cuts or the next convenient import undoes them.",
+ "findings": [
+  {
+   "id": "SG-3",
+   "title": "The visit beacon and 52 other routes import the chat agent to get a ten-line function",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "/api/visit 10.4 -> 1.9 MB (2,015 -> 708 modules); about 0.7 s of its cold load here; ten handlers leave the fat group",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-1",
+   "title": "One import cycle of 229 server files makes almost every route load everything",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Storefront home 11.3 -> 7.7 MB with three edits; fat handlers 181 -> 29 with all cuts; cold page about 1.1 -> 0.6-0.7 s (est.)",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-6",
+   "title": "schema.ts (19,614 lines) is evaluated in every function and used by none at run time",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 0.7 MB and 55 to 70 ms per cold start on every database route; /api/health 1,125 -> 395 KB",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-5",
+   "title": "Every instance start loads 856 modules and queries the database before the first request",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "856 -> 208 modules at every instance start; est. 0.2 to 0.25 s and 25 to 35 MB of heap per cold start of every function",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-4",
+   "title": "The admin's whole interface text, both languages, loads wherever one word is needed",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Step a: storefront home 7.7 -> 5.0 MB, proxy 5.2 -> 2.4 MB; step b: at most 2.2 MB off an admin page",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-14",
+   "title": "Nothing measures or limits the server graph, so it only grows",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "None by itself; keeps about 8.5 MB on the beacon, 7.5 MB on a storefront page and 8 MB on the proxy from coming back",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-15",
+   "title": "The admin shell loads the AI manager's whole engine on every admin page",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Admin orders 11.0 -> 8.8 MB, 2,425 -> 2,030 modules; admin pages reaching the AI tools 384 -> about 60; est. 0.15-0.2 s",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-18",
+   "title": "Eighteen modules import the payment settings file for a three-line key reader, and the Stripe SDK comes with it",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Stripe SDK off 26 of 59 storefront pages and 60 handlers: 205 modules and 260 KB each (after SG-1)",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-17",
+   "title": "The page renderer imports the theme store's server code for every page of every store",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "67 modules and 464 KB off 96 routes; sharp no longer loaded by 56 of 58 storefront pages (after SG-1)",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-2",
+   "title": "The proxy that runs before every store page loads the whole graph",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Proxy 9.2 -> 2.4 MB from the P0 cuts alone, -> 0.8 MB with its readers split; cold load about 0.9 -> 0.2-0.25 s (est.)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-7",
+   "title": "The sharp image library is loaded at cold start by routes that never touch a picture",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 50 ms and 28 MB of RSS per cold instance of routes that reach sharp; package size unchanged",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-16",
+   "title": "Every cold function reads a 10.4 MB list of server references before its first request",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "10-12 ms and 3 MB per cold start from planned cuts (14% fewer entries); about 70 ms and 20 MB stay; a budget stops growth",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-10",
+   "title": "The AI manager's tool catalogue is converted to JSON Schema at import, on routes with no AI",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 42 ms per cold start of a route that loads the tool catalogue without using it",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-11",
+   "title": "The build writes the same server chunks many times: 124 MiB of 196 MiB is repeats",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Est. 80-100 MiB of chunk JS and about 300 MiB of maps off the build output once the blob is cut; memory gain untested",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-8",
+   "title": "Reader and writer share a file, so a new import between features re-joins reads to writes",
+   "priority": "P2",
+   "effort": "L",
+   "saving": "Not megabytes (32 KB on a storefront page); the rule keeps the gains of SG-1 and SG-2",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-13",
+   "title": "The 13 MB taxonomy is traced into every function, including those that cannot read it",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "12.7 MiB of package for about 90 functions; nothing at run time",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-9",
+   "title": "getStore() imports the Stripe SDK to learn which payment modes have keys",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "/api/visit 1,173 -> 956 KB and 198 fewer modules; handlers reaching the SDK 155 -> 95 with SG-18",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SG-12",
+   "title": "Four storefront languages are imported for every server route; a request needs one",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "About 290 KB and 10 ms per cold start",
+   "verdict": "corrected",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

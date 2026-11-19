@@ -1,0 +1,13 @@
+{
+ "id": "0.44",
+ "fixed": [
+  "picture-sizes.ts change: 'expected name' and 'use the names that are there' replaced by the names step 0.33's brief writes (MEDIUM_COPY_WIDTH = 800; pictureSources({ url, small, medium, width })), marked made_by 0.33, read-only in this commit.",
+  "page-block.tsx: the SizedPicture prop is `medium` (0.33 adds medium?: string | null).",
+  "media-alts.ts and the e2e insert name the column medium_url (schema mediumUrl) from 0.33's migration.",
+  "The stop_if checks MEDIUM_COPY_WIDTH, SizedPicture's medium and medium_url separately."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: instead of re-issuing commit 1 after 0.33 lands, the brief now writes 0.33's names as its brief fixes them; commit 1 stays under review because it changes the file every page picture loads.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

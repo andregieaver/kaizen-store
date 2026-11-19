@@ -1,0 +1,16 @@
+{
+ "id": "2.21",
+ "fixed": [
+  "The two changes named 'src/server/{route-load.graph.test.ts}' put ENTRIES edits in the test file; 1.8 keeps ENTRIES and FORBIDDEN in scripts/lib/route-load.mjs. Each is now two edits (scripts/lib/route-load.mjs and src/server/route-load.graph.test.ts, made_by 1.8) with the literal entry and forbidden list and what 1.8 leaves in each file.",
+  "Writing the baseline for a new entry: --write may refuse a new entry, so the brief allows one --first and a git diff check that only the new entry was added."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on files from four earlier steps (2.20's cache-tags, 0.24's and 2.17's reads, 1.8's route-load test and ENTRIES) whose exact content the brief cannot state.",
+   "why": "Real only for 1.8's files, now stated; 2.20's cache-tags names (pagesTag, PAGES_TAG, pageTag) and 0.24/2.17's read names are already listed in commit 1, and depends_on names each step."
+  }
+ ],
+ "cheaper": "not applied: listing commit 3's paths needs the walker run after steps 0.6, 0.7, 2.17, 2.20 and 0.24 have landed; today's paths would be wrong. Commits 1 and 2 are cheap on their own.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

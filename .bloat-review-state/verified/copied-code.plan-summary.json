@@ -1,0 +1,153 @@
+{
+ "key": "copied-code",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/copied-code.json",
+ "validator": "OK: 16 findings, 0 refuted, 18 metrics",
+ "headline": "Copied code is not where this codebase's bloat is: 1.0% of non-test code is an exact copy (4,803 of 472,586 lines) and 4.75% a near-copy with every name and literal normalised; tests and e2e are no worse. The fourteen checked findings are true duplicates or missing checks, none rests on a feature being unused, and their corrected savings add up to about 5,500 lines (1.2%); the two I added are small too (about 1,100 to 1,500 test lines of repeated scaffolding, and helpers re-solved under one name such as addDays in 10 files). Do first: one store-address helper for the 27 hand-written lookups behind production's most-called statement (560,090 calls with no shoppers) and a copy ratchet in CI. Do before opening, while tables hold only test rows: one import definition, one scoped engine for the platform's workflows and deliveries, and one Work view. One correction to both earlier passes: a store's slug is rewritten once, when a sandbox is kept, so the cached helper needs a tag and must not remember sandboxes.",
+ "findings": [
+  {
+   "id": "CP-1",
+   "title": "Five file imports each repeat the upload, register, start-check, start-apply and cursor code, the browser flow, the findings table, the pages and the routes",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About 1,300 to 1,600 code lines (estimate) and 13 route handlers (15 become 2).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-2",
+   "title": "A store's address by its id is looked up by hand in 27 places beside a cached helper that already exists; it is production's most-called statement",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "27 hand-written lookups become one helper; fewer database calls per uncached render, number unknown until measured.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-3",
+   "title": "Admin form fields, tables and loading skeletons are spelled out per file because the UI kit has no piece for them",
+   "priority": "P1",
+   "effort": "L",
+   "saving": "About 900 to 1,100 lines (estimate); the gain that matters is one look per control.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-4",
+   "title": "The platform console has a second engine for workflows, own endpoints and integration deliveries beside the stores' engines",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About 300 to 450 lines with shared engines (estimate).",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "CP-5",
+   "title": "Work's account-level screens are copies of the store-level ones, and 58 Work actions are wrapped in a seven-line shell",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About 650 lines (estimate: 400 from the views, 250 from the wrappers).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-6",
+   "title": "Tripletex and Fiken are twins: the sync runner, the settings page and the actions",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 400 to 450 lines (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-7",
+   "title": "The one wrapper for server actions is marked Done but carries 3 of the admin's 235 action files, and nothing counts the rest",
+   "priority": "P1",
+   "effort": "L",
+   "saving": "About 150 lines; one failure path for admin actions and a count that can only fall.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-8",
+   "title": "Small helpers are declared again in file after file",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 300 to 500 lines net (estimate); 953 gross before the import lines that replace the copies.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-9",
+   "title": "Three SQL fragments are typed out in dozens of files: the product title with its fallback, the usage counter and the order event",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 250 lines (estimate) and one definition of the title a person sees.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-10",
+   "title": "Eleven server files hand-write the same claim-with-a-lease statement for their own queue table; ten more use skip locked in other ways",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "About 100 to 150 lines (estimate); not worth doing for the lines alone.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-11",
+   "title": "The affiliate and bonus settings forms are one form written twice",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 250 to 300 lines (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-12",
+   "title": "On the storefront an order's totals are drawn in two places (and a third, looser, in checkout) and the product card's query is written twice",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 160 lines and one place for what a shopper is shown as owed.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-13",
+   "title": "English words are kept twice: in a lib module and again in the English catalogue",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 310 lines.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-14",
+   "title": "Nothing in CI measures copied code, so each new kind or twin is made by copying a neighbour",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Removes no lines; holds copied code at about 4,800 exact and 22,400 near lines.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-15",
+   "title": "Integration tests repeat their scaffolding: 448 stub a module the config already stubs, next/cache is stubbed in five spellings, and 233 build their own store",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 1,100 test lines at once and about 1,500 with a shared store helper; no production code.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-16",
+   "title": "Day arithmetic, country names and the money label are re-solved under one name in many modules with different bodies; the copy detector sees none of it",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 150 to 250 lines (estimate), and one answer per question.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

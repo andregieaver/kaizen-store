@@ -1,0 +1,18 @@
+{
+ "id": "1.17",
+ "fixed": [
+  "Commit 2's test (1) held a half-thought ('compare with … ? no: simply print …'); it now says: print the ten largest pairs of exactCopies().",
+  "Twin reasons: 'a pair you cannot explain' replaced by one node command that sets every reason (platform workflows/endpoints/integrations → step 3.10, the rest → step 4.2), after running the twin scan (41 pairs today).",
+  "testOnlyFiles, publicUnreferenced and apiUnreferenced reasons are written out: four tests-only files with a sentence each, public expected empty (0 of 150 unreferenced today), and the four unreferenced routes today with their real callers (chat widget's built URL, WordPress plugin's built URL); anything else is a stop.",
+  "The stop_if 'more than 20 public files or 10 routes' became 'any entry not named in the brief'."
+ ],
+ "rejected": [
+  {
+   "problem": "copy-count.mjs, twin-count.mjs and helper-count.mjs do not exist yet (step 0.1).",
+   "why": "depends_on names 0.1, which builds them from scripts/sources/cp/near.mjs.txt, fm/twinscan2.mjs.txt and cp/helpers.mjs.txt (all present), and a stop_if already covers their absence."
+  }
+ ],
+ "cheaper": "applied: the twin, tests-only, public-file and API-route reasons are now in the brief (scripts run today), so no free text is left and the step is cheap.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

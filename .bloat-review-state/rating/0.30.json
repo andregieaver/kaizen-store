@@ -1,0 +1,13 @@
+{
+  "id": "0.30",
+  "rating": "cheap-then-review",
+  "why": "Every edit is named exactly, and the int tests are good, but the step changes which stores the invoice job serves, drops a credit-note call, and makes three owner saves (company details, tax profile, invoice settings) issue legal documents inline. The AI manager and the Dream Factory call those saves too. A wrong where clause or ordering could pass the new cases and leave real invoices waiting. Commit 3 adds a migration (a widened check on a table that is not hot) and a drill.",
+  "harm_if_wrong": "Invoices or credit notes stop being issued for some stores, or a store-details save fails or slows because invoice issuing now runs inside it.",
+  "cheap_commits": [
+    3
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "stop_if names an 'allowance for line 181' that the commit text describes only as 'Leave line expect(await issue.storesWithDocumentWork()).toContain(wait.storeId) as it is unless…'; the line number is not given there"
+  ]
+}

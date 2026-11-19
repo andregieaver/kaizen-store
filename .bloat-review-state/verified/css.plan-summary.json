@@ -1,0 +1,94 @@
+{
+ "key": "css",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/css.json",
+ "validator": "OK: 9 findings, 3 refuted, 18 metrics",
+ "headline": "Styles are one of the leaner areas, and no finding rests on a feature being unused. Every page of every surface loads one stylesheet of 183 KB (25.8 KB Brotli); compiling the proposed split with the project's own Tailwind gives shoppers 130 KB (19.8 KB Brotli, 28% less raw), leaves the admin's sheet as it is and needs no more scan memory than today. The rest is copies: a launch theme's home page carries an estimated 45 to 71 KB of style text, of which 10.6 to 17.6 KB is one fixed breakpoint sheet repeated per row. The completeness check added one fault the split depends on: admin form, print and editing parts are drawn on public pages with colour roles that have no value there, so the main button on Kaizena Flow's status and illegal-content report pages has no fill (seen in the built HTML and CSS, not yet in a browser).",
+ "findings": [
+  {
+   "id": "CS-7",
+   "title": "Shop pages use admin-only colour roles that have no value outside the admin",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No bytes. Removes a visual fault on shop pages (20 uses in 7 files) and one of the two blockers of CS-1.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-9",
+   "title": "The admin's form, print and editing parts are drawn on public pages without the colours they read: the main button on Kaizena Flow's status and report pages has no fill",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No bytes (adds about 0.4 KB). Removes a visible fault on public pages and the second blocker of CS-1.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-8",
+   "title": "Kaizena Flow's own pages fetch the admin's stylesheet and two admin answers after load",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured: 12.2 KB after load per site page view (6.0 KB CSS, 6.1 KB payload), two requests. Same fix as PL-4.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-3",
+   "title": "Nothing holds the stylesheet's size, its sources or the style text in a document",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No bytes by itself. Keeps what CS-1, CS-4 and CS-6 save and makes the sheet's growth a failing number.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-1",
+   "title": "Shoppers download the admin's classes: one stylesheet serves every surface",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Measured by compiling the proposed entry: 51.8 KB raw, 7.6 KB gzip, 5.6 KB Brotli per first visit (skeptic's cautious figure: 44/6/4.4).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-4",
+   "title": "The fixed breakpoint sheet is drawn again with every row",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "10.6-17.6 KB raw per launch-theme home document and payload answer; about 0.1-0.3 KB Brotli. One sheet per page: 1.2-5.7 KB more.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-6",
+   "title": "Tailwind reads tests, SQL and message files: 37% of its candidates, 10 junk classes",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "436 B of CSS, about 0.2 s and 55 MB in the build's Tailwind step; tests can no longer rename the production sheet.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-5",
+   "title": "Layout-level style sheets are carried three times in each store document",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "From SC-8, not from this finding: 6.6-9.5 KB raw per launch-theme document (estimate), about 0.1-0.3 KB Brotli.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CS-2",
+   "title": "A store with no builder motion still downloads motion.css",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "If built and most pages have no builder motion: 3.8 KB Brotli / 18.7 KB raw per first visit. Measure use after opening first.",
+   "verdict": "corrected",
+   "owner_decision": false
+  }
+ ],
+ "refuted": [
+  "CS-2 (part) Serving the optional component CSS (menu hover, brands, gallery, header stages, table, modal) as separate files: all six launch themes use menu hover on every page; the rest is 2.6 KB gzip over five components",
+  "CS-5 (part) Moving a store's layout-level CSS to an external per-store stylesheet: on a first visit it trades about 2 KB of inline Brotli for one more render-blocking request",
+  "CS-3 (part) The draft's figure that 26% of commits change every shopper's stylesheet: only 13 of 115 (11%) added a class the tree did not already name"
+ ]
+}

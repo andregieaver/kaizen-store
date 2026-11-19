@@ -1,0 +1,13 @@
+{
+ "id": "3.7",
+ "fixed": [
+  "Commit 2: the new branch of cron_due() is given literally for both body forms step 3.1 allows (values or union all), with step 3.1's signature quoted, instead of 'in exactly the form the function uses for page-jobs'.",
+  "Commit 2: the predicate used now(); inside cron_due(p_now) it now uses p_now, so tests that pass a fixed minute-7 time (3.1's helper) get a consistent answer.",
+  "Commit 2: the tick cases go into src/server/cron-due.int.test.ts (made_by 3.1), where 3.1 says later steps add their routes and where its helper lives, instead of a new file that 'reuses' a private helper; tests and done_when follow.",
+  "Commit 1: src/server/media-library.int.test.ts exists; the 'create it if missing' conditional is gone."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: the new branch is a literal for each form 3.1 may choose; cron_due()'s body itself cannot be quoted until 3.1 lands; the step stays cheap-then-review for the production migration",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

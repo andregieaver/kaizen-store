@@ -1,0 +1,12 @@
+{
+ "id": "2.42",
+ "fixed": [
+  "ci-once.scan.test.ts: action edit, made_by 0.38, with what 0.38 leaves (case 1's two jobs) and why the trial in 'static' does not change it.",
+  "scripts/ci-budgets.json: action edit, made_by 1.20; 'the recorder's own way of marking a step recorded but not held' is settled: add no key (timed.mjs holds only keys in ceilings).",
+  "Route C: the fresh-checkout run is the first run after the cache step is added (nothing to restore), or a key prefix change for a second one."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer gave none; commit 2 changes the deploy gate, which the checks cannot prove still checks enough.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

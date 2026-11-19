@@ -1,0 +1,10 @@
+{
+ "id": "2.5",
+ "fixed": [
+  "Test 2's product name and test 3's category address and product were left to an rg lookup; they are now written out from e2e/smoke.spec.ts and e2e/terms.spec.ts."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; the step was already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

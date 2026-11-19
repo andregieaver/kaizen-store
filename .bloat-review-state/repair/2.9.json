@@ -1,0 +1,17 @@
+{
+ "id": "2.9",
+ "fixed": [
+  "The delete step said 44 case labels; store-part-section.tsx has 42 (and the brief's lists add up to 42). Corrected with the rg count to check.",
+  "The scan test gains a fourth case: each working page file passes storePart={<its>Parts} to every RolePage element (account twice), and the search page passes none.",
+  "The bundle baseline change names scripts/bundle-budget.baseline.json (made_by 1.2) and its --write mode instead of \"find its real name\"."
+ ],
+ "rejected": [
+  {
+   "problem": "The paths assume step 2.2's (shop) group; the executor must check 2.2 is in.",
+   "why": "Already handled: depends_on names 2.2, each page change says where the file is after 2.2, and a stop_if stops when the folders are not under (shop)/."
+  }
+ ],
+ "cheaper": "applied: a scan case that every listed page passes its parts module to each RolePage (the prop cannot be made required: the search page passes none); the step stays cheap-then-review for the pay routes and the many files",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

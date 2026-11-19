@@ -1,0 +1,13 @@
+{
+ "id": "2.34",
+ "rating": "cheap",
+ "why": "Every piece is spelled out: the constants and the pure noticeWait() with a simulation test; one SQL statement with an approvals exists() filtered by account and place, checked by an int test; the hook's refs, timers and effects; one launcher line; and clock-driven e2e tests that count requests. A broken timer chain (a request loop or a stalled badge) fails the e2e counts. The only thing the checks miss is a missing account filter in the exists(), which would reveal just a speed-up flag.",
+ "harm_if_wrong": "The badge polls faster than intended, or a tab polls a little faster because someone else's approval waits; nothing is shown or written.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "Depends on step 0.17's src/server/assistant-notices-count.int.test.ts and the feed's count branch, which do not exist yet (stop_if covers it)."
+ ]
+}

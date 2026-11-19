@@ -1,0 +1,16 @@
+{
+ "id": "0.12",
+ "fixed": [
+  "site-parts.tsx: deleted 'the withdrawal and legal links drawn in this file' (its rg led to the platform's legalPages links at 282-283, which the same paragraph keeps); four links named, and why the withdrawal link is already covered.",
+  "The commit's rg -c check now counts site-parts.tsx: 4."
+ ],
+ "rejected": [
+  {
+   "problem": "Case (4) (no late stylesheet) tests something the edits do not change; an unrelated failure stops the cheap model.",
+   "why": "The edits do change it on '/', whose admin prefetch pulls the admin stylesheet (named in the goal); a late stylesheet elsewhere is something to report, which is what the stop_if asks."
+  }
+ ],
+ "cheaper": "not applied: the reviewer gave none and the step is already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

@@ -1,0 +1,17 @@
+{
+ "id": "2.2",
+ "fixed": [
+  "pay-routes.graph.test.ts: the open 'MARKET stays ... only if the test walks it recursively' is replaced by a SHOP constant and the eleven lines that use it, with the five layout/extras lines and the two recursive sources(MARKET) calls kept.",
+  "Every 'by hand' test now has its exact line edits (withdraw-no-storage, exchange-shopper, gift-no-html, session-freshness, redirect-writers, store-address, page-content).",
+  "Added three files the list missed: shopper-documents.test.ts lines 16-17, checkout-terms.test.ts line 137 and vat-actions.int.test.ts's relative import on line 67 (found on this check)."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 4 depends on step 1.3's document table in e2e/performance.spec.ts, which does not exist yet.",
+   "why": "depends_on names 1.3, whose commit adds DOCUMENT_BUDGETS; this step runs after it."
+  }
+ ],
+ "cheaper": "applied in part: each scan test's exact new path or constant is written; a minimum-file-count assertion is not added because every listed test already throws on a missing path (readFileSync, statSync, readdirSync), so none can pass while guarding nothing. Commit 3 stays under review because it moves the checkout and pay routes.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

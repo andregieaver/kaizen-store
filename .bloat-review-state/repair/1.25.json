@@ -1,0 +1,19 @@
+{
+ "id": "1.25",
+ "fixed": [
+  "countCacheEvent scheduled a flush only on the map's first empty-to-full change, so one throwing after() left the instance's counts for a tracked() job: a flushScheduled flag set only on success now retries.",
+  "note() was not wrapped: a throw inside refreshTag's try would run the catch branch and refresh the tag twice; note() now has its own try.",
+  "The market layout has two `const { store, market, ab } = shop;` (59 in generateMetadata, 115 in MarketLayout); the brief now names line 115.",
+  "1.9's renderCount() reads Date.now(), which is a build error during the prerender of a store layout with cacheComponents (Next's docs); commit 3 now edits render-count.ts and Gate (made_by 1.9) to performance.now(), which Next allows.",
+  "The render-mode guard was 'node scripts/render-modes.mjs if step 1.11 has made it'; it is now a required before/after comparison of .next/prerender-manifest.json for two store pages."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on step 1.9's renderCount()/setRenderCounter, whose API that brief leaves ambiguous.",
+   "why": "Step 1.9's brief now defines it exactly (renderCount = cache(() => ({ statements: 0, started })), setRenderCounter at module load), and this brief now states what 1.9 leaves in each file."
+  }
+ ],
+ "cheaper": "applied: note() is wrapped in try, and the render-mode check is required (a prerender-manifest comparison that needs no step 1.11); the rating stays review because the step wraps every cache refresh and cron job and adds a migration.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

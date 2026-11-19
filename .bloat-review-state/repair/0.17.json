@@ -1,0 +1,20 @@
+{
+ "id": "0.17",
+ "fixed": [
+  "Timing assertion widened to a 20 ms mean (2 ms is the local reading, 125 ms before), so a loaded CI runner does not fail it.",
+  "dreamStateAction now goes through storeAction({ key: 'owner', answer: () => null }) as CLAUDE.md asks, with its exact content.",
+  "Int test written out in full: it lacked the server-only/next mocks and the await-import order that assistant-notices.int.test.ts needs; the counter uses vi.hoisted (found on this check).",
+  "Layout's canOpen line is no longer rewritten (removes the inverted-clause risk); only the tabs/areas lines change.",
+  "rework.tsx: ReworkRun has const slug = store.slug at line 121, so the 'add a slug prop' choice and its stop_if are removed (found on this check).",
+  "store-nav test cases written exactly (expected count formula, Set check, ALL fixture)."
+ ],
+ "rejected": [
+  {
+   "problem": "The int test's wrapper may not see typedRows' call.",
+   "why": "typedRows(schema, query, executor = db()) calls db().execute from the mocked module, and stop_if already covers a 0 count; the test content is now written out."
+  }
+ ],
+ "cheaper": "applied: the per-role equality case (storeNav vs storeTabs/storeAreas for owner, admin and every ROLE_TEMPLATES key) plus a read/write memo case; commit 1 still touches permissions.ts, so it stays reviewed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

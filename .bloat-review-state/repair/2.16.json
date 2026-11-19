@@ -1,0 +1,13 @@
+{
+ "id": "2.16",
+ "fixed": [
+  "publishedPageIndex(): quoted 0.24's select, named the two expressions to replace (title, titles) and the three to keep.",
+  "Commit 2's rg check allowed no published ->> inside publishedPageIndex(), which keeps three such lines: now it allows exactly those three.",
+  "Case (6): compares the column with remembersClose() of src/lib/page-modal.ts (exists today) on five written samples with their booleans; no dependency on step 2.14.",
+  "stop_if when publishedPageIndex() is missing or differs from 0.24's brief."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer gave none",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

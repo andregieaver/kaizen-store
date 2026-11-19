@@ -1,0 +1,11 @@
+{
+ "id": "4.6",
+ "fixed": [
+  "Commit 2: the saveInvoiceLinesAction call is quoted as its real five lines (1497-1502) and the one line to change named.",
+  "The choice 're-set PO-1 through saveDraftInvoiceAction or drop the assertion' settled: delete the header line; no later assertion reads PO-1/Thanks and readinessOf() reads neither field; stop_if rewritten to match."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

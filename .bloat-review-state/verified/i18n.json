@@ -1,0 +1,429 @@
+{
+ "headline": "The auditor's measurements hold; three of the fixes and several savings did not. Re-measured here: 802 of 830 route entries and the proxy evaluate all admin catalogues in both languages and all four storefront languages when a server instance starts. That is about 80 to 105 ms and 13 MB of a cold start of 0.8 to 1.1 s and 85 to 100 MB on this machine, paid once per instance: real, but about a tenth of the cold start, not the bulk of it. Admin pages hand whole areas of words to the browser: 56% of the product editor's document and 53% of the page builder's. Wrong as written: the cookie table cannot simply move to the server (the browser reads it when consent is withdrawn); five admin client modules, not three, pull in all four storefront languages, and the page builder's grid preview needs one of them; 8 of the 42 \"dead\" keys are live, so 34 are dead. No finding rests on a feature being unused. The empty commerce.ui_translations table is what one expects before opening, because no store sells in an AI-translated language yet; the finding is only that every server instance asks that table every minute whether or not any store uses such a language, a small idle cost with a small fix. Before opening, with two admin languages, is the cheapest time to change how catalogues load: each further admin language adds about 1.5 MB to every function as things stand.",
+ "metrics": [
+  {
+   "name": "Admin catalogues",
+   "value": "147 files (67 English, 69 Norwegian incl. nav.nb and pages.nb, 11 tests), 3.59 MB of source (en 1.69 MB, nb 1.87 MB). 29,040 texts in English, 29,388 in Norwegian. As JSON 1.51 MB (en) and 1.58 MB (nb); 2.98 MB minified for both. Confirmed.",
+   "how": "ls, du -sb, wc -c; my own esbuild bundle of src/lib/admin-text.ts evaluated in node and every leaf counted (scratch: work/sk-tx/markers.mjs)"
+  },
+  {
+   "name": "Largest admin areas (English, as JSON)",
+   "value": "builder 74.9 KB, notifications 65.6, reports 62.7, work 60.0, blocks 57.1, settings 52.2, website 47.1, platformSite 45.9, platform 45.6; smallest platformLegal 1.0 KB. Confirmed.",
+   "how": "JSON.stringify(adminText('en', area)).length for each of the 67 areas"
+  },
+  {
+   "name": "Storefront and other text",
+   "value": "Four hand-written languages, 2,003 keys each (1,589 strings and 414 functions); main files 95 to 97 KB plus four sub-files a language. Emails: 316 keys x 4 languages in one 105.7 KB file. Platform chrome 32.3 and 33.0 KB. Browser subset 6.1 to 6.9 KB minified a language. Confirmed.",
+   "how": "wc -c; i18n.ts and email-text.ts bundled and walked key by key (work/sk-tx/sfmarkers.mjs)"
+  },
+  {
+   "name": "Server entries that load every catalogue",
+   "value": "802 of 830 built route entries (560 of 562 pages, 242 of 268 handlers) list a chunk holding 100 or more of the 134 area-languages. The proxy does too (132). Reproduced exactly with my own markers.",
+   "how": "my scan of every page.js and route.js in .next/server/app against all 5,174 server chunks, 3 unique sentences per area-language (work/sk-tx/scan.mjs)"
+  },
+  {
+   "name": "Catalogues' share of a route's server code",
+   "value": "2,905 to 2,958 KB of admin catalogues in 10.5 to 14.9 MB of server code per measured route (20 to 28%), plus 418 to 442 KB of storefront languages. Confirmed.",
+   "how": "scratchpad/m/chunks.md (next analyze per route), read here; my bundle gives 2.98 MB for the same files"
+  },
+  {
+   "name": "Cold start on this machine (fresh Node 22 process, 3 runs each)",
+   "value": "/api/visit: 1.01 to 1.11 s and +96 to 100 MB heap. /api/health: 0.21 to 0.22 s and +24 MB. The proxy: 0.80 to 0.92 s and +83 to 85 MB. In /api/visit and the proxy 132 of 134 admin area-languages (the other two have no usable marker) and all four storefront languages are evaluated; in /api/health 1.",
+   "how": "re-ran the auditor's firstrequest.cjs; my own require() timing of .next/server/middleware.js; my own heap-snapshot probe with my markers (work/sk-tx/probe.cjs). Not measured on Vercel."
+  },
+  {
+   "name": "The catalogues' own part of a cold start",
+   "value": "125 to 154 ms and +19.2 MB heap for all catalogue files with the code they import; that imported code alone is 44 to 46 ms and 5.8 MB. So the text itself is about 80 to 105 ms and 13 MB: roughly a tenth of a cold start's time and a seventh of its heap. (Auditor: 65 ms and 15 MB for the text.)",
+   "how": "esbuild-minified bundle of src/lib/admin-text.ts (3.53 MB) imported in a fresh process 5 times; the same for only the 32 modules the catalogues import, 3 times"
+  },
+  {
+   "name": "Paid once per server process, not once per route",
+   "value": "The built runtime keeps one module cache per process, so an instance evaluates the catalogues once, whichever of its routes runs first. How Vercel groups the 830 entries into functions was not measured, so 'about 800 functions' is 'about 800 route entries'.",
+   "how": "read .next/server/chunks/[turbopack]_runtime.js lines 885-886 and 1053-1066"
+  },
+  {
+   "name": "Catalogue text in the build's server output",
+   "value": "12 chunks hold 100 or more area-languages each: 35.6 MB in all. Ten of them have the same size, 2,814,648 bytes. Confirmed.",
+   "how": "same scan (work/sk-tx/scan.mjs)"
+  },
+  {
+   "name": "What step 1 of TX-1 would leave in storefront and proxy code",
+   "value": "After cutting the registry from the 37 files outside the admin that import it, the proxy and the storefront entries still import 27 catalogue files directly through about 45 lib modules, plus about 8 areas the changed modules would name: up to 35 of 134 area-languages, 31% of the bytes. So step 1 removes about 99, not about 120.",
+   "how": "my regex import graph of 5,907 files with the registry edge removed (work/sk-tx/cut.mjs); static upper bound, Turbopack may drop some"
+  },
+  {
+   "name": "Words in admin documents",
+   "value": "Every signed-in document: 33 KB raw / 11.4 KB gzip (common, setup, shell, assistant). Product editor: 233 KB of whole areas in a 416 KB document (56%). Page builder: 304 KB in 572 KB (53%). 195 hand-down sites with a literal list: median 28.9 KB, 65 over 50 KB, 17 over 100 KB (the auditor's 217 also resolved lists kept in constants).",
+   "how": "scratchpad/m/html/admin-*.html searched for every text of every area; static sum over adminTexts() and AdminAreas calls (work/sk-tx/payload.mjs, handed.mjs)"
+  },
+  {
+   "name": "Shopper scripts that are text for someone else",
+   "value": "Cookie module 26.6 KB minified / 7.4 KB gzip, of which the purposes in four languages are 18.4 KB / 5.3 KB and 6% of the chunk ran. Four languages of browser text 25.9 KB / 7.1 KB where one is 6.1 to 6.9 KB / 2.4 to 2.6 KB. The admin's common.en 6.2 KB / 2.4 KB. All three on all 12 measured storefront pages.",
+   "how": "esbuild minify + gzip per module; unique sentences searched in the chunks each measured page loaded (routes.json, .next/static/chunks); coverage from routes.json"
+  },
+  {
+   "name": "Words in a shopper's document",
+   "value": "7 to 32 catalogue texts (155 to 792 characters), one language, on 12 storefront pages of 104 to 166 KB. Confirmed.",
+   "how": "scratchpad/m/html/store-*.html searched for every text of each language"
+  },
+  {
+   "name": "The every-minute check of ui_translations",
+   "value": "278,393 calls in 78 days: about 3,570 a day, 2.5 a minute. The table is empty because no store sells in an AI-translated language yet. The count follows the number of live server instances, not use of the feature.",
+   "how": "scratchpad/m/prod-db-stats.md line 87; caller is refresh() in src/server/ui-text.ts:57-62, started from src/instrumentation.ts:9. The statement's time is not in the statistics file."
+  },
+  {
+   "name": "An AI-translated language as handed to the browser",
+   "value": "1,673 keys, 92.8 KB raw / 25.0 KB gzip per document at English lengths; the browser's components read 114 of them (5.9 KB), the withdrawal page 144 more (10.4 KB). Confirmed. Not observed in production: no such language exists yet.",
+   "how": "fullCatalog() and browserText() bundled and measured (work/sk-tx/uicat.min.mjs)"
+  },
+  {
+   "name": "All four storefront languages in the page builder's scripts",
+   "value": "Two chunks: 318,693 + 49,242 bytes raw, 103,098 + 15,315 gzip, 77% executed, loaded on the measured page builder only. Five client-graph modules import src/lib/i18n.ts, not three.",
+   "how": "sentences of each language searched in the chunks the page builder loaded; client import graph from every 'use client' file (work/sk-tx/client-i18n.mjs)"
+  },
+  {
+   "name": "Type-check cost of the catalogues",
+   "value": "About 115,650 types, 125 MB of heap and 0.7 to 0.9 s for all 134 files and the registry: about 2.5% of the 5 GB the docs give for the whole type check. What takes the rest was not measured; the full type check was not run.",
+   "how": "re-ran the TypeScript API on chosen roots: admin-text.ts (231,081 types, 519 MB, 3.9 s check) minus the 32 modules the catalogues import (115,430 types, 394 MB, 3.2 s)"
+  },
+  {
+   "name": "Keys nothing reads",
+   "value": "34 confirmed dead (17 admin, 17 storefront): 0.1% of 31,359. The auditor's 42 included 8 entries of matching tables that are live. My sample of 330 keys found 1 with no possible reader (0.3%).",
+   "how": "token census of 3,977 non-test files outside the catalogues, then rg per key; the 8 checked against src/lib/broadcasts.ts:40-45, src/server/settings.ts:70 and src/server/automations.ts:119"
+  },
+  {
+   "name": "Repeated texts in the admin",
+   "value": "7,025 of 29,040 English texts repeat another (24.2%): 75,263 characters, 7.1%. 182 repeats are 40 characters or longer (12.1 KB). Save x76, Name x80, Cancel x57. Confirmed.",
+   "how": "exact-match count over every leaf"
+  },
+  {
+   "name": "Languages in step",
+   "value": "nb, sv and da each have all 2,003 storefront keys and all 316 email keys, none missing, none extra. Admin nb has all 29,040. 95 of 20,459 admin texts of 12+ characters are identical in en and nb. Confirmed.",
+   "how": "key-by-key comparison of the evaluated catalogues"
+  }
+ ],
+ "clean": [
+  "Storefront languages are complete and held by the compiler: nb, sv and da each have all 2,003 keys of en, emails all 316, the admin's nb all 29,040. Re-checked key by key: none missing, none extra.",
+  "A shopper's document carries only what it shows: 7 to 32 catalogue texts in one language on the 12 measured pages. No catalogue rides in the storefront payload (D212 holds).",
+  "Choosing a language does not make pages dynamic. The language is in the address (resolveShop, /home/user/kaizen-store/src/server/shop.ts:42-49). Only the front door is decided per visitor, by a 307 in the proxy with Vary and no-store (/home/user/kaizen-store/src/proxy.ts:102-116). The platform site suggests a language in the browser (/home/user/kaizen-store/src/components/language-switch.tsx:117). The admin reads the account's choice (/home/user/kaizen-store/src/server/admin-request-lang.ts:14-18).",
+  "The catalogues' typing is the cheap kind: plain object literals, one Widen<typeof en> per area (/home/user/kaizen-store/src/lib/admin-messages/common.en.ts:193), each nb file annotated with it; 4 uses of as const, no satisfies. Measured alone: about 125 MB and under a second, against the 5 GB the type check needs. So retyping them would not move the heap, and the comment in /home/user/kaizen-store/.github/workflows/ci.yml:35 that blames them is not supported. What does take the 5 GB was not measured here.",
+  "Dead text is about 0.1% of keys (34 of 31,359), and no catalogue is an orphan.",
+  "Repeated labels (Save x76, Name x80, Cancel x57) are 24% of the admin's keys but 7% of its characters, and they let one area be handed to a page alone. Leave them.",
+  "The admin's English fallback is fetched per area only when needed (D540) and a signed-in test fails on any screen that needs it (/home/user/kaizen-store/docs/performance.md, 'The fallback goes').",
+  "The AI-translated interface (commerce.ui_translations, D111) costs no AI call at night for a language nobody asked for (/home/user/kaizen-store/src/server/ui-nightly.ts:53-63). Its table being empty is expected before opening and is no reason to change the feature.",
+  "zod's bundled locales are in no built chunk: 0 of the client chunks and 0 of the server chunks hold its German or Norwegian strings.",
+  "The glossary (/home/user/kaizen-store/src/lib/i18n-glossary.ts, 852 lines) is imported only by tests; other files only name it in comments. It costs nothing at run time.",
+  "Norwegian pages of the platform site are 23 thin route files (345 lines of tsx under the three /no folders) around shared components.",
+  "The four small browser-text files loading together with a page's first scripts is a written, tested decision (D212, /home/user/kaizen-store/docs/performance.md:52-60: loading one language on its own once lost a press). It costs a shopper about 4.6 KB gzip. Leave it until a fifth hand-written language is added."
+ ],
+ "findings": [
+  {
+   "id": "TX-1",
+   "title": "Every server instance, and the proxy, evaluates all 134 admin catalogue files and all four storefront languages when it starts",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/admin-text.ts:2-135",
+    "/home/user/kaizen-store/src/lib/admin-text.ts:232-310",
+    "/home/user/kaizen-store/src/lib/i18n.ts:9-17",
+    "/home/user/kaizen-store/src/lib/two-step.ts:13",
+    "/home/user/kaizen-store/src/server/auth.ts:18",
+    "/home/user/kaizen-store/src/proxy.ts:10",
+    "/home/user/kaizen-store/src/proxy.ts:53-61",
+    "/home/user/kaizen-store/src/server/holding.ts:9",
+    "/home/user/kaizen-store/.next/server/chunks/[turbopack]_runtime.js:885-886",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/chunks.md:21"
+   ],
+   "evidence": "admin-text.ts imports all 134 catalogue files statically into one registry. 598 import lines take it by value; 37 of the importing files are outside the admin (32 in src/server, 2 in src/lib). The chain proxy.ts -> server/holding.ts -> server/auth.ts -> lib/two-step.ts -> lib/admin-text.ts is static. In the build, 802 of 830 route entries (560 of 562 pages, 242 of 268 handlers) and the proxy load a chunk holding 100 or more of the 134 area-languages; the analyzer shows 2,905 to 2,958 KB of admin catalogues in each measured route's 10.5 to 14.9 MB. A heap snapshot after loading finds 132 of 134 area-languages and all four storefront languages evaluated in /api/visit and in the proxy. Cold start here: /api/visit 1.01 to 1.11 s and +96 to 100 MB; the proxy 0.80 to 0.92 s and +83 to 85 MB; /api/health 0.21 s and +24 MB. The catalogues bundled alone: 125 to 154 ms and 19.2 MB with the code they import, of which that code is 44 to 46 ms and 5.8 MB. The runtime keeps one module cache per process, so this is paid once per server instance.",
+   "cost": "Per cold start of a server instance and of the proxy: about 2.9 MB of catalogue code read, and about 80 to 105 ms and 13 MB of heap to evaluate it (this machine, not Vercel), for words a storefront, API or cron request never shows. That is about a tenth of the measured cold start; the other nine tenths are the rest of the shared server code. The build writes the set out 12 times (35.6 MB). Each further admin language would add about 1.5 MB to every function.",
+   "who_pays": "The server at every cold start and in every instance's memory; a shopper whose request starts a new proxy or page instance; the build.",
+   "fix": "Step 1: the 37 files outside src/app/admin and src/components/admin import the two files of the area they read (two-step.ts needs only signIn) instead of the registry, and a scan test holds that nothing outside the admin imports admin-text.ts. Step 1b, needed for the full saving: about 45 lib modules import a whole English catalogue for a few labels (27 such files stay reachable from the proxy and the storefront after step 1); give them their labels another way, as TX-9 asks. Step 2: the registry loads an area on first use (a require() inside adminText(); needs a spike for Vitest and the lint rule), and the same per language in i18n.ts and email-text.ts. Types stay as they are.",
+   "saving": "Estimate. Step 1 alone takes about 99 of 134 area-languages (69% of the bytes) out of the proxy and the storefront, API and cron code: about 55 to 75 ms and 9 MB per cold start here, about 2 MB less code. With step 1b about 85%: 70 to 90 ms and 11 MB. That is 6 to 9% of a cold start. Step 2 gives admin functions the same and makes a new admin language free for everything that does not show it.",
+   "effort": "M",
+   "risk": "Low for step 1: a module that lacks a word fails to compile. Step 2 needs a short spike. The saving is measured on this machine with esbuild bundles, not on Vercel, and how Vercel groups route entries into functions was not measured.",
+   "confidence": "high",
+   "already_tracked": "no (PSI PERF-01 and admin-catalogues.scan.test.ts cover the browser only)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened every cited file. Rebuilt the import graph myself and found the same chain. Re-ran the entry scan with my own markers: 802 of 830, 560/562, 242/268, proxy 132, 12 chunks of 35.6 MB, all as reported. Re-ran the cold-start timing and my own heap probe: same results. Re-measured the catalogue bundle: text alone about 80 to 105 ms and 13 MB (auditor: 65 ms and 15 MB). Changed: (1) 'about 800 functions' is route entries; the runtime's module cache is per process, so the cost is once per instance. (2) Step 1 removes about 99 area-languages, not about 120, because lib modules import English catalogues directly; the heap saving is 9 to 11 MB, not 13 to 18. (3) Said plainly that the catalogues are about a tenth of the cold start. Nothing here rests on a feature being unused; before opening, with two admin languages, is the cheapest time."
+  },
+  {
+   "id": "TX-2",
+   "title": "Admin pages hand whole areas of words to the browser in every document",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/lib/admin-text.ts:308-310",
+    "/home/user/kaizen-store/src/app/admin/(gated)/layout.tsx:45",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/layout.tsx:114",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/products/[productId]/page.tsx:45",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx:268",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx:131",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:30",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:142",
+    "/home/user/kaizen-store/src/components/admin/admin-text.tsx:33-36",
+    "/home/user/kaizen-store/docs/performance.md:156-190"
+   ],
+   "evidence": "adminTexts(lang, areas) serialises each named area whole into the page. In the measured documents every handed area is there in full. Every signed-in page carries common, setup, shell and assistant: 33 KB raw, 11.4 KB gzip. The product editor's document holds 233 KB of whole areas in 416 KB (56%); the page builder's 304 KB in 572 KB (53%). The order page hands order, drafts, privacy and builder (160 KB), the customer page 137 KB, both with the builder's 75 KB. Of 195 hand-down sites with a literal list, the median is 28.9 KB, 65 are over 50 KB and 17 over 100 KB. The builder area has 59 groups; 115 reads name one group on the call (templates 5.3 KB, editor 8.7 KB), 45 take the whole area.",
+   "cost": "Over half of the raw bytes of the product editor's and the page builder's documents, and a third or more of several list pages'. A page's own areas are sent again on each navigation to it and each redraw after a save; the layout's four are sent once per full load. Nothing measures a document's words today.",
+   "who_pays": "An owner's browser on every admin page view; the server, which serialises them on every request.",
+   "fix": "Make the unit of handing smaller. Either split the mixed areas (builder, notifications, blocks, settings, website, products) along what screens read, or let adminTexts() take groups (builder: fields, image), typed with Pick. Draw the lists from a recording first: a Proxy in the signed-in e2e build that notes which area.group each screen reads. Hand assistant when the launcher opens. Add a per-document budget beside the script budgets of e2e/signed-in/admin-scripts.spec.ts.",
+   "saving": "Not measured: it needs the recording first. Known floor: the order and customer pages lose most of the builder's 75 KB each. The auditor's estimate (product editor about 200 KB to under 60 KB, every signed-in document 33 KB to about 14 KB) is plausible but unproven.",
+   "effort": "M",
+   "risk": "A part that reads a group nobody handed draws English and fails admin-text-fallbacks.spec.ts, which must learn groups first. The rule in docs/performance.md (pages hand down what their parts read) is kept: only the unit shrinks.",
+   "confidence": "high",
+   "already_tracked": "partly: PSI PERF-01 (open, /home/user/kaizen-store/docs/audits/psi-followups.md:482) and D540 cover the admin's scripts; documents have no budget and are not named",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened each cited line. Re-measured the 16 admin documents with my own search: the four shared areas are 33 KB / 11.4 KB gzip (auditor 34 / 11.7); the product editor holds 233 KB including those four (auditor 204 KB for the page's own five); the page builder 304 KB (auditor 277 for its own). My static sum of literal hand-down sites gives 195 sites, median 28.9 KB, 65 over 50 KB, 17 over 100 KB; the auditor's 217, 75 and 25 include lists kept in constants such as EDITOR_AREAS. Changed: the saving is marked as unmeasured, and I dropped 'setup only while setup is unfinished' because I did not check what reads it. Does not rest on any feature being unused."
+  },
+  {
+   "id": "TX-3",
+   "title": "A store in an AI-translated language would send the whole catalogue of 1,673 texts in every document",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/ui-text.ts:47-54",
+    "/home/user/kaizen-store/src/server/ui-text.ts:127-129",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:131",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:160",
+    "/home/user/kaizen-store/src/components/ui-texts.tsx:17-25",
+    "/home/user/kaizen-store/src/lib/browser-text.ts:15-19"
+   ],
+   "evidence": "loadLanguage() keeps every ui: key of the language for the browser, the storefront layout passes it to the client component UiTexts, and UiTexts lays it over browserText('en'), which has 114 keys, and keeps the rest for the withdrawal page. Measured from the catalogue: 1,673 keys are 92.8 KB raw / 25.0 KB gzip at English lengths; the 114 the browser's components read are 5.9 KB; the withdrawal page's 144 are 10.4 KB.",
+   "cost": "Nothing today: the table is empty because no store sells in an AI-translated language yet, which is expected before opening. From the first store that sells in German, French, Dutch, Finnish or any language but nb, sv, da and en: about 93 KB raw / 25 KB gzip inline in each document its shoppers load, on pages that are 104 to 166 KB now. It is in the page, so the browser does not cache it. It is not sent again on navigation inside the store, since it sits in the layout.",
+   "who_pays": "A shopper's browser in every AI-translated language; the server serialising it.",
+   "fix": "In loadLanguage(), keep for the browser only the keys that exist under browserText('en'); give the withdrawal page its returns.* keys from its own page. A unit test compares the handed keys with the browser's.",
+   "saving": "About 87 KB raw / 23 KB gzip per document load in such a language (estimate from English lengths), or 77 KB where the withdrawal keys are also needed.",
+   "effort": "S",
+   "risk": "Low: a text left out reads English, and the key comparison test catches it.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened the four files. Re-measured with my own bundle: 1,673 ui keys, 92,809 bytes, 24,976 gzip; browser keys 114 and 5,854 bytes; returns keys 144 and 10,409 bytes. All as reported. Changed the scope from 'every page view' to 'every document load', because the texts are a layout prop. Under the owner's clarification: this is not an argument against the feature and does not rest on the empty table; it says the feature, once used, sends about 16 times what the browser can read. The fix fits D212 and is small to do now."
+  },
+  {
+   "id": "TX-4",
+   "title": "The page builder's whole English catalogue loads on every signed-in admin screen, for a default nobody uses",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/shortcut-sheet.tsx:19",
+    "/home/user/kaizen-store/src/components/admin/admin-frame.tsx:95",
+    "/home/user/kaizen-store/src/components/admin/responsive-edit.tsx:20",
+    "/home/user/kaizen-store/src/components/admin/responsive-edit.tsx:100",
+    "/home/user/kaizen-store/src/components/admin/responsive-edit.tsx:306",
+    "/home/user/kaizen-store/src/components/admin/typography-fields.tsx:276",
+    "/home/user/kaizen-store/src/components/admin/admin-catalogues.scan.test.ts:31",
+    "/home/user/kaizen-store/docs/audits/psi-followups.md:482"
+   ],
+   "evidence": "The admin frame draws the shortcut sheet, which imports typingIn from responsive-edit.tsx. That file imports builderEn by value only as the default of sizeNote(source, size, words = builderEn). All 4 call sites pass words. The chunk 0pmozty218j-z.js is builderEn and nothing else: 71,508 bytes, 23,880 gzip, 71,326 of 71,360 bytes executed. It loaded on all 15 signed-in admin pages measured, including the stores list, orders, customers, settings and the platform's home.",
+   "cost": "71 KB minified (24 KB gzip) downloaded once per deploy and run on every signed-in screen: about 4.6% of the 1.55 MB of scripts a list screen loads.",
+   "who_pays": "An owner's and a platform admin's browser.",
+   "fix": "Make words a required argument of sizeNote() and drop the import, or move typingIn to its own small module. Take responsive-edit.tsx off the ALREADY list of the scan test.",
+   "saving": "71 KB minified / 24 KB gzip off every admin screen's scripts (measured).",
+   "effort": "S",
+   "risk": "None found: every caller already passes its words.",
+   "confidence": "high",
+   "already_tracked": "PSI PERF-01 (open); responsive-edit.tsx is on the ALREADY list of admin-catalogues.scan.test.ts, not yet done",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened the cited lines and the chunk itself: it starts with the builderEn object and holds nothing else; size and gzip match; coverage in routes.json is 71,326 of 71,360 on admin-home and admin-orders. Changed two counts: the chunk is on 15 measured signed-in pages, not 14, and sizeNote has 4 call sites, not 5. Not related to feature use."
+  },
+  {
+   "id": "TX-5",
+   "title": "Every visitor loads the purposes of all known cookies in four languages",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/cookie-consent.ts:100",
+    "/home/user/kaizen-store/src/lib/cookie-consent.ts:156-756",
+    "/home/user/kaizen-store/src/components/consent/consent-manager.tsx:10",
+    "/home/user/kaizen-store/src/components/consent/consent-manager.tsx:230",
+    "/home/user/kaizen-store/src/components/touch-keeper.tsx:5",
+    "/home/user/kaizen-store/src/components/ab/ab-assign.tsx:5",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:16"
+   ],
+   "evidence": "cookie-consent.ts (800 lines) holds small helpers the browser needs and KNOWN_COOKIES: 38 cookies, each with a purpose in en, nb, sv and da. Client parts import the helpers and the table comes with them. The chunk 1i4b_d7saujxh.js (46,302 bytes, 15,719 gzip) holds all 38 purposes in all four languages and is loaded on 29 of 32 measured pages, every storefront page among them; on the store's home 2,824 of 45,902 bytes ran (6%). The module alone is 26.6 KB minified / 7.4 KB gzip; the purposes are 18.4 KB / 5.3 KB of that as JSON, the rest of the table 5.7 KB / 1.0 KB. The browser does read the table: consent-manager.tsx:230 matches each cookie's name against the patterns to delete a withdrawn category's cookies. It needs pattern and category, never a purpose.",
+   "cost": "About 19 KB minified / 5.5 KB gzip of purposes in the first scripts of every storefront, site and admin page, read only by the cookie page and the admin's cookie scan. It grows with every cookie described and every language added.",
+   "who_pays": "A shopper's browser on first load.",
+   "fix": "Split the table. Keep name pattern and category (what forget() reads) beside the helpers. Move purpose, provider and days to a module only the server imports (the cookie page, the scan, declaredCookies), keyed by name, and add that module to FORBIDDEN in storefront-bundle.scan.test.ts. A unit test holds that the two lists name the same cookies.",
+   "saving": "About 19 KB minified / 5.5 KB gzip per visitor (estimate from the measured purposes; the auditor's 25 KB / 7 KB counted parts the browser needs).",
+   "effort": "S",
+   "risk": "Low once split. The fix as first written (move the whole table to the server) would break removing cookies when a visitor withdraws consent.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened the module and its client importers, rebuilt it with esbuild (26,573 bytes, 7,419 gzip; the three helpers alone are 467 bytes) and checked the chunk for Swedish and Danish purposes (38 of 38). Coverage and page counts hold. What changed: the auditor missed that consent-manager.tsx reads KNOWN_COOKIES in the browser (line 230), so the table cannot move whole; the fix is a split, and the saving is the purposes, about 19 KB / 5.5 KB gzip, not 25 KB / 7 KB. Not related to feature use."
+  },
+  {
+   "id": "TX-6",
+   "title": "Every server instance asks the table of AI translations every minute, whether or not any store uses such a language",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/instrumentation.ts:6-10",
+    "/home/user/kaizen-store/src/server/ui-text.ts:31",
+    "/home/user/kaizen-store/src/server/ui-text.ts:57-62",
+    "/home/user/kaizen-store/src/server/ui-text.ts:92-99",
+    "/home/user/kaizen-store/src/server/ui-text.ts:106-116",
+    "/home/user/kaizen-store/src/server/shop.ts:42-49",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/instrumentation.md:18",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md:87"
+   ],
+   "evidence": "The statement's caller is refresh() in ui-text.ts. instrumentation.ts awaits startUi() when an instance starts (Next: register must complete before requests are taken), and startUi() then runs refresh() every 60 s for as long as the instance lives. It is not cached because it is the cache check: each instance keeps the languages in its own memory so the synchronous t() never waits, and nothing tells an instance that a language changed. Production: 278,393 calls in 78 days, 2.5 a minute. The start hook also loads a 2.4 MB server chunk (_1pmw-ihec6glt._.js) to do this.",
+   "cost": "About 3,570 small queries a day today and one round trip before the first request of each new instance. Each live instance adds 1,440 a day, so it grows with traffic, not with use of AI-translated languages. The statement's time is not in the statistics; on a table this small it will be well under a millisecond. Small.",
+   "who_pays": "The database and its connection pool; the server at every cold start.",
+   "fix": "Keep the one read at start: it is what lets t() answer in every instance, also for parts drawn beside cached pages. Drop the timer. Call the existing ensureUi() where a market whose language is not nb, sv, da or en is resolved (resolveShop) and, as now, before emails; it already returns at once and looks for changes in the background when its last look is over a minute old. Await it only when that language is not registered yet. An instance that serves only hand-written languages then asks once at start and never again.",
+   "saving": "Nearly all of the per-minute queries (today about 3,570 a day); one query per cold start stays. No visible change.",
+   "effort": "S",
+   "risk": "Low. An idle instance learns of an edit on its next request for that language instead of within a minute. The auditor's larger fix (a cached read per language and no read at start) would also remove the start query, but any t() reached before the language is loaded would read English; it is not worth that risk for one query.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened instrumentation.ts, ui-text.ts, Next's instrumentation guide and the statistics file; the statement, the count and the 2.4 MB chunk are as reported. Answer to the owner's question: yes, the table is empty because no store sells in an AI-translated language yet, and that is expected before opening. The finding never needed the table to be empty: it is that the check runs per instance per minute regardless of use. What changed: I state the cost as small, and I replace the M-sized fix with an S-sized one that keeps the written rule in ui-text.ts (t() never waits on the database) and the read at start."
+  },
+  {
+   "id": "TX-7",
+   "title": "The page builder and the draft-order editor load all four storefront languages",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/block-fields.tsx:21",
+    "/home/user/kaizen-store/src/components/admin/block-fields.tsx:2684",
+    "/home/user/kaizen-store/src/components/admin/modal-preview.tsx:18",
+    "/home/user/kaizen-store/src/components/admin/modal-preview.tsx:34",
+    "/home/user/kaizen-store/src/components/admin/drafts/draft-summary.tsx:3",
+    "/home/user/kaizen-store/src/components/admin/drafts/draft-summary.tsx:35",
+    "/home/user/kaizen-store/src/components/admin/page-builder-fields.tsx:13",
+    "/home/user/kaizen-store/src/components/admin/page-builder-fields.tsx:1537",
+    "/home/user/kaizen-store/src/components/content-grid.tsx:9",
+    "/home/user/kaizen-store/src/components/content-grid.tsx:63",
+    "/home/user/kaizen-store/src/lib/i18n.ts:9-17"
+   ],
+   "evidence": "Five modules in the client graph import t from lib/i18n, which imports every language whole: block-fields.tsx (form), modal-preview.tsx (modal), draft-summary.tsx (unitPrice.bases), and also page-builder-fields.tsx and content-grid.tsx, which draw the grid preview with t(data.lang) and pass the whole Messages to Price and the campaign badge. On the measured page builder two chunks hold all four languages: 318,693 + 49,242 bytes raw, 103,098 + 15,315 gzip, 77% executed. No other measured page loads them. The draft-order editor reaches lib/i18n only through draft-summary.tsx (static; that page was not measured). modal is 2 strings and unitPrice.bases 7 strings; form is 37 strings and 4 functions and is already in the browser's own text.",
+   "cost": "368 KB raw / 118 KB gzip of the page builder's scripts (about 10% of the 1.09 MB it transfers), and by the import graph the same on the draft-order editor.",
+   "who_pays": "An owner's browser when a page, header, footer or draft order is opened.",
+   "fix": "Draft-order editor: pass unitPrice.bases down from the server as a prop; it then loads no storefront language. Page builder: pass modal as a prop and read form from browserText(); that alone saves nothing there, because the grid preview still needs a language with its functions. For the preview, load only the page's language with import() (one module per language) before drawing the grid. Then add components/admin to the walk that forbids lib/i18n in client code, with a short allow-list.",
+   "saving": "Draft-order editor: about 368 KB raw / 118 KB gzip (from the import graph; not measured on that page). Page builder: about three of the four languages, roughly 275 KB raw / 88 KB gzip (estimate), once the preview loads one language.",
+   "effort": "M",
+   "risk": "The grid preview waits for its language's module on first draw. A preview drawn in a language other than the page's needs that language too. An AI-translated language has no module and falls back to English in the preview, as today.",
+   "confidence": "high",
+   "already_tracked": "no (docs/performance.md says the admin reads them all; PSI PERF-01 is the open step for admin scripts)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened the three cited files and found both chunks on the measured page builder with the sizes reported. What changed: my client import graph finds five importers, not three; page-builder-fields.tsx:1537 and content-grid.tsx:63 read functions from the store's language, so 'pass three groups as props' removes nothing from the page builder. form is not plain strings (4 functions). Effort goes from S to M and the builder's saving from about 360 KB to about 275 KB raw. The '21 client modules reach lib/i18n' count I could not reproduce and dropped. Not related to feature use."
+  },
+  {
+   "id": "TX-8",
+   "title": "A shopper's scripts carry the admin's shared words, and three languages they do not read",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/browser-text.ts:1-15",
+    "/home/user/kaizen-store/src/components/buyer.tsx:6",
+    "/home/user/kaizen-store/src/lib/b2b.ts:13",
+    "/home/user/kaizen-store/src/lib/store-features.ts:14",
+    "/home/user/kaizen-store/src/lib/store-features.ts:240-246",
+    "/home/user/kaizen-store/src/lib/store-features.ts:466",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:16",
+    "/home/user/kaizen-store/docs/performance.md:52-60"
+   ],
+   "evidence": "The admin's common.en.ts (6.2 KB minified, 2.4 KB gzip) reaches every storefront page through buyer.tsx, b2b.ts and store-features.ts, where it is only the default argument of three label functions; its sentences are in chunk 01fvsecug_p8v.js, which all 12 measured storefront pages load. browser-text.ts imports nb, sv, da and en together: 25.9 KB minified / 7.1 KB gzip where one language is 6.1 to 6.9 KB / 2.4 to 2.6 KB; all four are in chunk 1evi5k6aquxhb.js on every storefront page. The visitor-bundle scan forbids lib/i18n, email-text and whole languages, but not lib/admin-messages.",
+   "cost": "6 KB minified (2.4 KB gzip) of admin words per shopper today. The three other languages are about 19.5 KB minified / 4.6 KB gzip, and each further hand-written language adds about 6.4 KB.",
+   "who_pays": "A shopper's browser on first load.",
+   "fix": "Now: move the three label functions that default to commonEn (requirementLabel, featureOffText, needWords) out of store-features.ts into a module only the admin and the server import; about 8 callers rely on the English default and import from there. Add lib/admin-messages to FORBIDDEN in the scan. Leave the four browser languages together: that is a written, tested decision (D212). Revisit only when a fifth hand-written language is added, and then send one language's file as its own script placed before the page's scripts.",
+   "saving": "Now about 6 KB minified / 2.4 KB gzip per shopper. The language step, if ever done, about 19.5 KB minified / 4.6 KB gzip.",
+   "effort": "S",
+   "risk": "Low for the admin words. The language step has a known risk the docs record: loading the page's language separately once lost a press (e2e/gallery.spec.ts).",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened the import chain and the rule in docs/performance.md. Rebuilt browser-text.ts (25,884 bytes, 7,128 gzip), each language (6,125 to 6,899 bytes; 2,383 to 2,596 gzip) and common.en (6,217 bytes; 2,421 gzip), and found each one's own sentences in chunks all 12 storefront pages load. Numbers hold. I put the admin words first in the title, since they are the part to act on now, and named the callers that use the English default. The three-languages part is a deliberate decision, so I list it under clean too."
+  },
+  {
+   "id": "TX-9",
+   "title": "Nothing measures where the words go, so each of the leaks above could return",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/admin-catalogues.scan.test.ts:45-55",
+    "/home/user/kaizen-store/src/components/admin/templates-helpers.ts:1",
+    "/home/user/kaizen-store/src/lib/store-features.ts:14",
+    "/home/user/kaizen-store/src/lib/admin-messages/notifications.en.ts:1-9",
+    "/home/user/kaizen-store/src/lib/admin-messages/orders.en.ts:2-8",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:16",
+    "/home/user/kaizen-store/docs/performance.md:190-198",
+    "/home/user/kaizen-store/.github/workflows/ci.yml:35"
+   ],
+   "evidence": "Scripts have budgets per admin screen; the documents the words are handed in have none. The ratchet for catalogues in client code reads only files that say 'use client' and import a catalogue directly, so it does not see templates-helpers.ts, store-features.ts or the 45 lib modules that import a catalogue by value. Nothing keeps the registry out of code outside the admin (TX-1). 14 catalogue files import code (36 value imports): notifications.en.ts bundled alone is 524 KB minified, of which 47 KB is its own text and 454 KB is zod (esbuild; the Next build drops zod's locales). Nothing looks for keys no code names. The CI comment names the catalogues as the reason for the 7 GB heap; measured alone they take about 125 MB.",
+   "cost": "No running cost of its own. It is how 3.6 MB of text reached 802 route entries and over half of two documents without a test going red.",
+   "who_pays": "Everyone who pays for TX-1, TX-2, TX-4, TX-5 and TX-8 again later.",
+   "fix": "Scan tests in the repo's ratchet style: (1) a budget for the words handed per page, computed from the catalogues and the adminTexts() lists; (2) nothing outside src/app/admin and src/components/admin imports admin-text.ts; (3) the client-import ratchet follows imports through modules without a directive, as storefront-bundle.scan.test.ts does, and that test forbids lib/admin-messages; (4) a catalogue file imports only types and plain label modules; (5) a key whose name appears in no non-test file fails, with an allow-list for tables read by computed key or by matching (192 such keys today). Correct the comment in ci.yml.",
+   "saving": "Keeps the savings of the findings above; no bytes by itself.",
+   "effort": "S",
+   "risk": "Low. Budgets need a first baseline that only falls, like ratchet.baseline.json. Scan 5 without its allow-list would flag live entries, as TX-11 shows.",
+   "confidence": "high",
+   "already_tracked": "partly: admin-catalogues.scan.test.ts and admin-scripts.spec.ts exist; the gaps named here are in no plan",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened the scan tests, the CI file and the catalogue imports. Counted 36 value imports in catalogue files and 45 lib modules importing a catalogue by value (auditor: roughly 40). Rebuilt notifications.en.ts: 523,645 bytes, zod 453,796, own text 47,079. Re-ran the type-cost measurement: about 125 MB for the catalogues. Changed: scan 5 needs an allow-list, because my census finds 192 identifier-like key names that no code holds and that sit in matching tables. The full type check was not run, so the CI comment is 'not supported', not 'proved wrong'."
+  },
+  {
+   "id": "TX-10",
+   "title": "English refusals are kept twice and matched back to their Norwegian by regular expression",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/marketing-words.ts:12-37",
+    "/home/user/kaizen-store/src/lib/discount-words.ts:43",
+    "/home/user/kaizen-store/src/lib/redirect-words.ts:27-28",
+    "/home/user/kaizen-store/src/lib/experiment-words.ts:15-64",
+    "/home/user/kaizen-store/src/lib/known-words.ts:13-38",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/settings/tax/actions.ts:18",
+    "/home/user/kaizen-store/src/lib/broadcasts.ts:40-45",
+    "/home/user/kaizen-store/src/server/settings.ts:70",
+    "/home/user/kaizen-store/src/lib/product-media.ts:60-61",
+    "/home/user/kaizen-store/src/lib/admin-messages/product.en.ts:130-131"
+   ],
+   "evidence": "Server modules write refusals as English sentences; the catalogue repeats each as a template; a words module builds one RegExp per entry and matches the server's sentence to find the Norwegian. This is a written decision (D312 A6 and A8: the server answers in English because the AI manager reads it). Ten tables I checked hold 300 entries and 16.7 KB of English that also sits in code. For 19 entries no literal sentence is in the code, but at least 7 of those are built from parts and do match at run time (broadcasts.ts:40-45 builds 'A heading is longer than N characters.'; settings.ts:70 builds the Stripe sentence), so a plain text search cannot tell drift from design. One real gap: the server says 'Use at most N videos.' and 'Use at most N 3D models.' (product-media.ts:60-61), no table carries those, and the catalogue's product.media.tooManyVideos and tooManyModels are read by nothing.",
+   "cost": "About 17 KB of English kept in two places with nothing checking that they still match; a refusal that stops matching reaches a Norwegian owner in English without any error. The run-time cost is negligible (about 300 regular expressions built once per instance).",
+   "who_pays": "An owner who reads an untranslated refusal; whoever edits a sentence in one place only.",
+   "fix": "First a guard that tests real refusals, not text: for each table, a test calls the server's validators with input that fails and asserts every refusal is matched by an entry. Wire or remove the two product.media entries. Only if drift keeps turning up: the server answers with a code and values, and both the English for the AI manager and the Norwegian come from the catalogue entry.",
+   "saving": "No measurable bytes or time. The gain is no silent English. The full change would remove about 17 KB of duplicated source.",
+   "effort": "M",
+   "risk": "The rule that the server answers in English for the AI manager (D312 A6) must be kept, and the AI eval recording made again if tool answers change. A guard based on text search would raise false alarms on sentences built from parts.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened the words modules and the server sentences. My count: ten tables, 300 entries, 16.7 KB (auditor: eight tables, 267 entries, 13.9 KB); 19 entries with no literal sentence (auditor 18). Changed: at least 7 of those are live, built from parts in broadcasts.ts:40-45 and settings.ts:70, so '18 mismatches' is wrong and the proposed guard ('every entry's English still appears in code') would not work. The one concrete gap I could confirm is the product media pair. I lowered this to a small, low-priority item: it is a true duplicate by a written decision, with no running cost."
+  },
+  {
+   "id": "TX-11",
+   "title": "34 texts that no code reads",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/lib/admin-messages/product.en.ts:130-131",
+    "/home/user/kaizen-store/src/lib/admin-messages/domains.en.ts:150",
+    "/home/user/kaizen-store/src/lib/admin-messages/order.en.ts:608",
+    "/home/user/kaizen-store/src/lib/admin-messages/order.en.ts:615",
+    "/home/user/kaizen-store/src/lib/admin-messages/marketing.en.ts:41",
+    "/home/user/kaizen-store/src/lib/admin-messages/customers.en.ts:621",
+    "/home/user/kaizen-store/src/lib/admin-messages/customers.en.ts:624",
+    "/home/user/kaizen-store/src/lib/admin-messages/assistant.en.ts:226",
+    "/home/user/kaizen-store/src/lib/messages/en.ts:574",
+    "/home/user/kaizen-store/src/lib/messages/en.ts:1295",
+    "/home/user/kaizen-store/src/lib/messages/en.ts:1600-1601",
+    "/home/user/kaizen-store/src/lib/messages/en-returns.ts:33",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/tx/dead-keys-confirmed.txt:1-44"
+   ],
+   "evidence": "17 admin keys and 17 storefront keys have a name that appears in no non-test file outside the catalogues, and sit in no table read by computed key or by matching. Admin: domains.checkout.priceChanged, platformTools.aiActions.noTemplate, analytics.settings.targets.startCustom, inventory.documents.linesCol, inventory.suppliers.sentWithin, reviews.import.submitCheck, order.messages.refundReason and cancelReason, blog.editor.blogHeading, oauth.store.cutDone, customers.saved.schema.wholePercent and oneAccount, marketing.segments.firstBy, assistant.autopilot.plans.pausedNow, product.media.tooManyVideos and tooManyModels, content.entry.publishFirstSave. Storefront: the 17 listed in the scratch file (returns.chooseLines, tracking.followAt, account.resetFor, stay.tooSoon and the rest). The 8 entries of marketing.problems and payments.problems on the auditor's list are live: 'Save its words first.' is at src/server/automations.ts:119, five are built at src/lib/broadcasts.ts:40-45 and two at src/server/settings.ts:70. Deleting those would turn Norwegian refusals into English.",
+   "cost": "34 texts in 2 or 4 languages, a few KB. Each is written and kept up in every language; the 17 storefront ones are also sent to the AI translator for every new language.",
+   "who_pays": "Whoever writes and translates the catalogues; a few bytes in every function.",
+   "fix": "Delete the 32 from every language. For product.media.tooManyVideos and tooManyModels decide first whether to wire them to the server's 'Use at most N videos.' refusal instead (TX-10). Do not delete the 8 matching-table entries. Add the scan of TX-9 (5) with its allow-list.",
+   "saving": "A few KB; mainly it stops dead text from collecting.",
+   "effort": "S",
+   "risk": "Low for the 34: the compiler fails if a deleted key is read after all. High for the 8 the auditor also listed: nothing would fail, the refusal would just read English.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Ran my own token census over 3,977 non-test files and checked each listed key by name with rg: the 34 have no reader. Then checked the 8 'matching table' entries against the code and found each one's sentence, literal or built from parts. So 42 becomes 34 and the list must lose those 8. My own sample of 330 keys found 1 dead (0.3%), the same share the auditor reported. These are keys no code reads, not features no store uses, so the owner's clarification does not touch them."
+  }
+ ]
+}

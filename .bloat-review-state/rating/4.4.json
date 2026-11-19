@@ -1,0 +1,14 @@
+{
+ "id": "4.4",
+ "rating": "strong",
+ "why": "Six unrelated changes in one brief, and several leave choices. Splitting the Payments page into streamed TestAccountSetup and MollieMethods parts needs a judgement on which parts depend on testReady (it is read at five places), and on whether getPaymentSettings is 'fed by' paymentAccountsFor or runs beside it. fillThemeCards() goes in 'the daily theme job if one exists by then, else publishDesign()'. On top of that are money sums in plan-analytics and a migration that replaces purge_sandbox(), a delete function.",
+ "harm_if_wrong": "A Stripe problem disappears behind the Suspense on the Payments page (D20), plan figures are summed wrongly, or a mis-copied purge_sandbox() deletes or refuses differently.",
+ "cheap_commits": [
+  5
+ ],
+ "make_it_cheaper": "Split it into separate steps and, for the Payments page, name exactly which JSX blocks move into TestAccountSetup and whether getPaymentSettings reads stripe_accounts; for theme cards, name the one caller of fillThemeCards().",
+ "brief_problems": [
+  "src/server/admin-statements.baseline.json and the statement counter come from step 1.9, and the platform Home's PageSkeleton from step 4.1; neither exists yet.",
+  "The 'check' lists src/lib/migration-safety.scan.test.ts, but CLAUDE.md names the scan as src/db/migration-safety.scan.test.ts (0.28 and 3.8 use that path)."
+ ]
+}

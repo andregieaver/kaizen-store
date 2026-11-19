@@ -1,0 +1,11 @@
+{
+ "id": "2.5",
+ "rating": "cheap",
+ "why": "One config property given verbatim under a line that exists (cacheComponents at line 42), plus an e2e file whose six tests are spelled out against addresses existing specs use. The build manifest check and the curl show at once whether Bingbot gets the HIT, the crawler spec fails on a missing price, JSON-LD or head tag, and the change is one line to revert.",
+ "harm_if_wrong": "A search or shopping crawler reads a product page without its price or metadata, costing search visibility until the pattern is widened again.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": []
+}

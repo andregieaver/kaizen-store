@@ -1,0 +1,398 @@
+{
+ "headline": "A warm, cached storefront page is lean: a prerendered home page, store page or empty cart makes no database read of its own. The bloat sits around that page. The proxy that runs before every page view loads 1,311 modules (about 0.85 s cold, measured here) and asks the database on most views; a product page asks about 18 times per view where one answer (stock) changes; and every deploy (48 code commits on 11 Nov) throws all caches away with nothing to warm them, so most real visits to 59 of 60 stores take a cold path of about 30 statements, several of them one after another. Most of this is a handful of concrete knots (three imports, one page-list read, one start-up read of an empty table), not a rewrite.",
+ "metrics": [
+  {
+   "name": "Proxy cold load",
+   "value": "848, 861, 856 ms and +167 MB; the packages a slim proxy needs (next/server, pg, drizzle, zod) load in 116-168 ms, +34 MB",
+   "how": "Three runs each in a fresh node process requiring /home/user/kaizen-store/.next/server/middleware.js (script /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sd/load-proxy.cjs). Local machine, not Vercel."
+  },
+  {
+   "name": "Modules the proxy reaches",
+   "value": "1,311 modules, 20.6 MB of source (483 of 795 server files, 813 of 1,145 lib files, the whole schema); built as 18 chunks, 9.96 MB, loaded at start",
+   "how": "Static walk of value imports from src/proxy.ts (scratchpad/work/sd/graph.mjs, same method as src/lib/pay-routes.graph.test.ts); chunk list read from .next/server/middleware.js and their sizes summed."
+  },
+  {
+   "name": "Modules a store page's layout reaches",
+   "value": "1,466 (21.4 MB of source); 1,011 without the one import customers.ts -> privacy-erasure.ts; 872 without that, admin-text.ts and schema.ts",
+   "how": "Same walk from src/app/s/[store]/[market]/layout.tsx, with edges removed (scratchpad/work/sd/graph-cut.mjs)."
+  },
+  {
+   "name": "Work before an instance's first request",
+   "value": "526, 567, 574 ms and +106 MB",
+   "how": "Three fresh node processes calling register() of .next/server/instrumentation.js against the local review database (scratchpad/work/sd/load-instr.cjs)."
+  },
+  {
+   "name": "Statements per view, warm server, anonymous, prerendered demo store",
+   "value": "home 2-5 (only the proxy's tables), store page 4, All products 3, category 5, search 12, product 18-19, booking product 14, Kaizena Flow's home 2, empty cart 0 beyond the proxy",
+   "how": "pg_stat_database.xact_commit and pg_stat_user_tables read before and 8 s after one curl to the already running local production server; noise floor of 1 (a static file) removed (scratchpad/work/sd/measure.sh)."
+  },
+  {
+   "name": "Statements for a cold store home page (no shell, empty caches)",
+   "value": "about 30-35, at least 6 in sequence before the first byte (estimate)",
+   "how": "Traced by reading the layout, page and their readers in order; not measured, because a first visit would have written new files into .next."
+  },
+  {
+   "name": "Cached reads and their lifetimes",
+   "value": "85 'use cache' functions: 71 calls of cacheLife(\"hours\"), 5 days, 2 with none (15 min default), 0 'use cache: remote'",
+   "how": "rg over src without tests, and scratchpad/work/sd/nolife.mjs for the two without a life."
+  },
+  {
+   "name": "Shell lifetimes in the build",
+   "value": "668 prerendered entries at 1h; 6 at 15m (store home and All products in 3 markets); 2 at 1m",
+   "how": "Route table of scratchpad/m/build.log (lines 1163-1165, 1410-1412 for the 15m rows)."
+  },
+  {
+   "name": "Stores with shells made at build",
+   "value": "1 (the template store); the fallback shell for any other store is 0 bytes",
+   "how": "ls of .next/server/app/s: demo/* has HTML, [store]/[market].html is empty; prerenderedShops() in src/server/shop.ts:94-101."
+  },
+  {
+   "name": "Commits that deploy, 11 Nov 2026",
+   "value": "48 of 74 commits touched code",
+   "how": "git log --name-only for that day (the clone is shallow: 10-11 Nov only); CLAUDE.md says each such push deploys."
+  },
+  {
+   "name": "Production calls per day of reads that are 'cached for hours'",
+   "value": "store slug by id 7,181; ui_translations 3,569; ai_providers 3,046; terms 1,677; every published page with content 1,023; Kaizena Flow's own header and footer reads 540-900 each",
+   "how": "Calls in scratchpad/m/prod-db-stats.md divided by its 78 days."
+  },
+  {
+   "name": "listPublishedPages() call sites",
+   "value": "37; at least 9 keep one page of the list; production returns 29 rows a call",
+   "how": "rg 'listPublishedPages(' and '.find(' over src without tests; rows and calls from prod-db-stats.md."
+  },
+  {
+   "name": "Proxy runs per page view",
+   "value": "at least 12 on the store home (1 document + 11 prefetches); 43-51 on cart and checkout",
+   "how": "requests.byKind in scratchpad/m/routes.json."
+  }
+ ],
+ "clean": [
+  "A warm prerendered home page, store page or empty cart makes no database read of its own: in the counters only the proxy's tables moved (measured).",
+  "Chat, referral capture, consent and running tests are decided in the cached shell, not per request: their tags are on the shell (/home/user/kaizen-store/.next/server/app/s/demo/no.meta, x-next-cache-tags).",
+  "getProduct() runs its seven follow-up reads together (/home/user/kaizen-store/src/server/catalog.ts:413-457), and a menu's four reads run together (/home/user/kaizen-store/src/components/store-layout.tsx:71-76).",
+  "The cart count and the signed-in customer cost nothing without a cookie (/home/user/kaizen-store/src/server/cart.ts:545-546, /home/user/kaizen-store/src/server/customers.ts:455-456).",
+  "A store's own page is found by one row, not from the list (findPublishedPage, /home/user/kaizen-store/src/server/pages.ts:683-708), and a store's menus take page titles in SQL (publishedPageNames, pages.ts:715-736).",
+  "Stock is the one catalogue fact read per request by design, and the rule is written (/home/user/kaizen-store/docs/rules/storefront.md:110-114).",
+  "The proxy's A/B reads run only for visitors who carry the kaizen_ab cookie (/home/user/kaizen-store/src/proxy.ts:152), and its held-domain read is kept 30 s (/home/user/kaizen-store/src/server/holding.ts:18).",
+  "Font stylesheets are served immutable for a year (/home/user/kaizen-store/src/app/api/fonts/css/[slug]/route.ts:44).",
+  "Checked and not a server cost: routes.json shows 10,288 RSC requests for one product link on a category page and 5,449 on search, but the repeats have transfer 0 (the browser's cache). The loop itself belongs to the client dimension."
+ ],
+ "findings": [
+  {
+   "id": "SD-1",
+   "title": "Three imports pull most of the server into the proxy and into every storefront page",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/proxy.ts:3-16",
+    "/home/user/kaizen-store/src/server/holding.ts:9",
+    "/home/user/kaizen-store/src/server/house-switch.ts:8-11",
+    "/home/user/kaizen-store/src/server/customers.ts:17",
+    "/home/user/kaizen-store/src/lib/two-step.ts:13",
+    "/home/user/kaizen-store/src/db/client.ts:11",
+    "/home/user/kaizen-store/.next/server/middleware.js"
+   ],
+   "evidence": "A walk of value imports from src/proxy.ts reaches 1,311 modules, 20.6 MB of source: 483 of 795 server files, 813 of 1,145 lib files and the whole schema. Built, the proxy loads 18 chunks (9.96 MB) at start; their source maps name 135 admin catalogue files, all four language files, Supabase's client and opentype.js. Loading .next/server/middleware.js in a fresh node process took 848, 861 and 856 ms and added 167 MB; next/server + pg + drizzle + zod alone take 116-168 ms and 34 MB. The chains: proxy -> holding.ts -> auth.ts (for audit(), used by a writer the proxy never calls) -> two-step.ts -> admin-text.ts -> every admin catalogue; proxy -> house-switch.ts -> pages.ts -> visibility -> customers.ts -> privacy-erasure.ts -> checkout, retention, follow-ups, owner-tools. The store layout reaches 1,466 modules; without the single import customers.ts -> privacy-erasure.ts it reaches 1,011; without that, admin-text.ts and schema.ts, 872 (the proxy: 702).",
+   "cost": "About 0.85 s and 167 MB each time a proxy instance starts cold (measured on this machine), before any page on any host, fully static pages included. One store home view runs the proxy at least 12 times. A cold page function loads the same knot (page.js alone took 395-409 ms, a lower bound).",
+   "who_pays": "A shopper's first byte; the server's memory and compute.",
+   "fix": "1) customers.ts stops importing eraseSubject at the top (the admin's delete path imports it, or it is imported inside the function). 2) two-step.ts gets its few sign-in words without admin-text.ts. 3) drizzle() is created without the schema (FD5). 4) The proxy's five reads (store facts, site switch, holding, private gate, running tests) move to leaf modules that import only the database client and pure lib; the writers stay where they are. 5) A graph test in the style of pay-routes.graph.test.ts: proxy.ts may not reach auth.ts, pages.ts or admin-text.ts, and the module counts of the proxy and the store layout may only fall.",
+   "saving": "Estimate from the two local timings: proxy cold start from about 0.85 s to about 0.2 s and about 130 MB less. Measured by the walk: the store layout's graph falls 40% in modules and 48% in source with the three cuts. Production milliseconds were not measured.",
+   "effort": "M",
+   "risk": "Low to medium. These are moves, not changes of behaviour, but server-only modules are tightly knit; proxy.test.ts and the address e2e tests cover the proxy's answers.",
+   "confidence": "high",
+   "already_tracked": "Partly. FD5 / step 3.14 (Open) drops the schema import. Steps 3.13 (domain folders) and 4.1 (lint boundaries), both Open, do not name start-up weight or the proxy.",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-2",
+   "title": "A product page asks the database about 18 times per view; one answer changes per view",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/product-parts.tsx:691-698",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:996-1019",
+    "/home/user/kaizen-store/src/server/express-checkout.ts:59-66",
+    "/home/user/kaizen-store/src/server/express-checkout.ts:153-157",
+    "/home/user/kaizen-store/src/server/connect.ts:476-479",
+    "/home/user/kaizen-store/src/server/stock-requests.ts:79-86",
+    "/home/user/kaizen-store/src/server/producer-registrations.ts:107-114",
+    "/home/user/kaizen-store/src/server/price-breaks.ts:17-18",
+    "/home/user/kaizen-store/src/server/quote-requests.ts:64-67",
+    "/home/user/kaizen-store/src/db/client.ts:68"
+   ],
+   "evidence": "Measured on the local production build, warm, one anonymous GET of a prerendered product (/s/demo/no/p/demo-keramikkopp): 19 and 18 statements committed, 2 of them the proxy's. Tables read twice in one view: inventory_levels, inventory_locations and inventory_reservations +8 each (stock is read by the buy part and again by the JSON-LD section), platform_settings +2 (getCheckoutUi() in expressOn() and in klarnaMessaging()), countries +2, vat_rates +2, shipping_rates +4, checkout_providers +2 (getCheckoutInfo() twice). Also per view: automations (back in stock), order_settings (quote mode), checkout_fields, payment_methods, stripe_accounts, price_breaks (for guests too). Two reads run alone first (blocked schemes at :997, quote mode at :1001). The pool holds 5 connections, so the 14 parallel reads queue. In production automations, price_breaks, checkout_fields and producer_registrations have never held a row.",
+   "cost": "About 16 statements beyond the proxy's per product view, in about 3 rounds through a 5-connection pool. It grows one for one with traffic.",
+   "who_pays": "The server and the database per request; the shopper waits on 'Checking stock' for the buy button.",
+   "fix": "Read stock once per request (perRequest() exists) and hand it to both parts. Put what only the owner changes into one cached read per store and market, refreshed by the payment and settings writers: checkout UI, payments on and provider, the account, method choices and states, checkout fields, quote mode, back in stock on, whether the store has price breaks or producer schemes. Then a view asks only for stock, plus the buyer's own prices when signed in. For producer blocks (D342 reads per request because a registration lapses at midnight): skip the read when the store has no scheme, else cache until the store's next midnight, as campaignNotices() already times its life.",
+   "saving": "Estimate: from about 16 to 1-3 statements per anonymous product view.",
+   "effort": "M",
+   "risk": "Medium. A payment switch or webhook that misses its tag would show a pay button that cannot pay; checkout itself still checks. D373's per-shopper parts (signed in, buyer kind) stay per request, read from cookies.",
+   "confidence": "high",
+   "already_tracked": "No. FF4 / step 3.8 (Open) covers the cart's and checkout's reads only.",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-3",
+   "title": "Every deploy empties the caches and nothing warms them, so most real visits are cold",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/server/shop.ts:94-101",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:47-49",
+    "/home/user/kaizen-store/scripts/await-deploy.mjs:53-56",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md:600-605",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md:251",
+    "/home/user/kaizen-store/docs/performance.md:84"
+   ],
+   "evidence": "Only the template store is prerendered at build; the fallback shell for any other store is a 0-byte file (.next/server/app/s/[store]/[market].html), so its first visit after a deploy is drawn whole at request time. Next's guide says cached entries and prerenders 'are scoped to a single deployment' and that the plain 'use cache' store is 'per-instance, in-memory ... ephemeral on serverless'; no read here uses 'use cache: remote'. On 11 Nov, 48 of 74 commits touched code. await-deploy.mjs waits for /api/health and two API refusals, then stops. docs/performance.md:84 records a page that took 3.1 s to answer while a deploy went live. Production agrees: reads that are 'cached for hours' run 540 to 1,700 times a day each.",
+   "cost": "After each deploy the first visitor to each page of 59 stores waits for a cold function start plus about 30-35 statements (SD-5). Traffic is thin (102 orders in all), so a large share of real visits are such first visits. Not timed in production.",
+   "who_pays": "Shoppers (first byte), and owners looking at their store after a change.",
+   "fix": "When /api/health reports the commit, the deploy job requests the front page and the All products page of each open store's markets (from the stores' sitemap), with a robot user agent so no visit is counted, skipping private stores. That is a few hundred requests per deploy. Batching pushes would cut the number of cold starts further; that part is the owner's choice and D5 can stay as it is.",
+   "saving": "Estimate: the cold first view of each main page after each deploy (1-3 s) moves from a visitor to the deploy job.",
+   "effort": "S",
+   "risk": "Low. More requests per deploy; the warm-up must not count as visits or reach private stores.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-4",
+   "title": "Every published page is read whole to pick one page or a few titles",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:664-680",
+    "/home/user/kaizen-store/src/server/pages.ts:797-800",
+    "/home/user/kaizen-store/src/server/pages.ts:859-863",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/page.tsx:28-30",
+    "/home/user/kaizen-store/src/server/legal-links.ts:24-26",
+    "/home/user/kaizen-store/src/components/site-chat.tsx:107-112",
+    "/home/user/kaizen-store/src/server/checkout-terms.ts:46",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:135-141",
+    "/home/user/kaizen-store/src/server/media-alts.ts:51-55"
+   ],
+   "evidence": "listPublishedPages() selects the whole published document of every published page of an owner, parses each with zod, and looks up every picture of every page in media (withPageAlts). It has 37 call sites. At least 9 then keep one page (.find by id): the front page, All products, a role page, the chat's privacy link, a blog's listing page. Legal links, checkout terms and the product page's back link need titles and addresses only. Kaizena Flow's own header reads all its pages and all its articles this way to name menu links, while a store's header uses publishedPageNames(), which takes titles in SQL. Production: 79,778 calls, 29 rows a call, 9.8 ms mean, 781 s in all, second in total time after the cron calls; media has 43,240 sequential scans.",
+   "cost": "9.8 ms and about 29 documents per cold fill, 1,023 fills a day: the app's largest read by total time.",
+   "who_pays": "The database and server CPU on every cold render; the shopper's first byte on a cold visit.",
+   "fix": "Add publishedPageById(owner, id): one row, cached under the pages tag, for the callers that keep one page. Use publishedPageNames() for legal links, terms, the back link, the privacy link and the platform's menus. Keep listPublishedPages() for the sitemap and llms.txt, selecting only what they print.",
+   "saving": "Estimate: over 90% of that statement's 781 s and of its media lookups; a cold home page parses 1 page, not about 29.",
+   "effort": "M",
+   "risk": "Low. The same data through narrower reads; A/B versions keep working on the one page.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-5",
+   "title": "A cold page waits on reads one after another before its first byte",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:108-128",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:166",
+    "/home/user/kaizen-store/src/server/site-layouts.ts:33-60",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:35",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:44-49",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:89-121",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/page.tsx:24-31",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/page.tsx:68"
+   ],
+   "evidence": "Traced for a store's home page with no shell (an estimate, not measured). In order: the instance start reads ui_translations; the proxy reads the store's facts; the layout reads the store (1 statement, 8 subqueries), then header, footer and legal links together, each 2-3 deep (layout row, then media alts, then site tests; all pages, then media alts), then text styles alone (awaited inline at :166). Only then can <html> be sent. After that: menus (4 together), fonts (2), chat (3-4), referral (1), consent with 8 statements strictly in a row (the store's features a second time, chat agent, the modal scan, referral site, recommendations, experiments, the last scan, notes), running tests; then the page: all pages for the front page, tests, products and campaigns together, grids. The store's own row is thus read by the proxy, by the layout and again by siteCookies() in one request.",
+   "cost": "Estimate: 30-35 statements per cold page, at least 6 sequential waits before the first byte, 8 in a row for consent alone.",
+   "who_pays": "The shopper's first byte on a cold visit; the database.",
+   "fix": "In the layout start text styles, site tests and the page names in the same Promise.all as header and footer (:123). siteCookies() takes features and visitCounting from the store its caller already holds and runs its other reads together. One cached read answers the four questions about experiments. The page starts its front page, products and campaigns together.",
+   "saving": "Estimate: sequential waits before the first byte from about 6 to about 3; consent from 8 in a row to one wave; 3-4 fewer statements.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "medium",
+   "already_tracked": "No. FF2 and FF5 / step 3.9 (Open) already cover the whole-catalogue read for the home page's JSON-LD and the product index in metadata; they are not repeated here.",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-6",
+   "title": "The proxy asks the database before most page views, static pages included",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/proxy.ts:55-59",
+    "/home/user/kaizen-store/src/proxy.ts:71",
+    "/home/user/kaizen-store/src/proxy.ts:109",
+    "/home/user/kaizen-store/src/server/redirect-resolve.ts:203-231",
+    "/home/user/kaizen-store/src/server/house-switch.ts:30-43",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md:29"
+   ],
+   "evidence": "The matcher takes every page on every host. A store's facts are kept 10 s per instance (FACTS_MS) and so is the site switch. Measured: each view more than 10 s after the last one read stores, markets (twice) and store_currencies; on Kaizena Flow's own host platform_settings too. /, /blog/welcome, /themes and /docs each cost one platform_settings read per view, though / is fully static. At 60 stores' traffic a 10 s memory rarely holds. Next's guide: 'Proxy is not intended for slow data fetching'. Prefetches run the proxy too: 11 on a store's home, 42-50 on cart and checkout.",
+   "cost": "1-2 statements and a pooled connection in front of the cached shell on most views; the first byte waits for them.",
+   "who_pays": "The shopper's first byte; the database.",
+   "fix": "Answer from memory and refresh in the background (event.waitUntil) once the 10 s have passed; block only when the instance knows nothing of the store; cap the age (for example 60 s). Read the site switch in the same statement. Later these few facts can live in Edge Config, written by the writers that already call forgetStoreFacts().",
+   "saving": "Estimate: the blocking read goes from most views to an instance's first view of a store.",
+   "effort": "S",
+   "risk": "Low to medium. A change of address shape (D181) or of private mode (D339) is seen one request later per instance than today. Keep the hard cap, and keep blocking for a store last known to be private, so the rule's reason holds.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-7",
+   "title": "Every instance starts by reading an empty table, then polls it each minute",
+   "kind": "speculative",
+   "where": [
+    "/home/user/kaizen-store/src/instrumentation.ts:6-10",
+    "/home/user/kaizen-store/src/server/ui-text.ts:59-63",
+    "/home/user/kaizen-store/src/server/ui-text.ts:92-116"
+   ],
+   "evidence": "register() imports ui-text.ts (383 modules and 7.6 MB of source by the import walk; a 2.4 MB chunk) and awaits startUi() before the instance takes a request; a timer repeats the read each minute. Production: 'select lang, count(*) ... from commerce.ui_translations group by lang' ran 278,393 times in 78 days, the second most called statement, and the table has never held a row. Measured here: register() took 526, 567 and 574 ms and 106 MB in a fresh process.",
+   "cost": "About 0.5 s per cold instance (local) and 3,569 statements a day, for interface languages translated by AI that no store has.",
+   "who_pays": "The first shopper or owner on each new instance; the database.",
+   "fix": "Do not await at start. Load a language when a page first asks for one that is not hand-written (isBuiltIn(lang) is false): the market layout and the email senders await ensureUi() then (the emails already do). No timer while no such language exists. Split the reader from the platform admin's translating tools, so the import is small.",
+   "saving": "Estimate: about 0.5 s off each cold start; 278,000 statements per 78 days gone.",
+   "effort": "S",
+   "risk": "Low to medium. t() is synchronous, so a language that is not built in must be awaited before its first draw; a test should draw such a page in a fresh process.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-8",
+   "title": "Tagged reads still expire by the clock: 1 hour for 71 of them, 15 minutes for the home page",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/content-grid.ts:162-168",
+    "/home/user/kaizen-store/src/server/campaign-notices.ts:182-188",
+    "/home/user/kaizen-store/src/server/campaign-notices.ts:150-153",
+    "/home/user/kaizen-store/src/server/pages.ts:665-667",
+    "/home/user/kaizen-store/src/server/stores.ts:217-219",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/01-getting-started/09-revalidating.md:195",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheLife.md:141-144"
+   ],
+   "evidence": "Of 85 cached functions, 71 set cacheLife(\"hours\") (made again after 1 hour) and 2 set none (ownerSells, campaignNoticesAt), which gives the default of 15 minutes. The build log shows it: 668 prerendered entries at 1h, and the store home and All products at 15m. A shell is made again at the shortest life inside it, so each visited page is redrawn hourly and the two most visited every 15 minutes, although writers refresh the tags. Next's guide: for content its author changes, 'use cacheTag and a long cacheLife like max ... This reduces unnecessary time-based revalidation'. campaignNotices() caps its life at 3,600 s even with no campaign, and campaigns has never held a row.",
+   "cost": "Up to 24 redraws a day per visited page (96 for home and All products), each a cold fill of about 30 statements on a fresh instance.",
+   "who_pays": "The server and the database. No visitor waits: the old shell is served meanwhile.",
+   "fix": "Give the two functions a life. Define one named profile in next.config.ts (for example 'tagged', made again after 7 days) and move to it the reads whose writers refresh their tag: stores first (store-writers.scan.test.ts already holds those writers), then pages, terms, fonts and text styles. Reads that depend on the clock keep their own; campaigns with no start or end ahead take the long one. A scan test: every 'use cache' sets a life and a tag.",
+   "saving": "Estimate: background redraws fall from per hour to per change. Today much of the gain comes at night and on quiet days, because deploys already empty the caches (SD-3).",
+   "effort": "M",
+   "risk": "Medium. A writer that misses its tag leaves a page stale for days, not for an hour: extend the writers' scan to pages and the catalogue before lengthening those.",
+   "confidence": "high",
+   "already_tracked": "No. FF3 / step 3.10 (Open) is about finer tags, not lifetimes.",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-9",
+   "title": "Pages ask about features no store uses",
+   "kind": "speculative",
+   "where": [
+    "/home/user/kaizen-store/src/server/site-cookies.ts:52-57",
+    "/home/user/kaizen-store/src/server/experiments.ts:130-133",
+    "/home/user/kaizen-store/src/server/experiments.ts:155-158",
+    "/home/user/kaizen-store/src/server/experiments.ts:178-181",
+    "/home/user/kaizen-store/src/server/experiments.ts:234-237",
+    "/home/user/kaizen-store/src/server/campaign-notices.ts:27-56",
+    "/home/user/kaizen-store/src/server/catalog.ts:383-399",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:997",
+    "/home/user/kaizen-store/src/server/stores.ts:232-281"
+   ],
+   "evidence": "Tables that have never held a row in production and are read on the storefront path: cookie_notes (70,278 reads), campaigns, recommendation_settings, producer_registrations, price_breaks, price_lists, checkout_fields, automations, market_availability, search_rules, search_synonyms, product_market_texts, product_passports. Measured locally per view: price_lists +10 and market_availability +1 scans on a category view; price_breaks, automations and checkout_fields on each product view; search_rules +2, search_synonyms +1 and market_availability +11 per search. A store's experiments are asked four separate ways per page (siteTests, storeHasExperiments, runningExperimentIds, experimentOfPage).",
+   "cost": "Estimate: 8-10 of a cold home page's 30 or so statements and 4 of a product view's 16 answer 'nothing' for every store.",
+   "who_pays": "The database and the server per cold render and per product view.",
+   "fix": "Let the cached store carry what it uses: one exists() each inside readStore()'s single statement for campaigns, experiments, cookie notes, recommendations, referrals, price lists and breaks, producer schemes, checkout fields and back in stock. Each reader returns its empty answer without a query when the fact is false. The first write of such a row refreshes the store's tag (refreshStoreById() exists).",
+   "saving": "Estimate: the statements above, on every cold page and every product view.",
+   "effort": "M",
+   "risk": "Medium. A feature's first row must refresh the store's tag, or pages ignore it until the store is next written; the store-writers scan can hold that.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-10",
+   "title": "The store is looked up by its id again and again",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/stores.ts:190-193",
+    "/home/user/kaizen-store/src/server/menus.ts:283-288",
+    "/home/user/kaizen-store/src/server/content-grid.ts:133",
+    "/home/user/kaizen-store/src/server/content-grid.ts:151-156",
+    "/home/user/kaizen-store/src/server/content-site.ts:46",
+    "/home/user/kaizen-store/src/server/field-tiles.ts:176",
+    "/home/user/kaizen-store/src/server/custom-fields.ts:817",
+    "/home/user/kaizen-store/src/components/content-grid-section.tsx:70",
+    "/home/user/kaizen-store/src/components/store-part-section.tsx:84",
+    "/home/user/kaizen-store/src/components/search-section.tsx:53"
+   ],
+   "evidence": "'select slug from commerce.stores where id = $1' is written 27 times in src/server, each followed by getStore(slug). One cached helper exists (storeSlugOf(), 13 uses). Production: 560,090 calls, the most called statement (7,181 a day). On the storefront it runs uncached in per-request parts through storeAndMarket(): each filterable grid, each working page's part, the search part. The drawing code carries only place.owner (an id), though the route that started it holds the store. Which share comes from jobs was not established here.",
+   "cost": "1 statement per grid or part per view, more per cold fill; 560,090 calls in 78 days in all.",
+   "who_pays": "The database and the server per request.",
+   "fix": "One storeById(id), cached under the store's tag, for all 27 places. Better: put the store and market the route already resolved into 'place', so the parts need no lookup at all.",
+   "saving": "Estimate: 1-3 statements per view on pages with grids or parts; 27 copies become one.",
+   "effort": "M",
+   "risk": "Low.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-11",
+   "title": "The same shopper facts are read several times in one request",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/store-layout.tsx:285",
+    "/home/user/kaizen-store/src/components/store-layout.tsx:576",
+    "/home/user/kaizen-store/src/components/cart-link.tsx:27",
+    "/home/user/kaizen-store/src/server/cart.ts:544-556",
+    "/home/user/kaizen-store/src/server/customers.ts:454-463",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:935",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:946",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:1006",
+    "/home/user/kaizen-store/src/server/express-checkout.ts:63",
+    "/home/user/kaizen-store/src/server/request-memo.ts:13-20"
+   ],
+   "evidence": "The cart link is drawn twice (header and phone bar) and each runs getCartCount(), so a shopper with a cart costs two identical counts on every page. getCustomer() runs a session query on each call, and a product page calls it up to five times for a signed-in shopper (buy part, member notice, back-in-stock offer, express check, quote). perRequest() exists and is used only by the cart, checkout and order pages. Read from the code; not measured with cookies.",
+   "cost": "1 extra statement per view for a shopper with a cart; up to 4 extra on a product page for a signed-in shopper.",
+   "who_pays": "The database per request; the shoppers closest to buying.",
+   "fix": "Wrap getCustomer() and getCartCount() in perRequest() (or React's cache), so each runs once per request.",
+   "saving": "Those statements, on every page a shopper with a cart or an account opens.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-12",
+   "title": "Whole rows and documents are read for one fact",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/fonts.ts:176-182",
+    "/home/user/kaizen-store/src/server/ai.ts:206-211",
+    "/home/user/kaizen-store/src/server/chat-agent.ts:93",
+    "/home/user/kaizen-store/src/server/page-modals.ts:16-27",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:44-48"
+   ],
+   "evidence": "fontPreloadFile() reads a family's whole stylesheet to find one file name ('select css from commerce.fonts', 42,211 calls). aiFor() runs 'select *' on ai_providers, keys included, where the chat button needs only 'is there a text model' (237,563 calls over four shapes, jobs included). getChatAgent() runs 'select *' on chat_agents, instructions included, for a name and a greeting. usesRememberedModals() runs jsonb_path_exists over every published page to get one yes or no (68,878 calls, 121 s).",
+   "cost": "121 s of JSON scanning in 78 days, and wider rows than needed on every cold fill. Small beside the findings above.",
+   "who_pays": "The database per cold render.",
+   "fix": "Keep the preload file name in a column written when the font is installed. Give the widget a two-column read (or a hasAi(storeId)). Set a flag when a page with such a modal is published.",
+   "saving": "The modal scan goes; the other reads shrink to a few bytes. Small.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-13",
+   "title": "The browser's side has budgets; the server's side has none",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/docs/performance.md:34-37",
+    "/home/user/kaizen-store/docs/performance.md:110-113",
+    "/home/user/kaizen-store/src/lib/pay-routes.graph.test.ts:1-40",
+    "/home/user/kaizen-store/e2e/performance.spec.ts:40"
+   ],
+   "evidence": "First scripts have a byte budget per route and a scan keeps zod out of visitors' scripts. Nothing counts what a request costs on the server: no test for the proxy's import graph (1,311 modules), for a page's statements per view (18 on a product page), or that a cached read sets a life and a tag (2 set no life). The import walk and the statement count used in this review are each a few lines, in the style of tests the repo already has.",
+   "cost": "No bytes today. It is why SD-1, SD-2 and SD-8 could grow unseen.",
+   "who_pays": "Everyone later: shoppers, the server, the database.",
+   "fix": "Three checks in the house style. A graph ratchet for src/proxy.ts and the store layout: the module count may only fall. An integration test that draws home, product, category and cart against the seeded database and holds statements per view to a budget, counted in the execute wrapper of src/db/client.ts. A scan that every 'use cache' sets cacheLife and cacheTag.",
+   "saving": "Keeps the savings of SD-1, SD-2 and SD-8 from growing back. No direct saving.",
+   "effort": "M",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "No. ratchet.scan.test.ts (step 1.2, Done) ratchets unchecked reads and casts, not graphs or statements per view.",
+   "owner_decision": false
+  }
+ ]
+}

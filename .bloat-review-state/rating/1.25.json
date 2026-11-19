@@ -1,0 +1,15 @@
+{
+ "id": "1.25",
+ "rating": "cheap-then-review",
+ "why": "The table, the counter module and the screen are specified to the column, and the migration is one new table off the hot list. The risk is where the hooks go: refreshTag(), staleTag() and refreshTagNow() sit under about 150 callers, tracked() under every cron job, and commit 3 puts an after() into the storefront's market layout, where a misplaced call can change a prerendered store page's render mode; the only guard named for that (scripts/render-modes.mjs) runs 'if step 1.11 has made it'. The draw line also copies step 1.9's renderCount(), whose design is itself unsettled.",
+ "harm_if_wrong": "A store page silently turns per-request (slower, uncached) because of the draw line, or a note() that throws stops a tag refresh so owners' changes stop reaching their pages.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "Make render-modes.mjs (or an e2e x-nextjs-cache check on /s/demo/no) a required check of commit 3 rather than 'if step 1.11 has made it', and wrap note() in a try so it can never throw into refreshTag().",
+ "brief_problems": [
+  "countCacheEvent schedules a flush only when the map goes from empty to non-empty; if that first after() throws (outside a request), later events in the same instance never schedule one and wait for a tracked() job.",
+  "The market layout has two lines `const { store, market, ab } = shop;` (59 and 115); the brief says 'in MarketLayout', which is the second, but a small model may pick the first.",
+  "Depends on step 1.9's renderCount()/setRenderCounter, whose API that brief leaves ambiguous."
+ ]
+}

@@ -1,0 +1,122 @@
+{
+ "key": "i18n",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/i18n.json",
+ "validator": "OK: 12 findings, 4 refuted, 19 metrics",
+ "headline": "The words themselves are in good order: 2,003 storefront keys in four languages and 29,040 admin texts in two, none missing, and only 34 keys nothing reads (0.1%). The bloat is in how they load: 802 of 830 server entries and the proxy evaluate all 134 admin catalogue files at each cold start (about 80 to 105 ms and 13 MB here, a tenth of the start), the product editor hands the browser 204 KB of words where its parts name at most 65 KB, and 57 of 58 storefront routes carry about 25 KB of cookie purposes and admin words no shopper reads. The empty commerce.ui_translations table is expected before opening and is not a finding; its loader is: it asks every minute per instance today, and as written every cold start will read each translated language whole, one after another (about 135 KB and 6 to 13 ms a language; added as TX-12). Two fixes are small, safe and measured (TX-4: 71 KB off 423 admin routes; TX-5: about 20 KB off every visitor), and the two structural ones (TX-1, TX-2) are cheapest before opening and before a third admin language adds about 1.5 MB to every function.",
+ "findings": [
+  {
+   "id": "TX-1",
+   "title": "Every server instance, and the proxy, evaluates all 134 admin catalogue files and all four storefront languages when it starts",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est.: 55-75 ms and 9 MB per cold start of proxy, storefront, API and cron code (6-9%); 70-90 ms with step 5. Not measured on Vercel.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-2",
+   "title": "Admin pages hand whole areas of words to the browser in every document",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est.: product editor ~139 KB raw less, order page ~88 KB, customer page 72 KB+, every signed-in document 6.9 KB; a third on the wire.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-3",
+   "title": "A store in an AI-translated language would send the whole catalogue of 1,673 texts in every document",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 87 KB raw / 23 KB gzip per document in an AI-translated language (estimate at English lengths). Nothing today.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-4",
+   "title": "The page builder's whole English catalogue loads on every signed-in admin screen, for a default nobody uses",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "71 KB minified / 24 KB gzip off the first scripts of 423 of 449 admin routes (measured).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-5",
+   "title": "Every visitor loads the purposes of all known cookies in four languages",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 19-21 KB minified / 5.5 KB gzip off every visitor's first load (measured parts).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-6",
+   "title": "Every server instance asks the table of AI translations every minute, whether or not it serves such a language",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Nine in ten of the per-minute queries: about 3,570 a day falls to about 360. Tiny.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-7",
+   "title": "The page builder and the draft-order editor load all four storefront languages",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Draft-order editor ~368 KB raw / 118 KB gzip; page editors ~275 KB raw / 88 KB gzip off first load (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-8",
+   "title": "A shopper's scripts carry the admin's shared words, and three browser languages they do not read",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 6 KB minified / 2.4 KB gzip per shopper's first load.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-9",
+   "title": "Nothing measures where the words go, so each of the leaks above could return",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "No bytes itself; keeps the savings of TX-1, 2, 4, 5, 7 and 8.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-10",
+   "title": "English refusals are kept twice and matched back to their Norwegian by regular expression",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "No bytes or time; no silent English refusals for Norwegian owners.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-11",
+   "title": "34 texts that no code reads",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "A few KB of source in 2-4 languages; stops dead text collecting and being machine-translated.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TX-12",
+   "title": "Every instance start reads every AI-translated language whole, one after another, and builds it before the first request",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Per unused translated language per cold start: 1 DB round trip, 4-11 ms, 0.2 MB. At 20 languages ~0.1-0.2 s, 4 MB (est.). None today.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": [
+  "TX-R1 Typing the admin's catalogues is why the type check needs a 5 GB heap: measured alone they take about 125 MB; no retyping proposed, only the CI comment corrected",
+  "TX-R2 42 dead keys, 8 of them in marketing.problems and payments.problems: those 8 are live, matched against sentences the server builds from parts; 34 are dead",
+  "TX-R3 Move the whole cookie table to the server: the browser reads its patterns when consent is withdrawn; the fix is a split",
+  "TX-R4 Pass three message groups as props and the page builder loads no storefront language: the grid preview needs functions of the store's language, so one language module is loaded on demand instead"
+ ]
+}

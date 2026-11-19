@@ -1,0 +1,19 @@
+{
+ "id": "1.11",
+ "fixed": [
+  "Count command: whole-directive pattern (85 in 49 files) replaces the one that prints 91.",
+  "budget-seed.mjs sets prices with one commerce.set_price statement, never an insert into commerce.prices.",
+  "Hole rule written: <template id=\"B:n\"> without <div hidden id=\"S:n\"> in the same file.",
+  "House store left out of render-modes and server-budget lists (step 0.3 seeds kaizenaflow's switch only in the hosts job); baseline seed and done_when count (10) corrected.",
+  "Both CI steps say they fail the e2e job (hard gates)."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on step 1.9's statement-count.ts and the client.query wrapper, neither of which exists today.",
+   "why": "depends_on names 1.9 and stop_if covers its absence; that is the plan's order, not a flaw."
+  }
+ ],
+ "cheaper": "applied: the judge's edit_brief (count pattern, hole rule, house store, hard gates) plus set_price for the seed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

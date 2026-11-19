@@ -1,0 +1,150 @@
+{
+ "key": "db-schema",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/db-schema.json",
+ "validator": "OK: 15 findings, 5 refuted, 16 metrics",
+ "headline": "The database's shape is sound for a platform about to open: dead objects are rare (1 table, 5 columns, 34 leftover tables), triggers are gated by column, and that 245 of 486 tables hold no row only says the doors are still closed. What is worth fixing before opening is where cost does not follow use or grows with stores: pg_cron's run log is 564 MB of the 731 MB database with nothing pruning it, every cold start evaluates a 1 MB schema file no query uses (115 to 135 ms, 9 to 12 MB), 122 store filters are written so the store index cannot serve them, and page lists read whole documents (4.2 ms a call against 0.8 ms from a plain column, measured in a local Postgres 18). All 14 verified findings now have ordered steps, tests and one check; one was added (indexes are declared in two places and nothing compares them, which is how duplicates reached orders and order_lines). Do first DS-8, DS-1, DS-7 and DS-15 with DS-9; DS-6, DS-12 and DS-13's retention periods wait for the owner.",
+ "findings": [
+  {
+   "id": "DS-8",
+   "title": "pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 500 MB once (where TRUNCATE is allowed); growth of about 8 MB a day stopped at about 60 MB (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-1",
+   "title": "Every server start loads the whole schema file, which no query uses",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured here: 115 to 135 ms and 9 to 12 MB per cold start; the schema out of 6 server chunk files.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-7",
+   "title": "`store_id is not distinct from` keeps Postgres from using the store indexes",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Estimate: scans of pages, cookie_scans and terms become index reads; 1.2 billion rows read by scan in 78 days today.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-15",
+   "title": "Indexes are declared in two places and nothing compares them, which is how duplicates reached orders and order_lines",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No direct saving; stops the next duplicate index on a hot table at the commit that adds it.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-9",
+   "title": "Thirteen indexes duplicate another; orders carries 34, five of them starting (store_id, placed_at)",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "13 indexes; 2 fewer entries per order write, 1 per order line, 1 per counted visit.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-4",
+   "title": "A page's title, its titles by language and its flags live only inside its content JSON, so lists read and parse whole pages",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: most of 187 s per 78 days beyond DQ-2; title read 1.5 to 0.8 ms, modal check 1.4 to 0.6 ms (PGlite).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-5",
+   "title": "The knowledge job re-cuts pages that have no text every five minutes, and reads every page's content to compare a date",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: 91,200 no-op delete transactions and nearly all 24,134 content reads per 78 days.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-10",
+   "title": "Where each picture is used is found by text-searching every page's JSON, again every day for every picture",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: most of 3,053 scans (about 380 s) and 13,414 date-only updates per 78 days.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-3",
+   "title": "Two scheduled jobs do work that does not follow use: a prune every minute and an invoice retry every five minutes for 120 days",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Measured today: 167 s per 78 days and 133,066 statements; about 4.8 s a day per unready store at scale (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-13",
+   "title": "Retention gaps: carts and processed webhook events are never deleted, the status prune scans on every tick, and the docs index is rewritten whole",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "287 scans a day of status_checks; about 1,800 fewer row rewrites per docs deploy; a ceiling on carts and page history.",
+   "verdict": "confirmed",
+   "owner_decision": true
+  },
+  {
+   "id": "DS-12",
+   "title": "Nothing counts what a new table, trigger, index or scheduled job adds to the running cost",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No direct saving; makes the next per-write or per-tick cost a visible choice.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "DS-6",
+   "title": "Kaizena Flow's own site and tools are kept more than one way: null-store rows, platform_* twin tables, and a copy in its own store",
+   "priority": "P1",
+   "effort": "L",
+   "saving": "Estimate: the site's null-store paths and a handful of twin tables and jobs; one build per site feature, not two.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "DS-2",
+   "title": "Each server start waits for a read of the interface-text table, and every warm instance asks again each minute",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Estimate: the group-by runs only after an edit; polls about ten times rarer (3,570 a day today).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-14",
+   "title": "A very short list of dead database objects: one table, five columns and a leftover schema",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "1 table, 1 enum, later 5 columns, and 34 leftover tables in production.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DS-11",
+   "title": "Ending one sandbox runs at least 800 deletes and holds about 2,100 locks, one pass per store table per round",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "No time saved now; stops two purges holding about 4,300 locks together (one holds 2,129, measured).",
+   "verdict": "corrected",
+   "owner_decision": false
+  }
+ ],
+ "refuted": [
+  "DS-16 The dispatcher does 12.5 s of database work every five minutes for unused features: jobs run at once on 5 connections, so their times overlap; the tick takes about 1.3 s",
+  "DS-17 Seven SQL functions are called by nothing: supabase/seed.sql calls the add_demo_* functions; the two *_verify functions are documented checks used by tests",
+  "DS-18 The 245 tables that never held a row and the 1,006 never-scanned indexes are bloat to retire: the platform is not open yet; no running cost shown",
+  "DS-19 Indexes on nullable foreign-key columns should become partial: measured about 1 µs and 7 bytes a row each on carts, not worth a change",
+  "DS-20 The 39 unique (store_id, id) keys nothing points at are redundant: they are rule P1's anchor (docs/platform.md:12)"
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "id": "2.1",
+ "fixed": [
+  "Commit 1: names all six of step 0.43's cases and its helpers outsideIndex()/indexLines() for deletion (each reads the '## Storefront' section this commit removes) and lists 1.1's cases that stay; deleting only 'the case' would have left five failing.",
+  "Commit 1: the baseline's claudeOutsideIndex key is left to what docs-ratchet.mjs writes, instead of an 'if its case went' choice.",
+  "The docs-budget test and baseline changes use plain paths with made_by 0.43 and say what 0.43 and 1.1 leave in them."
+ ],
+ "rejected": [
+  {
+   "problem": "The proofs in done_when need a fresh session or a subagent, which a cheap executor may not be able to start.",
+   "why": "Already handled: stop_if says to push commits 1 and 2, leave the step In progress and hand the proofs back."
+  }
+ ],
+ "cheaper": "applied: every case of docs-budget.scan.test.ts to delete is named; the step stays cheap-then-review because the owner's instruction file needs a reading",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

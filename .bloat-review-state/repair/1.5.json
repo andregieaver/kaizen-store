@@ -1,0 +1,12 @@
+{
+ "id": "1.5",
+ "fixed": [
+  "Commit 2: the Norwegian assertion now checks page.locator('html') toHaveAttribute('lang', 'nb') on the opened page; the fetched document always says lang=\"en\" (src/app/admin/layout.tsx:34).",
+  "Commit 3: docs/rules/budgets.md is action edit, made_by 1.1, and names the 'Every budget' table's four columns (Baseline file | Test that holds it | How to lower it | What it counts) as step 1.1 writes them; a stop_if covers the table being absent.",
+  "Docs: the decision number falls back to highest-plus-one when scripts/claim-decision.mjs (step 0.41, not a dependency) is missing."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (check lang on the drawn page, not the fetched HTML)",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

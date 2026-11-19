@@ -1,0 +1,19 @@
+{
+ "id": "1.16",
+ "fixed": [
+  "'store' kind: layout.tsx has no per-request read; the call now goes in CountryHintSection (src/components/country-hint-section.tsx line 18, after await headers()), the layout's one per-request part.",
+  "'pay' kind: checkout/page.tsx awaits nothing per request; the call now goes in loadCheckoutView() of checkout-section.tsx after readCartId (line 68).",
+  "(platform)/layout.tsx conditional edit removed: it has no per-request part (verified); after_deploy says 'site' is not recorded.",
+  "depends_on now names 1.11 (it creates scripts/render-modes.mjs), with a stop_if if it is missing.",
+  "stop_if about 'cannot be identified with certainty' replaced by a concrete one."
+ ],
+ "rejected": [
+  {
+   "problem": "The 'job' kind and the proxy hook both fire on cron-heavy instances; a cron route on a cold instance records as 'job'.",
+   "why": "That is the intended meaning of the kind (what the instance was started for), not a defect in the brief."
+  }
+ ],
+ "cheaper": "applied: the exact component and file for 'store' and 'pay' are named and 'site' is dropped as a no-op; the rating stays cheap-then-review because commit 2 still edits the proxy and per-request parts of pay pages.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,202 @@
+{
+ "id": "1.9",
+ "goal": "The database client has one statement counter that is off unless a test or a log line asks, an integration test holds the statements of five admin screens in a baseline that only falls, and each admin render logs one line with its count.",
+ "why": "Nothing counts queries today, so the store Home grew to 30 statements unseen. After this step the store shell, the store Home, the orders list, the products list and the platform Home each have a number in src/server/admin-statements.baseline.json, and a change that adds one statement fails pnpm test:int.",
+ "read_first": [
+  "docs/rules/admin/platform.md",
+  "src/db/client.ts",
+  "src/server/log.ts",
+  "src/server/ratchet.scan.test.ts",
+  "src/app/admin/(gated)/layout.tsx",
+  "src/app/admin/(gated)/[store]/layout.tsx",
+  "src/server/tax-report-tools.int.test.ts",
+  "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md"
+ ],
+ "depends_on": [
+  {
+   "id": "1.1",
+   "why": "it wrote the budgets rule and the scan that fails on a baseline file the rule does not name"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A statement counter in the database client, off unless asked",
+   "changes": [
+    {
+     "file": "src/db/statement-count.ts",
+     "action": "create",
+     "how": "A module with no import but node:async_hooks (it must not import 'server-only', React, drizzle or pg, so tests and scripts can load it; performance is the global). Export type StatementRecord = { text: string; values: unknown[]; rows: number | null; ms: number; startedAt: number; control: boolean }: startedAt is performance.now() when the statement was handed to the driver, ms is performance.now() - startedAt when its answer (or error) came, and control is true for a statement whose trimmed lower-case text starts with 'begin', 'commit', 'rollback', 'savepoint', 'release' or 'set local'. Keep one module-level `const store = new AsyncLocalStorage<{ statements: StatementRecord[] }>()` and one module-level `let renderCounter: (() => { statements: number } | null) | null = null`. Exports, exactly these six: (1) `setRenderCounter(get: (() => { statements: number } | null) | null): void` sets renderCounter (src/server/render-count.ts calls it once, commit 3; this file stays free of React). (2) `countStatements<T>(run: () => Promise<T>): Promise<{ result: T; statements: StatementRecord[]; count: number; ms: number }>`: runs `run` inside `store.run({ statements: [] }, …)` and returns the records, count = the number of records whose control is false, ms = the time the whole run took. (3) `noteStatement(text: string, values: unknown[]): ((rows: number | null) => void) | null`, in this order: if renderCounter is set, call it and, when it returns an object, add 1 to its statements; then `const s = store.getStore(); if (!s) return null;` (no record, no allocation: this is the path of every production query outside a test); otherwise push a record { text, values, rows: null, ms: 0, startedAt: performance.now(), control } and return a function done(rows) that sets the record's rows and ms (a second call does nothing). (4) `waves(records: StatementRecord[]): number`: leave out control records, sort the rest by startedAt, and count 1 for the first and 1 more for each record whose startedAt is at or after the largest startedAt + ms of all records before it (a statement that starts after every earlier one has answered begins a new wave: sequential reads are a wave each, a Promise.all is one wave); 0 for no records. (5) `sameStatementTwice(records: StatementRecord[]): string[]`: the texts that appear twice or more with JSON-equal values (control records left out), for later budgets. (6) the type. There is no statementsOf() and no WeakMap. Every function body is wrapped in try/catch so that a failure inside the counter returns null (noteStatement), [] or 0 and never fails a query; countStatements rethrows only what `run` throws."
+    },
+    {
+     "file": "src/db/client.ts",
+     "action": "edit",
+     "how": "In create(), after 'pool.on(\"error\", () => {});', add `pool.on(\"connect\", (client) => { … })` that replaces client.query once per client (mark it, e.g. a symbol property, so a client is never wrapped twice). The wrapper is a plain function (not an arrow) so it keeps `this`, takes `(...args)`, and: reads the text (args[0] when it is a string, else args[0]?.text) and the values (args[0]?.values when args[0] is an object with values, else args[1] when it is an array, else []); calls noteStatement(text, values) from './statement-count'. When noteStatement returned null: `return original.apply(this, args)` untouched. When args[0] has a function `submit` (a Submittable such as a cursor): call done(null) and return original.apply(this, args). When the last argument is a function (pg-pool's pool.query, which drizzle uses for every statement outside a transaction, ALWAYS calls client.query(text, values, callback): node_modules pg-pool index.js line 467): replace that last argument by `(err, res) => { done(err ? null : (res?.rowCount ?? res?.rows?.length ?? null)); return cb(err, res); }` and return original.apply(this, newArgs). Otherwise (the promise form, used inside transactions): `const result = original.apply(this, args);` attach `result.then((r) => done(r?.rowCount ?? r?.rows?.length ?? null), () => done(null));` as a separate branch and return `result` itself (not the branch; add no await). Both pools get it, because create() makes the primary and the replica. Change nothing else in this file: withRows(), db(), replicaDb(), readDb(), longerTimeout() and closeDb() stay as they are."
+    },
+    {
+     "file": "src/db/statement-count.int.test.ts",
+     "action": "create",
+     "how": "An integration test (it runs with pnpm test:int against DATABASE_URL). Cases: (1) outside countStatements nothing is recorded: run db().execute(sql`select 1`) and assert noteStatement('x', []) returns null. (2) inside countStatements, two db().execute calls give count 2, and each record has the statement's text, its values (select ${7}::int gives values [7]) and rows 1. (3) a db().transaction with one insert into a temp table and one select gives count 2 and two control records (begin, commit). (4) two countStatements running at once (Promise.all) do not see each other's statements. (5) the same select sent twice with the same value is reported by sameStatementTwice(). (6) a statement that fails (select 1/0) is recorded with rows null and the error still reaches the caller. (7) waves(): two awaited selects one after the other give waves 2, and the same two in one Promise.all give waves 1 (run each inside countStatements after one warm-up statement, so the pool has its connections). (8) with setRenderCounter(() => box) where box = { statements: 0 }, two db().execute calls outside countStatements raise box.statements to 2; reset with setRenderCounter(null) in a finally. Every record of cases 2 and 7 has ms above 0 (the callback path fills it)."
+    }
+   ],
+   "checks": [
+    "node scripts/db-setup.mjs --seed (once, on an empty DATABASE_URL), then pnpm vitest run --config vitest.integration.config.mts src/db/statement-count.int.test.ts: 6 tests pass",
+    "pnpm vitest run --config vitest.integration.config.mts src/server/replica-readers.scan.test.ts src/server/checkout.int.test.ts: pass (if a named file does not exist, run pnpm test:int for the whole folder instead)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  },
+  {
+   "title": "Five admin screens' statements are held in a baseline that only falls",
+   "changes": [
+    {
+     "file": "src/server/admin-screens.ts",
+     "action": "create",
+     "how": "Server-only (import 'server-only'). One exported async function per screen that runs exactly the reads the screen's layout or page runs after the member is known, in the same order and the same Promise.all groups, with the same conditions, and returns the results. Write exactly these (imports from where the five files import them today: storesOf from '@/components/admin/admin-shell-parts', memberCan from '@/server/permissions', waitingCount from '@/server/support', memberDesk and kaizenDesk from '@/server/support-desk', starterOfStore from '@/server/store-starters', pausedAfter from '@/server/store-trial', getSetupProgress from '@/server/setup', controlCenter from '@/server/control-center', demoContent from '@/server/demo-content', resolveOrderList and listOrdersPage from '@/server/order-list', listOrderViews from '@/server/order-views', tagSuggestions from '@/server/order-tags', listAdminProducts and getEditorContext from '@/server/products', productsNeedingMeasure from '@/server/unit-price-gaps', listJobs from '@/server/data-jobs', countPendingRequests from '@/server/platform', platformOverview from '@/server/platform-overview', cronJobRows from '@/server/cron-runs', platformSnapshot and platformBriefingSetting from '@/server/platform-briefing', failedWebhookEvents from '@/server/stripe-webhooks'; types Membership from '@/server/auth', Store from '@/server/stores', OrderListInput from '@/lib/order-list'). (1) `storeShellReads(member: Membership)`: `const { account, store } = member; const stores = await storesOf(account);` then, one after another as the layout does today (lines 74, 84, 86 and 88), `const waiting = memberCan(member, \"support:read\") ? await waitingCount([memberDesk(member).desk]) : 0;`, `const starter = store.starter ? await starterOfStore(store.id) : null;`, `const trialPaused = store.status === \"active\" ? await pausedAfter(store.id) : null;` and `return { stores, waiting, starter, trialPaused };`; move the layout's three comments above these lines with them. (2) `storeHomeReads(member: Membership)`: `const { account, store } = member; const owner = memberCan(member, \"owner\"); const [progress, center, demo] = await Promise.all([getSetupProgress(store), controlCenter(account, store.slug), owner ? demoContent(store.id, store.localization.locales[0] ?? \"en\") : null]); return { progress, center, demo };` with the page's comment on demoContent. (3) `ordersListReads(store: Store, input: OrderListInput)`: `const resolved = await resolveOrderList(store.id, input); const [page, views, suggestions] = await Promise.all([listOrdersPage(store.id, resolved.params, resolved.context), listOrderViews(store.id), tagSuggestions(store.id)]); return { resolved, page, views, suggestions };`. (4) `productsListReads(member: Membership, o: { archived: boolean; needsFilter: boolean; canWrite: boolean; locale: string })`: `const { store } = member;` and the products page's Promise.all of lines 90 to 96 word for word with archived, needsFilter, canWrite and locale read from o; return { products, needing, editor, imports }. (5) `platformShellReads()`: `const [waiting, supportWaiting] = await Promise.all([countPendingRequests(), waitingCount([(await kaizenDesk()).desk])]); return { waiting, supportWaiting };` (the platform layout's line 67). (6) `platformHomeReads()`: `const [o, jobs, snapshot, briefing, failedEvents] = await Promise.all([platformOverview(), cronJobRows(), platformSnapshot(), platformBriefingSetting(), failedWebhookEvents()]); return { o, jobs, snapshot, briefing, failedEvents };` (the platform page's lines 38 to 44). A doc comment at the top: one function per admin screen, the reads it runs after the member is known; src/server/admin-statements.int.test.ts counts them; the screens call these, so the count is what they run. If a signed-in e2e spec fails after the five files call these, stop (stop_if); do not keep a mirror copy."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/layout.tsx",
+     "action": "edit",
+     "how": "The four reads are not adjacent today: line 74 `const stores = await storesOf(account);`, and lines 83 to 88 (three comments and the awaits of waitingCount behind memberCan(member, \"support:read\"), starterOfStore behind store.starter and pausedAfter behind open). Replace line 74 by `const { stores, waiting, starter, trialPaused } = await storeShellReads(member);` and delete lines 83 to 88 (their comments moved into storeShellReads()). Keep `const open = store.status === \"active\";` and the canOpen line (open is still used there), the two after() calls, the permission checks and the JSX as they are. Import storeShellReads from '@/server/admin-screens'; drop the imports of storesOf (keep AdminAccountMenu and LevelSwitcher from that line), waitingCount, memberDesk, starterOfStore and pausedAfter only if pnpm lint says they are now unused."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/page.tsx",
+     "action": "edit",
+     "how": "Replace the Promise.all of lines 55 to 60 (getSetupProgress, controlCenter, demoContent) by `const { progress, center, demo } = await storeHomeReads(current);` (import from '@/server/admin-screens'). Keep `const owner = memberCan(current, \"owner\");` (used further down), the redirect to setup above, and everything below. Drop the three now-unused imports if pnpm lint says so."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/orders/page.tsx",
+     "action": "edit",
+     "how": "In OrderListBody, replace lines 68 to 73 (`const resolved = await resolveOrderList(store.id, await searchParams);` and the Promise.all after it) with `const { resolved, page, views, suggestions } = await ordersListReads(store, await searchParams);` (import from '@/server/admin-screens'); drop the three now-unused imports if pnpm lint says so."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/products/page.tsx",
+     "action": "edit",
+     "how": "Replace the Promise.all of lines 90 to 96 with `const { products, needing, editor, imports } = await productsListReads(member, { archived, needsFilter, canWrite, locale });` (import from '@/server/admin-screens'); keep the comment above it and the lines that compute archived, needsFilter, canWrite and locale. Drop now-unused imports if pnpm lint says so."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/page.tsx",
+     "action": "edit",
+     "how": "Replace the Promise.all of lines 38 to 44 with `const { o, jobs, snapshot, briefing, failedEvents } = await platformHomeReads();` (import from '@/server/admin-screens'); drop now-unused imports (platformOverview, cronJobRows, failedWebhookEvents; keep alertText from the platform-briefing import line) if pnpm lint says so."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/layout.tsx",
+     "action": "edit",
+     "how": "Replace 'const [waiting, supportWaiting] = await Promise.all([countPendingRequests(), waitingCount([(await kaizenDesk()).desk])])' with 'const { waiting, supportWaiting } = await platformShellReads()'."
+    },
+    {
+     "file": "src/server/admin-statements.int.test.ts",
+     "action": "create",
+     "how": "It mocks next/headers as src/server/webhook-topics.int.test.ts line 17 does, makes one store with its owner the way src/server/capacity-test-support.ts makeCapacityStore() does (reuse that helper), completes its setup in SQL (update commerce.stores set setup_completed_at = now() where id = ...), builds the member object the way src/server/tax-report-tools.int.test.ts builds 'owner' (read that file and copy its helper; do not call requireMemberAny, which needs a signed-in cookie), and then, for each of the five screens, runs its measure twice (storeShell: storeShellReads(member); storeHome: storeHomeReads(member); ordersList: ordersListReads(member.store, {}); productsList: productsListReads(member, { archived: false, needsFilter: false, canWrite: true, locale: 'en' }); platformHome: `await platformShellReads(); await platformHomeReads();`, the platform's layout and page as a person loads them): the first run warms what is cached per process, the second runs inside countStatements() and is the one compared. It records, per screen, { statements: count, waves: waves(statements) from src/db/statement-count.ts }. It compares each figure to src/server/admin-statements.baseline.json: a figure above the baseline fails with 'this screen now sends N statements, baseline M: read less, or raise the baseline in this commit and say why in the commit message'; a figure below fails with 'run UPDATE_BASELINE=1 pnpm test:int src/server/admin-statements.int.test.ts'. With the environment variable UPDATE_BASELINE=1 the test writes the file with what it measured and passes. A last case checks the counter's record for the store shell lists each statement's text, values and rows. A 'would notice' case wraps storeShellReads with one extra db().execute(sql`select 1`) and asserts the count is the baseline plus 1."
+    },
+    {
+     "file": "src/server/admin-statements.baseline.json",
+     "action": "create",
+     "how": "Written by 'UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts'. Shape: { storeShell: { statements, waves }, storeHome: {...}, ordersList: {...}, productsList: {...}, platformHome: {...} }. Never typed by hand."
+    }
+   ],
+   "checks": [
+    "UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/admin-statements.int.test.ts, then the same command without UPDATE_BASELINE, three times: passes each time with the same five figures (a figure that changes between runs is a stop condition)",
+    "Trial, never committed: add 'await db().execute(sql`select 1`);' to storeShellReads() and run the test: fails naming storeShell; remove it",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/orders-list.spec.ts e2e/signed-in/admin-view.spec.ts: pass (five screens' files changed); run them in a build made with the Auth stand-in as CLAUDE.md says"
+   ]
+  },
+  {
+   "title": "Each admin render logs one line with its statements",
+   "changes": [
+    {
+     "file": "src/server/render-count.ts",
+     "action": "create",
+     "how": "Server-only. 'export const renderCount = cache(() => ({ statements: 0, started: Date.now() }))' with cache from 'react'. On module load call setRenderCounter(() => { try { return renderCount(); } catch { return null; } }) from '@/db/statement-count'. Outside a render React's cache() returns a fresh object on each call, so a job or a route handler adds to an object nobody reads: that is intended."
+    },
+    {
+     "file": "src/app/admin/(gated)/layout.tsx",
+     "action": "edit",
+     "how": "In Gate, after the account is known, take 'const counted = renderCount()' and register 'after(() => log(\"info\", \"admin.render\", { statements: counted.statements, ms: Date.now() - counted.started }))' with after from 'next/server' and log from '@/server/log'. The line holds two numbers and nothing else: no path, no account, no store, no statement text (D400)."
+    },
+    {
+     "file": "src/server/render-count.test.ts",
+     "action": "create",
+     "how": "A unit test that reads src/app/admin/(gated)/layout.tsx as text and asserts the admin.render line passes only the fields statements and ms, and that src/db/statement-count.ts contains no call of log( or console."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a section '## Statements per screen' after '## The admin as people use it': the five figures from the baseline, the rule (a change that adds a read to the shell or a home screen raises a number in src/server/admin-statements.baseline.json in the same commit and says why), how to count anything (countStatements() from src/db/statement-count.ts) and that production's figure is the admin.render log line."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/server/render-count.test.ts: passes",
+    "pnpm build && pnpm start, open one admin page signed in (the Auth stand-in build), and read the server's output: exactly one line with \"event\":\"admin.render\" and a statements number above 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/db/statement-count.int.test.ts",
+   "proves": "the counter records text, values and rows per statement, only inside countStatements(), and never changes a query's result or error"
+  },
+  {
+   "file": "src/server/admin-statements.int.test.ts",
+   "proves": "fails when one of the five screens sends one more statement or one more wave than its baseline, and when a figure fell and the baseline was not lowered"
+  },
+  {
+   "file": "src/server/render-count.test.ts",
+   "proves": "the admin.render line carries counts only"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm test:int",
+   "expect": "runs src/server/admin-statements.int.test.ts green"
+  },
+  {
+   "check": "node -e \"console.log(Object.keys(require('./src/server/admin-statements.baseline.json')))\"",
+   "expect": "storeShell, storeHome, ordersList, productsList, platformHome, each with statements and waves"
+  },
+  {
+   "check": "Trial: one extra select added to storeShellReads(), then the int test",
+   "expect": "fails naming storeShell with baseline plus 1"
+  },
+  {
+   "check": "The test's last case",
+   "expect": "the record of one run lists each statement's text, values and rows returned"
+  }
+ ],
+ "after_deploy": [
+  "In Vercel's runtime logs, search for admin.render after opening the store Home once: one line per render with a statements figure. Write the figure for the store Home and the platform Home into docs/performance.md beside the baseline's."
+ ],
+ "docs": [
+  "The budgets rule (docs/rules/budgets.md after step 1.1; if the name differs find it with: rg -l 'baseline.json' docs/rules): in its table 'Every budget' add one row for each new baseline (src/server/admin-statements.baseline.json) with its test and the script that lowers it. Step 1.1's scan fails on a baseline under src that this rule does not name. Do not add a sentence to CLAUDE.md: step 1.1 gave all budgets one sentence there.",
+  "docs/performance.md: the section 'Statements per screen' (commit 3).",
+  "docs/decisions.md: add one row at the end of the decisions table with the next free D-number (read the last row first; D573 was the last on 12 November 2026, and other steps add rows, so never assume the number). It records: one statement counter in src/db/statement-count.ts, off unless countStatements() or a render asks; its in-memory record keeps text, values and rows for tests, and the production log line admin.render keeps two numbers only (D400); the five screens' start figures.",
+  "docs/audits/bloat-review-2026-11.md: in the Progress table set the row of step 1.9 to Done with the date and the commit hash, in the same commit as the last change of this step."
+ ],
+ "do_not": [
+  "Do not log a statement's text or values anywhere in production code: the record lives in memory inside countStatements() and is read by tests. The log line has statements and ms only.",
+  "Do not add an await or a try/catch that swallows errors around the real query: the wrapper returns the driver's own promise.",
+  "Do not wrap pool.query as well as client.query: pool.query calls client.query inside, so a statement would count twice.",
+  "Do not call requireMemberAny(), requirePermission() or requirePlatformReader() from the int test, and do not add a bypass to sign-in for it.",
+  "Do not lower a baseline figure by removing a read in this step: this step counts; steps 0.17, 2.32 and 2.33 cut.",
+  "Do not keep the same number in a second test: steps 1.10, 1.11, 1.12 and 1.25 use this counter for their own figures."
+ ],
+ "stop_if": [
+  "A figure of the five differs between two runs on the same database: say which statements differ (print the two records) and stop; do not add a margin.",
+  "Moving a screen's reads into src/server/admin-screens.ts changes its rendered output or a signed-in e2e spec.",
+  "pool.on('connect') does not fire for the clients drizzle uses (case 2 of statement-count.int.test.ts counts 0): report it; do not patch drizzle.",
+  "An existing integration test fails after commit 1.",
+  "A wave figure differs between runs while the statement count does not (the pool of 5 connections queued part of a Promise.all): report the two records; do not change waves() or add a margin."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Every function, line and condition is now written out (the counter's API, the wave rule, the callback path pg-pool uses, the five screens' reads with their permission conditions), but the wrapper sits on every production statement and the move touches the support:read condition of the store shell, where a compiling mistake slows or breaks every query or shows a count to the wrong member, so a stronger model reads each commit's diff.",
+ "checked_in_code": "I opened src/db/client.ts: create() builds a pg Pool and drizzle on it, for the primary and the replica, and transactions run on a pooled client, so the counter is hung on each client at the pool's 'connect' event rather than on pool.query as finding AD-12 says (that would miss every statement inside a transaction). I read the five screens' files: the store shell's reads are storesOf, waitingCount, starterOfStore and pausedAfter in [store]/layout.tsx; AD-12's storeShellData() does not exist, so the brief creates src/server/admin-screens.ts and makes the screens call it. AD-12 says the counter never keeps text or values while the plan's step says it keeps them: the brief keeps them in the test-only in-memory record and keeps them out of every log line. The log line goes in Gate of src/app/admin/(gated)/layout.tsx, which is as the finding describes. Second check (12 November): StatementRecord gets startedAt and the brief defines waves() exactly; statementsOf() is gone and noteStatement adds to the render counter, then returns null without a countStatements store; pg-pool's pool.query always calls client.query with a callback (pg-pool index.js line 467), so the wrapper now wraps the callback instead of calling done(null) (which would have left rows null and ms 0 on almost every statement); the store layout's four reads are named by line (74, 84, 86, 88) with their conditions, admin-screens.ts's six functions are written out (storeHomeReads takes the member only, productsListReads takes the page's four values, platformShellReads and platformHomeReads are separate and the platform measure calls both). Steps 2.32 and 4.4 already read these functions in admin-screens.ts.",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": []
+}

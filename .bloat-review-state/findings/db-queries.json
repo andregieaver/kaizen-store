@@ -1,0 +1,868 @@
+{
+ "key": "db-queries",
+ "title": "How data is asked for",
+ "headline": "All 14 verified findings stand, none argues from a feature being unused, and each now has ordered steps, the tests and rules that hold it, and one check; two were added. Today's cost is small (the listed app statements total about 39 minutes of database time in 78 days) because production holds only the team's demo stores, so what counts before opening is shape: one read fetches every published page whole to find one page (79,778 calls, 781 s), 122 store filters are written so the store index cannot serve them, the five-minute dispatcher starts 78 jobs on 5 connections, and 91,200 of 216,877 transactions deleted nothing. The two additions grow with orders and catalogue size: five document jobs find their due work each tick by re-checking every store's orders of 120 days and every invoice ever issued, and the catalogue listing calls a VAT function per product row (11.3 µs a row measured, against 0.1 µs when each rate is asked once). Do first: the statement counter (DQ-11), the store filter (DQ-8), the slug lookup (DQ-9), the knowledge job (DQ-6), the AI month sum (DQ-4) and the page index (DQ-2).",
+ "metrics": [
+  {
+   "name": "SQL statements written in src/server",
+   "value": "6,433 in 784 non-test files (3,883 selects); 5,124 .execute calls in 557 files; 1,272 typedRow(s) calls in 210 files",
+   "how": "From the verified report (the skeptic re-ran the auditor's sqlscan.mjs). Not re-run by me."
+  },
+  {
+   "name": "Listed database time in production, 78 days",
+   "value": "6,334 s in the 19 costliest statements; 3,974 s (63%) is the scheduler's net.http_post; app statements 2,360 s, about 30 s a day",
+   "how": "Total column of prod-db-stats.md lines 62-80, summed in the verified report; I read the same table."
+  },
+  {
+   "name": "Scheduler calls that are every-minute routes",
+   "value": "12,960 of 13,248 a day (97.8%); a fixed cost that does not grow with stores",
+   "how": "I counted 9 cron.schedule lines with '* * * * *' in baseline_4 (rg -c gives 9) times 1,440, against 288 dispatcher runs."
+  },
+  {
+   "name": "Transactions that do nothing",
+   "value": "162,622 of 216,877 begin/commit pairs (75%): 91,200 empty knowledge re-cuts and 71,422 advisory-lock claims by two minute routes",
+   "how": "Call counts in prod-db-stats.md lines 88 and 92, matched to knowledge.ts:248-258, theme-shots.ts:168-169 and content-packs.ts:735-737, which I opened. The 216,877 total is from the task brief."
+  },
+  {
+   "name": "Dispatcher shape",
+   "value": "78 jobs started at once with Promise.all, then 5 in turn; 84 ledger upserts a tick with the route's own; pool of 5 connections with a 5 s wait",
+   "how": "My node one-liner over api/cron/cart-reminders/route.ts: 78 keys in the runJobs object, 5 tracked(\"dispatcher.…\") calls after it; src/db/client.ts:68-70."
+  },
+  {
+   "name": "\"use cache\" reads",
+   "value": "85 directives in 49 files; no \"use cache: remote\"; statements issued from such functions ran 42,000 to 80,000 times each in 78 days",
+   "how": "My rg for the directive (85 in 49). Call counts from prod-db-stats.md lines 86-109."
+  },
+  {
+   "name": "is not distinct from",
+   "value": "145 uses in 52 files; 122 on store_id in 40 files; 6 files already hold a private owned() helper that branches correctly",
+   "how": "My rg -c -i over src with tests and test support left out (same numbers as the verified report); rg 'const owned = ' in src/server."
+  },
+  {
+   "name": "Calls of listPublishedPages",
+   "value": "35 call sites (37 rg lines: one definition, one comment); at least 12 look up one id with .find()",
+   "how": "My rg -n 'listPublishedPages\\(' over src, tests left out, read line by line."
+  },
+  {
+   "name": "Store slug looked up by id",
+   "value": "27 lines hold 'select slug from commerce.stores where id'; the statement ran 560,090 times, the most of any",
+   "how": "My rg -n (27 lines); prod-db-stats.md line 86."
+  },
+  {
+   "name": "select *",
+   "value": "138 in 78 files of src/server by the verified count; 141 in 80 by my rg",
+   "how": "rg -c -i 'select \\*|select [a-z_]+\\.\\*' with tests left out. The difference is the glob for test support."
+  },
+  {
+   "name": "Database calls inside loops; list reads with no limit",
+   "value": "341 loops in 183 files plus 5 async map callbacks; 387 of 1,648 selects return a list with no limit (442 carry one); 6 load rows only to count them",
+   "how": "From the verified report (re-runs of loopscan.mjs and countscan.mjs; lexical heuristics). Not re-run by me."
+  },
+  {
+   "name": "Connection pool",
+   "value": "5 connections per instance, 5 s idle, 5 s wait, node-postgres through the transaction pooler, no named prepared statements, read replica used by 1 module and off",
+   "how": "I read src/db/client.ts:63-110 and :151-157; rg 'replicaDb()' gives analytics-totals.ts only."
+  },
+  {
+   "name": "Per-row SQL functions (new)",
+   "value": "vat_rate 48 uses in 33 files, store_is_active 69 in 44, media_alt 9 in 6; 91 stable SQL functions in commerce carry a SET clause, so Postgres cannot inline them",
+   "how": "My rg -c with tests left out; pg_proc on the local scratch database (proconfig not null, language sql, stable or immutable, not set-returning)."
+  },
+  {
+   "name": "Cost of a per-row function (new, measured)",
+   "value": "vat_rate over 10,000 product rows 112.9 ms (11.3 µs a row) against 0.9 ms when each category's rate is asked once; store_is_active 24.1 ms against 0.5 ms for the plain expression on 10,002 rows; media_alt 48.8 ms for 10,000 rows on an empty media table",
+   "how": "explain (analyze, timing off) in a read-only transaction on the local scratch database (PostgreSQL 16.15, 20 products cross-joined with generate_series)."
+  },
+  {
+   "name": "How the document jobs find due work (new, measured)",
+   "value": "invoice job: orders entered on placed_at only through an index that starts with store_id (whole index walked), every succeeded refund read; invoice email job: every invoice read, issued_at only a Filter; e-invoice job: each 2-day invoice's snapshot JSON read",
+   "how": "My EXPLAIN (costs off, enable_seqscan off, read-only) of the statements at invoice-issue.ts:72-99, invoice-notices.ts:131-139 and einvoice-sending.ts:64-70 on the local scratch database; index list of invoices, credit_notes, refunds and orders from baseline_3_rules.sql."
+  },
+  {
+   "name": "Prune deletes of the dispatcher",
+   "value": "9 prune jobs read; every pruned table has an index on the time column the delete filters by",
+   "how": "I opened pruneSearchLog, pruneApiIdempotency, pruneOAuthTokens, pruneSearchCache, pruneDocsCounts, pruneFormSubmissions, pruneRecommendEvents and pruneReplications and matched each to its CREATE INDEX in baseline_3_rules.sql."
+  }
+ ],
+ "clean": [
+  "No finding in this dimension rests on a feature being unused; where the first auditor argued from an empty table the verified report kept only the running cost, and so does this plan.",
+  "src/db/client.ts: one pool per instance (max 5, idle 5 s) attached to Vercel's lifecycle, node-postgres chosen for the transaction pooler with the reason written down (D37), no named prepared statements anywhere.",
+  "Statement and lock limits are the role's (15 s, 5 s) and a longer one is taken with set local inside a transaction (longerTimeout, client.ts:89-92), never a plain set through the pooler.",
+  "Transactions around single reads are rare: 12 read-only by their text among the 296 the scan could parse, each with a reason.",
+  "Counting by loading rows is rare (6 heuristic hits in 1,648 selects), and offset paging is rare (11 uses in 10 files, all admin lists and version lists).",
+  "The read replica (replicaDb, client.ts:105-110) is built but off, used by one module (analytics-totals.ts), and costs nothing while READ_DATABASE_URL is unset.",
+  "publishedPageNames (pages.ts:713-735) pulls titles out of the JSON in SQL instead of fetching documents: the right shape, and the model for DQ-2.",
+  "Queues are claimed with for update skip locked (integrations.ts:1033-1039, cookie-scans.ts:78-83), and store events are a real queue with done marks (staff-alerts.ts processStoreEvents), so the minute route's alert work follows what waits.",
+  "The dispatcher's prune deletes are served by an index on their time column (search_queries_created_idx, search_cache_created_idx, recommendation_events_created_idx, recommendation_adds_created_idx, form_submissions_created_idx, api_idempotency_keys_created_idx, docs_reads_day_idx, oauth_tokens_expires_idx): they will not scan the growing tables. Their cadence is DQ-5's matter.",
+  "A page view is recorded with two statements (one read, one upsert that also counts product views) plus a rate check for a new visitor (analytics-visits.ts recordVisit): lean for the write that will grow fastest.",
+  "cronAuthorised() reads the scheduler's secret from Vault at most every five minutes per instance (cron-auth.ts:18-31), not on every call.",
+  "Several dispatcher jobs already ask only for stores where the feature is set up (staff-alerts.ts joins staff_alert_settings; order-archive.ts starts from order_settings.auto_archive_days). The chat agent is off by default, so the knowledge job's cost follows the stores that switch it on.",
+  "bonus_expire_due and the VAT-label midnight check are one set-based statement a tick each (2.1 ms and 7.3 ms a call): the right shape for a job over all stores.",
+  "getStore() reads one wide row per store and is cached per store (stores.ts:231-277): one statement in place of many small ones.",
+  "The admin's session, account and membership reads are wrapped in React cache() (auth.ts:121, 215, 354, 407), and cart, checkout and order share one read per request through perRequest().",
+  "status_checks is pruned at 91 days (status.ts:265); the statistics file's note 'never pruned' is wrong.",
+  "The proxy's two store reads are kept 10 s per instance (redirect-resolve.ts:203-232, house-switch.ts:31-43): single-row reads whose cost follows shopper traffic.",
+  "media.url has a unique index and thumbnail_url an index (baseline_3_rules.sql:2884, 9796), so alt-text lookups can use them once the table is large."
+ ],
+ "refuted": [],
+ "findings": [
+  {
+   "id": "DQ-1",
+   "title": "Nine routes are called every minute whether or not there is work, and one of their questions grows with the number of stores",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:66-104",
+    "/home/user/kaizen-store/src/server/cookie-scans.ts:72-110",
+    "/home/user/kaizen-store/src/app/api/cron/cookie-scan/route.ts:18-30",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:7574-7591",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:55-67",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:112-116",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:164-170",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:330-342",
+    "/home/user/kaizen-store/src/app/api/cron/theme-shots/route.ts:21-32",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:14031",
+    "/home/user/kaizen-store/src/server/content-packs.ts:733-750",
+    "/home/user/kaizen-store/src/server/integrations.ts:1031-1062",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:24-38",
+    "/home/user/kaizen-store/src/server/ai-pause.ts:18-28",
+    "/home/user/kaizen-store/docs/audits/psi-followups.md:477"
+   ],
+   "evidence": "pg_cron schedules nine jobs with '* * * * *' (baseline_4:93-103; I counted 9), each a net.http_post that also reads the cron secret from Vault. Production: 352,514 calls, 3,974 s, 11.3 ms each. Each run polls without first asking whether anything waits. Cookie scan: two updates, then a CTE over every open site with two correlated subqueries on cookie_scans written 'is not distinct from' (cookie-scans.ts:94-99); the table's only fitting index is (store_id, created_at) (baseline_3:7591) and that wording cannot use it, so production shows 1,101,927 sequential scans of cookie_scans over 49,338 calls: 22 scans a call, 873 rows a scan. Theme shots: every run calls queueThemeShots() first (theme-shots.ts:331), which reads every published theme with its whole snapshot, the theme contents, the showcase stores and the stored queue, then opens a transaction with an advisory lock to claim; production shows 35,101 such theme reads (101 s) against a theme_shots table of 72 rows, although three callers already queue shots when a theme or demo store changes (askForThemeShots: store-starters.ts:326, design-presets.ts:825 and 2368) and a partial index on the waiting units exists (theme_shots_queue_idx, baseline_3:14031). Pack pictures opens a lock transaction each minute (content-packs.ts:735-737). Together the two lock claims are the 71,422 pg_advisory_xact_lock calls. The integrations route runs seven pollers a minute (inbound email, workflows, the platform's workflows, deliveries, the platform's deliveries, support emails, store events) and deliverDue() ends every run with a prune delete (integrations.ts:1062; 66,533 calls each of the claim and the delete). The autopilot's three runners each read the pause switch (ai-pause.ts:18; 69,075 calls). Eight of the nine routes answer first and work in after(), so the ledger's 0 to 1 ms durations do not show idleness; the row counts do.",
+   "cost": "12,960 function calls a day by the schedule, fixed whatever the store count. At most about 150 s of database time a day for the calls themselves (13,248 calls at 11.3 ms). What grows: the cookie scan's who-is-due query does 2 table scans per open site per minute; estimate, at 1,000 open stores that is 2,000 scans a minute of a table of about 13,000 rows. The theme-shot polling grows with themes, not stores.",
+   "who_pays": "The database and the server (function invocations), every minute. No shopper or owner waits for it.",
+   "fix_steps": [
+    "1 (S, first). Cookie scan's due query, src/server/cookie-scans.ts:85-110: write the 'last' CTE so an index serves it. For stores: from sites s left join lateral (select max(c.finished_at) filter (where c.status = 'done') as done_at, max(c.created_at) as tried_at from commerce.cookie_scans c where c.store_id = s.store_id) l on true. For the platform's row: the same subquery with c.store_id is null. Combine the two with union all. Keep the insert, the order and the on conflict clause as they are.",
+    "2. No new index is needed. My EXPLAIN of the rewritten query on the local scratch database (read-only, enable_seqscan off) shows both branches as an Index Cond on the existing cookie_scans_store_created_idx (store_id = the site, and store_id is null for the platform); one site holds about 13 rows (a weekly scan kept 90 days). In src/server/site-cookies.ts:44-47 write the store filter with the owned() helper of DQ-8 so the banner's read of the latest finished scan is served the same way (my EXPLAIN: Index Cond on store_id, then a sort of that site's few rows).",
+    "3. Weekly scans from an hourly pass. Split claimScan(): keep, every minute, the stale-running update and the claim of a queued scan (my EXPLAIN: both go through the partial index cookie_scans_one_active_idx, which holds only waiting and running scans). Move the due query into a new queueDueScans(limit = 20) in the same file that inserts due sites as status 'queued' with requested_by null. Call it from the dispatcher as a job with an hourly cadence once DQ-5 gives jobs cadences; until then call it from src/app/api/cron/cookie-scan/route.ts only when new Date().getUTCMinutes() === 0 (the pattern autopilot-effects.ts:44 uses). One scan a minute still gives room for 10,000 weekly scans.",
+    "4. Theme shots, src/app/api/cron/theme-shots/route.ts:21-32 and src/server/theme-shots.ts:330-342: before after(), ask one statement, select exists (select 1 from commerce.theme_shots where status in ('waiting', 'running')), which my EXPLAIN shows as an index-only scan of theme_shots_queue_idx; when false answer { started: false } and do nothing else. In runThemeShots() stop calling queueThemeShots() on every run: work out wantedNow() only after the first unit is claimed (takeThemeShot needs it). Bring the queue in line where it changes: the three askForThemeShots() callers stay, and add one daily sweep (queueThemeShots() then pruneThemeShots()) as a dispatcher job claimed with claimDay('daily.theme-shot-sweep', …) as ui-nightly.ts:73 does.",
+    "5. Pack pictures, src/server/content-packs.ts:733-750 claimPack(): before opening the lock transaction ask select exists (select 1 from commerce.store_starters where pictures_wanted_at is not null) and return null when false.",
+    "6. Prunes out of the minute: remove the delete at src/server/integrations.ts:1062 from deliverDue() and its twin in src/server/platform-integrations.ts deliverPlatformDue(); export them as pruneDeliveries() and prunePlatformDeliveries() (platform-integrations.ts:484) and run both from the dispatcher with a daily cadence (DQ-5), or from runRetention().",
+    "7. Autopilot route, src/app/api/cron/autopilot/route.ts:19-30: read aiAutonomyPaused() once in the route and pass the answer to the three runners, which today each call skipWhilePaused() (autopilot-runner.ts:58, autopilot-reviews.ts:114, autopilot-events.ts:179).",
+    "8 (optional, last, only if function invocations show on the bill). Put the due test in the scheduler's own SQL so no HTTP call is made when a queue is empty. It keeps each route's due test in two places (a migration and the code) and needs a heartbeat so the ledger does not read the route as late. Not recommended before opening: once real stores exist the queues have work most minutes and the saving shrinks."
+   ],
+   "tests_and_rules": [
+    "src/server/cookie-scans.int.test.ts holds the claim order (an asked scan first, then the site whose finished scan is oldest, a failed one again after an hour): it must pass unchanged after steps 1 to 3, with a new case that a queued schedule scan is taken by the minute run.",
+    "e2e/cookie-scan.spec.ts (the owner's Scan now) and src/server/store-features-customers.int.test.ts and src/server/consents.int.test.ts (siteCookies).",
+    "src/server/theme-shots.int.test.ts holds 'a run queues, then claims': change it to queue through askForThemeShots() or the sweep, and add a case that an idle run issues one statement.",
+    "src/server/content-packs.int.test.ts (claimPack), src/server/integrations.int.test.ts and src/server/platform-integrations.int.test.ts (deliveries older than the keep time go: move the assertion to the prune function), src/lib/retention.test.ts, src/server/ai-pause.int.test.ts.",
+    "src/server/cron-routes.scan.test.ts: every cron route keeps its maxDuration and its trackedRoute('route.<name>'); a new daily job's name must match JOB_KEY and be run inside tracked('<name>', 86_400, …).",
+    "No migration is needed for this finding, so the baseline and src/db/commerce.test.ts are untouched.",
+    "Written rules to change with it: docs/theme-showcase-phase-2.md:71 and docs/rules/admin/website.md:238 (say the queue is brought in line when a theme or demo store is published and once a day, not every minute); docs/rules/storefront.md Cookie consent (D58) paragraph near line 627 (say the weekly scans are queued hourly)."
+   ],
+   "depends_on": [
+    "DQ-8 (the shared owned() helper)",
+    "DQ-5 (a cadence for the hourly and daily parts; until then the minute-0 test)",
+    "DQ-11 (the statement counter the check uses)"
+   ],
+   "done_when": "DQ-11's int test counts at most 3 statements for an idle cookie-scan run and 1 each for an idle theme-shots and pack-pictures run, and on production a day after the deploy seq_scan of commerce.cookie_scans in pg_stat_user_tables grows by fewer than 100 a day (about 31,000 a day today: 22 a minute).",
+   "saving": "Estimate. Steps 1 to 7: the 1.1 M sequential scans of cookie_scans and the 101 s of theme reads go, the 71,422 lock transactions stop while nothing waits, and the minute cost stops growing with stores. Step 8 would save up to 12,900 function calls a day while queues are empty; that saving shrinks once real stores give the queues work.",
+   "effort": "M",
+   "risk": "A wrong due test leaves work waiting: a weekly cookie scan that never starts, or a theme published without photographs. Noticed by the platform home (route.cookie-scan and route.theme-shots still record every run), by cookie-scans.int.test.ts and theme-shots.int.test.ts, and in production by cookie_scans rows with status 'done' no longer appearing weekly per site. For the first weeks keep the daily theme sweep and compare its 'missing' count with zero.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "partly: docs/audits/psi-followups.md:477 REL-06 (open) says the routes that work after answering are not recorded in the job ledger. No step covers the polling itself.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Steps 1 and 2 alone are P0-sized (small, safe, and they remove the one per-minute question that grows with stores). The cron dimension describes the same scheduler cost from its side; do the work once. pg_cron's own run log (the cron schema is 564 MB) is not shrunk by this: pg_cron logs a row per run either way, and its pruning belongs to the cron and schema dimensions."
+  },
+  {
+   "id": "DQ-2",
+   "title": "Every published page is read whole to find one page or a few titles",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:664-681",
+    "/home/user/kaizen-store/src/server/pages.ts:713-735",
+    "/home/user/kaizen-store/src/server/pages.ts:797-800",
+    "/home/user/kaizen-store/src/server/pages.ts:859-863",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:135-153",
+    "/home/user/kaizen-store/src/server/legal-links.ts:20-30",
+    "/home/user/kaizen-store/src/server/platform-roles.ts:34-38",
+    "/home/user/kaizen-store/src/server/checkout-terms.ts:46",
+    "/home/user/kaizen-store/src/components/site-chat.tsx:110",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/page.tsx:29",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/[slug]/page.tsx:18-24",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/blog/blog-listing.tsx:89",
+    "/home/user/kaizen-store/src/server/media-alts.ts:25-55"
+   ],
+   "evidence": "listPublishedPages() (pages.ts:664-681) selects id, slug, published (the whole document) and two dates for every published page of an owner, parses each with zod, then looks up library alt texts for every picture on every page (withPageAlts). I listed its call sites with rg: 35. At least 12 then do .find() for one id: the front page (s/[store]/[market]/page.tsx:29), the products page (pages.ts:799), a page by id (pages.ts:862), the platform's role pages (platform-roles.ts:37), the checkout's terms (checkout-terms.ts:46), three account pages, the blog's listing page (blog-listing.tsx:89), the chat's page (site-chat.tsx:110) and two admin previews. Others read only titles: the platform's header and footer load every page and every article whole to build a map of id, slug and title (platform-navigation.ts:138-146); a store's footer loads them all to print up to five legal titles (legal-links.ts:24-29); generateStaticParams loads them all for the slugs (s/[store]/[market]/[slug]/page.tsx:20). Production: 79,778 calls, 781 s, 2,334,038 rows, 29 rows a call: the most expensive app statement, 33% of the listed app time. publishedPageNames (pages.ts:713) already shows the slim shape.",
+   "cost": "781 s in 78 days, 9.8 ms a call, on the team's demo stores. Estimate: about 90 KB a call on disk (29 rows at about 3 KB), more as JSON on the wire, parsed each time. After opening, the size of a call follows one store's own page count (a blog with 300 articles sends 300 documents for one listing or one sitemap), and the number of calls follows cold renders across all stores, because the cache lives in one instance.",
+   "who_pays": "The server on every cold render of a page's frame; the database; a visitor waits for it on the first view after a deploy or on a cold instance.",
+   "fix_steps": [
+    "1. In src/server/pages.ts add publishedPageIndex(owner, type = 'page'): 'use cache', cacheLife('hours'), cacheTag(pagesTag(owner)), the same where and order by as listPublishedPages, but no document. Columns: id, slug, published ->> 'title' as title, the translated titles as one small object (select jsonb_object_agg(t.key, t.value ->> 'title') from jsonb_each(published -> 'translations') t where coalesce(t.value ->> 'title', '') <> ''), published_at, first_published_at. Type PublishedPageEntry = { id, slug, title, titles, publishedAt, firstPublishedAt }. Add a further field only when a caller moved in step 3 needs it, each taken with a JSON operator. Write the store filter with DQ-8's owned().",
+    "2. Add publishedPageById(owner, id): same cache settings and tag; select id, slug, published, published_at, first_published_at from commerce.pages where id = the id and the owner's branch and published_at is not null; parse; withPageAlts([page]). The primary key serves it.",
+    "3. Move the readers of one page to publishedPageById: src/app/s/[store]/[market]/page.tsx:29, src/server/pages.ts:799 and :862, src/server/platform-roles.ts:37, src/server/checkout-terms.ts:46, src/components/site-chat.tsx:110, src/app/s/[store]/[market]/blog/blog-listing.tsx:89, src/app/s/[store]/[market]/account/change/[token]/page.tsx:60, account/exchange/[token]/page.tsx:60, account/pay/[token]/page.tsx:55, src/app/admin/try/[sandbox]/[kind]/[pageId]/preview/page.tsx:28 and src/app/admin/account/themes/[presetId]/preview/page.tsx:91.",
+    "4. Move the readers of titles and addresses to publishedPageIndex: src/server/platform-navigation.ts:138 and :140 (id, slug, title, titles are exactly what byId() builds), src/server/legal-links.ts:24, and generateStaticParams in src/app/s/[store]/[market]/[slug]/page.tsx:20 and [slug]/[...sub]/page.tsx:22. legal-links.ts takes the title through localizePage(content, locale): add a small pure helper in src/lib/page-translation.ts, localTitle(entry, locale), that picks from titles by the same key rule as localizePage, with a unit test that both give the same title on the fixtures of src/lib/product-layout.test.ts.",
+    "5. Leave on listPublishedPages, with a doc comment saying it is for readers that need every document: src/server/seo.ts (lines 465, 600, 687, 796, 872), src/server/page-ai.ts:96-97, src/server/blogs.ts:114, blog/article-page.tsx:40 and :53, src/components/platform-routes/blog.tsx:45, src/components/platform-routes/page.tsx:24 and the admin's search page. Move a sitemap or robots reader to the index later, when the fields it reads are in it; the type checker shows which those are, because content is not on the index type.",
+    "6. Run pnpm typecheck, pnpm test and pnpm test:int; build and run pnpm test:e2e for the store and platform pages."
+   ],
+   "tests_and_rules": [
+    "src/server/pages.int.test.ts, redirect-resolve.int.test.ts, country-content.int.test.ts, legal-starters.int.test.ts, page-duplicate.int.test.ts, alt-texts.int.test.ts and experiments.int.test.ts call listPublishedPages, publishedPageNames or findPublishedPage: they must pass unchanged.",
+    "Add to src/server/pages.int.test.ts: for a seeded store with a translated page, publishedPageIndex returns the same ids, slugs, titles and dates as listPublishedPages, and publishedPageById returns the same content with its alt texts as the entry found in the list.",
+    "e2e/store-pages.spec.ts (a store's front page, its own pages, the footer's legal links) and the platform's page specs.",
+    "docs/wave-1-trust.md:970 holds 'a starter is out of the sitemap until published': unchanged, the where clause is the same.",
+    "A new 'use cache' function carries its tag: publishing, unpublishing or deleting a page already refreshes pagesTag(owner), which both new reads carry."
+   ],
+   "depends_on": [
+    "DQ-8 (the owned() helper, so the new reads are born index-friendly)"
+   ],
+   "done_when": "rg -c 'listPublishedPages\\(' over src (tests left out) gives at most 20 lines (37 today), and on production a week after the deploy pg_stat_statements shows the statement 'select id, slug, published, published_at, first_published_at from commerce.pages … order by created_at' with fewer than a quarter of the calls of the new index statement.",
+   "saving": "Estimate: most of the 781 s (rows shrink from whole documents to a few short columns, or to one row), the zod parse of every document per call, and the alt lookup for pages not being drawn. The saving per call grows with a store's content.",
+   "effort": "M",
+   "risk": "A caller that silently needed another field of the content: the type checker shows it, since content leaves the index type. A cold page then makes two small reads (the index and one document) where it made one large one. A wrong title in a menu or footer would be seen in e2e/store-pages.spec.ts and on the platform's own header.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no (code review step 3.9, Open, is the same idea for products: 'Stop reading the whole catalogue for one page')",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "The 29 rows a call are demo content; the cost per call will follow each real store's page and article count. The caching and storefront-data dimensions describe the same read; do it once. DQ-7 step 4 and DQ-10 build on the index."
+  },
+  {
+   "id": "DQ-3",
+   "title": "\"Where is this picture used\" scans every page's text for each picture, and the job re-checks every picture daily",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/media-library.ts:317-391",
+    "/home/user/kaizen-store/src/server/media-library.ts:793-831",
+    "/home/user/kaizen-store/src/server/media-library.ts:860-876",
+    "/home/user/kaizen-store/src/server/alt-texts.ts:110",
+    "/home/user/kaizen-store/src/server/media-compress.ts:77",
+    "/home/user/kaizen-store/src/server/media-compress.ts:149",
+    "/home/user/kaizen-store/docs/media-compression.md:59",
+    "/home/user/kaizen-store/docs/rules/admin/website.md:676"
+   ],
+   "evidence": "mediaUses() joins each picture to every page of the site and tests position(m.url in pg.draft::text) and the same on published, so both documents of every page are cast to text per picture; it does the same over entries, menus, saved parts, theme looks and settings in 12 union branches (media-library.ts:321-381). Production: 1,831 calls at 145 ms, and other shapes 43 at 925 ms, 198 at 133 ms, 205 at 66 ms, 776 at 47 ms: about 382 s in all, the second most expensive app statement. embedMedia() (media-library.ts:798-831, which I opened) picks every picture whose vector is older than a day ('or e.updated_at < now() - interval ''1 day''', line 810, 'so what uses an item is kept current'), 128 a run, calls mediaUses() for them, then only moves the date on the unchanged ones (822-828): media_embeddings shows 13,414 updates on 468 rows, about 29 daily re-stamps of each. refreshMediaEmbeddings() loops over every site with media, one after another (860-874), every five minutes.",
+   "cost": "About 382 s in 78 days on 699 pictures. It grows with pictures times pages times page size per store, every day, for every store with media and an AI connection, whether or not anything changed. Estimate: a store with 2,000 pictures and 100 pages of 50 KB scans about 20 GB of text a day.",
+   "who_pays": "The database, daily per picture, driven by the five-minute dispatcher; an owner opening the media library (two calls per page of the library).",
+   "fix_steps": [
+    "1 (S, first). In src/server/media-library.ts embedMedia(): replace the daily clause at line 810 with a change test. Once per site per run read one stamp, the latest change of anything that can hold a picture: greatest of max(updated_at) over the site's rows in the tables the 12 branches of mediaUses() read (lines 321-381: pages, product media and products, content entries, menus, saved parts, theme looks, settings). Pass it into the stale query as 'or e.updated_at < the stamp'. A site where nothing changed since its vectors were stamped then returns no stale rows and mediaUses() is not called. A table without an updated_at column keeps the daily clause for its branch only; say which in a comment.",
+    "2. Run the media job hourly, not every five minutes, once DQ-5 gives jobs cadences (the upload path already embeds a new picture).",
+    "3 (M). Keep uses in a table. Migration: commerce.media_uses (store_id uuid null, media_id uuid not null references commerce.media on delete cascade, source text not null, ref_id text not null, primary key (media_id, source, ref_id)), an index on (store_id), row level security on as every commerce table has. New src/server/media-uses.ts: recordMediaUses(owner, source, refId, urls), which replaces the rows of (source, refId) in one statement. Call it from the savers of each of the 12 places (pages through pageImageUrls(), products, menus, entries, saved parts, themes, settings); the list of places is the comment at media-compress.ts:205-206.",
+    "4. mediaUses() reads commerce.media_uses. Today's 12-branch query becomes reconcileMediaUses(owner): run once a night per site with changes (the stamp of step 1) and from the library's own refresh, writing the table.",
+    "5. Add src/server/media-uses-writers.scan.test.ts in the manner of store-writers.scan.test.ts: a module that writes one of the 12 places and does not call recordMediaUses() fails, unless listed with its reason."
+   ],
+   "tests_and_rules": [
+    "src/server/media-library.int.test.ts (uses per picture, search by meaning), src/server/media-compress.int.test.ts (docs/media-compression.md:59: a new place is added to rewriteAddresses() and mediaUses() together), src/server/product-media.int.test.ts, src/server/content-grid-custom.int.test.ts, src/server/theme-store.int.test.ts.",
+    "Rules that say a new place that keeps a picture goes in mediaUses(): docs/rules/storefront.md:170 and :186, docs/rules/admin/commerce.md:354, docs/rules/admin/website.md:676 ('used is worked out on request by mediaUses()'), docs/content-grid-custom-items.md:106, docs/wave-6-catalogue.md:143 and :159, docs/wave-7-storefront.md:421. With step 3 each must say: the saver records the use, and the nightly reconcile is the net.",
+    "src/db/commerce.test.ts for the new table (a deleted picture's uses go with it)."
+   ],
+   "depends_on": [
+    "DQ-5 (the hourly cadence of step 2)",
+    "DQ-8 (owned())"
+   ],
+   "done_when": "After step 1: on production n_tup_upd of commerce.media_embeddings grows by fewer than 50 a day while no content changes (about 468 a day today: 13,414 updates on 468 rows). After step 4: total_exec_time of the statements starting 'with m as (select id, url, thumbnail_url from commerce.media' grows by under 1 s a week.",
+   "saving": "Estimate: at least 80% of the 382 s and nearly all 13,414 re-stamps after step 1; the library's read becomes an index lookup after step 4. The larger gain is that the daily cost stops growing with every store's library.",
+   "effort": "M",
+   "risk": "After step 1 a use in a place whose table has no change stamp would show late; the per-branch daily clause covers it. After step 3 a writer that forgets to record a use leaves 'Used in' stale until the nightly reconcile, and Compress could then miss a place: the scan test of step 5 and media-compress.int.test.ts are the guard. Noticed in the media library's 'Used in' list.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Step 1 is P0-sized and stands alone. The schema dimension describes the same query; do it once."
+  },
+  {
+   "id": "DQ-4",
+   "title": "Each request for an AI connection sums the store's whole month of AI usage",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/ai.ts:207-239",
+    "/home/user/kaizen-store/src/server/limits.ts:121-153",
+    "/home/user/kaizen-store/src/server/usage-sql.ts:36-57",
+    "/home/user/kaizen-store/src/server/ai-price-sql.ts:16-36",
+    "/home/user/kaizen-store/src/server/usage-meter.ts:40-48",
+    "/home/user/kaizen-store/docs/capacity.md:606-612"
+   ],
+   "evidence": "aiFor() is named on 92 lines in 65 files (my rg). For a store on the platform's key whose plan has a limit it calls aiRoomLeft(), which sums every ai_usage row of the month with a lateral price lookup per row and a euro conversion per day (usage-sql.ts:48-57, which I opened). The one-minute memo (limits.ts:122, 139-144) lives in one function instance and ticks are five minutes apart, so it helps only within one run. The daily totals already exist: usage-meter.ts:45 writes ai_cost_micros per store and day. docs/capacity.md:610-612 describes month keys as the month's daily rows plus today's live count; the code sums the whole month live instead, though storage_bytes at limits.ts:145-153 already does it the described way. Production: 6,782 calls at 37 ms and 1,732 at 57 ms, about 352 s, the third most expensive app statement, on 19,104 rows.",
+   "cost": "About 352 s in 78 days; 37 to 57 ms in front of AI features and of each job that asks per store. It grows with a store's usage through the month and with the number of stores the five-minute jobs ask for.",
+   "who_pays": "The database; a shopper or owner waiting for an AI answer; each five-minute job that asks per store.",
+   "fix_steps": [
+    "1. In src/server/limits.ts liveValue(), case 'ai_cost_micros' (lines 138-144): month to date = the sum of this month's store_usage_daily rows for the metric, plus a live aiCostSql() from the start of the day after the latest measured day (or from the month's start when no day is measured yet) to now. Take the day bounds from the dayBounds() of usage-meter.ts:18 (export it), so a call is counted once: never in a measured day and in the live part. Keep the 60 s memo.",
+    "2. The same for 'marketing_emails' (lines 135-136) with emailsSql().",
+    "3. A price added later for past dates must re-measure: in the writer of model prices (src/server/ai-prices.ts) call measureDay(day, false) for each day of the current month after a price with a start date in the past is saved, or the limit reads low. Add an int test for it.",
+    "4. Read the new sum through typedRow() with the file's column helpers, as money-reads.scan.test.ts asks of reads that carry money.",
+    "5. docs/capacity.md:610-612 already describes this shape: leave the text, and add one line that the live part starts after the latest measured day."
+   ],
+   "tests_and_rules": [
+    "src/server/limits.int.test.ts and src/server/limits-enforce.int.test.ts (docs/dpia-ai.md:62 names the second as the proof that a store on Kaizena Flow's key stops at its plan's monthly limit): add a case with usage spread over measured days and today, and one where yesterday is not measured yet.",
+    "src/server/usage-meter.int.test.ts (measureDay), src/server/ai-cost.int.test.ts, src/server/ai-usage.int.test.ts, src/lib/limits.test.ts.",
+    "src/server/money-reads.scan.test.ts and src/server/ratchet.scan.test.ts (no new unchecked read).",
+    "docs/capacity.md:606-612 is the written rule; the fix makes the code follow it."
+   ],
+   "depends_on": [],
+   "done_when": "limits-enforce.int.test.ts passes with a month of seeded usage split across measured days and today, and on production a week after the deploy the mean_exec_time of the ai_usage cost statement issued from limits.ts is under 5 ms in pg_stat_statements (37 to 57 ms today).",
+   "saving": "Estimate: about 90% of the 352 s (one day's rows instead of a month's), and the cost stops growing through the month.",
+   "effort": "S",
+   "risk": "A day counted twice or missed at the boundary would move a store's limit: the two new test cases hold it. Past days are as good as the nightly measure; a price added later is covered by step 3. A wrong figure would show on Usage and limits and as a store refused AI early.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "not as a step. docs/capacity.md:610-612 already describes the intended shape (daily rows plus today's live count); the code does not follow it.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Production's statement text is an older shape than today's code (before the euro conversion), so today's cost per call is at least as high."
+  },
+  {
+   "id": "DQ-5",
+   "title": "The five-minute dispatcher starts 78 jobs at once on 5 connections, and several redo work on every tick that grows with the number of stores",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:127-294",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:23-56",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:106-119",
+    "/home/user/kaizen-store/src/lib/cron-health.ts:22-36",
+    "/home/user/kaizen-store/src/db/client.ts:63-71",
+    "/home/user/kaizen-store/src/server/embeddings.ts:31-53",
+    "/home/user/kaizen-store/src/server/embeddings.ts:110-122",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:18848-18853",
+    "/home/user/kaizen-store/src/server/autopilot-effects.ts:39-44",
+    "/home/user/kaizen-store/docs/audits/psi-2026-11-01.md:781"
+   ],
+   "evidence": "runJobs() starts every job with Promise.all (cron-runs.ts:117); I counted 78 keys in the object the route passes, and 5 more tracked jobs run in turn after it. With the route's own that is 84 ledger upserts a tick (production: 457,349 + 107,700 calls, 84 s). The pool holds 5 connections and a caller waits at most 5 s for one (client.ts:68-70). Every job has the same cadence, 300 s, whether it prunes a log, settles trials or sends a cart reminder; the only cadences inside are hand-made (a minute-below-5 test at autopilot-effects.ts:44, claimDay() for one nightly job). Jobs that redo work on every tick whatever changed: embeddings computes an md5 over title, terms and description of every active product translation of every store on the platform's AI (embeddings.ts:31-45; 10,201 calls, 148 s) and calls commerce.store_is_active() per row, a SQL function with a SET clause, which Postgres cannot inline (69 uses in 44 files; I measured 2.4 µs a call against 0.05 µs for the plain expression); product saves already refresh their store's vectors. The invoice job, the knowledge job and the media job are DQ-15, DQ-6 and DQ-3.",
+   "cost": "Today small: the ledger writes are 0.15 ms each and the dispatcher's own run was 1.3 s. The jobs' recorded times sum to about 12.5 s because 78 jobs queue for 5 connections. What grows with stores: the embeddings hash (rows = all stores' active products times languages, every five minutes), the per-site loops, and the wait for a connection. When a waiter passes 5 s the job fails; that is a risk, not something the statistics show yet.",
+   "who_pays": "The database and one function every five minutes. Later: owners, when a job that serves them fails on a connect timeout.",
+   "fix_steps": [
+    "1. src/server/cron-runs.ts runJobs(): take each job as { run, every } (every in seconds, 300 when left out) and run at most 4 at a time (the pool holds 5 and the ledger write needs one) through a small promise pool. At the start read the ledger once: select job, last_started_at from commerce.cron_jobs where job like the prefix. A job is due when it has no row or last_started_at is older than its every minus 60 s. Run only the due ones, each through tracked(name, every, run), so src/lib/cron-health.ts judges lateness by the job's own cadence (allowanceSeconds already scales). A job that is not due is not recorded and its row stays.",
+    "2. src/app/api/cron/cart-reminders/route.ts: give each of the 78 jobs its cadence with a one-line reason. Daily (86,400): the prunes (searches, apiIdempotency, oauthTokens, cache, docsCounts, chat, forms, recommendations, replications), the full embeddings check, the theme-shot sweep of DQ-1. Hourly (3,600): trials, autoArchive, stripeWebhooks, houseCustomers, legalUpkeep, legalSources, autopilotEffects (then remove its own minute test), media (DQ-3), the cookie scans' queueing (DQ-1), the document nets (DQ-15). Five minutes: whatever a shopper or owner waits on (carts, bookings, deliveries, schedules, tracking, summaries, status, the expiry jobs, payments, sms, supplierOrders, the invoice fast path, knowledge after DQ-6).",
+    "3. Embeddings, src/server/embeddings.ts:31-53 and 110-122: keep the refresh on product save (products/actions.ts:118 and the four other callers); the dispatcher's full hash check becomes daily; in its statement join commerce.stores s and write s.status = 'active' and not s.starter and not s.sandbox instead of calling commerce.store_is_active(t.store_id) per row.",
+    "4. Not to do: one batched ledger write. It saves about 12 ms of database time a tick and would lose every job's record when the function dies mid-run, which is what the ledger exists to show.",
+    "5. Update the wording of the rule in CLAUDE.md (Conventions: 'the five-minute dispatcher runs each job through runJobs()') to say each job names its cadence, and docs/tripletex.md:33 ('runs its jobs side by side') to say four at a time."
+   ],
+   "tests_and_rules": [
+    "src/server/cron-runs.int.test.ts (tracked, runJobs, claimDay) and src/lib/cron-health.test.ts: add cases that a job not due is skipped and keeps its row, that a daily job reads as late only after 30 hours, and that no more than 4 jobs run at once.",
+    "src/server/cron-routes.scan.test.ts reads the dispatcher's source: its line 41 expects the text 'uiTranslations: () => runNightlyUiTranslations()'; change the pattern with the new job shape. It also holds every tracked name to JOB_KEY.",
+    "src/server/ui-nightly.int.test.ts (claimDay), src/server/embeddings.int.test.ts (a changed product gets a new vector: keep it true through the save path), the int tests of each job whose cadence changes (trials, order archive, autopilot effects).",
+    "Rules: CLAUDE.md Conventions (cron routes and runJobs), docs/tripletex.md:33, docs/wave-7-storefront.md:82, docs/wave-8-analytics-ai.md:116, docs/builder-sandbox.md:209, docs/capacity.md:201-202. The PSI audit of 1 November 2026 scores this as PERF-03 ('Cap the dispatcher's concurrency at the pool size')."
+   ],
+   "depends_on": [
+    "DQ-11 (the idle-tick count is the check)"
+   ],
+   "done_when": "DQ-11's int test: a second dispatcher tick run right after the first runs no job marked hourly or daily (their runs count in commerce.cron_jobs does not rise), the idle tick's statement count is the same for a seed of 1 store and of 20 stores and lower than today's count written in the baseline, and cron-runs.int.test.ts asserts at most 4 jobs run at once.",
+   "saving": "Estimate: most of the 148 s of the embeddings hash at today's size, and about a quarter of the 84 ledger writes a tick (the 20 or so jobs that become hourly or daily). The real gain is that the tick's work stops growing with every store's catalogue and that a slow job no longer starves the other 77 of connections.",
+   "effort": "M",
+   "risk": "A job with too long a cadence or a wrong due test runs late: cron_jobs records every run with its own cadence, so lateness shows on the platform home and /status. Four at a time makes one tick longer; the route has maxDuration 300 and today's tick takes 1.3 s. A product changed outside the save path (an import) would wait for the nightly embeddings check: keep the import's own refresh call.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "partly: the PSI audit of 1 November 2026 lists the Promise.all against the pool of 5 as PERF-03 (unchanged, 'Cap the dispatcher's concurrency at the pool size'); docs/audits/psi-followups.md has no item for it. REL-06 (done) built the ledger and runJobs and set no cadence.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Before opening is the cheapest time to set cadences: nobody waits on these jobs yet. The cron dimension describes the same dispatcher from its side; do the work once. The invoice job's part moved to the new DQ-15."
+  },
+  {
+   "id": "DQ-6",
+   "title": "The knowledge job reads every page whole every five minutes and re-cuts pages that have no text, forever",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/knowledge.ts:166-232",
+    "/home/user/kaizen-store/src/server/knowledge.ts:234-258",
+    "/home/user/kaizen-store/src/server/knowledge.ts:296-312",
+    "/home/user/kaizen-store/src/lib/knowledge.ts:63-65",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:26639-26655",
+    "/home/user/kaizen-store/docs/rules/storefront.md:407-411"
+   ],
+   "evidence": "For every site with its chat agent on, syncPageKnowledge() selects every published page and article with its whole published document (knowledge.ts:169-175; production: 2,571 + 17,955 + 3,608 calls in three shapes, the first returning 40 rows a call at 16 ms) and compares versions in code. I followed the comparison: the stored version is min(c.version) over the page's chunks (line 171); a page whose text cuts to no passages has no chunk, so its version is null, never equals the published date (line 186), and replacePassages() opens a transaction, deletes nothing and inserts nothing (248-258), on every tick. Production: 91,200 calls of 'delete from commerce.knowledge_chunks where page_id = $1' deleted 782 rows in all; that is 42% of the 216,877 transactions. Around it the job reads the site's languages (two reads), the blogs, every published content entry, deletes dropped passages, reads the AI connection and runs a vector pass, per site, one site after another (296-312).",
+   "cost": "91,200 empty transactions (273,600 round trips: begin, delete, commit). Estimate: about 200 KB of page documents sent to the function each tick for the platform's site alone (40 rows at about 5 KB). After opening it is paid per store with the chat agent on (off by default): its whole published content and about eight statements every five minutes.",
+   "who_pays": "The database and the dispatcher function, every five minutes, for each site that uses the chat agent.",
+   "fix_steps": [
+    "1. Migration (the table in src/db/schema.ts, then pnpm db:generate; knowledge_chunks itself is SQL only because of its vector, this table has none): commerce.knowledge_sources (store_id uuid null references stores on delete cascade, page_id uuid null unique references pages on delete cascade, entry_id uuid null unique references content_entries on delete cascade, published_at timestamptz not null, slug text not null, type_version text null, path text null, cut_at timestamptz not null default now(), a check that exactly one of page_id and entry_id is set), row level security on as for every commerce table.",
+    "2. src/server/knowledge.ts replacePassages(): in the same transaction upsert the source's knowledge_sources row (published_at, slug, type_version, path), also when there are no passages. That alone ends the empty re-cuts.",
+    "3. syncPageKnowledge(): choose the pages to cut in SQL and fetch documents only for them. First a slim read: select p.id from commerce.pages p left join commerce.knowledge_sources k on k.page_id = p.id where the owner's branch and p.type in ('page', 'article') and p.published_at is not null and (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug). Only when it returns ids, read siteLocales(), blogsNow() and select id, type, slug, published, published_at for id = any(the ids). The same for entries with type_version (the md5 at line 199). The delete of dropped passages (223-229) also deletes their knowledge_sources rows.",
+    "4. An article's address also changes when its blog's address does, without a new publish: where a blog is saved (saveBlog, src/server/blogs.ts:198), delete that store's knowledge_sources rows for articles, so the next tick cuts them again. Keep today's full compare as an hourly net (a full: true option that skips the slim read), on DQ-5's hourly cadence.",
+    "5. refreshKnowledge() (296-312): skip aiFor() and embedKnowledge() for a site when nothing was cut and no chunk lacks a vector (select exists (select 1 from commerce.knowledge_chunks where the owner's branch and space is null)); a changed embedding model is caught by the hourly net.",
+    "6. One-off, in a custom migration after it (pnpm exec drizzle-kit generate --custom --name knowledge_sources_fill, then node scripts/prune-snapshots.mjs): fill knowledge_sources from the pages and entries that have chunks today (published_at from the page, slug, path from min(c.path)), so the first tick after the deploy does not re-cut everything. Pages without chunks get their row on that first tick."
+   ],
+   "tests_and_rules": [
+    "src/server/chat.int.test.ts is the test that mentions syncPageKnowledge and refreshKnowledge: add cases that a published page with no text is cut once and not again (count the delete statements with DQ-11's counter), that a page published again is re-cut, that a changed slug moves the passages' path, and that an unpublished page's passages and source row go.",
+    "src/db/commerce.test.ts for the new table's check and cascades; pnpm db:check; src/db/snapshots.scan.test.ts.",
+    "docs/rules/storefront.md:407-411 says knowledge is knowledge_chunks and that the five-minute cron cuts pages published anew by syncPageKnowledge(): keep the cadence, add the new table to the sentence. The privacy erasure reads knowledge chunks (psi-2026-10-24 DATA-06): knowledge_sources holds no text, only dates and addresses."
+   ],
+   "depends_on": [
+    "DQ-5 (the hourly cadence of the net in step 4; until then a minute-below-5 test)"
+   ],
+   "done_when": "On production a day after the deploy the calls of 'delete from commerce.knowledge_chunks where page_id = $1' in pg_stat_statements grow by fewer than 20 a day (about 6,000 a day today), and the new case in chat.int.test.ts counts zero transactions for a second tick with nothing published.",
+   "saving": "Measured count: the 91,200 empty transactions and their round trips go to zero. Estimate: the whole-document read happens only when something was published, so the job's cost per store per tick drops to two small statements.",
+   "effort": "S",
+   "risk": "A change the slim read does not see (a blog's address, a site's languages, a new embedding model) would leave passages stale until the hourly net; that is why the net stays. Noticed in the admin's knowledge status (passages and how many have vectors) and by the new test cases.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no (docs/rules/storefront.md:407-411 states that the five-minute cron cuts pages published anew; the fix keeps it)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Step 2 alone (recording a source that cut to nothing) removes the 91,200 transactions and is a few lines; the rest removes the whole-document read. The schema dimension describes the same job; do it once."
+  },
+  {
+   "id": "DQ-7",
+   "title": "A page's frame asks about 20 questions each time its cache is cold, some of them one per feature for every store, and the cache is cold far more often than the code assumes",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/platform-root.tsx:56-62",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:65-82",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:135-153",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:30-63",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:75-121",
+    "/home/user/kaizen-store/src/server/page-modals.ts:16-28",
+    "/home/user/kaizen-store/src/server/chat-agent.ts:89-95",
+    "/home/user/kaizen-store/src/server/recommend-settings.ts:35-41",
+    "/home/user/kaizen-store/src/server/experiments.ts:155-161",
+    "/home/user/kaizen-store/src/server/affiliates.ts:82-94",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md:243-259"
+   ],
+   "evidence": "Next's own guide (use-cache.md:245-259, as the verified report read it): with the default handler on serverless, cache entries typically do not persist across requests, and no entry carries over a deploy. The repo has 85 'use cache' directives (my count), no 'use cache: remote' and no cacheHandlers. Production: statements issued from functions cached for hours ran 540 to 1,020 times a day each (a lower bound), for example the cookie scan result (70,257), the cookie notes (70,278), the modal check (68,878, 121 s), platform settings (53,887), the platform's menus (69,938). siteCookies() (site-cookies.ts:89-121, which I opened) awaits its reads one after another: store features, the chat agent, the remembered-modal check, the referral or affiliate settings, the recommendation settings, running A/B tests, the platform's languages, then the scan and the notes: 8 or 9 round trips in a row for a store. Seven of them are one read per feature that every store pays whether it uses the feature or not. The modal check runs jsonb_path_exists over every published page of the site (page-modals.ts:20-25). The verified report's count for the platform's own frame is about 21 statements from the code read; a store's frame was not counted.",
+   "cost": "About 20 round trips before a page's own content on each cold render (estimate from the code: 20 to 60 ms in the same region, not measured); 121 s of database time for the modal check alone. After opening this is paid per store: with many stores each seen now and then by any one instance, a store's frame will be cold on most of the instances that serve it.",
+   "who_pays": "The first visitor of a store's page on a cold instance or after a deploy; the database.",
+   "fix_steps": [
+    "1 (S, first). src/server/site-cookies.ts:89-121: start the independent reads together with one Promise.all (storeFeatures, getChatAgent, usesRememberedModals, referralPublicSettings or affiliateSite, getRecommendSettings, storeHasExperiments, getPlatformLangs, siteFindings) and work out languages and touch from the answers afterwards. No behaviour changes; 8 round trips in a row become one wait.",
+    "2. The modal answer where pages are saved. In src/db/schema.ts add to pages a stored generated column has_remembered_modal boolean, generated always as (published is not null and jsonb_path_exists(published, the path at page-modals.ts:24)), and a partial index pages_remembered_modal_idx on (store_id) where has_remembered_modal; pnpm db:generate. usesRememberedModals() becomes select exists (… where the owner's branch and has_remembered_modal). jsonb_path_exists is immutable (pg_proc on the local database says so; the _tz variant is not), so the column is allowed, and the schema already has stored generated columns (8 in commerce). Adding it rewrites the pages table (1,389 rows today): cheap now, before opening.",
+    "3. One 'site facts' read per store. New src/server/site-facts.ts, siteFacts(storeId): one statement with scalar and exists subqueries for what the frame asks per feature: features and visit_counting of the store, the chat agent's enabled flag, recommendation settings' enabled, whether an A/B test runs, the referral or affiliate and creator capture flags and days, the latest finished scan's items, the cookie notes as json_agg. 'use cache' with the union of the tags today's readers carry (cookiesTag, chatTag, pagesTag, and the tags in recommend-settings.ts:35-41, experiments.ts:155-161 and affiliates.ts:82-94), so nothing shows stale. siteCookies() reads from it; the per-feature readers stay for their own screens.",
+    "4. The frame's menus and page titles read DQ-2's publishedPageIndex instead of whole pages (platform-navigation.ts:138-140).",
+    "5. Not to do: a remote cache handler for these short reads. Next's guide says it adds a network round trip per check and gains little for reads this small.",
+    "6. Count a store's cold frame with DQ-11's counter before and after, and write the number in the baseline."
+   ],
+   "tests_and_rules": [
+    "src/server/consents.int.test.ts, src/server/store-features-customers.int.test.ts and src/server/cookie-scans.int.test.ts hold what siteCookies() lists for a store with and without each feature: they must pass unchanged after steps 1 and 3.",
+    "src/db/commerce.test.ts: add a case that a published page with a timer or exit-intent modal that is not shown every time sets has_remembered_modal, and that unpublishing clears it. pnpm db:check and src/db/snapshots.scan.test.ts for the generated column.",
+    "The e2e specs of the cookie banner and the cookie page (e2e/cookie-scan.spec.ts and the consent specs).",
+    "Rules: docs/rules/storefront.md:627 (siteCookies and what the scan adds), docs/rules/admin/website.md:469 (modals remember being closed: say the flag is a generated column), docs/referrals.md:115 and docs/wave-5-marketing.md:1096 (cookies declared through siteCookies)."
+   ],
+   "depends_on": [
+    "DQ-2 (step 4)",
+    "DQ-8 (owned())",
+    "DQ-11 (the counter of step 6)"
+   ],
+   "done_when": "DQ-11's int test counts at most 4 statements for siteCookies() of a seeded store with none of the features on (8 or 9 today by the code), and on production a week after the deploy no statement containing jsonb_path_exists on commerce.pages is among the 40 costliest in pg_stat_statements (121 s today).",
+   "saving": "Estimate: a cold frame goes from about 20 statements to 4 or 5; the 121 s of JSON scans become a column read.",
+   "effort": "M",
+   "risk": "One larger read is refreshed by more tags, so it is cold a little more often; keep exactly the tags of the readers it replaces so nothing shows stale. A missed tag would show as a banner that does not follow a feature switch: consents.int.test.ts and the cookie e2e specs hold the content, not the refresh, so check each switch by hand once. The generated column must use the same path text as today's query.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "partly: code review step 3.8 (Open) cuts round trips for cart and checkout only",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Step 1 is P0-sized. How production's runs split between deploys, cold instances and builds cannot be told from the statistics; the caching and storefront-data dimensions carry the deploy and warm-up side. The 21 statements for the platform's frame are a code-read estimate, which is why step 6 measures before anything is claimed."
+  },
+  {
+   "id": "DQ-8",
+   "title": "\"is not distinct from\" on store_id keeps the index from serving the hottest reads, so they scan all stores' rows",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:71",
+    "/home/user/kaizen-store/src/server/pages.ts:691-700",
+    "/home/user/kaizen-store/src/server/pages.ts:724-733",
+    "/home/user/kaizen-store/src/server/taxonomy.ts:59-60",
+    "/home/user/kaizen-store/src/server/cookie-scans.ts:94-99",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:44-56",
+    "/home/user/kaizen-store/src/server/page-modals.ts:21-25",
+    "/home/user/kaizen-store/src/server/content-grid.ts:257-266",
+    "/home/user/kaizen-store/src/server/support-email.ts:263-270",
+    "/home/user/kaizen-store/src/server/knowledge.ts:28-29",
+    "/home/user/kaizen-store/src/server/chat-agent.ts:71",
+    "/home/user/kaizen-store/src/server/ratchet.baseline.json:1",
+    "/home/user/kaizen-store/scripts/ratchet.mjs:1-40",
+    "/home/user/kaizen-store/docs/rules/storefront.md:179"
+   ],
+   "evidence": "My rg: 145 uses in 52 files, 122 on store_id in 40 files (most: content-types.ts 10, site-tools.ts 9, saved-parts.ts 8, forms.ts 8, pages.ts 6). The ones that run most: pages.ts:71 (ownedBy, behind 79,778 calls), pages.ts:694 and 697 (67,601), pages.ts:728 and 733 (57,930), taxonomy.ts:60 (130,816), cookie-scans.ts:97 and 98 (49,338; 22 table scans a call), site-cookies.ts:46 (70,257) and :55 (70,278), page-modals.ts:23 (68,878), content-grid.ts:257 and 266, support-email.ts:267 (a join of two columns, 40,141). The verified report's EXPLAIN on the local database (PostgreSQL 16.15, generic plans, sequential scans off): with is not distinct from, store_id is only a Filter and the index is entered on type alone; with store_id = $1 or store_id is null it is an Index Cond on pages_store_slug_key. Production: pages 199,789 sequential scans reading 203 M rows, cookie_scans 1.1 M reading 962 M, terms 183,724 reading 11 M. Six files already branch correctly with a private helper of the same name and shape (chat-agent.ts:71, media-library.ts:77, media-compress.ts:51, knowledge.ts:29, google-reviews.ts:38, instagram.ts:140).",
+   "cost": "Cheap per call today (1,389 pages). But each such read looks at every store's rows of that table, or every row of one type: about 1.2 billion rows read by sequential scan on these three tables in 78 days. The cost of one store's page render grows with all stores' data, which is the wrong direction once many stores exist.",
+   "who_pays": "The database, on every cold page render and every cron minute.",
+   "fix_steps": [
+    "1. New src/server/owned.ts: export const owned = (storeId: string | null, column = sql`store_id`) => (storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`), with a comment that it is the one way to filter a store's or the platform's rows. Replace the six private copies with the import. scripts/lib/ratchet-count.mjs:39 recognises owned( by its name for the by-id-writes count (code review 1.3), so an imported helper still counts as naming the store.",
+    "2. Move the hot ten first: pages.ts:71 (ownedBy), :694 and :697, :728 and :733; taxonomy.ts:59-60 (scopeWhere); site-cookies.ts:46 and :55; page-modals.ts:23; content-grid.ts:257 and :266; cookie-scans.ts:97-98 (with DQ-1 step 1).",
+    "3. The join of two columns at support-email.ts:267 (support_settings s on s.store_id is not distinct from c.store_id): write the stores' branch (s.store_id = c.store_id, c.store_id is not null) and the platform's branch (both null) as a union all inside the same statement.",
+    "4. Then the other files, most uses first (content-types.ts, site-tools.ts, saved-parts.ts, forms.ts, page-jobs.ts, menus.ts, custom-fields.ts, support-inbound.ts, content-site.ts). Where both sides are columns and a union is not worth it, keep the wording and say why in a comment on the line.",
+    "5. Hold it: in scripts/lib/ratchet-count.mjs count per file the lines matching 'store_id is not distinct from' followed by a parameter; write the counts as a new key in src/server/ratchet.baseline.json through scripts/ratchet.mjs; in src/server/ratchet.scan.test.ts add a case that no file's count rises and a file not in the baseline has none.",
+    "6. Reword the rule at docs/rules/storefront.md:179 ('every query asks store_id is not distinct from') to 'every query filters with owned(storeId): the store's rows, or the rows with no store for Kaizena Flow'. The rule's reason (one query serves a store and the platform) is kept; only the wording of the SQL changes."
+   ],
+   "tests_and_rules": [
+    "The int tests of each moved read run a store and the platform's null: src/server/pages.int.test.ts, redirect-resolve.int.test.ts, country-content.int.test.ts, consents.int.test.ts, cookie-scans.int.test.ts, the support email tests, and the src/db tests of content types and forms.",
+    "src/server/ratchet.scan.test.ts and scripts/ratchet.mjs (the new count, which may only fall); the existing by-id-writes count in the same test must not rise when the helper becomes an import.",
+    "src/lib/sql-raw.scan.test.ts: the helper uses sql templates, not sql.raw.",
+    "docs/rules/storefront.md:179 is the written rule that asks for today's wording; step 6 changes it and keeps its reason."
+   ],
+   "depends_on": [],
+   "done_when": "The ratchet's new count sums to at most the commented column-to-column joins left (122 today), and EXPLAIN of listPublishedPages' statement with enable_seqscan off on the local database shows store_id inside the Index Cond of pages_store_slug_key (today it is a Filter).",
+   "saving": "Estimate: the scans of pages, terms and cookie_scans become index scans of one store's rows. Little time saved at today's size; the cost stops growing with other stores' data.",
+   "effort": "S",
+   "risk": "Passing null into an '=' would return nothing, which is why the helper branches in code and takes string | null. A read that silently stops returning the platform's rows would show as an empty menu or page list on Kaizena Flow's own site; each moved read has an int test with a null owner. The indexes the fix needs exist already (pages_store_slug_key, terms_scope_idx, cookie_scans_store_created_idx).",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no (docs/rules/storefront.md:179 is a rule that asks for the current wording for content types; the fix keeps its reason)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Mechanical and cheapest before opening: there is no real data to get wrong. Do it first, because DQ-1, DQ-2, DQ-6 and DQ-7 write new reads that should use the helper from birth. The schema dimension describes the same wording; do it once."
+  },
+  {
+   "id": "DQ-9",
+   "title": "The store's slug is looked up by id again and again: the most-called statement in production",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/content-grid.ts:48",
+    "/home/user/kaizen-store/src/server/content-grid.ts:129-141",
+    "/home/user/kaizen-store/src/server/content-grid.ts:150-156",
+    "/home/user/kaizen-store/src/components/content-grid-section.tsx:70",
+    "/home/user/kaizen-store/src/components/search-section.tsx:53",
+    "/home/user/kaizen-store/src/components/store-part-section.tsx:84",
+    "/home/user/kaizen-store/src/components/instagram-section.tsx:28",
+    "/home/user/kaizen-store/src/server/menus.ts:282-288",
+    "/home/user/kaizen-store/src/server/pages.ts:208-212",
+    "/home/user/kaizen-store/src/server/request-memo.ts:13-20",
+    "/home/user/kaizen-store/src/server/ai.ts:207-212",
+    "/home/user/kaizen-store/src/server/knowledge.ts:301-311",
+    "/home/user/kaizen-store/src/server/media-library.ts:866-874"
+   ],
+   "evidence": "'select slug from commerce.stores where id = $1' ran 560,090 times, more than any other statement. My rg finds it on 27 lines. Page components know the store by id (GridPlace.owner, content-grid.ts:48), though the page was reached by slug. storeAndMarket() (content-grid.ts:151-156) is not cached and not shared within a request, and has 11 callers (my rg). Three of them are parts drawn per request (the filterable grid, search and store parts, as the verified report found), so there the lookup runs on every shopper request; the others sit inside cached functions and run when the cache is cold. A cached twin exists (storeSlugOf, menus.ts:283-288, kept for days because 'addresses do not change') and so does a per-request memo (perRequest, request-memo.ts:13). The same habit for settings: aiFor() reads the provider row with select * on every call (237,563 calls in four shapes, mostly from five-minute jobs that ask once per site: knowledge.ts:306, media-library.ts:870), and the one-row platform_settings is read by 43 statements in 29 files.",
+   "cost": "At least 7,180 round trips a day today for a value that does not change. Each is a primary-key read, tiny in database time, but a round trip a page part waits for. After opening the per-request share grows with shopper traffic.",
+   "who_pays": "The server and the database on every render of a store page's dynamic parts; each a round trip the part waits for.",
+   "fix_steps": [
+    "1 (S, first). Move storeSlugOf() from src/server/menus.ts:282-288 to src/server/stores.ts (it needs only readDb; menus.ts re-exports it) so nothing imports in a circle. In src/server/content-grid.ts make storeAndMarket() (151-156) and customWhere() (133) call storeSlugOf(storeId) instead of their own select; customWhere keeps its cacheTag(storeTag(slug)).",
+    "2. Replace the other exact copies with storeSlugOf(): run rg -n 'select slug from commerce.stores where id' src (27 lines; pages.ts:210, content-site.ts:46, field-tiles.ts:174-177, product-data.ts:27-30 among them). Leave a copy only where the read is inside a transaction that must see its own write, with a comment.",
+    "3. Carry the slug so nothing is looked up: add storeSlug to GridPlace (content-grid.ts:48) and fill it where a page hands its place to its components (the page already holds the store from resolveShop()). Then content-grid-section.tsx:70, search-section.tsx:53, store-part-section.tsx:84 and instagram-section.tsx:28 call getOpenStore(place.storeSlug) and marketIn() directly; storeAndMarket() stays for callers that truly have only an id.",
+    "4. The AI provider row: read the enabled providers once per job run and hand them down. Add enabledProviders() next to aiFor() in src/server/ai.ts (one statement, the columns named instead of select *) and an optional providers argument on aiFor(); the per-site loops at knowledge.ts:301-311, media-library.ts:866-874 and in alt-texts.ts read it once before the loop. Within a request wrap the provider read in perRequest().",
+    "5. Leave the 43 reads of platform_settings to DQ-7 (the frame) and to each screen's own next change."
+   ],
+   "tests_and_rules": [
+    "src/server/place-lang.test.ts names storeAndMarket and storeSlugOf; the content grid's int tests (src/server/content-grid-custom.int.test.ts and its siblings) and src/server/listing.int.test.ts draw grids through GridPlace.",
+    "src/server/ai.int.test.ts, src/server/chat.int.test.ts and src/server/media-library.int.test.ts for the provider read handed down.",
+    "e2e/store-pages.spec.ts: a store page with a filterable grid, search and a store part.",
+    "No written rule holds the lookup; menus.ts:282 states that a store's address does not change, which is what makes the cached read safe."
+   ],
+   "depends_on": [],
+   "done_when": "rg -c 'select slug from commerce.stores where id' over src (tests left out) gives at most 3 lines (27 today), and on production a week after the deploy the calls of that statement in pg_stat_statements grow by fewer than 500 a day (at least 7,180 a day today).",
+   "saving": "Estimate: nearly all 560,090 calls, and most of the 237,563 provider reads inside one job run.",
+   "effort": "S",
+   "risk": "Low. A store's slug does not change (menus.ts:282 says so); if that ever changes, the cached read needs the store's tag. A wrong slug handed down in GridPlace would show as an empty grid or search on a store page, which the e2e spec opens.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Steps 1 and 2 are an hour's work and remove most of the calls; step 3 removes the wait for the per-request parts. The storefront-data dimension describes the same lookup; do it once."
+  },
+  {
+   "id": "DQ-10",
+   "title": "Some reads fetch whole JSON documents where a field, a card or a count is needed",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/theme-store.ts:134-146",
+    "/home/user/kaizen-store/src/server/theme-store.ts:173-183",
+    "/home/user/kaizen-store/src/server/pages.ts:134-155",
+    "/home/user/kaizen-store/src/server/fonts.ts:171-182",
+    "/home/user/kaizen-store/src/server/analytics-speed.ts:103-119",
+    "/home/user/kaizen-store/src/lib/speed.ts:22-24",
+    "/home/user/kaizen-store/src/lib/speed.ts:83-84",
+    "/home/user/kaizen-store/src/server/ai.ts:208",
+    "/home/user/kaizen-store/src/server/chat-agent.ts:93",
+    "/home/user/kaizen-store/src/server/accessibility.ts:120-128",
+    "/home/user/kaizen-store/src/server/green-claims.ts:52-55",
+    "/home/user/kaizen-store/src/server/store-translate.ts:123-127"
+   ],
+   "evidence": "61 selects name a page's document column and 14 a theme's (the verified re-run of the scan). That count is not the size of the problem: many are single-page reads by id for an editor that needs the document. The reads where less would do, after DQ-2, DQ-6 and DQ-7: (1) theme-store.ts:137 reads every published theme with its whole snapshot to draw cards: 10,851 calls, 107,917 rows, 27 s. (2) theme-store.ts:176 reads every version's whole snapshot of a theme to write a changelog. (3) pages.ts:136, the admin's Pages list, reads draft and published of every page to show a title, a state and a thumbnail. (4) fonts.ts:180 reads a family's whole stylesheet to pick one file name (42,211 calls). (5) analytics-speed.ts:116 loads every speed sample of 28 days, up to 10,000 a store day (src/lib/speed.ts:22-24), to work out a 75th percentile in code (percentile75, nearest rank, speed.ts:83). (6) select * on the two hottest setting reads: ai.ts:208 (237,563 calls) and chat-agent.ts:93 (48,492). (7) accessibility.ts:120, green-claims.ts:54 and store-translate.ts:125 read every page of the store, but these are admin screens an owner opens, bounded by that store's content, and the first two need the content to check it in code.",
+   "cost": "27 s for the theme cards read; the rest is bytes and parse time on each call, not yet large. The theme reads grow with themes, not stores. The Pages list and the speed report grow with one store's content and traffic: the speed report can load up to 280,000 rows for one screen.",
+   "who_pays": "The server (memory and parse) and the database; an owner on the Pages list or the speed report; the theme store's visitors on a cold render.",
+   "fix_steps": [
+    "1. Theme cards: add a card jsonb column to commerce.design_presets (src/db/schema.ts, pnpm db:generate) holding what cardOf() reads from the snapshot (the looks, the swatch, the section style names). Write it where a theme is published (src/server/design-presets.ts). loadCards() (theme-store.ts:134-146) selects card instead of snapshot and falls back to the snapshot while card is null; the daily theme sweep of DQ-1 fills the nulls once.",
+    "2. Changelog (theme-store.ts:173-183): keep the notes it shows on commerce.design_preset_versions when a version is published, and read only them.",
+    "3. The admin's Pages list (pages.ts:134-155): take title and thumbnail with JSON operators and the state in SQL (published_at is null, draft is distinct from published), as publishedPageNames() does; no document leaves the database. Add a limit when step 1.13 of the code review gives lists paging.",
+    "4. Fonts (fonts.ts:171-182): add preload_file text to commerce.fonts, written by installFont() with latinUprightFile(css). fontPreloadFile() reads it and, while it is null, falls back to the stylesheet and writes the answer back.",
+    "5. Speed report (analytics-speed.ts:103-119): work out the percentile in SQL, grouped by kind, screen and day: percentile_disc(0.75) within group (order by lcp_ms) and the same for the other three, with the sample count. percentile_disc is the nearest-rank rule of percentile75(); prove it in a unit test on the fixtures of src/lib/speed.test.ts before switching.",
+    "6. Name the columns in the two hot select * reads (ai.ts:208, chat-agent.ts:93), through typedRows() as the conventions ask for reads that are touched.",
+    "7. Leave the accessibility, green claims and translate screens until a store's size makes them slow; they are paid by the owner who opens them."
+   ],
+   "tests_and_rules": [
+    "src/server/theme-store.int.test.ts (cards, the theme page) and src/server/design-presets.scan.test.ts (who writes design presets): a new writer of card must be the publisher only.",
+    "src/server/pages.int.test.ts (the admin list's states: draft, published, changed).",
+    "src/lib/speed.test.ts and src/server/analytics-speed.int.test.ts for step 5; src/server/fonts.int.test.ts for step 4 (docs/performance.md:98-99 describes the font files).",
+    "pnpm db:check, src/db/commerce.test.ts and src/db/snapshots.scan.test.ts for the three new columns; src/server/ratchet.scan.test.ts (step 6 lowers the unchecked-read count: run node scripts/ratchet.mjs).",
+    "Rule: docs/rules/admin/website.md 'Themes and the theme library' (line 182) describes the snapshot as the theme; add that the card is a copy written at publish."
+   ],
+   "depends_on": [
+    "DQ-1 (the daily sweep that backfills cards)",
+    "DQ-2 (the same JSON-operator shape for pages)"
+   ],
+   "done_when": "theme-store.int.test.ts asserts that the rows loadCards() reads have no snapshot key once cards are filled, and speedReport() on a store seeded with 10,000 samples issues one statement that returns at most 28 rows per kind and screen.",
+   "saving": "Estimate: the theme card read shrinks from whole themes to card facts (most of 27 s); the admin Pages list and the speed report stop growing with document size and sample count.",
+   "effort": "M",
+   "risk": "A derived column can drift from its document: the card and the preload file are written by one function each, held by the scan test, and both fall back to the document when null. A percentile that differs by one rank would move a store's speed rating: the unit test of step 5 holds it. Noticed on the theme store's cards and the Speed report.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "no (code review FD7, Open in step 3.15, names the width of orders but not these reads)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The theme-shots read of every snapshot each minute (101 s) is carried by DQ-1, not counted here. getStore()'s one wide cached row is not oversize for its job. Do each step when its file is next opened; none is urgent at today's sizes."
+  },
+  {
+   "id": "DQ-11",
+   "title": "Nothing counts queries: no budget per page or per tick, and production's statement statistics are not part of any routine",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/server/ratchet.baseline.json:1",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:22-56",
+    "/home/user/kaizen-store/scripts/ratchet.mjs:1-40",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:106-119",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:127-261",
+    "/home/user/kaizen-store/vitest.integration.config.mts:1-20",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:110-134",
+    "/home/user/kaizen-store/CLAUDE.md:1"
+   ],
+   "evidence": "My rg finds no statement counter in src (no queryCount, countQueries or statementCount; the pool's only listener is the error handler at client.ts:73), and the verified report found pg_stat_statements named only in the draft of this review. The ratchet (ratchet.baseline.json, ratchet.scan.test.ts:22-56) holds counts of casts, suppressions, unchecked reads and writes by id alone; none is about how many statements run or how much they return. The deploy routine in CLAUDE.md asks for the security and performance advisors after a migration, not for the statement statistics. What the findings here describe was visible there for weeks: 91,200 deletes that removed 782 rows, a slug lookup called 560,090 times, 22 table scans in one scheduler query.",
+   "cost": "No running cost of its own. It is why the others grew unseen.",
+   "who_pays": "Everyone later: each new section, job and cached read adds statements with no number to hold against. The number matters more once statements multiply by stores.",
+   "fix_steps": [
+    "1. A counter for tests, with no change to production code: test/count-statements.ts exporting countStatements(run), which wraps pg's Client.prototype.query for the length of run and returns the number of statements and their first 80 characters (begin and commit counted apart). The 'use cache' functions run as plain functions under vitest, as today's int tests already call them.",
+    "2. Make the dispatcher's jobs reachable by a test: move the object passed to runJobs() at src/app/api/cron/cart-reminders/route.ts:128-261 into src/server/dispatcher-jobs.ts (export const DISPATCHER_JOBS); the route imports it. Update the regex in src/server/cron-routes.scan.test.ts line 41 to read the new file.",
+    "3. New src/server/query-budget.int.test.ts with three budgets: (a) one idle dispatcher tick over DISPATCHER_JOBS on the seeded database, and again after 19 more open stores are added, asserting the two counts are equal; (b) one idle run of each minute route's server function (claimScan, runThemeShots with a photographer that is never called, deliverDue, deliverPlatformDue, the pack pictures' claim, the autopilot's three runners); (c) the cold frame's loaders for the demo store and for the platform (getPlatformChrome, siteCookies and the readers PlatformRoot calls). The test database holds no provider keys, so no job reaches the network; a job that would is given a stub through its existing deps argument.",
+    "4. Keep the numbers so they may only fall: a new key queryBudget in src/server/ratchet.baseline.json, written by scripts/ratchet.mjs from a JSON file the int test leaves, and asserted by the int test itself (the unit ratchet has no database). Until the 1-and-20-stores counts are equal (DQ-1, DQ-5, DQ-6), record the difference as its own number that may only fall.",
+    "5. The routine: in CLAUDE.md, Database, after 'check the security and performance advisors', add: once a week read the 25 most-called and the 25 costliest statements and explain any newcomer; put the two queries (they are at the end of the statistics file of this review) in docs/ci-migrations.md.",
+    "6. Two scan tests that keep shapes out: the ratchet count of DQ-8 (no new 'store_id is not distinct from' with a parameter), and a scan over supabase/migrations/*.sql that fails on a new cron.schedule with '* * * * *' unless the job is listed with the one-statement due test its route starts with."
+   ],
+   "tests_and_rules": [
+    "src/server/ratchet.scan.test.ts and scripts/ratchet.mjs (a new key must be optional in the comparison, as byIdWrites is).",
+    "src/server/cron-routes.scan.test.ts line 41 reads the dispatcher's source for the uiTranslations entry; it must follow the move of step 2. The same test holds every job name to JOB_KEY.",
+    "vitest.integration.config.mts runs files one at a time (fileParallelism false) on a seeded database, which is what makes a count stable.",
+    "CLAUDE.md (Workflow and Database) and docs/ci-migrations.md are the written routine that step 5 extends; the code review's Progress table has step 4.6 'Measure, then tune' (Open), which names no query count."
+   ],
+   "depends_on": [],
+   "done_when": "pnpm test:int runs query-budget.int.test.ts green with the three counts written in the baseline, and after DQ-1, DQ-5 and DQ-6 land the idle tick's count is the same for 1 and 20 seeded stores.",
+   "saving": "Not a direct saving. It gives DQ-1, DQ-5, DQ-6, DQ-7 and DQ-9 a number to check their fix against and keeps them from coming back.",
+   "effort": "M",
+   "risk": "A count that wobbles makes a flaky test: count on the seeded database with caches cold and files run one at a time, and count statements, not time. A job that reaches the network in the test would fail it; that is a finding in itself. Nothing in production changes except the move of the job list.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no (code review step 4.6 'Measure, then tune', Open, is the admin audit's and names no query count)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Do it first: five other findings use its counter as their check. The verified report rated the effort S; with the move of the job list and three budgets it is M. The cron, storefront-data and admin-data dimensions each ask for a budget of their own; one counter serves all of them."
+  },
+  {
+   "id": "DQ-12",
+   "title": "Every server instance reads the interface translations before it serves and polls them each minute",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/instrumentation.ts:6-10",
+    "/home/user/kaizen-store/src/server/ui-text.ts:30-31",
+    "/home/user/kaizen-store/src/server/ui-text.ts:57-88",
+    "/home/user/kaizen-store/src/server/ui-text.ts:94-115",
+    "/home/user/kaizen-store/src/server/shopper-emails.ts:108",
+    "/home/user/kaizen-store/src/server/notifications.ts:367"
+   ],
+   "evidence": "register() awaits startUi() before an instance takes requests (instrumentation.ts:6-10); that runs 'select lang, count(*), max(updated_at) from commerce.ui_translations group by lang' (ui-text.ts:60-62), then a timer repeats it every 60 s (107-110). Production: 278,393 calls, the second most-called statement. The verified report measured one statement per instance per minute on the local database. ensureUi() is called only from two email paths (shopper-emails.ts:108, notifications.ts:367); pages rely on the timer, so the timer is what keeps a long-lived instance current and cannot simply be dropped.",
+   "cost": "At least 3,569 round trips a day, each tiny. One round trip before a new instance serves (estimate, not measured). It grows with instances, not with stores. Once languages are translated the poll becomes a count over every translated text per instance per minute.",
+   "who_pays": "The first visitor served by a new instance; the database.",
+   "fix_steps": [
+    "1. Keep the read at start and the timer. In src/server/ui-text.ts make the poll cheap: a version stamp. Add ui_text_version bigint not null default 0 to commerce.platform_settings (one row), raised by one in the same statement by every writer of commerce.ui_translations (the AI translation, a person's edit, mark reviewed, the nightly run in ui-nightly.ts). refresh() first reads only the stamp and runs today's group-by only when it moved.",
+    "2. Or, with no migration: while the last answer had no translated language, let the timer wait 10 minutes instead of one (a setTimeout chain in startUi() in place of setInterval). reloadUi() already refreshes the instance that made a change.",
+    "3. Do not make t() wait on the database, and do not drop the timer."
+   ],
+   "tests_and_rules": [
+    "src/server/ui-nightly.int.test.ts and src/server/languages.int.test.ts mention the interface text's loading; add a case that a second refresh with no change issues one single-row read.",
+    "The module comment at ui-text.ts:22-27 is the written rule ('reads it when an instance starts and looks for changes each minute; the sync t() never waits on the database'): keep it true and name the stamp.",
+    "A writer of ui_translations that forgets the stamp would leave other instances stale: hold the writers with a small scan test if step 1 is chosen."
+   ],
+   "depends_on": [],
+   "done_when": "On production the calls of the ui_translations group-by statement in pg_stat_statements grow by fewer than 200 a day per running instance with no translation edited (1,440 per instance a day today).",
+   "saving": "Estimate: from 1,440 group-by polls per instance a day to 144, or the same count as single-row reads. Small either way.",
+   "effort": "S",
+   "risk": "With the longer wait a language translated by AI would show up to 10 minutes late on other instances; with the stamp, none. Noticed as a page still in English after a language was made.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Low priority: about 3,600 tiny reads a day that grow with instances, not stores. Do it when ui-text.ts is next opened, and before many languages are machine-translated, when the group-by starts to count thousands of rows a minute per instance."
+  },
+  {
+   "id": "DQ-13",
+   "title": "341 loops hold a database call in their body; the ones that matter are jobs that loop over sites",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/knowledge.ts:301-311",
+    "/home/user/kaizen-store/src/server/media-library.ts:866-874",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:123-126",
+    "/home/user/kaizen-store/src/server/embeddings.ts:118-120",
+    "/home/user/kaizen-store/src/server/cart-reminders.ts:353-362",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:118-128",
+    "/home/user/kaizen-store/src/server/order-archive.ts:125-146",
+    "/home/user/kaizen-store/src/server/checkout.ts:1081-1092",
+    "/home/user/kaizen-store/src/server/order-insert.ts:363-369",
+    "/home/user/kaizen-store/src/server/products.ts:1207-1214"
+   ],
+   "evidence": "The verified lexical scan finds 341 loops in 183 files with an awaited database call in the loop's own body, and 5 async map callbacks. Most run over a handful of rows by design, and their cost follows use: one insert per fee, stock hold or language when an order is placed or a product saved (checkout.ts:1081, order-insert.ts:363, products.ts:1207), one 'bought since' lookup per due cart reminder (cart-reminders.ts:353). The ones that grow with the number of stores are the dispatcher's per-site loops, which I opened: knowledge.ts:301 (per site with the chat agent: a full sync, an AI connection read, a vector pass), media-library.ts:866 (per site with media: an AI connection read plus 2 to 4 statements), invoice-issue.ts:123 (two function calls per store with a waiting order), order-archive.ts:125 (one candidates read per store that chose auto-archive, then one transaction per order). Each runs its sites one after another inside one function every five minutes.",
+   "cost": "Per-site loops cost several round trips per site per tick, one site after another, so a tick's length grows with the stores that use the feature. The order's per-line inserts add one round trip per line while the order's transaction holds its locks.",
+   "who_pays": "The database and the dispatcher every five minutes; a shopper at the moment of placing an order (a few milliseconds per line).",
+   "fix_steps": [
+    "1. The per-site job loops are fixed where their findings are: the media loop in DQ-3, the embeddings and cadences in DQ-5, the knowledge loop in DQ-6, the invoice loop in DQ-15, and the one AI provider read for all sites in DQ-9 step 4. Do not repeat that work here.",
+    "2. The pattern for a new job: one set-based statement that returns only the sites with work (as storesWithDocumentWork() does at invoice-issue.ts:71), then the loop. Write it as a line in docs/rules/admin/platform.md under the cron rules.",
+    "3. cart-reminders.ts:353-362: fold the 'bought since' lookup into the statement that finds the due carts (a left join or a not exists), so a run is one read plus one write per reminder sent.",
+    "4. theme-shots.ts:118-128: insert the missing units with one statement and many value rows, as embeddings.ts:59-70 already does.",
+    "5. Leave the order's inserts (checkout.ts, order-insert.ts) to code review step 3.7 'Stage placeOrder'; they are the money path and cost follows use."
+   ],
+   "tests_and_rules": [
+    "src/lib/cart-reminders.test.ts and src/server/cart-reminders.int.test.ts (a cart whose shopper bought since gets no reminder) for step 3.",
+    "src/server/theme-shots.int.test.ts for step 4 (a unit set aside and wanted again comes back).",
+    "The order path's tests stay untouched: src/server/checkout-kinds.int.test.ts, checkout-rules.int.test.ts, checkout-stripe.int.test.ts and the money tests of the quick gate (D526).",
+    "docs/rules/admin/platform.md holds the cron rules; code review step 3.7 (Open) owns placeOrder."
+   ],
+   "depends_on": [
+    "DQ-3",
+    "DQ-5",
+    "DQ-6",
+    "DQ-9",
+    "DQ-15",
+    "DQ-11 (the check)"
+   ],
+   "done_when": "DQ-11's tick test, run with the chat agent on and pictures in each of 1 and 20 seeded stores, issues at most 2 more statements per added store (about 10 per store today by the code read: the knowledge loop's 8 and the media loop's 2 to 4).",
+   "saving": "Estimate: per-tick round trips of these jobs stop growing with the number of sites. No saving of its own beyond DQ-3, DQ-5, DQ-6 and DQ-15.",
+   "effort": "M",
+   "risk": "placeOrder is the money path: this finding does not touch it. A cart reminder sent to someone who bought since would be the visible failure of step 3; its test holds that.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "partly: code review step 3.7 'Stage placeOrder' (Open) restructures the order's writes; D320 already made a variant save 'a few statements'",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "This is the pattern behind DQ-3, DQ-5, DQ-6 and DQ-15 and adds little of its own. Do not count their savings again here. Steps 3 and 4 are small and can wait until those files are next opened."
+  },
+  {
+   "id": "DQ-14",
+   "title": "387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:134-139",
+    "/home/user/kaizen-store/src/server/pages.ts:668-672",
+    "/home/user/kaizen-store/src/server/knowledge.ts:169-175",
+    "/home/user/kaizen-store/src/server/accessibility.ts:120-122",
+    "/home/user/kaizen-store/src/server/green-claims.ts:46-55",
+    "/home/user/kaizen-store/src/server/store-translate.ts:124-127",
+    "/home/user/kaizen-store/src/server/analytics-speed.ts:116-119",
+    "/home/user/kaizen-store/src/server/activity.ts:153-158",
+    "/home/user/kaizen-store/src/server/theme-store.ts:176-178",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:233-236",
+    "/home/user/kaizen-store/src/server/catalog.ts:284-330"
+   ],
+   "evidence": "Of 1,648 selects assigned to a const, 442 carry a limit and 387 return a list with no limit, no id or any() filter and no aggregate (the verified heuristic). Most are bounded by their parent (an order's lines, a store's locations). The ten that are bounded only by how much a store has: pages.ts:136 (every page with both documents, for the admin list); pages.ts:668 (DQ-2); knowledge.ts:170 (DQ-6); accessibility.ts:120; green-claims.ts:46-55 (every active product's texts and every published page); store-translate.ts:125; analytics-speed.ts:116 (up to 28 days times 10,000 samples); activity.ts:155 (select distinct action over the audit log the viewer may see, to fill a filter); theme-store.ts:176 (every version's snapshot); owner-assistant.ts:234-235 (select * of every message and approval of a conversation, which I opened). Eight of the ten are admin screens: the cost is paid by the owner who opens them and follows that store's own size. The storefront's own unbounded read, listProducts() (catalog.ts:284), is code review step 3.9. Rows loaded only to be counted are rare: 6 hits.",
+   "cost": "Small today. Each of the ten returns rows in proportion to one store's whole content, so a large store makes its own screens slow. None costs anything for a store that does not open the screen, apart from the two already carried by DQ-2 and DQ-6.",
+   "who_pays": "An owner on the Pages list, the accessibility and claims screens and the activity filter; the server's memory.",
+   "fix_steps": [
+    "1. The admin's Pages list: the slim columns of DQ-10 step 3, and paging with the shared list pattern when code review step 1.13 ('One way to search and page a list') is built; do not invent a second paging here.",
+    "2. The speed report: the percentile in SQL (DQ-10 step 5).",
+    "3. activity.ts:153-158: bound the distinct to the period the list shows (or the last 90 days), so the audit log's time index serves it instead of a pass over every row the viewer may see.",
+    "4. owner-assistant.ts:233-236: name the columns, read the newest 200 messages first (order by created_at desc, id desc limit 200, reversed in code) and load older ones when the owner scrolls up; approvals of those messages only.",
+    "5. theme-store.ts:176: the notes per version of DQ-10 step 2.",
+    "6. Leave accessibility.ts, green-claims.ts and store-translate.ts as they are: they need the content, and their cost follows the owner who opens them."
+   ],
+   "tests_and_rules": [
+    "src/server/pages.int.test.ts (the admin list), src/server/activity.int.test.ts (the filter offers only actions the viewer may see: keep that), src/server/ai-manager.int.test.ts (a conversation's messages in order).",
+    "Code review step 1.13 (Open) is the written plan for paging admin lists; step 0.9 (Done) paged the storefront's listings; step 3.9 (Open) owns listProducts().",
+    "src/server/ratchet.scan.test.ts: naming columns through typedRows() lowers the unchecked-read count (run node scripts/ratchet.mjs)."
+   ],
+   "depends_on": [
+    "DQ-10 (steps 1, 2 and 5 are its steps 3, 5 and 2)",
+    "code review step 1.13 (the shared list paging)"
+   ],
+   "done_when": "A small scan test (src/server/list-limits.scan.test.ts) names the six reads this finding changes and asserts each statement carries a limit, an aggregate or a time bound; it passes.",
+   "saving": "Estimate: these reads stop growing with a store's content; nothing measurable at today's sizes.",
+   "effort": "M",
+   "risk": "Paging changes what a list shows at once; it follows the shared list pattern of step 1.13. A conversation that shows only its newest 200 messages must make the older ones reachable, or an owner loses sight of earlier work: the test of step 4 holds the order and the 'older' load.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "partly: code review step 1.13 'One way to search and page a list' (Open) covers paging admin lists; step 0.9 (Done) paged the storefront's listings",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Low priority under the owner's clarification: the cost follows an owner's use of a screen and one store's size, not the number of stores. It overlaps DQ-2, DQ-6 and DQ-10; do not count their savings again here."
+  },
+  {
+   "id": "DQ-15",
+   "title": "Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:24-29",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:71-101",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:116-132",
+    "/home/user/kaizen-store/src/server/invoice-notices.ts:115-170",
+    "/home/user/kaizen-store/src/server/invoice-notices.ts:172-199",
+    "/home/user/kaizen-store/src/server/einvoice-sending.ts:57-97",
+    "/home/user/kaizen-store/src/server/supplier-orders.ts:52-73",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:10533-10557",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:20855-20873",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:9222",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:7654",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10328",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:11952"
+   ],
+   "evidence": "Not in the verified report, which names only the invoice job's repeated per-store calls. invoiceJobs() runs every five minutes from the dispatcher. Its store finder (invoice-issue.ts:71-101) has no queue: it takes every order of every store placed in the last 120 days and proves for each that an invoice exists (an anti-join on invoices and a look in order_events), then every succeeded refund ever made (no time bound) against credit_notes and order_events, then every outside-refunded return. Invoicing is on unless switched off (coalesce(cfg.enabled, true), line 76), so every selling store's orders are in. My EXPLAIN on the local scratch database (PostgreSQL 16.15, read-only, enable_seqscan off): orders is entered through orders_invoice_candidates_idx, which is (store_id, placed_at), with placed_at as the only condition, so the whole index is walked; refunds through refunds_store_id_key with status as a Filter, so every refund is read. For each store found the job calls issue_waiting_invoices(), which itself ends with issue_missing_credit_notes() (baseline_1:10554), and then calls issue_missing_credit_notes() again (invoice-issue.ts:125): twice per store per tick (production: 9,909 calls each, 132 s and 35 s). In the same tick sendPendingDocumentNotices() (invoice-notices.ts:130-170) reads every invoice and credit note issued in 3 days, each with a look in order_events, document_deliveries and email_messages; invoices and credit_notes have no index that starts with a time (invoices_issued_idx is (store_id, issued_on), baseline_3:9222; credit_notes_issued_idx the same, :7654), and my EXPLAIN shows a walk of invoices_store_id_key with issued_at as a Filter: every invoice ever issued, every five minutes. runEinvoiceSending() (einvoice-sending.ts:57-97) reads every invoice, credit note, work invoice and work credit note of 2 days and opens each one's snapshot JSON to see whether the buyer is a business (my EXPLAIN: the snapshot test is a Filter after a bitmap scan on issued_on); a consumer's invoice is never recorded as looked at, so it is read again on every tick for two days. collectSupplierOrders() (supplier-orders.ts:58-73) does the same over 3 days of stock movements, but only at suppliers' locations, so its cost follows the stores that drop-ship.",
+   "cost": "Nothing measurable today (102 orders in all). After opening the work per tick is in proportion to all stores' orders, not to what waits. Estimate: at 1,000 stores with 10 orders a day, 1.2 million orders are re-proved every five minutes (two index probes each), every invoice ever issued is filtered for the email check, and 20,000 invoice snapshots are opened for the e-invoice check. The role's statement limit is 15 s; a store finder that passes it fails the whole invoice job, and then waiting invoices are not issued.",
+   "who_pays": "The database, every five minutes, for every store that sells; later store owners and their customers, if the job times out and invoices wait.",
+   "fix_steps": [
+    "1. Indexes that fit the two short windows, in one custom migration (pnpm exec drizzle-kit generate --custom --name document_job_indexes, then node scripts/prune-snapshots.mjs; none of these tables is on the hot-table list, so plain create index): invoices (issued_at); credit_notes (issued_at); invoices (issued_on) where (snapshot -> 'buyer' ->> 'type') = 'business'; the same partial index on credit_notes; work_invoices (issued_on) where status <> 'draft' and not imported and (buyer ->> 'business')::boolean is true; work_credit_notes (issued_on) where (buyer ->> 'business')::boolean is true. The statements at invoice-notices.ts:131-139 and :140-162 and einvoice-sending.ts:64-93 already carry these predicates, so no code changes: the email check reads 3 days of documents and the e-invoice check reads only business documents and never opens a consumer's snapshot.",
+    "2. The invoice job's finder, src/server/invoice-issue.ts:71-101: keep today's query as the net and run it once an hour (DQ-5's cadence; until then the minute-below-5 test of autopilot-effects.ts:44). Add to its refunds branch rf.created_at > now() - make_interval(days => LOOKBACK_DAYS), which refunds_store_created_idx can then help with per store, and an order by store_id before the limit so no store is starved when more than 50 have work.",
+    "3. A fast path for every tick that reads only what is marked as waiting: stores with an order_events row of type 'invoice.failed' in the last 120 days whose order still has no invoice (add a partial index order_events (created_at) where type = 'invoice.failed'; the event is written at baseline_1:10517), plus stores with an applied order change whose documents wait (add a partial index order_edits (store_id) where status = 'applied' and documents = 'waiting').",
+    "4. A try at once where the cause goes away: where the seller's details or the invoice settings are saved (find the writers with rg 'invoice_settings' src/server), call issueWaitingInvoices(storeId) in after(), so an owner who completes the details does not wait for the hourly net.",
+    "5. One credit-note call per store: issue_waiting_invoices() already ends with issue_missing_credit_notes(). In invoiceJobs() (invoice-issue.ts:123-126) call issueMissingCreditNotes(storeId) only when issueWaitingInvoices() failed; make it return that fact instead of swallowing it into a 0.",
+    "6. Write the pattern down in docs/wave-1b-invoices.md (the job's section) and docs/rules/admin/commerce.md: a document job reads a waiting mark or a window an index can serve, and keeps the full check as an hourly net."
+   ],
+   "tests_and_rules": [
+    "src/server/invoice-issue.int.test.ts, src/server/invoice-documents.int.test.ts and src/server/invoice-refunds.int.test.ts hold what the job issues (an invoice that waited for the seller's details, a credit note that waited for its invoice, the 120-day window): they must pass, with new cases that a failed invoice is retried on the next tick through the fast path and that completing the seller's details issues at once.",
+    "src/server/notifications-credit-note.int.test.ts (the stand-alone email for a document issued later) and src/server/einvoice-sending.int.test.ts (a business document is looked at once; a consumer's never recorded).",
+    "src/server/supplier-orders.int.test.ts and supplier-steps.int.test.ts stay untouched.",
+    "src/db/commerce.test.ts applies the migration; src/db/migration-safety.scan.test.ts (hot tables: none of the six indexes is on one); record the version in docs/decisions.md.",
+    "Rules: docs/wave-1b-invoices.md 2.1, 2.7 and 5.2 (named in the comment at invoice-issue.ts:16) describe when an invoice waits and that the same function issues it later: unchanged. 'Nothing here writes a document itself' stays true."
+   ],
+   "depends_on": [
+    "DQ-5 (the hourly cadence for the net)",
+    "DQ-11 (the counter)"
+   ],
+   "done_when": "A new int test seeds 2,000 paid, invoiced consumer orders in one store, runs one invoice tick, one email check and one e-invoice check, and asserts that seq_tup_read plus idx_tup_fetch of commerce.orders and of commerce.invoices in pg_stat_user_tables each rose by fewer than 100 (read after select pg_stat_force_next_flush(); today each tick reads all 2,000 of both).",
+   "saving": "Nothing at today's size. Estimate after opening: the tick's document work follows what waits, usually nothing, instead of all orders of 120 days and every invoice; and one of the two credit-note calls per store per tick goes (9,909 calls and 35 s so far).",
+   "effort": "M",
+   "risk": "This is the path that issues legal documents. A fast path that misses a case leaves an invoice waiting up to an hour (the net) instead of five minutes; the owner's Check again on the Waiting tab is unchanged. Step 1 is indexes only and cannot change behaviour. Noticed by invoice-issue.int.test.ts, by the Home page's count of waiting documents and by the ledger row dispatcher.invoices.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "no. Code review step 3.15 (Open, FD7 and FD8) is about keeping the big tables lean, not about these reads; the verified report's DQ-5 named only the repeated per-store calls.",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Step 1 is P0-sized: six small indexes on tables that are empty today, before real invoices exist. The plans were read on empty local tables with sequential scans switched off, so they show which index a statement can use, not what the planner will choose at size; the sizes are estimates. The cron dimension describes the invoice job's repeated calls; this finding is about how the due work is found."
+  },
+  {
+   "id": "DQ-16",
+   "title": "The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/catalog.ts:284-330",
+    "/home/user/kaizen-store/src/server/catalog.ts:299",
+    "/home/user/kaizen-store/src/server/catalog.ts:302",
+    "/home/user/kaizen-store/src/server/catalog.ts:312",
+    "/home/user/kaizen-store/src/server/catalog.ts:638-689",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:20704-20725",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:12341-12350",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:18848-18853",
+    "/home/user/kaizen-store/src/server/embeddings.ts:31-45",
+    "/home/user/kaizen-store/src/db/vat.test.ts:771",
+    "/home/user/kaizen-store/CLAUDE.md:1"
+   ],
+   "evidence": "Not in the verified report beyond one line on store_is_active(). listProducts() (catalog.ts:284-330) returns every active product of a store and market with no limit (code review step 3.9) and selects commerce.vat_rate(market, p.vat_category) (line 312) and commerce.media_alt(m.url, locale) (line 299) per row; listGridProducts() does the same (lines 676 and 689). Both are stable SQL functions with SET search_path (baseline_1:20704-20725 and 12341-12350), which Postgres does not inline, so each row runs the function's own query: vat_rate reads countries joined to vat_rates up to three times. My counts (rg, tests left out): vat_rate 48 uses in 33 files, media_alt 9 in 6, store_is_active 69 in 44; the local database has 91 stable SQL functions with a SET clause in commerce. Measured on the local scratch database (PostgreSQL 16.15, read-only, explain analyze): vat_rate over 10,000 product rows 112.9 ms, 11.3 µs a row; the same rows joined to a materialized list of the store's distinct VAT categories, each rate asked once, 0.9 ms; store_is_active over 10,002 rows 24.1 ms against 0.5 ms for the plain expression; media_alt 48.8 ms for 10,000 rows on an empty media table. Production agrees: countries (28 rows) is the second most sequentially scanned table, 375,215 scans reading 10.5 M rows, which is 28 rows a scan: whole-table reads of a table only this function family reads per row; my 10,000 local calls added 20,000 such scans.",
+   "cost": "About 11 µs per product row per catalogue read for the VAT rate, plus at least 5 µs per row for the alt text: 0.3 ms for a 20-product demo store; estimate 80 ms or more for a 5,000-product catalogue on each cold listing, grid, feed or sitemap read. Small today. It grows with one store's catalogue, and store_is_active() per row grows with all stores' rows in the jobs that call it over whole tables (embeddings.ts:31-45).",
+   "who_pays": "The database; the first visitor of a listing after its cache is cold.",
+   "fix_steps": [
+    "1. In src/server/catalog.ts add one sql fragment used by listProducts() and listGridProducts(): a CTE rates as materialized (select c.cat, commerce.vat_rate(market, c.cat) as rate from (select distinct vat_category as cat from commerce.products where store_id = the store) c). Join it (join rates r on r.cat = p.vat_category) and select r.rate as vat_rate in place of the per-row call at lines 312 and 689. The rate still comes from commerce.vat_rate(country, products.vat_category), as the rule in CLAUDE.md (Database) asks; nothing reads countries.standard_vat_rate.",
+    "2. The alt text in the same two reads: replace commerce.media_alt(m.url, locale) by a lateral left join on commerce.media with the function's own where, order and limit (baseline_1:12345-12349), and take image_width from the same join; today line 302 reads commerce.media a second time per row for the width.",
+    "3. store_is_active() in statements that return many rows: join commerce.stores and write the three conditions through one shared fragment (export const activeStore = (s) => sql`${s}.status = 'active' and not ${s}.starter and not ${s}.sandbox` in src/server/stores.ts; media-library.ts:862 writes them by hand today). Move embeddings.ts:31-45 (with DQ-5 step 3) and the list reads in staff-alerts.ts, support-email.ts and the autopilot runners. Leave single-row guards on the function.",
+    "4. Do not remove SET search_path from the functions to make them inlinable: src/db/vat.test.ts:771, fulfilment.test.ts:874 and notifications.test.ts:482 hold a fixed search_path on every function for the security advisor.",
+    "5. getProduct() (catalog.ts:371) reads one product: leave it."
+   ],
+   "tests_and_rules": [
+    "src/server/listing.int.test.ts and the catalogue's int tests (prices, VAT labels and alt texts on cards); the money tests of the quick gate (D526); src/db/vat.test.ts (reduced rates, a rate that begins or ends at a country's midnight: the materialized list must be read inside the same statement so now() is the same).",
+    "src/server/price-readers.scan.test.ts (who reads prices) and src/server/alt-texts.int.test.ts (a library alt text shows on a product picture without one of its own).",
+    "Rules: CLAUDE.md Database ('A product's VAT rate is commerce.vat_rate(country, products.vat_category) … Never read countries.standard_vat_rate for a product') and docs/wave-1a-tax.md: both kept. The cached VAT labels are refreshed at a country's midnight by refreshVatLabelsAtMidnight(): unchanged.",
+    "e2e/store-pages.spec.ts (a listing's prices with their VAT label)."
+   ],
+   "depends_on": [
+    "code review step 3.9 (the same two reads; do them together)"
+   ],
+   "done_when": "On a database seeded with 2,000 products in one store, one call of listProducts() raises seq_scan plus idx_scan of commerce.countries in pg_stat_user_tables by at most 10 (read after select pg_stat_force_next_flush(); at least 2,000 today: one or more per product row).",
+   "saving": "Measured: the VAT rate from 11.3 µs to about 0.1 µs per row (112.9 ms to 0.9 ms on 10,000 rows). Estimate: 5 µs or more per row for the alt text. Milliseconds for small stores, tens of milliseconds per cold listing for large catalogues.",
+   "effort": "S",
+   "risk": "A wrong join would change a shown VAT rate or price label: the money tests and vat.test.ts hold it. A category with no row in the list cannot happen, because the list is read from the same store's products in the same statement. An alt text picked in a different order than the function's would show another picture's words: copy the function's order by exactly.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "no (code review step 3.9, Open, covers reading the whole catalogue for one page, not the per-row functions)",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Small today and measured, not estimated, for the VAT part. Do it in the same change as step 3.9, which opens these two statements anyway. It also explains why countries is the second most scanned table in production's statistics, which no other finding does."
+  }
+ ]
+}

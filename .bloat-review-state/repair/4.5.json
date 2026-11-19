@@ -1,0 +1,12 @@
+{
+ "id": "4.5",
+ "fixed": [
+  "src/lib/bloat-review-table.scan.test.ts was in tests[] but no commit made it: commit 2 now creates it, with the section heading rule (## <area>), the row parsing and its four cases plus a would-notice case, and a check runs it.",
+  "The route-budget wiring is split out of the create of scripts/lib/repeated-chunks.mjs into edits of scripts/route-budget.mjs and scripts/route-budget.json (made_by 1.8), with the key repeatedChunkMiB.max written by --write in step 1.8's file shape.",
+  "Commit 3 has a fallback when the sandbox cannot cap memory: row (a) from production's /api/health build figures (step 1.21), rows (b) and (c) 'not measured', and no change to next.config.ts."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: having commit 4 only list the SHORT rows instead of writing their steps would change what the step delivers (the plan says to add each short row's step); commit 2's measurements still need judgement.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

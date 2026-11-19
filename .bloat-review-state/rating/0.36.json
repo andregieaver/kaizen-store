@@ -1,0 +1,15 @@
+{
+ "id": "0.36",
+ "rating": "strong",
+ "why": "Commit 5 is a judgement the brief cannot remove: for each of about 24 unused server functions, decide whether it is superseded (delete it) or the server side of a feature that lacks its screen (keep it and list it), from its doc and decision. Commit 4 deletes about 262 exports across many files by rules; typecheck and lint catch most mistakes, but not names reached by string, dynamic import or registry. Commits 1 to 3 are precise and checked: three dead files, 34 keys behind typecheck and catalogue tests, and a generated icon file with a shape test.",
+ "harm_if_wrong": "A function that is still meant to be wired (or reached by a string) is deleted, so a planned feature loses its server code, or a dynamically reached export breaks at run time.",
+ "cheap_commits": [
+  1,
+  2,
+  3
+ ],
+ "make_it_cheaper": "Write the delete-or-keep verdict for each of the 24 server functions into the brief (with the superseding function named), which makes commit 5 cheap-then-review.",
+ "brief_problems": [
+  "Commit 2 asks for `rg -n -w '<last name>'` on very common names (nothingHere, allArticles, linesCol, oneAccount); the cheap model must tell this key's reads apart from many other objects' keys of the same name, which typecheck only partly backs."
+ ]
+}

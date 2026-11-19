@@ -1,0 +1,12 @@
+{
+ "id": "3.17",
+ "fixed": [
+  "The production count is decided to run on a new vitest.page-shapes.config.mts with no globalSetup (a change entry added, and scripts/page-shapes.mjs uses it): test/integration-setup.ts line 15 sets private_mode = false on every non-sandbox store, which against production would open every private store; the brief had left 'if it writes anything' to the model.",
+  "The 'tables behind' the six named server files are resolved: all read commerce.pages (and global-parts.ts commerce.saved_parts), both already in the list; the rest of the inventory is named as the part that needs judgement.",
+  "upgradeColumn is noted as an identity function (responsive.ts line 440), so removing its preprocess changes nothing."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: listing every PAGE_HOLDERS entry needs tracing about 28 more server callers to their tables and nested readers, which I could not finish reliably read-only; commit 1 stays with the strong model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

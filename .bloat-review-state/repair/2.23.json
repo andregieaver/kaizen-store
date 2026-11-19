@@ -1,0 +1,13 @@
+{
+ "id": "2.23",
+ "fixed": [
+  "Braced paths corrected to scripts/route-load.mjs, src/server/route-load.graph.test.ts, scripts/trace-budgets.json (made_by 1.8) and src/server/dispatcher-jobs.ts (made_by 1.10, added to depends_on), each with what that step leaves.",
+  "Prefilter flaw resolved from the code: products.ts is the only writer of standard_category/attributes; it now writes standard_shown (kept when the category is unchanged), copies leave it null, and a new scan test holds every writer to it, so the prefilter cannot hide a stale row.",
+  "refreshStandardShown() has one return shape: { written, storeIds }.",
+  "Exclude key form settled (found on this check): Next tests keys with picomatch contains: true against '/app' + the route, a substring match ('/' matches every route; '/s/[store]/[market]' matches the product page). Keys are now '/app'-prefixed, the script drops routes whose key is a substring of a route needing the files, and a graph test holds it."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (the way a product changed by another writer is found again is now decided: every writer writes standard_shown, held by a scan) and the reviewer's (the key form is written into commit 1); with both, the step moves from strong to cheap-then-review.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,132 @@
+{
+ "area": "database",
+ "title": "The database: its shape and how it is asked",
+ "grade_today": "C",
+ "grade_reasons": "C stands, made of two halves. The shape is close to a B: one small pool, statement and lock limits, queues claimed with skip locked, triggers gated by column, migration safety and the typed-read ratchet held by tests. The asking side is close to a D: every cold page fetches all of a store's pages to find one, 122 store filters defeat their index (about 15 million rows scanned a day), 75% of transactions change nothing, pg_cron's log is 77% of the database, and nothing counts a statement or a row. It is not an E: the listed app statements cost about 30 s of database time a day, and nobody is hurt yet.",
+ "verdict_on_bar": "Kept: a cold frame in at most 5 statements, 0 duplicate indexes with held counts, 0 chunk files with the schema, four jobs at a time, and the idle targets for the knowledge and picture jobs. Tightened: (1) the whole-table rule starts at 500 rows, not 1,000. At 1,000 production judges six tables today and none of the catalogue; product_variants (841 rows) is scanned about 3,000 times a day, about 200 whole reads in rows, and would pass unseen. (2) The 1-against-20-stores test covers the shopper's and the owner's reads and a placed order, not only the frame and scheduled work: it is the one property a multi-tenant database must hold. (3) A store with chat and pictures on and nothing changed adds 0 statements, not 2: step 0.28's own check already says so. (4) listPublishedPages falls to 8 lines after step 2.17; 14 is what step 0.24 reaches, not the floor. (5) The run log is under 20 MB once the scheduler runs one tick a minute. (6) Kaizena Flow's own frame has the same 5 as a store's. (7) A placed order gets a ceiling, not only a count. Loosened: (1) the run log's first target goes back to 80 MB. The plan's 60 MB cannot hold: 8 days of 13,252 rows at about 0.6 KB is 58 to 64 MB before dead rows, so a working prune would fail its check. (2) 'No leftover schema' leaves the bar: 34 dead tables with 96 rows cost no request, run or build, and the step needs the owner's yes. The step stays; the grade does not wait for it. (3) 'The same rows for 1 and 20 stores' gets a stated tolerance for the tick, 10 store rows per added store, because a job over all stores rightly reads each store's row. Added: a measure for slow statements (none over 5 ms at more than 10 calls a day), which the bar lacked and eight statements fail today; no statement asked twice in one run; a budget for the every-minute SQL tick; a written class for every table, so a new table that grows by time is caught. Not measurable as written, now repaired: the row comparison must run with sequential scans switched off, or every read of a one-row-per-store table fails it (Postgres scans small tables by choice); 'under 100 empty transactions a day' had no query, so the test now holds 'an idle run opens no transaction'; 'none of the 25 most-called fetches a constant' cannot be judged before traffic, because on an idle platform the top 25 are always cold-frame and scheduler reads, so it became counts a test can make. Two tests the steward named (a schema-import scan and a schema budget) are created by no step of the woven plan: the second moved into step 1.18, the first is a shortfall. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 2: whole documents: 14 after step 0.24 and at most 3 after step 2.17. 5: the slow list: at most 1,350 a day.",
+ "measures": [
+  {
+   "name": "Rows read follow the asking store, not the platform",
+   "today": "About 15 million rows a day are read by scan on three tables that have the index (1.2 billion in 78 days: cookie_scans 962 M, pages 203 M, terms 11 M). Cause: 122 store filters in 40 files written `store_id is not distinct from` (re-counted). Counted as rows read by scan a day over live rows, four tables over 500 rows are read whole far more than 10 times a day: cookie_scans about 6,300, pages 1,900, media 310 and product_variants 200. No finding names what scans product_variants. No test compares 1 store with 20.",
+   "target_a": "In the test, with sequential scans switched off, each budgeted read of one store reads the same rows with 1 and with 20 seeded stores: the cold frame, a product page, a listing, a search, the cart, a placed order, and the admin's orders and products lists. In production no commerce table over 500 rows is read whole more than 10 times a day, apart from a written list of at most 5 tables with their reasons. 0 store filters with a parameter in the old wording (at most 3 commented column-to-column joins).",
+   "how_measured": "src/server/query-budget.int.test.ts, which step 1.10 creates (the shopper's and owner's reads are the first shortfall): seq_tup_read plus idx_tup_fetch over commerce's tables after pg_stat_force_next_flush(), with enable_seqscan off so a table is read whole only where no index can serve. Production: seq_tup_read a day divided by live rows in the daily reading of step 0.2, as flag two of step 1.13 with its threshold set to 500 rows. Code: the ratchet's count from step 0.23."
+  },
+  {
+   "name": "Whole documents fetched where a field would do",
+   "today": "Three page statements are 968 s of the app's 2,360 s of listed statement time (41%). One fetches every published page whole: 29 documents a call, 79,778 calls. listPublishedPages is named on 37 lines (re-counted), 13 of them to keep one page. Titles and the modal flag are dug out of JSON (57,930 and 68,878 calls). The knowledge job reads about 40 documents a call on each tick, two theme reads return every snapshot (35,101 and 10,851 calls), and the admin's lists read two documents a page at 16 call sites.",
+   "target_a": "Drawing one page of a store with 30 pages and 200 articles fetches at most 3 page documents: the page, the header and the footer. A menu, the modal check, a 24-card grid, the admin's Pages list, an idle knowledge run and an idle theme-shots run fetch none. listPublishedPages is named on at most 14 lines after step 0.24 and at most 3 after step 2.17, none of them to pick a page by id or by address. In production, among the 40 costliest and the 40 most-called statements, none that selects a document column (pages.published or draft, design_presets.snapshot) returns more than 2 rows a call, and none digs into a page's JSON.",
+   "how_measured": "The counter of step 1.9, keeping each statement's text and the rows it returned (the rows are an addition), read by query-budget.int.test.ts. rg -c 'listPublishedPages(' over src without tests. The ratchet's count of statements that select a whole page document (step 1.3). Production: rows divided by calls in the stored reading of step 0.2."
+  },
+  {
+   "name": "What scheduled work asks for each added store",
+   "today": "Held by nothing. About 68 statements a minute from nine minute routes and at least 248 for an idle five-minute tick. 78 jobs start at once on a pool of 5 connections with a 5 s wait (runJobs() uses Promise.all, re-read). About 10 more statements a tick for each store with chat and pictures on. Five document jobs re-read every order of 120 days and every invoice on each tick, and one sweep hashes the words of every product of every store. The stores table is scanned about 2,600 times a day.",
+   "target_a": "An idle run of every scheduled job, at any cadence, sends the same statements for 1 and for 20 seeded stores, also when each store has chat and pictures on and nothing changed. It reads at most 10 more rows for each added store, all of them store rows: none from pages, products, product_variants, orders or media. One call of commerce.cron_due() reads the same rows for 1 and for 20 stores. Never more than 4 jobs run at once, and no job fails for want of a connection. An idle cookie-scan run sends at most 3 statements, theme-shots and pack-pictures 1 each. With 2,000 paid, invoiced orders in one store, the document jobs read fewer than 100 rows of orders and of invoices. The absolute totals are the scheduled-work area's bar.",
+   "how_measured": "query-budget.int.test.ts (step 1.10) on the counter of step 1.9, with every cadence forced due and its counts in src/server/ratchet.baseline.json. A unit test of runJobs() for the cap of 4 (step 3.3), and last_error in commerce.cron_jobs for a job that could not get a connection. The 2,000-order int test of step 3.6."
+  },
+  {
+   "name": "Statements that change or learn nothing",
+   "today": "162,622 of 216,877 transactions (75%) changed nothing, about 2,085 a day: 91,200 empty knowledge re-cuts and 71,422 bare lock claims by two minute routes. The most-called statement fetches a constant, a store's slug by id: 560,090 calls from 27 lines. The AI connection is read 12.4 times for each AI call. 133,066 statements claim and prune a table that never held a row, and 13,414 updates changed only a date on 468 picture vectors. Nothing checks whether one run asks the same thing twice.",
+   "target_a": "In the test, an idle tick, an idle minute run and an idle daily function open no transaction and send no write but the ledger's. No statement is sent twice with the same text and values in one cold frame or one page, and at most 5 are in one idle tick. In production every write among the 40 most-called statements changes a row at least once in 10 calls, the AI connection is read at most twice for each AI call, and fewer than 100 transactions a day change nothing. The slug lookup is written on at most 3 lines.",
+   "how_measured": "query-budget.int.test.ts counts begins, writes and repeats per run (begins and repeats are an addition to step 1.10). Production, from the daily reading of step 0.2: rows divided by calls for writes (flag three of step 1.13), calls a day of the zero-row deletes and bare lock claims, and reads of commerce.ai_providers against rows written to ai_usage (step 0.21). rg -c 'select slug from commerce[.]stores where id' over src without tests."
+  },
+  {
+   "name": "Statements slower than their job",
+   "today": "Eight of the 19 costliest statements average over 5 ms and run more than 10 times a day: the scheduler's own post 11.3 ms, the page list 9.8 ms, the picture-use check 145 ms, the AI month sum 37 to 57 ms, the product-words hash 14.5 ms, waiting invoices 13.3 ms, the knowledge read 16 ms and the VAT-label check 7.3 ms. The AI sum grows through the month, the hash with every store's catalogue and the picture check with pictures times pages. Nothing flags a slow statement.",
+   "target_a": "Among the 40 costliest statements none that runs more than 10 times a day averages over 5 ms, apart from a written list of at most 3 when the plan ends, each entry with its reason and a ceiling. The scheduler's post (11 ms, at most 1,350 a day) is one. The picture-use check is one, at no more than 60 s of database time a day; past that, uses are kept in a table. No statement's time grows through the month or with other stores' data: the AI month sum averages under 5 ms on the last day of a month.",
+   "how_measured": "mean_exec_time and calls a day in the stored reading of step 0.2, as a sixth flag in step 1.13 (an addition). limits-enforce.int.test.ts with a month of seeded usage (step 0.21)."
+  },
+  {
+   "name": "What a cold instance and a cold page ask before the page's own content",
+   "today": "src/db/schema.ts (1,059,413 bytes) is evaluated at every cold start though no query uses it: 115 to 135 ms and 9 to 12 MB measured locally, in 6 server chunk files (re-checked in the build). Each instance reads the interface texts before it serves and polls them every minute: 1,440 a day per instance. A cold frame asks about 20 statements (21 for Kaizena Flow's own), and siteCookies alone asks 8 or 9, one after another.",
+   "target_a": "0 chunk files hold table definitions, and no running file may import the schema. The start read is 2 statements. The poll is a one-row read at most every 10 minutes: at most 144 a day per instance, and none where no AI-translated language is served. A cold frame asks at most 5 statements in at most 2 waves, for a store and for Kaizena Flow's own site, with siteCookies at most 4.",
+   "how_measured": "After pnpm build: rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l (6 today), and a scan test that fails on a running import of src/db/schema.ts (an addition to step 0.4). The unit test of startUi() from step 0.8. query-budget.int.test.ts, the cold-frame part, for a store's frame and the platform's (steps 1.10 and 2.18)."
+  },
+  {
+   "name": "Storage with no ceiling",
+   "today": "731 MB, of which pg_cron's run log is 564 MB (77%), growing about 8 MB a day with no prune. Seven tables grow by time and nothing deletes from them: the run log, and guest carts, webhook events, email messages, experiment events, referral visits and Work events. Page versions keep 50 a page with no age rule. The docs index took 49,347 updates on 1,845 rows. Nothing says how a new table is bounded.",
+   "target_a": "The cron schema is under 80 MB a week after step 0.25, and under 20 MB once the scheduler runs one tick a minute. Every commerce table is in one of four written classes: kept with its parent, deleted after a stated period, kept for the law, or reference data. 0 tables grow by time without a period in src/lib/retention.ts and a delete step. Every prune has a ledger row of its own, and a failing prune is reported within 3 days. A docs deploy that changes one article updates fewer than 50 rows.",
+   "how_measured": "Size by schema in the stored reading of step 0.2, with flag four of step 1.13 at 80 MB and then 20 MB. src/lib/retention.test.ts, plus a scan test over every table's class (an addition to step 3.5). commerce.cron_jobs rows named daily.* (step 3.4). n_tup_upd of commerce.docs_index across a docs deploy."
+  },
+  {
+   "name": "What each write to a hot table carries",
+   "today": "89 indexes and 60 triggers on the eight hot tables; orders has 34 and 27 (the 27 re-counted in the baseline). 13 indexes duplicate another: 2 extra entries per order, 1 per order line, 1 per counted visit. 46 hand-written indexes are invisible to pnpm db:check, and orders went from 24 to 34 indexes unseen. Nobody has measured what one placed order sends: the two files on its path hold 49 statement sites, 7 of orders' triggers fire on the insert and 11 on a change of status.",
+   "target_a": "0 duplicate indexes. Index and trigger counts per hot table are held and rise only with a written reason: orders 32 and 27, order_lines 8 and 5, visits 2 and 0. One guest order of three lines has its statements and rows written held under a stated ceiling: the same count with 10 and with 2,000 earlier orders in the store, at most 3 more statements for each added line, and triggers under a fifth of the order's database time. One counted visit is at most 3 statements and 2 rows written. Eight weeks after opening, no index that no scan has used and that backs no constraint is left on a hot table, or on any table with over 100,000 row writes.",
+   "how_measured": "src/db/index-duplicates.test.ts (step 0.26). The hot tables' counts in src/lib/surface-budget.baseline.json (step 1.18). The write budget of step 1.12 for the order and the visit; the ceiling and the 10-against-2,000 comparison are an addition. Flag five of step 1.13 on pg_stat_user_indexes."
+  }
+ ],
+ "bar_in_a_sentence": "A read or a scheduled run costs what the asking store holds and what has changed, never what the whole platform holds. No statement fetches a document it does not draw, asks twice, writes nothing or runs slow, and a test or a daily production reading holds each of these numbers.",
+ "steps_to_a": [
+  "0.2",
+  "0.4",
+  "0.8",
+  "0.20",
+  "0.21",
+  "0.23",
+  "0.24",
+  "0.25",
+  "0.26",
+  "0.27",
+  "0.28",
+  "0.30",
+  "0.31",
+  "0.45",
+  "1.9",
+  "1.10",
+  "1.12",
+  "1.13",
+  "1.18",
+  "2.16",
+  "2.17",
+  "2.18",
+  "2.19",
+  "2.48",
+  "3.1",
+  "3.2",
+  "3.3",
+  "3.4",
+  "3.5",
+  "3.6",
+  "3.8",
+  "3.9",
+  "4.4",
+  "4.5"
+ ],
+ "can_the_steps_reach_a": "Yes. Step 3.5 needs any period from you for guest carts, webhook events and old page versions, and step 1.18 must at least hold the hot tables' indexes and triggers. The dispatcher is capped at four jobs before opening (new step 0.45), a placed order gets its ceilings (new step 2.48), and the reads that grow with the catalogue moved from the last phase to step 2.19. The production flags of step 1.13 are read in step 4.5.",
+ "shortfalls": [],
+ "ladder": {
+  "after_phase_0": "C",
+  "after_phase_1": "B",
+  "after_phase_2": "B",
+  "after_all": "A"
+ },
+ "tolerated": [
+  "Postgres reads a table of a few pages whole by choice. Tables under 500 rows are not judged, and a daily prune, a backup and the daily usage count each read a table once.",
+  "A job over all stores reads each store's row: at most 10 store rows per added store a tick. At 6,000 stores that is a fraction of a second every five minutes.",
+  "An idle tick still sends up to 125 small statements, about 36,000 a day, and each gated route keeps a 15-minute net of 96 runs a day. The totals are the scheduled-work area's bar.",
+  "orders keeps 32 indexes and 27 triggers until eight weeks of real traffic can judge them. None is provably redundant today, and each new one needs a written reason.",
+  "The 414 indexes on foreign keys and the 39 (store_id, id) keys stay: about 1 microsecond and 7 bytes a row, measured.",
+  "341 loops hold a database call. Those over a parent's few rows follow use (one insert per order line or fee), within 3 statements per added line.",
+  "The picture-use check still text-searches a site's documents for each picture, but only after something in the site was saved. It is on the slow list with a ceiling of 60 s a day; past that, uses are kept in a table.",
+  "Reports and exports may average over 5 ms. They join the slow list as one family, with a ceiling, when owners start to use them.",
+  "Search by meaning scans one store's vectors with no vector index, and the docs index whole, until a store passes about 10,000 products.",
+  "A quiet instance closes its connections after 5 s and reconnects on the next request. That is the written design, so an instance is never frozen with connections open.",
+  "Ending a sandbox runs 800 deletes and holds about 2,100 locks, one purge at a time: under 1 s for each ended sandbox.",
+  "The leftover commerce_legacy schema (34 tables, 96 rows) and the unused columns cost nothing that runs. They go on the owner's word and when their tables are next changed."
+ ],
+ "owner_choices": [
+  "How long are guest carts, processed webhook events and old page versions kept (step 3.5, the code review's question 6)? Any period reaches the bar; no answer leaves 'storage with no ceiling' open and the area at a B.",
+  "May a test refuse a new index or trigger on the eight hot tables until a reason is written beside the count (step 1.18)? For this area the narrow form is enough. A no leaves the write cost unheld, as it was when orders went from 24 to 34 indexes, and the area at a B.",
+  "May the leftover commerce_legacy schema be dropped after a last dump (step 3.8)? It does not change this area's grade either way.",
+  "Is the switch of 7 November final, so the old no-store copy of kaizenaflow.com and its twin tables can go (step 3.9)? It moves the code and surface grades, not this one: no number of this bar depends on it.",
+  "Step 0.25 needs one read-only look at production first: whether the app's role may empty pg_cron's log in one go. If it may not, the log is cut by row count (under 100,000 rows) and the delete alone does not give its 564 MB of disk back."
+ ],
+ "closed_shortfalls": [
+  "1. The test that compares 1 store with 20 covers the frame and scheduled work only (step 1.10). TIGHTENED: step 1.12 carries it; the text or done-when of steps 1.9, 1.10 changed with it.",
+  "2. No step states how many rows an idle tick may read per added store. MERGED into the shortfall scheduled 5: step 1.10, 'Count the statements and rows of scheduled work and of a cold frame', closes both.",
+  "3. Until step 3.3 in phase 3 the dispatcher starts 78 jobs at once on 5 connections with a 5 s wait. ADDED: new step 0.45, 'Cap the dispatcher at four jobs at a time'.",
+  "4. Seven done-whens are weaker than the bar. TIGHTENED: step 0.23 carries it; the text or done-when of steps 0.4, 0.21, 0.24, 0.25, 2.17, 3.1, 3.6 changed with it.",
+  "5. Nothing flags a slow statement. Flag one of step 1.13 names a newcomer among the top 25 and leaves the judging to a reader. TIGHTENED: step 1.13 carries it; the text or done-when of step 3.1 changed with it.",
+  "6. Step 3.5 gives the seven known tables a delete rule, but nothing says how a new table is bounded. TIGHTENED: step 3.5 carries it.",
+  "7. A placed order has a count (step 1.12) and no ceiling, and no step lowers it: code review step 3.7, Stage placeOrder, is open and in no step of this plan. ADDED: new step 2.48, 'Give a placed order a ceiling, and stage placeOrder where the first figures are over it'."
+ ]
+}

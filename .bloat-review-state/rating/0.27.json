@@ -1,0 +1,12 @@
+{
+ "id": "0.27",
+ "rating": "cheap-then-review",
+ "why": "The design is settled and the SQL is given verbatim, including the fill migration. The step still adds a table and a data-fill migration that CI applies to production, and it rewrites the job that decides when the chat agent's passages, and their paid vectors, are cut again. A wrong stale expression would either re-cut everything (throwing away vectors) or never re-cut (stale chat answers), and only the int test's few cases would notice. Commit 1's own new test cannot pass as written, so the cheap model will be pushed to 'make the test pass'.",
+ "harm_if_wrong": "Production chat agents silently stop learning newly published pages, or every page is re-cut and re-embedded at the store's AI cost. A malformed fill would mark stale sources as current.",
+ "cheap_commits": [],
+ "make_it_cheaper": "Move the 'no statement selects the document' and 'no statement whose text matches begin' assertions from commit 1's new case to commit 2, where the document read is actually split off.",
+ "brief_problems": [
+  "Commit 1's new case expects the second run to send no statement matching /p\\.published\\b(?!_at)/, but in commit 1 syncPageKnowledge still selects p.published in its one pages read (src/server/knowledge.ts line 171): only commit 2 splits it, so the case fails in commit 1.",
+  "Commit 2's idle-run test leaves a fallback ('if another test file's stores make sites more than 0 ... scope the assertion') to the executor."
+ ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "2.28",
+  "rating": "strong",
+  "why": "Commit 3 is 'keep the way that measured better': it measures whether revalidateTag with { expire: 0 } still redraws, then chooses way B (change how publishing expires the storefront cache) or way A (client word modules with scan-test exceptions), and must judge per screen whether it relies on the redraw. That is a choice and a caching rule for published pages at once.",
+  "harm_if_wrong": "A published page or product change does not show on the storefront's next request, or an admin screen stops showing server state after a save.",
+  "cheap_commits": [
+    1,
+    2
+  ],
+  "make_it_cheaper": "Measure way B once before handing the step over and write the outcome into the brief (and which screens rely on the redraw), so commit 3 becomes one specified path.",
+  "brief_problems": [
+    "Commit 2 asks the executor to find the words and menu inside an RSC payload by 'area names such as builder, blocks, common, shell' without a parser or a known shape",
+    "It depends on step 1.5's save record in admin-scripts.spec.ts, which the brief does not describe"
+  ]
+}

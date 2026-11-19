@@ -1,0 +1,20 @@
+{
+ "id": "0.28",
+ "fixed": [
+  "Commit 3's case (a) no longer leaves 'if the fixture can build Ctx cheaply' open: it is the readFileSync source check, with the reason (product-tools.int.test.ts's store has no embedding model or fetch stub) and a note that it is weak and read in review.",
+  "The embeddings.ts guard comment and the decisions row say that a dispatch starting after minute 4 skips that hour's pass (the pattern experiment-jobs.ts:50 and autopilot-effects.ts:44 already use)."
+ ],
+ "rejected": [
+  {
+   "problem": "checked_in_code places writePack at 362-438 but its loop is at 347.",
+   "why": "The how finds the loop by its text, never by line; harmless as the reviewer says."
+  },
+  {
+   "problem": "Commit 4 depends on step 0.27's refreshKnowledge({ full }).",
+   "why": "depends_on names 0.27 and a stop_if stops after commit 3 when 0.27 is not deployed."
+  }
+ ],
+ "cheaper": "not applied: splitting the two migrations into a step of their own changes the plan's step boundaries, which this repair must not do.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "0.14",
+  "rating": "cheap",
+  "why": "Two config lines with their exact place and comment, a text test, and an e2e spec whose shape, addresses and thresholds are all given; both keys are typed in NextConfig, so a misplaced key fails the type check, and the build-warning grep plus the e2e spec catch a flag that does nothing. The docs edits are fixed text.",
+  "harm_if_wrong": "At worst the router stops guessing routes everywhere, so client navigation is a little slower, which e2e and a revert both handle.",
+  "cheap_commits": [
+    1
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "The fallback for a 404 on /category/hjem ('pick the first category the seed makes') is a small choice, though e2e/terms.spec.ts already uses /s/demo/no/category/hjem, so it should not come up"
+  ]
+}

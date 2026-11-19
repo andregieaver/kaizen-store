@@ -1,0 +1,12 @@
+{
+ "id": "1.24",
+ "fixed": [
+  "Ignore-file change: the brace set {.ignore,docs/.ignore,docs/audits/.ignore} replaced by docs/audits/.rgignore (step 0.40 makes .rgignore files, not .ignore), made_by 0.40, with its three lines and the exact line to append.",
+  "Removed the 'if step 1.1's docs budget lists the ignore lines' conditional: 1.1 only checks evidence folders are covered.",
+  "stop_if names docs/audits/.rgignore instead of 'the ignore files'."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

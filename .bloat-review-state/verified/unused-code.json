@@ -1,0 +1,471 @@
+{
+ "headline": "There is little dead code: about 2,700 lines of 772,000 (0.35%), spread thin over some 400 files, and the build drops it (checked in .next), so no shopper or owner pays for it. None of it is \"a feature nobody has used yet\": it is code with no caller, which opening the platform will not change. No source file is unreachable, no admin page is orphaned, no dependency is unused and every SQL function has a caller. One route has no caller at all, which the auditor missed: the invoice-PDF job was never scheduled, though its retry button promises a next run. The one item with a real run-time price is the 19,614-line Drizzle schema that every cold start evaluates although no query reads it (150 to 190 ms and 18 MB measured here; code review step 3.14, still open); that price grows with stores, instances and deploys. Three items are the owner's choices, not waste: editing a Work time entry, a door for live drills, and how invoice PDFs get made. What is missing is a guard: nothing in lint or the 46 scan tests counts unused exports, so this thin layer grows unseen. Two of the auditor's findings were weaker than written: the page-shape upgraders cost about 10 microseconds a page (measured) and part of them is live code, and the live-drill job costs two small queries a pass, not 288 function runs a day.",
+ "metrics": [
+  {
+   "name": "Source files no entry point or test reaches",
+   "value": "0 of 4,133 (772,235 lines without tests)",
+   "how": "Skeptic re-ran the review's TypeScript-parser scan (work/dead.mjs) into scratchpad/work/skdd/rescan: 6,191 files, 8.8 s wall, same counts as m/dead.json. Read the scan's source: imports resolved by tsconfig paths, namespace, export-star and dynamic imports mark a whole file as used."
+  },
+  {
+   "name": "Files only tests reach",
+   "value": "42 files, 6,616 lines: 34 test support (4,957 lines), 5 guard data or reference formulas read by tests by design (1,485), 3 dead (174 by the scan, 171 by wc)",
+   "how": "Re-sorted dead.json's list by name; opened the 8 that are not fixtures or test support and rg'd each basename over src, e2e, scripts and docs."
+  },
+  {
+   "name": "Exports nothing imports (scan: dead)",
+   "value": "263 exports, 477 lines. 206 names appear nowhere else in code; 57 share a name with something else (all 57 listed, 8 opened: coincidences, such as a second isTargetMetric). 1 false alarm: Next's register in instrumentation.ts",
+   "how": "Own word index over 6,633 files of src, scripts, e2e, e2e-live, docs, content, .github, wordpress-plugin and the config files (scratchpad/work/skdd/idx.mjs, rows.json)."
+  },
+  {
+   "name": "Exports only tests import (scan: tests-only)",
+   "value": "655 exports, 6,135 lines: 143 (2,927 lines) sit in the 42 tests-only files; 512 (3,208 lines) sit in 298 production files (the auditor's 405 is the count of files holding any suspect, dead ones included)",
+   "how": "rows.json grouped by file."
+  },
+  {
+   "name": "Tests-only exports in production files, by how many test files name them",
+   "value": "0 test files: 69 exports, 249 lines; 1 test file: 324 exports, 1,575 lines; 2 or more: 119 exports, 1,384 lines",
+   "how": "rows.json: distinct test and fixture files containing the name. Matches the auditor."
+  },
+  {
+   "name": "Share of tests-only exports that are truly dead",
+   "value": "Auditor's sample: 79 of 120 (24 of the 120 were test support). Skeptic's own sample of 60 from the 443 named by at least one test (seed 77123): 45 dead (75%, about plus or minus 11 points; 80% by lines), 15 kept for a reason (test seams, guard lists, oracles)",
+   "how": "scratchpad/work/skdd/sample60.txt: each declaration and comment read; 12 ambiguous ones checked by rg in tests and callers."
+  },
+  {
+   "name": "Exports used by nothing at all",
+   "value": "331 exports, 721 lines (262 scan-dead without register, plus 69 that no test names): 105 types (121 lines), 89 functions counting one-line arrow helpers (285), 116 other constants (294), 21 re-exports. 23 are server functions (158 lines)",
+   "how": "rows.json; kinds by the declaration line. The auditor gave 329 exports and 723 or 718 lines."
+  },
+  {
+   "name": "Dead production TypeScript in all",
+   "value": "about 2,700 lines (2,400 to 3,000), 0.35% of non-test source; 721 of them measured as used by nothing at all",
+   "how": "721 + 174 in dead files + about 1,250 of the 1,575 one-test lines (80%) + about 450 of the 1,384 several-test lines (about 500 are oracles) + about 130 second-order. Estimate from two samples. The auditor's 3,000 is the top of this range."
+  },
+  {
+   "name": "Test lines that name a tests-only export no production file names",
+   "value": "1,458 lines (2,548 with closeDb's 1,090)",
+   "how": "rows.json, distinct file:line pairs in test files. It includes oracles and test seams (buildInvoiceSnapshot 63 lines, nextState 33, forgetLimitMemos 20), so it is not the number of test lines that would go."
+  },
+  {
+   "name": "Server actions no component imports",
+   "value": "3 of 1,372 exported async functions in 271 'use server' files",
+   "how": "Recounted the files and functions by rg; rg -w of the three names finds one definition each and one test for two of them."
+  },
+  {
+   "name": "Admin pages nothing links to",
+   "value": "0 of 449",
+   "how": "Recounted page.tsx under src/app/admin (449). admin-map.test.ts walks the page files (lines 24 to 38). The auditor's trace of 55 pages with built hrefs was not redone."
+  },
+  {
+   "name": "Route handlers nothing calls",
+   "value": "1 of 263 (the auditor said 0): /api/cron/document-pdfs",
+   "how": "Own pass over all 263 routes for a literal or built address (scratchpad/work/skdd/routes.mjs), six doubtful ones opened. pg_cron schedules 12 of the 13 cron routes (baseline_4 lines 93 to 104), vercel.json one of those 12 again; nothing fetches the 13th."
+  },
+  {
+   "name": "SQL functions nothing calls",
+   "value": "0 of 616 names (617 definitions; 331 are trigger functions, all attached). 2 (bonus_verify, referral_verify) are invariant checks only tests call",
+   "how": "Own reachability trace over the four baseline files (scratchpad/work/skdd/sqlfn2.mjs): roots are triggers, top-level SQL and a commerce.name( call outside a comment in non-test code; 614 reached. 87 are reached only from TypeScript and each has a real call."
+  },
+  {
+   "name": "Declared packages nothing imports",
+   "value": "0 of 68 (51 dependencies, 17 dev). three is a peer of @google/model-viewer and @tiptap/pm a peer of @tiptap/core, react and extensions; the rest are types and build plugins",
+   "how": "dead.json packages against package.json; peers read from each package's own package.json."
+  },
+  {
+   "name": "Tests that read archived migrations",
+   "value": "19 reads in 17 test files; 7 files (526 lines) exist for one archived migration each",
+   "how": "rg for readMigration, findMigration and migrationHistory in test files; wc of the seven."
+  },
+  {
+   "name": "Exports used only inside their own file",
+   "value": "2,205 (not sampled). The export keyword is unneeded, but it hides nothing: each is used in its file",
+   "how": "dead.json ownFileOnly (identifier appears more than once in the file). The auditor's line that these hide unused code from the linter was wrong; that is true only of the 918 other suspects."
+  },
+  {
+   "name": "Catalogue keys with a name used nowhere else",
+   "value": "at most 207 of 30,023 English leaf keys (0.7%) in 74 files",
+   "how": "Re-ran the auditor's catkeys.mjs (1.9 s). Catalogue size and loading are another dimension's."
+  },
+  {
+   "name": "Cold-start cost of the schema (DD-1)",
+   "value": "117 to 149 ms to evaluate the module, 32 to 36 ms for drizzle's init with it (0.03 to 0.04 ms without), 16 MB + 2.3 MB of heap; six server chunks carry it (797,650 to 4,675,242 bytes each)",
+   "how": "Three runs of scratchpad/work/dp-time-schema.cjs on the esbuild bundle schema.nozod.cjs, load average about 2 on this 4-CPU machine; rg for stores_modules in .next/server."
+  },
+  {
+   "name": "Run-time cost of the page-shape upgraders (DD-9)",
+   "value": "about 10 microseconds for a page of 12 rows and 120 blocks already in today's shape",
+   "how": "esbuild bundle of responsive.ts and typography.ts into scratch; 20,000 timed runs after warm-up (scratchpad/work/skdd/bench.cjs)."
+  },
+  {
+   "name": "Deletion tiers (lines, and the check that proves each safe)",
+   "value": "T0 exports nothing uses: 331 exports, 721 lines. T1 three dead files and their tests: about 230 lines. T2 exports one unit test alone uses: 324 exports, 1,575 lines, about 80% go (about 1,250 lines plus their test cases). T3 exports several tests lean on: 119 exports, 1,384 lines; about 500 lines of oracles stay, about 300 to 600 go. T4 before opening only: 8 redirects (with 2 unit tests and 4 e2e specs to change), the modules twin, and about 240 lines of page upgraders if a count of old-shaped rows allows",
+   "how": "T0 and T1: pnpm typecheck and lint fail if anything used them; rg -w of each name shows only its definition. T2 and T3: typecheck, pnpm test and test:int. T4: the e2e suite, and a production query that finds zero old-shaped rows in every table holding page JSON."
+  }
+ ],
+ "clean": [
+  "Reachability: no source file is unreachable (scan re-run, 8.8 s). The scan under-counts where a file is reached by a namespace, star or dynamic import; that blind spot was not re-measured here.",
+  "Admin routes: 449 pages, each listed in src/lib/admin-map.ts and held there by admin-map.test.ts, which walks the page files.",
+  "Route handlers: 262 of 263 have a caller (a fetch with a literal or built address, a file convention, pg_cron, or an outside caller such as Stripe, Vercel's drain, the SMS provider or the WordPress plugin). The exception is /api/cron/document-pdfs (DD-12). pg_cron schedules 12 of the 13 cron routes, not all 13.",
+  "Server actions: 1,369 of 1,372 are imported by a component. The three that are not run through the same guard as the rest (change() calls workMember(), actions.ts lines 72 to 81). Next's guide (node_modules/next/dist/docs/01-app/02-guides/data-security.md lines 280 to 292) says an unused action's id is left out of the client bundle but every action must still be treated as reachable by POST, so the guard matters; it is there.",
+  "SQL: every one of 616 function names is reached from a trigger, other SQL, supabase/seed.sql or a real call in src; no trigger function lacks a trigger. bonus_verify and referral_verify are invariant checks only tests call.",
+  "Dependencies: none unused; the two with no import are peers of packages that are imported.",
+  "Tests: none test only themselves. The 34 test-support files (4,957 lines) are clearly named, imported by tests only and never bundled.",
+  "Dead exports do not reach a browser or a server bundle: two dead text constants appear once per chunk in .next (the catalogue's copy only), and the SQL of the dead server function setDeliveryNote is in no server chunk.",
+  "Switches: no environment switch is always on or always off in code. Three constants are fixed: APP_DIRECTORY_OPEN = false (a documented legal gate, src/lib/apps.ts lines 17 to 22), CSP_ENFORCE = true (a documented fallback) and DOCS_GUIDE_READY = true (3 uses). The integrations' comingSoon flag is set by no integration (5 uses). The last two cost nothing and are not findings.",
+  "Oracles and test seams are by design, not dead: buildInvoiceSnapshot, creditNoteSnapshot and their edit twins, nextState in support-state.ts, validateExport (the privacy export's shape check, used on real exports in privacy-export.int.test.ts; the auditor listed it as dead), STORE_MATCHER (held equal to the proxy's literal), replayAgentEval (CI's replay), closeDb, and the reset helpers such as forgetUpsTokens and resetTicks.",
+  "Guard data read only by tests is deliberate: i18n-glossary.ts (853 lines, also writes docs/i18n/glossary-nb.md), legal-wording-nb.ts, store-export-scope.ts, src/lib/signature-themes.ts, and experiment-legacy.ts (the old formulas kept as the engine's reference, docs/ab-testing.md line 241).",
+  "platformAction() has no production caller yet (two tests name it); it is part of code review step 1.4 and one day old: not a finding.",
+  "scripts/theme-art (9,725 lines of art generators, 400 KB) and supabase/archive (6.5 MB, kept by rule D572) are named by no build or deploy config and cost nothing in production.",
+  "Nothing in this dimension argues from an empty table or an unused feature. Features with no rows yet are not listed here as dead.",
+  "Not covered here because other dimensions hold the evidence: unused public assets, unused tables, columns and indexes, the catalogues' size, and what the 84 jobs of the five-minute dispatcher cost when idle."
+ ],
+ "findings": [
+  {
+   "id": "DD-1",
+   "title": "Every cold start evaluates the 19,614-line schema that no query reads",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/db/client.ts:11",
+    "/home/user/kaizen-store/src/db/client.ts:78",
+    "/home/user/kaizen-store/src/db/schema.ts:19",
+    "/home/user/kaizen-store/drizzle.config.ts:7",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:116",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:268"
+   ],
+   "evidence": "src/db/client.ts imports the whole schema as a value (line 11) and hands it to drizzle (line 78). Nothing else imports it at run time: rg over src, scripts and e2e finds client.ts, one scan test (store-export.scan.test.ts) and drizzle.config.ts. No code uses the query builder or db.query: rg for .query.x.findMany, .select().from( and .insert(table) finds nothing; every query is raw SQL through execute. So all 481 table objects are unread at run time. Timed three times here with scratchpad/work/dp-time-schema.cjs on an esbuild bundle of the schema (zod left out): 117 to 149 ms to evaluate the module and 16 MB of heap; drizzle's init with the schema 32 to 36 ms and 2.3 MB, against 0.03 to 0.04 ms without. In the finished build six server chunks carry the schema (rg for the check name stores_modules in .next/server): 797,650 bytes twice, 847,449 twice, 2,395,459 and 4,675,242.",
+   "cost": "150 to 190 ms and about 18 MB on each cold start of a function that touches the database (measured on this machine, an estimate for Vercel), and about 0.8 MB of JavaScript in each of 6 server chunks (measured).",
+   "who_pays": "The server on every cold start, so the first shopper or owner to reach a fresh instance. Today that is mostly scheduled jobs and the team. It grows with stores, traffic spikes and deploys: more instances, more cold starts.",
+   "fix": "In src/db/client.ts change line 11 to import type * as schema and call drizzle({ client: pool }) on line 78. Keep schema.ts as drizzle-kit's source only. This is the half of step 3.14 that needs no file split, so it can go first.",
+   "saving": "150 to 190 ms and about 18 MB per cold start (measured here; an estimate for Vercel) and about 0.8 MB off each of 6 server chunks (measured).",
+   "effort": "S",
+   "risk": "Low. Typecheck proves no code reads a table object; pnpm db:check proves the migrations are unchanged. The scan test that imports the schema itself is not touched.",
+   "confidence": "high",
+   "already_tracked": "Code review step 3.14 Split schema.ts (finding FD5): Open. The measurements are new; the finding is not.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened client.ts lines 11 and 78, the schema's 35 imports, drizzle.config.ts and the review's rows 116 and 268. Re-ran the timer three times: 117 to 149 ms and 32 to 36 ms, against the auditor's 135 to 146 and 35 to 43, so the range is now 150 to 190 ms. Re-counted the six chunks and their sizes: they hold. Dropped the auditor's side figure that 271 table objects are named by no other file: it is a coincidence-of-names count (the same count gave me 345) and adds nothing, since no file imports any of them. Not argued from use: this cost is paid whatever the store sells."
+  },
+  {
+   "id": "DD-2",
+   "title": "About 330 exports in production files are kept alive only by a test",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/server/orders.ts:604",
+    "/home/user/kaizen-store/src/server/discounts.ts:480",
+    "/home/user/kaizen-store/src/server/delivery-options.ts:792",
+    "/home/user/kaizen-store/src/server/checkout.ts:566",
+    "/home/user/kaizen-store/src/server/store-starters.ts:535",
+    "/home/user/kaizen-store/src/server/store-starters.ts:252",
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:577",
+    "/home/user/kaizen-store/src/server/field-entities.ts:164",
+    "/home/user/kaizen-store/src/server/support-actions.ts:434",
+    "/home/user/kaizen-store/src/server/invoice-pdf.ts:152",
+    "/home/user/kaizen-store/src/server/store-trial.ts:50",
+    "/home/user/kaizen-store/src/server/withdrawals.ts:188",
+    "/home/user/kaizen-store/src/lib/work-csv.ts:215",
+    "/home/user/kaizen-store/src/components/admin/analytics/overview-view.tsx:42",
+    "/home/user/kaizen-store/src/lib/responsive.ts:354",
+    "/home/user/kaizen-store/src/server/delivery-readers.scan.test.ts:8"
+   ],
+   "evidence": "The scan lists 655 exports only tests import. 512 of them (3,208 lines) sit in 298 production files. 69 of the 512 are named by no test at all and are counted in DD-3. That leaves 443 (2,959 lines) named by at least one test: 324 by one test file (1,575 lines), 119 by several (1,384 lines). In my own random sample of 60 of the 443, 45 were dead but for their test (75%; 80% by lines) and 15 were kept for a reason (test seams, guard lists a test walks, oracles). The auditor's sample of 120 gave 79 dead. Largest dead ones re-checked by rg -w: listOrders (the admin uses listOrdersPage; 3 test files, 15 lines), setCartCode (15 test lines), invoiceToCsv and creditNotesToCsv, customerFieldExportMany, moveStarter, saveStarterDraft, starterCards, checkFikenDocument, OverviewView (only its test renders it), 11 helpers in responsive.ts. validateExport, which the auditor listed as dead, is a shape check the integration test runs on real exports: an oracle, kept. chosenDelivery's comment and the scan test's header both say cartSummary() and placeOrder() call it; both call resolveDelivery() directly (cart-summary.ts line 83, checkout.ts lines 566 and 1509). About one in ten names a screen that does not call it (openRequestCount 'the Requests tab's badge', trialPausedAt 'for the banner', retryDocumentPdf, shopperCanAccessOrder 'for the order page and My account', twoStepMembers): each is a missing wire or dead, to decide one by one.",
+   "cost": "About 1,700 lines of source (1,500 to 2,000, estimate from two samples) and their test cases. Nothing at run time: the build drops them (a dead server function's SQL is in no server chunk).",
+   "who_pays": "People and agents who read, search and change the code (each one is a false lead and context spent), and CI, which runs tests of code no user can reach.",
+   "fix": "Work the list (scratchpad/work/skdd/rows.json, or the auditor's pool.json) in two tiers. Tier 2, the 324 named by exactly one test file: delete the export and its test cases unless its comment says a test holds an invariant with it. Tier 3, the 119 named by several: keep the oracles and seams, move helpers only tests need into a test-support file, and switch tests that use an old interface as set-up (setCartCode, listOrders) to the one the app uses. Where a comment names a screen, ask whether the wire is missing before deleting; shopperCanAccessOrder is the one to look at first, since it is an access check.",
+   "saving": "About 1,700 lines of source and roughly 1,000 to 2,000 test lines (estimate). Not additive with DD-7, which is a subset.",
+   "effort": "M",
+   "risk": "Low to medium. Each deletion is proved by typecheck and the test suites. The risk is deleting a function a planned screen was about to use, which the per-item question covers.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Rebuilt the pool from dead.json with my own word index: 512 exports, 3,208 lines, and the 69, 324 and 119 split all match. Corrections: the 512 sit in 298 files, not 405 (405 is every file with any suspect). The title's 430 counted the 69 that DD-3 also counts; without them it is about 330 (285 to 380). validateExport is an oracle, not dead. The saving is about 1,700 source lines here, not 2,000, once the 249 lines of DD-3 are taken out. The 1,457 test lines are lines that name these exports (I got 1,458), and include oracles and seams, so they are not the lines that go. Opened every cited line: all hold. Nothing here rests on a feature being unused; these are functions with no caller."
+  },
+  {
+   "id": "DD-3",
+   "title": "331 exports are used by nothing at all, and some say they are in use",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/server/discounts.ts:413",
+    "/home/user/kaizen-store/src/server/discounts.ts:418",
+    "/home/user/kaizen-store/src/server/standing-orders.ts:1135",
+    "/home/user/kaizen-store/src/server/privacy-erasure.ts:447",
+    "/home/user/kaizen-store/src/server/privacy-erasure.ts:800",
+    "/home/user/kaizen-store/src/server/delivery-options.ts:829",
+    "/home/user/kaizen-store/src/server/support-agent.ts:54",
+    "/home/user/kaizen-store/src/lib/quotes.ts:58",
+    "/home/user/kaizen-store/src/lib/fiken-settings.ts:17",
+    "/home/user/kaizen-store/src/lib/content-types.ts:48",
+    "/home/user/kaizen-store/src/lib/analytics-targets.ts:202",
+    "/home/user/kaizen-store/src/instrumentation.ts:6"
+   ],
+   "evidence": "263 exports are imported by nothing and unused in their own file. 206 of their names appear nowhere else in any code or doc file I indexed; the other 57 share a name with something else, and the ones I opened are coincidences (hexColour, periodText, a second identical isTargetMetric in platform-briefing.ts). One is a false alarm: Next reads register in instrumentation.ts. Another 69 were filed as tests-only only because a test imports their whole module; no test file contains their names. Together 331 exports, 721 lines: 105 types, 89 functions (most are one-line arrow helpers), 116 other constants, 21 re-exports; 23 are server functions (158 lines). Some carry comments that claim callers. applyCode() says the cart, the checkout's code check and placeOrder() all apply a code through it (discounts.ts lines 413 to 417); rg -w finds only its definition. forgetStandingOrders() was replaced by the erasure job's own code (privacy-erasure.ts lines 447 to 461 and 800 to 806), which throws where the dead copy swallows a Stripe error. setDeliveryNote() has no caller and no test, and its SQL is in no built server chunk. MAX_CONTENT_TYPES = 50 is read by nothing.",
+   "cost": "721 lines. Nothing at run time or in any bundle. The price is a wrong fix: someone changes the copy nobody runs, or trusts a limit nothing enforces.",
+   "who_pays": "People and agents changing discounts, erasure or delivery code.",
+   "fix": "Delete them (tier 0), starting with the 23 server functions and the comments that claim callers. For the two identical isTargetMetric, keep the one that is imported.",
+   "saving": "721 lines (measured).",
+   "effort": "S",
+   "risk": "Low. Typecheck and lint fail if anything used one; no test names them.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-derived the two groups from dead.json with my own index: 262 (without register) plus 69 is 331 exports and 721 lines; the auditor wrote 329 and 723 or 718, a difference of two exports. Ran rg -w on applyCode, forgetStandingOrders, setDeliveryNote, ACT_KINDS, MAX_CONTENT_TYPES, QuoteRequestBody and VAT_TYPE_CODES: each has only its definition. Read both erasure blocks and applyCode's comment. Checked 9 of the 11 no-test names that also occur in production files: all are other things with the same name. Corrected the kind split: 89 function-like, not 34. This is dead code, not an unused feature, so the clarification does not change it."
+  },
+  {
+   "id": "DD-4",
+   "title": "Nothing counts unused code, so it grows unseen",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/eslint.config.mjs:5",
+    "/home/user/kaizen-store/package.json:9",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1",
+    "/home/user/kaizen-store/scripts/ratchet.mjs:1"
+   ],
+   "evidence": "ESLint runs Next's two presets and nothing else; they flag unused locals and imports, never an unused export. None of the 46 scan tests mentions unused, orphan or importers (rg over all of them), and package.json has no tool for it. No rule in CLAUDE.md, docs/rules or the code review asks for it. The 918 suspects of this review were found only because a scanner was written for it. That scanner ran here in 8.8 seconds over 6,191 files. An export keyword on a name its own file does not use switches off the compiler's and linter's unused check: that is the 263 plus 655 suspects. The other 2,205 over-exported names are used in their own file, so they hide nothing; they only make private helpers look public.",
+   "cost": "No budget: every unit adds a few helpers and word constants nothing reads, and the only signal is a review like this one. In 47 days that came to about 2,700 lines.",
+   "who_pays": "Maintainers and agents, later.",
+   "fix": "Commit the scan as scripts/unused.mjs and add three counts to the existing ratchet (src/server/ratchet.baseline.json): exports nothing imports, exports only tests import that carry no marker saying a test needs them, and files only tests reach that are not named fixture or test-support. As with unchecked reads, a count may only fall. Allow-list Next's convention exports (register). Add one line to CLAUDE.md Conventions: a helper only tests need lives in a test-support file.",
+   "saving": "Keeps DD-2 and DD-3 from growing back; about 9 seconds in the unit-test run. The quick gate before a deploy (lint, type check, money tests) is not slowed.",
+   "effort": "S",
+   "risk": "Low. False alarms come from Next's convention files, which the scan already skips except register.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened eslint.config.mjs, package.json's scripts and scripts/ratchet.mjs; counted 46 scan tests; searched them and the rule docs for any unused-code check: none. Timed the scan myself: 8.8 s. Corrected one claim: the auditor wrote that the 2,205 own-file-only exports hide unused code from the linter. They do not, since each is used in its file; only the 918 other suspects are hidden that way. The auditor's count of 125 'kept for a test' comments was not reproduced (a looser pattern gave me 292), so it is left out; the marker convention still has to be chosen."
+  },
+  {
+   "id": "DD-5",
+   "title": "Three Work actions have no screen: a logged time entry's hours cannot be corrected",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts:254",
+    "/home/user/kaizen-store/src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts:100",
+    "/home/user/kaizen-store/src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts:115",
+    "/home/user/kaizen-store/src/server/work-time.ts:347",
+    "/home/user/kaizen-store/src/server/work-invoices.ts:1167",
+    "/home/user/kaizen-store/src/server/work-invoices.ts:1202",
+    "/home/user/kaizen-store/src/components/admin/work/time-entry-list.tsx:6"
+   ],
+   "evidence": "These are the only 3 of 1,372 server actions no component imports. updateTimeEntryAction has no importer and no test. saveInvoiceLinesAction and saveInvoiceHeaderAction are called by one integration test only; the invoice editor saves a whole draft through saveDraftInvoiceAction. The time-entry list imports only setEntryNoteAction and deleteTimeEntryAction (line 6), and no component or AI tool calls updateTimeEntry, so the hours, date or task of an entry cannot be changed on screen although updateTimeEntry() (53 lines, tested) exists. saveDraftHeader (44 lines) is reached only through its unused action. saveLines (33 lines) is different: 14 test files call it 41 times as set-up, so it will stay unless those tests are rewritten.",
+   "cost": "35 lines of actions, 97 lines of server code reached only through them (updateTimeEntry, saveDraftHeader) and their tests; and a gap in Work: a wrong entry must be deleted and logged again.",
+   "who_pays": "A Work user who mistyped hours; maintainers.",
+   "fix": "The owner's choice, and a product choice, not waste. Either add Edit to a time-entry row and call updateTimeEntryAction (the server side is done and tested), or delete the action and updateTimeEntry. Delete the two invoice actions and saveDraftHeader if the invoice editor is meant to save a whole draft at once; leave saveLines as the tests' set-up or move it to a test-support file.",
+   "saving": "About 130 lines removed (35 of actions, 97 of server code), or one finished feature for an afternoon's work. Not 165: saveLines stays.",
+   "effort": "S",
+   "risk": "Low. The three actions run through the same membership guard as the others, so leaving them costs no safety.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Opened all seven places and measured the three functions (53, 33 and 44 lines). rg -w confirms no component names the three actions. Correction: the auditor said saveLines is reached only through its action and one test-support file; it is named in 16 files, 14 of them tests (41 lines), as set-up. So the removable server code is 97 lines, not 130, and the total about 130, not 165. Nothing here is argued from use: the code has no caller whether or not anyone uses Work."
+  },
+  {
+   "id": "DD-6",
+   "title": "Live drills can only be asked for by hand-written SQL, and their job polls every five minutes",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/live-drills.ts:40",
+    "/home/user/kaizen-store/src/server/live-drills.ts:45",
+    "/home/user/kaizen-store/src/server/live-drills.ts:388",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:220",
+    "/home/user/kaizen-store/docs/decisions.md:746",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:233",
+    "/home/user/kaizen-store/docs/consolidation.md:50"
+   ],
+   "evidence": "The only insert into commerce.live_drills is inside requestDrills() (line 45), and only its integration test calls requestDrills. No page, action or assistant tool asks for a drill, and every read of the table is inside live-drills.ts, so no screen shows a result. This is close to what D406 intended: its reason is that the AI doing the development should be able to run live checks itself, which staff actions and the Admin API do not allow; that AI works through the database. The decision also names a platform admin, who has no door. The dispatcher runs the job on every pass (route.ts line 220). An idle run is two small queries (lines 334 and 397); production's cron_jobs gives 158 ms for its last run, inside a dispatcher run that happens anyway.",
+   "cost": "Two queries and about 160 ms inside each five-minute dispatcher run (288 a day): about 45 seconds of function time a day, the same whatever the store count. No extra function run. A request made by SQL skips requestDrills' own checks, though the runner checks test mode again (line 404).",
+   "who_pays": "The server and database every five minutes, a little; the platform team, who must write SQL to ask and to read the result.",
+   "fix": "A choice for the owner, not waste. Either give it a door (a Run drills button on the platform's store page and a tool for the platform assistant, both calling requestDrills, and a short list of results), or keep it a console tool on purpose and say so in the rule. The polling itself belongs to the scheduled-work dimension: it is one of 84 jobs run each pass whether or not there is work.",
+   "saving": "A usable feature for the platform team, or nothing. Taking the job out of the dispatcher would save two queries a pass, not 288 runs a day.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Opened live-drills.ts, the dispatcher line, D406, the rule and docs/consolidation.md lines 48 to 52, and production's job durations in prod-db-stats.md. The facts hold: no caller of requestDrills outside its test, no reader outside the module. Corrections: the kind is eager, not dead, since the engine runs and has been used; the saving of '288 runs a day' was wrong, because the job is one of 84 inside one dispatcher invocation and an idle run is two queries; and D406's stated reason explains why there is no screen. Under the clarification this is not a case for retiring anything: what is left is a small idle cost and a product choice."
+  },
+  {
+   "id": "DD-7",
+   "title": "English words kept twice: old constants beside the catalogues, held equal by tests",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/finance-words.test.ts:28",
+    "/home/user/kaizen-store/src/lib/payouts.ts:12",
+    "/home/user/kaizen-store/src/lib/payouts.ts:114",
+    "/home/user/kaizen-store/src/lib/marketing-consent.ts:48",
+    "/home/user/kaizen-store/src/lib/payment-terms.ts:50",
+    "/home/user/kaizen-store/src/lib/payment-terms.ts:110",
+    "/home/user/kaizen-store/src/lib/capture.ts:81",
+    "/home/user/kaizen-store/src/lib/inventory-words.test.ts:26",
+    "/home/user/kaizen-store/src/lib/store-starters.ts:14",
+    "/home/user/kaizen-store/src/lib/shipping-carriers.ts:39"
+   ],
+   "evidence": "Between 85 and 119 of the suspect exports are word lists or sentence helpers no production file reads (360 to 577 lines; the count depends on which name endings are taken: WORDS, LABELS, TEXT, NOTE, COPY, NAMES, and lower-case helpers such as savedWords). About 50 are read by nothing, the rest by a test only. Tests hold a catalogue section equal to the older constant: finance-words.test.ts lines 27 to 31 hold financeEn.payouts equal to three constants in payouts.ts that nothing else reads (rg -w finds only their definitions), and inventory-words.test.ts lines 26 to 35 hold translated sentences equal to old English-only functions. 27 to 42 such assertions, by two patterns. The words moved to src/lib/admin-messages and the originals stayed. No rule in docs/platform-admin-i18n.md or docs/rules asks for the twin.",
+   "cost": "360 to 577 lines, a subset of DD-2 and DD-3 (do not add them). A wording change must be made in two places or a test fails. Not shipped: a dead sentence appears once per built chunk, the catalogue's copy.",
+   "who_pays": "Whoever edits interface text; CI.",
+   "fix": "Where only the test reads the constant, delete the constant and the assertion. Where production still reads it (code with no language, such as an assistant's tool), let the catalogue import the constant so there is one copy and no test is needed.",
+   "saving": "Up to about 500 lines and 30 to 40 assertions (measured upper bound; part of DD-2 and DD-3's totals).",
+   "effort": "S",
+   "risk": "Low. Typecheck shows any remaining reader.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened both tests and payouts.ts; rg -w on the three payout constants finds no reader outside the test. Re-counted with my own patterns: 85 exports and 360 lines with upper-case endings, 119 and 577 with lower-case helpers too, 50 read by nothing; the auditor's 117, 463 and 50 sit inside that range. The auditor's 45 equality assertions came out as 27 to 42 with my two patterns. The finding stands; the numbers are now ranges."
+  },
+  {
+   "id": "DD-8",
+   "title": "Three files only tests reach, and a rule that still describes one of them",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/components/inline-edit/heading-editor.tsx:12",
+    "/home/user/kaizen-store/src/components/inline-edit/inline-edit.test.ts:5",
+    "/home/user/kaizen-store/src/components/admin/page-builder.tsx:3281",
+    "/home/user/kaizen-store/src/components/inline-edit/site-editor.tsx:190",
+    "/home/user/kaizen-store/docs/rules/admin/website.md:302",
+    "/home/user/kaizen-store/src/components/admin/work/coming-soon.tsx:10",
+    "/home/user/kaizen-store/src/components/admin/work/work-pages.test.ts:251",
+    "/home/user/kaizen-store/src/lib/admin-messages/work.en.ts:44",
+    "/home/user/kaizen-store/src/lib/store-modules.ts:7",
+    "/home/user/kaizen-store/src/db/commerce.test.ts:3820"
+   ],
+   "evidence": "InlineHeadingEditor (143 lines) is rendered only by inline-edit.test.ts (41 lines, three cases, all about it); the builder and the live-site editor both use InlineMarkupEditor (page-builder.tsx line 3281, site-editor.tsx line 190). The rule at docs/rules/admin/website.md line 302 still names heading-editor.tsx as the heading's editor. WorkComingSoon (17 lines) is a stand-in for Work pages 'built in a later step'; no page uses it, one test case does; its catalogue key comingSoon under work off is read only by it. store-modules.ts (11 lines): MODULES is read by one test (commerce.test.ts line 3820), isModule and StoreModule by nothing.",
+   "cost": "171 lines of source, a 41-line test and two test cases, and one sentence of a rule that sends a reader or an agent to an editor nobody uses.",
+   "who_pays": "Agents and people who follow the rule before touching in-place editing.",
+   "fix": "Delete the three files with their tests, correct the sentence in website.md to name InlineMarkupEditor, and remove the comingSoon key under work off in both languages (backToWork under off too, if the settings page reads its own copy).",
+   "saving": "About 230 lines (measured).",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "wc of the three files (143, 17 and 11 lines), rg of each name over src, e2e, scripts and docs, and the whole of inline-edit.test.ts read. Importers are as stated. The only other mention of heading-editor.tsx is the rule line and the first draft of this review."
+  },
+  {
+   "id": "DD-9",
+   "title": "Upgraders for three old page shapes: almost free to run, removable only in part, and pinned by a rule and a spec",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/lib/responsive.ts:421",
+    "/home/user/kaizen-store/src/lib/responsive.ts:440",
+    "/home/user/kaizen-store/src/lib/responsive.ts:452",
+    "/home/user/kaizen-store/src/lib/responsive.ts:513",
+    "/home/user/kaizen-store/src/lib/typography.ts:755",
+    "/home/user/kaizen-store/src/lib/typography.ts:775",
+    "/home/user/kaizen-store/src/lib/typography.ts:830",
+    "/home/user/kaizen-store/src/lib/page-ai.ts:766",
+    "/home/user/kaizen-store/src/lib/page-content.ts:4083",
+    "/home/user/kaizen-store/src/lib/page-content.ts:4108",
+    "/home/user/kaizen-store/src/lib/page-content.ts:4146",
+    "/home/user/kaizen-store/src/lib/page-content.ts:4182",
+    "/home/user/kaizen-store/e2e/pages.spec.ts:8",
+    "/home/user/kaizen-store/docs/responsive-editing.md:56",
+    "/home/user/kaizen-store/docs/rules/admin/website.md:38"
+   ],
+   "evidence": "Stored page JSON is upgraded on read from three older shapes: pages before rows (upgradeLegacy, 10 lines), rows and blocks before D179 (responsive.ts lines 398 to 529, 132 lines; upgradeColumn at line 440 is already a no-op) and text settings before D180 (typography.ts lines 641 to 827, 187 lines). They run in z.preprocess on every row and block. Measured cost on a page of 12 rows and 120 blocks already in today's shape: about 10 microseconds, so there is no real per-request cost. No production code writes an old shape any more (rg for sideBySide, reverseOnMobile, hideOnPhones, headingSize: only the upgraders), and the baseline data and supabase/seed.sql hold none. But the typography upgrader is not only for old rows: headingLook() (typography.ts line 830) runs foldTypography so the AI page studio can still write headings by preset name (page-ai.ts line 766), so its heading branch must stay. Upgrade-on-read is a written rule (docs/responsive-editing.md line 56, docs/rules/admin/website.md line 38) and e2e/pages.spec.ts writes the pre-rows shape on purpose (line 8). Seven test and spec files use the upgraders. Production holds 1,389 pages and 642 versions; how many are still in an old shape is not known, since this review could not query for it.",
+   "cost": "About 240 removable lines and their tests, and two extra shapes to keep in mind when a block changes. About 10 microseconds per page read (measured): nothing a shopper or the server would notice.",
+   "who_pays": "Whoever changes the page model. Not the server in any measurable way.",
+   "fix": "Low priority. First count old-shaped rows in production in every table that holds page JSON (pages, page versions, templates, saved parts, theme content and snapshots). If the count is zero, or after one job rewrites them with upgradeResponsive(), remove the row and block upgraders, upgradeLegacy and the non-heading branches of foldTypography; keep the heading presets and headingLook. Rewrite e2e/pages.spec.ts's content() to rows and change the two rule lines in the same change. Before opening is the easy time only for one reason: templates and theme content are copied into new stores, so an old-shaped template would spread (whether those copies pass through the parser was not checked here).",
+   "saving": "About 240 lines and part of seven test files (estimate from measured section sizes). No run-time saving.",
+   "effort": "M",
+   "risk": "Medium. A table of page JSON missed by the rewrite would stop parsing and its page would not show, so the zero count over every such table is the gate.",
+   "confidence": "low",
+   "already_tracked": "no; it contradicts a written rule (docs/responsive-editing.md line 56: upgrade on read, so stored JSON changes only when a page is saved). That rule's reason, avoiding a bulk rewrite of live pages, is weakest now, before real owners have pages.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened every cited line. The preprocess steps are there, so the title's fact held, but three things changed. I measured the cost the auditor left unmeasured: 10 microseconds a page, so this is not an eager cost; the kind is now dead-once-rewritten. The saving was overstated: typography.ts lines 612 to 640 are live rendering code (heading presets) and headingLook() uses foldTypography for the AI page studio, so about 240 lines can go, not 370. And the auditor missed the rule in two docs and the e2e spec that pin upgrade-on-read. 'Once owners save pages the upgraders can never go' is also not right: owners can only save today's shape, so old rows do not multiply except through copied templates."
+  },
+  {
+   "id": "DD-10",
+   "title": "Tests that replay migrations no database will run again",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/db/platform-dark-navy.test.ts:14",
+    "/home/user/kaizen-store/src/db/inventory-plan-features.test.ts:52",
+    "/home/user/kaizen-store/src/db/inventory-plan-features.test.ts:58",
+    "/home/user/kaizen-store/src/db/data-plan-features.test.ts:16",
+    "/home/user/kaizen-store/src/db/orders-plan-features.test.ts:24",
+    "/home/user/kaizen-store/src/db/migration-files.ts:26",
+    "/home/user/kaizen-store/docs/ci-migrations.md:36"
+   ],
+   "evidence": "Since the squash of 11 November (code review step 1.7, D572) a database is built from four baseline files; the 789 older files are an archive outside every path that applies migrations, and production's ledger already holds them. 17 test files still read archived files 19 times. Seven of them (526 lines: 62, 65, 69, 81, 76, 88 and 85) are each about one archived data migration and each builds its own PGlite database. platform-dark-navy.test.ts (76 lines) only replays its file on hand-made CSS. inventory-plan-features.test.ts lines 52 to 56 assert the file adds nothing when run again, and lines 58 to 60 that it 'holds no DELETE or DROP: the migration tool cancels a function body that has one', a limit of a tool CLAUDE.md says is no longer used (the release job runs DROP and DELETE as written). The first three cases of that file check the data now in the baseline and are still worth keeping.",
+   "cost": "An estimated 150 to 300 test lines that prove nothing about any future run (76 measured for the one whole file), and one PGlite database built for platform-dark-navy.test.ts alone.",
+   "who_pays": "CI on every push; readers who take the tests for live rules.",
+   "fix": "Keep the cases that check the data now in the baseline (the plan row exists once, in no plan, with honest words). Delete the replay, run-twice and text cases in the seven files, and platform-dark-navy.test.ts whole. Rule D572 allows a test to read the archive; it does not ask for these.",
+   "saving": "150 to 300 lines (estimate; 76 measured).",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "medium",
+   "already_tracked": "no (a follow-up of step 1.7, Done 11 Nov)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "rg for readMigration, findMigration and migrationHistory in tests: 19 reads in 17 files. wc of the seven single-migration files: 526 lines. Read platform-dark-navy.test.ts and inventory-plan-features.test.ts in full, migration-files.ts and docs/ci-migrations.md lines 30 to 38. All as stated. The 150 to 300 line estimate was not re-derived file by file."
+  },
+  {
+   "id": "DD-11",
+   "title": "Small things kept from before: old redirects, a twin switch, a second scheduler, an old schema",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/work-paths.ts:22",
+    "/home/user/kaizen-store/src/lib/theme-admin-paths.ts:33",
+    "/home/user/kaizen-store/next.config.ts:113",
+    "/home/user/kaizen-store/e2e/missing-font.spec.ts:127",
+    "/home/user/kaizen-store/e2e/signed-in/themes-unified.spec.ts:47",
+    "/home/user/kaizen-store/e2e/work.spec.ts:32",
+    "/home/user/kaizen-store/src/lib/store-features.ts:58",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:19163",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:16999",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:229",
+    "/home/user/kaizen-store/src/server/bookings.ts:42",
+    "/home/user/kaizen-store/src/server/standing-orders.ts:137",
+    "/home/user/kaizen-store/src/server/legal-facts.ts:70",
+    "/home/user/kaizen-store/vercel.json:6",
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:102",
+    "/home/user/kaizen-store/docs/decisions.md:424"
+   ],
+   "evidence": "(a) Eight redirects (3 for Work, 5 for themes) send admin addresses from before D123 and D273 to the new ones; only the team ever had those addresses. Two unit tests cover the lists, and four e2e specs still use the old addresses: three test the redirects and missing-font.spec.ts line 127 enters through one. (b) Whether bookings and subscription boxes are on is stored twice, in stores.features and stores.modules, kept in step both ways by the trigger stores_features_sync(), which fires on insert and on updates that set features or modules. The rule (platform.md line 229) says the twin is 'for older code'. No older code is left: the only readers of modules for bookings or deliveries are the trigger's own 8 lines, and legal-facts.ts reads a list built from the features (src/server/legal-facts.ts line 70). setBookingsModule() and setDeliveriesModule() (29 lines) write the old column and only tests call them; 14 test, e2e and seed files (43 lines) switch features on through it. (c) The daily job is scheduled by vercel.json and by pg_cron for the same minute (0 7 * * *); its route says each reminder goes once whoever calls. (d) Production still holds the commerce_legacy schema, 34 tables and 96 rows (m/prod-db-stats.md line 12); docs/decisions.md line 424 says it can be removed; no code or migration names it.",
+   "cost": "About 100 lines of source, 8 redirect patterns matched on requests, a trigger on writes of two columns, one extra function run a day, 34 leftover tables. Each is tiny; together they are what a newcomer trips over.",
+   "who_pays": "Maintainers; one daily function run; the database's catalogue.",
+   "fix": "Before opening, while nobody outside holds an old address: delete the eight redirects with their two unit tests, drop the redirect cases in three e2e specs and point missing-font.spec.ts at the new address. Keep only work in stores.modules: a migration that cuts the trigger to match, the two setters deleted, and the 14 test and seed files switched to features. Keep one scheduler for the daily job. Drop commerce_legacy in a migration. The schedulers and the old schema may also appear under the scheduled-work and database dimensions.",
+   "saving": "About 100 lines, one daily run, 34 tables (measured counts, estimated lines).",
+   "effort": "M",
+   "risk": "Low. For the modules twin the work is in tests and one migration, not in production readers.",
+   "confidence": "medium",
+   "already_tracked": "commerce_legacy only: docs/decisions.md says it can be removed, not done. The modules twin is a written rule (platform.md line 229) whose reason, older code, no longer has a reader. The rest: no.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened every place. Held: 8 redirects, the two tests-only setters (19 and 10 lines), both schedulers at 0 7 * * *, commerce_legacy in the statistics. Corrected: the trigger does not run 'on every store write' but on insert and on updates of features or modules (baseline_3 line 16999). The auditor's risk, 'SQL in 8 places and legal-facts.ts read modules and must move first', is wrong: all 8 places are inside the trigger itself and legal-facts reads a list derived from features, so the twin has no production reader left. The auditor missed four e2e specs that use the old addresses. Removed the two always-set flags (DOCS_GUIDE_READY, comingSoon): they cost nothing and are in the clean list."
+  },
+  {
+   "id": "DD-12",
+   "title": "The invoice-PDF job has a route and a retry button, but nothing ever calls it",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/document-pdfs/route.ts:11",
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93",
+    "/home/user/kaizen-store/vercel.json:6",
+    "/home/user/kaizen-store/src/server/cron-routes.scan.test.ts:12",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:54",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:116",
+    "/home/user/kaizen-store/src/server/invoice-pdf.ts:167",
+    "/home/user/kaizen-store/next.config.ts:66",
+    "/home/user/kaizen-store/docs/wave-1b-invoices.md:808"
+   ],
+   "evidence": "/api/cron/document-pdfs makes the PDFs of invoices and credit notes that have none (pdfJob(), up to ten a run). Its own comment and docs/wave-1b-invoices.md line 808 say to schedule it where the five-minute job is scheduled. It never was: pg_cron schedules 12 routes (baseline_4 lines 93 to 104, written from production as it stood) and this is not one; production's cron.job list in m/prod-db-stats.md has no such job; vercel.json lists only the daily job; and no code fetches the address (rg over src). The scan test that lets it go unscheduled gives the reason 'run by the dispatcher's invoice job and by staff' (line 12), but invoiceJobs() (invoice-issue.ts lines 116 to 132) does not call pdfJob, and the only importer of pdfJob is the route. The Waiting tab's Try again resets the failure count and its comment promises 'the PDF job makes it on its next run' (invoice-issue.ts lines 54 to 56); there is no next run. A PDF is still made at the first download, so nothing is broken. The route is deployed with Chromium: its trace in the finished build lists 417 files, 101.9 MB, of which Chromium 66.8 MB.",
+   "cost": "A 23-line route, the 29-line job and a retry path that do nothing, and a deployed function whose trace is 101.9 MB (measured in .next; the same files serve the two download routes, so the deploy saving of removing it is uncertain). With real stores, the first person to open each invoice waits for a cold Chromium.",
+   "who_pays": "The shopper or owner who downloads an invoice first; the build and deploy; maintainers who trust the scan test's reason.",
+   "fix": "The owner's choice between two honest states. To make PDFs ahead of the first download: have the dispatcher's invoice job call the route (a fetch with the cron secret) only when a document lacks its PDF, so the cost follows use and Chromium stays out of the dispatcher; that is what the scan test already says happens. A fixed pg_cron schedule would add an idle run every five minutes for every store together. Or decide that the first download makes the PDF: then delete the route, pdfJob, retryDocumentPdf and the traced-files entry, and reword Try again. Either way correct the reason in cron-routes.scan.test.ts.",
+   "saving": "A retry button that does what it says and no cold Chromium on a customer's first download; or about 60 lines and one deployed function removed (estimate).",
+   "effort": "S",
+   "risk": "Low. The job never throws and skips documents that failed five times.",
+   "confidence": "high",
+   "already_tracked": "no. docs/wave-1b-invoices.md line 808 asks for the schedule; no plan or progress table lists it as missing.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "New from the second check: it corrects the auditor's clean claims that all 263 route handlers have a caller and that all 13 cron routes are scheduled by pg_cron. Found by listing the cron folders (13) against the baseline's schedules (12), then opening the route, the scan test's allow-list, invoiceJobs(), pdfJob's importers and the job list in production's statistics. The trace size was read from .next/server/app/api/cron/document-pdfs/route.js.nft.json. Not argued from an empty table: the gap is in the wiring, whatever stores do."
+  }
+ ]
+}

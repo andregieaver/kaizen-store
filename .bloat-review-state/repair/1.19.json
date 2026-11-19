@@ -1,0 +1,13 @@
+{
+ "id": "1.19",
+ "fixed": [
+  "Cached-token pricing removed: prices come from commerce.ai_model_prices and are summed in ai-cost.ts and ai-price-sql.ts (held together by a test, read by limits.ts/usage-meter.ts); the brief only changed one side. Cached tokens are recorded and priced as input, as today.",
+  "Commit 3's think-aloud replaced by a decision: a loaded_tools boolean column in commit 2's migration (session_ref holds live voice session ids).",
+  "Platform round named: runTurn() with store null; offeredTools({ store: null }) and a new fixedPlatformPrompt() beside fixedManagerPrompt(); there is no src/server/platform-tools.ts.",
+  "Commit 4/5 ordering rewritten without the circular 'after commit 4 is in production': local commit 4, a person's eval run on a local or preview build, then both pushed together."
+ ],
+ "rejected": [],
+ "cheaper": "partly applied: the pricing change is moved out (dropped) and the platform functions are named; not applied: splitting the draw into its own step, which changes the plan's structure; the step stays strong.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

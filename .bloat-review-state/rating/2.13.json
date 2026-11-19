@@ -1,0 +1,12 @@
+{
+ "id": "2.13",
+ "rating": "cheap-then-review",
+ "why": "The design is decided (a 'use cache' read per store and market, two tags, a writers' scan, perRequest for stock and checkout info) and the int tests compare every fact with the reader it replaces, but it caches payment state, the Stripe account and Klarna/express-checkout eligibility in the prerendered product page across 13 writer files. A refreshBuyFacts() placed inside a transaction before commit, or missing from a webhook path the table scan does not see, leaves stale payment facts for hours with every test green. Commit 4 also edits files of steps 1.11 and 1.12 that the brief cannot describe ('read the top of the test file for the variable name', 'add the two pages the way its other pages are listed').",
+ "harm_if_wrong": "A store that switched payments or Klarna off keeps showing express-checkout and Klarna offers on its product pages until the cache expires (the press itself still reads live).",
+ "cheap_commits": [],
+ "make_it_cheaper": "Say that every refreshBuyFacts() call goes after the write's transaction has committed (with the line for each writer), and name the server-budget.mjs entries and the journey test's update variable once steps 1.11 and 1.12 have landed.",
+ "brief_problems": [
+  "Commit 4 relies on scripts/server-budget.mjs, scripts/lib/budget-seed.mjs and step 1.12's journey test, whose shapes the brief cannot state.",
+  "Nothing tells the executor to call refreshBuyFacts() after a transaction commits rather than inside it."
+ ]
+}

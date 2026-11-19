@@ -1,0 +1,17 @@
+{
+ "id": "3.19",
+ "fixed": [
+  "Commit 2 added a long sentence to CLAUDE.md, whose bytes outside the index only fall (step 0.43's test, step 1.1's budget); it now goes to docs/rules/budgets.md '## Deploys' (made_by 0.43, the file that says CI sentences go there).",
+  "deployable() was told to 'open 0.38's skip and read its rule if it is in': 0.38 exports testsOnly() from scripts/deploy-needed.mjs, so deploy-share.mjs imports it, and the scan test's tests-only case is unconditional.",
+  "ci.yml: the new step's place and its condition beside 0.38's step 'Does this push change what is deployed?' (id changed) and its ` && steps.changed.outputs.deploy != 'false'` are named."
+ ],
+ "rejected": [
+  {
+   "problem": "do_not 3 (a skipped run must not wait on /api/health) removes the only check that would catch a stranded commit.",
+   "why": "The later push's own run is the check: it deploys main (with this commit) and waits on /api/health, or it fails red; deployable() now gives exactly 0.38's answer, so a run steps aside only for a push whose run deploys. Making skipped runs wait would hold a runner per push, against do_not 4."
+  }
+ ],
+ "cheaper": "not applied: a superseded run waiting on /api/health conflicts with do_not 3 and 4 (one runner to wait for) and adds a 20-minute runner per overtaken push; the review of the ci.yml diff stays.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

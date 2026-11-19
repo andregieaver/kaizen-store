@@ -1,0 +1,18 @@
+{
+ "id": "2.4",
+ "fixed": [
+  "Mine route: fail from src/lib/route-fail.ts (step 0.4, now in depends_on) and sameSite from src/lib/same-site.ts, not from @/server/chat-route; no server-only (the tiles route has none).",
+  "Marker: wishlists.ts imports ./cart, so cart.ts importing it is a certain cycle; markMine/mineCookieName now move to a new src/server/mine-marker.ts (content given) with a re-export from wishlists.ts.",
+  "customers.ts change removed: step 0.15 already calls markMine in startSession().",
+  "cookie-consent: feature is already 'shop'; the four purposes are written out.",
+  "loadOwn(): the once-per-document flag no longer lets a non-fetching call (cart link) block the hint slot's hinted fetch (found on this check).",
+  "Client CartLink: no words prop (a function cannot cross server to client); CartLinkShell switches t() to browserText() and is shared; the eight browser strings and the import lines in store-layout.tsx/site-parts.tsx are given; hinted passed as store.markets.length > 1.",
+  "Layout: Suspense around OffPayRoutes kept (it calls usePathname, as MarketExtras is wrapped).",
+  "actions.ts and wishlist/saved/route.ts now use the (shop) paths with made_by 2.2; the baseline uses made_by 1.11 and --write.",
+  "stop_if for missing route-fail.ts or (shop) folder."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: commit 3's list of forms that must send redraw depends on which pages draw a basket note through store parts and product parts, a design choice the judge and both reviewers left to the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

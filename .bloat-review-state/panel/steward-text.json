@@ -1,0 +1,214 @@
+{
+  "area": "text",
+  "title": "Interface text",
+  "grade_today": "C",
+  "grade_reasons": "The words themselves are in excellent order: every language is complete and held by the compiler, 34 of 31,359 keys are dead, and a shopper's document carries 7 to 32 texts. How they are loaded is not: 802 of 830 server entries and the proxy evaluate every admin area in both languages at each cold start, admin documents hand two to three times the words their parts read, and 423 of 449 admin routes and 97 of 111 visitor routes carry text for someone else in their first scripts. Two of the eight ways words can leak are held by a test, and none of the leaks found here tripped one: a sound base with real waste, mostly unheld.",
+  "measures": [
+    {
+      "name": "Admin words that code outside the admin loads",
+      "today": "135 of the 136 catalogue files are in the static closure of the proxy, of /api/visit and of the storefront layout, and 35 files outside the admin import the registry. In the build 802 of 830 route entries and the proxy load every area in both languages: about 2.9 MB of code, 80 to 105 ms and 13 MB of heap per cold start on the review's machine, a tenth of the start. Source: i18n digest (TX-1); the families planner's own walk gives the same 802 (FM-1).",
+      "target_a": "No value import of src/lib/admin-text.ts outside src/app/admin and src/components/admin (35 today). At most 16 catalogue files, about 0.55 MB of source or 15% of today's bytes, in each of the three closures, under a ceiling that only falls.",
+      "how_measured": "src/lib/admin-text-reach.scan.test.ts, which the work item for TX-1 creates on the import walk of storefront-bundle.scan.test.ts: it counts the files of src/lib/admin-messages in the closure of src/proxy.ts, src/app/api/visit/route.ts and the storefront layout against a written ceiling. After a build, docs/audits/bloat-review-2026-11/scripts/server-graph.mjs gives the built kilobytes of src/lib/admin-messages for the same routes.",
+      "why_this_is_a": "The floor is not zero: a checkout can send staff an email in either admin language, so the eight areas that code names (16 files) are needed. The target allows nothing above them. The 37 files left after the first step would be a B: the large cause gone and a budget in place, but 21 files still loaded for an English default nobody uses. One tolerance is stated: the storefront's own four languages and the email texts stay loaded by every function, about 10 ms and 0.3 MB per cold start, because any instance may serve any store's language."
+    },
+    {
+      "name": "Admin words an admin function loads",
+      "today": "Every admin page and action entry loads all 67 areas in both languages: 3.46 MB of catalogue source (2.8 MB built), where its code names a median of 15 areas and 0.75 MB and at most 28 areas and 1.66 MB (families digest, FM-1). A third admin language would add about 1.5 MB to every function.",
+      "target_a": "An admin entry reaches only the areas its code names: a median of at most 15 areas and 0.75 MB of catalogue source, and no entry over 28 areas and 1.66 MB.",
+      "how_measured": "The same reach scan, with ceilings for five named admin entries (the store home, orders, the product editor, settings, the platform home), added by the work item for TX-1 step 6. server-graph.mjs after a build for the built size.",
+      "why_this_is_a": "The floor is the screen's own areas in the account's one language. Both languages of a named area still load, a factor of two, because the language is the account's choice at run time and a synchronous read cannot wait: that is the tolerance while there are two languages, and the reason a third language should come after this step. Leaving the admin on the one table would be a B: fixed for shoppers, more than four times too much for owners."
+    },
+    {
+      "name": "Words handed to the browser against words read, admin documents",
+      "today": "Product editor: 204 KB of words handed, at most 65 KB named by its parts (239 KB and 79 KB by the page-payload count), in a document of 426,497 bytes. Order page: 164 KB handed, at most 76 KB named. Every signed-in document carries 34.0 KB of shared words (45.3 KB in Norwegian): setup's 6.9 KB has no reader, and 1.3 KB of the assistant's 13.7 KB is read. By my count of the areas each call names, 24 of 188 hand-down sites name over 100 KB of catalogue source and 77 over 50 KB.",
+      "target_a": "On every signed-in screen the words handed are at most 1.25 times the words its parts read, and no area is handed that nothing reads. In numbers: shared words at or under 16 KB in English and 17 KB in Norwegian; the product editor at or under 100 KB of words in a document under 290,000 bytes; the builder's document under 500,000 bytes (585,943 today).",
+      "how_measured": "The record of words read that TX-2 step 5 adds to the signed-in build (each handed area notes the groups read, and admin-text-fallbacks.spec.ts writes handed and read bytes per screen), kept as a baseline that only falls (the first gap). The document budget in e2e/signed-in/admin-scripts.spec.ts (TX-2 step 6). docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs for the two editors' HTML.",
+      "why_this_is_a": "The floor is the groups a screen's parts draw, in one language. They must be in the document: a part that waits for its words is not yet interactive and a press is lost, which is what D540 learned. A quarter above the floor is the tolerance, because a group is handed whole, with the strings of states this visit does not reach. Three pages cut and a document budget would be a B; an A is every screen measured and held."
+    },
+    {
+      "name": "Routes whose first scripts carry text the page cannot show",
+      "today": "Re-counted for this panel in .next/diagnostics/route-bundle-stats.json: the builder's English (71 KB, 24 KB gzip) on 423 of 449 admin routes; cookie purposes in four languages (18.4 KB, 5.3 KB gzip) on 97 of 111 visitor routes; the admin's common.en (6.2 KB) on the same 97; all four storefront languages whole (368 KB, 118 KB gzip) on 40 admin routes. One Work screen ships every area in both languages in a 1.7 MB chunk (AC-7). 38 import sites compile an area's English into admin client code (AC-9).",
+      "target_a": "0 routes for each of the five texts, and 0 client import sites of an area's catalogue besides common and sign-in (38 today).",
+      "how_measured": "A search for one sentence of each text in every route's firstLoadChunkPaths (the planners' method; the guards work item keeps it as a script beside the review's others). Two walking scans: storefront-bundle.scan.test.ts with lib/known-cookies and lib/admin-messages forbidden, and admin-bundle.scan.test.ts (AC-11) for the admin.",
+      "why_this_is_a": "The floor: a page's first scripts hold the words its own client parts read. Three tolerances, each a number. The four small browser-text files stay together on visitor routes (25.9 KB minified, 7.1 KB gzip, of which 4.6 KB gzip is three languages the shopper does not read), because loading one language apart once lost a press (D212); a ceiling of 34,000 source bytes makes a fifth language force the choice. The 38 cookie patterns the browser needs to delete cookies (2.2 KB). The common and sign-in English on the sign-in and sign-up screens (14 KB). A list of import sites that only shrinks would be a B; an A is an empty list."
+    },
+    {
+      "name": "What a language translated by AI costs: per document, per instance start, per minute",
+      "today": "Per document: all 1,673 interface texts, 92,809 bytes of JSON (about 25 KB gzip) at English lengths, where the browser reads 114 (5,854 bytes). Per instance start: one statement per language, one after another, and every language built before the first request (5.6 to 13 ms and 443 KB of heap each). Per minute: one query per instance whatever it serves, 278,393 calls in 78 days (m/prod-db-stats.md). No such language exists before opening, so only the poll is paid today.",
+      "target_a": "A document carries exactly the browser's keys (114 today) in under 9,000 bytes. An instance start issues 2 statements whatever the number of languages and builds none until it is first read. An instance that serves no translated language asks fewer than 200 times a day (1,440 today).",
+      "how_measured": "A new assertion in src/server/languages.int.test.ts on uiTextsFor(). A new unit test of startUi() that counts statements and calls of overlayMessages(). The group-by statement's calls in production's pg_stat_statements, read a day apart.",
+      "why_this_is_a": "The floor is the 114 texts the browser's parts read and one round trip at start; 9,000 bytes leaves half again for languages longer than English. One tolerance: the rows of every translated language are still read at start, about 135 KB and 0.23 MB of heap each, because t() is synchronous and cannot wait for a language. At about eight languages (1.1 MB per start) loading on first need is due, and TX-12's fifth step is that change. Fixing the document alone would be a B."
+    },
+    {
+      "name": "Catalogue hygiene: texts nothing reads, and code inside catalogue files",
+      "today": "34 of 31,359 keys are read by no code (0.1%). No key is missing in any language. 14 catalogue files import code (36 value imports, my count), and notifications.en.ts and notifications.nb.ts reach zod through tripletex-settings.ts.",
+      "target_a": "0 unread keys outside the listed tables that are read by matching. 0 missing keys. No catalogue file's imports reach zod, a component or a server file; a catalogue imports only types, other catalogue files and named label modules.",
+      "how_measured": "src/lib/message-keys.scan.test.ts and src/lib/admin-messages/imports.scan.test.ts, both created by the guards work item (TX-9 steps 4 and 5). The type check holds missing keys today.",
+      "why_this_is_a": "The floor is zero: a text nothing reads is written in two to four languages and sent to the AI translator for each new one. Label modules are allowed because they are the one copy of the words (the code area's item for DD-7 and CP-13 adds to them). One tolerance is deliberate: about 300 refusals are kept in English twice and matched to their Norwegian (D312, TX-10), 16.7 KB of source with no running cost. 0.1% dead with nothing holding it is a B, because it only grows."
+    },
+    {
+      "name": "Ways words can leak that a test holds",
+      "today": "2 of 8. Held: whole storefront languages in a visitor's scripts (storefront-bundle.scan.test.ts) and an area a page did not hand down (admin-text-fallbacks.spec.ts). Not held: the registry outside the admin; cookie purposes and admin words in visitor scripts; catalogues and languages that reach admin scripts through a module without 'use client' (the ratchet sees direct imports only); words handed and not read (script budgets cover 9 of 449 admin routes and no document); unread keys; code in catalogue files. No budget runs for a Norwegian account.",
+      "target_a": "8 of 8 run in CI, each shown to fail on a planted case, and the words budget runs in English and in Norwegian.",
+      "how_measured": "pnpm test and CI's signed-in job: the scans and budgets the guards work item creates, each with its planted case named in the done-when.",
+      "why_this_is_a": "An A is a measure that cannot slip back unseen. Each of the six leaks found here arrived by one import line or one hand-down with every test green, so a guard per path is the floor, not an extra. Guards without the Norwegian run would be a B: Norwegian is the first owners' language, 4% larger overall and 79% larger for the assistant's area."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Take the builder's English off every signed-in screen and the unread setup words out of every admin document (TX-4 is step 1 of AC-1; the setup line is step 1 of TX-2, AC-4, AD-5 and PL-1: do each once)",
+      "finding_ids": ["TX-4"],
+      "also_ids": ["AC-1", "AC-4", "AD-5", "PL-1"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After a build no first-load chunk of /admin/[store]/orders in .next/diagnostics/route-bundle-stats.json holds 'Set for {size}' (on 423 of 449 admin routes today), admin-catalogues.scan.test.ts passes with responsive-edit.tsx off its list, and no admin document carries a setup area (no client part reads it today).",
+      "moves": "Routes with text they cannot show: the builder's English from 423 admin routes to the 39 builder routes, 71 KB (24 KB gzip) off each of the others. Shared words on every signed-in document: 34.0 to 27.1 KB.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Shoppers' scripts carry no cookie purposes and no admin words, and the four browser languages get a ceiling (TX-5's split, not SC-3's later download: the 38 patterns stay in the browser so deleting cookies never waits; the purposes go to the server)",
+      "finding_ids": ["TX-5", "TX-8"],
+      "also_ids": ["SC-3", "PL-10"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After a build none of the 111 routes outside the admin has a first-load chunk holding 'Kommer ihåg om du valde ljusa' (97 today) and no /s/ route one holding 'is switched off under Settings' (57 of 58 today). storefront-bundle.scan.test.ts passes with lib/known-cookies and lib/admin-messages forbidden, and holds the four messages/*-browser.ts files at or under 34,000 bytes together (32,864 today).",
+      "moves": "Routes with text they cannot show: cookie purposes and common.en from 97 visitor routes to 0, about 25 KB minified (8 KB gzip) off every shopper's first load. The tolerated browser languages get a number a test holds.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A language translated by AI costs what it uses: 114 texts in a document, two statements at start, built on first read, polled each minute only where it is served (one change to src/server/ui-text.ts; the same poll is DQ-12, DS-2, SD-7 and CA-12)",
+      "finding_ids": ["TX-3", "TX-12", "TX-6"],
+      "also_ids": ["SC-13", "PL-9", "DQ-12", "DS-2", "SD-7", "CA-12"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "In src/server/languages.int.test.ts, for a language with every key translated, uiTextsFor(lang) holds exactly the 114 browser keys in under 9,000 bytes of JSON (92,809 today). A unit test shows startUi() issuing 2 statements with three translated languages (4 today) and no call of overlayMessages() before t() first reads a language. On production the group-by on commerce.ui_translations grows by fewer than 200 calls a day per instance (1,440 today).",
+      "moves": "The translated-language measure to its target: 93 KB to under 9 KB per document, one statement per language to 2 in all per instance start, about 3,570 polls a day to about 360.",
+      "serves": "text",
+      "owner_decision": false
+    },
+    {
+      "title": "Code outside the admin reads its own areas of words through one small module per area, and a scan keeps the registry out (TX-1 steps 1 to 4; the same change as FM-1's first five steps)",
+      "finding_ids": ["TX-1"],
+      "also_ids": ["FM-1", "AC-7"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "src/lib/admin-text-reach.scan.test.ts passes with no value import of lib/admin-text outside src/app/admin and src/components/admin (35 files today) and at most 37 catalogue files in the closure of src/proxy.ts, /api/visit and the storefront layout (135 of 136 today).",
+      "moves": "Admin words outside the admin: 135 files to 37, a third of the bytes; about 55 to 75 ms and 9 MB less per cold start of every storefront, API and cron function (estimate, the review's machine). The Work invoice screen's 1.7 MB chunk falls to two areas.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Delete the 34 texts nothing reads, and settle the two product.media refusals (wire them to the server's sentence or delete them: TX-10 step 2)",
+      "finding_ids": ["TX-11"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg for each of the 32 key names under src/lib/messages and src/lib/admin-messages finds none, product.media has no entry that no code reads, pnpm typecheck passes and message-keys.scan.test.ts lists no unread key. The 8 entries of marketing.problems and payments.problems stay: they are read by matching.",
+      "moves": "Texts nothing reads: 34 to 0. 17 fewer texts go to the AI translator for each new language.",
+      "serves": "text",
+      "owner_decision": false
+    },
+    {
+      "title": "The words' guards: an import walk for the admin, a dead-key scan, a rule that catalogue files are text, and a document budget at today's figures (the server and visitor guards land with their fixes above; the walk and the budget are AC-11's and AC-10's: build them once, on TC-10's shared walker)",
+      "finding_ids": ["TX-9"],
+      "also_ids": ["AC-10", "AC-11", "SC-6", "PL-13", "FM-13", "TC-10"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "pnpm test runs admin-text-reach.scan.test.ts, admin-bundle.scan.test.ts, src/lib/admin-messages/imports.scan.test.ts and src/lib/message-keys.scan.test.ts green, and each fails on its planted case: @/lib/admin-text imported in src/server/cart.ts; a catalogue reached from a client part through a module without 'use client'; zod reached from a catalogue file (notifications.en.ts and notifications.nb.ts reach it today); a new key nothing reads. e2e/signed-in/admin-scripts.spec.ts holds each budgeted screen's document at today's figure plus 4%. The comment at .github/workflows/ci.yml:35 no longer blames the catalogues for the type check's heap.",
+      "moves": "Ways words can leak that a test holds: 2 of 8 to 8 of 8. Catalogue files that reach zod: 2 to 0.",
+      "serves": "text",
+      "owner_decision": false
+    },
+    {
+      "title": "Admin pages hand down the groups their parts read: typed cuts of the big areas, the assistant's button apart from its chat, a record of the words each screen reads, and budgets that fall (TX-2, AC-4, PL-1 and the words part of AD-5 are one change)",
+      "finding_ids": ["TX-2"],
+      "also_ids": ["AC-4", "PL-1", "AD-5"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The signed-in suite passes with admin-text-fallbacks.spec.ts reporting no fallback. The document budget holds the product editor under 290,000 bytes (426,497 today) and the builder under 500,000 (585,943). Shared words on every signed-in document are at or under 16 KB in English (34.0 KB today).",
+      "moves": "Words handed against words read: product editor 204 to about 65 KB handed, order page 164 to about 76, customer page 141 to under 70, shared words 27 to about 15 KB.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The page builder loads one storefront language when a preview needs it, and the draft-order editor none (TX-7 and AC-6 are one change)",
+      "finding_ids": ["TX-7"],
+      "also_ids": ["AC-6"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "After a build no route in .next/diagnostics/route-bundle-stats.json has a first-load chunk holding 'Det gäller alla beställningar vännen gör.' (40 admin routes today), and the admin's import walk forbids lib/i18n and lib/messages/{lang}, with site-words.ts the one loader.",
+      "moves": "Routes with text they cannot show: the four storefront languages from 40 admin routes to 0; about 368 KB (118 KB gzip) off the draft-order editor and about 275 KB (88 KB gzip) off each page editor's first load.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Where a function took English words as a default, the words become a required argument, so the proxy and the storefront reach only the areas they name (TX-1 step 5; after the server area's cuts of the proxy's graph)",
+      "finding_ids": [],
+      "also_ids": ["FM-1", "AC-9"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The ceiling in admin-text-reach.scan.test.ts for src/proxy.ts, /api/visit and the storefront layout is 16 catalogue files or fewer (37 after the first step), and none of the 21 modules that import a catalogue only for a default argument still does.",
+      "moves": "Admin words outside the admin to their target: 37 files to 16 or fewer, about 85% of today's bytes gone; 70 to 90 ms and 11 MB per cold start in all (estimate).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The admin's own functions load only the areas they name: a module per area for all 67 and a codemod of the admin's adminText() calls (561 to 688 files by the two planners' counts), then the one table is deleted (TX-1 step 6, FM-1 steps 6 and 7)",
+      "finding_ids": [],
+      "also_ids": ["FM-1"],
+      "phase": "next",
+      "effort": "L",
+      "done_when": "src/lib/admin-text.ts holds no table of every area, and the reach scan's five named admin entries reach at most 28 areas and 1.66 MB of catalogue source each (67 areas and 3.46 MB for every entry today).",
+      "moves": "Admin words an admin function loads to its target: a median of 0.75 MB where every entry loads 3.46 MB. A third admin language then adds nothing to a function that does not show it (about 1.5 MB to every function otherwise).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Empty the list of English catalogues compiled into admin client scripts (AC-9's 38 import sites, as each area is next touched)",
+      "finding_ids": [],
+      "also_ids": ["AC-9"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The walking scan finds no path from an admin client module to a file of src/lib/admin-messages other than common.en and sign-in.en (38 import sites today).",
+      "moves": "Routes with text they cannot show: the last figure, 38 sites to 0; about 150 KB off the builder, 65 KB off the Work screens and 24 to 45 KB off 73 field screens.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "TX-10",
+      "why": "A deliberate, written design (D312 A6 and A8): the server answers in English because the AI manager and the tests read it, and about 300 refusals are matched back to their Norwegian. It costs 16.7 KB of source kept twice and no measurable time. The one real mismatch found, the product.media pair, is settled with TX-11. Add the coverage test when one of the validators is next changed."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": [],
+      "question": "Is a third language for the admin (Swedish or Danish) wanted in the first half year? If yes, the week of work that lets an admin function load only its own areas (TX-1 step 6) moves before opening: until it is done each language adds about 1.5 MB to every function."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "The cuts stop at the pages the review measured; most hand-down sites were never counted, and nothing holds the share that is read",
+      "evidence": "The planners counted three pages by hand (product, order, customer) and the page-payload area 16 documents. I listed all 188 literal adminTexts() calls in src/app and src/components with the source size of the areas each names: 24 name over 100 KB and 77 over 50 KB. Six analytics pages hand reports and analytics whole (116 KB of source each), analytics/traffic 151 KB, staging 149 KB, the three content views 177 KB each; no step names them. TX-2 step 5 records what a screen reads, but only to choose the next cut. The document budget mixes words with markup and data, so a screen can hand more unread words and stay under it.",
+      "proposed_work_item": "Next, M, after the TX-2 item. Keep the record as a baseline file beside the spec (per screen: bytes handed, bytes in groups read), fail when the bytes handed rise or the share read falls, and work down every site that hands over 50 KB until it hands at most 1.25 times what its parts read. Done when no screen in the baseline is under 80% read and none of the 24 sites hands over 100 KB unless its parts read it (the builder does)."
+    },
+    {
+      "title": "Every figure is for an English account; Norwegian is neither measured nor held",
+      "evidence": "No spec in e2e/signed-in signs in an account whose admin language is Norwegian: rg for adminLocale, Norsk and Bokmål in e2e finds only a store's email language and the public site's language links. The admin pages in m/routes.md were the English test owner's. Norwegian is larger: 1,578,684 against 1,513,113 bytes of JSON overall; the shared words on every signed-in document are 45.3 against 34.0 KB, because the assistant's area is 24.5 against 13.7 KB (its Norwegian file holds the tool sentences, 27,463 against 16,450 bytes of source); AD-5 puts a shell redraw at 63 to 66 KB in Norwegian against 51 to 54. For a Norwegian account the English compiled into scripts (TX-4, AC-9) is never shown at all.",
+      "proposed_work_item": "Now, S, with the guards item. auth.setup.ts signs in a second owner whose admin language is Norwegian, through the stand-in as the others are. The document budget, the words record and the fallbacks spec run for both accounts on the budgeted screens. Done when e2e/signed-in/admin-scripts.spec.ts holds a Norwegian figure for each budgeted screen and fails when a 10 KB area is added to a layout's hand-down in Norwegian."
+    },
+    {
+      "title": "Words are sent again with every save and every open by a link, and nobody has recorded an admin save's answer",
+      "evidence": "work/builder.rsc in the scratchpad, one open of the builder by a link, is 365,427 bytes and holds the builder's sentences (rg 'Set for {size}': 1). pages/actions.ts and products/actions.ts call updateTag(), after which the action answers with the route drawn again; AD-5 counts 51 to 66 KB for the shell alone on each save, as JSON, not from a recorded answer. PL-13 budgets one action's answer, the shopper's Add to cart, and no admin save. After every planned cut the builder still hands about 195 KB of words (62 KB gzip) each time, by PL-1's count. The one step that would end it, PL-1 step 10, is a spike marked later.",
+      "proposed_work_item": "Next, M. In the signed-in suite record the bytes a save answers with on the product editor and on the builder, and hold them. Then end the repeat for the builder's two big areas, one of two ways: each area's words in each language as a content-hashed client module the server page draws, so the browser keeps them (PL-1 step 10; keep it only if one language's chunk loads and the early-Save spec, content-types.spec.ts, passes), or a save that answers without drawing the route again. Done when a builder save answers with under 20 KB of interface words and the first-scripts budget rises by no more than what left the document."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

@@ -1,0 +1,18 @@
+{
+ "id": "2.8",
+ "fixed": [
+  "'src/server/{ratchet.baseline.json}' and 'e2e/{prefetch.spec.ts}' are now plain paths.",
+  "e2e/prefetch.spec.ts: action edit, made_by 0.14, with what 0.14 (routerPrefetches returning {url, segment}[]), 1.3 (ROUTER_REQUESTS keyed by fixed paths) and 2.6 leave; the 'add the row if it keeps one' choice decided as a FULL_LISTING_MOST constant beside the table, because the store slug is made per run.",
+  "The third step's 'hover or touchstart, whichever' decided as focus() on the 21st tile, which PolicyLink (2.6's contract) treats as intent.",
+  "ratchet.baseline.json change says 2.6 added the directLinks map it lowers."
+ ],
+ "rejected": [
+  {
+   "problem": "PolicyLink, routerPrefetches() and the budget table come from steps 2.6, 0.14 and 1.3 and are assumed.",
+   "why": "depends_on names all three and stop_if covers their absence; their contracts are in those briefs and are now quoted in this one."
+  }
+ ],
+ "cheaper": "applied: commit 3 commits the trial's raw output to docs/audits/bloat-review-2026-11/evidence/partial-prefetching-trial.md and the table copies from it, with a check; commit 3 still needs review for its decision",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

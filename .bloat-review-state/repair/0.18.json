@@ -1,0 +1,17 @@
+{
+ "id": "0.18",
+ "fixed": [
+  "Each per-file rule (and the four push editors) now says an action that calls only updateTag/refreshTag/refreshTagNow/revalidatePath, never refresh(), does not qualify: its line stays and is handed back.",
+  "stop_if 'An action named here does not call refresh() on success' contradicted the changes' hand-back instruction; it now stops only when half or more of one commit's lines are handed back.",
+  "The decision row's '3 more by hand' now names discount-editor.tsx:127, campaign-editor.tsx:170 and locations-view.tsx:92 (AD-13), 39 in all."
+ ],
+ "rejected": [
+  {
+   "problem": "Line numbers are a snapshot.",
+   "why": "The reviewer itself found they hold today, and stop_if already says to find the call by the action's name if main moved."
+  }
+ ],
+ "cheaper": "not applied: recording the file:line of refresh() in every action behind some 40 lines (and moving the 6 mixed and unresolved lines to a later step) is a re-plan of the step, not a small exact edit; it would change what the step closes",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

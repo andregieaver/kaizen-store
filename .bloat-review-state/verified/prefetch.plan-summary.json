@@ -1,0 +1,126 @@
+{
+ "key": "prefetch",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/prefetch.json",
+ "validator": "OK: 13 findings, 0 refuted, 21 metrics",
+ "headline": "Next's default (fetch every link in view) decides for all but 4 of 947 links, and no test or budget watches it: a phone shopper who reads the demo store's home page to the footer makes 47 router requests (729 KB decoded) for pages not asked for, 24 of them for the home pages of eight other language, currency and country views, and the admin home makes 28. The endless prefetch loop is real but local and CI only (624 router requests in 4 s on the search results page as built, 55 with route guessing off), and one config line stops it. Three things the report missed are added: links that leave their root layout are fetched ahead and then load a whole document anyway (a multi-country store's front door: 12 requests, 254 KB, none usable), the first add to cart of a visit throws the prefetch cache away (20 more requests on a phone), and a real 48-tile listing has no bound. The plan is three changes of a few lines first (PF-1, PF-2, PF-11), then one small link wrapper with a stated policy per link group held by a request budget; nothing here argues from an unused feature, and all of it is cheapest before opening.",
+ "findings": [
+  {
+   "id": "PF-1",
+   "title": "Next's route guessing and the cart drawer's catch-all slot make an endless prefetch on the local build and in CI: about 165 requests a second reach the server per open page",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "624 to 55 router requests in 4 s on the search page; server CPU per open page 4.7 s to 0.16 s per 9 s; CI's store specs go idle again",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-2",
+   "title": "Every page of a store with several languages, currencies or countries prefetches the home page of each other view, and for languages and currencies the press does not open it",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "24 of 47 requests and 662 of 729 KB decoded per page read to the footer; up to 8 fewer cold or stale renders per visit",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-11",
+   "title": "Links that leave their root layout are fetched ahead, and pressing them loads a whole document anyway: a multi-country store's front door fetches every country's home page for nothing",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "12 requests and 254 KB decoded per visit to the demo store's front door, none usable; 4 of 8 requests per view of Kaizena Flow's home",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-3",
+   "title": "The header tools, bottom bar and footer are prefetched on every full page load, with the script chunks of pages nobody asked for",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Phone home 11 to 3 router requests at the top; with PF-2, 47 to 3 read to the footer; product page 12 to 3 at the top",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-4",
+   "title": "The links shoppers press most on built pages are full page loads: a whole document and every prefetch made again where one small answer would do",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About 37 fewer requests and about 60 KB less on the wire per press on a built page's tile or button (estimate from two measured presses)",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-5",
+   "title": "The admin prefetches its whole sidebar on every load and again after every refresh, to fetch nearly the same loading skeleton twelve times",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "24 requests and about 110 KB decoded per admin home load; about 25 requests per refresh, save and Live tick",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-7",
+   "title": "On wide screens the cart link prefetches a drawer and its scripts that are never shown, and a press renders the drawer before reloading the page",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "5 requests per page view at desktop width (3 router, 2 scripts, about 25 KB) and one drawer render per cart open",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-10",
+   "title": "Nothing sets or checks what the router may fetch ahead",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Holds the other gains: phone home 47 to 3 router requests read to the footer, admin home 28 to 0 at rest",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-6",
+   "title": "Each row of an admin list fetches the same shell again",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "8 requests and 42 KB decoded on a four-row list; in proportion on longer lists",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-8",
+   "title": "Links in closed drop-down and mega menus are prefetched while invisible",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Sub-links fetched only on hover or focus: 2 to 3 requests per sub-link per page load on stores with nested menus (estimate)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-9",
+   "title": "Partial Prefetching was planned, never switched on, and the next major Next release forces it",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate from Next's docs: 18 link prefetches become 11 route shells on the home page; admin list rows become one; nothing measured",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-12",
+   "title": "The first add to cart of a visit throws the router's whole prefetch cache away: 20 more requests on a phone, at the moment the shopper buys",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "First add to cart: 32 request events (20 on the network) down to about 7 once PF-2, PF-3 and PF-7 are in (estimate)",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "PF-13",
+   "title": "A real listing prefetches every product tile, and up to six swatch links under each: nothing bounds it, and the test stores are too small to show it",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Swatches wait for intent; a 48-tile listing (est. 96 requests, 48 renders when cold) gets a held ceiling; tiles decided in the spike",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

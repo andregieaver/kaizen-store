@@ -1,0 +1,155 @@
+{
+ "key": "caching",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/caching.json",
+ "validator": "OK: 16 findings, 1 refuted, 15 metrics",
+ "headline": "The caching code is sound, not bloated: 85 cached reads, 82 tagged, tags per store, and Kaizena Flow's own site and docs truly static (508 of 772 prerendered routes). What is left is rendering that runs per request for little, and it grows with shoppers and stores, not with any unused feature: every store page view runs a render function whose only job on home, built and blog pages is two cart badges and a country hint (97,919 of the demo home's 138,523 bytes); one Add to cart redraws the page and re-fetches 15 links (193 KB, measured in this pass); crawlers on Next's list (Bing, Google's shop and ads bots, link previews) get a full render even of static pages; and links prefetch pages nobody opens (11 to 50 requests a store page, 23 to 46 an admin screen). 16 findings stand (13 from the verified report, 3 added: the crawler bypass, the missing check on what is static, the Add to cart redraw), 1 refuted. Do first the two prefetch cuts, the AI tag, the page-list split and a build check that holds render modes; the structural ones (cart count in the browser, deploys that skip superseded pushes) are cheapest before opening.",
+ "findings": [
+  {
+   "id": "CA-1",
+   "title": "Every store page view runs a render function, to place two cart badges and a country hint",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Render function per view goes on home, built and blog pages (it makes 97,919 of the demo home's 138,523 bytes); 2 runs become 0 or 1.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-2",
+   "title": "Cached reads and built pages live in one instance and one deploy; each deploy empties them for every store",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Not measured: each skipped deploy saves a build (263 s here) and keeps every store's built pages and cached reads alive.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "CA-3",
+   "title": "To read one page, the code loads every published page with its whole content",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Estimate: over 90% of the bytes read by the app's costliest statement (781 s in 78 days, 29 whole pages a call).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-4",
+   "title": "Language and currency links prefetch whole front pages that their click never opens",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "18 of 42 prefetch requests and 105 of 184 KB on the wire per cart page load, in stores with several languages or currencies.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-5",
+   "title": "Each admin screen prefetches 13 to 22 other screens, and the storefront, on sight",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: 28 to 44 of the 32 to 46 prefetch requests per admin screen; up to 77 to 160 KB on the wire each.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-6",
+   "title": "A prefetch loop on listing and search pages at /s/{store} addresses",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About 350 requests a second while a listing or search page is open at /s/ addresses (local build and CI; production unknown).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-7",
+   "title": "partialPrefetching is unset: Next treats it as off, warns on every build and start, and will remove the choice",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "None from recording the value; the build warning goes. Later adoption shares one shell per route (not measured here).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-8",
+   "title": "A store's robots.txt, sitemap, llms.txt, blog feed and favicon answer with no HTTP cache",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Small: a function run is saved only when a crawler's fetch falls inside the cache window, about once a day per file.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-9",
+   "title": "The same one-line store lookup is written 27 times, and three tiny facts are asked of the database about 11,000 times a day by scheduled work",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Estimate: over 90% of about 11,100 tiny statements a day; one helper instead of 27 copies.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-10",
+   "title": "Pages are rebuilt every hour and dropped after a quiet day, though every write already refreshes a tag",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Estimate: background renders fall from hourly to on change; a quiet page stays served 30 days instead of 1.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-11",
+   "title": "One store owner saving their AI key marks every page of every store stale",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "A store's AI save refreshes 1 store instead of every store and the platform's site.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-12",
+   "title": "A per-instance poll every minute and a five-minute prune that could run far less often",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "About 3,500 statements a day, worth very little database time: a tidy-up.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-13",
+   "title": "The theme store's list needs a function per view and draws the list twice; a theme's neighbours reload every theme's snapshot",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "One read of all theme snapshots per cold instance instead of one per theme; /themes could lose its per-view function.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-15",
+   "title": "Bing, Google's shop and ads crawlers and every link preview get a full render of every page, static ones included",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Per crawler request a full render becomes a cache hit or a resume; total unknown until production is measured.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-16",
+   "title": "Nothing holds what is static: one cookie read in a shared part can move every store page to per-request, and no check would say so",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "None directly: holds the gains of CA-1, CA-10, CA-11 and CA-15 and turns a silent move to per-request into a red check.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "CA-17",
+   "title": "One Add to cart redraws the whole page and re-fetches every prefetched link, to change one number",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Per Add to cart: 15 of 16 requests and about 190 of 193 KB decoded go (measured on the demo product page).",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": [
+  "CA-14 Cache entries keyed by lists of ids are almost never asked for twice: not supported; the commonest callers pass lists shared by all shoppers, no hit rate was measured, and the fix would remove real cache hits"
+ ]
+}

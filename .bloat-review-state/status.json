@@ -1,0 +1,212 @@
+{
+ "at": "2026-11-19T22:05:42.850Z",
+ "status": [
+  {
+   "key": "storefront-client",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "storefront-data",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "admin-client",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "admin-data",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "caching",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "cron",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "db-queries",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "db-schema",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "deps",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "assets",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "ai-context",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "features",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "families",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "docs-context",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "page-model",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "css",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "i18n",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "tests-ci",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "functions",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "server-graph",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "client-bundles",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "page-payload",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "prefetch",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "unused-code",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  },
+  {
+   "key": "copied-code",
+   "audit": true,
+   "verify": true,
+   "plan": true
+  }
+ ],
+ "relaunch": {
+  "keys": [],
+  "audited": [
+   "storefront-client",
+   "storefront-data",
+   "admin-client",
+   "admin-data",
+   "caching",
+   "cron",
+   "db-queries",
+   "db-schema",
+   "deps",
+   "assets",
+   "ai-context",
+   "features",
+   "families",
+   "docs-context",
+   "page-model",
+   "css",
+   "i18n",
+   "tests-ci",
+   "functions",
+   "server-graph",
+   "client-bundles",
+   "page-payload",
+   "prefetch",
+   "unused-code",
+   "copied-code"
+  ],
+  "verified": [
+   "storefront-client",
+   "storefront-data",
+   "admin-client",
+   "admin-data",
+   "caching",
+   "cron",
+   "db-queries",
+   "db-schema",
+   "deps",
+   "assets",
+   "ai-context",
+   "features",
+   "families",
+   "docs-context",
+   "page-model",
+   "css",
+   "i18n",
+   "tests-ci",
+   "functions",
+   "server-graph",
+   "client-bundles",
+   "page-payload",
+   "prefetch",
+   "unused-code",
+   "copied-code"
+  ]
+ }
+}

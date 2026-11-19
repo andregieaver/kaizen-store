@@ -1,0 +1,135 @@
+{
+ "key": "page-payload",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/page-payload.json",
+ "validator": "OK: 14 findings, 0 refuted, 16 metrics",
+ "headline": "On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped); only the admin's two editors are heavy (108 and 136 thousand), and about 70% of that is message catalogues, of which the product editor's parts read a third (239 KB handed, 79 KB read). The waste is in what repeats and what follows a load: the store's layout is rendered and sent twice for a 404 nobody sees (29.7 thousand bytes raw per document, and again inside the 79 KB every Add to cart sends back, measured in this pass), a visitor who does nothing causes 11 to 50 prefetches and one or two uncached server calls per storefront view, and Kaizena Flow's own pages pull about 141 KB of admin sign-in files. Fourteen findings, none refuted and none resting on \"unused so far\"; one was added (a search results page calls the server for suggestions nobody typed for). Seven are small and safe and go first (budgets, two prefetch props, the wishlist marker, the tiles' switches, the search call, the notice count); the two that restructure (the cart drawer's slot out of the root layout, the admin's words by cut) are cheapest before opening.",
+ "findings": [
+  {
+   "id": "PL-1",
+   "title": "The admin's message catalogues travel as props in every document and with each page opened",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Measured: product editor hands 238.5 KB of words, reads 78.9 (per document and per product opened); builder 311.6 to 195.4 KB.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-2",
+   "title": "Every storefront page carries the whole layout twice, and renders its live parts twice per request, for a 404 it is not showing",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "29.7 KB raw per store document (1 KB gzip), 26 KB per Add to cart answer; one of two layout renders; cart-count queries 4 to 1.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-3",
+   "title": "The language, currency and country links prefetch whole front pages; a language or currency press never opens the one it fetched",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "18 requests and 498 KB raw (72 KB compressed) per cart or checkout view, for stores with several languages or currencies.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-4",
+   "title": "Kaizena Flow's own pages download the admin's sign-in scripts for every visitor",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "6 scripts and a stylesheet, about 141 KB on the wire, per first visit to any Kaizena Flow page.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-5",
+   "title": "Prefetching runs per link because partialPrefetching is unset: 11 to 50 requests after a storefront load, 23 to 46 in the admin",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Sure: 4 requests per store view (footer links). Rest unknown until a trial; ceiling is one shell per route, not 2-3 requests a link.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-6",
+   "title": "A listing sends its product grid twice, and a category asks the database again for the list it already drew",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "24.7 KB raw (14.5%) of a listing and one grid render per view; one uncached list query per standard category view (by code).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-7",
+   "title": "Every page of every store asks the server for a wishlist almost no visitor has",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "One function call per storefront document load for every visitor without saved products or an account.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-8",
+   "title": "Stock and Add to cart on tiles: off by default, yet every view of a product grid pays a server call and three queries",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "One function call and three queries per view of a page with a product grid, for every store on the default.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-9",
+   "title": "A store in an AI-translated language will carry the whole interface catalogue in every document",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: about 80 KB raw (25 KB gzip) per document of a store in an AI-translated language; nothing today.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-10",
+   "title": "Shoppers load the admin's common words, the consent catalogue and the filter dialog on every page",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Measured modules: 52.7 KB raw, 17.2 KB gzip per first store visit; 12 KB for every store, the rest by store and page kind.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-11",
+   "title": "Every open admin tab asks for AI manager notices each minute, with three queries for one number",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Two of three queries per call at once; about three quarters of the calls per idle open tab (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-12",
+   "title": "The default icon is a 26 KB .ico revalidated on every visit",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "About 8 KB on the wire per first visit to a site without its own icon (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-13",
+   "title": "No budget watches a document, its payload, an action's answer, an admin page's requests or what most pages ask for after load",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "None by itself; it holds the other savings and shows the next shift of bytes.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-14",
+   "title": "A search results page asks the server for suggestions nobody typed for",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "One server action call per search results view, with one budget write and one match query (by code).",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

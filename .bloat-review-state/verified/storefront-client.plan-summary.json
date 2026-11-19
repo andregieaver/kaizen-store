@@ -1,0 +1,126 @@
+{
+ "key": "storefront-client",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/storefront-client.json",
+ "validator": "OK: 13 findings, 0 refuted, 13 metrics",
+ "headline": "A shopper's first page is mostly well kept and nothing here argues for removing a feature: a cold home page sends 680 KB of scripts (213 KB gzip), 63 % of it React and Next, with no third-party script and no font file. What is left is cost that does not follow use and grows with page views once stores open: on a default store every document load makes two extra function calls (a wishlist read that is nearly always empty and, on pages with a product grid, a stock read for tiles that show nothing), carries about 48 KB raw / 16 KB gzip of admin words, catalogues and one unused library in its first scripts, and sends the layout twice (25 KB) with the store's 404 page inside. Eleven working routes share one 54-module bundle (30 KB gzip more than a built page), stores with several languages prefetch 70 to 105 KB of views a press never opens, and a store in an AI-translated language would send its whole interface text, about 100 KB, in every page. Thirteen findings (two added in this pass): six are small and safe (P0), the two that move route files are cheapest before opening, and the budgets that should have caught the growth have about 150 KB of room and cover two storefront routes.",
+ "findings": [
+  {
+   "id": "SC-1",
+   "title": "Every document load prefetches the pages behind its links; language and currency links prefetch a page a press never opens",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "70-105 KB and 12-18 requests per document load in stores with several languages or currencies; 12 KB and 4 requests on every store.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-2",
+   "title": "Listing, search, cart, checkout, account, wishlist and cookies pages all load one bundle of every working part",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Up to 98 KB raw / 30 KB gzip off the first scripts of category, tag and search pages; less on cart, checkout, account (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-3",
+   "title": "Admin words, whole catalogues and an unused library ride in every shopper's first scripts",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 48 KB raw / 16 KB gzip off every storefront page first load (42.3 KB measured for five moves plus 5.9 KB background-layers).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-4",
+   "title": "The product page loads the cart's forms, and every product kind's picker",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "18.9 KB raw / 4.5 KB gzip on every product page (measured); 25.4 KB raw more on plain products if the picker step passes its tests.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-5",
+   "title": "One stylesheet for stores, site and admin: shoppers download the admin's utility classes",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 50 KB raw / 8.7 KB gzip off the render-blocking stylesheet (estimate), and an address admin-only deploys no longer change.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-6",
+   "title": "The byte budgets are loose, count a file no modern browser loads, and cover one storefront route besides home",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "None by itself; keeps the other savings and would have caught SC-4 and SC-12 the day they arrived.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-7",
+   "title": "On a wide screen a press on the cart renders the cart as a drawer, throws it away, then loads the cart page",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "One of two cart renders per wide-screen cart opening; 10.6 KB prefetch per wide-screen document load (read from code, not run wide).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-8",
+   "title": "The whole store layout is sent twice in every page, with the store's 404 page inside, because the cart drawer's slot sits on the root layout",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "25-26.5 KB raw (1.1 KB gzip) off every page payload; layout per-request parts rendered once, not twice; one cart-count query, not four.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-9",
+   "title": "Open question, not yet a planned saving: on the local build, listing and search pages asked for one prefetch about 160 times a second",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Unknown until reproduced; count no saving. If real in CI: steadier listing and search specs.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-10",
+   "title": "Every document load asks the server for the wishlist, also for visitors who have none",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "One function call and 1.7 KB per document load for every visitor of every selling store (measured on 12 of 12 pages).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-11",
+   "title": "Small parts a plain store's page never draws are in every page's first scripts",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "9.1 KB raw / 2.9 KB gzip off every first load for the two larger parts (measured).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-12",
+   "title": "Every page with a product grid loads the tile's Add to cart script and asks the server for stock, also in a store whose tiles show neither (the default)",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "One function call with three DB reads and 2.9 KB per load of a page with a product grid; 19 KB of scripts once per browser. Default stores.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "SC-13",
+   "title": "A store in a language translated by AI sends its whole interface text in every page; the browser reads 114 of its 1,673 texts",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 93 KB raw / 23.5 KB gzip per document in a store in an AI-translated language (estimate); nothing for nb, sv, da, en.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

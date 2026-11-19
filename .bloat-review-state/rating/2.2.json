@@ -1,0 +1,15 @@
+{
+ "id": "2.2",
+ "rating": "cheap-then-review",
+ "why": "The move is scripted exactly: 22 folders and 2 files, which match the directory listing. It covers the cart, checkout, order and pay routes, about 112 files that name the path, and roughly ten scan tests that read sources by path and must be corrected by hand. If one of those path fixes goes wrong (e.g. pay-routes.graph.test.ts or session-freshness.scan.test.ts walking a folder that is now empty), the scan passes while guarding nothing, and the checkout routes' CSP and import rules lose their guard.",
+ "harm_if_wrong": "A pay-route or session scan test quietly checks no files after the move, so a later change can load forbidden code into checkout unnoticed, or the store's 404 or drawer stops working.",
+ "cheap_commits": [
+  1,
+  2,
+  4
+ ],
+ "make_it_cheaper": "Give the exact new constant or path line for each of the ten scan tests and have each assert that it found a minimum number of files after the move.",
+ "brief_problems": [
+  "Commit 4 depends on step 1.3's document table in e2e/performance.spec.ts, which does not exist yet."
+ ]
+}

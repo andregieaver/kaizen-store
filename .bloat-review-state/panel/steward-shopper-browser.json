@@ -1,0 +1,353 @@
+{
+  "area": "shopper-browser",
+  "title": "What a shopper's browser gets",
+  "grade_today": "C",
+  "grade_reasons": "The base is sound: a default store's first load has no zod, no third-party script and no font file, the extras are lazy and gated on the server, and two script budgets exist. But every page sends the store's layout twice, makes one or two server calls that answer nothing and 11 to 47 router requests for pages nobody asked for; eleven working routes share one bundle 98 KB larger than a built page's, and a press on a built page's product tile reloads the whole document. Only first scripts on two store routes are held, with 14 to 16% of room; no check sees a document, a request count or a prefetch, and no measurement saw a themed store, a cart with a product or a checkout with its payment form.",
+  "measures": [
+    {
+      "name": "First scripts and stylesheet of a first visit, by route",
+      "today": "Scripts (script tags of the server's HTML, nomodule left out, raw bytes): built page 680,264 (213,261 gzip); product page 777,785; category, tag, search, cart, checkout, account and five more 778,166 each. Of each, 447,102 (133,758 gzip) is React, Next and Turbopack's runtime, the same seven files in all 560 routes. So the app's own share is 233 KB on a built page and 331 KB on the twelve heavier routes. Stylesheet: one render-blocking file for stores, site and admin, 183,124 bytes raw, 25,832 Brotli. Source: digest/storefront-client.md, client-bundles.md and css.md, from the build's chunks.",
+      "target_a": "Built page at most 615,000 bytes raw (own share 168 KB, about 55 KB gzip). Listing and search at most 650,000. Product page at most 690,000. Cart, checkout and account at most 700,000. A stylesheet of the storefront's own at most 135,000 raw (about 20 KB Brotli).",
+      "how_measured": "FIRST_SCRIPTS_BUDGETS in e2e/performance.spec.ts, once the budgets item makes it count the server's script tags without the nomodule file (E2E_MEASURE=1 prints each figure). The all-routes check scripts/bundle-budget.mjs that the owner-browser area's BN-11 creates. The stylesheet budget of the styles area's CS-3.",
+      "why_this_is_a": "The floor is the framework's 447 KB, which nothing here can remove. The bar lets the app add 38% to it on a built page and 57% on a page that sells or pays. Stated tolerance inside that: the browser's texts in all four languages (24.8 KB, kept by D212 because loading one language made presses get lost), and the forms and carousel a visitor may press before a late script would arrive (13 KB, docs/performance.md:38-51). A B would stop at 640,000 with the stray tables gone and the shared working bundle still on eleven routes."
+    },
+    {
+      "name": "The store document: its size and what is in it twice",
+      "today": "Home 138,523 bytes raw, 18,691 gzip; 106.7 to 170.3 thousand raw over 12 pages; 66 to 71% is the inline payload. The same 35 rows, 26,151 decoded bytes, are the layout a second time on every page. The listing sends its 9 products twice (24.7 KB). A store in an AI-translated language would add about 93 KB of interface text, of which the browser reads 114 of 1,673 texts. Source: digest/page-payload.md, m/routes.md.",
+      "target_a": "Nothing twice: under 2,000 bytes of duplicate rows and one html element in the payload. Home under 112,000 bytes raw. /products under 150,000 with each product once. The texts prop of a translated language under 9,000 bytes. Five routes held within 5%.",
+      "how_measured": "DOCUMENT_BUDGETS in e2e/performance.spec.ts, which the budgets item creates (document bytes and inline payload bytes per route). The duplicate-row count of the review's flight.mjs, moved into the same spec by the layout item. The unit test of uiTextsFor().",
+      "why_this_is_a": "The payload is the page again as data, which the router needs to hydrate and to move without a reload. That is the floor, about twice the markup here, and the auditors found no oversize prop in it. The tolerance is 2 KB of repeats. The draft's bar of a home document under 60 KB is dropped: no step reaches it, because serving the page static (CA-1) moves the same bytes into the file. A B would leave the listing's second grid."
+    },
+    {
+      "name": "Requests the router makes unasked, for a phone visitor who presses nothing",
+      "today": "Home: 11 at the top (33 KB), 47 read to the footer (729 KB decoded, 204 KB on the wire), 24 of them for other language, currency and country views. Content page 34, empty cart 42. A multi-country front door 12 (254 KB decoded), none usable. Kaizena Flow's home 8, and 6 admin scripts with them (135 KB on the wire). A full listing of 48 tiles: not measured, about 96 by multiplication. On a local build and in CI, 9 of 11 store pages never go quiet (624 requests in 4 s on search results). Source: digest/prefetch.md, m/routes.md.",
+      "target_a": "At most 6 on the home, a product page, a content page and the cart, at the top and read to the footer. 0 for another view, for a link that leaves its root layout, and for /admin from the site. At most 20 on a seeded 48-tile listing read to the end. Every page quiet: no router request between 3 and 5 s after load.",
+      "how_measured": "e2e/prefetch.spec.ts, which the prefetch items create (one table: page, screen, scroll, most router requests). docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs for the full table and storm.mjs for the loop.",
+      "why_this_is_a": "The floor is zero: a prefetch earns its request only when the next press opens it. The tolerance is the links a phone shopper most likely presses next, the cart in the bottom bar and one more: about 6 requests and 20 KB. On a listing it is the first screen of tiles. A B would be the draft's 'under 12' with a full listing still fetching every tile it shows."
+    },
+    {
+      "name": "Server calls a view makes for nothing",
+      "today": "For a visitor with no cart and no wishlist: GET wishlist/saved on 12 of 12 pages (a function call for a 15-byte answer). GET /api/shop/tiles with three queries on the home and /products while both switches are off. POST suggest, with one write, on a search results page nobody typed on. Beside these the document itself is rendered by a function on every view: 148 of 149 prerendered store routes (the caching digest's CA-1). Source: digest/page-payload.md, m/routes.md.",
+      "target_a": "0 fetches of the page's own after load on all 12 measured pages for such a visitor. The document served static with no function run: that is the server area's CA-1, and this area's wishlist marker is its first step.",
+      "how_measured": "The after-load fetch count in e2e/performance.spec.ts (the budgets item adds it at today's 1 and 2; the three fixes lower it to 0). Assertions in e2e/wishlist.spec.ts, e2e/shop-components.spec.ts and e2e/search.spec.ts. For the document, the render-modes script of the server area's CA-16.",
+      "why_this_is_a": "The floor is zero and there is no tolerance: each is a function call per view that grows one for one with visits. A store that switches tile stock on, or a visitor who has saved a product, pays for what they use, and that is right."
+    },
+    {
+      "name": "What a press costs",
+      "today": "A product tile on a built page: a whole document, 42 requests, 104.5 KB on the wire (a link inside the app: 5 requests, 12.9 KB). The cart on a screen of 768 px or more: the drawer is rendered, thrown away, and the page loaded; 3 prefetches and 2 script chunks are fetched for a drawer never shown. The first Add to cart: an answer of 79,467 bytes with the layout twice, then 32 router prefetch events, 20 of them on the network. Source: digest/prefetch.md, page-payload.md.",
+      "target_a": "Tile press: 0 documents and at most 8 requests. Cart press on a wide screen: 1 document, 0 router requests, 0 prefetches before it. First Add to cart: at most 10 router events, and an answer under 5,000 bytes (the server area's CA-17, after CA-1; until then under 56,000 with the layout sent once).",
+      "how_measured": "Cases in e2e/prefetch.spec.ts for the tile, the wide cart and the first add (the prefetch items create them). The Add to cart answer's budget in e2e/cart.spec.ts (the budgets item).",
+      "why_this_is_a": "A press should cost the page it opens and nothing the browser already holds. The floor for a tile press is the product page's own segment and scripts, 5 requests as measured; 8 leaves room for its pictures. A B would keep the full reload on built pages, which are the pages owners build to sell from."
+    },
+    {
+      "name": "The pages real shoppers get, measured",
+      "today": "Not measured. All 12 store pages in the tables are the bare template: 0 font files, one-row pages, pictures that are drawings of about 1 KB. Each of the six launch themes names two font families. The cart was measured empty, and the checkout load ended on the cart because the demo store takes no payments. Production's demo home document is 203 KB raw against 138 KB locally. Source: m/routes.md, m/prod-pages.md, measure-routes.mjs:27-38.",
+      "target_a": "A launch-theme store's home, product page and listing, a cart with two lines and the checkout at its payment step are in the measured set, each with budgets within 5%. On the themed home: at most 2 font files and 80 KB of fonts, both preloaded, and the breakpoint sheet once per document. On the checkout: 0 router prefetches while the form shows, and the payment provider's script the only third-party request.",
+      "how_measured": "The first two gap items create it: a seeded launch-theme store and a payments fixture in CI, added to measure-routes.mjs and to e2e/performance.spec.ts.",
+      "why_this_is_a": "An A cannot rest on a page no shopper will see. The fonts bar is what kaizenaflow.com reached after trimming: 67 KB for two families (docs/performance.md:97-101). With every finding closed and these pages still unseen, the area is a B."
+    },
+    {
+      "name": "Time on a slow phone",
+      "today": "Not measured for a store and not held. The review left times out (m/routes.md:8). By idle, 57% of the home page's 834 KB of script had not run; what does run, and for how long, is unknown. Lighthouse runs by hand (pnpm perf); CI holds weight, largest picture and first byte only. docs/performance.md:87 records a largest paint of 3.7 to 4.3 s for kaizenaflow.com on simulated slow 4G on 5 November. Real visitors' figures exist only for stores whose owner switched visit counting on, and never for the cart or checkout.",
+      "target_a": "Each night, on the launch-theme store's home, product page and listing in production, phone form: Lighthouse performance 90 or more and blocking time at most 200 ms (the median of three runs). In CI: script bytes run by idle held per route within 5%. In the field: Kaizena Flow's own demo stores count visits, and their 75th percentile stays inside the 'good' lines the product shows owners (largest paint 2.5 s, response to a press 200 ms, layout shift 0.1; src/lib/speed.ts:93).",
+      "how_measured": "The third gap item creates it: a throttled run in measure-routes.mjs, a run-bytes budget in e2e/performance.spec.ts, a nightly workflow beside .github/workflows/live-a11y.yml that runs scripts/perf.mjs --form=mobile --min=90, and commerce.speed_samples for the field figure.",
+      "why_this_is_a": "Bytes and counts are causes; time is what the shopper feels, and an A needs one figure for it that fails when it slips. 90 is Lighthouse's own line for good and the value scripts/perf.mjs already takes as --min. Tolerance: scores move a few points between runs, so the check takes a median of three and fails on two nights in a row."
+    },
+    {
+      "name": "What holds it",
+      "today": "First scripts are held on 2 of 56 store routes, with 14 to 16% of room and a polyfill no modern browser loads counted in. Page weight is held on 2 pages with 6 to 10% of room. Nothing holds a document, its payload, a request count, an action's answer or a prefetch. 4 of 947 links state a prefetch policy. Two additions of 10 and 11 November (19 KB on every product page; a server call and 19 KB of lazy script on every product grid) passed every check. Source: e2e/performance.spec.ts:11, 40-50, 126-129; digest/prefetch.md.",
+      "target_a": "Every store route's first scripts held by the all-routes check, and 8 of them in the browser within 3%. Documents on 5 routes within 5%. Request and prefetch budgets on 6 pages at the measured count plus 2. next/link imported only by three policy wrappers, held by a ratchet that only falls. A budget is lowered in the same change that lowers its measure.",
+      "how_measured": "e2e/performance.spec.ts, e2e/prefetch.spec.ts, e2e/cart.spec.ts, src/server/ratchet.scan.test.ts (directLinks), src/lib/storefront-bundle.scan.test.ts, and scripts/bundle-budget.mjs from the owner-browser area.",
+      "why_this_is_a": "This is the grade's second half: each measure above needs a check that fails on the day it slips. The tolerance is the stated room: 3% on scripts, 5% on documents, 2 requests. With more room than that a 19 KB import passes again, as it did on 10 November."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Budgets first, at today's figures: scripts counted right on 8 store routes, documents, after-load requests, the Add to cart answer",
+      "finding_ids": ["SC-6", "PL-13"],
+      "also_ids": ["BN-11", "AC-10", "CS-3", "PM-14", "CA-16", "TX-9"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "e2e/performance.spec.ts counts the script tags of the server's HTML with no nomodule tag and holds first-scripts budgets for at least 8 storefront routes, each within 3% of its E2E_MEASURE=1 figure (2 routes with 14 to 16% of room today); it holds a document budget for 5 routes and an after-load request budget for 5 pages (0 and 0 today), and no address is asked for more than 20 times in one load. e2e/signed-in/admin-scripts.spec.ts holds a document budget for 4 admin screens and e2e/cart.spec.ts the Add to cart answer. All pass in CI.",
+      "moves": "What holds it: from 2 store routes with about 150 KB of room to 8 within 3%; documents 0 to 5 routes; request counts 0 to 5 pages. No bytes by itself: every later item then shows as a number that falls.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "End the prefetch loop on /s/ addresses, and write both router settings down",
+      "finding_ids": ["PF-1", "SC-9"],
+      "also_ids": ["CA-6"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "e2e/prefetch.spec.ts 'a store page goes quiet' passes in CI's e2e job on its three pages: fewer than 60 router prefetch requests in the 3 s after load and none in the next 2 s (the search results page makes 624 in 4 s today and never stops). next.config.ts names optimisticRouting: false and partialPrefetching: false, and the start log prints no partialPrefetching warning.",
+      "moves": "Requests the router makes unasked: the loop from about 165 requests a second per open page to none; 9 of 11 store pages go quiet at CI's screen size; server CPU for an open page from 4.7 s to 0.16 s per 9 s.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "No prefetch where the press cannot use it: other language, currency and country views, links that leave their root layout, the footer's legal links, the site's links to the admin",
+      "finding_ids": ["PF-2", "PL-3", "SC-1", "PF-11", "PL-4"],
+      "also_ids": ["CA-4", "BN-2", "CS-8"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "e2e/prefetch.spec.ts passes: on the phone home read to the footer 0 router prefetch requests for another view (24 today) and at most 23 in all (47); 0 on /s/demo (12 today); at most 4 on / with none for /admin or a store (8 today); 0 for /cookies and /withdraw on /s/demo/no/om-oss. measure-routes.mjs shows Kaizena Flow's front page fetching no admin script or stylesheet after load (6 scripts and 1 stylesheet, about 141 KB on the wire, today).",
+      "moves": "Requests the router makes unasked: home read to the footer 47 to 23 (135 of 204 KB on the wire gone); content page 34 to 18; empty cart 42 to about 20; front door 12 to 0; Kaizena Flow's home 8 to 4 and 141 KB less.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Wishlist: no call for a visitor who has none, by a marker cookie (PL-7's way; SC-10's seed in the page's stream would add the per-request hole that CA-1 removes)",
+      "finding_ids": ["SC-10", "PL-7"],
+      "also_ids": ["SD-15"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A cold load of each of the 12 measured storefront pages makes 0 requests to /wishlist/saved (1 on each today, by measure-routes.mjs), and the two new assertions in e2e/wishlist.spec.ts pass: none for a new visitor, and a pressed heart with the header's count after a save and a full reload.",
+      "moves": "Server calls a view makes for nothing: one function call less on every page view of every store (12 of 12 pages to 0).",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Product tiles: no island, no script and no stock call while both tile switches are off",
+      "finding_ids": ["SC-12", "PL-8"],
+      "also_ids": ["SD-14"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A cold phone load of /s/demo/no and of /s/demo/no/products makes 0 requests to /api/shop/tiles (1 each today) and loads neither lazy chunk (19,032 bytes raw today), by measure-routes.mjs and the new assertion in e2e/shop-components.spec.ts.",
+      "moves": "Server calls a view makes for nothing: one function call and three queries less per view of any page with a product grid, for every store on the default; 19 KB of lazy script less per browser.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Search results: ask for suggestions only after a key or a focus",
+      "finding_ids": ["PL-14"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A cold load of /s/demo/no/search?q=lampe makes 0 POST requests before any press (1 today, by measure-routes.mjs's after-load list), held by the new assertion in e2e/search.spec.ts.",
+      "moves": "Server calls a view makes for nothing: one server action, one budget write and one match query less per search results view.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Admin words, the features table, the cookie catalogue and an unused library out of every shopper's first scripts; the filter dialog only where a listing draws it",
+      "finding_ids": ["SC-3", "PL-10"],
+      "also_ids": ["BN-10", "TX-5", "TX-8"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The home page's first scripts (script tags of the server's HTML for /s/demo/no, nomodule left out) are at most 625,000 bytes raw (680,264 today). None of them holds the strings 'Sell to businesses', 'Waiting for payment', '_pinterest_ct_ua', 'data-fx-bglayer' or 'filter-dialog-title' (each is in one today). The extended storefront-bundle.scan.test.ts passes.",
+      "moves": "First scripts by route: built page 680,264 to about 621,000 raw (213 to about 195 KB gzip); 48 KB raw less on every other store route.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Product page: the cart's forms out of its scripts, then a picker only for the product's own kind",
+      "finding_ids": ["SC-4"],
+      "also_ids": ["BN-9", "PM-11"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The product page's first scripts (/s/demo/no/p/demo-keramikkopp, nomodule left out) are at most 760,000 bytes raw once the cart's view is a server file (777,785 today), and at most 735,000 once a plain product loads no stay, appointment, gift card or quote picker. The new import walk of product-parts.tsx passes.",
+      "moves": "First scripts by route: product page 777,785 to about 733,000 by itself, about 676,000 with the other script items. It also clears the way for the per-route split of the working pages.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A store in an AI-translated language sends the browser's 114 texts, not all 1,673",
+      "finding_ids": ["SC-13", "PL-9"],
+      "also_ids": ["TX-3"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The new unit test passes: for a language with every key translated, uiTextsFor(lang) holds 114 keys and its JSON is under 9,000 bytes (92,919 for the English stand-in today).",
+      "moves": "The store document: about 93 KB raw (23.5 KB gzip) less in every document and prefetch of such a store, from its first day. Nothing changes for nb, sv, da and en.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The notice count: one statement, and a slower poll while nothing is unread",
+      "finding_ids": ["PL-11"],
+      "also_ids": ["AD-9", "AC-13"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The count=1 answer of the notices feed runs one statement besides the session check (three today), and a visible admin tab with no notices asks at most 14 times in its first hour (60 today).",
+      "moves": "None of this area's measures. For the owner-browser and server areas: 60 calls and 180 queries an hour per open admin tab fall to at most 14 calls of one query.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Send the store's layout once: the cart drawer's slot leaves the root layout, and the cart count is read once per render",
+      "finding_ids": ["SC-8", "PL-2"],
+      "also_ids": ["PM-1", "CS-5"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The served /s/demo/no document opens one html element in its inline payload, not two (/admin and / already have one); its duplicate rows are under 2,000 bytes (26,534 today, by the review's flight.mjs); it is under 112,000 bytes raw (138,523 today); e2e/cart.spec.ts, e2e/page-roles.spec.ts and the redirects spec pass. The memo of the cart count (step 1) ships at once: one count query a render, not four.",
+      "moves": "The store document: home 138,523 to under 112,000 bytes raw, nothing twice, on all 12 pages and in every prefetch that carries the layout. What a press costs: 26 KB off the 79 KB an Add to cart sends back. One layout render per request, not two.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Each working route loads its own parts: listing, search, cart, checkout, account, order, wishlist and cookies stop sharing one bundle",
+      "finding_ids": ["SC-2"],
+      "also_ids": ["BN-9"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The review's route.mjs lists at most 37 client modules for category, tag and search (54 today; 35 on a built page), and the category page's first scripts are at most 701,000 bytes raw (778,166 today) before the other script items, at most 650,000 with them. Do it in one sitting with the layout item, so files move once.",
+      "moves": "First scripts by route: listing and search 778,166 to about 645,000 raw (30 KB gzip less on a shopper's first listing); cart, checkout and account to at most 700,000, each with only its own part.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The cart on a wide screen is a plain page: no drawer rendered and thrown away, no prefetch of it",
+      "finding_ids": ["SC-7", "PF-7"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The new wide-screen cases pass (e2e/cart.spec.ts and e2e/prefetch.spec.ts): at 1280 px a press on the header's cart link makes one document request and no router request for /cart, and the page made 0 router prefetch requests for the cart before it (3 today, with 2 script chunks).",
+      "moves": "What a press costs: a cart opening at 768 px or wider from two server renders to one; 5 requests and about 25 KB on the wire less per wide page view.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "One link wrapper with a stated policy: header tools, bottom bar, footers, menus and closed sub-menus fetch on intent",
+      "finding_ids": ["PF-3", "PF-8", "PF-12"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "e2e/prefetch.spec.ts budgets pass: at most 6 router prefetch requests on the phone home read to the footer (47 today, 23 after the 'now' item), at most 6 at the top of the phone product page (12 today), at most 12 at the top of the home at 1280x720 (17 at 1440x900 today), 0 for a sub-link before its top link is hovered, and at most 10 router prefetch events after the first add to cart (32 today, 20 of them on the network).",
+      "moves": "Requests the router makes unasked: phone home 11 to 3 at the top and 23 to 3 read to the footer; product page 12 to 3. What a press costs: the first add to cart from 32 router events to about 7.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A real listing: seed 48 products and bound what tiles and colour swatches fetch ahead",
+      "finding_ids": ["PF-13"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "e2e/prefetch.spec.ts holds a seeded 48-product category read to the end on a phone at no more than 20 router requests (not measured today; about 96 by multiplication, more with swatches), and src/components/product-card.test.ts shows intent on every swatch link. The count decides the way: one shared product shell from the partial prefetching trial, or fetch on sight for the first screen of tiles and on touch below it. The planners left tiles on sight with no bound, so the owner confirms the bound.",
+      "moves": "Requests the router makes unasked: a full listing from about 96 and unbounded to at most 20. It also puts the first real listing into the measured set.",
+      "serves": "shopper-browser",
+      "owner_decision": true
+    },
+    {
+      "title": "Built pages' tiles, buttons and pictures move inside the app, not by a full page load",
+      "finding_ids": ["PF-4"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "e2e/prefetch.spec.ts 'a press on a built page's tile stays in the app' passes: 0 document requests and at most 8 requests after the tap (1 document and 42 requests, 104.5 KB on the wire, today). The pay-routes graph test still forbids a client move to /checkout.",
+      "moves": "What a press costs: a tile press on a built page from 42 requests to at most 8, about 60 KB less on the wire per press.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Admin: the rail and the rows of every list fetch on intent, not on sight",
+      "finding_ids": ["PF-5", "PF-6"],
+      "also_ids": ["AC-12", "CA-5"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "e2e/signed-in/prefetch.spec.ts passes: 0 router prefetch requests in the 3 s after the admin home loads (28 today), at most 2 after hovering one rail link, and 0 for product editors after the product list loads (8 on a four-row list today).",
+      "moves": "None of this area's measures. For the owner-browser area: 24 to 38 requests per admin load, and about 25 per refresh or save, fall to 0 at rest.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Write the prefetch policy down and hold it: a ratchet on direct next/link imports and one table of request budgets",
+      "finding_ids": ["PF-10"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "pnpm test passes with the ratchet's directLinks baseline in place: a new file that imports next/link fails it, and the count (400 files today) only falls. Both prefetch specs pass in CI with a budget for the store home, a product page, a listing, the cart, the front door and the admin home. The rule is written per link group in docs/performance.md and the rule files, not as a new paragraph of CLAUDE.md.",
+      "moves": "What holds it: links with a stated policy from 4 of 947 to every link, through three wrappers; request budgets on 6 pages.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Partial prefetching: run the trial and decide, before the next major Next release forces it",
+      "finding_ids": ["PL-5", "PF-9"],
+      "also_ids": ["CA-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "docs/performance.md holds the trial's table (requests and bytes per page, before and after, for the product page, the seeded listing, the store home and the admin's orders page) with the decision recorded in docs/decisions.md, and the after-load request budgets pass at the decided figures. The config line that ends the warning ships with the loop's fix.",
+      "moves": "Requests the router makes unasked: decides whether all links to one route share one shell, which is one of the two ways the listing reaches 20. Removes a forced migration later.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A stylesheet of the storefront's own, without the admin's classes",
+      "finding_ids": ["SC-5"],
+      "also_ids": ["CS-1", "BN-12", "CS-6", "AS-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The stylesheet the storefront's HTML links (/s/demo/no) is at most 135,000 bytes raw (183,124 today), the build's peak memory under the 8 GB cap is written into docs/build-memory.md, and stylesheet-sources.scan.test.ts passes. It follows the styles area's CS-7, CS-9, CS-8 and CS-3: do it once, there.",
+      "moves": "First scripts and stylesheet: the render-blocking sheet 183,124 to about 130,000 bytes raw (25.8 to about 19.8 KB Brotli), and admin-only edits stop renaming the shoppers' file.",
+      "serves": "styles",
+      "owner_decision": false
+    },
+    {
+      "title": "Draw a listing's grid once and read its list once",
+      "finding_ids": ["PL-6"],
+      "also_ids": ["PM-8"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The served /s/demo/no/products document holds each product's data-item-id once in its markup and once in its payload (18 and 18 for 9 products today) and is under 150,000 bytes raw (170,329 today), and e2e/listing.spec.ts passes with its new once-only assertion. The quick part ships first: no second list query for an unfiltered category view.",
+      "moves": "The store document: the listing 170,329 to under 150,000 bytes raw, about 2.7 KB raw less per product shown; one grid render and one list query less per unfiltered view.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The admin's words by cut, not by whole area, in every admin document",
+      "finding_ids": ["PL-1"],
+      "also_ids": ["PM-10", "AC-4", "AC-9", "TX-2", "AD-5"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "measure-routes.mjs writes html/admin-product-editor.html under 290,000 bytes (426,497 today) and html/admin-page-builder.html under 500,000 (585,943 today), the new document budgets in e2e/signed-in/admin-scripts.spec.ts hold those figures, and e2e/signed-in/admin-text-fallbacks.spec.ts passes.",
+      "moves": "None of this area's measures. For the owner-browser area: the product editor's handed text 238.5 to 78.9 KB raw, on the document and on each product opened by a link.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Parts a plain store's page never draws load where they are drawn: the theme preview stage and the platform's language switch",
+      "finding_ids": ["SC-11"],
+      "also_ids": ["PM-11", "BN-10"],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "None of the scripts the home page's HTML asks for (/s/demo/no) holds the strings 'aspect-[16/7]' or 'data-language-hint' (each is in 1 of 17 today), the home's first scripts are at least 8,000 bytes lower than before the change, and with the other script items the built page is at most 615,000 bytes raw.",
+      "moves": "First scripts by route: the last 9 KB raw (2.9 KB gzip) on every store page, which takes the built page from about 621,000 to under the 615,000 bar.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "PL-12",
+      "why": "The default icon is 26 KB raw, about 9 KB on the wire, fetched at low priority after load, once per site, and only by stores without an icon of their own. It delays nothing a shopper sees. It is not worth a change of its own; it goes when the assets area gives public files a cache lifetime (AS-5)."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": [],
+      "question": "On a full listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? Today every tile seen is fetched: about 96 requests for 48 products, of which a shopper opens one or two. This is the bound in the work item for PF-13; yes lets the area reach an A."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "No measurement or budget sees a store as a new owner gets it: a launch theme with its fonts, rows and photographs",
+      "evidence": "All 12 measured store pages are the bare template. m/routes.md shows 0 font files on every page; the seed's pages are one row each (supabase/seed.sql, 'om-oss' and a front page that is one content grid); e2e/performance.spec.ts:122-123 says the largest picture is about 1 KB because the demo's pictures are drawings, against a budget of 200,000. Each of the six launch themes names two font families (src/lib/signature/orbit.ts:575, meridian.ts:772, arcade.ts:603, atelier.ts:691, botanica.ts:623, kinetic.ts:710). docs/performance.md:87-101 records that on kaizenaflow.com two families were 82 KB and the last files before the largest paint. The css digest's 45 to 71 KB of style text per launch-theme home is computed, not rendered. Production's demo home document is 203 KB raw against 138 KB locally (m/prod-pages.md).",
+      "proposed_work_item": "Phase now, effort M. Seed one launch-theme store in CI's database through the real preset path (Orbit with its content pack, photographs through the upload pipeline), and add its home, a product page and a listing to measure-routes.mjs and to e2e/performance.spec.ts. Hold font files and bytes (at most 2 files and 80 KB, both preloaded), style text in the document, picture bytes on a 3x phone, the document, router requests and transferred weight, each within 5% of its first figure. Build on PM-14 step 1, which already makes the six-row page. Done when the spec prints and holds these figures for the themed home. It is the baseline the other items should be seen against."
+    },
+    {
+      "title": "The money path was never measured with anything in it: a cart with a product, the checkout with its payment form",
+      "evidence": "measure-routes.mjs:35-36 lists only the empty cart and the empty checkout, and m/routes.json shows the checkout load ended on /s/demo/no/cart. e2e/cart.spec.ts:52 says the demo store takes no payments, and :169 tests that the checkout sends such a shopper back to the cart; no e2e spec opens a checkout with a form. src/components/checkout-form.tsx:3 loads the payment provider's script (loadStripe), the only third-party script a default store's shopper meets: its bytes and requests are in no table. The speed beacon is never drawn on the pay routes (src/components/store-visits.tsx:16-18), so production will have no figure for these pages either. SC-6 step 3 adds /s/demo/no/checkout to the script budgets: on the demo store that address is the cart, so the budget would hold the cart under the checkout's name.",
+      "proposed_work_item": "Phase next, effort M. A fixture store with payments on, made with SQL as e2e/draft-pay.spec.ts:54-55 does, and a payment stand-in in the style of e2e/fixtures/auth-stub.mjs (the only fake, and told it is one; no bypass in the app). Measure and hold, for a cart with two lines and the checkout at its payment step: first scripts, the document, router requests after load (0 while the form shows), third-party requests and bytes. Add both pages to measure-routes.mjs. Done when e2e/performance.spec.ts holds those four figures for both pages and the checkout budget no longer points at the cart."
+    },
+    {
+      "title": "Nothing measures or holds time: main-thread work at load, and real visitors' speed",
+      "evidence": "Every done-when of this area's 40 findings is a byte count, a request count or a string; m/routes.md:8 says times were left out. The same table shows the home page loads 834 KB of script of which 57% had not run at idle, and the 20 scripts every store page shares are 719 KB of which the most any page ran is 294 KB. e2e/performance.spec.ts:126-129 holds weight, largest picture and first byte only. Lighthouse runs by hand (scripts/perf.mjs:10-11); .github/workflows holds ci.yml and live-a11y.yml and neither runs it. docs/performance.md:87 records a largest paint of 3.7 to 4.3 s on a simulated phone for kaizenaflow.com. Field figures (lcp, inp, cls, ttfb; src/lib/speed.ts:9) are sent only by stores whose owner switched visit counting on (src/components/store-visits.tsx:12), so at opening the platform has no production figure for its stores' speed.",
+      "proposed_work_item": "Phase next, effort M. (1) measure-routes.mjs gains a run with the CPU slowed four times that records blocking time and the script bytes run by idle for the home, a product page, a listing and the cart; the run bytes, which are steady, get a budget in e2e/performance.spec.ts and the times a table in docs/performance.md. (2) A nightly workflow beside live-a11y.yml runs scripts/perf.mjs --form=mobile --min=90 against a launch-theme demo store in production and Kaizena Flow's front page, keeps largest paint, blocking time and layout shift in a file, and fails on two nights in a row under the line. (3) Kaizena Flow's own demo stores switch visit counting on, so one field figure exists. Done when the nightly job has run green for a week and the table is in docs/performance.md."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

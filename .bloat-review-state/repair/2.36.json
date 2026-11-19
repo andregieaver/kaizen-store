@@ -1,0 +1,17 @@
+{
+ "id": "2.36",
+ "fixed": [
+  "Commit 2: ownsConversation() written out exactly (format check, getConversation()'s where clause lines 229-230 word for word), called a permission check, with int cases for another account's and another scope's conversation.",
+  "ai-round.scan.test.ts change is a plain path with made_by 1.19.",
+  "executor_why no longer says the first two commits are safe for a cheap model (commit 1 is a judgement of ~240 tools; commit 2 is a permission check)."
+ ],
+ "rejected": [
+  {
+   "problem": "src/server/ai-round.scan.test.ts, its baseline and the lean eval cases come from step 1.19 and do not exist yet.",
+   "why": "depends_on names 1.19 and the first stop_if stops when they are missing."
+  }
+ ],
+ "cheaper": "not applied: the full TOOL_GROUPS table (about 240 tools) and the shop-only playbook list are the judgement the step needs; writing them here would be making the step's decisions, not checking the brief.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

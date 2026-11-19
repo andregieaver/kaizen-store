@@ -1,0 +1,15 @@
+{
+ "id": "1.27",
+ "fixed": [
+  "Added the missing read(file) seam: a planted Map, read() over readFileSync, the two existing calls (lines 63, 73) routed through it, and withPlanted() written out."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on step 0.16 (ten visitor components reach lib/admin-messages before it).",
+   "why": "depends_on names 0.16 and stop_if covers it; that is the plan's order."
+  }
+ ],
+ "cheaper": "not applied: none proposed; the step is already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

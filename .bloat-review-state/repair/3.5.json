@@ -1,0 +1,11 @@
+{
+ "id": "3.5",
+ "fixed": [
+  "Commit 5's open-ended 'second custom migration' replaced by a rule: with_parent where it fits, otherwise list the table and stop (new stop_if); the kind's migration is a separate commit for the stronger model.",
+  "email_rows step now names the email_bodies step (src/server/retention.ts ~246/500) that writes to_address = '[removed]'."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: settling KEPT_EMAIL_KINDS and the 486-table register up front is the step's judgement itself, not a small exact change; the step stays strong with commits 1 and 2 cheap.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

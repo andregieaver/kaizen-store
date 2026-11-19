@@ -1,0 +1,18 @@
+{
+ "id": "0.24",
+ "fixed": [
+  "Commit 1: publishedPageById() and publishedPageIndex() filter with ${ownedBy(owner, type)}, the helper listPublishedPages() uses (rewritten by step 0.23), and the index's order by is written out.",
+  "Commit 1: publishedPageIndex()'s doc comment records that it reads the stored JSON without parsing, so a published document the schema rejects is still named; readers already meet pages that are not drawn.",
+  "Commit 3 check and done_when 3 and 4 name docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs .next/server/app/s/demo and its withList figure; a stop_if covers its absence.",
+  "stop_if and do_not about owned() reworded to match the ownedBy() helper."
+ ],
+ "rejected": [
+  {
+   "problem": "done_when 3 and 4 need a script that does not exist.",
+   "why": "Step 0.1 (named in depends_on) creates meta-reader.mjs from sources/pmplan/rdcall.mjs.txt; the brief now names it exactly and stops if it is absent."
+  }
+ ],
+ "cheaper": "not applied: dropping unparsable rows in the index needs the whole document read and parsed, which undoes the statement-time saving the step is for; the difference is instead written down as a decision.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

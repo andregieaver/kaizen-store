@@ -1,0 +1,126 @@
+{
+ "key": "unused-code",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/unused-code.json",
+ "validator": "OK: 13 findings, 0 refuted, 23 metrics",
+ "headline": "There is little dead code: about 2,700 lines of 772,000 (0.35%), thin over some 400 files and dropped by the build, and none of it is a feature waiting for opening: it is code with no caller. The one run-time price is the 19,614-line schema that every cold start evaluates for a query builder nobody calls (150 to 190 ms and about 18 MB, measured here): three lines to change, the same fix as DS-1 and DP-1. The planner's own check added one cost the report missed: a unit test replays all 789 archived migrations on every run (6.2 s and about 630 MB, measured). The plan is a guard first (the review's scan as an exact-list ratchet, about 9 s a run), then deletion in tiers: 721 lines nothing uses, about 230 in three dead files, and about 1,700 that only a test keeps alive.",
+ "findings": [
+  {
+   "id": "DD-1",
+   "title": "Every cold start evaluates the 19,614-line schema that no query reads",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "150 to 190 ms and about 18 MB per cold start (measured here; estimate for Vercel); about 0.8 MB off each of 6 server chunks",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-4",
+   "title": "Nothing counts unused code, so it grows unseen",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Keeps about 2,700 dead lines from growing back (about 57 a day at the measured rate); costs about 9 s in the unit-test run",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-3",
+   "title": "331 exports are used by nothing at all, and some say they are in use",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "721 lines (measured), plus about 130 second-order lines (estimate)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-8",
+   "title": "Three files only tests reach, and a rule that still describes one of them",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 230 lines (measured), and a rule that names the editor the product really uses",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-2",
+   "title": "About 330 exports in production files are kept alive only by a test",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 1,700 source lines and 1,000 to 2,000 test lines (estimate); not additive with DD-7",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-7",
+   "title": "English words kept twice: old constants beside the catalogues, held equal by tests",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Up to about 500 lines and 30 to 40 assertions; part of DD-2's and DD-3's totals, not on top",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-5",
+   "title": "Three Work actions have no screen: a logged time entry's hours cannot be corrected",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 130 lines removed, or one finished feature (edit a time entry) and about 80 lines removed",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "DD-12",
+   "title": "The invoice-PDF job has a route and a retry button, but nothing ever calls it",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "A retry sentence that is true and no cold Chromium on a first download; or about 60 lines and one deployed function removed",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "DD-13",
+   "title": "One unit test replays all 789 archived migrations on every run",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 6 s and about 630 MB of peak memory per unit-test run (measured here), and 98 test lines",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-10",
+   "title": "Tests that quote or replay migrations no database will run again",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 320 test lines and a 40-line helper (measured), one PGlite build a run, two guards re-pointed at live migrations",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-11",
+   "title": "Small things kept from before: old redirects, a twin switch, a second scheduler, an old schema",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 100 source and 150 test lines, 8 redirect patterns, one trigger branch; daily run and 34 tables are counted in CR-12 and DS-14",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-9",
+   "title": "Upgraders for three old page shapes: almost free to run, still fed by today's code, and pinned by a rule and a spec",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "About 240 lines and part of seven test files (estimate); no run-time saving",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DD-6",
+   "title": "Live drills can only be asked for by hand-written SQL, and their job polls every five minutes",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "A usable door for the platform team, or a true description; the two idle queries a pass are counted in CR-2",
+   "verdict": "corrected",
+   "owner_decision": true
+  }
+ ],
+ "refuted": []
+}

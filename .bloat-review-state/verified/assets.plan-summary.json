@@ -1,0 +1,117 @@
+{
+ "key": "assets",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/assets.json",
+ "validator": "OK: 12 findings, 0 refuted, 20 metrics",
+ "headline": "The files the repo stores are lean (102 MB tracked, all 150 public files referenced); the waste is in what every function carries and what a browser is sent, and none of it rests on a feature being unused. sharp's 19.8 MB library is in 742 of 832 route traces and the 13.3 MB taxonomy in 831 (33 MB of the median trace's 52.6 MB), and sharp loads at each cold start of the proxy. Four small fixes go first: search thumbnails of uploaded photographs answer 400 today (measured on the built app), font files are not kept by the CDN, the build's page worker runs with source maps on at about 4.7 MB of heap per MB of code it loads (+498 MB for 107 MB, measured; the build already ran out of its 8 GB once), and nothing reports what a function carries. The completeness check added two: 3x phones and Retina laptops download the 1600 px file for every product tile because nothing is kept between 480 and 1600 px (measured in Chromium), and videos, 3D models and theme photographs are stored with a one-hour or five-minute cache where pictures get a year.",
+ "findings": [
+  {
+   "id": "AS-1",
+   "title": "The image library (sharp, 19.8 MB) is in 742 of 832 route traces and the proxy's, and loads when the proxy or a route as plain as robots.txt starts",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "35-57 ms and 22.5 MB RSS less per cold start of the proxy and ~740 entries (bare node here); later 19.8 MB per trace freed.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-2",
+   "title": "The product taxonomy (13.3 MB of JSON) is traced into every route, the proxy and the health check included",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "13.3 MB per trace that can never read it: about 90 today, more once the import cycle is cut. Nothing at run time.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-3",
+   "title": "Nothing checks what a server function carries or what the proxy imports",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "None itself: holds later gains and gives AS-1, AS-2 and the server-graph work a number that can only fall.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-4",
+   "title": "Search suggestions ask Next's image service for uploaded pictures and get a 400, so real stores will show empty thumbnails; the service itself is open and unused",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Working search thumbnails in every real store; up to 6 failed requests less per suggestion list; unused /_next/image closed.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-5",
+   "title": "Flags are downloaded even while the switcher hides them, public files have no cache lifetime, and six flags and two textures are far bigger than their job",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "One request per language per page load (13 KB for es, hr); est. 119 KB on Botanica first view; flags 176 KB to under 20 KB.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-6",
+   "title": "The PDF routes carry all of react-dom (8.1 MB) to use two server builds of it",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "About 7.5 MB on each of four PDF traces (107-140 MB); nothing a person feels.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-7",
+   "title": "Tailwind reads 22.5 MB that adds nothing to the CSS today: the test files and the migrations' SQL",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "A third less text for Tailwind to scan: 0.1-0.35 s per build and 436 B of CSS (CS-6 measurement).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-8",
+   "title": "The decisions log is one 1.33 MB file and keeps growing; CLAUDE.md is 43 KB in every agent session",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 10,000 tokens per agent session (code review estimate); planned in docs-context DC-1 to DC-3.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-9",
+   "title": "The font file route does not tell the CDN to keep the file, unlike the stylesheet route beside it",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Font file requests stop at the CDN: no function call or 35 KB bytea read per file per new visitor (count unknown before opening).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-10",
+   "title": "The build's page worker runs with source maps on: about 4.7 MB of heap per MB of server code it loads, and 704 MB of maps written that no function carries",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Unmeasured in a build; mechanism measured: 4.7 MB heap per MB of code a worker loads (+498 MB for 107 MB); 704 MB less written.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-11",
+   "title": "Nothing is kept between 480 and 1600 pixels, so 3x phones and Retina laptops download the 1600 px file for every product tile",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est. 53 KB less per product tile (71 to 18 KB, theme art) on 3x phones and 2x laptops; photographs not measured.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "AS-12",
+   "title": "Videos, 3D models and theme photographs are stored with a one-hour or five-minute cache, though their addresses never change; pictures get a year",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Unmeasured: one round trip to Storage less per video, 3D model or theme photograph when a visitor returns after 1 h or 5 min.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

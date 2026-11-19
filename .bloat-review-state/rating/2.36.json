@@ -1,0 +1,14 @@
+{
+  "id": "2.36",
+  "rating": "strong",
+  "why": "Commit 1 asks the executor to assign every tool of five areas to a group by reading what pages it works on, and commit 3 asks it to open 38 playbooks and decide which make sense only with goods. It also rewrites the AI manager's prompt and tool choice, whose effect is proved only by an eval the owner runs in production. These are judgement calls on about 250 tools and on prompt wording, not edits.",
+  "harm_if_wrong": "The AI manager stops offering the tool an owner's question needs (or loses reminders and goals), so it answers that it cannot, and only the owner's eval run shows it.",
+  "cheap_commits": [
+    4
+  ],
+  "make_it_cheaper": "Put the full TOOL_GROUPS table and the list of shop-only playbook ids in the brief, so commits 1 and 3 copy data instead of deciding it.",
+  "brief_problems": [
+    "src/server/ai-round.scan.test.ts, its baseline and the lean eval cases come from step 1.19 and do not exist yet",
+    "Commit 2's ownsConversation() is a permission check (a conversation belongs to the person) that the brief treats as a small speed edit"
+  ]
+}

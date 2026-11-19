@@ -1,0 +1,15 @@
+{
+ "id": "2.40",
+ "fixed": [
+  "CLAUDE.md change names the sentence wrapped across lines 77-78 and gives the two-line old text to replace.",
+  "src/lib/decisions.scan.test.ts was marked create but step 0.41 creates it: now edit made_by 0.41; its case (1) (header '| # | Decision | Date | Consequence |') is rewritten for the index markers, case (3) reads files; the new checks are added to it.",
+  "scripts/claim-decision.mjs and docs-budget.baseline.json: edits made_by 0.41 and 1.1 with what those steps leave; claim now writes the file and an index row built by an exported indexRow().",
+  "Script test decided: src/lib/decisions-script.test.ts (0.41 tests its script from src/lib).",
+  "Split refuses a 4-cell row whose date cell is not YYYY-MM-DD, catching a wrong-pipe split the proof cannot see.",
+  "scripts/lib/docs-count.mjs (1.1) measures a decision file without its heading line, else docs-ratchet.mjs would refuse the 46 big decisions that grow by their title."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (the wrapped CLAUDE.md lines)",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

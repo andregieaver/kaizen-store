@@ -1,0 +1,15 @@
+{
+ "id": "0.7",
+ "rating": "cheap-then-review",
+ "why": "Every edit is named (18 modules with exact constant names, 35 files with the area each reads, the sed for the 12 staffEmails files) and the type check catches a wrong area or word, so commits 1 and 2 are mechanical. What lifts it is breadth: 35 files at once, including the two-step sign-in texts and store-action's error words, through a sed whose misses are fixed by hand, plus a hand-written graph-walking scan test whose ceilings and planted case the cheap model could make vacuous to get a green run.",
+ "harm_if_wrong": "An index replaced by a fixed language (STAFF_EMAILS_WORDS.en instead of [lang]) compiles and sends Norwegian owners English emails or sign-in messages, or a walker that stops early passes ceilings that hold nothing.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "make_it_cheaper": "Give the scan test's walker as code to paste (or have it import storefront-bundle's helpers through a shared module) and add one int-test case per changed sender that asserts a Norwegian sentence, so a wrong index or a hollow walker fails a check.",
+ "brief_problems": [
+  "The sed pattern only matches a plain identifier as the language argument; files such as push.ts and stock-alerts.ts are covered but any call with an expression is left to 'fix by hand', which the brief does not list per file.",
+  "Commit 3's walker is told to copy storefront-bundle's helpers but NOT stop at 'use server' files, unlike the source it copies; easy to miss."
+ ]
+}

@@ -1,0 +1,483 @@
+{
+ "headline": "The database's shape is sound for a platform about to open. Dead columns, tables and functions are rare, triggers are gated by column, nearly every store table has a store index, and nearly every log has a retention rule. That 245 of 486 tables have never held a row says only that the platform is not open yet; it is no evidence against any feature and nothing should be retired, parked or merged for it. What is worth fixing before opening is where cost does not follow use, or grows with stores: (1) pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it; (2) `store_id is not distinct from` (122 uses) makes Postgres scan whole tables, which I confirmed with EXPLAIN in a local Postgres 18, and the every-minute cookie-scan claim built on it grows with stores squared; (3) a page's title and flags live only inside its JSON, so lists read whole documents; (4) the knowledge and media jobs re-read every page of every site on a timer instead of on change; (5) every cold start evaluates the 1 MB schema file that no query uses (about 115 to 135 ms and 9 to 12 MB measured here). The first draft's '12.5 s of work per tick for unused features' was a misreading: the dispatcher's 84 jobs run side by side through five connections, each job's time includes waiting for the others, and the whole tick takes about 1.3 s. Absolute load today is small (about 2,360 s of app statement time in 78 days, from schedules, builds and the team's own testing). The gain is in cold starts, in stopping growth that scales with stores, and in making the structural changes (page columns, the platform kept twice) now, while there is no real data to migrate.",
+ "metrics": [
+  {
+   "name": "Tables, columns, JSON columns",
+   "value": "486 tables, 5,806 columns, 292 jsonb columns",
+   "how": "Re-parsed CREATE TABLE blocks of supabase/migrations/20261111172839_baseline_1_schema.sql with my own node script (scratch work/sk-ds). My first count was 5,841; 35 of those were continuation lines of one multi-line check, so the auditor's 5,806 holds."
+  },
+  {
+   "name": "Share of the schema on tables that have not held a row yet",
+   "value": "245 tables: about 2,720 of 5,806 columns (47%), 966 of 1,988 indexes (49%), 553 of 1,106 foreign keys (50%), 131 of 391 triggers (34%), 8,838 of 19,614 lines of schema.ts (45%). Under the owner's clarification this measures what waits for opening, not waste.",
+   "how": "Joined the never-held-a-row list in prod-db-stats.md with my own parse of the baseline and of schema.ts; every number reproduced."
+  },
+  {
+   "name": "Indexes by kind",
+   "value": "1,988 parsed (production reports 1,989): 485 primary keys, 267 unique constraints, 177 unique indexes, 1,059 plain; 239 partial; 25 GIN; 256 plain single-column indexes only back a foreign key to accounts",
+   "how": "My own parse of CREATE INDEX and ADD CONSTRAINT in baseline 1 and 3 (work/sk-ds/idx.mjs). The auditor's '657 exactly a foreign key's columns' depends on definition: I get 622 (plain, not partial) to 713 (any index)."
+  },
+  {
+   "name": "Redundant indexes",
+   "value": "The auditor's 15 reproduce. 12 are clear (10 plain prefixes of a unique key, and 2 partial indexes on orders whose condition nearly always holds). 3 are selective partial indexes that are defensible (ai_usage_autopilot_idx, order_events_restock_idx, price_lists_exclusive_idx). 1 was missed: order_lines_order_idx has the same key as the covering order_lines_analytics_idx. 39 unique (store_id, id) keys have no foreign key pointing at them (10 on tables that hold rows).",
+   "how": "work/sk-ds/idx.mjs: btree index whose columns equal or lead another's on the same table; INCLUDE and WHERE read by hand at baseline_3:10062, :10076, :10685."
+  },
+  {
+   "name": "orders",
+   "value": "92 columns, 8 jsonb, 34 indexes (18 partial, 3 trigram GIN, 5 starting store_id, placed_at), 27 triggers, 10 foreign keys out, 41 in. A plain new order writes 22 index entries.",
+   "how": "My parse of the baseline; index list printed and counted by hand (16 unconditional btree, 3 partial whose condition holds, 3 GIN)."
+  },
+  {
+   "name": "Triggers on hot tables per event",
+   "value": "orders 27 (7 on insert, 10 on UPDATE OF status plus 1 on any update, 23 gated by named columns); products 14 (8 on insert, 4 on any update); payments 12 (9 on insert); product_variants 7 (5 on insert); order_lines 5 (3 on insert); prices 2; carts 1 (0 on insert); cart_lines 0; visits 0",
+   "how": "Parsed the 391 CREATE TRIGGER lines of baseline_3 (work/sk-ds/triggers.json)"
+  },
+  {
+   "name": "Wide rows",
+   "value": "stores 66 columns (8 jsonb), platform_settings 37 (6 jsonb), pages 12 (draft and published jsonb, no title column), design_presets 26 (3 jsonb)",
+   "how": "My parse of the baseline"
+  },
+  {
+   "name": "SQL functions",
+   "value": "617 (331 trigger functions, 15,811 body lines). None found dead: the auditor's 7 'called by nothing' are 5 add_demo_* functions that supabase/seed.sql calls (lines 232 to 241) and that the Demo products rule requires, and 2 *_verify functions that are documented checks used by tests.",
+   "how": "Parsed CREATE FUNCTION bodies; rg for each name over src, scripts, supabase/seed.sql and docs"
+  },
+  {
+   "name": "Columns no code names",
+   "value": "My own sample of 150 columns (every 39th): 0 names absent from src outside tests and schema.ts; 43 of the 150 have generic names (id, store_id, created_at) that a name search cannot judge. The auditor's six names that appear nowhere are confirmed; one of them (product_safety_rules.legal_basis) holds reference data in baseline_2.",
+   "how": "One rg pass with the 107 distinct sampled names over src (work/sk-ds/sample-names.txt); the six names checked one by one"
+  },
+  {
+   "name": "Schema module at server start",
+   "value": "schema.ts is 1,059,413 bytes and 19,614 lines; 652,018 bytes of its own code minified (700,726 with the lib files it imports); its table definitions are in 6 server chunk files of the finished build; 85 to 100 ms to evaluate (121 to 127 ms when zod is not yet loaded), 30 to 37 ms more for drizzle to index it (0.06 ms without), 9 to 12 MB of heap",
+   "how": "My own esbuild bundle into scratch and node --expose-gc timing, 11 runs, load average 1.7; rg for a schema-only index name in .next/server; instrumentation.js.nft.json lists chunk _1pmw-ihec6glt (2,395,459 bytes)"
+  },
+  {
+   "name": "Queries that use the query builder or the schema object",
+   "value": "0. One runtime importer of schema.ts (src/db/client.ts:11); 1,182 files import from drizzle-orm, 1,132 of them exactly `import { sql }`",
+   "how": "rg over the repo for schema imports, findMany/findFirst, .select/.insert/.update/.delete on db() or tx"
+  },
+  {
+   "name": "Null-safe store comparison",
+   "value": "122 uses of `store_id is not distinct from` in 40 files. In a local Postgres 18.6 it gives a Seq Scan where `=` and `is null` give an index scan (3.5 ms against 0.46 ms on 50,000 rows). Production: pages 199,789 sequential scans, cookie_scans 1,101,927, terms 183,724.",
+   "how": "rg -i over src (tests excluded); EXPLAIN ANALYZE in PGlite (work/sk-ds/explain.mjs); scan counts from prod-db-stats.md"
+  },
+  {
+   "name": "The platform kept more than one way",
+   "value": "63 tables with a nullable store_id, 19 platform_* tables (14 with a store table of the same name), plus the house store that holds a copy of the site. The switch that would serve the site from the house store is built and left off (D484).",
+   "how": "My parse of the baseline; docs/decisions.md:824; docs/platform-parity-plan.md:153"
+  },
+  {
+   "name": "Database time of the top statements",
+   "value": "6,334 s over 78 days (81 s a day); 3,974 s (63%) is pg_cron's own net.http_post calls; the app's statements in the list are 2,360 s (30 s a day)",
+   "how": "Summed the Total column of the costliest-statements table in prod-db-stats.md (19 rows)"
+  },
+  {
+   "name": "Database size",
+   "value": "731 MB: pg_cron's run log 564 MB (77%), commerce 124 MB, pg_catalog 27 MB, net 8.5 MB; a leftover commerce_legacy schema holds 34 tables and 96 rows",
+   "how": "prod-db-stats.md as updated at 23:14 with a size-by-schema query. The auditor wrote before this number existed and estimated it."
+  },
+  {
+   "name": "The dispatcher's real time per tick",
+   "value": "About 1.3 s of wall time (route.cart-reminders last run 1,341 ms). The jobs' recorded times sum to 12.5 s only because 79 jobs start at once on a pool of 5 connections and each one's time includes waiting.",
+   "how": "src/server/cron-runs.ts:117 (Promise.all over all jobs), src/db/client.ts:68 (max 5), src/server/cron-runs.ts:62-67 (time measured around the whole job); figures from prod-db-stats.md"
+  },
+  {
+   "name": "Statements in the top lists that this dimension's findings do not cover",
+   "value": "AI cost summed from ai_usage on each call (253 s plus about 99 s), `select slug from stores where id` (560,090 calls), ai_providers read per site per job (237,563 calls)",
+   "how": "prod-db-stats.md; left to the queries and cron dimensions"
+  }
+ ],
+ "clean": [
+  "Dead columns are rare. My own sample of 150 columns found no name absent from the code; the auditor's full pass found 59 of 5,806 (1.0%) not named by code that touches their table, and six names that appear nowhere (confirmed).",
+  "SQL functions are used. None of the 617 was found dead: the five add_demo_* functions are called by supabase/seed.sql and required by the Demo products rule (docs/rules/admin/commerce.md:533), and bonus_verify and referral_verify are documented checks that tests call.",
+  "Classic index redundancy is small: about 13 clear cases in 1,988 indexes. The 1,006 never-scanned indexes say nothing before opening: 966 sit on tables that wait for their first row, and the rest sit on tables too small for the planner to need them.",
+  "Triggers are gated by column: of the 27 on orders, 23 fire only when named columns change and 1 on any update. The shopper's hottest tables carry almost none: carts 1, cart_lines 0, visits 0. The 11 that fire when an order is paid do indexed lookups by store; an order is the rarest and most valuable write, so this is not worth changing.",
+  "queue_integration_event (baseline_1:15459) is already cost-follows-use: three indexed lookups by store per event, a fraction of a millisecond for a store with no integration, endpoint or workflow.",
+  "Most dispatcher jobs already start with one cheap set-based 'is anything due' read (for example legal-writer.ts:652, alt-texts.ts:224, bonus_expire_due). Such a job costs the same whether 60 or 60,000 stores exist, as long as none has work. No general 'feature in use' registry is needed.",
+  "Retention is in place for nearly every log: status_checks 91 days (src/server/status.ts:266; the '0 deletes' in the statistics only means the table is about 12 days old), ai_usage 400 days, audit_log 24 months, visits, speed samples 90 days, search logs, docs reads, page_versions 50 a page, cookie_scans 90 days by a pg_cron job (baseline_4:106-113). cron_jobs is one upserted row per job and does not grow.",
+  "platform_settings is never read whole: 29 files read it and none uses select *. The store read (src/server/stores.ts:232-281) names its columns.",
+  "No client component imports schema.ts or types from it: the only importers are src/db/client.ts, one scan test and drizzle.config.ts.",
+  "Logos and site icons are stored as URLs inside the navigation JSON (src/lib/navigation.ts:46-51, :185-190), not as embedded image data.",
+  "The migration folder is lean: one 2.7 MB snapshot and four baseline files of 3.99 MB; the 789 old files are in supabase/archive (6.5 MB) by rule D572.",
+  "Every store table but three has a btree index leading on store_id (399 of 402; the three are broadcast_link_clicks, checkout_accounts and dispute_evidence).",
+  "referral_program() and cookie_notes are read inside 'use cache' functions (src/server/referrals.ts:60-66, src/server/site-cookies.ts:40-53). Their call counts in production are cache fills by builds and new instances, not work done on every request.",
+  "The 39 unique (store_id, id) keys that no foreign key points at yet are rule P1's anchor (docs/platform.md:12). One extra index on low-volume tables; adding it later on a hot table is harder than having it from the start. Leave them."
+ ],
+ "findings": [
+  {
+   "id": "DS-1",
+   "title": "Every server start loads the whole schema file, which no query uses",
+   "kind": "eager",
+   "where": [
+    "src/db/client.ts:11",
+    "src/db/client.ts:31",
+    "src/db/client.ts:78",
+    "src/instrumentation.ts:8",
+    "src/server/ui-text.ts:5",
+    "src/db/schema.ts:1",
+    ".next/server/instrumentation.js.nft.json",
+    "docs/audits/code-review-2026-11.md:268"
+   ],
+   "evidence": "client.ts does `import * as schema` and passes it to drizzle(). No file uses the query builder or the relational API: 0 findMany/findFirst, 0 select/insert/update/delete on db() or tx, and 1,182 files import only from drizzle-orm's `sql`. The only other importers of schema.ts are a scan test and drizzle.config.ts. The finished build's instrumentation entry traces to chunk _1pmw-ihec6glt (2,395,459 bytes), which holds the table definitions; the same definitions sit in 6 server chunk files. Timed in node on this machine, 11 runs: 85 to 100 ms to evaluate the module (121 to 127 ms when zod is not yet loaded), 30 to 37 ms for drizzle to index it (0.06 ms without), 9 to 12 MB of heap.",
+   "cost": "About 115 to 135 ms of CPU and 9 to 12 MB of memory at every server instance start (measured here, not on Vercel); 652 KB of minified code repeated in 6 server chunk files; 19,614 lines (1 MB of text) an agent must slice to read one table. The cost is per cold instance, so it grows with traffic spread and deploy count, not with stores.",
+   "who_pays": "The first shopper or owner on every cold instance; the build; an agent's session",
+   "fix": "Step one, small: drop the `schema` argument and the import in client.ts (`drizzle({ client: pool })`, `NodePgDatabase` without the type argument). schema.ts stays as the source for drizzle-kit and the scan test. Step two, optional: split it by area into src/db/schema/*.ts with `pnpm db:check` writing no migration.",
+   "saving": "Measured here: about 115 to 135 ms and 9 to 12 MB per cold start; the schema's code out of 6 server chunk files. Step two saves reading cost for people and agents only.",
+   "effort": "S",
+   "risk": "Low. Nothing reads db().query or a table object. Check that the type Db still compiles and run the integration tests.",
+   "confidence": "high",
+   "already_tracked": "Code review FD5, step 3.14 'Split schema.ts': Open (docs/audits/code-review-2026-11.md:116, :268, :484). The measurements and the fact that the instance-start hook loads it are new.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened client.ts, instrumentation.ts and ui-text.ts. Re-ran every search (schema importers, builder calls, drizzle imports): same results. Made my own esbuild bundle (652,018 bytes of own code) and timed it 11 times: 85 to 100 ms evaluate, 30 to 37 ms init, 9 to 12 MB, in line with the auditor's 86 to 117 ms, 30 to 42 ms and 10 MB. Found the schema in 6 chunk files by a schema-only index name. Not touched by the owner's clarification: it is a cold-start cost, not an argument from use."
+  },
+  {
+   "id": "DS-2",
+   "title": "Each server start waits for a read of the interface-text table, and every warm instance asks again each minute",
+   "kind": "eager",
+   "where": [
+    "src/instrumentation.ts:6",
+    "src/server/ui-text.ts:31",
+    "src/server/ui-text.ts:57",
+    "src/server/ui-text.ts:61",
+    "src/server/ui-text.ts:106",
+    "src/server/ui-text.ts:110",
+    "docs/decisions.md:122"
+   ],
+   "evidence": "register() awaits startUi(), which runs `select lang, count(*), max(updated_at) from commerce.ui_translations group by lang` before the instance takes requests (Next's guide: register 'must complete before the server is ready'). A timer repeats it every 60 s in each warm instance (FRESH_MS). Production: 278,393 calls in 78 days, the second most-called statement. It is not in the top-time list, so its total is under 17.5 s (under 0.06 ms a call) while the table is empty. The design is deliberate (D111): t() is synchronous, pages never wait on the database for text, and the text is not read while a page is prerendered.",
+   "cost": "Today: one small query before the first request of each instance, and about 3,570 polls a day (one per warm instance per minute). The connection it opens is not wasted, since nearly every request needs one. What grows after opening: the poll counts every row of every translated language (about 1,700 texts a language, D436), in every warm instance, every minute. Estimate: 20 languages and 20 warm instances give about 29,000 polls a day over 34,000 rows each.",
+   "who_pays": "The first request on every cold instance; the database",
+   "fix": "Keep the read at start: it is what lets the synchronous t() and separately rendered cached parts find the text. Make the poll cheap and rarer: (1) keep one small version row per language, written by the platform admin's save and the nightly job, and poll that instead of counting all rows; (2) lengthen FRESH_MS from 1 to 10 minutes (reloadUi already refreshes the instance that saved). Do not move to loading on first use without solving cached parts that render apart from the layout: they would cache English.",
+   "saving": "Estimate: about 90% of the polls (3,570 a day now) and a poll that no longer reads every text. A few milliseconds at most per cold start; no measured latency saving.",
+   "effort": "S",
+   "risk": "Low. An edit to a machine-translated text reaches other instances within 10 minutes instead of 1; cached pages already lag by hours.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened instrumentation.ts and ui-text.ts: the start read and the 60 s timer are as described, and the call count is in the statistics. Corrected three things. (1) The cost is smaller than implied: the statement is absent from the top-time list, and the connection is needed anyway. (2) The proposed fix (load on first use) conflicts with D111's written reason (sync t(), no database read during prerender); I replaced it with a cheaper, rarer poll that keeps the rule. (3) Applied the clarification: that ui_translations is empty is not the point; the point is a poll whose cost will rise with instances times translated rows."
+  },
+  {
+   "id": "DS-3",
+   "title": "A few scheduled jobs do work that does not follow use: a prune every minute and an invoice retry every five minutes for 120 days. The rest of the first draft's claim does not hold.",
+   "kind": "eager",
+   "where": [
+    "src/server/integrations.ts:1031",
+    "src/server/integrations.ts:1062",
+    "src/server/platform-integrations.ts:484",
+    "src/server/invoice-issue.ts:27",
+    "src/server/invoice-issue.ts:71",
+    "src/server/invoice-issue.ts:124",
+    "supabase/migrations/20261111172839_baseline_1_schema.sql:10542",
+    "supabase/migrations/20261111172839_baseline_1_schema.sql:10554",
+    "src/server/cron-runs.ts:117",
+    "src/db/client.ts:68",
+    "src/server/api-idempotency.ts:73",
+    "supabase/migrations/20261111172839_baseline_1_schema.sql:15459",
+    "src/server/referrals.ts:60",
+    "src/server/site-cookies.ts:40"
+   ],
+   "evidence": "What does not hold. (1) The '801 ms for 8 jobs' and '12.5 s of database work per tick' are not work: runJobs starts all 79 jobs at once (Promise.all) on a pool of 5 connections, and each job's time is measured around the whole job, so it includes waiting. The whole tick took 1,341 ms. Example: api-idempotency is recorded at 119 ms and is two deletes on small tables. (2) Most jobs already begin with one cheap 'is anything due' read; that is the gate the draft asked for. (3) queue_integration_event is three indexed lookups by store per event (22 triggers call it): correct shape. (4) referral_program() and cookie_notes are read inside 'use cache' functions; their counts are cache fills. (5) That a table is empty is no longer an argument. What holds. (a) deliverDue() and deliverPlatformDue() run their 30-day prune delete on every call, once a minute: 66,533 runs of the update and of the delete. No index on integration_deliveries leads on created_at (baseline_3:9075-9096), so once deliveries exist the prune is a full scan every minute. (b) storesWithDocumentWork() picks stores with a paid order of the last 120 days and no invoice, but does not ask whether the invoice can be issued; issue_waiting_invoices() only issues orders that are 'ready'. So a store whose seller details are not complete is called every tick for 120 days: 9,909 calls (132 s) plus 9,909 of issue_missing_credit_notes (35 s), which the first function already calls itself. The list is capped at 50 stores with no order by, so past 50 such stores, stores with real work can be left out.",
+   "cost": "Measured: 167 s of database time in 78 days for the invoice retry (7% of the app's 2,360 s in the top list) with no invoice produced; 133,066 statements for the per-minute update and prune. Estimate after opening: about 4.8 s of database time a day for each store that takes paid orders before its seller details are complete (288 ticks at 16.8 ms). The dispatcher as a whole costs about 1.3 s of function time per five minutes today.",
+   "who_pays": "The database and the server on every cron tick",
+   "fix": "(a) Move both delivery prunes to the daily retention run. (b) Give storesWithDocumentWork() the worker's own test (only orders whose invoice is ready), or stamp a next-try time on a failed attempt and back off to hourly, and try again at once when the store saves its tax profile; order the 50 by oldest work; drop the second issueMissingCreditNotes call. (c) Record a job's own statement time, not wall time under contention, so the platform's job list stops overstating. Leave queue_integration_event, the order triggers and the other jobs' gates as they are.",
+   "saving": "Measured today: 167 s per 78 days and 133,066 statements. Estimate at scale: as in cost. Nothing is saved by gating the other jobs: their first read already is the gate.",
+   "effort": "S",
+   "risk": "Low. Keep the promise that an invoice is issued as soon as the seller's details are complete.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened every cited file. Parsed the baseline myself: 21 functions and 22 triggers call queue_integration_event, and its body is three indexed insert-selects. Read runJobs and tracked(): the jobs run concurrently on 5 connections, so the per-job times in the statistics overlap; the draft's 801 ms and 12.5 s are refuted as work. Read referrals.ts and site-cookies.ts: both reads are cached. Read invoice-issue.ts and issue_waiting_invoices: the selector is looser than the worker, which explains 9,909 calls with no invoice. Kind changed from speculative to eager: under the owner's clarification every feature is unused before opening, so 'unused' is no finding; what remains is two jobs whose cost does not follow use."
+  },
+  {
+   "id": "DS-4",
+   "title": "A page's title, parts and flags live only inside its content JSON, so lists read and parse whole pages",
+   "kind": "oversize",
+   "where": [
+    "src/server/pages.ts:664",
+    "src/server/pages.ts:669",
+    "src/server/pages.ts:715",
+    "src/server/pages.ts:724",
+    "src/server/pages.ts:799",
+    "src/server/pages.ts:862",
+    "src/server/page-modals.ts:17",
+    "src/app/s/[store]/[market]/[slug]/page.tsx:20",
+    "src/app/s/[store]/[market]/page.tsx:29",
+    "supabase/migrations/20261111172839_baseline_1_schema.sql:28427"
+   ],
+   "evidence": "pages has 12 columns and no title: everything is in draft and published. listPublishedPages selects `published` for every page of a store and parses each. Of its 35 call sites, 12 pick one page by id and 6 to 8 need only slugs (generateStaticParams, role pages, checkout terms, pay and exchange links). It is cached ('use cache', hours), but Next's guide says the default cache is in memory per instance and is refilled on each static-shell revalidation in a serverless host, so the read repeats per build, per instance and per revalidation. Production: 79,778 calls, 781 s, 29 whole pages a call, the costliest app statement. Titles are dug out of the JSON 57,930 times (66 s). Whether a site has a remembered modal is answered by jsonb_path_exists over every published page: 68,878 calls, 121 s. About 66 JSON-path reads of page content in 35 server files (my regex; the auditor counted 60 in 32). findForm and findProductPart scan the same way but only when a form is sent, which follows use.",
+   "cost": "About 970 s of database time per 78 days in three statements (41% of the app's statements in the top list), plus parsing about 29 pages of JSON per call in Node. Today's counts come from builds, cron and the team's testing. After opening it grows with stores times deploys (prerendering) and with cache fills per instance.",
+   "who_pays": "The database; the server per uncached render and at build time",
+   "fix": "Add plain columns kept at publish: titles by language (a small jsonb, since the title is translated per locale at pages.ts:724) and a small flags or part-kinds array. Add publishedPageById() and publishedPageSlugs() and move the find-by-id and slug-only callers to them. Answer 'does this site use a remembered modal' from the flags column. Do it before opening: backfilling 1,389 pages is trivial now.",
+   "saving": "Estimate: most of the 970 s; each list call returns a few hundred bytes instead of about 29 documents.",
+   "effort": "M",
+   "risk": "Medium. The new columns must be written by every path that publishes (publish, schedules, theme updates, store copy, staging); backfill in the same migration. Additive, so the running code keeps working.",
+   "confidence": "high",
+   "already_tracked": "no (code review step 3.9 covers the catalogue, not pages)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened the pages table (12 columns, no title), listPublishedPages, publishedPageNames and usesRememberedModals. Listed all 35 call sites and classed them by hand: about 19 need one page or only slugs. Summed the three statements from the statistics: 781 + 66 + 121 = 968 s. Read Next's use-cache guide (lines 245-259) for where entries live. Two additions: the title is per language, so the new column is a small jsonb; the reads are cached, so the counts are cache fills, not page views. The case does not rest on any unused feature."
+  },
+  {
+   "id": "DS-5",
+   "title": "The knowledge job re-cuts pages that have no text every five minutes, and reads every page's content to compare a date",
+   "kind": "eager",
+   "where": [
+    "src/server/knowledge.ts:167",
+    "src/server/knowledge.ts:171",
+    "src/server/knowledge.ts:187",
+    "src/server/knowledge.ts:192",
+    "src/server/knowledge.ts:249",
+    "src/server/knowledge.ts:297",
+    "src/lib/knowledge.ts:63"
+   ],
+   "evidence": "refreshKnowledge loops over every site with its chat agent on. For each, syncPageKnowledge selects `published` for every published page and article, then compares the page's date with the version stored on its passages. A page whose text yields no passages (cutPassages returns [] for empty text) has no stored version, so it is cut again on every run: one transaction with `delete from knowledge_chunks where page_id`. Production: 91,200 such deletes for 782 rows ever deleted, 1,060 inserts; the content read ran 24,134 times, up to 16 ms each.",
+   "cost": "About 1,170 pointless transactions a day and about 310 whole-content reads a day today, for one or two sites. After opening it grows with sites that switch the chat agent on: every five minutes, all published content of each such site is read, changed or not.",
+   "who_pays": "The database and the server on every cron tick",
+   "fix": "Select id, type, slug, published_at, the stored version and, for articles, only `published ->> 'blogId'` (the path needs it); fetch content only for pages whose date changed. Record the cut version for a page with no passages (a column on pages or a small state row) so it is not cut again. Better still, cut a page when it is published instead of polling.",
+   "saving": "Estimate: the 91,200 delete transactions and nearly all 24,134 content reads per 78 days; at scale, one small read per site per tick instead of all its pages.",
+   "effort": "S",
+   "risk": "Low. Add a test: a published page with only pictures is cut once.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened knowledge.ts 160-310 and lib/knowledge.ts: the loop, the whole-content select and the re-cut of pages with no passages are as described. Statistics match (91,200 deletes, 782 rows deleted, three shapes of the read adding to 24,134 calls). Added that an article's path needs blogId, so the lean select must keep that one key. The cost follows a feature being on, but not change: it stays a finding under the clarification."
+  },
+  {
+   "id": "DS-6",
+   "title": "Kaizena Flow's own site and tools are kept more than one way: null-store rows, platform_* twin tables, and a copy in its own store",
+   "kind": "duplicate",
+   "where": [
+    "docs/platform-parity-plan.md:32",
+    "docs/platform-parity-plan.md:66",
+    "docs/platform-parity-plan.md:118",
+    "docs/platform-parity-plan.md:153",
+    "docs/decisions.md:824",
+    "src/app/api/cron/integrations/route.ts:30",
+    "src/app/api/cron/integrations/route.ts:36",
+    "src/app/api/cron/cart-reminders/route.ts:266",
+    "src/app/api/cron/cart-reminders/route.ts:269",
+    "src/server/pages.ts:71"
+   ],
+   "evidence": "63 tables allow a null store_id for Kaizena Flow's own rows. 19 platform_* tables exist (the parity plan counted 9 on 6 November); 14 share a name with a store table. The twin code is real: platform-workflows.ts 399 lines beside workflows.ts 483, platform-integrations.ts 591 beside integrations.ts 1,161. Each twin doubles a job: the every-minute route runs runWorkflows and runPlatformWorkflows, deliverDue and deliverPlatformDue; the dispatcher runs theme-updates and platform-theme-updates. The site itself exists twice: as null-store rows, which serve kaizenaflow.com today, and as a copy in the house store. The switch to serve from the house store is built and left off (D484), and step 7 'One copy' is not done. The owner's own rule (CLAUDE.md, 6 November) asks for every store feature on the platform too and names both mechanisms; the plan's console track (C1 to C6) builds platform_* tables on purpose for things a store cannot give.",
+   "cost": "A true duplicate: two engines for one job (workflows, deliveries, API tokens, theme installs), twin jobs every minute and every five minutes, and the null-safe comparisons of DS-7 in about 40 files. The running cost is small; the main cost is that each such feature is built and tested twice.",
+   "who_pays": "Every future feature built twice; the database and server per tick, slightly",
+   "fix": "A choice for the owner, not waste: decide whether to make the switch (step 5) and finish step 7 before opening, when the site has the least to lose and nobody to disturb. Until then, add a platform_* twin only where no store form can carry it (the console track), and say so in the decision.",
+   "saving": "Estimate: the site's null-store paths and up to a handful of twin tables and their jobs after step 7; the null branch in the 56 server modules the plan counted.",
+   "effort": "L",
+   "risk": "Medium. The plan keeps the null rows until weeks after the switch, and compares every address before and after.",
+   "confidence": "medium",
+   "already_tracked": "docs/platform-parity-plan.md: step 5 built and off (D484), step 6 and step 7 'One copy' not done. The twins of D516, D518 and D523 are the plan's own console track, not drift.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Recounted from the baseline: 63 nullable store_id tables, 19 platform_* tables, 14 with a store namesake. Re-opened the two cron routes: the twin jobs are there. Two corrections. (1) The auditor wrote that since D484 the site is served from the house store; D484 and the plan (line 153) say the switch is built and left off, and production still reads null-store menus and platform_page_roles, so the null rows are the live copy. (2) The recent twins follow the plan's console track. Removed every argument from 'never held a row'. What remains is a true duplicate and an owner's choice."
+  },
+  {
+   "id": "DS-7",
+   "title": "`store_id is not distinct from` keeps Postgres from using the store indexes",
+   "kind": "oversize",
+   "where": [
+    "src/server/pages.ts:71",
+    "src/server/site-cookies.ts:46",
+    "src/server/cookie-scans.ts:96",
+    "src/server/taxonomy.ts:60",
+    "src/server/css-versions.ts:20",
+    "src/server/content-types.ts:80",
+    "src/server/media-library.ts:77",
+    "src/server/text-styles.ts:24",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:3316",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:7591"
+   ],
+   "evidence": "122 uses in 40 files. Postgres does not answer IS NOT DISTINCT FROM from a btree index. I ran EXPLAIN ANALYZE in a local Postgres 18.6 (PGlite) on a 50,000-row copy of the pages shape with the (store_id, type, slug) key: `is not distinct from` gives a Seq Scan (3.5 ms), `=` and `is null` give an index scan (0.46 ms and under 0.1 ms). Production agrees: three page statements written this way ran 206,586 times and pages had 199,789 sequential scans (203 M rows read) though the key exists; cookie_scans had 1,101,927 scans (962 M rows) though (store_id, created_at) exists; terms 183,724. The every-minute cookie-scan claim runs two such subqueries for each site (49,338 calls, 192 s, the fifth costliest statement). Other files already write the indexable form (media-library.ts:77, text-styles.ts:24).",
+   "cost": "About 1.2 billion rows read by scan in 78 days. Small in time today. It grows with stores times rows per table, and the cookie-scan claim grows with stores squared: every site's subquery scans every site's scans, every minute.",
+   "who_pays": "The database",
+   "fix": "One shared helper that emits `store_id = $1` for a store and `store_id is null` for the platform, used by the owner helpers (pages.ts:71, css-versions.ts:20, taxonomy.ts:60 and the rest). In the cookie-scan claim, handle the platform's row apart so the join is a plain equality. A scan test that fails on a new `store_id is not distinct from` in a where clause. Leave unique keys and on-conflict targets as they are.",
+   "saving": "Estimate: the sequential scans on pages, cookie_scans, terms and menus become index reads; a few seconds of database time a day now, and the difference between an index probe and a full scan per request at scale.",
+   "effort": "M",
+   "risk": "Low. Only where clauses change. The helper must branch in code: `store_id = null` matches nothing.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Recounted: 122 uses in 40 files. The auditor could not run EXPLAIN; I did, in PGlite (Postgres 18.6): Seq Scan for `is not distinct from` with a literal, a parameter and a null; index scans for `=` and `is null`. Checked that fitting indexes exist on pages, cookie_scans, terms and menus. Confidence raised from medium to high. Effort raised from S to M for all 122 uses; the four hot helpers alone are S. Nothing here rests on an unused feature."
+  },
+  {
+   "id": "DS-8",
+   "title": "pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it",
+   "kind": "oversize",
+   "where": [
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:68",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:105",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:106"
+   ],
+   "evidence": "The statistics, updated with a size-by-schema query, give 731 MB for the database: the cron schema 564 MB, commerce 124 MB, pg_catalog 27 MB, net 8.5 MB. pg_cron writes one row to cron.job_run_details per run, with the whole command text (about 430 characters here). The schedule is 9 jobs a minute, one every 5 minutes and 4 daily: 13,252 rows a day. The baseline schedules two retention jobs (consents, cookie_scans) and none for the run log; a search of supabase, src, scripts and docs finds no mention of job_run_details.",
+   "cost": "Measured: 564 MB, 77% of the database. Estimate: about 8 MB more a day at today's schedule (13,252 rows of about 0.6 KB), about 3 GB a year, whatever the number of stores. Larger backups, slower restores and branches.",
+   "who_pays": "The database",
+   "fix": "Add a daily pg_cron job that deletes run-log rows older than 7 days, in baseline_4's block and a new migration through CI. To give the space back, run one `vacuum full cron.job_run_details` after the first delete (a short lock on a table only pg_cron writes); otherwise the file stays its size and is only reused. Fewer per-minute jobs shrink it further.",
+   "saving": "Estimate: about 550 MB once vacuumed, and growth stopped at about 60 MB (7 days).",
+   "effort": "S",
+   "risk": "Low. The app keeps its own job ledger in commerce.cron_jobs and does not read the run log.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened baseline_4: 14 scheduled jobs, no prune of the run log; rg finds no job_run_details anywhere. The size is now measured: the statistics file was updated after the auditor wrote and gives the cron schema 564 MB, so the auditor's '607 MB outside the app's schema, mostly an estimate' becomes a measured 564 MB and confidence goes from low to high. Added the vacuum step, without which the delete frees nothing on disk, and a per-day growth estimate from the command's length."
+  },
+  {
+   "id": "DS-9",
+   "title": "About 13 indexes duplicate another; orders carries 34, five of them starting (store_id, placed_at)",
+   "kind": "oversize",
+   "where": [
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:10328",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:10342",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:10384",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:10419",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:10062",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:10076",
+    "supabase/migrations/20261111172841_baseline_3_rules.sql:14206",
+    "src/db/schema.ts:4899",
+    "src/db/schema.ts:4901",
+    "src/db/schema.ts:13544"
+   ],
+   "evidence": "Parsed from the baseline: orders has 34 indexes (18 partial, 3 trigram GIN). orders_retention_idx and orders_invoice_candidates_idx have the same columns as orders_store_placed_idx and conditions that nearly every order meets; orders_list_placed_idx and orders_list_archived_idx start the same way. A plain new order writes 22 index entries (16 unconditional, 3 partial whose condition holds, 3 GIN). `status` is in three partial indexes' definitions, so a status change cannot be a heap-only update and writes them again. Across the schema the auditor's 15 candidates reproduce: 10 plain indexes that are a leading prefix of a unique key (visits_store_day_idx under the visits unique key is on the hottest table), the 2 orders partials above, and 3 selective partial indexes that are defensible and should stay. One was missed: order_lines_order_idx has the same key as the covering order_lines_analytics_idx.",
+   "cost": "One extra index write per row for each duplicate: 2 per order write, 1 per order line, 1 per counted visit. About 22 index writes per order insert and again per status change. Small per order; visits is the table where it adds up after opening.",
+   "who_pays": "The database, per write",
+   "fix": "Drop the 13 clear ones now, while the tables are tiny and the drop is instant (still with `drop index concurrently` in a no-transaction file on the hot tables, D569): the 10 plain prefixes, orders_retention_idx, orders_invoice_candidates_idx and order_lines_order_idx. Keep the three selective partial indexes and the (store_id, id) keys (rule P1). Review never-scanned indexes on the hot tables only after some weeks of real traffic.",
+   "saving": "Measured by count: 13 indexes; 2 fewer entries per order write, 1 per order line and 1 per counted visit.",
+   "effort": "S",
+   "risk": "Low. None of the 13 backs a constraint that another index does not also enforce. Check with EXPLAIN on the retention and invoice queries that they take orders_store_placed_idx.",
+   "confidence": "high",
+   "already_tracked": "Code review FD7, step 3.15 'Keep the big tables lean': Open. It counted 24 indexes and named orders_retention_idx; the count is now 34 and the list is new.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Wrote my own parser (work/sk-ds/idx.mjs): 1,988 indexes, the same 15 candidates, plus order_lines_order_idx under its covering twin, which the auditor's script missed because it ignored INCLUDE. Three of the 15 are selective partial indexes that I would keep, so the clear list is 13, not 15. Five orders indexes start (store_id, placed_at), not four. Counted the 22 entries per order by hand. Removed the argument from '34 indexes for 102 rows': row counts before opening prove nothing; duplicates are waste at any size. Dropped the advice against (store_id, id) keys: rule P1 explains them."
+  },
+  {
+   "id": "DS-10",
+   "title": "Where each picture is used is found by text-searching every page's JSON, again every day for every picture",
+   "kind": "eager",
+   "where": [
+    "src/server/media-library.ts:27",
+    "src/server/media-library.ts:317",
+    "src/server/media-library.ts:338",
+    "src/server/media-library.ts:343",
+    "src/server/media-library.ts:810",
+    "src/server/media-library.ts:815",
+    "src/server/media-library.ts:860"
+   ],
+   "evidence": "mediaUses() casts each page's draft and published JSON to text and searches it for each picture's URL and thumbnail URL, and does the same for entries, menus, saved parts, theme and navigation. The five-minute media job loops over every site with media; for each it runs a delete and a stale read, and it treats a picture as stale when its vector is older than one day 'so what uses an item is kept current', which calls mediaUses for up to 128 pictures. Production: the statement ran 3,053 times at 47 to 925 ms a call, about 380 s in all (266 s for the main shape plus about 116 s for four others); media_embeddings took 13,414 updates on 468 rows. A written rule explains the search: uses are 'never stored, so it is always true' (media-library.ts:27).",
+   "cost": "About 380 s of database time per 78 days today, the second costliest app statement. It grows with pictures times pages per site, for every site with media, every day, whether or not anything changed. A site with thousands of pictures and hundreds of pages could meet the 15 s statement limit (estimate).",
+   "who_pays": "The database and server per cron tick; the owner's media library when it shows uses, which follows use",
+   "fix": "Keep the rule (uses looked up, never stored). Replace the one-day clause with a change test: re-check a site's pictures only when the picture changed or something of the site that can name a picture (a page, product, menu, entry, theme) was saved since the vector's date; one cheap max(updated_at) read per site answers that. A site nobody edited does no work.",
+   "saving": "Estimate: most of the 3,053 scans and the 13,414 date-only updates per 78 days; at scale, one small read per idle site per tick instead of a full search a day.",
+   "effort": "S",
+   "risk": "Low. The 'used in' words in a picture's search text follow the next edit of the site instead of the next day.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened mediaUses and embedMedia: the text search and the one-day clause are as described. Recomputed the time from the statistics: 266 s + 43 x 0.925 + 198 x 0.133 + 205 x 0.066 + 776 x 0.047 = about 382 s, not 'about 300 s'. Found the written rule at media-library.ts:27 that uses are never stored; the auditor's second step (a media_uses table written at save) contradicts it, so I replaced it with a change-driven re-check that keeps the rule. Not an unused-feature argument: the cost is per site with pictures."
+  },
+  {
+   "id": "DS-11",
+   "title": "Ending one sandbox runs at least 800 deletes and takes about 2,000 locks, one pass per store table per round",
+   "kind": "oversize",
+   "where": [
+    "supabase/migrations/20261111172839_baseline_1_schema.sql:15374",
+    "src/server/sandbox.ts:343",
+    "src/server/sandbox.ts:364",
+    "src/server/sandbox.ts:369"
+   ],
+   "evidence": "purge_sandbox() loops over every commerce table with a store_id column (402, less two) and runs a dynamic `DELETE … WHERE store_id = $1` in its own exception block, and repeats the whole pass until a pass deletes nothing: at least two passes, so at least 800 statements in one transaction. A proxy test in a local Postgres 18 (400 plain tables with 4 indexes each, 600 rows to delete): 124 ms for the two passes, 32 ms for a pass that finds nothing, and 2,007 locks held by the one transaction, because planning each delete locks the table and all its indexes. The real schema has about 1,800 indexes on those tables and adds foreign-key checks and delete triggers. Not timed in production.",
+   "cost": "Estimate: 0.1 to 0.5 s of database time per ended sandbox, and about 2,200 lock entries held until commit. Postgres's shared lock table holds 64 entries per allowed connection by default, so one purge can use a large share of it on a small instance. Both numbers rise with every table and index added, not with what the sandbox held. The cost follows use (one visitor's try of the builder), but it is far larger than the job needs.",
+   "who_pays": "The database, per expired sandbox",
+   "fix": "Ask once which store tables hold a row for this store (one statement of exists() per table), then delete only from those, in rounds, and keep the final check that no row remains. Or split the purge into a few transactions so no one of them holds every lock.",
+   "saving": "Estimate: from 800 or more statements and about 2,200 locks to a few dozen of each per purge.",
+   "effort": "M",
+   "risk": "Medium. The function is the guarantee that nothing of a sandbox is left; keep that check. Read production's max_locks_per_transaction before judging the lock risk.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened purge_sandbox and sandbox.ts: the loop and the two-pass minimum are as described; 402 store tables counted from the baseline. The auditor's 0.25 to 0.5 s was a guess; my proxy run gives about 0.1 s for the bare loop, so I widened the estimate downward and labelled it. The proxy also showed about 2,000 locks in one transaction, which the auditor did not mention and which I added as an estimate. Removed the argument that 216 of the tables never held a row."
+  },
+  {
+   "id": "DS-12",
+   "title": "Nothing counts what a new table, trigger or scheduled job adds to the running cost",
+   "kind": "process",
+   "where": [
+    "docs/ci-migrations.md:154",
+    "docs/audits/code-review-2026-11.md:268",
+    "docs/wave-2-redirects.md:266",
+    "src/db/schema.ts:8"
+   ],
+   "evidence": "The oldest commit of schema.ts in this checkout (74aeb21, 10 November) has 467 tables and 19,093 lines; today it has 481 and 19,614: 14 tables in about a day, over 15 commits. Each new table brings a primary key, often a (store_id, id) key, an index for every foreign key (a written rule: 'the advisor asks'), and rows in the export, copy and personal-data registers. Advisors are read by hand after a migration (docs/ci-migrations.md:154). No test counts triggers on the hot tables, indexes on the hot tables, jobs in the dispatcher or per-minute cron routes, and nothing reports a job that reads a whole site's content on a timer.",
+   "cost": "No direct cost. Without a count, the things that do cost per write or per tick (a trigger on orders or products, an index on visits, a new per-minute route, a per-site polling loop) arrive unseen with each feature.",
+   "who_pays": "CI, the database per write and per tick, and every agent that must read the schema",
+   "fix": "A small ratchet scan test over the migrations and cron routes, like ratchet.scan.test.ts: the number of triggers and indexes on the hot tables (the list in CLAUDE.md), of per-minute pg_cron jobs and of dispatcher jobs may rise only with a line in the baseline file saying why. A written rule for new jobs: work is found by a due-date or a change, not by reading every site's rows on a timer (DS-5, DS-10). After opening, at each quarterly squash, list indexes never scanned on tables that then hold rows.",
+   "saving": "No direct saving; it makes the next per-write or per-tick cost a visible choice.",
+   "effort": "S",
+   "risk": "Low. The ratchet must be cheap to raise, or it will be raised by habit.",
+   "confidence": "high",
+   "already_tracked": "Partly: FD7 proposes a standing unused-index check (step 3.15, Open); docs/ci-migrations.md:154 notes advisors are checked by hand.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Measured the growth from git: 467 tables at commit 74aeb21 (10 November), 481 now; the auditor's '8 November' and '5 tables a day' were looser. Re-opened docs/ci-migrations.md:154. Rewrote the finding under the owner's clarification: the first draft aimed the check at 'tables that never held a row' and 'the next 250 unused tables', which is no longer a valid target. A budget is still worth having, aimed at what costs per write and per tick. It is a way of working, so it stays the owner's decision."
+  },
+  {
+   "id": "DS-13",
+   "title": "Three small retention gaps, and the docs search index is rewritten whole on each docs deploy",
+   "kind": "oversize",
+   "where": [
+    "src/server/status.ts:254",
+    "src/server/status.ts:266",
+    "src/db/schema.ts:17781",
+    "src/server/page-versions.ts:38",
+    "src/lib/page-versions.ts:6",
+    "src/server/retention.ts:320",
+    "src/server/docs-search.ts:104",
+    "src/server/docs-search.ts:120"
+   ],
+   "evidence": "(1) status_checks gets 6 rows every 5 minutes and is pruned by a delete on checked_at on every tick; its only index is (component, checked_at), which does not lead on the date: 1,072 sequential scans, 10.5 M rows read so far. At its 91-day limit it will hold about 157,000 rows. (2) page_versions keeps 50 versions a page with no age limit: 642 rows are 5.4 MB (8.4 KB each), so a page at its cap holds about 420 KB of history. (3) Retention blanks but never deletes rows in carts, webhook_events, email_messages and others (FD8). (4) Added by this check: docs_index is the largest table in commerce (33 MB for 1,845 rows) and took 49,347 updates, about 27 full rewrites: when a deploy changes any doc, writeDocsIndex upserts every row and stamps updated_at, changed or not.",
+   "cost": "Small today: one full scan of status_checks per tick; page_versions 5.4 MB; about 1,845 row rewrites per docs-changing deploy. What grows after opening is page_versions: about 420 KB per page at the cap, so a store with 30 well-edited pages can hold about 12 MB of history (estimate).",
+   "who_pays": "The database",
+   "fix": "Prune status_checks once a day, or add an index on checked_at. Give page_versions an age rule beside the count (for example all 50 for 90 days, then the last 10). In writeDocsIndex, update a row only where its text hash or facts differ and delete by the list of keys instead of by date. Do FD8's delete steps.",
+   "saving": "Estimate: 287 scans a day of a table heading to 157,000 rows; a ceiling on page history per page; about 1,800 fewer row rewrites per docs deploy.",
+   "effort": "S",
+   "risk": "Low. The page-versions rule changes what an owner can take back; say it in the Versions panel.",
+   "confidence": "medium",
+   "already_tracked": "FD8, step 3.15: Open, for the blank-never-delete tables. The status_checks, page_versions and docs_index points are new.",
+   "owner_decision": true,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened status.ts 240-272, the status_checks index (baseline_3:12841), page-versions.ts and lib/page-versions.ts, retention.ts 314-326: all as described. Arithmetic checked: 6 x 288 x 91 = 157,248 rows; 5.4 MB / 642 = 8.4 KB. Replaced the worst-case '580 MB for 1,389 pages' with a per-page figure, which is what scales. Added the docs_index point, which the brief named and the auditor left out: read writeDocsIndex (docs-search.ts:93-126) and divided 49,347 updates by 1,845 rows. How long page history is kept is a product choice, so owner_decision stays true."
+  },
+  {
+   "id": "DS-14",
+   "title": "A very short list of dead database objects: one table, six columns and a leftover schema",
+   "kind": "dead",
+   "where": [
+    "src/db/schema.ts:7180",
+    "src/lib/personal-data.ts:238",
+    "supabase/migrations/20261111172839_baseline_1_schema.sql:26372",
+    "supabase/seed.sql:232",
+    "docs/rules/admin/commerce.md:533",
+    "docs/decisions.md:424"
+   ],
+   "evidence": "idempotency_keys: no code or SQL function names it outside the registers, and the personal-data register itself says 'An unused table… nothing is written to it'. This is dead code, not a feature waiting for opening: nothing can write to it. Six column names appear nowhere in the app outside schema.ts: domain_registrations.contact_checked_at, not_found_hits.first_seen_at, payment_credentials.secret_key_hint and webhook_secret_hint, product_safety_rules.legal_basis (holds reference data in baseline_2; keep), tripletex_sync.source_updated_at. Production also still has the old single-store schema, renamed commerce_legacy (34 tables, 96 rows per the statistics), which docs/decisions.md says 'can be removed once the platform schema has proved itself'. The seven SQL functions the first draft listed are not dead: supabase/seed.sql calls the five add_demo_* functions and the Demo products rule requires them; bonus_verify and referral_verify are documented checks that tests call.",
+   "cost": "No running cost. About 100 lines across schema.ts, the baseline and five registers for the table; 34 leftover tables in production.",
+   "who_pays": "An agent's session and anyone reading the schema",
+   "fix": "Drop idempotency_keys and its register rows in one migration. Leave the five unused columns until their tables are next touched. Drop commerce_legacy in a migration once the owner agrees the platform schema has proved itself. Keep all seven functions.",
+   "saving": "Measured: 1 table, 5 columns, and 34 leftover tables in production.",
+   "effort": "S",
+   "risk": "Low. Nothing running reads these. Take a last export of commerce_legacy's 96 rows before dropping it.",
+   "confidence": "high",
+   "already_tracked": "commerce_legacy: noted in docs/decisions.md:424 as removable later; no step. The rest: no.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Searched every name. idempotency_keys: only schema.ts and five register files name it; confirmed dead. The six columns: no file in src outside tests and schema.ts names them; legal_basis is filled by baseline_2. The auditor missed supabase/seed.sql (lines 232-241), which calls all five add_demo_* functions, and the Demo products rule that requires one per product kind; scripts/db-setup.mjs runs that seed for CI, builds and e2e. So the '7 functions called by nothing' are refuted: none is dead. Added commerce_legacy from the updated statistics file and docs/decisions.md."
+  }
+ ]
+}

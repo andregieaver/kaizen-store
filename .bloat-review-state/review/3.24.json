@@ -1,0 +1,127 @@
+{
+ "id": "3.24",
+ "verdict": "keep with fixes",
+ "why": "The editor's three reasons are true (record() writes last_ok_at at the finish, PER_RUN is 256 per AI, embedWith() returns a provider failure instead of throwing) and last_started_at exists today, so the new condition is sound: it stops one empty run after a backlog and costs one statement when idle. It still misses a previous run that threw (record() moves last_started_at with no work done), reads the hour from the real clock so tests and the query budget flake at 03 UTC, and its tests cannot catch a wrong condition. The ratchet instruction would make the executor stop on the expected fall of the whole tick's figure, and the variants claims and the after-deploy check are wrong.",
+ "problems": [
+  {
+   "what": "A run that throws (statement timeout, database error) is recorded with a new last_started_at and worked false, so a text changed before it is neither newer than last_started_at nor covered by the worked clause and waits for the 03 UTC net. Add `or coalesce(j.last_error_at >= j.last_started_at, false)`: record() sets last_error_at to the finish time only on failure.",
+   "evidence": "src/server/cron-runs.ts:31-43 (last_started_at always, last_error_at only on error); src/server/embeddings.ts:117-120 (aiFor and the own-AI read are outside embedWith's try); commits[0].changes[0].how",
+   "severity": "should fix"
+  },
+  {
+   "what": "'the UTC hour is not 3' has no source for the clock. After step 3.3 removes the minute guard, refreshEmbeddings' { now, full } options (step 0.28) may be gone. The new tests and query-budget's measured run use the real clock, so a CI run between 03:00 and 03:59 UTC takes the full path and fails (1 run in 24).",
+   "evidence": "exec/0.28.json embeddings.ts change (options { now, full }); exec/3.3.json autopilot-effects change (guard removed); commits[0].changes[3].how",
+   "severity": "should fix"
+  },
+  {
+   "what": "The tests would not catch a wrong condition. There are no cases for a previous run that threw, for the 03 UTC net, or for having no ledger row. The idle case's setup ('a tracked run before') is not idle in a shared database (other stores, the 256 limit, own-AI failures). pg_stat_force_next_flush() through a pooled db() flushes whichever backend serves it. A hand-written ledger row plus pg's Client.query statement count is exact.",
+   "evidence": "commits[0].changes[2].how; src/db/client.ts:7 (pg Pool); src/server/variants-scale.int.test.ts:96-105",
+   "severity": "should fix"
+  },
+  {
+   "what": "The ratchet change allows only dispatcher.embeddings figures to fall. The whole idle runRegistry tick that step 3.3 measures includes embeddings and falls too, so the executor would hit its own stop.",
+   "evidence": "commits[0].changes[4].how; exec/3.3.json query-budget change (the idle tick's figure, 125 or less)",
+   "severity": "should fix"
+  },
+  {
+   "what": "The comment and the decision name only product_terms as left to the 03 UTC net. Also left to it: a renamed term, a status change made outside the savers, a store that becomes active, and a changed embedding model or provider (ai_providers has no timestamp; meaning search is empty for those stores until the net). Step 0.28 counted these on the hourly net. They are acceptable at a day, then 256 per AI an hour, but must be written down.",
+   "evidence": "src/server/embeddings.ts:35-47 (hash inputs, status and store filter); src/db/schema.ts aiProviders (no timestamp column); docs[0]",
+   "severity": "should fix"
+  },
+  {
+   "what": "embeddings.ts reads no product_variants, so 'most of the reads of commerce.product_variants' is false and the done_when check on product_variants seq_scan measures nothing this step changes. The after-deploy check expects 'worked' to rise after an admin title change, but the save embeds at once (after(() => refreshStoreEmbeddings())), so the next run finds nothing stale.",
+   "evidence": "src/server/embeddings.ts:31-50; src/app/admin/(gated)/[store]/products/actions.ts:118; why; done_when[2]; after_deploy[0]",
+   "severity": "minor"
+  },
+  {
+   "what": "If step 1.10's 20-store seed gives stores an own AI key with an embedding model that cannot be reached, every run fails at the provider. By clause 2 the sweep then reads on every hour, so the embeddings figures there cannot fall and the statements rise by the probe's one.",
+   "evidence": "exec/1.10.json budget-seed-test-support (an AI key of the store's own, dummy key)",
+   "severity": "minor"
+  },
+  {
+   "what": "typedRow takes a zod schema, not a plain object: { changed: col.bool } must be z.object({ changed: col.bool }).",
+   "evidence": "src/server/typed-rows.ts:65",
+   "severity": "minor"
+  }
+ ],
+ "edits": [
+  {
+   "field": "goal",
+   "replace": "or that run left work behind;",
+   "with": "or that run left work behind or threw;"
+  },
+  {
+   "field": "why",
+   "replace": ", which is most of the reads of commerce.product_variants and products on an idle day.",
+   "with": ", 24 full reads a day when nothing changed (it reads no variant)."
+  },
+  {
+   "field": "commits[0].changes[0].how",
+   "replace": "(whole field)",
+   "with": "Step 0.28 put the text marker on product_translations.text_changed_at (it refused a column on commerce.products: an update of products runs its publishing check and queues a product.updated event). Confirm with rg -n 'textChangedAt' src/db/schema.ts (it sits in productTranslations); if it is missing, stop (step 0.28 not done). Confirm step 3.3 is in: rg -n 'lastWorkedAt' src/db/schema.ts finds it in cronJobs and rg -n 'export function workedOf' src/server/cron-runs.ts finds the function; if either is missing, stop. refreshEmbeddings() (rg -n 'export async function refreshEmbeddings' src/server/embeddings.ts) takes `options: { now?: Date; full?: boolean } = {}` (step 0.28 added it; if step 3.3 removed it with the minute guard, add it back with exactly that type). At its top, before `aiFor(null, ...)`, write `const now = options.now ?? new Date(); const full = options.full ?? now.getUTCHours() === 3;` and, when full is false, send one statement read with `typedRow(z.object({ changed: col.bool }), sql\\`...\\`)` (import z from 'zod' and typedRow and col from './typed-rows' where the file lacks them): `select exists (select 1 from commerce.product_translations t where t.text_changed_at > coalesce(j.last_started_at, '-infinity'::timestamptz)) or coalesce(j.last_worked_at >= j.last_started_at, false) or coalesce(j.last_error_at >= j.last_started_at, false) as changed from (select 1) as one left join commerce.cron_jobs j on j.job = 'dispatcher.embeddings'`. When changed is not true, return { embedded: 0, failed: 0 } and send nothing else (no aiFor, no ai_providers read, no staleTranslations). Why each clause holds (put this in the function's doc comment, shortened): the ledger row is written when a run finishes (record() in src/server/cron-runs.ts), so while this run reads it, it holds the previous run. (1) last_started_at is when that run began, so a text changed while it ran is newer and is not missed; with no row yet, '-infinity' makes any translation count. (2) step 3.3 sets last_worked_at to the finish time only when workedOf() found embedded or failed above 0, so last_worked_at >= last_started_at means the previous run embedded something (it may have left more than PER_RUN, 256 per AI) or failed at the provider (embedWith() returns failed instead of throwing): the sweep reads on until one run embeds nothing and fails nothing, and stops after that run. (3) last_error_at >= last_started_at means the previous run threw (a statement timeout, a database error): record() still wrote its last_started_at, so without this clause a text changed before that run would wait for the 03 UTC net. A new translation gets now() from the column's default, so it counts as changed. Also write in the doc comment what the probe does not see and the full run at UTC hour 3 catches (at most a day late, then 256 per AI an hour through clause 2): a category or tag added to, removed from or renamed on a product (commerce.product_terms and commerce.terms, the third input of the hash in staleTranslations()); a product's status changed by a path that does not call refreshStoreEmbeddings() (the savers in the file's top comment do); a store that becomes active; a changed embedding model or provider (commerce.ai_providers has no timestamp: meaning search finds nothing for those stores until the net re-embeds them, keyword search goes on); and a save whose transaction began before a run started and committed after its probe (text_changed_at is the transaction's now()). Also replace `commerce.store_is_active(t.store_id)` in staleTranslations() by `join commerce.stores s on s.id = t.store_id` (after the join to commerce.products) and, in the where, `s.status = 'active' and not s.starter and not s.sandbox`: the function's whole body is `SELECT COALESCE((SELECT s.status = 'active' AND NOT s.starter AND NOT s.sandbox FROM commerce.stores s WHERE s.id = p_store), false)` (baseline_1_schema.sql line 18852), and a join gives the same rows because a translation's store always exists. Leave refreshStoreEmbeddings() and embedWith() as they are: only the cron's refreshEmbeddings() is gated. If step 3.3 removed a minute guard from this function, leave it removed."
+  },
+  {
+   "field": "commits[0].changes[2].how",
+   "replace": "(whole field)",
+   "with": "Existing cases must pass (step 0.28 made the cases that call refreshEmbeddings() pass { full: true }, which skips the probe; a changed product gets a new vector through the save path). Add a describe block 'the cron's sweep reads nothing when no text changed (bloat review 3.24)'. It uses: the pg.Client.prototype.query spy of src/server/variants-scale.int.test.ts lines 96 to 105 (`import pg from \"pg\"`), keeping the texts of the statements sent; a fixed clock `const at10 = new Date(\"2026-11-12T10:23:00Z\")`; and a helper `ledger(worked: boolean, threw: boolean)` that writes the row by hand: `insert into commerce.cron_jobs as j (job, every_seconds, last_started_at, last_worked_at, last_error_at) values ('dispatcher.embeddings', 3600, now(), <now() when worked, else null>, <now() when threw, else null>) on conflict (job) do update set last_started_at = excluded.last_started_at, last_worked_at = excluded.last_worked_at, last_error_at = excluded.last_error_at`. Cases, each calling `embeddings.refreshEmbeddings({ now: at10 })` with the file's fakeModel() in place: (a) after ledger(false, false) it returns { embedded: 0, failed: 0 } and sends exactly one statement, whose text contains commerce.cron_jobs and contains neither ai_providers nor product_embeddings; (b) after ledger(false, false), `update commerce.product_translations set title = title || ' 2'` for one of the test store's products: the run sends more than one statement and that product's row in commerce.product_embeddings has a different content_hash than before (the store is on its own AI, so refreshStoreEmbeddings() reaches it whatever other stores the database holds); (c) after ledger(true, false): more than one statement although no text is newer; (d) after ledger(false, true): more than one statement; (e) after ledger(false, false), with `{ now: new Date(\"2026-11-12T03:10:00Z\") }` instead: more than one statement (the daily net); (f) after `delete from commerce.cron_jobs where job = 'dispatcher.embeddings'`: more than one statement. Delete that row in the block's afterAll. Do not measure with pg_stat_user_tables or run tracked() before the idle case: other stores in the shared test database can make a run embed or fail, so a run before it is not reliably idle, while the hand-written ledger row and the statement count are exact."
+  },
+  {
+   "field": "commits[0].changes[3].how",
+   "replace": "(whole field)",
+   "with": "Step 1.10 made this test; step 3.3 made Part A call `entry.run(() => {})` for each key of DISPATCHER_JOBS, once unmeasured (the warm-up) and once inside measure(). Part A does not go through runRegistry, so no ledger row is written, and refreshEmbeddings() now reads its own row in commerce.cron_jobs. For the key embeddings only: run the warm-up as `tracked(\"dispatcher.embeddings\", 3600, () => refreshEmbeddings({ now: idleClock() }))` (import tracked from './cron-runs', refreshEmbeddings from './embeddings', idleClock from step 1.10's './query-budget-test-support'), so the measured run sees the warm-up as the previous run, as in production, and measure `refreshEmbeddings({ now: idleClock() })` in place of `entry.run(() => {})`, so a run of this file between 03:00 and 03:59 UTC does not take the daily full path. Do the same in the 20-store block. Leave every other key as it is."
+  },
+  {
+   "field": "commits[0].changes[4].how",
+   "replace": "(whole field)",
+   "with": "Step 1.10 keeps the idle tick's figures under the key queryBudget here, and its test fails when a figure FELL until the baseline is lowered. After the code above, on a freshly seeded database (node scripts/db-setup.mjs --seed), run `UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts` (it only lowers). In the diff of this file only these figures may change, and only downwards: dispatcher.embeddings under one, twenty and growth, and the figure of the whole idle runRegistry tick that step 3.3 keeps (it holds embeddings' share). If the test refuses because a figure would rise, or a figure of another key changes, stop. Never type a figure by hand."
+  },
+  {
+   "field": "tests[0].proves",
+   "replace": "(whole field)",
+   "with": "An idle run sending more than its one probe statement; a changed title not embedded on the next run; a run after one that worked, after one that threw, at 03 UTC or with no ledger row skipping."
+  },
+  {
+   "field": "done_when[0].expect",
+   "replace": "(whole field)",
+   "with": "An idle refreshEmbeddings({ now: 10:23 UTC }) sends exactly one statement (on commerce.cron_jobs); after a translation's title changes, after a run that worked, after a run that threw, at 03 UTC and with no ledger row it reads on, and the changed product gets a new vector."
+  },
+  {
+   "field": "done_when[2].check",
+   "replace": "(whole field)",
+   "with": "Production, read-only, twice 24 hours apart: select calls from pg_stat_statements where query like '%md5(concat_ws(chr(31)%' and query like '%not exists (select 1 from commerce.ai_providers a%'"
+  },
+  {
+   "field": "done_when[2].expect",
+   "replace": "(whole field)",
+   "with": "calls (the cron's full reads) rose by fewer than 24 in the day: one at 03 UTC plus about two for each hour in which product words changed; before the step it rose by 24."
+  },
+  {
+   "field": "after_deploy[0]",
+   "replace": "(whole field)",
+   "with": "On a test store change a product's title in the admin: the save writes its vector at once (refreshStoreEmbeddings()). The next hourly run of dispatcher.embeddings reads on (runs +1, worked unchanged because nothing was stale) and the run after it sends only the probe; worked rises only in hours with a backlog or a provider failure."
+  },
+  {
+   "field": "docs[0]",
+   "replace": "the sweep going on while the previous run worked (a backlog over 256 or a failure), the index product_translations_text_changed_idx, product_terms changes caught by the daily full check at 03 UTC,",
+   "with": "the sweep going on while the previous run worked (a backlog over 256 or a provider failure) or threw (cron_jobs.last_error_at), the index product_translations_text_changed_idx, what the probe does not see and the daily full check at 03 UTC catches (product_terms and terms changes, a status changed outside the savers, a store that becomes active, a changed embedding model or provider),"
+  },
+  {
+   "field": "stop_if",
+   "replace": "(whole field)",
+   "with": [
+    "src/server/query-budget.int.test.ts (step 1.10) does not exist.",
+    "rg -n 'textChangedAt' src/db/schema.ts finds nothing in productTranslations (step 0.28 not done), or rg -n 'lastWorkedAt' src/db/schema.ts finds nothing in cronJobs (step 3.3 not done).",
+    "commerce.store_is_active()'s body in the newest migration differs from the one quoted in this step's change to staleTranslations() (status active, not starter, not sandbox): leave the call in place and report.",
+    "runRegistry()'s one write of the idle jobs (step 3.3, src/server/cron-runs.ts) stores a last_started_at later than each job's own start: the probe needs the job's own start; report.",
+    "In query-budget.int.test.ts's 20-store block the embeddings warm-up returns failed above 0 (the seed gave stores an own AI key with an embedding model that cannot be reached): the sweep then reads on by design; do not change the condition or the seed, report."
+   ]
+  },
+  {
+   "field": "executor_why",
+   "replace": "or without the worked clause)",
+   "with": "or without the worked or the error clause)"
+  }
+ ],
+ "rating": "cheap-then-review",
+ "rating_why": "After the edits every statement, clause and test case is written out, but a reviewer should read the probe's SQL against step 3.3's record() as built and check the store_is_active() join and the baseline diff."
+}

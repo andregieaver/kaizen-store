@@ -1,0 +1,14 @@
+{
+  "id": "3.2",
+  "rating": "strong",
+  "why": "Commit 5 asks the executor to open 18 runners, find each one's first statement when idle and copy its where clause into an exists(). A predicate that is too narrow passes every test that does not seed that exact case and silently stops emails, webhooks or broadcasts in production. Commit 4 rewrites the marketing automations' due query across stores, and commit 3 adds a trigger and a backfill on support messages.",
+  "harm_if_wrong": "A route is never called for real due work, so support answers, broadcasts, webhook deliveries or welcome emails are late or never sent.",
+  "cheap_commits": [
+    1
+  ],
+  "make_it_cheaper": "Write each of the 18 parts' exists() predicate into the brief (copied from the runners), so commit 5 becomes a specified migration.",
+  "brief_problems": [
+    "Commit 2's 'recent' window reads commerce.orders and payments, both hot tables; the brief leaves the captured-at column to be found",
+    "cron_due(), the tick and cron-due.int.test.ts come from step 3.1 and the statement counter from step 1.9; the brief names their contents only in outline"
+  ]
+}

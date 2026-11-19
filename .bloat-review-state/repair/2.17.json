@@ -1,0 +1,24 @@
+{
+ "id": "2.17",
+ "fixed": [
+  "Commit 3: the card SQL reads translations by their flat keys ('excerpt', 'seo.description', 'thumbnail.alt') with jsonb_typeof = 'string' as localizePage()/mapTexts() decide; the nested tr -> 'seo' / tr -> 'thumbnail' expressions always missed.",
+  "Commit 3: the before/after fixture now has a translated seo description and alt (flat keys) and a title-only translation.",
+  "Commit 1: the 'open articles/blogs/page.tsx and decide' change is removed: that page reads p.state (line 39), so it keeps listPages().",
+  "Commit 4: the index's three new fields (description, excerpt, markets) are given as literal select, zod, type and PAGE_INDEX_FIELDS entries, with what 0.24/2.14/2.16 leave stated; listFacts() needs no change.",
+  "Commit 4: blog-listing.tsx's blogCategories() moves to a new blogCategoryIds() SQL read (the blog rule gridPages() already writes), so the listing reads no document; blogArticles() is then deleted.",
+  "Commit 4: the sitemaps and llms.txt use pageImageUrls() and pageExcerpt() of the body (seo.ts lines 632, 758, 776, 826, 837); this is now named as the step's open choice instead of 'add the field to the index', and the stop_if that today's code already trips is replaced by an output comparison."
+ ],
+ "rejected": [
+  {
+   "problem": "mapTexts() cuts the excerpt to 300 and seo.description to 160 characters; the SQL does not.",
+   "why": "mapTexts() passes the max to its visit but does not cut; localizePage()'s visit `(key, value) => translation[key] ?? value` ignores it, so localizePage() gives the text uncut, as the SQL does."
+  },
+  {
+   "problem": "Commit 5 asks the executor to classify every rg hit by hand into the pageDocuments list.",
+   "why": "Real judgement, but not fixable here: the regex hits 111 files, most of them false positives (work-invoices' draft status and the like); classifying them is why the step stays strong. Left as the strong executor's work."
+  }
+ ],
+ "cheaper": "applied in part: commit 3's SQL with the flat keys and the fixture, and the index's exact fields; not enough to lower the rating, because commit 4's sitemap/llms.txt choice and commit 5's classification remain",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

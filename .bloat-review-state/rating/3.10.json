@@ -1,0 +1,15 @@
+{
+  "id": "3.10",
+  "rating": "strong",
+  "why": "Commits 1 and 3 are specified moves held by six int tests that may not change. Commit 2 leaves the endpoint scope's shape to design (insertColumns, insertValues, a lock key, and an owner clause that has to work on the deliveries table too), and commit 4 is measure-then-lift: if the copy counter still reads 60 lines or more, lift whichever editor runs it prints. The store side's owner filter (store_id and app_grant_id) has to survive every moved statement.",
+  "harm_if_wrong": "A store's endpoint or delivery statement loses its owner filter, so one store's webhooks can be read, resent or changed through another's, or the platform's strict tested-version check changes.",
+  "cheap_commits": [
+    1,
+    3
+  ],
+  "make_it_cheaper": "Give EndpointScope's exact statements per function (including how resend and list-deliveries filter by owner on the deliveries table), and fix which editor functions commit 4 lifts instead of 'the largest remaining runs'.",
+  "brief_problems": [
+    "EndpointScope.owned is a bare 'store_id = …' clause, but resendDelivery and listEndpointDeliveries read the deliveries table, where it may be ambiguous or need a join",
+    "scripts/lib/copy-count.mjs and src/lib/copies.baseline.json come from step 1.17 and do not exist yet"
+  ]
+}

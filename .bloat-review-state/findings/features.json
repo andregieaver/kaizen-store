@@ -1,0 +1,646 @@
+{
+  "key": "features",
+  "title": "The product's surface: features, screens and switches",
+  "headline": "The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables) but it is built with care: a new shop's default Basic view has 29 links, no admin screen is orphaned, and a feature a store does not use costs it close to nothing in the navigation, an AI round or scheduled work. One place breaks that and is cheap to fix before shoppers arrive: the cart page works out the whole basket twice per view (at least 14 statements too many), and every basket spends 5 statements learning that bonus, referrals and checkout rules are not in use. Two true duplicates are worth removing while there is no real data to move: order rules beside Workflows (about 1,900 lines) and the platform site's old copy (2,150 to 4,300 lines, already step 7 of its plan). The rest is the owner's product choice or already tracked; what is missing is a check that makes each new feature state what it costs a store that does not use it.",
+  "metrics": [
+    {
+      "name": "Source size",
+      "value": "768,202 lines in 4,139 non-test .ts and .tsx files under src; 325,579 test lines in 1,771 test files",
+      "how": "find src ... | xargs cat | wc -l, test files apart, re-run by the planner"
+    },
+    {
+      "name": "Pages and handlers",
+      "value": "560 page.tsx: store admin 264, platform admin 111, owner level 41, storefront /s 59, and 85 elsewhere (print views, sign-in and account pages, the platform's own site). 268 route handlers, 13 cron routes (9 every minute, 1 every five minutes, 2 daily, 1 run by another job)",
+      "how": "find src/app -name page.tsx and route.ts* per folder; trackedRoute( periods under src/app/api/cron; re-run by the planner"
+    },
+    {
+      "name": "Store navigation",
+      "value": "110 sidebar links in 9 sections, 42 in Basic. A store with only the shop on: 94 links in Advanced, 29 in Basic (the default view). Settings: 35 links (11 in Basic), 50 settings page files",
+      "how": "the skeptic's parser of src/lib/store-nav.ts re-run by the planner; find for settings pages; src/lib/admin-view.ts:14"
+    },
+    {
+      "name": "Screens nothing links to",
+      "value": "0 of 288 admin screens with a fixed address; 2 of 560 pages only redirect",
+      "how": "the planner's scripts work/ftplan/orphans.mjs (each static admin path searched in every non-test source file outside its own folder) and stubs.mjs"
+    },
+    {
+      "name": "Feature switches",
+      "value": "14 ids (13 optional). Of 110 store links: 16 behind an optional switch, 1 behind shop-or-Deals, 40 behind 'shop', 53 behind none. 122 of 264 store admin pages call requireFeature",
+      "how": "src/lib/store-features.ts:16-31; the nav parser; rg requireFeature in src/app/admin/(gated)/[store]"
+    },
+    {
+      "name": "AI manager tools",
+      "value": "254 store tools (20 behind an optional switch, 101 behind 'shop', 133 behind none), 26 of the manager's own. A shop-only store is offered 234; a round sends at most 124",
+      "how": "the skeptic's tool script re-run; src/lib/tool-budget.ts:15 and :67-96"
+    },
+    {
+      "name": "Scheduled jobs",
+      "value": "83 jobs in the five-minute dispatcher (78 together, 5 after). Nine only prune: 23 statements a run, about 6,600 a day. Two run-log deletes inside every-minute runners: 2,880 a day",
+      "how": "counted in src/app/api/cron/cart-reminders/route.ts; each prune function read; src/server/workflows.ts:458, src/server/platform-workflows.ts:374"
+    },
+    {
+      "name": "The cart's reads",
+      "value": "The cart page computes cartSummary() twice per view. One summary is at least 13 statements plus the cart's read; 5 of them ask about bonus (2), referrals (2) and checkout rules (1) whether or not the store uses them",
+      "how": "read in src/app/s/[store]/[market]/cart/cart-contents.tsx:76-78, src/server/bonus.ts:434-438 and :69-77, src/server/affiliates.ts:58-64 and :244-250, src/server/checkout-rules.ts:185-206; first statements of each callee counted by hand (a lower bound, not run)"
+    },
+    {
+      "name": "Order rules beside Workflows",
+      "value": "Order rules: 294 + 69 + 435 lines in three modules, 558 lines in four settings pages, an editor, 2 tables, 1 AI tool, named in 40 other files. Store workflows: 1,316 lines",
+      "how": "wc -l on the files; rg for order-rules, order_rules and OrderRule outside their own files"
+    },
+    {
+      "name": "The platform site's old copy",
+      "value": "Sure part about 2,150 lines: site-only routes 347, their components 484, admin folders that edit only the site 1,047 (23 pages), platform-theme-installs.ts 273. Up to about 4,300 lines and 32 admin pages if the platform's own routes take their layout from the store",
+      "how": "find and wc -l per folder under src/app/(platform), src/app/(platform-nb)/no, src/components/platform-routes and src/app/admin/(gated)/platform; rg for importers of the four twin files"
+    },
+    {
+      "name": "A new store's own rows",
+      "value": "6 rows at creation (5 number series, 1 payment provider) plus a first blog and a first theme install; nothing per optional feature",
+      "how": "commerce.initialise_store() and the AFTER INSERT triggers on commerce.stores in supabase/migrations (baseline 1 and 3)"
+    },
+    {
+      "name": "Build",
+      "value": "1,426 static pages generated in 28.9 s of a 263 s build; peak memory 7.6 GB on this machine. No feature switch changes this",
+      "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/build-summary.txt, build-peak-kb.txt and build.log lines 30-34"
+    },
+    {
+      "name": "Tables never written",
+      "value": "245 of 481 tables have had no insert since 25 August. Under the owner's clarification this shows only that the platform has not opened; it is evidence against no feature",
+      "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md (the skeptic's count); rg 'commerce.table(' src/db/schema.ts"
+    }
+  ],
+  "clean": [
+    "The switch system itself (D178): one registry with needs checked transitively, kept in step with the navigation, the admin map and the AI tools by tests; switching off deletes nothing (src/lib/store-features.ts).",
+    "A new store starts with the shop alone (src/lib/store-features.ts:202) and every account starts in Basic (src/lib/admin-view.ts:14); the navigation is filtered by features and permissions in one place (src/lib/store-nav.ts:388-401), and the Settings and Website hub pages follow the view too (src/components/admin/section-hub-cards.tsx:27).",
+    "No admin screen is orphaned: each of the 288 admin screens with a fixed address is named in source outside its own folder, and only 2 of 560 pages are redirect stubs (the planner's scripts).",
+    "Basic view has a budget that a test holds: at most 12 links a section and under half of all links (src/lib/store-nav.test.ts:245-253).",
+    "Creating a store writes 6 rows of its own and nothing per optional feature (commerce.initialise_store()).",
+    "Scheduled jobs follow use: almost every dispatcher job starts with one query on its own queue or table and ends when nothing is due, and jobs of switched features test the switch in SQL (commerce.feature_on() in cart-reminders.ts, standing-orders.ts, calendar-sync.ts, review-requests.ts, subscription-reminders.ts; the bonus job leaves a store whose programme is off alone, src/server/bonus.ts:543-549).",
+    "Product pages read reviews and subscriptions only while they are on, and the referral and creator programmes, recommendation settings and campaign notices through per-store caches (the skeptic's check). The cart is the exception: FT-15.",
+    "Order rules are loaded on demand: the store-events runner imports ./order-rules only when an order.paid event is processed (src/server/staff-alerts.ts:944).",
+    "Plan features only describe plans; they are not a second gating system (src/lib/plan-features.ts).",
+    "One event intake feeds Zapier, Make, Slack, owners' endpoints and workflows (commerce.queue_integration_event()).",
+    "Reuse where it could have been copied: email automations take the broadcast's content schema (src/lib/automations.ts:4), SMS marketing takes its audience from segments (src/server/sms.ts:35), the leads inbox reads leads where they are and keeps only decisions (the comment on lead_decisions in src/db/schema.ts), Work's clients link to customers and companies and reuse the shop's e-invoice parts, and the Dream Factory's code steps are D351's draft and publish and D311's legal writer (docs/decisions.md:749).",
+    "The AI manager caps a round at 124 tools and loads the rest on request (src/lib/tool-budget.ts:15, 67-96).",
+    "The developer platform (Admin API, OAuth server, MCP, storefront API, UCP) costs nothing until it is called; whether its doors are open on opening day is a product and security choice (was FT-6).",
+    "Fiken and Tripletex are kept on purpose as the bridge to the own books (docs/own-books-and-sales.md:45); their shared client is code review step 3.12 (was FT-11).",
+    "The ten carrier adapters are 1,702 lines behind one index; importing them all is immaterial beside the 10.9 to 12.1 MB of chunks every server entry requires, which belongs to the bundle dimensions (was FT-14).",
+    "The theme cluster's tables that production has not written are all read and written by working code; none is dead.",
+    "The old stores.modules list still mirrors two features (bookings, deliveries) through a trigger that fires only when features or modules are written, and carries Work's switch; a small leftover with no running cost."
+  ],
+  "refuted": [
+    {
+      "id": "FT-6",
+      "title": "The developer platform (API, OAuth server, MCP, apps, endpoints) is open with no user",
+      "why": "It argued for parking a feature because nobody uses it yet, which the owner's clarification rules out. Its only idle cost is two prune jobs (now in FT-3), and Kaizen Life's assistant already reaches the same MCP tools. Whether the doors are open on opening day is a product and security choice."
+    },
+    {
+      "id": "FT-11",
+      "title": "Fiken is connected to no store while the aim is to make Fiken unnecessary",
+      "why": "The case rested on an empty table. The plan it cited keeps Fiken and Tripletex as the bridge ('kept and supported'), and Fiken's idle cost is one statement every five minutes."
+    },
+    {
+      "id": "FT-14",
+      "title": "Checkout's delivery code imports all ten carrier adapters",
+      "why": "The import is real but costs nothing that shows: the adapters are 1,702 lines inside shared server chunks of several megabytes, and a route that uses no carrier loads 10.9 MB anyway. Loading them on demand would touch nine callers for no measurable gain."
+    }
+  ],
+  "findings": [
+    {
+      "id": "FT-15",
+      "title": "The cart page works out the whole basket twice per view, and every basket asks the database about bonus, referrals and checkout rules whether or not the store uses them",
+      "kind": "eager",
+      "where": [
+        "/home/user/kaizen-store/src/app/s/[store]/[market]/cart/cart-contents.tsx:76",
+        "/home/user/kaizen-store/src/app/s/[store]/[market]/cart/bonus.ts:15",
+        "/home/user/kaizen-store/src/server/bonus.ts:434",
+        "/home/user/kaizen-store/src/server/bonus.ts:69",
+        "/home/user/kaizen-store/src/server/cart-summary.ts:82",
+        "/home/user/kaizen-store/src/server/cart-summary.ts:99",
+        "/home/user/kaizen-store/src/server/cart-summary.ts:357",
+        "/home/user/kaizen-store/src/server/affiliates.ts:58",
+        "/home/user/kaizen-store/src/server/affiliates.ts:244",
+        "/home/user/kaizen-store/src/server/checkout-rules.ts:185",
+        "/home/user/kaizen-store/src/app/s/[store]/[market]/checkout/checkout-section.tsx:73",
+        "/home/user/kaizen-store/src/server/delivery-choice.ts:23",
+        "/home/user/kaizen-store/src/server/request-memo.ts:13"
+      ],
+      "evidence": "Found as the completeness check; the report's clean line 'the storefront pays little for a feature a store does not use' was tested on product pages and cached programme reads, not on the cart. (1) Twice per view. loadCartView() runs cartSummary(...) and readCartBonus(store, market) side by side (cart-contents.tsx:76-78). readCartBonus() calls cartBonus() (cart/bonus.ts:24), which reads the cart again with getCart() and runs cartSummary() again, only to return summary.bonus (server/bonus.ts:434-438). The first summary already returns the same bonus (cart-summary.ts:357). Neither getCart() nor cartSummary() is shared per request: rg finds no perRequest in cart.ts, cart-summary.ts or bonus.ts. This happens for every store, with the bonus programme on or off. (2) Checkout. loadCheckoutView() calls readCartBonus() (checkout-section.tsx:73): a full cart read and summary to draw the credits panel, also for a store with Bonus off; deliveryBlock() then calls deliveryView(), which reads the cart and runs cartSummary() once more when delivery options are offered (delivery-choice.ts:23). (3) Features that are off. Inside one cartSummary(): bonusProgram() runs two statements (bonus_settings with commerce.feature_on(), then store_currencies; bonus.ts:70-77) before anything checks the switch; codeInPlay() reads the cart's referral code (affiliates.ts:246) and friendState() reads affiliate_settings (affiliates.ts:59-64) and only then returns 'off' (affiliates.ts:323); activeRules() reads checkout_rules (checkout-rules.ts:186-188) to learn there is none. That is 5 statements, one after another, for three features a shop-only store does not use. The page holds the store with its switches (cart-contents.tsx:71 takes store: Store; featureOn() is src/lib/store-features.ts:213) but passes only store.id. Count of one summary: I read the first statements of its callees: getCheckoutInfo 1 (orders.ts:521), activeRules 1, resolveDelivery at least 2 (delivery-options.ts:670-672), bonusProgram 2, codeInPlay 1, affiliateProgram 1, getCartCodes 1 (discounts.ts:436), runningCampaigns 1 (campaigns.ts:387), loadTaxFacts at least 2 (tax-treatment.ts:84-91), cartGiftCards 1 (gift-card-cart.ts:140), plus the cart's own read: at least 14. A lower bound from reading the code; I did not run it against a database.",
+      "cost": "Per cart view: one cart read and one full summary too many, at least 14 statements (lower bound, from reading). Per summary in a store that uses neither bonus, referrals nor checkout rules: 5 statements that tell it nothing. Per checkout view: a cart read and a summary for a credits panel most stores will not show, and a second one where delivery options are offered. Today this is the team's own testing. It grows with every shopper of every store once the platform opens, and the cart and checkout are the pages where waiting costs sales.",
+      "who_pays": "The server and the database on every cart and checkout view; the shopper, who waits for the extra round trips",
+      "fix_steps": [
+        "src/app/s/[store]/[market]/cart/cart-contents.tsx, loadCartView() (lines 76-80): take readCartBonus(store, market) out of the Promise.all and use `const bonus = summary.bonus` (cartSummary() already returns it, built by the same cartBonusOf() from the same signed-in customer and cookie cart). Remove the import of readCartBonus from this file.",
+        "src/lib/bonus.ts: export `cartBonusOff(signedIn: boolean): CartBonus`, the object cartBonusOf() returns for a programme that is off (src/server/bonus.ts:402-414), and make cartBonusOf() return it there, so there is one 'off' shape.",
+        "src/app/s/[store]/[market]/checkout/checkout-section.tsx:73: `const bonus = featureOn(store, \"bonus\") ? await readCartBonus(store, market, cartId) : cartBonusOff(false)` (the credits panel is not drawn while `enabled` is false; check CheckoutCredits reads nothing else of it).",
+        "src/server/cart-summary.ts: add `features?: FeatureSource` to the third parameter. When given and Bonus is off (`!featureOn(features, \"bonus\")`), use a new `bonusProgramOff(market)` exported from src/server/bonus.ts (BONUS_DEFAULTS, the market's currency, no rates, featureOn false, on false) in place of `bonusProgram(db(), storeId)` at line 99. When Referrals is off, set `friend = null` and call neither codeInPlay() nor friendState() (line 101). Without `features` it reads as today. Pass `features: store` from cart-contents.tsx:77.",
+        "Do NOT change placeOrder() (src/server/checkout.ts:559 and :590): it reads the switches and settings inside its own transaction, under its locks, and stays the one that decides.",
+        "One summary per render: add `requestCartSummary(store, market)` to src/server/cart-summary.ts, built on perRequest() (src/server/request-memo.ts:13) with the key `cart-summary:{store.id}:{market.slug}`: it reads the cart once and returns `{ cart, summary }`. Use it in loadCartView(), for the bonus in loadCheckoutView(), and give deliveryView() (src/server/delivery-choice.ts:16) an optional `known` summary that deliveryBlock() passes (checkout-section.tsx:465). Server actions keep calling cartSummary() directly: they read after they write.",
+        "Checkout rules, same change or the next: when activeRules() (src/server/checkout-rules.ts:185) is called with the pool and not a transaction, read the store's enabled rules through a `'use cache'` function tagged `checkout-rules:{storeId}`, refreshed by the writers in the same file (save, switch, order, delete). Read the caching guide in node_modules/next/dist/docs first (AGENTS.md). placeOrder() keeps its own read.",
+        "Leave gift cards as they are: cards already sold stay usable while the feature is off (src/lib/store-features.ts:117-118), so their read cannot follow the switch."
+      ],
+      "tests_and_rules": [
+        "src/app/s/[store]/[market]/cart/cart-contents.test.ts mocks ./bonus and asserts `expect(readCartBonus).toHaveBeenCalledWith(store, market)` (line 209); its bonus cases (lines 213-231) must feed `summary({ bonus: ... })` instead, and a new case asserts cartSummary is called once.",
+        "src/app/s/[store]/[market]/cart/bonus.test.ts and src/app/s/[store]/[market]/checkout/checkout-section.test.ts (both mock readCartBonus).",
+        "The money tests that hold cartSummary() equal to placeOrder(): 21 test files call cartSummary( (rg), among them src/server/checkout-kinds.int.test.ts, vat-engine.int.test.ts, gift-cards.int.test.ts and store-features-world.int.test.ts. Run pnpm test and pnpm test:int; the quick gate of D526 runs the money tests before a deploy.",
+        "Rule kept: D117, the pieces of a working page read the cart once per request (src/server/request-memo.ts). Rule kept: D178's words for Bonus off ('Customers stop earning and using credits') and Referrals off, so no read is needed while they are off.",
+        "docs/rules/storefront.md, 'The cart': add one line that the cart's summary is read once per render and skips the reads of features that are off."
+      ],
+      "depends_on": [],
+      "done_when": "cart-contents.test.ts asserts cartSummary is called exactly once per cart render and ./bonus is not called; and a new unit test of cartSummary() with features ['shop'] (mocking ./bonus and ./affiliates) asserts bonusProgram, codeInPlay and friendState are not called.",
+      "saving": "Estimate from the code, not a measurement: per cart view one cart read and one summary fewer (at least 14 statements); per summary in a store without bonus and referrals 4 statements fewer (5 with the rules cache); per checkout view in a store without bonus a cart read and a summary fewer, and one more where delivery options are offered.",
+      "effort": "S",
+      "risk": "The cart page and the order must agree to the minor unit. The figures do not change, only who asks; the money tests would show a difference. The switches come from the cached store, which its writers refresh; in the seconds after a switch flips the cart could show one answer and placeOrder(), which decides under its lock, another: the same as for any cached store setting today. A per-request memo must never serve a server action that has just written; keep it to the render paths named above.",
+      "confidence": "high for the double work (read in the code); medium for the statement counts (lower bounds, not run)",
+      "priority": "P0",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "added",
+      "notes": "This is the one place I found where a switched-off feature still costs a store per request. The storefront-data dimension looks at pages' reads too; if it plans the cart, do this once there."
+    },
+    {
+      "id": "FT-8",
+      "title": "Order rules ('Automation') and Workflows are two engines for one job",
+      "kind": "duplicate",
+      "where": [
+        "/home/user/kaizen-store/src/lib/order-rules.ts:29",
+        "/home/user/kaizen-store/src/lib/order-rules.ts:46",
+        "/home/user/kaizen-store/src/lib/workflows.ts:133",
+        "/home/user/kaizen-store/src/server/order-rules.ts:200",
+        "/home/user/kaizen-store/src/server/workflows.ts:274",
+        "/home/user/kaizen-store/src/server/staff-alerts.ts:944",
+        "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:29",
+        "/home/user/kaizen-store/src/lib/store-nav.ts:336",
+        "/home/user/kaizen-store/docs/wave-9-platform.md:92",
+        "/home/user/kaizen-store/docs/wave-9-platform.md:140",
+        "/home/user/kaizen-store/docs/audits/admin-usability-2026-11.md:199",
+        "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:9824"
+      ],
+      "evidence": "Order rules (D238): when an order is paid and conditions hold, then tag, notify staff, hold or ask the AI manager (order-rules.ts:46), with 13 kinds of condition (:29) and all-or-any matching. Workflows (D356): on any store event, order.paid among them, conditions on the event's fields (all must hold), then tag_order, note_order, tag_customer, email_staff, post_slack, send_request, ask_ai_manager (workflows.ts:133). Three of the four rule actions exist in Workflows; 'hold', 'any' matching and about nine order facts (first order, product, delivery, backorder, gift, source, tag, seller, risk) do not. The spec meant one engine: 'order rules become workflows of the trigger order.paid' (wave-9-platform.md:92); the build left them apart (:140). They run on two queues in the same every-minute route: workflows first, then the store events with the rules (integrations/route.ts:29-37; the rules are imported on demand, staff-alerts.ts:944). Size, measured: order rules are src/lib/order-rules.ts 294, order-rules-schema.ts 69, src/server/order-rules.ts 435, four settings pages with their files 558 lines, the editor in src/components/admin/automation, and 407 test lines in their own two test files (the skeptic's 1,910 code and 528 test lines by file name hold); 2 tables, 1 AI tool (order_rules). 40 other files name them (rg): the hold panel, staff alerts, follow-ups, the store copy, the export, the personal-data registers and five tests. Store workflows are 1,316 lines. Both are links under Settings (store-nav.ts:336-337).",
+      "cost": "Two editors, two logs and two links with near-identical words for the owner; every change to order automation made in the right one of two places; two queues to keep correct.",
+      "who_pays": "An owner's admin (a choice between two doors), CI, anyone changing automation",
+      "fix_steps": [
+        "The owner decides that Workflows is the one engine; write the decision row in docs/decisions.md (it replaces the build note at docs/wave-9-platform.md:140) and say there that the hold action and the order facts are store-only (the platform sells no goods), as the parity rule asks.",
+        "src/lib/workflows.ts: add the action `{ kind: \"hold_order\"; reason: string }` (at most 200 characters, as RULE_LIMITS.reason) to ACTION_KINDS, WorkflowAction and workflowActionSchema, offered by actionsFor() for the trigger order.paid only. Add `match: \"all\" | \"any\"` (default all) to WorkflowInput and workflowSchemaFor(), and make workflowMatches() honour it. Add the order facts as fields of order.paid only (a list fieldsFor(\"order.paid\") appends): facts.total_main (number, the store's main currency), facts.buyer, facts.first_order (yes or no), facts.product_ids, facts.delivery, facts.backorder, facts.gift, facts.source, facts.tags, facts.seller, facts.risk.",
+        "A new migration (add only; never edit the baseline): `alter table commerce.workflows add column match text not null default 'all'` with a check, and `create or replace function commerce.queue_integration_event` so that runs of order.paid are not capped at 100 an hour (today's cap is in that function, baseline_1_schema.sql, the insert into workflow_runs): a hold must not be skipped on a busy day. Add a test of both to src/db.",
+        "src/server/order-facts.ts (new): move ruleFacts() and riskOf() here from src/server/order-rules.ts:200-275 unchanged. In runWorkflows() (src/server/workflows.ts:390-455), for an order.paid run, read the facts once and put them at `data.facts` before the conditions are checked, so a tag one workflow adds never satisfies another's condition for the same event (the rule at order-rules.ts:3).",
+        "src/server/workflows.ts act(): add `case \"hold_order\"` calling holdOrder(run.storeId, run.subjectId, { reason, by: { rule: { id: run.workflowId } } }) (src/server/order-hold.ts; orders.held_by_rule has no foreign key, src/db/schema.ts:4752) and map its refusals to the run's outcome.",
+        "Keep 'held' in the staff's new-order email (staff-alerts.ts:331): the route already runs runWorkflows() before processStoreEvents(); in claimEvents() (src/server/staff-alerts.ts:866) leave an order.paid event unclaimed while a pending commerce.workflow_runs row exists for the same store, event and order.",
+        "src/components/admin/workflows.tsx: the all/any choice, the hold action, and pickers for product, country, delivery, source and tag taken from src/components/admin/automation/rule-editor.tsx; words in the admin messages in English and Norwegian.",
+        "src/components/admin/orders/hold-panel.tsx:36-44: a hold by a workflow links to /settings/workflows with the workflow's name.",
+        "Remove order rules: src/lib/order-rules.ts and order-rules-schema.ts (move the reason and note limits to order-hold.ts), src/server/order-rules.ts, src/components/admin/automation/*, src/app/admin/(gated)/[store]/settings/automation/** (4 pages), the `order_rules` tool (src/lib/owner-tools.ts:317, src/lib/notification-tools.ts, src/server/notification-tools.ts, owner-tool-permissions.ts:90, owner-tool-features.ts:41, manager-tools.ts:380, admin-messages/assistant.nb.ts:340), the rules step in staff-alerts.ts:944-957 (mark the part done, run nothing), askAiManager()'s rule origin in src/server/follow-ups.ts, the Automation item at src/lib/store-nav.ts:337 and its ADMIN_PAGES entries. Add redirects from /admin/{store}/settings/automation and below to /settings/workflows in next.config.ts, as LEGACY_THEME_REDIRECTS does.",
+        "Keep the two tables in the registers until they are dropped: src/lib/store-copy-rules.ts:49-50, src/server/store-export.ts:84, src/lib/personal-data.ts:106 and :377, src/lib/personal-purposes.ts:174.",
+        "One release later (a migration must keep running code working until the deploy finishes): drop commerce.order_rules and commerce.order_rule_runs, the function order_rules_rules and the store copy's step for rules; remove them from src/db/schema.ts and the registers; pnpm db:generate. Before opening there are no real rules to move.",
+        "Written rules and the eval: the lines for D238 and D356 in CLAUDE.md and their texts in docs/rules/admin, docs/wave-3-notifications.md 2.5 and 4.9, tick docs/audits/admin-usability-2026-11.md:199 and note code review step 2.4. The tool list changes, so run the agents' eval on Platform, AI and commit the new recording."
+      ],
+      "tests_and_rules": [
+        "Go with the code: src/lib/order-rules.test.ts (162 lines), src/server/order-rules.int.test.ts (245), src/components/admin/automation/automation-views.test.ts, the order-rule cases of src/db/notifications.test.ts (lines 199-245, 377-475: limits, the copy, the tables' rules), src/lib/notification-tools.test.ts (lines 42-61, 112), src/lib/notification-words.test.ts.",
+        "Change: src/server/staff-alerts.int.test.ts (the rules part of an event), src/server/checkout-kinds.int.test.ts:1298 (imports ruleFacts), src/lib/payment-readers.scan.test.ts:83 (allows src/server/order-rules.ts one payment read: move the allowance to order-facts.ts), src/server/notification-tools.int.test.ts, src/lib/store-nav.test.ts and src/lib/admin-map.test.ts (the Automation page), src/lib/agent-eval.test.ts (every tool a case names exists).",
+        "Extend: src/lib/workflows.test.ts and src/server/workflows.int.test.ts (hold, any, facts, hold before the staff email), a src/db test of the new column and the cap.",
+        "Rules that explain the present design and are kept: facts read once so rules never chain (order-rules.ts:3); a workflow is switched on only after a test of the version saved (workflows.ts:8), which order rules never had; an action that asks the AI manager only by an owner (both engines)."
+      ],
+      "depends_on": [
+        "The owner's decision to retire order rules",
+        "Code review step 2.4 (the page merge 'Workflows and Automation become one') can be this same change"
+      ],
+      "done_when": "`find src -iname '*order-rule*' | wc -l` prints 0; the store navigation has 109 links (no /settings/automation); and src/server/workflows.int.test.ts has a case where a paid order over an amount in the main currency is put on hold and the staff email says so.",
+      "saving": "Estimate: about 1,900 lines, 528 test lines, 4 pages, 1 link and 1 AI tool removed now, 2 tables a release later, less the 300 to 500 lines Workflows gains for the hold action, 'any' and the order facts.",
+      "effort": "M",
+      "risk": "A hold is a safeguard, so three things must not change unseen: (1) the cap of 100 runs an hour per workflow would skip holds on a busy day unless order.paid is exempt; (2) the staff email says 'held' only if the hold lands before the alert, which the claim guard keeps; (3) a workflow is saved off and must be tested before it is on, so making a hold rule takes one more press than today. Order rules ran in a chosen order; workflows have none, which is harmless only because facts are read once. Each would show in workflows.int.test.ts and staff-alerts.int.test.ts if tested as listed. The editor grows by the pickers; if the owner finds the one editor too heavy for Homer, a 'When an order is paid' starting point keeps it simple.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "The page merge is audit phase 2 ('Workflows and Automation become one Automations', docs/audits/admin-usability-2026-11.md:199; code review step 2.4, Open). Merging the engines was the wave 9 spec's intent (docs/wave-9-platform.md:92), left undone at build (:140), and is on no open list.",
+      "owner_decision": true,
+      "verdict": "confirmed",
+      "notes": "The case does not rest on the tables being empty; that only makes it cheap now: no rule of a real store has to be converted. After opening the same merge needs a converter and a notice to owners. Effort is M at the upper end because 40 files name order rules."
+    },
+    {
+      "id": "FT-5",
+      "title": "Kaizena Flow's site is kept twice since the switch of 7 November",
+      "kind": "duplicate",
+      "where": [
+        "/home/user/kaizen-store/docs/platform-parity-plan.md:3",
+        "/home/user/kaizen-store/docs/platform-parity-plan.md:118",
+        "/home/user/kaizen-store/src/lib/platform-nav.ts:18",
+        "/home/user/kaizen-store/src/lib/platform-roles.ts:20",
+        "/home/user/kaizen-store/src/server/platform-theme-installs.ts:1",
+        "/home/user/kaizen-store/src/server/platform-navigation.ts:1",
+        "/home/user/kaizen-store/src/components/platform-layout.tsx:1",
+        "/home/user/kaizen-store/src/app/(platform)/[slug]/page.tsx:1",
+        "/home/user/kaizen-store/src/server/house-switch.ts:36"
+      ],
+      "evidence": "kaizenaflow.com has been served from Kaizena Flow's own store since 7 November (platform-parity-plan.md:3); the older copy remains, and step 7 of that plan ('One copy') removes it. I measured the parts again. Site-only routes in (platform) and (platform-nb)/no (front page, [slug], blog, category, tag, cookies): 347 lines in 12 folders. Their components in src/components/platform-routes (home, page, entry, blog, terms, cookies): 484 lines. Platform admin folders that edit only the site (articles, content, media, menus, headers, footers, site-design): 1,047 lines and 23 pages. src/server/platform-theme-installs.ts: 273 lines. Together about 2,150 lines that are a copy. The rest of the skeptic's 4,300 is less certain than the plan's step 7 reads. platform-navigation.ts is imported by about 40 files, among them the admin's own layout, the favicon and manifest routes, the docs root and the platform's kept routes; platform-layout.tsx by platform-root.tsx, site-parts.tsx and menu-section.tsx; platform-roles.ts also holds the theme store's two pages (roles 'themes' and 'theme', platform-roles.ts:20), which the plan keeps as the platform's. The platform's pages editor (1,252 lines, 6 pages) edits those too. So these go only once the platform's own routes (sign-up, get-domain, report, themes, status, support, unsubscribe, docs) take their header, footer and look from the store.",
+      "cost": "2,150 to 4,300 lines and 23 to 32 admin pages in every build; about 10 links in the operator's Website section that edit a copy visitors no longer see; site code kept working on two paths (store_id is null beside the store).",
+      "who_pays": "The build, CI, the platform operator's admin, anyone changing site code",
+      "fix_steps": [
+        "Before anything: the plan's step 6 (one desk) is decided; the switch has stayed on and `node scripts/site-compare.mjs https://kaizenaflow.com --against before.json` passes; the media library's rows are moved to the store (the plan's 'still to do at the switch', platform-parity-plan.md step 5).",
+        "Write the inventory first, as a script and not by hand: every non-test file that reads a null-store site row (pages with store_id is null, platform_page_roles, platform_theme_installs, the null branches in menus, media and themes), each marked 'site only' or 'also the platform's own routes or the admin frame'. The importers found here are the starting list.",
+        "Decide where the platform's own routes take their header, footer and look from once the null rows go: Kaizena Flow's store (HOUSE_SLUG). Change src/components/platform-root.tsx and platform-layout.tsx to read the store's parts; move the theme store's two pages (roles 'themes', 'theme') into the store's pages, or keep them as the only null-store pages and say so in the plan.",
+        "Remove the site-only routes: src/app/(platform)/{page.tsx,[slug],blog,category,tag,cookies} and the same under src/app/(platform-nb)/no, and src/components/platform-routes/{home,page,entry,blog,terms,cookies}.tsx. Keep PLATFORM_ROUTES in src/lib/house-routing.ts in step with the folders (its test holds it).",
+        "Platform admin: WEBSITE_ITEMS (src/lib/platform-nav.ts:18-31) becomes the store's card plus what serves more than the site (Templates, Fonts if themes need it, Docs feedback, Docs guide). Remove the folders articles, content, media, menus, headers, footers and site-design under src/app/admin/(gated)/platform, their ADMIN_PAGES entries, and redirect the old addresses to the store's admin.",
+        "Remove the way back: the readers of platform_settings.site_from_store (src/server/house-switch.ts, house-site.ts, site-store.ts, private-mode.ts, pages.ts, stores.ts and the proxy) treat the store as the site; SiteSwitchCard and 'Copy the site' go.",
+        "One release later: a migration deletes the null-store site rows and drops platform_theme_installs and its updates, and platform_page_roles if the theme store's pages moved; tighten the keys where a null served only the site.",
+        "Docs in the same changes: docs/platform-parity-plan.md step 7 marked built, docs/platform-parity.md, docs/site-design.md (where a new page for kaizenaflow.com is made), docs/themes-unified.md section 3, and the CLAUDE.md lines for D143, D251 and 'Kaizen's own header and footer'."
+      ],
+      "tests_and_rules": [
+        "src/lib/house-routing.test.ts (the platform's own first segments held to the folders of src/app), src/db/house-switch.test.ts, src/lib/platform-nav.test.ts, src/lib/admin-map.test.ts (every admin page is listed), src/lib/platform-chrome.scan.test.ts.",
+        "scripts/site-compare.mjs and the axe list in e2e-live/ (every address of the old sitemap answers as before); the e2e specs of the platform's site.",
+        "Rule that explains the copy: 'one setting routes back to the platform's pages while the null rows are kept' (platform-parity-plan.md step 5) and 'The null rows are deleted only in step 7, weeks after the switch'. The fix ends that way back on purpose; do it only when the owner no longer wants it.",
+        "The parity rule (CLAUDE.md Conventions): the platform's rows are 'store_id is null or platform_* tables'; after this change the site's are the store's, so the sentence needs the correction."
+      ],
+      "depends_on": [
+        "docs/platform-parity-plan.md step 6 (one desk)",
+        "The switch kept on and compared clean with scripts/site-compare.mjs",
+        "The media library's rows moved to the store"
+      ],
+      "done_when": "`rg -l \"platform_theme_installs\" src --glob '!*.test.*' | wc -l` prints 0; `ls 'src/app/(platform)'` shows no [slug], blog, category, tag or cookies; and site-compare.mjs --against before.json passes.",
+      "saving": "Estimate by file: at least 2,150 lines, 23 admin pages and 12 site route pages; up to about 4,300 lines and 32 admin pages if the platform's own routes take their layout from the store too. Not 6,800 lines.",
+      "effort": "M",
+      "risk": "The plan keeps the null rows as the way back if the switch misbehaves; removing them ends that. The platform's sign-up, status, themes and docs pages draw their header and look from the files step 7 names, so removing those files before the third step breaks the pages owners sign up on; the house-routing test and the site comparison would show it. Some of the 32 admin pages serve more than the site (fonts, templates, the pages editor for the theme store).",
+      "confidence": "medium",
+      "priority": "P1",
+      "already_tracked": "docs/platform-parity-plan.md step 7 'One copy' (not built; step 6 before it)",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "Corrected again by the planner: the plan's step 7 lists platform-layout.tsx and the roles and navigation files as removable, but they also serve the platform's own routes and the admin frame, so the sure part is about 2,150 lines and the rest needs the third step. The plan sizes it M; with that step it is M at the upper end. Before opening is the cheapest time: no real visitor depends on the way back. The duplication dimension lists the same twin; count it once."
+    },
+    {
+      "id": "FT-2",
+      "title": "Nothing makes a new feature state what it costs a store that does not use it",
+      "kind": "process",
+      "where": [
+        "/home/user/kaizen-store/docs/decisions.md:749",
+        "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:222",
+        "/home/user/kaizen-store/src/lib/store-nav.test.ts:245",
+        "/home/user/kaizen-store/src/lib/tool-budget.ts:5",
+        "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:128",
+        "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1",
+        "/home/user/kaizen-store/src/server/cron-routes.scan.test.ts:1",
+        "/home/user/kaizen-store/scripts/ratchet.mjs:1"
+      ],
+      "evidence": "Between 29 October and 11 November docs/decisions.md gained 158 rows (D406 to D572, the skeptic's count), many on the owner's instruction: the owner building towards opening, not a pause that failed. What is missing is a check on idle cost. Counted today: 83 dispatcher jobs (78 in runJobs() and 5 after it, cart-reminders/route.ts:128-275), 9 routes every minute (trackedRoute(..., 60) under src/app/api/cron), 560 page.tsx, 268 route handlers, 481 tables, 110 store links (42 in Basic), 254 store tools (tool-budget.ts:5 still says about 190 and 24 of the manager's own). The one budget test covers Basic links only (store-nav.test.ts:245-253). The cart finding (FT-15) is what an unstated idle cost looks like: three features each added a read to every basket and nothing asked. The repo already has the pattern for a count that may only fall or must be raised on purpose: ratchet.scan.test.ts with its baseline file and scripts/ratchet.mjs.",
+      "cost": "Each addition raises fixed costs every store shares: statements every five minutes, definitions in an AI round up to the cap, pages in a build that peaked at 7.6 GB on this machine, a read on a shared path. None is stated when the feature is built.",
+      "who_pays": "The build, CI, the server every five minutes and per request, an agent's session",
+      "fix_steps": [
+        "scripts/lib/surface-count.mjs (new, pure, no database): count the dispatcher's jobs (keys of runJobs(\"dispatcher\") plus tracked(\"dispatcher.…\") in src/app/api/cron/cart-reminders/route.ts), every-minute cron routes, page.tsx files and route handlers under src/app, tables (`commerce.table(` in src/db/schema.ts), store links and Basic links per section and in all (STORE_SECTIONS), platform links, store tools, tools offered to a store whose features are ['shop'], the manager's own tools, feature ids.",
+        "src/lib/surface-budget.baseline.json (new): today's numbers (83, 9, 560, 268, 481, 110 and 42, 52, 254, 234, 26, 14) and a list `raises` of { count, from, to, decision }.",
+        "src/lib/surface-budget.scan.test.ts (new, built like src/server/ratchet.scan.test.ts): fails when a count is above its baseline; fails when a raise names a decision whose row in docs/decisions.md has no sentence beginning 'Idle cost:'; fails when a count fell and the baseline was not lowered; one case proves the counter counts what it says.",
+        "scripts/surface-budget.mjs (new, like scripts/ratchet.mjs): `node scripts/surface-budget.mjs` lowers; `--raise D<n>` raises after checking the decision row says, after 'Idle cost:', what the feature costs a store that does not use it per request, per scheduled run, per AI round and per build ('none' where none).",
+        "One line in CLAUDE.md Conventions and its full text in docs/rules/admin (the frame's file): a change that adds a job, an every-minute route, a page, a table, a link or a tool raises the surface budget with its decision's 'Idle cost:' line. Keep CLAUDE.md to that one line.",
+        "Correct src/lib/tool-budget.ts:5 (254 store tools and 26 of the manager's own, or derive the numbers) and let step 4.3 generate docs/admin-navigation.md (it says 104 and 40)."
+      ],
+      "tests_and_rules": [
+        "src/lib/store-nav.test.ts:245-253 stays (at most 12 Basic links a section, Basic under half).",
+        "src/server/cron-routes.scan.test.ts stays (every cron route tracked, with a time limit).",
+        "CI: the quick gate before a deploy (D526) runs lint, types and the money tests; this scan runs with the full checks beside it, so it reports and does not hold a deploy back. Say so in docs/ci-migrations.md.",
+        "CLAUDE.md Conventions (the ratchet's paragraph is the model for the wording)."
+      ],
+      "depends_on": [],
+      "done_when": "`pnpm test src/lib/surface-budget.scan.test.ts` passes on main, and its own case shows that one more job in the dispatcher's list without `--raise` fails it.",
+      "saving": "No direct saving. It makes a feature's idle cost visible before it is built, when it is cheapest to avoid.",
+      "effort": "S",
+      "risk": "A baseline is easy to raise by habit; the 'Idle cost:' line is what gives it meaning, and only a reader can judge it. It adds a step to features the owner asks for the same day. A count is a proxy: one heavy read on the cart costs more than ten pages, so the line matters more than the number.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "no",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "Other dimensions of this review ask for budgets of their own (scheduled work, the schema, the size of an AI call, statements per screen, the server side). One baseline file and one script can hold all of them; this finding supplies the surface counts. Do it before the next feature, so the first one built after opening already states its idle cost."
+    },
+    {
+      "id": "FT-4",
+      "title": "The AI manager sends up to 124 tool definitions a round whatever the store uses; gating tools by feature would not lower that",
+      "kind": "eager",
+      "where": [
+        "/home/user/kaizen-store/src/lib/tool-budget.ts:15",
+        "/home/user/kaizen-store/src/lib/tool-budget.ts:67",
+        "/home/user/kaizen-store/src/server/owner-assistant.ts:716",
+        "/home/user/kaizen-store/src/server/owner-assistant.ts:733",
+        "/home/user/kaizen-store/src/server/offered-tools.ts:16",
+        "/home/user/kaizen-store/src/lib/owner-tool-features.ts:13",
+        "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:120",
+        "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:488"
+      ],
+      "evidence": "OWNER_TOOLS holds 254 tools; 121 have a feature, 101 of them 'shop'; a shop-only store is offered 234 (my re-run of the counting script), beside the manager's own 26. chooseTools() sends everything when it fits and otherwise cuts a round to TOOLS_PER_TURN = 124 (tool-budget.ts:15, 67-96; called at owner-assistant.ts:733 with the manager's tools as 'always'). With more feature gates a shop-only store would still be offered more than the 98 store tools a round has room for, so the round still sends 124. The skeptic measured the descriptions at 101,537 characters, mean 400.",
+      "cost": "Estimate at 4 characters a token: 124 definitions of mean 400 characters are about 12,000 tokens of descriptions a round before their schemas, sent again each round of a turn. Paid whatever features the store uses.",
+      "who_pays": "An agent's session (the owner's AI allowance, the platform's AI bill)",
+      "fix_steps": [
+        "Do step 3.18 of the code review ('Cheaper, faster AI rounds', docs/audits/code-review-2026-11.md:488). In src/lib/tool-budget.ts add a default budget of about 40 store tools: the core tools, the tools used earlier in the conversation and the area of the page the person is on; everything else stays one load_tools call away, named by area as today. Keep 124 as the hard cap for a round that asked for areas.",
+        "src/server/owner-assistant.ts:731-741 (toolsNow): pass the default budget when no area was asked for; keep the order of the definitions stable between rounds (the manager's own first, then store tools by name) so a provider's prompt cache can hold the prefix; set cache markers where the provider takes them (src/server/ai.ts) and record cached input tokens in the usage row.",
+        "Correct the comment at src/lib/tool-budget.ts:5 (254 and 26, not about 190 and 24).",
+        "Run the agents' safety eval on Platform, AI after the change, commit the new recording src/data/agent-eval-recording.json and raise the prompts' versions (CLAUDE.md, Conventions).",
+        "Do not add feature gates to tools for the sake of size. Give a tool its feature in the registry of step 3.21 only where the owner adds a switch (FT-1)."
+      ],
+      "tests_and_rules": [
+        "src/lib/tool-budget.test.ts (the cut and load_tools), src/server/owner-assistant.int.test.ts, src/lib/agent-eval.test.ts (every tool a case names exists), src/server/agent-eval-replay.int.test.ts (CI replays the recording, so a changed tool list needs a new run).",
+        "Rule: D333, at most TOOLS_PER_TURN a round because providers refuse more than 128; kept. Rule: prompts are versioned (D391, src/server/prompt-versions.ts)."
+      ],
+      "depends_on": [],
+      "done_when": "A case in src/lib/tool-budget.test.ts shows chooseTools() over the whole registry with no area asked sends at most 40 store tools; the usage row of a second round shows cached input tokens above 0; a new eval recording is committed and agent-eval-replay.int.test.ts passes.",
+      "saving": "From feature gating alone: nothing. From step 3.18 (estimate): 124 to about 66 definitions a round, near 5,800 tokens of descriptions a round, plus schemas and what the cache saves.",
+      "effort": "M",
+      "risk": "A model that lacks a tool must ask for its area first, one more round for the rare question; the eval shows whether it does. A changed prompt or tool list needs a new eval run and recording.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "docs/audits/code-review-2026-11.md FA1, step 3.18 'Cheaper, faster AI rounds' (Open) covers the 124, the default set and caching; FA6, step 3.21 (Open) covers the registry.",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "The same work as the AI dimension's finding on 124 definitions per call; count it once there. Kept here only to say that more feature switches are not the way to a smaller round. The skeptic rated the comment fix S; step 3.18 itself is M in the code review."
+    },
+    {
+      "id": "FT-3",
+      "title": "Nine dispatcher jobs only prune old rows and run 288 times a day, and two run logs are pruned every minute",
+      "kind": "eager",
+      "where": [
+        "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:128",
+        "/home/user/kaizen-store/src/app/api/cron/subscription-reminders/route.ts:79",
+        "/home/user/kaizen-store/src/server/cron-runs.ts:101",
+        "/home/user/kaizen-store/src/server/cron-runs.ts:117",
+        "/home/user/kaizen-store/src/server/search.ts:431",
+        "/home/user/kaizen-store/src/server/search-cache.ts:78",
+        "/home/user/kaizen-store/src/server/forms.ts:389",
+        "/home/user/kaizen-store/src/server/chat-turns.ts:51",
+        "/home/user/kaizen-store/src/server/recommend-events.ts:59",
+        "/home/user/kaizen-store/src/server/docs-search.ts:189",
+        "/home/user/kaizen-store/src/server/replicate-store.ts:332",
+        "/home/user/kaizen-store/src/server/api-idempotency.ts:73",
+        "/home/user/kaizen-store/src/server/oauth.ts:821",
+        "/home/user/kaizen-store/src/server/workflows.ts:458",
+        "/home/user/kaizen-store/src/server/platform-workflows.ts:374",
+        "/home/user/kaizen-store/src/server/autopilot-effects.ts:44",
+        "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md:134"
+      ],
+      "evidence": "The dispatcher starts 78 jobs together and 5 after (counted in the route). Almost every job is one 'is anything due' statement for the whole platform, so cost follows what is due, and jobs of switched features test the switch in SQL (I checked bonus, referrals, cart reminders and subscription boxes). What is eager is small and exact. Nine jobs only delete rows older than 1 to 180 days: searches, cache, forms, chat, recommendations, docsCounts, replications, apiIdempotency, oauthTokens. I read each: 14 statements between them (1, 1, 1, 1, 2, 2, 1, 2, 3) plus 9 writes to commerce.cron_jobs, 23 statements a run, 288 runs a day. Added by the planner: the two workflow runners, which run every minute, each end with a delete of run logs older than 90 days (workflows.ts:458, platform-workflows.ts:374): 2,880 deletes a day. The daily route already holds some twenty prunes of the same kind (subscription-reminders/route.ts:79), and the code has both slower patterns: claimDay() (cron-runs.ts:81) and the once-an-hour minute test (autopilot-effects.ts:44).",
+      "cost": "About 6,600 statements a day for the nine jobs (23 x 288) and 2,880 for the two run-log deletes, whatever the number of stores; 2,592 of the day's 23,904 job runs. A fixed cost that rises with each feature's own prune, not with stores.",
+      "who_pays": "The database, and one function run every five minutes and one every minute",
+      "fix_steps": [
+        "src/app/api/cron/subscription-reminders/route.ts (the daily route): run the seven prunes a day can wait for, each as `tracked(\"daily.<name>\", 86400, …)` so the platform home shows them with a daily period: pruneSearchLog, pruneSearchCache, pruneFormSubmissions, pruneChatUsage, pruneRecommendEvents, pruneDocsCounts, pruneReplications.",
+        "src/app/api/cron/cart-reminders/route.ts: remove those seven from runJobs() (lines 134, 144, 149, 152, 155, 179, 183) with their imports. Take apiIdempotency and oauthTokens (lines 136, 138) out of runJobs() too and run them after it once an hour: `if (new Date().getUTCMinutes() < 5) await tracked(\"hourly.api-idempotency\", 3600, …)` and the same for hourly.oauth-tokens (their rows are kept 24 hours, so hourly, not daily).",
+        "src/server/cron-runs.ts RETIRED_JOBS (line 101): add dispatcher.searches, dispatcher.cache, dispatcher.forms, dispatcher.chat, dispatcher.recommendations, dispatcher.docs-counts, dispatcher.replications, dispatcher.api-idempotency and dispatcher.oauth-tokens, so their old rows are deleted and never read as late.",
+        "src/server/workflows.ts:458 and src/server/platform-workflows.ts:374: move the 90-day delete out of the every-minute runners into exported pruneWorkflowRuns() and prunePlatformWorkflowRuns(), called from the daily route.",
+        "Correct the words that say 'five-minute': the dispatcher's doc comment (cart-reminders/route.ts:94-116), src/server/search-cache.ts:77, src/server/api-idempotency.ts:16, and any line in docs that names these prunes (rg 'dispatcher' docs lists 20 files to check).",
+        "Do not build a per-feature gate with a cache: it adds a statement and a cache to save a statement."
+      ],
+      "tests_and_rules": [
+        "src/server/cron-routes.scan.test.ts: every name given to tracked( must match the ledger's key rule, and it asserts the dispatcher still holds uiTranslations; the new daily.* and hourly.* names pass as written.",
+        "src/server/cron-runs.int.test.ts and src/lib/cron-health.test.ts (a job is late after its period plus an allowance: 86,400 and 3,600 seconds are handled).",
+        "The prunes' own tests call the functions directly and do not change: src/server/search.int.test.ts, forms.int.test.ts, docs-search.int.test.ts, recommend.int.test.ts, replicate.int.test.ts, search-cache.int.test.ts, oauth.int.test.ts.",
+        "Rule: every cron job is kept in commerce.cron_jobs and shown when late or failing (CLAUDE.md Conventions, PSI REL-06); kept by step 1 and 3. Rule: api-idempotency answers are kept 24 hours (api-idempotency.ts:16); hourly pruning keeps them at most 25."
+      ],
+      "depends_on": [],
+      "done_when": "The runJobs() block of src/app/api/cron/cart-reminders/route.ts has 69 entries (78 today), and a day after the deploy commerce.cron_jobs holds seven daily.* rows with every_seconds 86400 and two hourly.* rows with 3600, none late on Platform, Usage and limits.",
+      "saving": "By count from the code: about 2,500 job runs and 6,400 statements a day from the nine jobs, and about 2,900 statements a day from the two run-log deletes. No visible change in function time.",
+      "effort": "S",
+      "risk": "A pruned table grows for up to a day (or an hour) longer before it is cut; none of the nine is read for correctness within that time (the search cache replaces a row on conflict, chat_usage is read by its window). Form submissions are kept 30 days by the prune; daily pruning makes that at most 31, as the daily retention job already does for other data. A slipped run (one that starts after minute 5) skips an hourly prune for an hour. A job left out of the ledger would not be noticed when it stops: step 1's tracked() names prevent that.",
+      "confidence": "high",
+      "priority": "P2",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "Small and safe, worth doing with the next change to the dispatcher. The scheduled-work dimension owns the dispatcher's cadence as a whole (its tiers, the nine every-minute routes, the per-store loops of the media, alt-text, knowledge and embedding jobs, which are what will grow with stores); if it plans tiers, this is their first use and should be done once there."
+    },
+    {
+      "id": "FT-12",
+      "title": "An owner's own look can be kept in two places: saved themes and the theme library",
+      "kind": "duplicate",
+      "where": [
+        "/home/user/kaizen-store/src/server/themes.ts:46",
+        "/home/user/kaizen-store/src/server/themes.ts:211",
+        "/home/user/kaizen-store/src/server/themes.ts:251",
+        "/home/user/kaizen-store/src/server/theme-installs.ts:343",
+        "/home/user/kaizen-store/src/components/admin/theme-editor.tsx:42",
+        "/home/user/kaizen-store/src/app/admin/(gated)/[store]/settings/design/actions.ts:88",
+        "/home/user/kaizen-store/src/app/admin/(gated)/platform/themes/[presetId]/workspace-actions.ts:227",
+        "/home/user/kaizen-store/src/server/design-presets.ts:1355",
+        "/home/user/kaizen-store/src/db/schema.ts:1304",
+        "/home/user/kaizen-store/docs/themes-unified.md:12"
+      ],
+      "evidence": "'Save as new theme' in the theme editor writes named settings to commerce.store_themes (D60; saveSavedTheme(), themes.ts:211-249; listed by listSavedThemes(), :46; deleted by deleteSavedTheme(), :251). The theme library keeps an own look as an install through addOwnLook() (theme-installs.ts:343-361), used by the Dream Factory and the brand tools. Both keep 'a look of my own under a name'. That is the one true overlap in the theme cluster, and it is small: themes.ts is 264 lines, the saved-theme functions about 100. Readers I found: the store's design pages (settings/design/page.tsx:55, themes/[install]/page.tsx:55), the platform's theme workspace (platform/themes/[presetId]/theme/page.tsx:28, workspace-actions.ts:227-233), one join for an old design use (design-presets.ts:1355) and a foreign key design_preset_uses.saved_theme_id (schema.ts:1304). The other tables of the cluster that production has not written are read and written by working code and are not dead.",
+      "cost": "Two save paths and two lists in one editor for the owner; one table and about 100 to 250 lines.",
+      "who_pays": "An owner's admin; anyone changing the theme editor",
+      "fix_steps": [
+        "The owner decides that an own look lives in the theme library only.",
+        "src/components/admin/theme-editor.tsx: 'Save as new theme' calls a new action that runs addOwnLook(storeId, accountId, name, theme) (src/server/theme-installs.ts:343); remove the saved list and its props (`saved`, `saveSaved`, `removeSaved`, lines 42, 420, 530). Say in the editor that an own look also carries the live look's header, footer and CSS, and say when the library is full (INSTALLS_MAX).",
+        "src/app/admin/(gated)/[store]/settings/design/actions.ts:88-96: remove saveSavedThemeAction and deleteSavedThemeAction; settings/design/page.tsx (lines 55, 133-134) and settings/design/themes/[install]/page.tsx (lines 55, 149-150) stop reading listSavedThemes().",
+        "The platform's theme workspace is a store too: the same change in src/app/admin/(gated)/platform/themes/[presetId]/theme/page.tsx:28 and workspace-actions.ts:227-233, in the same change (the parity rule).",
+        "src/server/themes.ts: remove listSavedThemes(), saveSavedTheme(), deleteSavedTheme() and the saved-theme check in checkStoreTheme(). src/lib/theme.ts:304-339: keep reading `savedId` and always write null.",
+        "src/server/design-presets.ts:1355: drop the join to store_themes (latestDesignUse().savedTheme becomes null) and the words that show it.",
+        "Registers: src/lib/store-copy-rules.ts:115, src/lib/personal-data.ts:499 and the store export keep the table listed until it is dropped.",
+        "One release later: a migration turns any store_themes row into a store_theme_installs row (before opening these are the team's own), drops design_preset_uses.saved_theme_id and then commerce.store_themes; remove it from src/db/schema.ts and the registers; pnpm db:generate.",
+        "Docs: the texts for D60 and D241 in docs/rules/admin (the website file), docs/themes-unified.md, and the CLAUDE.md line 'Design themes (D60)'."
+      ],
+      "tests_and_rules": [
+        "src/server/themes.int.test.ts (saving, updating and deleting a saved theme), src/db/commerce.test.ts and src/db/design-presets.test.ts (the rules of store_themes), src/server/design-presets.int.test.ts, src/server/theme-installs.int.test.ts, src/components/admin/theme-editor-warnings.test.ts.",
+        "The tests that walk every table against the copy rules and the personal-data register (COPY_RULES, personal-data.ts) fail until the table's lines are removed with it.",
+        "Rule kept: a look change is refused while lookChangeRefusal() says so, and an install counts towards INSTALLS_MAX (theme-installs.ts:345-349)."
+      ],
+      "depends_on": [
+        "The owner's decision"
+      ],
+      "done_when": "`rg -n \"store_themes\" src --glob '!*.test.*' | wc -l` prints 0 after the second migration, and src/server/themes.int.test.ts has a case where 'Save as new theme' adds a row to commerce.store_theme_installs.",
+      "saving": "Estimate: 100 to 250 lines and 1 table (store_themes). Not 1,000 to 1,500 lines and 6 tables.",
+      "effort": "S",
+      "risk": "The two are not quite the same thing. A saved theme is settings that can be loaded over the live theme and saved again under the same name; an own look in the library is switched to or customised, carries the header, footer and CSS, and counts against the library's limit. So the editor works a little differently after the change, which the owner should see first. Noticed by themes.int.test.ts and by the design e2e.",
+      "confidence": "medium",
+      "priority": "P2",
+      "already_tracked": "no",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "Worth doing when the theme editor is next touched; before opening there are no owners' saved themes to convert."
+    },
+    {
+      "id": "FT-7",
+      "title": "What a new owner sees: 29 links in Basic, 94 in Advanced, 35 under Settings. A product question, mostly planned already",
+      "kind": "oversize",
+      "where": [
+        "/home/user/kaizen-store/src/lib/store-nav.ts:58",
+        "/home/user/kaizen-store/src/lib/admin-view.ts:14",
+        "/home/user/kaizen-store/src/lib/store-nav.test.ts:245",
+        "/home/user/kaizen-store/src/components/admin/section-hub-cards.tsx:27",
+        "/home/user/kaizen-store/docs/admin-navigation.md:148",
+        "/home/user/kaizen-store/docs/audits/admin-usability-2026-11.md:197",
+        "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:84",
+        "/home/user/kaizen-store/src/lib/platform-nav.ts:68"
+      ],
+      "evidence": "Parsed from store-nav.ts (re-run by me): 110 links, 42 marked for Basic. With only the shop on: 29 in Basic, every account's default (admin-view.ts:14), and 94 in Advanced (Marketing 13, Analytics 13, Website 13, Settings 35). The two hub pages follow the view as the sidebar does (section-hub-cards.tsx:27). Settings has 50 page files. The doc still says 104 and 40 (admin-navigation.md:148). The cap test covers Basic only (store-nav.test.ts:245-253); the total has no ceiling. The platform has 52 links, 27 under Settings, and no Basic view. I looked for screens nothing links to and found none: each of the 288 admin screens with a fixed address is named outside its own folder, and 2 of 560 pages only redirect.",
+      "cost": "Reading time for an owner in Advanced, and for the platform's operator, on every visit. No shopper cost. The admin's shell carries the whole menu on each response, which the admin-data dimension measures.",
+      "who_pays": "An owner's admin in Advanced view, and the platform operator's",
+      "fix_steps": [
+        "This is the owner's choice of what Homer and Lisa see, not waste. Do the agreed work as tracked: code review step 2.4 (the audit's phase 2 moves: settings into their sections, Campaigns and Coupons as one Discounts page, Workflows and Automation as one, docs/audits/admin-usability-2026-11.md:197-200), step 2.3 (Basic and groups for the platform and the account), step 4.3 (generate docs/admin-navigation.md from src/lib/store-nav.ts).",
+        "New and small: hold the total per section in the surface budget of FT-2 (the counter reads STORE_SECTIONS), so Advanced cannot grow unseen as Basic cannot.",
+        "Each move keeps the old address working (a redirect) and its ADMIN_PAGES entry, as the audit says."
+      ],
+      "tests_and_rules": [
+        "src/lib/store-nav.test.ts (the Settings group's Basic labels are listed by name at lines 255-267; the Account group's order at line 234), src/lib/admin-map.test.ts (the map and the menu name the same pages), src/lib/platform-nav.test.ts, src/lib/admin-view.test.ts.",
+        "Rules: the Homer and Lisa rule (CLAUDE.md Conventions), D454 (Basic hides links, never pages), docs/admin-navigation.md and docs/admin-style.md."
+      ],
+      "depends_on": [
+        "FT-2 (the budget that holds the totals)",
+        "FT-8 (Workflows and Automation as one)",
+        "Code review steps 2.3, 2.4 and 4.3"
+      ],
+      "done_when": "After step 2.4, the parser of src/lib/store-nav.ts gives at most 85 links in Advanced and at most 20 under Settings for a store with only the shop on, and the generated docs/admin-navigation.md states the same counts.",
+      "saving": "Estimate from the planned moves: Advanced for a new shop from 94 to about 85 links, Settings from 35 to about 20. No running-cost saving.",
+      "effort": "M",
+      "risk": "Moves need redirects and ADMIN_PAGES entries kept, or the AI manager and old links open a 404; admin-map.test.ts walks the routes and would show a missing entry.",
+      "confidence": "high",
+      "priority": "P2",
+      "already_tracked": "docs/audits/admin-usability-2026-11.md phase 2 and code review steps 2.3 (Open), 2.4 (Open), 2.5 (Open), 4.3 (Open), 4.6 (Open). Only the ceiling on the total is new.",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "A new owner meets 29 links, not 94: Basic is the default. What Basic lists first is the owner's product question (the clarification), so nothing here argues from use."
+    },
+    {
+      "id": "FT-1",
+      "title": "Most features have no switch; adding more is a product choice, because a switch saves almost no running cost",
+      "kind": "eager",
+      "where": [
+        "/home/user/kaizen-store/src/lib/store-features.ts:16",
+        "/home/user/kaizen-store/src/lib/store-features.ts:8",
+        "/home/user/kaizen-store/src/lib/store-nav.ts:388",
+        "/home/user/kaizen-store/src/lib/owner-tool-features.ts:13",
+        "/home/user/kaizen-store/src/lib/admin-view.ts:14",
+        "/home/user/kaizen-store/src/server/owner-assistant.ts:733",
+        "/home/user/kaizen-store/src/server/bonus.ts:550"
+      ],
+      "evidence": "The registry has 14 ids, 13 optional. Of 110 store links, 16 stand behind an optional switch, 1 behind shop-or-Deals, 40 behind 'shop' and 53 behind none (my re-run of the parser). Of 254 AI tools, 20 stand behind an optional switch, 101 behind 'shop' and 133 behind none. What an unswitched feature costs a store that does not use it: in the navigation its links are in Advanced unless marked basic, and Basic is the default (29 links for a shop-only store); in an AI round nothing more, because a round is cut to 124 definitions either way (FT-4); in scheduled work one or a few statements per job for the whole platform (FT-3); in the build and CI no switch changes anything. The one per-request cost I found is not cured by a switch either: Bonus and Referrals have switches and the cart still asks about them (FT-15).",
+      "cost": "For an owner in Advanced: 94 links in a shop-only store. In run time: close to nothing per store.",
+      "who_pays": "An owner's admin in Advanced view",
+      "fix_steps": [
+        "Do not add a second tier of switches to remove bloat: it would not lower a running cost. Write that down in docs/store-features.md in one paragraph: switches are for what an owner sees and what shoppers can do, not for cost; where a feature costs a store that does not use it, the fix is at the read (as FT-15), and the surface budget (FT-2) asks each new feature for its idle cost.",
+        "When the owner wants one more feature switchable, follow the checklist already written at src/lib/store-features.ts:8-10: the registry entry with its needs, the stores_features check and commerce.feature_needs() in a migration, blockers and warnings in feature-words.ts with a count in FeatureFacts, `feature` on its navigation items and ADMIN_PAGES entries, TOOL_FEATURES for its tools, and the switch in the SQL of its scheduled job.",
+        "Never set a new switch from 'the store has a row': before opening that says nothing. A new switch starts off for new stores (NEW_STORE_FEATURES) and on for the team's stores that use the feature."
+      ],
+      "tests_and_rules": [
+        "src/lib/store-features.test.ts (needs are complete), src/db/store-features.test.ts (the database repeats the needs), src/lib/store-nav.test.ts and src/lib/admin-map.test.ts (navigation and map carry the same feature), src/server/store-features*.int.test.ts (six files), src/lib/owner-tool-permissions.test.ts.",
+        "Rule: D178 and docs/store-features.md; switching off deletes nothing."
+      ],
+      "depends_on": [],
+      "done_when": "docs/store-features.md carries the paragraph; no code changes.",
+      "saving": "None in running cost. The earlier 'up to 100,406 lines, 41,575 test lines and 146 tables' is withdrawn: it argued from features being unused before opening.",
+      "effort": "S",
+      "risk": "More switches make the Features page longer and add one more thing to keep in step for every feature (navigation, map, tools, SQL). None from writing the paragraph.",
+      "confidence": "high",
+      "priority": "P3",
+      "already_tracked": "no",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "P3 because it is true but not bloat: a switch is a product decision. Not worth doing now for cost; worth a line in the doc so the next review does not propose it again."
+    },
+    {
+      "id": "FT-9",
+      "title": "Campaigns and discount codes overlap at their edges; one page is planned, one engine is not worth it",
+      "kind": "duplicate",
+      "where": [
+        "/home/user/kaizen-store/src/lib/campaigns.ts:24",
+        "/home/user/kaizen-store/src/lib/campaigns.ts:159",
+        "/home/user/kaizen-store/src/lib/campaigns.ts:178",
+        "/home/user/kaizen-store/src/lib/discounts.ts:23",
+        "/home/user/kaizen-store/src/lib/discounts.ts:380",
+        "/home/user/kaizen-store/src/lib/discounts.ts:401",
+        "/home/user/kaizen-store/docs/audits/admin-usability-2026-11.md:198"
+      ],
+      "evidence": "Campaigns have 7 kinds (campaigns.ts:24), discount codes 3 (discounts.ts:23). I listed both modules' exports. The shared part is small: a reaches() in each for the product and category reach (campaigns.ts:178, discounts.ts:380), a running and a status function in each (campaigns.ts:159 and :170, discounts.ts:401), and the three simple kinds. The bulk of each is its own: multi-buy, tiers, buy X get Y and the best offer per unit on one side; availability, once per customer, generated codes, stacking classes and subscriptions on the other. Two mechanisms with a shared edge, not one job built twice.",
+      "cost": "Two pages under one heading for the owner, and about 100 to 200 lines of parallel helpers.",
+      "who_pays": "An owner's admin; anyone changing pricing code",
+      "fix_steps": [
+        "Do the page merge already planned: one Discounts page with Automatic and Code (code review step 2.4; docs/audits/admin-usability-2026-11.md:198).",
+        "When pricing code is next touched: move the reach test and the running and status helpers into one small module (for example src/lib/offer-reach.ts) used by src/lib/campaigns.ts and src/lib/discounts.ts, changing no order of pricing.",
+        "Leave the two engines apart."
+      ],
+      "tests_and_rules": [
+        "The money tests (the quick gate): src/lib/campaigns.test.ts, src/lib/discounts.test.ts, src/lib/discount-combinations tests and the checkout integration tests that hold cartSummary() to placeOrder().",
+        "Rule: the order of pricing is a money rule (campaigns, then the group's discount, then the welcome discount, then codes, then credits; campaigns.ts and cart-summary.ts say it); shared helpers must not change it."
+      ],
+      "depends_on": [
+        "Code review step 2.4"
+      ],
+      "done_when": "`rg -c \"export function reaches\" src/lib` counts one definition, and the money tests pass.",
+      "saving": "Estimate: one link (with step 2.4) and 100 to 200 lines of shared helpers.",
+      "effort": "S",
+      "risk": "A shared helper that changes which lines a discount reaches changes money; the money tests are the gate.",
+      "confidence": "medium",
+      "priority": "P3",
+      "already_tracked": "The page merge is audit phase 2 ('Campaigns and Coupons become one Discounts page', docs/audits/admin-usability-2026-11.md:198; code review step 2.4, Open).",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "P3: the saving is small and the code is money. Do the helpers only when that code is open for another reason."
+    },
+    {
+      "id": "FT-10",
+      "title": "Four store engines have a platform twin with its own tables and runner: about 2,100 lines, built by the owner's own rule",
+      "kind": "duplicate",
+      "where": [
+        "/home/user/kaizen-store/CLAUDE.md:403",
+        "/home/user/kaizen-store/docs/decisions.md:805",
+        "/home/user/kaizen-store/docs/decisions.md:855",
+        "/home/user/kaizen-store/docs/decisions.md:856",
+        "/home/user/kaizen-store/docs/decisions.md:858",
+        "/home/user/kaizen-store/src/server/platform-workflows.ts:374",
+        "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:32"
+      ],
+      "evidence": "The parity rule of 6 November gives the platform every store feature (CLAUDE.md:403). For events it was built as separate platform_* tables and runners: workflows, integrations, own endpoints, a read-only API with tokens and ad conversions, about 2,090 lines by the skeptic's count, each on the owner's instruction (D465, D515, D516, D518; I read the rows). The twins share what they can (the workflow kit in src/lib/workflows.ts:173-185, the signing and the address guard). At run time the platform's workflow and delivery runners are polled each minute beside the stores' (integrations/route.ts:32-37), for one tenant; that does not grow with stores.",
+      "cost": "Each of these engines is kept and tested twice. At run time a few queue polls a minute for one tenant.",
+      "who_pays": "CI and anyone changing these engines; the server slightly",
+      "fix_steps": [
+        "The owner's choice, and not waste as it stands. Keep the twins and the rule unless the owner wants one engine.",
+        "If one engine is wanted, write the design first (a decision row, no code): Kaizena Flow has its own store (D466), so the platform's events could be delivered to that store's event intake, and the store's workflows, endpoints and services would serve them with no platform_* twin. The design must say how the intake's closed list of events and their payloads carry platform events (a store requested, a plan started) for the one store only, and what the platform's API tokens become.",
+        "Only then: move one twin at a time, starting with workflows (the smallest: src/lib/platform-workflows.ts 67 lines, src/server/platform-workflows.ts 399), and drop its tables a release later."
+      ],
+      "tests_and_rules": [
+        "src/lib/platform-workflows.test.ts, src/server/platform-workflows.int.test.ts and the twins' other tests go with a twin that is folded.",
+        "Rules a fold would change: the parity rule (CLAUDE.md Conventions), docs/platform-parity.md, and decisions D465, D515, D516 and D518, whose stated reason is that the stores' tables hold store_id not null."
+      ],
+      "depends_on": [
+        "The owner's decision",
+        "FT-5 (the site served from the store first)"
+      ],
+      "done_when": "A decision row says keep or fold. If fold: `rg -l \"platform_workflows|platform_webhook_endpoints\" src --glob '!*.test.*' | wc -l` prints 0.",
+      "saving": "Estimate if folded into Kaizena Flow's own store: about 2,100 lines, their tests and 8 tables. Nothing if kept.",
+      "effort": "L",
+      "risk": "It would change a rule the owner set on 6 November and four decisions made on the owner's instruction. Platform events are not store events today; a mistake could deliver the platform's events to a store's endpoints.",
+      "confidence": "low",
+      "priority": "P3",
+      "already_tracked": "no (docs/platform-parity.md tracks what the platform still lacks)",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "P3: a deliberate duplicate with a written reason and a small idle cost. The schema and duplication dimensions describe the same modelling question (null-store rows, platform_* twins and the house store); decide it once. Before opening is the cheapest time if the answer is to fold."
+    },
+    {
+      "id": "FT-13",
+      "title": "Bonus, referrals and creators are three reward models; whether to fold creators into referrals is a product choice",
+      "kind": "duplicate",
+      "where": [
+        "/home/user/kaizen-store/src/lib/store-features.ts:168",
+        "/home/user/kaizen-store/src/lib/store-nav.ts:158",
+        "/home/user/kaizen-store/src/lib/store-nav.ts:164",
+        "/home/user/kaizen-store/src/server/affiliates.ts:58",
+        "/home/user/kaizen-store/src/server/bonus.ts:550"
+      ],
+      "evidence": "Bonus credits (D130) are a ledger. The referral programme (D131) pays in those credits and needs Bonus on (store-features.ts:173), so it builds on bonus and does not copy it (affiliateProgram() takes the bonus programme it is given, affiliates.ts:58-69). Creators (D386) earn money commission with a code and have their own tables. The skeptic measured bonus at 4,008 lines, referrals and affiliates at 4,601 and creators at 1,411. The scheduled job runs on due rows only and says a store whose programme is off is left alone (bonus.ts:543-549). The per-request cost of bonus and referrals on the cart is FT-15, and is fixed there.",
+      "cost": "Two attribution and payout models (referrals, creators) to keep correct in checkout and refunds. No cost per store once FT-15 is done.",
+      "who_pays": "Anyone changing checkout or refunds; CI",
+      "fix_steps": [
+        "The owner chooses the model: creators as a programme of their own (as built), or a creator as a kind of referrer whose reward is money, with one attribution table.",
+        "If kept: nothing to do; it is not waste.",
+        "If folded: write the design first (credits and money commissions differ in tax and bookkeeping), then move creators' attribution onto the referral programme's and drop the creators' tables a release later."
+      ],
+      "tests_and_rules": [
+        "The creators', referral and bonus tests (unit and integration) and the money tests of checkout and refunds.",
+        "Rules: D130, D131 and D386 with docs/bonus.md, docs/referrals.md and docs/affiliates.md."
+      ],
+      "depends_on": [
+        "The owner's decision"
+      ],
+      "done_when": "A decision row says keep or fold. If fold: `find src -iname '*creator*' ! -name '*.test.*' | wc -l` prints 0 and the money tests pass.",
+      "saving": "If folded (estimate): up to 1,411 lines and 5 tables, less what the referral programme gains. No running-cost saving either way.",
+      "effort": "L",
+      "risk": "Credits and money commissions differ in tax and bookkeeping; a merge must keep both exact.",
+      "confidence": "low",
+      "priority": "P3",
+      "already_tracked": "no",
+      "owner_decision": true,
+      "verdict": "corrected",
+      "notes": "P3: a product-model choice with no running cost. Not worth doing now as bloat removal."
+    }
+  ]
+}

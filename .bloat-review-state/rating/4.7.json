@@ -1,0 +1,13 @@
+{
+ "id": "4.7",
+ "rating": "cheap",
+ "why": "Comments and docs only: every replacement is quoted against text that exists, the checks confirm the old phrases are gone, the new phrase is in all four files and the code diff is comment lines only, and rules-index.test.ts guards the heading. Nothing a shopper or owner uses changes.",
+ "harm_if_wrong": "A doc sentence reads slightly wrong about how drills are requested; no behaviour changes.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "Line 233 of docs/rules/admin/platform.md is one line of about 970 characters today; if step 0.40 has wrapped it, the quoted words may span lines."
+ ]
+}

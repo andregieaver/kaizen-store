@@ -1,0 +1,16 @@
+{
+ "id": "1.1",
+ "rating": "cheap-then-review",
+ "why": "The counters, the ratchet script and the workflow are specified field by field with planted cases, and nothing reaches production code. But it extends files that steps 0.43 and 0.41 create ('its name may differ', 'if 0.41 already put a name check ... widen it'), edits CLAUDE.md, which every session obeys, and commit 3 asks the model to judge each stale name as a wrong rule to correct or an exception to excuse; a rule rewritten to match the code wrongly passes every check.",
+ "harm_if_wrong": "A rule in docs/rules or CLAUDE.md is reworded wrongly or a real stale name is excused, misleading every later agent, while the docs budget stays green.",
+ "cheap_commits": [
+  1,
+  2,
+  4
+ ],
+ "make_it_cheaper": "Run staleNames() now and put the exact list of names with the fix for each (correct the rule to X, or excuse with reason Y) into commit 3, and name 0.43's rule file and test cases as they will exist.",
+ "brief_problems": [
+  "Commit 1 replaces a CLAUDE.md sentence that is wrapped over several lines in the file; the brief quotes it as one string.",
+  "Depends on artefacts of 0.40, 0.41 and 0.43 whose exact content the brief does not state."
+ ]
+}

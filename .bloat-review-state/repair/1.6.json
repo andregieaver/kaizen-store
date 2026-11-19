@@ -1,0 +1,15 @@
+{
+ "id": "1.6",
+ "fixed": [
+  "Step (6): storeArtPicture() takes no uploader, and the brief no longer offers to change it; the seed passes PackDeps.storeArt (content-packs.ts:98, used at 139, faked in content-packs.int.test.ts:31) through syncContentPacks(), with the exact fixture: three sharp files and one commerce.media row with thumbnail_url and medium_url.",
+  "Fonts: the hand-built font rows are replaced by installFont(family, fixtureFetcher) (fonts.ts:86), with the exact canned Google stylesheet parseGoogleCss() reads; the files come from npm pack @fontsource-variable/{unbounded,manrope}@5 (latin, variable), with a stop_if when npm cannot fetch them.",
+  "Step (5): the store-making call is decided: createDemoStore() + publishDemoStore(), with why (self sign-up needs a claimed access request through approveAccessRequest()).",
+  "Commit 2: documentOf()'s return shape and the router-request counting rule are written out; the prefetch helpers are copied, not imported (they are not exported).",
+  "docs/rules/budgets.md: action edit, made_by 0.43 (which depends_on now names), under its own heading below '## Sentences from the plan' (0.43 makes no '## The visitor's pages' heading).",
+  "stop_ifs rewritten for the decided paths."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the store-making call is named (createDemoStore + publishDemoStore); the uploader needs no production change at all (PackDeps.storeArt); the font files have a named source. Not lowered further: on a fresh database the seed may still have to build the pack's starting content (step 4), which the brief cannot settle without running it.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

@@ -1,0 +1,14 @@
+{
+ "id": "2.28",
+ "fixed": [
+  "Commit 1: useIsCurrent()'s callers get only tabs (StoreTabs, StoreSidebar, AdminRail; AdminFrame is a server component), so the brief now specifies useIsCurrent(areas), the section key on NavItem/NavArea and the exact props to pass at admin-frame.tsx lines 141, 182, 228 and store-admin-nav.tsx line 117.",
+  "Commit 1: storeNav() is step 0.17's (a dependency); the 'if 0.17 has replaced' condition is gone.",
+  "Commit 1: admin-layouts.test.ts 'only if it fails' made a run-then-decide on one named condition.",
+  "Commit 2: step 1.5's save record described; words and menu found by balanced '\"texts\":{', '\"tabs\":[', '\"areas\":[' in the action's flight body (helper given), instead of 'area names such as builder…'.",
+  "stop_if added for a missing or different save record of step 1.5."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: way B's outcome needs a build and a measurement this check cannot make; commits 1 and 2 are now cheap commits and commit 3 stays with the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

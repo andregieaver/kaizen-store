@@ -1,0 +1,10 @@
+{
+ "id": "0.25",
+ "fixed": [
+  "src/db/cron-log-retention.test.ts now carries the exact SQL as EXPECTED and asserts the file equals it with whitespace collapsed, plus the two not-contain checks; drizzle-kit's header line is to be removed."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (exact-text comparison); the step stays reviewed because it deletes production rows.",
+ "executor_before": "cheap",
+ "executor_after": "cheap-then-review"
+}

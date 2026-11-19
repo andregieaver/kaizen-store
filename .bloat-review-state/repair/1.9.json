@@ -1,0 +1,22 @@
+{
+ "id": "1.9",
+ "fixed": [
+  "StatementRecord had no start time, so waves could not be computed: added startedAt and an exported waves(records) with an exact rule; the int test calls it.",
+  "noteStatement's 'null when no store and no render counter' contradicted the counter being set globally in commit 3: noteStatement now adds to the render counter when one answers, then returns null without allocating when no countStatements store runs.",
+  "statementsOf(key)/WeakMap and renderCounter() named one API three ways: statementsOf is dropped; the six exports are listed.",
+  "The client wrapper called done(null) for a callback, but pg-pool's pool.query (every drizzle statement outside a transaction) always passes one, so rows would be null and ms 0 and test case 2 would fail: the callback is now wrapped to fill rows and ms.",
+  "The store layout's four reads are named by line (74, 84 behind support:read, 86 behind store.starter, 88 behind open) with the exact replacement and what stays.",
+  "admin-screens.ts's functions are written out; storeHomeReads(member, locale) vs storeHomeReads(current) and productsListReads(member) vs (member, {…}) disagreed; platformHomeReads listed the layout's two reads too: now platformShellReads and platformHomeReads are separate and the platform measure calls both.",
+  "The 'if moving changes what it renders, keep a mirror' choice is removed: a failing signed-in spec is a stop.",
+  "Two int-test cases added (waves on sequential vs Promise.all, the render counter), and a stop_if for waves that vary with the pool."
+ ],
+ "rejected": [
+  {
+   "problem": "Steps 2.32 and 4.4 are written against the inline reads, so they will not find their lines.",
+   "why": "Both briefs already say 'Step 1.9 replaced the Promise.all … by storeHomeReads/platformHomeReads from src/server/admin-screens.ts' and handle a mirror too; they need no word from this brief (and other agents own them)."
+  }
+ ],
+ "cheaper": "applied: the judge's edit (startedAt and the wave rule, statementsOf dropped, noteStatement defined, the layout's reads by line); the rating stays cheap-then-review because the wrapper is on every production statement and the shell carries a permission condition.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

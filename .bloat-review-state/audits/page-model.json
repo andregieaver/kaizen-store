@@ -1,0 +1,419 @@
+{
+ "headline": "The page model itself is not bloated: a stored page is sparse (about 340 bytes a block, no defaults or per-size copies written out), every stored setting has a reader, and a two-block page's own markup is 1.6 KB. The bloat sits around it. Every storefront page renders and ships the whole layout twice (26 KB, 31 to 40% of its RSC payload) because the cart drawer's slot sits on the root layout; lookups that need one page or one title load and parse every published page of the store (production's second most expensive statement); and a five-minute job re-reads every published page of every site with chat on. These costs grow with stores times pages, not with use, and all are cheapest to fix now, before real stores exist.",
+ "metrics": [
+  {
+   "name": "Block types and sub-parts",
+   "value": "37 block types; 83 sub-parts (20 product, 14 site, 42 shop, 7 theme store)",
+   "how": "Bundled src/lib/page-content.ts alone with esbuild into the scratch folder and read pageBlockUnion's options, PRODUCT_PARTS, SITE_PARTS, SHOP_PART_KEYS, THEME_STORE_PARTS (work/pm/model.mjs, parts.mjs)"
+  },
+  {
+   "name": "Settings in the model",
+   "value": "197 distinct top-level keys; 842 summed over the 37 types; about 150 leaf settings shared by every block (style, motion, per-size, visibility, typography); a row has 37 keys, a column 25",
+   "how": "Walked the zod shapes of pageBlockUnion, pageRowSchema, pageColumnSchema (work/pm/model.mjs, keys.mjs)"
+  },
+  {
+   "name": "Stored settings with no reader on the site",
+   "value": "0 (5 candidates, all read through helpers)",
+   "how": "Scanned every non-test, non-editor file of src for each of the 197 keys (work/pm/usage.mjs), then checked imageShape, langText, langFlag, moreLines, verticalAlign by hand"
+  },
+  {
+   "name": "A realistic stored page",
+   "value": "Orbit theme home: 6 rows, 31 blocks, 10,549 B of JSON (340 B a block; ids are 20% of it). Production: pages 9.1 MB for 1,389 rows, page_versions 5.4 MB for 642",
+   "how": "Built orbitHomePage() from src/lib/signature/orbit.ts through parsePageContent and measured JSON.stringify (work/pm/bench.mjs); production from m/prod-db-stats.md"
+  },
+  {
+   "name": "Cost of reading one stored page",
+   "value": "0.85 ms zod parse for the 10.5 KB Orbit home (JSON.parse alone 0.05 ms); 0.03 ms for the seed's 2-block page; 73 parsePageContent call sites",
+   "how": "200 timed runs after warm-up on the bundled module (work/pm/bench.mjs); rg count outside tests"
+  },
+  {
+   "name": "Cold load of the page model",
+   "value": "about 35 ms (69 ms for the module with zod against 34 ms for zod alone)",
+   "how": "Fresh node process importing each esbuild bundle, best of 7, on this machine (work/pm/pc.mjs, z.mjs)"
+  },
+  {
+   "name": "A two-block page as a visitor gets it (/s/demo/no/om-oss)",
+   "value": "108 KB document; the page's own markup 1.6 KB; its own RSC subtree 5.2 KB of 68.7 KB; build segment files: layout 54.7 KB, page 9.3 KB",
+   "how": "m/html/store-page.html, RSC rows decoded and walked (work/pm/rsc.mjs, subtree.mjs); .next/server/app/s/demo/no/om-oss.segments"
+  },
+  {
+   "name": "Second copy of the layout in the payload",
+   "value": "26,125 B on each of 8 storefront pages: 38% of /om-oss, 31% of the home page, 40% of the cart; 1.1 KB after gzip, 0.3 KB after Brotli",
+   "how": "Rows reachable only from the root layout's notFound branch (work/pm/excl.mjs, gz.mjs) over m/html/store-*.html"
+  },
+  {
+   "name": "Part stylesheets in the payload",
+   "value": "breakpoint sheet 1,760 B once per row; Orbit home: per-row sheets 4,982 B against 3,071 B as one sheet",
+   "how": "partCss() and breakpointClassCss() run on the Orbit home (work/pm/css.mjs); three identical text rows counted in a one-row page's payload"
+  },
+  {
+   "name": "Client scripts on every store page whatever its blocks",
+   "value": "layout group: 7 chunks, 213 KB raw, 72.6 KB gzip; product page group: 12 chunks, 315 KB raw, 107 KB gzip",
+   "how": "entryJSFiles of the built page_client-reference-manifest.js for [slug] and p/[handle], chunk files sized with wc and gzip"
+  },
+  {
+   "name": "Server code behind the page renderer",
+   "value": "1,396 modules, 21.1 MB of source reachable from page-article.tsx; the built store home is 12.2 MB of server code in 2,419 modules; page-content.ts is 61 KB of it",
+   "how": "Static import walk, type-only imports left out, stopping at client components (work/pm/graph.mjs, direct.mjs); m/analyze/summary.json and s_store_market.json"
+  },
+  {
+   "name": "listPublishedPages in production",
+   "value": "79,778 calls, 29 rows a call, 2.33 M rows returned, 781 s; 35 call sites in the code",
+   "how": "m/prod-db-stats.md (pg_stat_statements, 78 days); rg"
+  },
+  {
+   "name": "Knowledge job",
+   "value": "542 ms of each five-minute run; 91,200 delete calls that removed 782 rows in all",
+   "how": "m/prod-db-stats.md (cron_jobs last durations, pg_stat_statements)"
+  },
+  {
+   "name": "Products grid sent twice",
+   "value": "16,702 B streamed copy in 55 KB of markup on /s/demo/no/products (30%)",
+   "how": "Size of the hidden S:1 block and link counts before and inside it in m/html/store-products.html"
+  },
+  {
+   "name": "Page editor's inline interface text",
+   "value": "276,990 B in one RSC row, 76% of the editor's 365 KB payload; the page being edited is 5.8 KB",
+   "how": "m/html/admin-page-builder.html decoded and the row's texts object measured per area"
+  },
+  {
+   "name": "What a prerendered page keeps for resuming",
+   "value": "17 to 23 cached entries, 8 to 15 KB decoded; the store entry is 6.3 KB; /products keeps all 3 published pages of the store (3.1 KB)",
+   "how": "Inflated the resume data cache at the end of `postponed` in .next/server/app/s/demo/no/*.meta and decoded each entry"
+  }
+ ],
+ "clean": [
+  "Stored page JSON is sparse: defaults are not written out, per-size values exist only where set (101 B of `at` in the 10.5 KB Orbit home), pictures are addresses never data, and the limits hold (100 blocks, 50 rows, 50,000 characters of HTML; /home/user/kaizen-store/src/lib/page-content.ts:70, :1608, :2515).",
+  "Every stored setting has a reader: of 197 distinct keys none is written and never read on the site.",
+  "A block's markup is lean: the two-block page's main is 1.6 KB, there are no inline style attributes (0 KB on every storefront page in m/routes.md), per-size differences are CSS classes not duplicated markup, and a row is five wrapper elements.",
+  "Picture enrichment is batched and never saved: withPageAlts() reads alt texts and small copies for all pictures of all pages in one query on two indexed columns (/home/user/kaizen-store/src/server/media-alts.ts:26-55; schema.ts:9402, :9407).",
+  "Page versions are well kept: the same content is not stored again (md5 compare), a page keeps its newest 50, and the list reads titles only (/home/user/kaizen-store/src/server/page-versions.ts:23-45). Whole copies rather than differences are fine at this size.",
+  "Interactive block parts load only where drawn: 18 lazyView stand-ins in /home/user/kaizen-store/src/components/lazy/blocks.tsx; the motion runtime only when a page needs it (motion-support.tsx); the page model itself is kept out of visitor scripts by a scan test (docs/performance.md).",
+  "Who sees a part costs nothing unless conditional: Always and Never are decided without a hole; only a condition opens a Suspense hole (/home/user/kaizen-store/src/components/visible-part.tsx:17-28), so built pages stay prerendered.",
+  "findPublishedPage() is a one-row read under the store's pages tag (/home/user/kaizen-store/src/server/pages.ts:683-708); content grids are capped at 48 items and cached by tag (content-grid.ts:278, :304-308).",
+  "The page AI does not send the block model to the model: it picks from a catalogue of patterns and code builds the rows (/home/user/kaizen-store/src/lib/page-ai.ts:39-58, :172).",
+  "Draft beside published, and the newest version beside both, means an unchanged published page is stored three times. At 9.1 MB + 5.4 MB today, and compressed by Postgres, this costs nothing that matters; the cost is in the reads that select both copies (PM-5), not in the storage."
+ ],
+ "findings": [
+  {
+   "id": "PM-1",
+   "title": "Every storefront page renders and ships the whole layout twice, because the cart drawer's slot sits on the root layout",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:104",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:214",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/@drawer/default.tsx:1",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/not-found.tsx:16",
+    "/home/user/kaizen-store/node_modules/next/dist/server/app-render/create-component-tree.js:551",
+    "/home/user/kaizen-store/node_modules/next/dist/server/app-render/create-component-tree.js:657"
+   ],
+   "evidence": "Next's own code says it: a root layout with `children` and at least one more slot gets a not-found boundary whose fallback is the root layout rendered again around the not-found page (\"needlessly invokes the NotFound component and renders the RootLayout twice\", create-component-tree.js:659). Measured on the captured documents: the RSC rows that only this second copy reaches are 26,125 B on all eight storefront pages (38% of /om-oss's 68.7 KB payload, 31% of the home page's, 40% of the cart's). A page that exists (/om-oss) carries the 404 text \"Siden finnes ikke.\" in its payload. In the build the layout's segment file is 54.7 KB against the page's own 9.3 KB. Kaizena Flow's own routes (/, /themes) have no such pair.",
+   "cost": "26 KB raw of every storefront document locally (about 29 KB as escaped in the HTML; 1.1 KB gzip or 0.3 KB Brotli because it repeats), the same in every layout segment file, and the header, footer, menus and the store's 404 page (a whole built page where the owner chose one) rendered a second time on each server render. Larger with a built header and footer: production's demo home is 203 KB with 149 KB of payload (m/prod-pages.md).",
+   "who_pays": "A shopper's browser (parse and memory), the server per render, the build",
+   "fix": "Move the slot one level below the root: a route group under [market] whose layout takes `children` and `drawer`, holding the pages and @drawer, so the root layout has only `children`. The written rule (docs/rules/storefront.md, the cart: the @drawer slot intercepts /cart) is kept; only its level changes.",
+   "saving": "Measured: 26.1 KB raw off every storefront document and layout segment (31 to 40% of the payload) and one of two layout renders. Estimate: more in production.",
+   "effort": "M",
+   "risk": "About 25 route folders move; the intercepted cart `(.)cart` and the slot's `[...rest]` must keep working and the drawer is then drawn inside the nested layout. The cart-drawer e2e specs cover it. It may also end the local prefetch loop on the slot's catch-all (m/prefetch-storm.md); check, not promised.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-2",
+   "title": "Finding one page, or a title, loads every published page of the store with its whole content",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:664",
+    "/home/user/kaizen-store/src/server/pages.ts:799",
+    "/home/user/kaizen-store/src/server/pages.ts:862",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/page.tsx:29",
+    "/home/user/kaizen-store/src/server/legal-links.ts:24",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:127",
+    "/home/user/kaizen-store/src/components/site-chat.tsx:110",
+    "/home/user/kaizen-store/src/server/checkout-terms.ts:46",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:138",
+    "/home/user/kaizen-store/src/server/page-ai.ts:96",
+    "/home/user/kaizen-store/node_modules/next/dist/server/use-cache/use-cache-wrapper.js:2502"
+   ],
+   "evidence": "listPublishedPages() selects `published` for every page of a type, zod-parses each and returns the array. 35 call sites: 11 pick one or a few pages by id (front page, role pages, All products, 404, legal links in every layout, the chat's privacy link) and at least 7 use only slugs or titles. Production: 79,778 calls, 29 rows a call, 2.33 M rows, 781 s, the second most expensive statement. A `use cache` hit still decodes the whole entry on each call (use-cache-wrapper.js:2502). The entry also rides with the prerendered page: decoded from .next/server/app/s/demo/no/products.meta, the resume data holds the entry keyed by the store alone with all 3 of its pages (3.1 KB of 15.3 KB). The layout makes the same call on every page of a store that has chosen legal pages; the demo has not, so only /products shows it locally.",
+   "cost": "Per cache miss: every page's JSON from the database and about 0.85 ms of zod per realistic page (about 25 ms for a 29-page store, estimate). Per hit: decoding the whole array. Per prerendered page of a store with legal pages: a copy of all the store's pages in its resume state, so it grows with pages squared per store (estimate from the 3-page measurement).",
+   "who_pays": "The database, the server per render and per resume, the build",
+   "fix": "Add publishedPageById(owner, id): one row, same tag, for the front page, role pages, All products, the 404 and the pay and exchange pages. Extend publishedPageNames() (pages.ts:715, already there) with the id for legal links, the chat's privacy link, checkout terms' titles, Kaizena Flow's menus and the page AI's links. Give sitemaps and blog cards a light read (`published - 'rows'`). Keep the full list only where rows are drawn.",
+   "saving": "Estimate: most callers go from 29 rows to 1 a call, taking most of the 781 s; the resume state of every page loses the store's other pages.",
+   "effort": "M",
+   "risk": "Low. The same cache tag keeps freshness; alt texts and small copies still come through withPageAlts() for the one page.",
+   "confidence": "high",
+   "already_tracked": "no (code review step 3.9, FF2 and FF5, Open, is the same pattern for the catalogue)",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-3",
+   "title": "The five-minute knowledge job reads and parses every published page of every site with chat on, and re-cuts wordless pages for ever",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/knowledge.ts:167",
+    "/home/user/kaizen-store/src/server/knowledge.ts:182",
+    "/home/user/kaizen-store/src/server/knowledge.ts:187",
+    "/home/user/kaizen-store/src/server/knowledge.ts:249",
+    "/home/user/kaizen-store/src/server/knowledge.ts:297",
+    "/home/user/kaizen-store/src/lib/knowledge.ts:65"
+   ],
+   "evidence": "syncPageKnowledge() selects `p.published` for every published page and article with two sub-selects each (:171), parses each with zod (:182) and only then compares versions (:187). A page that gives no passage (cutPassages returns [] for no text) never gets a version, so each run cuts it again: a transaction with a delete and no insert (:249). Production: that delete ran 91,200 times and removed 782 rows in all; the page statement ran about 24,000 times returning about 40 whole pages a call; the job's last run took 542 ms, third slowest of the 84.",
+   "cost": "542 ms of each five-minute run today. It grows with sites with chat on times published pages, every 300 s, changed or not: 1,000 such stores of 30 pages would pull about 30,000 documents and spend about 25 s in zod each run (estimate from 0.85 ms a page).",
+   "who_pays": "The database, the server per scheduled run",
+   "fix": "Select ids, published_at, `published ->> 'blogId'` and the chunks' version first; fetch and parse `published` only for a page whose version differs. Remember a cut that gave nothing (a `knowledge_cut_at` on the page or one empty marker row). Better still, cut when a page is published and keep the job as a sweep.",
+   "saving": "Estimate: the job's page work falls to almost nothing on runs where nothing was published; the empty transactions stop.",
+   "effort": "S",
+   "risk": "Low. The rule (docs/rules/storefront.md, the chat agent: pages cut by syncPageKnowledge in the five-minute cron) is kept.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-4",
+   "title": "Page reads filter the owner with `is not distinct from`, which an index most likely cannot serve",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:71",
+    "/home/user/kaizen-store/src/server/pages.ts:691",
+    "/home/user/kaizen-store/src/db/schema.ts:8806",
+    "/home/user/kaizen-store/.github/workflows/ci.yml:89"
+   ],
+   "evidence": "ownedBy() is `store_id is not distinct from $1 and type = $2`, and findPublishedPage() uses the same form; 140 uses in 50 files of src/server. PostgreSQL matches operator clauses, IS NULL and = ANY to a btree index; IS NOT DISTINCT FROM is another kind of node that, to my knowledge through version 17 (which CI runs), it does not match. Production: `pages` had 199,789 sequential scans reading 203 M rows, about 1,016 of its 1,389 rows a scan, though a store has about 23 pages. Not proven: reading the local database was refused in this session so I ran no EXPLAIN, and at today's size the planner would pick a sequential scan either way.",
+   "cost": "Invisible at 1,389 rows. If confirmed, every page lookup that misses the cache reads every store's page rows: 300,000 rows a lookup at 10,000 stores of 30 pages.",
+   "who_pays": "The database",
+   "fix": "First one EXPLAIN with `enable_seqscan = off` on a copy. If it shows no index use, build the filter in code: `store_id is null` for Kaizena Flow's own, `store_id = $1` for a store, in ownedBy() and the files' own `owned()` helpers.",
+   "saving": "Estimate: index lookups in place of whole-table scans on the most-read content table once there are many stores.",
+   "effort": "S",
+   "risk": "Low: both forms mean the same for a null and for a non-null owner.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-5",
+   "title": "The admin's page lists, pickers and AI tools read and parse the draft and the published copy of every page to show titles",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:135",
+    "/home/user/kaizen-store/src/server/pages.ts:112",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/actions.ts:408",
+    "/home/user/kaizen-store/src/server/owner-tools.ts:979",
+    "/home/user/kaizen-store/src/server/manager-tools.ts:574",
+    "/home/user/kaizen-store/src/server/admin-api-content.ts:222"
+   ],
+   "evidence": "listPages() selects `draft, published` for every page of a type, runs the full zod schema on both and compares them with two JSON.stringify calls to get a title, a state and a thumbnail. 16 call sites; several keep only id and title (actions.ts:408).",
+   "cost": "Per call: two documents a page from the database and about 1.8 ms a page of parsing (estimate from 0.85 ms a parse). 100 pages is about 2 MB and 180 ms to draw a list or to answer one AI tool call.",
+   "who_pays": "An owner's admin, the database, an agent's session (the AI manager's page tools)",
+   "fix": "Read the list's fields in SQL: `draft ->> 'title'`, the thumbnail's address, the two flags, and the state as `published is null` or `draft = published` (both are written from the same string at publish, pages.ts:381-384), or keep a hash per copy. Parse nothing.",
+   "saving": "Estimate: a 100-page list falls from about 2 MB and 180 ms to a few KB and a few ms.",
+   "effort": "S",
+   "risk": "The state by jsonb equality must agree with samePageContent(); test it over the seed. A document that no longer parses would show its stored title.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-6",
+   "title": "Facts about a page are dug out of its JSON on each read; the table has no column for them",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/page-modals.ts:16",
+    "/home/user/kaizen-store/src/server/pages.ts:715",
+    "/home/user/kaizen-store/src/server/pages.ts:866",
+    "/home/user/kaizen-store/src/db/schema.ts:8785",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md:243"
+   ],
+   "evidence": "`pages` holds an id, a type, a slug, two JSON documents and dates. usesRememberedModals() runs jsonb_path_exists over every published page of a store to answer one yes or no for the cookie banner: 68,878 calls and 121 s in production. publishedPageNames() pulls each title out of the JSON by path: 57,930 calls returning 497,123 rows. Both are under `use cache`, which the Next guide says does not persist between serverless instances, so they run far more often than pages change.",
+   "cost": "Two of production's most-called statements; each reads every published document of the store.",
+   "who_pays": "The database, the server per cache miss",
+   "fix": "Write the facts when the page is saved (savePage is the one writer): a title per copy (other languages in a small jsonb) and `uses text[]` for what the published page holds (a remembered modal, form ids, block types). Backfill once: before opening that is one migration over 1,389 rows with nobody to disturb.",
+   "saving": "Estimate: both statements become small indexed reads; feature checks stop scanning JSON.",
+   "effort": "M",
+   "risk": "A second source of truth: write it in the same statement as the JSON and add a test that recomputes it. The SQL that moves nested pages' slugs (pages.ts:394-401) writes the JSON too and must keep it.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-7",
+   "title": "Each row repeats the same stylesheet and the same store lookups",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/page-article.tsx:197",
+    "/home/user/kaizen-store/src/components/page-article.tsx:223",
+    "/home/user/kaizen-store/src/components/part-styles.tsx:40",
+    "/home/user/kaizen-store/src/server/theme-elements.ts:10",
+    "/home/user/kaizen-store/src/server/store-links.ts:15",
+    "/home/user/kaizen-store/src/server/breakpoints.ts:12"
+   ],
+   "evidence": "RowView draws PartStyles for its one row, and each draws the breakpoint sheet again. React keeps one copy in the HTML, but the RSC payload carries the text every time: the 1,760 B sheet is three separate text rows in a one-row page's payload. Generated for the Orbit home (6 rows): per-row sheets sum to 4,982 B against 3,071 B as one sheet, plus 6 x 1,760 B of breakpoint sheet. Each row also awaits themeLayersFor, storeLinkBase and breakpointsFor: six `use cache` calls (storeSlugOf and getStore, three times), each decoding the 6.3 KB store entry, though the page already holds the store.",
+   "cost": "Orbit home: 15.5 KB of style text in the payload for a 10.5 KB page, against 4.8 KB if sent once. A 12-row page about 21 KB more than needed. Six cached reads a row.",
+   "who_pays": "A shopper's browser, the server per render",
+   "fix": "One breakpoint sheet per layout and one part sheet per article (partCss over all its rows). Let the page put the theme layers, the link base and the breakpoints on `place` once; GridPlace already has `theme` for this.",
+   "saving": "Measured for the Orbit home: 10.7 KB raw of payload and 1.9 KB of HTML style. Cached reads fall from six a row to three a page.",
+   "effort": "S",
+   "risk": "A modal's row and a row behind a visibility hole must still get their rules: emit the article's sheet outside the holes.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-8",
+   "title": "A product grid with Filter and sort is sent twice when nothing is chosen",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/content-grid-section.tsx:40",
+    "/home/user/kaizen-store/src/components/content-grid-section.tsx:86",
+    "/home/user/kaizen-store/src/components/content-grid-section.tsx:97"
+   ],
+   "evidence": "The grid is the Suspense fallback in the prerendered shell, and FilterableGrid streams a second grid in its place. With no filter on page 1 the second holds the same items (`unfiltered && page === 1 ? null`, then `data.items`). On the captured /products each product's links appear twice in the shell and twice in the streamed block S:1, which is 16,702 B of the document's 55 KB of markup; the payload carries both too.",
+   "cost": "16.7 KB of markup for 13 products, and the same content again in the payload, on a store's main listing. About four times that at the grid's limit of 48 (estimate).",
+   "who_pays": "A shopper's browser, the server per request",
+   "fix": "When nothing is chosen, stream only the controls (count and facets) and leave the shell's grid. Stream a grid only for a filtered or later page, hiding the built one.",
+   "saving": "Measured: 16.7 KB raw of markup on the demo's /products (30% of its markup), plus its twin in the payload (estimate).",
+   "effort": "M",
+   "risk": "The grid without script must stay as it is (code review FF6 plans filters without script); the tiles' stock and quantity parts must attach to the one grid.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-9",
+   "title": "Every read of a stored page runs the editor's whole input schema and the old-shape upgrades",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/page-content.ts:4305",
+    "/home/user/kaizen-store/src/lib/page-content.ts:4189",
+    "/home/user/kaizen-store/src/lib/page-content.ts:4182",
+    "/home/user/kaizen-store/src/lib/responsive.ts:420",
+    "/home/user/kaizen-store/src/lib/typography.ts:640",
+    "/home/user/kaizen-store/supabase/seed.sql:272"
+   ],
+   "evidence": "parsePageContent() is pageInput.safeParse: the schema with the editor's checks (CSS, duplicate ids, one H1, modal keys) and eight preprocess steps that turn shapes from before D179 and D180 into today's, on every read; 73 call sites. Stored pages are never rewritten: the seed's own grid still has the old `columns: {mobile, tablet, desktop}`. Measured on the module alone: 0.85 ms for the Orbit home, 16 times JSON.parse; loading the module and building its schemas takes about 35 ms in a cold process here.",
+   "cost": "About 0.03 ms a block on each read, and about 35 ms of each cold start of any function that imports the page model (most do).",
+   "who_pays": "The server per cache miss and per cold start",
+   "fix": "Before opening, run every stored document (pages, versions, templates, theme snapshots) through the schema once and save it. Then delete the upgrade steps and their tests, and give the site a readStoredPage() that trusts what savePage wrote, guarded by a version number in the document. Build the zod schemas on first save, not at import.",
+   "saving": "Estimate: about 0.8 ms a page per read, about 35 ms a cold start, and about 300 lines of upgrade code plus its tests.",
+   "effort": "M",
+   "risk": "Every writer that goes round savePage (SQL copies, seeds, demo functions) must write today's shape; keep the full parse in the admin and in a nightly check.",
+   "confidence": "medium",
+   "already_tracked": "partly: code review step 3.2 (FB6 and FB9, one definition per block, Open) reshapes the same file but not the read path",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-10",
+   "title": "The page editor's document carries 277 KB of interface text inline",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:30",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:142",
+    "/home/user/kaizen-store/docs/audits/psi-followups.md:358"
+   ],
+   "evidence": "The captured editor document has one RSC row of 276,990 B: the texts of eleven areas handed to AdminTextScope (builder 75 KB, blocks 57, website 47, products 27, fields 25, design 24 and five more). That is 76% of the 365 KB payload; the page being edited is 5.8 KB of it.",
+   "cost": "277 KB raw in every load of the editor (the document is 572 KB, 133 KB gzip), and the browser cannot cache it as it would a script.",
+   "who_pays": "An owner's admin",
+   "fix": "Hand the editor the areas its first screen reads (builder, website) and load a block's or a dialog's texts with the dialog once step 3.4 makes dialogs load on demand; or serve areas as unchanging per-language files.",
+   "saving": "Estimate: 150 to 200 KB raw off each editor document.",
+   "effort": "M",
+   "risk": "PSI PERF-01 records that fetching areas late was tried and backed out (an early press reached a form not yet interactive). Tie the texts to the dialog's own lazy chunk, not to a fetch.",
+   "confidence": "high",
+   "already_tracked": "The direction is: PSI PERF-01 (done, with a 'left' list) and code review step 3.4 (FB8, Open). This number is new.",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-11",
+   "title": "A page's first scripts include parts for blocks and product kinds it does not hold",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/page-article.tsx:20",
+    "/home/user/kaizen-store/src/components/theme-page-parts.tsx:5",
+    "/home/user/kaizen-store/src/components/language-switch.tsx:6",
+    "/home/user/kaizen-store/.next/server/app/s/[store]/[market]/p/[handle]/page_client-reference-manifest.js:1",
+    "/home/user/kaizen-store/docs/performance.md:38"
+   ],
+   "evidence": "Turbopack groups every client component a route's server code imports. The store layout's group is 7 chunks, 213 KB raw, 72.6 KB gzip, on every page. For a heading-and-text page it holds filter-dialog 10.2 KB, site-form 6.4, carousel 5.2, page-modal's library 4.7 (for one function, mayRemember) and theme-preview-stage 4.5 (a part only Kaizena Flow's own pages can hold). The product page's manifest lists as static, for a mug: range-picker 7.3, quote-request 7.1, appointment-picker 5.9, gift-card-buy 4.2, and the cart's checkout-button 8.6 and cart-gift 3.8 (minified sizes from the build analysis).",
+   "cost": "About 31 KB minified on any built page and about 70 KB on a product page that the page does not use (sum of the modules named).",
+   "who_pays": "A shopper's browser",
+   "fix": "Move what the written rule does not cover to lazy/*.tsx (carousel, theme-preview-stage, view-menu, star-rating, reviews-more, gift-card-buy). Take mayRemember out of page-modal.ts into a small module. Find why the cart's button and gift box are in the product page's group. Leave forms, the filter button and the booking pickers where the rule puts them.",
+   "saving": "Estimate: 15 to 35 KB minified (5 to 12 KB gzip) a page.",
+   "effort": "M",
+   "risk": "The rule's reason (what is typed or pressed before a part's script runs is lost) holds for forms and pickers; each move needs its e2e spec.",
+   "confidence": "medium",
+   "already_tracked": "docs/performance.md (D211, D461) sets the rule and the lazy stand-ins; these modules are what is left",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-12",
+   "title": "The page renderer and the page reader pull in the code for saving pages and most of the server",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/page-article.tsx:20",
+    "/home/user/kaizen-store/src/server/pages.ts:31",
+    "/home/user/kaizen-store/src/server/pages.ts:41",
+    "/home/user/kaizen-store/src/server/pages.ts:43",
+    "/home/user/kaizen-store/src/server/shop.ts:11",
+    "/home/user/kaizen-store/src/server/taxonomy.ts:26"
+   ],
+   "evidence": "A static walk of imports from page-article.tsx (type-only imports left out, stopping at client components) reaches 1,396 modules and 21.1 MB of source. A block section adds little of its own (plans-section 62 KB, theme-store-section 66 KB, menu-section 65 KB): 20.5 MB is shared by nearly every server import and is reached from pages.ts itself through taxonomy.ts and visibility.ts. pages.ts keeps the site's three reads beside savePage, the checker, fonts, audit and redirects. The build agrees: the store home's server code is 12.2 MB in 2,419 modules.",
+   "cost": "A cold start of any storefront function loads about 12 MB of server code; the page model is 61 KB of it.",
+   "who_pays": "The server per cold start, the build",
+   "fix": "Not a split by block type (that saves under 70 KB a block). Put the site's page reads in a module that imports only the database client, the page model and media-alts, then cut the few edges that tie the read path to the admin (shop.ts to redirect-resolve to catalog; taxonomy to term-rules).",
+   "saving": "Not measured; it depends on how many such edges remain.",
+   "effort": "L",
+   "risk": "A wide refactor: do it with the code review's domain folders.",
+   "confidence": "medium",
+   "already_tracked": "code review steps 3.13 (domain folders, FV4 and FH6, Open) and 3.14 (split schema.ts, FD5, Open)",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-13",
+   "title": "Seven pairs of block types do nearly the same job",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/page-content.ts:1432",
+    "/home/user/kaizen-store/src/lib/page-content.ts:1467",
+    "/home/user/kaizen-store/src/lib/page-content.ts:1395",
+    "/home/user/kaizen-store/src/lib/page-content.ts:2001",
+    "/home/user/kaizen-store/src/lib/page-content.ts:2087",
+    "/home/user/kaizen-store/src/lib/page-content.ts:1000",
+    "/home/user/kaizen-store/src/lib/page-content.ts:1003",
+    "/home/user/kaizen-store/src/lib/page-content.ts:1502",
+    "/home/user/kaizen-store/src/lib/page-content.ts:2199",
+    "/home/user/kaizen-store/src/lib/store-parts.ts:333",
+    "/home/user/kaizen-store/src/components/page-block.tsx:298",
+    "/home/user/kaizen-store/src/components/page-block.tsx:363"
+   ],
+   "evidence": "37 block types and 83 sub-parts. Accordion, tabs and FAQ share items and one renderer (DetailsList); button and dual button are two near-copies (Button, SideButton); email form and newsletter share one form; custom field and field loop exist as blocks and again as product parts; free shipping and you saved exist as product parts and again as shop parts; a row's lines of columns and the Columns block both lay columns in lines; icon list and timeline are close. Each type carries about 150 shared settings plus its own, an editor, an icon and its words (the editor's `blocks` text area is 57 KB for all).",
+   "cost": "Nothing per visitor. Per type: a schema, an editor, texts and tests to keep, and one more choice in the palette.",
+   "who_pays": "An owner's admin (choice and editor size), the team",
+   "fix": "Decide which pairs merge: an FAQ as an accordion with a questions switch; one button block with an optional second; one form block. Before opening, stored documents can be rewritten in one pass.",
+   "saving": "Estimate: five to seven fewer types to keep; nothing at run time.",
+   "effort": "M",
+   "risk": "It changes what the builder offers; themes and templates in the repo name these types.",
+   "confidence": "medium",
+   "already_tracked": "no (code review step 3.2 is about where a block is defined, not how many there are)",
+   "owner_decision": true
+  },
+  {
+   "id": "PM-14",
+   "title": "No budget sees a realistic built page, the document's size or a list that reads whole pages",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/e2e/performance.spec.ts:40",
+    "/home/user/kaizen-store/e2e/performance.spec.ts:126",
+    "/home/user/kaizen-store/supabase/seed.sql:267"
+   ],
+   "evidence": "The budgets hold first scripts and transferred weight for the demo's front page and one product page. The demo's pages are one row and two blocks, so per-row costs (PM-7), the doubled layout (PM-1, about 1 KB once compressed) and the payload's 70% share of the document never move a budget. Nothing counts statements that select a whole `draft` or `published` for a list.",
+   "cost": "The costs above arrived without a failing check.",
+   "who_pays": "CI now; everyone above later",
+   "fix": "Seed one page from a signature theme (6 to 8 rows, 31 to 37 blocks) with a built header and footer, and hold its document's raw bytes, its RSC payload's bytes and the page's own share. Add a scan, like the ratchet, for `select ... draft` or `published` outside single-page reads.",
+   "saving": "It keeps the other savings.",
+   "effort": "S",
+   "risk": "None.",
+   "confidence": "high",
+   "already_tracked": "no (docs/performance.md lists the present budgets)",
+   "owner_decision": false
+  }
+ ]
+}

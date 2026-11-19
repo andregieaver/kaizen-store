@@ -1,0 +1,18 @@
+{
+ "id": "2.46",
+ "fixed": [
+  "Commits 1 and 4: admin-bundle.scan.test.ts is 'edit' with made_by 1.4, and the ZOD_REACH list and its assertions are described as step 1.4 leaves them.",
+  "Commit 1: says custom-fields.ts still reaches zod through page-content.ts (cleanRichText, richTextPlain at line 5), and its bundle check expects the ZodError count not to rise rather than to fall (found on this check).",
+  "Commit 2: the product-editor entry lists the chains to zod a walk found on 12 November (inventory, seo, env through supabase/client, taxonomy, term-seo, page-content and its schema files, term-rules, colour-library, product-writing, brand) instead of 'run the scan and decide'.",
+  "A stop_if keeps the cheap executor away from cuts in page-content.ts."
+ ],
+ "rejected": [
+  {
+   "problem": "scripts/bundle-budget.mjs (step 1.2) is not in the repo yet.",
+   "why": "depends_on names 1.2 and stop_if 1 covers its absence."
+  }
+ ],
+ "cheaper": "not applied: a full walk of all 346 admin client modules with a cut for each lib file would still leave the page-content.ts chain, a design choice; the product editor's chains are now listed instead.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "strong"
+}

@@ -1,0 +1,153 @@
+{
+ "key": "page-model",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/page-model.json",
+ "validator": "OK: 16 findings, 0 refuted, 18 metrics",
+ "headline": "The page model itself is lean: a stored page is about 340 bytes a block and a two-block page's own markup is 1.6 KB. The waste is in how pages are read, cached and wrapped: every storefront document carries the layout twice (27 KB), 45 of the demo store's 261 built entries keep a copy of every page of the store to find one page or one title, and all 261 carry one cache tag, so publishing one page makes the whole store's site render again. The owner filter `is not distinct from` cannot use an index (60,000 rows read to return 27 on a test table), and a five-minute job re-reads every published page of every site with chat on. None of this rests on a feature being unused: each cost grows with stores, pages or products, and each is cheapest to change before opening.",
+ "findings": [
+  {
+   "id": "PM-1",
+   "title": "Every storefront page renders and ships the whole layout twice, because the cart drawer's slot sits on the root layout",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "27 KB raw off every storefront document (0.3 to 1.3 KB on the wire); one of two layout renders per server render (not timed)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-2",
+   "title": "Finding one page, or a title, loads every published page of the store with its whole content",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Estimate: 1 document read instead of about 29 per lookup; no built page keeps the store's other pages (117 KB over 45 demo entries)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-3",
+   "title": "The five-minute knowledge job reads and parses every published page of every site with chat on, and re-cuts wordless pages for ever",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: two light statements a site per quiet run, no document; 91,200 empty transactions in 78 days stop (measured count)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-4",
+   "title": "Page reads filter the owner with `is not distinct from`, which no index can serve",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured on a test table: 60,000 rows read falls to 27. Nothing at today's 1,389 rows; the saving arrives with stores",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-5",
+   "title": "The admin's page lists, pickers and AI tools read and parse the draft and the published copy of every page to show titles",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: a 100-page list falls from about 2 MB and 190 ms to a few KB and a few ms; the AI tools that list pages the same",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-6",
+   "title": "Facts about a page are dug out of its JSON on each read; the table has no column for them",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: the menus' and modal reads open no document (about 30 a call after PM-4). Not measured; the table rewrite is free only now",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-7",
+   "title": "Each row repeats the same stylesheet text in the payload and the same cached store lookups",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Computed: 10.7 KB raw of payload on a six-row page, under 0.5 KB on the wire; cached reads from six a row to three a page",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-8",
+   "title": "A product grid with Filter and sort is sent twice when nothing is chosen",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Measured: 16.7 KB raw of markup on /products (1.0 to 2.5 KB on the wire) and one grid render per request",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-9",
+   "title": "Every read of a stored page runs the editor's whole input schema and the old-shape upgrades",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: about 240 lines and one stored shape instead of three; under 1 ms a page per uncached read",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-10",
+   "title": "The page editor's document carries 277 KB of interface text inline",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Measured lower bound: 74,898 bytes raw off each editor document (about 23 KB compressed, estimate); 150 to 200 KB with the builder's split",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-11",
+   "title": "A product page's first scripts carry the cart's parts through one import, and every built page a few parts it does not hold",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: about 20 KB raw (6 KB gzip) off every product page; about 14 KB minified (5 KB gzip) off every built page",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-12",
+   "title": "The page renderer and the page reader pull in the code for saving pages and most of the server",
+   "priority": "P2",
+   "effort": "L",
+   "saving": "Not measured: pages.ts alone reaches 1,307 modules (20.5 MB of source); a reads-only module should reach under 400",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-13",
+   "title": "Some block types overlap; whether to merge them is a product choice, not waste",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "None at run time; a few fewer palette entries if the owner chooses to merge",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "PM-14",
+   "title": "No budget sees a realistic built page, the document's size or a list that reads whole pages",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Keeps the other savings: PM-1, PM-2, PM-5, PM-8 and PM-11 arrived without a failing check",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-15",
+   "title": "One cache tag covers all of a store's pages: publishing one page, or describing one picture, makes every built page of the store render again",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: a body-only publish re-renders that page's own entries, not every built page of the store (261 of 261 carry the tag on the demo)",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "PM-16",
+   "title": "A product's layout is cached once per product, whole",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Estimate: one cached copy and parse of a layout per store, not per product: 1.5 to about 10 KB less per product",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

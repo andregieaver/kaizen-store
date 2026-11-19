@@ -1,0 +1,14 @@
+{
+ "id": "2.44",
+ "fixed": [
+  "ci-once.scan.test.ts is made by step 0.38 (added to depends_on), extended by 0.39; 0.39's case (5) asserts components and db do NOT set isolate:false, which a kept trial would break: both commits now edit that case to their result (found on this check).",
+  "Project names fixed as step 0.39 writes them ('components', 'db', 'unit'); the <name> placeholders in the checks replaced.",
+  "scripts/ci-budgets.json: action edit, made_by 1.20; ceilings.unit.seconds set from five CI runs' timings only (local figures ruled out), unchanged if CI cannot be read.",
+  "The search for database test files used 'db/testing', which matches none (they import ./testing); replaced, 64 files match (found on this check).",
+  "The PGlite-start vs template-load split names createTestDatabase()'s line 64 and how to split it."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

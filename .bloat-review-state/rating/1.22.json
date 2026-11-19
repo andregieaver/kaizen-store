@@ -1,0 +1,14 @@
+{
+ "id": "1.22",
+ "rating": "cheap-then-review",
+ "why": "The code is precisely specified and matches what is there (status.ts's jobs check at 166-171, vercel.json's one cron, the daily route's comment at 53-55, sendEmail's 'duplicate'). But the step changes who schedules the daily job, sends a new email to platform admins every 15 minutes while the scheduler is down (deduplicated by an idempotency key), and changes what turns the status page red. Unit tests cannot prove that pg_cron really carries the daily job once Vercel's entry is gone, or that the email will not spam.",
+ "harm_if_wrong": "The daily job stops running if pg_cron's schedule is not what the baseline says, or admins get repeated emails, or the status page turns red or stays green wrongly.",
+ "cheap_commits": [
+  2,
+  3
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "Commit 3 depends on step 0.25's prune job; the stop_if covers that, but without it pgcron.run-log fails daily."
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "id": "0.22",
+ "fixed": [
+  "bonusProgramOff(market) written out literally: { settings: { ...BONUS_DEFAULTS }, currency: market.currency, rates: new Map(), featureOn: false, on: false }, with why it is equivalent.",
+  "requestCartSummary(): the brief now states why no cartId/customerId is passed (checkout's cartId is readCartId's cookie at line 69; deliveryView passes getCustomer()'s id; cartSummary's defaults read the same).",
+  "checkout-section.tsx: 'check the credits part, else stop' replaced by the fact (creditsMode returns 'off' when !enabled, BonusCredits returns null).",
+  "cart-summary.test.ts: the 14 modules to mock are listed; the 'about 15 mocks, else int test' fallback replaced by a stop_if; the positive case named as the guard against a vacuous pass."
+ ],
+ "rejected": [
+  {
+   "problem": "Checkout rules are cached for hours while placeOrder() reads them live; a time-dependent rule is not discussed.",
+   "why": "RuleCondition (src/lib/checkout-rules.ts lines 21-28) has no date or time kind and activeRules() has no now() condition; the only writers of commerce.checkout_rules rows for a live store are the four functions the brief refreshes. placeOrder() still decides."
+  }
+ ],
+ "cheaper": "applied: bonusProgramOff()'s exact object and the cart/customer the shared summary reads are now stated; the rating stays cheap-then-review because the step changes money paths and a per-render customer memo.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

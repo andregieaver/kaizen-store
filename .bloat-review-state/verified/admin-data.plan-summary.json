@@ -1,0 +1,144 @@
+{
+ "key": "admin-data",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/admin-data.json",
+ "validator": "OK: 15 findings, 0 refuted, 14 metrics",
+ "headline": "All 12 audit findings stand (8 confirmed, 4 corrected) and this pass added three; none argues for removing, hiding or merging a feature, and none rests on an empty table. The waste is in the admin's shell and home screens and is paid per owner tab and per save, so it grows with stores and owners, not with data: building the store menu costs 125 ms of blocking CPU on every shell render (220 permission lookups; 0.1 ms once memoised), and a store Home view runs 29 to 46 statements before its first content. The shell is drawn again after every save, and at least 39 save sites draw the whole route twice because the browser asks again after the action has already redrawn it. Before opening is the cheap time: first the menu memo (AD-1), the double redraws (AD-13), hidden-tab polls (AD-9), the products list's unused reads (AD-7) and a statement counter so this cannot grow unseen again (AD-12).",
+ "findings": [
+  {
+   "id": "AD-1",
+   "title": "The store menu is rebuilt with 220 slow permission lookups on every shell render",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "100-125 ms of blocking CPU per shell render down to about 0.1 ms (measured here); 64 ms per hub page.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-2",
+   "title": "The store Home runs 29 or more statements before it shows anything, one of them for nothing",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "First content after about 14 statements instead of 29+ (estimate); 8 fewer for certain, nothing visible changed.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-3",
+   "title": "Every admin request from a session without two-step calls Supabase Auth",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "One Auth HTTP call per admin request for sessions without two-step, two per save (not timed).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-4",
+   "title": "The store shell reads one thing after another, and checks Stripe set-up on every render",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "3 fewer sequential waits per hard load; 2 fewer statements per shell render after the first (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-5",
+   "title": "Every save and poll re-sends 51 to 66 KB of unchanged shell words and menu",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About half of 51-66 KB of JSON per shell redraw (8-11 KB gzip); about 20 KB less per Home view (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-6",
+   "title": "The platform Home holds its first paint for 18 statements and reads whole lists to show a number",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "18 statements to about 11 on the platform Home; attention list after about 5 (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-7",
+   "title": "The products list reads the whole editor context and a per-product check it does not need",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "16+ statements down to 4 per products-list view for an editor; three sequential waits gone (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-8",
+   "title": "An account's memberships are read two to four times per request, in four shapes",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "2-3 statements and 2-3 sequential waits per owner-level hard load; 1 statement on Stores for certain.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-9",
+   "title": "Progress polls redraw the whole admin, and a notice poll runs in every visible owner tab",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Hidden tabs stop polling; a progress tick drops from a whole route to 2-3 statements; notice poll 4 to 2.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-10",
+   "title": "Three lists load everything; the customers list also groups every order before it cuts to 100",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Bounds products, customers and platform Stores lists at a fixed page as stores grow (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-11",
+   "title": "The orders list re-reads store facts it already holds and waits in a row for the count",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "2 statements and 2 sequential waits per orders-list view (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-12",
+   "title": "Nothing counts what a screen costs the server, so the Home grew to 30 statements unseen",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "No direct saving; keeps the others' savings and gives the first real statement counts per screen.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-13",
+   "title": "At least 39 saves draw the whole route twice: the action redraws it, then the browser asks again",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "One whole-route render fewer at 39+ save sites, two fewer on four editors; 100-125 ms CPU each until AD-1.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-14",
+   "title": "The pages and articles lists read and check every page's whole content, twice, to show a title and a state",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "0.64 ms CPU and ~16 KB of JSON per page row per view: 128 ms and 3.3 MB for 200 articles (measured rate).",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "AD-15",
+   "title": "The Payments settings page reads one table three or four times and waits on Stripe and Mollie before it paints",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "2-3 statements and 3 sequential waits per Payments view; first paint no longer waits on Stripe (estimate).",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

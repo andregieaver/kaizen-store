@@ -1,0 +1,22 @@
+{
+ "id": "0.8",
+ "fixed": [
+  "Commit 2: the '…' in registerMessages is replaced by the literal ui and email overlays loadLanguage registers today plus texts: returns.",
+  "Commit 4: refresh()'s first statement and poll() read the stamp through coalesce((select ui_text_version from commerce.platform_settings), 0), so they always return a row.",
+  "Commit 4: test case (d) says ensureUi() is not called and states the expected 146 statements; a stop_if forbids widening the bound.",
+  "Commit 4: added the judge's languages.int.test.ts case (first t() read builds the language through the maker, the built value is kept, uiTextsFor holds BROWSER_KEYS); the int check no longer says 'no expectation changed'."
+ ],
+ "rejected": [
+  {
+   "problem": "import-reach.mjs does not exist yet.",
+   "why": "Step 0.1 creates docs/audits/bloat-review-2026-11/scripts/import-reach.mjs with exactly the output the checks read ('<entry>: <n> files ... ai=<bool>'), and depends_on names 0.1."
+  },
+  {
+   "problem": "bumpUiVersion's update silently does nothing when the platform_settings row is missing.",
+   "why": "The row is seeded by the baseline data migration and nothing in src, e2e or scripts deletes it; only the reader side was made robust."
+  }
+ ],
+ "cheaper": "applied: the judge's edit_brief (registerMessages written out, the int case through the real registry). The reviewer's 'write the unit test verbatim' was not applied: the seven cases are already named one by one and the int case now gives commit 4 a check the cheap model does not shape.",
+ "executor_before": "strong",
+ "executor_after": "cheap-then-review"
+}

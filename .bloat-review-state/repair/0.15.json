@@ -1,0 +1,12 @@
+{
+ "id": "0.15",
+ "fixed": [
+  "Commit 2: added a check that saveProductSettings calls refreshTag(productSettingsTag(member.store.id)), since Test B inserts the row before the first visit and cannot catch a missing refresh.",
+  "Commit 3: added a check that startSession and currentOwner call markMine (no e2e signs in on a fresh device).",
+  "The wishlist e2e addition was 'the end of it, or a second test'; it is now a named second test."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: an int test of saveProductSettings then productSettingsCached proves nothing outside Next ('use cache' is a plain string there and refreshTag does nothing), and a sign-in e2e on a fresh device needs a customer account fixture the brief cannot name; the grep checks cover the two omissions instead, but caching, cookies and sign-in still need a reader.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

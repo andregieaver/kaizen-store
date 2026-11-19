@@ -1,0 +1,117 @@
+{
+ "key": "deps",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/deps.json",
+ "validator": "OK: 12 findings, 0 refuted, 21 metrics",
+ "headline": "The dependency list is lean, and none of this dimension's case rests on what stores use today: 51 runtime packages, none without an importer, and every heavy browser library loads only on the press that needs it. The cost is in when server code loads: the page-view beacon takes about 1.0 s and 177 MB before its first answer where a lean route takes 0.22 s and 64 MB, and with three small import cuts (DP-10, DP-1, DP-3 step 1) its own code, bundled here, loads in 128-144 ms and 50 MB against 549-590 ms and 158 MB today. In the admin, Supabase's client and zod are 39% of the scripts a modern browser loads first on every screen (354 KB of 899 KB; the earlier 35% counted a noModule polyfill no modern browser fetches), the rich text editor (435 KB) is sent to 21 lists and detail pages, and every admin screen loads the AI manager's whole server side through two action files, a second door that the storefront review's cut does not close (1,396 source files with either cut alone, 986 with both). Every P0 fix is a few lines in a few files, moves no data, and is cheapest now, before opening.",
+ "findings": [
+  {
+   "id": "DP-1",
+   "title": "481 table definitions are loaded and indexed in every function for a query API nobody calls",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured on whole routes: 60-80 ms, 13 MB heap, 29-35 MB RSS less per cold start in 816 of 830 routes and the proxy; six fewer built copies.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-10",
+   "title": "The page-view beacon loads the whole server through a one-line re-export",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Beacon's own code, bundled: 549-590 ms to 209-215 ms, RSS +158 MB to +80 MB; graph 1,308 to 145 source files. Estimate for Vercel.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-4",
+   "title": "supabase-js, its realtime client and zod are 39% of the first scripts of every admin page",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "117 KB raw / 33 KB gzip of zod gone from admin first scripts; 237 KB / 61 KB of Supabase moved to after first paint.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-5",
+   "title": "The rich text editor is sent to 21 admin lists and detail pages that may never show it",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "435 KB raw / 136 KB gzip off the first scripts of 21 admin routes (order, customer, deal pages and lists).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-11",
+   "title": "Every admin screen loads the AI manager's whole server side through two action files, so the storefront review's cut alone changes nothing for the admin",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: 90-105 ms and 17 MB heap less per admin cold start; 1,396 to 986 source files, only together with SD-1's cut.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-2",
+   "title": "sharp's native library and a font parser load on nearly every cold start",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: 45-60 ms and about 24 MB RSS per cold start on roughly 740 routes; 28 async functions gain one line each.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-6",
+   "title": "Nothing limits what a route's server function loads, so nearly every route came to load everything",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "None by itself; holds the gains of DP-1, DP-2, DP-10, DP-11 with a graph ratchet, a post-build budget and a dependency scan.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-12",
+   "title": "Every route that reads a store builds the whole page model: 468 schemas for a theme's few fields",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: up to 45 ms, 6 MB heap, 20-26 MB RSS per cold start on beacon and API routes; do inside code review step 3.2.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-7",
+   "title": "Three Chromium routes are woken every minute whether or not there is work",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: most of 4,320 idle calls a day while queues are empty; no cold-start saving. Owned by the scheduling review's CR-1.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-8",
+   "title": "A 26 MB icon package is installed and parsed each build for 26 paths",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "26 MB less to install and one 5.25 MB parse less per build; nothing at run time.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-9",
+   "title": "The existing plan's dependency item (FH12) points at the wrong Postgres driver, and its note on three is incomplete",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "None in bytes; removes a wrong instruction (take pg out) from the working plan. Do it in DP-1's change.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DP-3",
+   "title": "The Stripe and Supabase SDKs are evaluated by 97% of routes; reading a store imports the Stripe SDK to see if two keys exist",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "Measured on a lean route: no visible time, about 1 MB heap. 113 test mocks make even step 1 an M. Not worth doing now.",
+   "verdict": "corrected",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

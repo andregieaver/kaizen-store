@@ -1,0 +1,197 @@
+{
+  "area": "surface",
+  "title": "The product's surface: one of each, and what a feature costs a store that does not use it",
+  "grade_today": "C",
+  "grade_reasons": "The base is sound and part of it is held: one switch registry kept in step with the navigation, the admin map and the AI tools by tests; a new store starts with the shop alone, 29 Basic links and 8 rows of its own; almost every scheduled job is one statement for the whole platform. But 'an unused feature costs close to nothing' fails in five named places per view (the cart, which also works the basket out twice; product tiles; the product page; the page frame; the owner's Home) and in the AI manager's round; three jobs have two engines (4,150 to 6,450 lines); and 1 of 14 surface counts has a budget. Real waste on a sound base, most of it not held: a C. Not a D, because only the cart multiplies a cost and every fix is small. The ladder assumes the owner says yes to the three folds, and that the other areas land the fixes named in measure 2.",
+  "measures": [
+    {
+      "name": "Summaries per cart view, and statements a cart or checkout sends for features the store has off",
+      "today": "2 summaries per cart view. Each sends 5 statements to learn that bonus (2), referrals (2) and checkout rules (1) are not in use. A view is at least 28 statements, 14 of them the second pass. Checkout runs one more whole summary for a credits panel that a store without Bonus never draws. Read in src/app/s/[store]/[market]/cart/cart-contents.tsx:76-78, src/server/bonus.ts:434-438 and src/server/cart-summary.ts:47-280, where 15 reads are awaited one after another. Lower bounds from the code (FT-15), not run against a database.",
+      "target_a": "1 summary per render. 0 statements for a feature that is switched off. A guest's cart in a shop-only store sends at most the basket's own reads plus 2: about 10 by the code's count. The counter's first run sets the figure, and it may only fall.",
+      "how_measured": "Two unit checks that FT-15 adds: cart-contents.test.ts (cartSummary called once, ./bonus not called) and a test of cartSummary() with features ['shop'] (bonusProgram, codeInPlay and friendState not called). And the statement count of the cart and checkout loaders in the query budget, on the counter DQ-11 builds (test/count-statements.ts), added by the work item 'A shop-only store's journey, counted'.",
+      "why_this_is_a": "The floor is what depends on this basket: the cart, its delivery (2), its codes, its tax facts (2) and its gift cards, about 7 statements. Everything else is a store setting and belongs in a cached read its writers refresh. The page already holds the store with its switches, so an off feature needs no read at all. A B stops at one summary per view. An A also holds the count, on the two pages where waiting costs a sale."
+    },
+    {
+      "name": "Places where a shop-only store pays per view for features it does not use",
+      "today": "5, none held by a test. The cart and checkout (FT-15). Product tiles: 1 function call and 3 queries per grid view for two switches that are off by default (PL-8, SD-14). The product page: about 16 statements a view beyond the proxy, asked for express checkout, Klarna, back in stock, quotes, price breaks, checkout questions and producer schemes whatever the store uses (SD-2). The page frame on a cold draw: 7 reads in a row, one per feature (DQ-7, SD-9). The owner's Home: every feature's count on each view, 29 or more statements (AD-2). Sources: those areas' digests; the cart read here.",
+      "target_a": "0. On the journey home, listing, product, cart, checkout of a store with features ['shop'], no statement names a table of a switched-off feature, and no function is called to learn a setting that is off by default. Features that have no switch are read together through cached per-store reads: at most 4 statements for all of them on a cold draw (DQ-7's own bar), none on a warm one.",
+      "how_measured": "The shop-only journey test (work item 4). It uses DQ-11's counter for the frame, cart and checkout loaders, and the table-scan difference (pg_stat_user_tables before and after one GET) in SD-13's scripts/server-budget.mjs for home, a listing and a product. It starts with today's exceptions listed and fails on a new one. Tiles: PL-8's e2e assertion of 0 requests to /api/shop/tiles.",
+      "why_this_is_a": "Zero is the floor, not an ideal: the store's row with its switches is read on every request anyway. The tolerance is for features with no switch (53 of 110 links stand behind none): one batched, cached read. Also tolerated, in numbers: a paid order fires about 10 trigger functions of optional features (bonus, referrals, creators, deals, bookings, drafts, gift cards, events). Each ends after 1 to 3 indexed reads inside the database, with no round trip (read in baseline_1_schema.sql and baseline_3_rules.sql, not timed; DS-12's budget holds the 27 triggers on orders). A B fixes the places found. An A has a test that finds the next one, because the first review missed the cart."
+    },
+    {
+      "name": "Scheduled work that does not follow use",
+      "today": "83 dispatcher jobs every five minutes (78 in runJobs() and 5 after it, recounted here) and 9 routes every minute. Almost all are one 'is anything due' statement for the whole platform. Not following use: 9 jobs that only prune run 288 times a day (23 statements a run, about 6,600 a day), and 2 run-log deletes run every minute (2,880 a day) (FT-3). In the cron area: the product-vector job and the listings' check hash every product on the platform every five minutes, and knowledge, media and alt texts loop per site (CR-4, CR-15).",
+      "target_a": "No job whose work can wait an hour or a day runs every five minutes: runJobs() has 69 entries or fewer after FT-3, and 58 or fewer dispatcher jobs stay on the five-minute cadence after CR-2. An idle dispatcher run sends the same number of statements with 1 store as with 20.",
+      "how_measured": "The entry count in src/app/api/cron/cart-reminders/route.ts. The rows of commerce.cron_jobs a day after the deploy: seven daily.* at 86,400 s and two hourly.* at 3,600 s. The 1-and-20-stores count in DQ-11's src/server/query-budget.int.test.ts.",
+      "why_this_is_a": "The floor is one due check per queue for the whole platform; that cannot go. The same count at 1 and at 20 stores is the strict form of 'cost follows use': any per-store term multiplies on opening day. Tolerance: the platform's own twin runners, a few polls a minute for one tenant, which CR-1 puts behind a gate. A B accepts 'small per store'."
+    },
+    {
+      "name": "Surface counts held by a budget",
+      "today": "1 of 14. Held: Basic links (at most 12 a section and under half of all, src/lib/store-nav.test.ts:245-253). Not held: dispatcher jobs 83, every-minute routes 9, pages 560, route handlers 268, tables 481, store links 110 (94 in a shop-only store's Advanced view, 35 under Settings), platform links 52, store AI tools 254, tools offered to a shop-only store 234, the manager's own tools 26, feature ids 14, platform_* tables 19, rows the database writes for a new store 8. From the planner's parsers; pages, handlers, tables, jobs and the store's triggers recounted here.",
+      "target_a": "14 of 14. Each count has a baseline. A test fails when a count rises without a decision row that carries an 'Idle cost:' line: what the feature costs a store that does not use it per request, per scheduled run, per AI round and per build, 'none' where none. It also fails when a count falls and the baseline is not lowered.",
+      "how_measured": "pnpm test src/lib/surface-budget.scan.test.ts, with src/lib/surface-budget.baseline.json, scripts/lib/surface-count.mjs and scripts/surface-budget.mjs. Work item 2 creates all four, built like src/server/ratchet.scan.test.ts and scripts/ratchet.mjs.",
+      "why_this_is_a": "These counts have no floor to push towards. The product is meant to be large, and an unused feature is not a finding. So the A bar is not a smaller number. It is that no number moves unseen, and that every rise says what it costs a store that does not use it. The tolerance is the raise itself, allowed with its line. A B has the baseline without the line."
+    },
+    {
+      "name": "Jobs that have two engines",
+      "today": "3. Order rules beside Workflows: about 1,900 lines, 528 test lines, 4 pages, 2 tables, 1 AI tool; the wave 9 spec meant one engine (docs/wave-9-platform.md:92). kaizenaflow.com kept twice since 7 November: about 2,150 lines for certain, up to about 4,300; 23 to 32 admin pages; parity plan step 7 is open. An own look saved two ways: commerce.store_themes beside the theme library, 100 to 250 lines and 1 table. Together 4,150 to 6,450 of 768,202 lines. Measured with wc and rg by the planner (FT-8, FT-5, FT-12). Two more pairs were never compared (gap 2).",
+      "target_a": "0. find src -iname '*order-rule*' | wc -l prints 0. rg -l platform_theme_installs src --glob '!*.test.*' | wc -l prints 0. rg -n store_themes src --glob '!*.test.*' | wc -l prints 0. Twins kept on purpose (the platform's four event engines, 19 platform_* tables) are in the surface budget and rise only with a decision.",
+      "how_measured": "The three commands above, each its finding's own done-when. The platform_* count in src/lib/surface-budget.baseline.json. FM-13's src/lib/copies.baseline.json for twins at the level of lines (41 pairs today).",
+      "why_this_is_a": "The floor is one engine per job. Tolerance: helpers that overlap at an edge, under 200 lines a pair (campaigns and discount codes), and twins the owner keeps with a written reason. Before opening none of the three has an owner's data to move, so waiting buys nothing; a B would leave the small one. If the owner chooses to keep a pair, it joins the budget's list of deliberate twins and the grade should say so."
+    },
+    {
+      "name": "What an AI manager round carries for a shop-only store",
+      "today": "124 tool definitions: 146,889 characters of tools, about 161,700 with the prompt. A store with every feature on sends 143,803, so the switches do not make a round smaller. Up to 11 calls a turn. Drawn by the AI area's reviewers with the app's own functions (AI-1). The cap is TOOLS_PER_TURN = 124 at src/lib/tool-budget.ts:15.",
+      "target_a": "A default round under 52,000 characters with no page open and under 80,000 on an orders page (AI-1's bar). At most 40 store tools when no area was asked for. A second round shows cached input tokens above 0.",
+      "how_measured": "src/server/ai-round.scan.test.ts with its baseline (AI-10 creates it). A case in src/lib/tool-budget.test.ts. cached_input_tokens in commerce.ai_usage.",
+      "why_this_is_a": "The floor is the manager's own 26 tools, the 12 core tools and load_tools: 33,810 characters on Home by the AI area's draw. 52,000 leaves room for the page's area. More feature switches would not get there: a shop-only store is offered 234 tools and a round has room for 98. A B keeps 124 and adds caching only."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "The cart and checkout: one summary per view, no read for a feature that is off",
+      "finding_ids": ["FT-15"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "cart-contents.test.ts asserts cartSummary is called exactly once per cart render and ./bonus is not called; and a new unit test of cartSummary() with features ['shop'] (mocking ./bonus and ./affiliates) asserts bonusProgram, codeInPlay and friendState are not called. The money tests pass (21 test files hold the summary equal to placeOrder()).",
+      "moves": "Measure 1: summaries per cart view 2 to 1; statements for off features 5 a summary to 0, the last of them when checkout rules get their per-store cache in the same change; a cart view from at least 28 statements to about 10 by the code's count. Measure 2: 5 places to 4. placeOrder() is not touched.",
+      "serves": "surface",
+      "owner_decision": false
+    },
+    {
+      "title": "A surface budget: fourteen counts held, and every rise states its idle cost",
+      "finding_ids": ["FT-2"],
+      "also_ids": ["DS-12", "CR-14", "FM-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "pnpm test src/lib/surface-budget.scan.test.ts passes on main with 14 counts in src/lib/surface-budget.baseline.json (among them the links per navigation section, 19 platform_* tables and the 8 rows the database writes for a new store), and its own case shows that one more job in the dispatcher's list without --raise fails it.",
+      "moves": "Measure 4: 1 of 14 counts held to 14 of 14. It also holds measure 5's deliberate twins, and gives FT-7 its ceiling on Advanced links. One baseline file and one script can carry DS-12's and CR-14's counts too: build it once. The same change writes one paragraph in docs/store-features.md: switches are for what an owner sees, not for cost (FT-1).",
+      "serves": "surface",
+      "owner_decision": true
+    },
+    {
+      "title": "Prunes leave the five-minute and the every-minute cadence",
+      "finding_ids": ["FT-3"],
+      "also_ids": ["CR-2", "DS-3", "CA-12"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The runJobs() block of src/app/api/cron/cart-reminders/route.ts has 69 entries (78 today), and a day after the deploy commerce.cron_jobs holds seven daily.* rows with every_seconds 86400 and two hourly.* rows with 3600, none late on Platform, Usage and limits.",
+      "moves": "Measure 3: entries in runJobs() 78 to 69; about 2,500 job runs and 9,300 statements a day fewer (6,400 from the nine prunes, 2,900 from the two run-log deletes). If CR-2's cadence registry lands first, do this inside it: it reaches the same end.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "A shop-only store's journey, counted: no read for an off feature from home to checkout (gap 1)",
+      "finding_ids": [],
+      "also_ids": ["DQ-11", "SD-13", "AD-12", "PL-8", "SD-14", "SD-2", "DQ-7", "SD-9", "AD-2"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "pnpm test:int runs a case that draws the frame, cart and checkout loaders for a seeded store with features ['shop'] and fails when a statement names a table of a switched-off feature; the cart's and checkout's statement counts are in the query budget of src/server/ratchet.baseline.json; scripts/server-budget.mjs fails when one GET of that store's home, listing or product page scans a table of an off feature. A trial read of commerce.bonus_settings added to cartSummary() fails it.",
+      "moves": "Measures 1 and 2: from no check to a test that fails on the next idle read. It starts with today's exceptions listed (tiles, the product page's per-feature reads, the frame's seven) and each leaves the list as its own area's fix lands: PL-8 and SD-14, SD-2, DQ-7 and SD-9, AD-2. Measure 2 is 0 when the list is empty. Needs FT-15 and step 1 of DQ-11 first.",
+      "serves": "surface",
+      "owner_decision": false
+    },
+    {
+      "title": "One engine for what happens when an order is paid: order rules fold into Workflows",
+      "finding_ids": ["FT-8"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "find src -iname '*order-rule*' | wc -l prints 0; the store navigation has 109 links (no /settings/automation); and src/server/workflows.int.test.ts has a case where a paid order over an amount in the main currency is put on hold and the staff email says so.",
+      "moves": "Measure 5: 3 to 2. About 1,900 lines, 528 test lines, 4 pages, 1 link and 1 AI tool go now and 2 tables a release later; Workflows gains 300 to 500 lines for the hold action, 'any' matching and the order facts. Measure 4: store links 110 to 109, store tools 254 to 253. It can be the same change as code review step 2.4. The hold must not be capped at 100 runs an hour.",
+      "serves": "surface",
+      "owner_decision": true
+    },
+    {
+      "title": "One Kaizena Flow site: finish step 7 of the parity plan",
+      "finding_ids": ["FT-5"],
+      "also_ids": ["FM-3", "DS-6"],
+      "phase": "next",
+      "effort": "L",
+      "done_when": "rg -l \"platform_theme_installs\" src --glob '!*.test.*' | wc -l prints 0; ls 'src/app/(platform)' shows no [slug], blog, category, tag or cookies; and node scripts/site-compare.mjs https://kaizenaflow.com --against before.json passes.",
+      "moves": "Measure 5: 2 to 1. At least 2,150 lines, 23 admin pages and 12 site route pages go; up to about 4,300 lines and 32 admin pages once the platform's own routes take their header and footer from the store. Measure 4: pages 560 to about 525, platform_* tables 19 to 16 or 17 a release later. Before it: parity plan step 6 decided, the media library's rows moved to the store, and the owner's word that the switch of 7 November is final, because this removes the way back.",
+      "serves": "surface",
+      "owner_decision": true
+    },
+    {
+      "title": "An own look is saved in one place: the theme library",
+      "finding_ids": ["FT-12"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "rg -n \"store_themes\" src --glob '!*.test.*' | wc -l prints 0 after the second migration, and src/server/themes.int.test.ts has a case where 'Save as new theme' adds a row to commerce.store_theme_installs.",
+      "moves": "Measure 5: 1 to 0. 100 to 250 lines and 1 table go (tables 481 to 480 after the second migration). The platform's theme workspace changes in the same change, by the parity rule. Cheapest now: no owner has a saved look to convert.",
+      "serves": "surface",
+      "owner_decision": true
+    },
+    {
+      "title": "A smaller default round for the AI manager (code review step 3.18)",
+      "finding_ids": ["FT-4"],
+      "also_ids": ["AI-1", "AI-10", "AI-14"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "A case in src/lib/tool-budget.test.ts shows chooseTools() over the whole registry with no area asked sends at most 40 store tools; the usage row of a second round shows cached input tokens above 0; a new eval recording is committed and agent-eval-replay.int.test.ts passes.",
+      "moves": "Measure 6: 124 definitions and about 161,700 characters a round to under 52,000 with no page open, held by AI-10's src/server/ai-round.scan.test.ts. Count it once, in the AI area. This finding only records that more feature switches would not lower a round.",
+      "serves": "ai",
+      "owner_decision": true
+    },
+    {
+      "title": "Compare by job the two pairs of engines nobody compared: invoices, and money owed (gap 2)",
+      "finding_ids": [],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "docs/audits/bloat-review-2026-11/findings/features.md has, for order invoices beside Work invoices and for orders on payment terms beside Work's unpaid invoices, either a finding with the shared and the separate lines and tables and a fix, or one tolerated line that says why they are two jobs.",
+      "moves": "Measure 5: its count of 3 becomes a checked count. Half a day of reading; no code changes. If a pair proves to be one job, the plan gets a step.",
+      "serves": "surface",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "FT-1",
+      "why": "53 of 110 store links and 133 of 254 AI tools stand behind no switch. That is fine: a switch changes what an owner sees, not what a store costs. Links hide in Basic, a round is capped whatever is switched, and jobs are set-based. Where a feature does cost an idle store, the fix is at the read (FT-15), and the budget asks each new feature for its idle cost. No second tier of switches. One paragraph in docs/store-features.md records this, written with the surface budget."
+    },
+    {
+      "finding_id": "FT-9",
+      "why": "Campaigns (7 kinds) and discount codes (3 kinds) are two mechanisms with a shared edge, not one job built twice: about 100 to 200 lines of parallel helpers, in code that decides money. Fold the helpers into one small module when pricing code is next opened. The one Discounts page is already code review step 2.4."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": ["FT-7"],
+      "question": "A new shop shows 29 links in Basic and 94 in Advanced, 35 of them under Settings. Is that what Lisa should meet, or should the moves already planned (code review step 2.4: about 85 links, 20 under Settings) be done before opening? It changes reading time, not running cost."
+    },
+    {
+      "finding_ids": ["FT-10"],
+      "question": "The platform has its own copy of four store engines (workflows, integrations, own endpoints, the read-only API: about 2,100 lines and 8 tables), built on the parity rule. Keep them as twins, or serve Kaizena Flow's events through its own store's engines once the site is one? The idle cost is a few polls a minute either way. It is the same question as FM-5, DS-6 and CP-4: one answer serves all four. Sharing the twins' code (FM-4) needs no answer."
+    },
+    {
+      "finding_ids": ["FT-13"],
+      "question": "Creators earn money commission (1,411 lines, 5 tables); referrals pay in bonus credits. Keep creators as a programme of their own, as built, or make a creator a kind of referrer who is paid in money? No running cost either way."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "The cart and checkout have no statement budget, and no test walks a shop-only store's journey",
+      "evidence": "src/server/cart-summary.ts awaits 15 reads one after another (lines 47 to 280), and the cart page adds getCartGift(), which reads order_settings on every view (src/server/cart.ts:480). FT-15's check asserts which functions are called, not what reaches the database. SD-13's server budget lists home, a product, All products, a category and home with a cart cookie. DQ-11's lists the idle tick, the minute routes and the cold frame. Code review step 3.8 (FF4) cuts waits in the two loaders and has no test. None counts the cart page or checkout, and none uses a store with only the shop on. The features review tested its line 'costs close to nothing' on product pages and missed the cart; other areas then found four more places (PL-8, SD-2, DQ-7, AD-2).",
+      "proposed_work_item": "Work item 4, 'A shop-only store's journey, counted'. Next, M. After FT-15 and step 1 of DQ-11. It holds measures 1 and 2."
+    },
+    {
+      "title": "Two pairs of engines were never compared by job: invoices, and money owed",
+      "evidence": "commerce.initialise_store() gives every store two invoice series and two credit-note series ('invoice', 'credit_note', 'work_invoice', 'work_credit_note': supabase/migrations/20261111172839_baseline_1_schema.sql:9674-9679), and two functions issue an invoice (issue_order_invoice at :10499, issue_work_invoice at :10622). src/server/work-invoices.ts is 3,083 lines and imports nothing from the shop's invoice modules; only src/lib/work-einvoice.ts shares the e-invoice parts. Money owed by a due date is kept twice as well: orders on payment terms (src/server/payment-terms.ts, 618 lines: due dates, reminders, what a company owes) and Work's unpaid invoices (overdue, payments, losses). No finding in features, families or copied-code looks at either pair: the clone scans compare lines (41 twin pairs), not jobs. They may well be two jobs, a receipt for a paid order and a claim to be paid. Nobody has said so with numbers.",
+      "proposed_work_item": "Work item 9: half a day, read-only. For each pair: what is shared and what is separate, in lines and tables; then a finding with a fix, or a tolerated line. Now, S."
+    },
+    {
+      "title": "Nothing holds what the database writes for a new store, and 2 of its 8 rows already belong to a feature that starts off",
+      "evidence": "Creating a store fires three AFTER INSERT triggers (stores_first_blog, stores_first_install, stores_initialise: supabase/migrations/20261111172841_baseline_3_rules.sql:17006-17041; their functions are in baseline_1_schema.sql at :9669, :19219 and :19234). They write 5 number series, 1 payment provider, 1 blog and 1 theme install. Two of the five series are Work's, and Work is off for a new store (stores.modules defaults to '{}', src/db/schema.ts:805). So the review's line 'nothing per optional feature' is not quite true. Two small rows a store are harmless. But rg for initialise_store in the tests finds one mention, a name in a list (src/db/invoices.test.ts:695): no test counts a new store's rows. The next feature can add a settings row or a trigger per store unseen, and that multiplies with every sign-up.",
+      "proposed_work_item": "One more count in the surface budget (work item 2): a case in src/db/commerce.test.ts inserts a store and counts, per table, the rows that carry its id. The baseline holds 8; a rise needs the same 'Idle cost:' line. S, inside work item 2. The two Work series are tolerated at 2 rows a store."
+    }
+  ],
+  "ladder": {
+    "after_now": "B",
+    "after_next": "A",
+    "after_later": "A"
+  }
+}

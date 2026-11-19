@@ -1,0 +1,21 @@
+{
+ "id": "3.18",
+ "fixed": [
+  "Commit 2: ci-once.scan.test.ts is an edit with made_by 0.38 (its jobsOf and 'type check in two jobs' case stated), with a stop_if instead of a create-or-stop.",
+  "ci-recorder.scan.test.ts is made by step 1.20 (a dependency): the 'only if' in the check removed.",
+  "static's lint and type check are bare '- run:' lines (55, 56): the brief says to give them names before adding the condition."
+ ],
+ "rejected": [
+  {
+   "problem": "scripts/timed.mjs, scripts/ci-budgets.json and src/lib/ci-once.scan.test.ts come from steps 1.20 and 0.38 and do not exist yet.",
+   "why": "Both steps are in depends_on and stop_if covers each; ci-once is now marked made_by 0.38."
+  },
+  {
+   "problem": "Shape B asks for a new database dump and load script (scripts/e2e-db.mjs) specified in prose only.",
+   "why": "Shape B is the stronger model's branch of a measured choice; its prose names the commands, columns, transaction and the count check, which is as far as the brief can go before the shape is chosen."
+  }
+ ],
+ "cheaper": "not applied: the recorder's medians and the list of tests failing in the stand-in build need runs this check cannot make.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

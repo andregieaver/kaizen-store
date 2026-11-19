@@ -1,0 +1,11 @@
+{
+ "id": "3.11",
+ "fixed": [
+  "Commit 1 had a fallback 'if 3.10 is not done, in runWorkflows()' (two places to edit): it now edits only STORE_SCOPE's payloadOf, select and row (3.10's), and a stop_if covers 3.10 missing.",
+  "The match had to reach workflowMatches(), which 3.10 moved into src/server/workflow-engine.ts: added an edit of that file (made_by 3.10) that passes run.match, optional so the platform scope keeps all-must-hold."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the facts list per condition kind and the editor's layout and words are a design the brief cannot settle without reading the rules engine in full; the step stays strong.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

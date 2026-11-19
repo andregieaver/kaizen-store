@@ -1,0 +1,135 @@
+{
+ "key": "families",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/families.json",
+ "validator": "OK: 14 findings, 0 refuted, 16 metrics",
+ "headline": "Copy-paste is not the problem here: 1.5% of code lines are clones (41 twin pairs in 3,974 files) and carriers, payments, emails, CSV, PDF and the AI tools each have one core. What matters is two loading faults paid at every cold start whatever a store uses: both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, and three small helpers imported through the chat modules make 11 routes, the visit beacons and the recommendations beacon among them, load about 11.4 MB each where a beacon needs about 2 MB. Both fixes are small and safe and come first (P0) with a server-side import check to hold them; the true duplicates (kaizenaflow.com kept twice, up to 4,400 lines and cheapest before opening; the platform's events pipeline; five import flows; Fiken's sync engine) are folded when each area is next opened. Nothing in the plan rests on a feature being unused.",
+ "findings": [
+  {
+   "id": "FM-2",
+   "title": "One import of sameSite through the chat module makes the four visit beacons, and five admin export routes, load the whole server core",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "9 routes leave the core; a beacon reaches 146 modules, not 1,308, and about 2 MB built, not 11.4 MB (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-14",
+   "title": "Two more public routes load the whole server core for three small helpers: the recommendations beacon and the docs' feedback",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "2 more routes leave the core: the recommendations beacon 1,308 to 143 modules, the docs feedback 1,324 to 425.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-1",
+   "title": "Both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, the storefront's included",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Non-admin functions reach 0.55 MB of words, not 3.46 MB (84% less); admin pages a median 0.75 MB; up to 30 MB less build output.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-13",
+   "title": "No check holds server import reach or copies, so heavy imports and twins arrive unseen",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No saving itself; keeps FM-1, FM-2 and FM-14 fixed and records each new copy, for about 2.7 s of test time.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-3",
+   "title": "kaizenaflow.com exists twice: the old no-store site is still built and kept beside the store that now serves it",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Up to 4,400 lines and 560 test lines, 3 tables, about 20 fewer routes to build, one set of chrome.",
+   "verdict": "confirmed",
+   "owner_decision": true
+  },
+  {
+   "id": "FM-5",
+   "title": "The parity rule names platform_* tables as the way and does not say when the store's module with a scope is expected",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No lines today; keeps the next console step from being built as a copy.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FM-4",
+   "title": "The platform's events pipeline is written a second time beside the stores': 26 to 55% of its lines are the stores' own",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 300 to 550 lines (estimate); tests stay.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-6",
+   "title": "Five CSV imports repeat the same orchestration, pages and client flow around one shared job core",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 900 to 1,300 lines (estimate); one import flow where there are four.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-7",
+   "title": "1,266 server actions, 50 on the shared wrapper; the count of the rest is not held",
+   "priority": "P2",
+   "effort": "L",
+   "saving": "About 300 lines over time (estimate) and one failure behaviour; the count stops growing now.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-8",
+   "title": "Lists, tables, dates and selects are still hand-made per screen, and the counts are not held while the kit waits",
+   "priority": "P2",
+   "effort": "L",
+   "saving": "Up to about 2,000 lines of table markup once the kit is used (estimate); the counts stop growing now.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-10",
+   "title": "Work's combined lists and the account's Domains pages repeat the store's, 29 to 77% the same",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 350 to 450 lines (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-11",
+   "title": "Ten small pairs of near-copies, about 840 identical lines",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 500 to 700 lines (estimate), folded pair by pair when touched.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-9",
+   "title": "Fiken's sync engine is a copy of Tripletex's: about 250 to 400 identical lines, and no third system is planned",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "About 250 to 400 lines (estimate); not planned now.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FM-12",
+   "title": "Small helpers are rewritten per file: addDays in 10 files, isUuid in 23, isUniqueViolation in 9",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "Up to about 1,000 lines over time; a lint rule stops three helpers spreading.",
+   "verdict": "corrected",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

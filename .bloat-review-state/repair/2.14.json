@@ -1,0 +1,18 @@
+{
+ "id": "2.14",
+ "fixed": [
+  "Place 8 dropped: src/server/owner-tools.ts has no savePage() call and the fallback rg finds several unrelated publishers; the brief now says eight places and names the publishers that stay store-wide.",
+  "Commit 1's product-layouts int case is one decided assertion on countStatements() records (one 'select id, published from commerce.pages' per call, its values hold the layout's id and no product id).",
+  "Commit 6 decided: 0.28 adds no lookup of pages holding a picture, so refreshAltTexts() keeps its return type, an owner is returned only when its queue is empty, no per-page loop is added to the route; the test is an int case in alt-texts.int.test.ts (three runs of a 12-picture queue).",
+  "depends_on now names 1.9 (countStatements), with a stop_if for its absence."
+ ],
+ "rejected": [
+  {
+   "problem": "x-nextjs-cache under cacheComponents is not confirmed.",
+   "why": "It cannot be confirmed without a build; stop_if 1 already stops on it and forbids a weaker check."
+  }
+ ],
+ "cheaper": "not applied: naming every reader of a page's facts across the site is the judgement that keeps the step strong; commit 1 is now a cheap commit on its own.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

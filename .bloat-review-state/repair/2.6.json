@@ -1,0 +1,15 @@
+{
+ "id": "2.6",
+ "fixed": [
+  "Commit 1: PolicyLink is edited as step 0.13 leaves it (made_by 0.13) and its policies are renamed view->sight and none->never, in policy-link.tsx, admin/ui/link.tsx and policy-link.test.ts; stop_if 2 no longer fires on the expected names (found on this check: 0.13 uses view/intent/none, 2.7 and 2.8 expect sight/intent/never).",
+  "Commit 1: site-parts.tsx, platform-layout.tsx and cart-link.tsx name each link by its href and say line numbers are from 12 November.",
+  "Commit 2: the menus e2e case counts router prefetch requests with e2e/prefetch.spec.ts's watch() header test only, not an rsc header.",
+  "Commit 3: e2e/prefetch.spec.ts (made_by 1.3) is described as step 1.3 leaves it (watch(), readToFooter(), ROUTER_REQUESTS per path on the phone) and the rows are set there; the 1280 px count is a new named test.",
+  "Commit 5: e2e/signed-in/prefetch.spec.ts (made_by 0.13) sets prefetches to 0 in the SCREENS table step 0.13 leaves.",
+  "A stop_if covers the absence of the two specs' tables."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: commit 5's file list comes from running the signed-in spec on a stand-in build, which this check could not do (no builds); it stays an open list, so the step stays cheap-then-review.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

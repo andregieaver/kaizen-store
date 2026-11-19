@@ -1,0 +1,282 @@
+{
+  "area": "owner-browser",
+  "title": "What an owner's browser gets in the admin",
+  "grade_today": "D",
+  "grade_reasons": "D, on the build's own figures, recomputed here from route-bundle-stats.json. Every signed-in screen loads about twice the script it needs (median 1,152,953 bytes where about 650,000 will do; 481 KB of it is three stray imports), 27 screens load an editor or a catalogue they never draw (up to 4.27 MB), a product editor's document is two thirds words that no part reads, and each screen makes 23 to 46 background requests. Budgets watch 9 of 449 routes and none of the worst four, and no document or request count is held. The base is better than the letter says: the heavy libraries already load on demand and the seven most-used screens are held from growing, which is why most of the fix is small.",
+  "measures": [
+    {
+      "name": "First scripts of a plain signed-in screen",
+      "today": "Median of the 449 admin routes: 1,152,953 bytes raw. The store home: 1,194,862 raw / 360,861 gzip. 337 of 449 routes sit between 1.0 and 1.3 MB. Source: .next/diagnostics/route-bundle-stats.json, recomputed by the steward. 481 KB of every screen is Supabase's client, zod and the page builder's English, on 420 to 432 routes.",
+      "target_a": "Median at or under 650,000 bytes raw. The store home, orders, products, settings and the platform home each at or under 680,000 (about 210 KB gzip).",
+      "how_measured": "scripts/bundle-budget.mjs over .next/diagnostics/route-bundle-stats.json after each build (created by the work item 'One check over every route'), and the seven screens of e2e/signed-in/admin-scripts.spec.ts.",
+      "why_this_is_a": "The floor is about 511 KB and cannot go: 447,102 bytes of React and Next that all 560 routes share (133,758 gzip), and about 64 KB for the admin's frame (menus, rail, tooltips, the AI manager's launcher). 650,000 leaves a screen about 140 KB for its own code. The findings' own bars are 700,000 to 760,000 for the home; that is a B. The simulation on the built chunks gives a median near 634,000, so the bar can be met with about 2% to spare."
+    },
+    {
+      "name": "Script a plain screen has loaded by the time it is idle",
+      "today": "1,428,740 bytes on the store home (m/loaded.json, local build): 1,187,034 in the first load and 241,706 after it. Nothing budgets the second part: the spec reads the HTML's script tags only. On the local build most of the after-load part is the storefront's scripts, pulled by the View store link.",
+      "target_a": "At or under 800,000 bytes raw five seconds after load, with Supabase's realtime, storage and database clients in none of it.",
+      "how_measured": "A new case in e2e/signed-in/admin-scripts.spec.ts that sums every script response until the page is idle (created by the gap item 'Session without the whole Supabase client'). It is steady only once nothing is prefetched at rest.",
+      "why_this_is_a": "The planned cut moves Supabase's client (259,469 bytes with realtime and a Buffer polyfill) from the first load to after idle. It does not remove it, so a first-load budget alone would call a screen of about 930 KB done. The need is one token refresh; the auth client alone is about 117 KB as built. 800,000 is the first-load bar plus that. A B accepts bytes that only moved."
+    },
+    {
+      "name": "The page builder's first scripts, and the ceiling for every other route",
+      "today": "Builder: 3,303,372 bytes raw / 1,014,731 gzip on a store's editor routes. 39 routes carry the builder's chunk: 26 editors and 13 previews that draw no editor. 90 routes are over 1.3 MB and 40 over 3 MB. The largest is 4,274,839 (a Work invoice).",
+      "target_a": "The builder at or under 1,800,000 bytes raw (about 555 KB gzip), with the rich text editor and the store's language arriving after first paint. No other route over 1,300,000. At most 26 routes over that line, each named in the baseline.",
+      "how_measured": "scripts/bundle-budget.mjs: a ceiling per kind of route (builder, anything else) and the count of routes over 1.3 MB, read from route-bundle-stats.json.",
+      "why_this_is_a": "Floor, an estimate from the built chunks: React and Next 447 KB, the frame 64 KB, zod 117 KB (the builder checks the page model as you type), and about 1.0 MB for the canvas, the page model and the store's own block views: about 1.6 MB. What need not come first: the rich text editor 435 KB, four store languages 368 KB, Supabase 259 KB, English copies about 150 KB, and about 300 KB of dialogs and of field forms for the 37 block types. The findings' own bar is 2,450,000; that is a B. 1.8 MB is the floor plus about 12%."
+    },
+    {
+      "name": "Code a screen downloads for something it does not draw",
+      "today": "First-load chunks by marker: Supabase's client on 432 of 449 routes, zod on 432, the builder's English on 423, the rich text editor on 73 (34 outside the builder's family), a whole storefront language on 40. 13 previews load the whole builder (3.2 to 3.3 MB). One first-load chunk is 1,704,595 bytes. The AI manager's chat is 496,206 bytes on its first opening, about 95% of it three tables read for two labels.",
+      "target_a": "Supabase on 0 routes. The rich text editor on 0. A whole storefront language on 0. Any English catalogue but common and sign-in on 0. zod on at most 160 routes, a list that may only shrink. No first-load chunk over 600,000 bytes. The chat's scripts on first opening at or under 130,000.",
+      "how_measured": "Marker strings searched in each route's first-load chunks by scripts/bundle-budget.mjs; src/components/admin/admin-bundle.scan.test.ts with its starting lists empty; e2e/signed-in/ai-manager-panel.spec.ts for the chat.",
+      "why_this_is_a": "The floor is zero: none of these is needed to paint the screens that carry them. Stated tolerance: zod (116,870 raw, 32,996 gzip) stays on screens whose own forms check input in the browser, and the rich text editor's 435 KB arrives in the builder after first paint. The chat's own code is 39 files and 302,869 bytes of source; 130,000 built is that plus about 10%. A B leaves today's offenders on lists that 'may only shrink'; an A has the lists empty."
+    },
+    {
+      "name": "Words in a document that no part of the page reads",
+      "today": "Every store screen is handed 34.0 KB of words and reads about 12 KB; the setup area (6.9 KB) has no reader at all. The product editor is handed 238.5 KB and reads 78.9 KB. The builder is handed 311.6 KB and reads 195.4 KB. Words are 63% of the payload over 16 admin documents (1,227 of 1,943 KB). Documents: store home 165,942 characters, product editor 426,497 bytes (108 KB gzip), builder 585,943 (136 KB gzip).",
+      "target_a": "Unread words at or under 10% of the words handed, on each budgeted screen. Documents: store home at or under 140,000, product editor at or under 290,000, builder at or under 480,000.",
+      "how_measured": "Document budgets in e2e/signed-in/admin-scripts.spec.ts (added by 'One check over every route', lowered by the words item); admin-cuts.scan.test.ts keeps a reader from going back to a whole area; docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs draws the table.",
+      "why_this_is_a": "The floor is the markup and its twin as data, which React needs to wake the page, plus the words the parts on the page read. Tolerance: 10% for unread leaves of a group that is handed whole, and the builder's 195 KB of read words travelling in each document (moving them into a cached script is a trial with a known risk, D540). A B keeps whole areas and budgets today's size."
+    },
+    {
+      "name": "Requests an idle admin screen makes",
+      "today": "23 to 46 router prefetches per screen (home 28 for 13 links, 98 KB on the wire; pages list 46), and about 25 again after every refresh or save. One notice poll per load and every 60 seconds per visible tab: 60 requests and 240 statements an hour.",
+      "target_a": "0 router prefetches in the 3 seconds after load and at most 2 after pointing at a link. At most 6 poll requests an hour from an untouched tab, each at most 2 statements after the account read.",
+      "how_measured": "e2e/signed-in/prefetch.spec.ts (created by the prefetch item); a signed-in spec with a clock and assistant-notices.int.test.ts (created by the notice item).",
+      "why_this_is_a": "The floor is zero prefetches: what the admin fetches ahead is a loading skeleton, nearly the same for every route, and pointing at a link fetches it in time. The poll's floor is one cheap count while the person is there. A B would cap today's counts; an A asks for nothing nobody pointed at."
+    },
+    {
+      "name": "What grows with the catalogue: bytes per row on a list",
+      "today": "The Products list sends every product of the store: about 0.9 KB of document per product, no limit in the read (src/server/products.ts, listAdminProducts). An estimated 4.5 MB at 5,000 products. The test stores have 10, so nothing shows today.",
+      "target_a": "At most 100 rows a page: a store with 500 products gets a Products document under 300,000 characters that says '100 of 500'.",
+      "how_measured": "A seeded case created by the Products item. The admin-data area holds the other lists the same way (AD-10).",
+      "why_this_is_a": "A list must not grow in a straight line with the store. 100 rows is what the storefront's listings and code review step 1.13 already use. There is no B here: a list is bounded or it is not."
+    },
+    {
+      "name": "What holds it: routes under a budget, and the speed owners get",
+      "today": "9 of 449 admin routes have a script budget. No document and no request count has one. The import walk covers shoppers' code only. The one production figure, the admin's own speed beacon, read 3.93 s LCP at p75 over 52 loads on 31 October (INP 136 ms), before 1.1 MB left each screen. It has not been read since, and nothing warns when it is not good.",
+      "target_a": "449 of 449 routes in a baseline that only falls (15,000 bytes of room a route). Document and request budgets on the store home, orders, a product's editor and the builder. The import walk green with empty lists. LCP at p75 at or under 2.5 s and INP at or under 200 ms for every kind of admin screen with 100 loads or more in 28 days, with a line in the platform's briefing when one is not.",
+      "how_measured": "scripts/bundle-budget.mjs in CI; e2e/signed-in/admin-scripts.spec.ts and prefetch.spec.ts; admin-bundle.scan.test.ts; Platform, Usage and limits (commerce.own_speed_samples, site 'admin') and the briefing line the gap item adds.",
+      "why_this_is_a": "An A needs every measure held by a test or a production figure. Bytes are a stand-in; the beacon is what owners feel, and 2.5 s and 200 ms are Google's 'good', the line the storefront is already held to. A B has budgets on scripts only and reads the field figure when someone remembers."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "One check over every route's first scripts, an import walk for the admin, and a document budget",
+      "finding_ids": ["AC-10", "AC-11", "BN-11"],
+      "also_ids": ["SC-6", "PL-13", "TX-9", "CS-3", "PM-14"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "node scripts/bundle-budget.mjs exits 0 on main after a build with a baseline of all 560 routes (15 have a budget today) and CI runs it. pnpm test runs admin-bundle.scan.test.ts green. Both fail on a branch that adds an import of zod to src/components/admin/admin-rail.tsx. Both budget specs count each script file once and no nomodule tag. e2e/signed-in/admin-scripts.spec.ts holds a document budget for its 7 screens (0 today).",
+      "moves": "Routes under a budget: 9 of 449 admin routes to 449 of 449 (15 of 560 to 560 of 560). No bytes by itself. Do it first, at today's figures, so every later item shows as a number that falls.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Take Supabase, zod and the builder's English off every signed-in screen",
+      "finding_ids": ["AC-1", "BN-1", "BN-3", "BN-4"],
+      "also_ids": ["TX-4", "DP-4"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After pnpm build, in route-bundle-stats.json: /admin/[store] is at or under 700,000 bytes (1,194,862 today). No route's first-load chunks hold 'GoTrueClient' (432 routes today). 'ZodError' is in at most 160 routes (432 today) and in none of /admin/[store], orders, products, settings and /admin/platform. 'Set for {size}' is in at most 45 routes (423 today). e2e/signed-in passes.",
+      "moves": "Plain screen first scripts: median 1,152,953 to about 634,000; store home 1.19 MB to about 0.67 MB. Supabase on 432 routes to 0, zod 432 to at most 160. Supabase's 259 KB moves to after idle; it is not removed (see the gap).",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Previews and page lists stop loading the page builder",
+      "finding_ids": ["AC-2", "BN-14"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "route-bundle-stats.json after a build: no route ending in /preview has 'ProseMirror' in its first-load chunks (13 today). /admin/[store]/pages/[pageId]/preview is at or under 1,450,000 bytes (3,303,372 today) and the sandbox's preview at or under 850,000 (3,220,824). /admin/[store]/pages is at or under 1,300,000 (2,002,798) and /admin/[store]/content at or under 1,250,000 (1,953,143). Figures are before the frame cut.",
+      "moves": "Screens that load an editor they do not draw: 26 to 0. Routes that carry the builder's chunk: 39 to 26. A store's preview 3.3 MB to about 0.83 MB once the frame cut is in.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Custom fields and the rich text editor load when a screen draws them (orders, customers, deals, lists, the product editor)",
+      "finding_ids": ["AC-3", "BN-5"],
+      "also_ids": ["DP-5"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "route-bundle-stats.json after a build: no route outside the builder's family has 'ProseMirror' in its first-load chunks (34 today). /admin/[store]/orders/[orderId], customers/[customerId] and deals/[dealId] are each at or under 1,350,000 bytes (1,998,644, 1,936,135 and 1,858,910 today), before the frame cut.",
+      "moves": "Rich text editor in first scripts: 73 routes to the builder's 26. An order screen 2.00 MB to about 1.3 MB, and to about 0.85 MB with the frame cut. Together with the frame cut, the previews and the Work invoice: routes over 1.3 MB fall from 90 to about 26, the builder's own.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The Work invoice screen takes its words as props, not the whole catalogue",
+      "finding_ids": ["AC-7", "BN-7"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "route-bundle-stats.json after a build: /admin/account/work/s/[store]/invoices/[invoiceId] is at or under 1,600,000 bytes (4,274,839 today), and no route's first-load list holds a chunk over 600,000 bytes (one of 1,704,595 today).",
+      "moves": "Largest admin route: 4.27 MB to about 1.4 MB. Largest first-load chunk: 1,704,595 bytes to under 600,000.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The AI manager's chat loads its own code, not every tool definition and the admin map",
+      "finding_ids": ["AC-8", "BN-15"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The scripts requested on the first opening of the panel are at or under 130,000 bytes raw in all (496,206 today), read in e2e/signed-in/ai-manager-panel.spec.ts. /admin/[store]/assistant is at or under 1,720,000 bytes in route-bundle-stats.json (2,056,681 today, before the frame cut).",
+      "moves": "Chat script on first opening: 496 KB to at most 130 KB. Do it right after the frame cut: once zod is off the frame, this chunk would otherwise fetch zod's 117 KB on the first opening.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The notice badge asks with fewer statements, and less often from a tab nobody touches",
+      "finding_ids": ["AC-13"],
+      "also_ids": ["PL-11", "AD-9"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "With the store home open and visible for ten minutes and the AI manager untouched, the browser makes at most 2 requests to /admin/account/notices/feed (10 today), checked in a signed-in spec with a clock. A count request runs at most 2 statements after the account read (4 today), asserted in assistant-notices.int.test.ts.",
+      "moves": "Poll requests from an idle tab: 60 an hour to 6. Statements per poll: 4 to 2. The two statement cuts need no decision. The owner decides the pace: may the badge in a tab nobody touches be up to ten minutes late?",
+      "serves": "owner-browser",
+      "owner_decision": true
+    },
+    {
+      "title": "Kaizena Flow's own site stops prefetching the admin",
+      "finding_ids": ["BN-2"],
+      "also_ids": ["PL-4", "CS-8", "PF-11"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On the built app, after loading / and waiting 2 seconds, 0 requests go to an address under /admin and none of the six admin scripts is fetched (2 requests, 6 scripts and 437,439 bytes today), held by a new test in e2e/performance.spec.ts.",
+      "moves": "A shopper-browser measure: the site's front page script transfer about 400 KB to about 269 KB per first visit. It moves no admin measure.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The Products list shows 100 at a time and says so",
+      "finding_ids": ["AC-14"],
+      "also_ids": ["AD-10"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "With a store seeded with 500 products, the Products page's document is under 300,000 characters and says '100 of 500'. The shared pager for the other lists follows in code review step 1.13.",
+      "moves": "Bytes per row on a list: no limit today (about 0.9 KB a product, an estimated 4.5 MB at 5,000 products) to at most 100 rows, about 0.25 MB.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Three tables leave a shopper's first scripts: cookie purposes, the feature list, the theme stage",
+      "finding_ids": ["BN-10"],
+      "also_ids": ["SC-3", "TX-5", "TX-8", "PL-10"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After pnpm build, /s/[store]/[market] is at or under 655,000 bytes in route-bundle-stats.json (688,092 today), and the cookie table (marker 'color_mode_') is in the first-load chunks of none of /s/[store]/[market], /s/[store]/[market]/p/[handle] and /.",
+      "moves": "A shopper-browser measure: about 40 KB raw (about 12 KB gzip) off every storefront and site page. The same split should take the cookie table out of the 83 admin routes whose first load holds it today.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Hand each admin page only the words its parts read",
+      "finding_ids": ["AC-4"],
+      "also_ids": ["PL-1", "TX-2", "PM-10", "AD-5"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The signed-in suite passes with admin-text-fallbacks.spec.ts. No admin document carries a 'setup' object. The document budgets in e2e/signed-in/admin-scripts.spec.ts hold the store home at or under 140,000 characters (165,942 today), a product's editor at or under 290,000 bytes (426,497) and a page in the builder at or under 500,000 (585,943).",
+      "moves": "Unread words: about 22 KB on every screen to near 0; the product editor 160 KB to under 10 KB; the builder 116 KB to under 20 KB. Its first step (drop 'setup' from the layout, one line, 6.9 KB off every document) can ship with the 'now' items.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "The builder paints first: the rich text editor comes after, and one store language loads on demand",
+      "finding_ids": ["AC-5", "AC-6", "BN-6"],
+      "also_ids": ["TX-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "route-bundle-stats.json after a build, with the frame cut in: /admin/[store]/pages/[pageId] is at or under 2,300,000 bytes (3,303,372 today) with no 'ProseMirror' chunk in its first load. No admin route's first-load chunks hold a whole storefront language (marker 'nettbutikk med levering i'; 40 routes today). /admin/[store]/orders/drafts/[draftId] is at or under 1,250,000 (1,607,368). The signed-in builder specs pass.",
+      "moves": "Builder first scripts: 3.30 MB to about 2.2 MB. Whole storefront language in first scripts: 40 routes to 0. Rich text editor in first scripts: 26 routes to 0. This reaches the findings' own bar, not the A bar of 1.8 MB (see the gap).",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Admin links are fetched when pointed at, and the router's prefetch setting is decided",
+      "finding_ids": ["AC-12"],
+      "also_ids": ["PF-5", "PF-6", "PF-9", "PF-10", "PL-5", "CA-5", "CA-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "e2e/signed-in/prefetch.spec.ts passes: 0 router prefetch requests in the 3 seconds after the admin home loads (28 today), at most 2 after hovering one rail link, and 0 for product editors after the product list loads. next build and next start print no partialPrefetching warning. The trial's request counts and the decision are written into docs/performance.md.",
+      "moves": "Requests an idle admin screen makes: 23 to 46 prefetches to 0, and about 25 fewer after every refresh or save. One plan with the prefetch area's link wrapper (PF-3, PF-5): do it once.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Storefront pages load only their own forms: the cart's parts leave the product page and the listing pages",
+      "finding_ids": ["BN-9"],
+      "also_ids": ["SC-2", "SC-4", "PM-11"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "After pnpm build, /s/[store]/[market]/p/[handle] is at or under 770,000 bytes in route-bundle-stats.json (785,613 today), and /category/[slug], /tag/[slug] and /search are at or under 715,000 (785,994 today). store-part-drawers.scan.test.ts passes.",
+      "moves": "A shopper-browser measure: 22 KB raw off every product page and 73 to 94 KB off category, tag and search pages. The first step (the product page) is small and can ship with the 'now' items.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A recommending grid loads its own words, not four languages, zod and the page model",
+      "finding_ids": ["BN-16"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "On a built store with Recommendations on, the scripts a page with a recommending grid loads after /api/recommendations answers are at or under 335,000 bytes raw (649,561 today) and hold no whole language, held by e2e/recommendations.spec.ts; and at or under 140,000 once the last step's list is empty.",
+      "moves": "A shopper-browser measure: 650 KB (204 KB gzip) of late script to 140 KB on pages of stores with Recommendations on. Its first step (the grid takes its words as a prop) is the same change as the builder item's first step: do it once.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "No English catalogue in client code but common and sign-in",
+      "finding_ids": ["AC-9", "BN-8"],
+      "also_ids": ["TX-9"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The walking scan (admin-bundle.scan.test.ts) finds no path from an admin client module to a file of src/lib/admin-messages other than common.en and sign-in.en (38 import sites today), and the ALREADY list in admin-catalogues.scan.test.ts holds only admin-text.tsx and admin-text-context.tsx (14 entries today).",
+      "moves": "English copies in first scripts: the builder about 150 KB less (to about 2.1 MB), the Work screens 65 KB, 73 field screens 24 to 45 KB, the home 22 KB. Do the builder's four sites with the builder item and the fields module with the custom fields item; the rest when each area is next touched.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Shoppers get a stylesheet without the admin's classes",
+      "finding_ids": ["BN-12"],
+      "also_ids": ["CS-1", "SC-5"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The stylesheet that /s/demo/no links is at or under 140,000 bytes raw (183,124 today), the scan test and the e2e suite pass, and the build's peak memory is written into docs/build-memory.md and is not more than about 150 MB above today's.",
+      "moves": "A styles measure: 183 KB to about 136 KB raw (32.0 to 25.3 KB gzip) for every public page. The admin's own two sheets (204 KB raw) shrink by the mirror share. Follow the styles area's plan (CS-1); after the site stops prefetching the admin.",
+      "serves": "styles",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "BN-13",
+      "why": "40% of the built client files are second copies of modules, but a browser meets about 14% of that while moving around the admin, and it is the chunker working as designed. The only lever is an experimental flag on a build with no memory to spare. The other items remove about 1.5 MB of the 6.89 MB of copies. Measure again after them, and adopt the flag only if a 59-screen tour falls by 10% or more with no budget raised."
+    }
+  ],
+  "owner_choices": [],
+  "gaps": [
+    {
+      "title": "The builder's last step to an A has no number: its dialogs and field forms still load at once",
+      "evidence": "AC-5's own check stops at 2,450,000 bytes. With every planned cut the builder is still about 2.1 MB: 3,303,372 less Supabase 259,469, the rich text editor 435,421, the store languages 367,935 and about 150,000 of English copies. Opened: src/components/admin/page-builder.tsx is 6,658 lines and imports the template dialogs, the theme sections list and the saved-layout dialog statically (lines 41 to 51 and 75). rg finds no dynamic() and no import() in page-builder.tsx, block-fields.tsx (3,644 lines) or page-editor.tsx (1,976). AC-5 leaves this to code review step 3.4, after 3.1 and 3.2, and that step carries no byte figure.",
+      "proposed_work_item": "Builder dialogs and each block type's field form load when opened. This is code review step 3.4 with a number, after steps 3.1 and 3.2: next/dynamic for the template, saved-layout, translation, theme, dual-frame and find-and-replace dialogs, and one field module per block type, each bringing its own words. Done when /admin/[store]/pages/[pageId] is at or under 1,800,000 bytes in route-bundle-stats.json and the signed-in builder specs pass. Phase later, effort L. It also lowers the builder's document: PM-10 puts the words that would travel with a dialog at 150 to 200 KB."
+    },
+    {
+      "title": "After the cuts, 259 KB of Supabase still loads on every screen once it is idle, and no budget counts script fetched after the HTML's own",
+      "evidence": "Opened: src/components/admin/session.tsx lines 8 and 22. SessionKeeper calls createClient().auth.onAuthStateChange() to keep the token fresh, and src/lib/supabase/client.ts builds the whole client (createBrowserClient of @supabase/ssr). In the built chunks of the admin home (m/loaded.json) the auth client is 103,361 bytes; realtime with phoenix 57,224, storage 23,172, the database client 17,166 and a 22,750-byte Buffer polyfill ride with it, and the browser ran 22,809 of the main chunk's 179,419 bytes and 6,770 of realtime's 57,349. AC-1 and BN-1 move the import to idle and both note that the bytes stay. docs/rules/admin/platform.md lines 50-51 says tokens are refreshed in the browser. e2e/signed-in/admin-scripts.spec.ts lines 18-23 sums the HTML's script tags only, so bytes that move to after load leave every budget.",
+      "proposed_work_item": "Session without the whole Supabase client, and a by-idle budget. Try two ways and keep one: the auth client alone with the same cookie storage (about 117 KB as built), or a small refresh route called before the token expires (0 KB; it changes the rule in platform.md and how two tabs share a refresh token). Uploads keep importing the full client on the press. Add a case to admin-scripts.spec.ts that sums every script response until the page is idle. Done when an idle store home has loaded at or under 800,000 bytes of script (1,428,740 today; about 930,000 after the planned cuts) and none of it is Supabase's realtime, storage or database client. Phase next, effort M, after the frame cut and the prefetch item."
+    },
+    {
+      "title": "The one production figure for the admin has no target, no alarm, and is older than every cut",
+      "evidence": "Opened: docs/performance.md lines 119-135. The admin's own speed beacon read LCP 3.93 s at p75 over 52 loads on 29 and 30 October (editors 3.90 s, other screens 4.18 s), called 'a first look', to be 'read again once a month of loads is in'. No step of any plan reads it again. rg ownSpeedReport: its only reader is src/app/admin/(gated)/platform/capacity/page.tsx. rg finds no mention of speed in src/lib/platform-briefing.ts, src/server/platform-briefing.ts or src/lib/cron-health.ts. src/lib/speed.ts line 166: ownSpeedKind() puts a product's editor, the page builder and an article in one kind, so the builder's own figure cannot be read.",
+      "proposed_work_item": "Hold the admin's speed with a production figure. (1) The platform's morning briefing gets a line when the admin's LCP or INP at p75 over 28 days is not 'good' for a kind of screen with 100 loads or more. (2) The beacon tells the page builder from the product editor. (3) Read the table a month after the 'now' items and write it into docs/performance.md beside the October figures. Done when a unit test of the briefing shows the line for a seeded slow kind, and Platform, Usage and limits shows LCP at or under 2.5 s and INP at or under 200 ms for every admin kind with 100 loads or more. Phase next, effort S."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

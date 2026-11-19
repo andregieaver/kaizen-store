@@ -1,0 +1,17 @@
+{
+ "id": "0.28",
+ "rating": "cheap-then-review",
+ "why": "The SQL, the migration text and the trigger are all written out, so no design choice is left. But the step changes when three AI upkeep jobs run (five-minute gates, hourly passes behind getUTCMinutes() < 5, a weekly recheck) and adds three migrations, one with a BEFORE UPDATE trigger on product_translations. If a site list or gate condition is wrong, a job quietly stops working: tests cover the idle case and one changed case, not every path. The trigger runs on every product text save.",
+ "harm_if_wrong": "Alt texts, picture vectors or product vectors quietly stop being written for some sites, or a faulty trigger breaks product saves, and the jobs report no failure.",
+ "cheap_commits": [
+  2,
+  4
+ ],
+ "make_it_cheaper": "Split the two migrations (alt_tries and the text_changed_at trigger) into a step of their own; the gate changes without a migration could then be cheap.",
+ "brief_problems": [
+  "checked_in_code places writePack at content-packs.ts:362-438, but its per-product loop is at line 347. The 'how' finds it by text, so this is harmless.",
+  "Commit 4 depends on step 0.27's refreshKnowledge({ full }), and its idle-statement figure (at most 8) is only checkable after 0.27.",
+  "Commit 3's fallback test for 'the AI manager embeds on save' is a readFileSync text check, which is weak.",
+  "The hourly pass keys on the dispatcher firing in minutes 0 to 4 of the hour; a late dispatch skips that hour's full pass, and the brief does not say so."
+ ]
+}

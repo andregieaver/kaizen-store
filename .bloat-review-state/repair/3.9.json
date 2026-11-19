@@ -1,0 +1,12 @@
+{
+ "id": "3.9",
+ "fixed": [
+  "The 'copy taken before' (site-compare output) is committed as docs/audits/bloat-review-2026-11/site-before.json in commit 2 and deleted in commit 8, and every --against now names it; a file kept outside the repo would be gone for a later commit done in a fresh session.",
+  "The done_when rg for platform_theme_installs excludes src/db/schema.ts until the dropping push of commit 8, as commit 7's own check already did.",
+  "Commit 3's check runs 'vitest run platform-chrome house-routing' (a substring filter), which finds src/lib/platform-chrome.scan.test.ts and house-routing's test under either name around step 2.43's rename, instead of leaving the names to the model."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: splitting the step into several steps would change the plan's steps; commit 1 is already the one cheap commit.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

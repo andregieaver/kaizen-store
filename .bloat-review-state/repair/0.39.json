@@ -1,0 +1,16 @@
+{
+ "id": "0.39",
+ "fixed": [
+  "stop_if 5 left keeping the Drizzle optimizer to a stronger model; now: if the shard is not 30 s faster, commit 3 is not pushed and the figures go in the Progress notes.",
+  "The done_when targets (setup under 10%, 0.15 s a file) had no outcome when missed; a stop_if now says change nothing more and mark row 0.39 'In progress (targets not met)'.",
+  "The retention-readers case is decided: docs/wave-1g-gdpr.md 3.2 still states the rule, so it moves to a literal pg_get_functiondef case in privacy.test.ts over the ten functions (verified clean in the live migrations); privacy.test.ts's two archive-reading cases are named for deletion.",
+  "admin-api-routes: baseline_4 writes the api-uploads row without 'VALUES ', so the old regex would find nothing; the replacement code and pattern are given literally (last match).",
+  "return-errors: the re-point is given literally; verified the 37 live codes are all worded, so no narrowing.",
+  "The 'must print nothing' check before deleting migration-files.ts would always print scripts/lib/migrations.mjs's readMigrations(); it now uses rg -w, and squash-migrations.mjs's comment that names migration-files.ts gets its own edit.",
+  "The four edits of src/lib/ci-once.scan.test.* now name the plain path with made_by 0.38 and say what 0.38 leaves in it."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the retention-readers case is decided and re-pointed, and admin-api-routes and return-errors have their exact code, so commit 4 has no judgement left and is cheap on its own; commit 2's shared-worker repairs still need a reader.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

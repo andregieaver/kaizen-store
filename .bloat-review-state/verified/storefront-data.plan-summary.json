@@ -1,0 +1,153 @@
+{
+ "key": "storefront-data",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/storefront-data.json",
+ "validator": "OK: 16 findings, 0 refuted, 13 metrics",
+ "headline": "A warm, cached storefront page is lean (a prerendered home page or a store's own page makes no database read of its own); the cost sits around the page and does not depend on which features a store uses, so every store pays it once the platform opens. A product page asks the database about 18 times a view where only stock changes per view, the proxy in front of every page loads 1,311 modules (0.8 to 0.95 s and 168 MB cold on this machine) where its five reads need about 50 to 100, and every page load makes a second function call to learn the wishlist is empty, plus a third (3 statements) on pages with a product grid for tile stock that is off by default. Cached pages are drawn again by the clock (1 hour for 71 of 85 cached reads), by every deploy, and by any one owner saving AI settings, which expires every store's pages (319 of 1,316 prerendered entries carry that one tag). Nothing here removes or hides a feature: 16 fixes make cost follow use, five are small and safe enough to do first (SD-10, 11, 14, 15, 16), and before opening is the cheapest time for all of them.",
+ "findings": [
+  {
+   "id": "SD-1",
+   "title": "The proxy and every storefront page load about half of the server's code at cold start",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Proxy 1,311 to about 50-100 modules; layout 1,466 to about 880. Est. proxy cold start 0.8 s to 0.2 s, 130 MB less (local).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-2",
+   "title": "A product page asks the database about 18 times per view; one answer changes per view",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est. about 16 to 1-3 statements per anonymous product view; buy button stops waiting on payment facts. Step 1 alone: 3.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-3",
+   "title": "Every deploy empties the caches and nothing warms them",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "No statements now; first cold start after a deploy moves from a visitor to the job. Later: 1-3 s cold first views of busy pages.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-4",
+   "title": "Every published page is read whole to pick one page or a few titles",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Cold fill reads 1-3 pages instead of all (29 a call today); gain is cold first byte and CPU, about 10 s of DB time a day.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-5",
+   "title": "A cold page waits on reads one after another before its first byte",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Est. waits before first byte 5 to 3; consent 8 in a row to one wave; 2-4 fewer statements per cold draw. Small.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-6",
+   "title": "The proxy reads the database before a page view whenever its 10-second memory has lapsed",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "A burst after 10 s of quiet reads once, not once per request in flight. A few statements under load. Small.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-7",
+   "title": "Every instance loads the interface-text tools and reads the translations table before its first request, then polls it each minute",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "383 to 93 modules at every instance start; later one statement per instance per minute (3,569 a day today).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-8",
+   "title": "Tagged reads still expire by the clock: 1 hour for 71 of them, 15 minutes for the home page",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est. redraws fall from hourly (or per visit of a quiet page) to per change; step 1: home page 96 to 24 possible redraws a day.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-9",
+   "title": "A store's pages ask about every optional feature, whether that store uses it or not",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Est. 3-4 small statements per cold draw and one per search, beyond SD-2 and SD-5. Small.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-10",
+   "title": "The store is looked up by its id again and again",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Est. 1-3 statements per view on pages with grids, parts or search; 27 written copies fall by ratchet.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-11",
+   "title": "The same shopper facts are read several times in one request",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "1 statement per view for a shopper with a cart; 2-4 per product view for a signed-in shopper.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-12",
+   "title": "Whole rows and documents are read for one fact",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Widget reads shrink to a few bytes and carry no keys; about 1.5 s of DB time a day in all. Small.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-13",
+   "title": "The browser's side has budgets; the server's side has none that can see these costs",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "No direct saving; keeps the savings of SD-1, 2, 8, 14, 15 and 16 from growing back.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-14",
+   "title": "Product tiles ask the server for stock on every page load, also in stores that show none",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured: 1 function call and 3 statements per load of a page with a product grid, for every store with default settings.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-15",
+   "title": "Every page load calls a function to learn that the wishlist is empty",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured: 1 function call and 1 proxy run per full page load, for every visitor (12 of 12 store pages).",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "SD-16",
+   "title": "One owner saving AI settings expires the cached pages of every store",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "A platform-wide cache expiry per owner's save (319 of 1,316 prerendered entries carry the tag) becomes one store's.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

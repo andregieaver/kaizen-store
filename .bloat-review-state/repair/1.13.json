@@ -1,0 +1,13 @@
+{
+ "id": "1.13",
+ "fixed": [
+  "Commit 2: the reading's two new inserts are now a change of src/server/production-reading.ts (made_by 0.2) with literal SQL and return type; route.ts needs no edit (0.2 spreads the result).",
+  "Commit 1: a counter difference exists only for a key in both readings; rules 2, 3, 6, 7 and dayDifference skip statements absent from yesterday's 80, rule 1 ranks by today's calls; a unit test holds it.",
+  "Commit 2: currentFlags takes { openedOn, idleCallsOn, cronSchemaMaxBytes } options; no table keeps an opening date (checked platform_settings), so flag five stays off by default and the int test passes the options instead of a 'test seam or option' choice.",
+  "Commit 3: src/lib/platform-briefing.test.ts exists; the 'create it if missing' conditional is gone."
+ ],
+ "rejected": [],
+ "cheaper": "applied: defined the difference for absent rows and fixed the opening date and the test seam to one choice each; the step stays cheap-then-review for commit 2's migration and daily reading",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

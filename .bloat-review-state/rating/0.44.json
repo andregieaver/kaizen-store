@@ -1,0 +1,13 @@
+{
+ "id": "0.44",
+ "rating": "cheap-then-review",
+ "why": "The page-content, page-images, media-alts and column-share changes are precise against today's code (the three small? types, withSmallCopies, backgroundSources, ROW_LAYOUTS widths, stackAt, fixedSizes, page-article line 384). But commit 1 builds on step 0.33's still-unwritten API (MEDIUM_COPY_WIDTH, pictureSources' medium argument, SizedPicture's prop, media.medium_url) under 'expected' names, with 'use the names that are there'. A wrong middle-copy or sizes value changes which file every page picture loads, and only one e2e case covers that.",
+ "harm_if_wrong": "Store pictures load the wrong file (blurry on large screens or heavier on phones) and no unit test notices, because the copy is only given at read time.",
+ "cheap_commits": [
+  2
+ ],
+ "make_it_cheaper": "Re-issue commit 1 after step 0.33 lands, with the real constant, argument, prop and column names written in.",
+ "brief_problems": [
+  "Commit 1 and the e2e test name step 0.33's names as 'expected' (MEDIUM_COPY_WIDTH, pictureSources({ medium }), SizedPicture medium, medium_url). None of them exists yet."
+ ]
+}

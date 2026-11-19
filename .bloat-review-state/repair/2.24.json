@@ -1,0 +1,20 @@
+{
+ "id": "2.24",
+ "fixed": [
+  "depends_on 2.20 now names short-memory.ts (remembered) and store-facts.ts (FACTS_MS, storeFactsOf); a stop_if covers their absence; store-facts.ts is an edit made_by 2.20 with what 2.20 leaves there.",
+  "visitStoreOf(): exact statement (storeFactsOf's plus visit_counting, time_zone), getOpenStore()'s only condition (status 'active'), typedRow schema with .loose(), localized() for allMarkets and address, both getOpenStore() callers in analytics-visits.ts replaced.",
+  "Shell actions named per file: signOut; adminLangAction, colorModeAction, adminViewAction with their four importers; the assistant files keep the seven actions the layouts bind (those are step 2.32/2.36's) and only deleteSkillAction / deletePlatformSkillAction move to skill-actions.ts.",
+  "Braced file names ('scripts/{route-budget.mjs}', 'src/server/{route-load.graph.test.ts}', '{use-cache.scan.test.ts}', '{route-budget.json}') are plain paths with made_by 1.8 or 1.11, each with what that step leaves.",
+  "use-cache.scan.test.ts has no update switch (1.11's brief): CACHED_READS keys are renamed by hand; 1.11 added to depends_on.",
+  "route-load.mjs --write named for the new admin-layout number (key adminStoreLayoutCachedFiles)."
+ ],
+ "rejected": [
+  {
+   "problem": "The step mixes a fixed budget with 'stop moving features when under budget', so its number of commits is decided during the run.",
+   "why": "True and intended: it is the measured judgement that keeps commit 4 with the stronger model; the brief does not claim otherwise and the budget numbers are fixed."
+  }
+ ],
+ "cheaper": "applied in part: the shell's actions per file and visitStoreOf()'s exact select are written in; specifying each of some forty feature splits as experiments is was not done (it depends on the code after steps 2.20 to 2.22 and on the measured table), so commit 4 stays strong",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

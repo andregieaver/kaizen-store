@@ -1,0 +1,13 @@
+{
+ "id": "1.18",
+ "fixed": [
+  "dispatcherJobs reads src/server/dispatcher-jobs.ts (step 1.10, now in depends_on) with /^  (\\w+|\"[^\"]+\"): (\\(|async \\()/ inside DISPATCHER_JOBS, plus the tracked(\"dispatcher.…\") calls that stay in the route; commit 1's trial and the stop_if follow.",
+  "platformLinks: the fallback search for another array is removed; the file exports exactly WEBSITE_ITEMS, PLAN_ITEMS, SUPPORT_ITEMS and SETTINGS_ITEMS.",
+  "Commit 2: the ninth-row trial is written out as a trigger inserting a second blog ('surface-trial'), checked against commerce.blogs' columns, its unique keys and stores_first_blog().",
+  "The dispatcherJobs comparison figure says 69 once step 0.31 has removed nine prunes (78 on 12 November)."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (DISPATCHER_JOBS from step 1.10, plus the tracked() calls, 1.10 in depends_on). The twins entries were not written verbatim: they come from step 0.42's verdict files, and a wrong twin note does no harm.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

@@ -1,0 +1,13 @@
+{
+ "id": "1.3",
+ "fixed": [
+  "e2e/prefetch.spec.ts is now an edit with made_by 0.12, describing watch(), readToFooter(), BUDGETS and the four cases 0.12 leaves; router requests are watch(page).prefetches.",
+  "docs/rules/budgets.md is now an edit with made_by 0.43 (added to depends_on), describing its sections.",
+  "ratchet.mjs instruction rewritten: guard each new loop with if (before.<key>), never --first.",
+  "First-scripts count corrected: the table keeps 6 non-store entries (the brief said 7), so 14 [first-scripts] lines print, not 15 (found on this check; it is what made the reviewer's '8 store routes' count confusing)."
+ ],
+ "rejected": [],
+ "cheaper": "partly applied: three identical E2E_MEASURE wire runs are pasted into the commit message; not applied: a committed fixture page with a known lazy chunk, which needs a new route or build fixture designed for it; commit 4 stays reviewed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

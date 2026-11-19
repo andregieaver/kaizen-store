@@ -1,0 +1,14 @@
+{
+ "id": "3.4",
+ "fixed": [
+  "Commit 1 no longer makes pruneVisits() throw (it still runs inside the route's Promise.all until commit 2); the throw and its int case move to commit 2, with a stop_if on push order.",
+  "Commit 2: the full DAILY_JOBS literal (53 entries, key: function, including the calls of steps 0.2, 0.31, 1.16, 1.22), work 'set' for all with the reason, budgets (sum 430,000), runRetention(new Date(), { report }) from its real signature, the revalidateTag lines as the rates entry's after().",
+  "Order decided: runRegistry runs a pool of four with no order promise, so domainRenewals chains sendRenewalReminders inside tracked(\"daily.domain-reminders\"); retention before erasures is dropped as a rule (they run side by side today).",
+  "The custom migration names how to find the newest cron_due() (rg … | sort | tail -1) and its signature; step 3.7 is no longer named as earlier.",
+  "Step 0.31's cron-prunes.scan.test.ts case 2 is repointed at DAILY_JOBS (made_by 0.31, now in depends_on); cron-routes scan exempts log; done_when counts 54 rows."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the full DAILY_JOBS literal and the way to name the migration file whose cron_due() body is copied. Rating kept: the GDPR run and a cron_due() migration are reviewed before the push.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

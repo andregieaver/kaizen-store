@@ -1,0 +1,14 @@
+{
+ "id": "2.18",
+ "rating": "strong",
+ "why": "Commit 4 is 'measure then cut': if the cold frame is above 5 statements, fold (a) header and footer, then (b) menus and their titles 'if they are two', then (c) fonts and text styles 'if both are a store's rows'. (b) and (c) are not specified. The step also builds siteFacts(), one cached statement folding eight readers, that must carry six cache tags. The int tests run without Next's cache, so a missing tag (a consent banner that does not follow a feature switch) passes every check.",
+ "harm_if_wrong": "The cookie consent banner keeps an outdated set of categories after an owner switches chat, recommendations, A/B tests or affiliates on (a GDPR-relevant stale page), or the store frame draws stale headers.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "Measure the frame after steps 2.16, 0.24 and 1.10 land and write which folds are needed with their SQL, and add a test that asserts siteFacts()'s cacheTag calls by mocking next/cache.",
+ "brief_problems": [
+  "Commit 4 edits src/server/query-budget.int.test.ts (step 1.10) and the journey test's exceptions list (step 1.12); neither exists yet.",
+  "The layout and page.tsx paths are given before step 2.2's (shop)/ move; only a stop_if acknowledges this."
+ ]
+}

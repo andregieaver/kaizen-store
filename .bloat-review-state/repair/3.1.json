@@ -1,0 +1,16 @@
+{
+ "id": "3.1",
+ "fixed": [
+  "The cron-routes scan cases now give the parsing: the count of the every-minute literal outside the baseline files, the nine every-minute names from the baseline by regex (size 9), cron_due's body from the newest file that defines it up to '$$;', the format(call, '<name>') schedules at other times, and a would-notice case.",
+  "src/server/query-budget.int.test.ts is an edit with made_by 1.10 (it was marked create while saying step 1.10 makes it)."
+ ],
+ "rejected": [
+  {
+   "problem": "It depends on steps 0.23, 1.10, 1.22 and 1.26 whose shapes are assumed.",
+   "why": "depends_on names all four and the first stop_if stops unless the Progress table shows them Done; the cookie-scan shape has its own stop_if. Their details only matter to the reviewed migration commit."
+  }
+ ],
+ "cheaper": "not applied: the reviewer offered none; the scheduler migration keeps the review.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

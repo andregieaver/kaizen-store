@@ -1,0 +1,14 @@
+{
+ "id": "0.11",
+ "fixed": [
+  "ai-manager.tsx: the effect's dependency is now named: `showStarters = messages.length === 0 && !busy`, with the hooks placed above the early return at line 379.",
+  "Invoice page: language decided as adminLangOf(viewer.account.adminLocale) (already imported there; same account workWords() reads); the conditional workLang() is gone.",
+  "Platform pageHere action: language from p.account.adminLocale (Account has it), not an either/or.",
+  "Commit 2 check: step 0.5's scan test is added by `$(ls ... 2>/dev/null)` instead of 'skip it if not'.",
+  "Commit 1 and 2 checks: markers.mjs lists routes only when 12 or fewer match and prints bytes for five fixed routes, so the Work route's sentence check and the assistant route's bytes now use node one-liners over .next/diagnostics/route-bundle-stats.json."
+ ],
+ "rejected": [],
+ "cheaper": "applied: named the empty-conversation flag and the invoice page's language source; the rating stays because the many-file prop change and two guarded actions still need a reading",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

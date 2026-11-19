@@ -1,0 +1,458 @@
+{
+ "headline": "Read with the owner's clarification, the features themselves carry little waste. The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables), but a feature a store does not use costs that store almost nothing at run time: its links sit in Advanced (a new shop's default Basic view has 29 links), storefront reads go through per-store caches, and each scheduled job is one or a few statements for the whole platform, not per store. Empty tables are not evidence, so every argument to retire, park or hide a feature because nobody has used it is withdrawn, and with it the figure of 100,000 lines of 'never-used' code. Three findings fall (parking the developer platform, parking Fiken, lazy-loading carriers), and the per-feature gate for jobs and the second tier of switches would save close to nothing. What stands: one true duplicate engine (order rules beside Workflows, which the spec itself meant to merge), the platform site's old copy (already step 7 of its plan, about 4,300 lines, not 6,800), two small overlaps (saved themes beside the theme library; about 2,100 lines of platform twins built by the owner's own rule), 124 tool definitions per AI round (tracked as step 3.18; gating tools by feature does not lower it), nine prune-only jobs that run 288 times a day where once would do, and no check that makes a new feature state what it costs a store that does not use it. Before opening, with no data to move, is the cheapest time for the two merges. The cost that does not follow use is at cold start (every server entry I loaded requires 10.9 to 12.1 MB of chunks), and it belongs to the bundle, not to any one feature.",
+ "metrics": [
+  {
+   "name": "Source size",
+   "value": "768,202 lines in 4,139 non-test .ts/.tsx files under src; 325,579 test lines in 1,771 test files (the auditor's 768,077 and 325,551 were taken before the last commit)",
+   "how": "find src ... | xargs cat | wc -l, test files apart, re-run by me"
+  },
+  {
+   "name": "Pages and handlers",
+   "value": "560 page.tsx: store admin 264, platform admin 111, owner level 41, print 9, hosting 4, storefront /s 59. 268 route handlers (265 route.ts, 3 route.tsx), 126 under /api, 13 cron routes. Confirmed",
+   "how": "find src/app -name page.tsx / 'route.ts*' per folder, re-run by me"
+  },
+  {
+   "name": "Store navigation",
+   "value": "110 sidebar links in 9 sections, 42 in Basic. A store with only the shop on: 94 links in Advanced, 29 in Basic. Basic is every account's default (src/lib/admin-view.ts:14). Settings: 35 links (11 Basic), 50 settings page files. Confirmed",
+   "how": "my own parser of src/lib/store-nav.ts (scratchpad/work/ftskeptic/nav.mjs); find for settings pages"
+  },
+  {
+   "name": "Navigation growth",
+   "value": "104 links on 4 Nov, 107 on 9 Nov, 110 on 11 Nov. Admin pages 437 on 9 Nov, 449 on 11 Nov. Confirmed",
+   "how": "docs/audits/admin-usability-2026-11.md:19, docs/audits/code-review-2026-11.md:218 and :222, against today's counts"
+  },
+  {
+   "name": "Feature switches",
+   "value": "14 ids (13 optional). Of 110 store links: 16 behind an optional switch, 1 behind shop-or-Deals, 40 behind 'shop' (35 on the link, 5 through the Orders section's own switch), 53 behind none (the auditor's 58 missed the section switch). Of 264 store admin pages, 122 call requireFeature: 91 for 'shop', 7 for shop-or-Deals, 24 for an optional feature",
+   "how": "src/lib/store-features.ts:16-31; nav.mjs with section features inherited; grep requireFeature in src/app/admin/(gated)/[store]"
+  },
+  {
+   "name": "AI manager tools",
+   "value": "254 store tools, 26 of the manager's own, 21 platform tools. 20 store tools behind an optional switch, 101 behind 'shop', 133 behind none; a shop-only store is offered 234. Descriptions: 101,537 characters, mean 400, longest 1,183. A round sends at most 124 (26 own plus 98 store), so 234 offered and 155 offered send the same number",
+   "how": "my regex over tool( in src/lib/owner-tools.ts and manager-tools.ts (tools.mjs); TOOL_FEATURES in src/lib/owner-tool-features.ts; src/lib/tool-budget.ts:15, 73-76; src/server/owner-assistant.ts:716, 733"
+  },
+  {
+   "name": "Scheduled jobs",
+   "value": "83 jobs in the five-minute dispatcher: 78 started together through a pool of 5 connections, 5 after, one by one. Nine routes every minute. Almost every job is one or a few 'is anything due' statements on its own table for the whole platform, not per store. The recorded durations are wall-clock and mostly waiting for a connection: the two theme-update jobs that run alone do a four-table join in 4 to 5 ms, while one-statement jobs inside the batch show 44 to 266 ms. The whole dispatcher run took 1,341 ms. The auditor's '4.0 s of database-bound time for unused features' is therefore not database time",
+   "how": "src/app/api/cron/cart-reminders/route.ts:128-275; src/server/cron-runs.ts:117; src/db/client.ts:68; first statements of all 83 jobs listed by my script (jobs.mjs); durations in prod-db-stats.md lines 134-147"
+  },
+  {
+   "name": "Tables never written",
+   "value": "245 of 481 tables in schema.ts (486 in production) have had no insert since 25 August; 12 of the 19 platform_* tables among them. Under the clarification this shows only that the platform has not opened; it is not evidence against any feature",
+   "how": "prod-db-stats.md lines 149-189 counted; grep commerce.table( in src/db/schema.ts"
+  },
+  {
+   "name": "Code in 'never-used' feature groups",
+   "value": "Withdrawn as a measure of waste. The file-name counts reproduce where I re-ran them (order rules 1,910/528 test lines; Fiken 3,225/715; creators 1,411/362; bonus 4,008/3,060; referrals and affiliates 4,601/4,029; carriers 8,621/4,842; Admin API 7,289; OAuth, MCP and apps 5,657; domains 10,989/2,304), but they measure size, not use, and the patterns are loose (the 'domains' group includes connecting a custom domain, which stores use)",
+   "how": "find src | grep -iE <the auditor's pattern> | xargs cat | wc -l"
+  },
+  {
+   "name": "Decisions since the pause",
+   "value": "158 decision rows D406 to D572 between 29 October and 11 November. Not all are features (D572 is the migration squash, D406 to D408 consolidation work), and several of the features say 'The owner's instruction' (D465, D515, D516, D518) or that the owner chose them on 10 November (D555)",
+   "how": "grep '^| D<n> |' docs/decisions.md, numbers 406 to 572 counted; rows read"
+  },
+  {
+   "name": "Other inventory",
+   "value": "37 page-builder block types; 10 carriers; 3 event services (Zapier, Make, Slack) plus own endpoints, accounting, eBay, Instagram and Google reviews; importers for Shopify, WooCommerce/WordPress, Pipedrive and CSV files; platform navigation 52 links (27 under Settings) in 9 tabs with no Basic view; owner Account 13 links",
+   "how": "PageBlock union in src/lib/page-content.ts counted by hand; src/lib/shipping-carriers.ts:19; src/lib/integrations.ts:83; src/lib/platform-nav.ts read whole"
+  },
+  {
+   "name": "Build",
+   "value": "1,426 static pages generated; 263 s; peak memory 7.6 GB (7,609,552 KB) on this machine. No feature switch changes this",
+   "how": "scratchpad/m/build-summary.txt, build-peak-kb.txt, build.log lines 30-34"
+  },
+  {
+   "name": "Cold start, measured for this check",
+   "value": "api/visit (a beacon) requires 118 chunk files, 10.91 MB; the checkout page 202 files, 12.14 MB; the dispatcher 146 files, 11.76 MB. The largest shared source chunk (2.7 MB) is the admin's message catalogues (src/lib/admin-messages/*.ts). So what does not follow use is paid at cold start by every route, and no single feature (the ten carrier adapters are 1,702 lines) explains it. For the bundle dimensions, not a features finding",
+   "how": "node require of the built entry under .next/server/app in a bare process (scratchpad/work/ftskeptic/cold.cjs and work/fn/coldload.cjs, read-only), chunk files summed; the chunk's source map read for its sources"
+  }
+ ],
+ "clean": [
+  "The switch system itself (D178): one registry with needs checked transitively, kept in step with the navigation, the admin map and the AI tools by tests; switching off deletes nothing (src/lib/store-features.ts, src/components/admin/feature-off.tsx:43).",
+  "A new store starts with the shop alone (src/lib/store-features.ts:202) and every account starts in Basic (src/lib/admin-view.ts:14); the navigation is filtered by features and permissions in one place (src/lib/store-nav.ts:388-401).",
+  "The storefront pays little for a feature a store does not use: reviews and subscriptions are read only while on (src/app/s/[store]/[market]/p/[handle]/page.tsx:132, account/account-section.tsx:72); the referral and creator programmes, recommendation settings and campaign notices are read through 'use cache' with a per-store tag (src/server/affiliates.ts:85-87, src/server/recommend-settings.ts:36-38, src/server/campaign-notices.ts:28-29), and the referral capture script is drawn only while a programme is on (src/components/store-affiliate.tsx:10-14).",
+  "Basic view has a budget that a test holds: at most 12 links a section and under half of all links (src/lib/store-nav.test.ts:245-253).",
+  "The store Home streams its optional cards and draws the Deals card only when Deals is on (src/app/admin/(gated)/[store]/page.tsx:136).",
+  "Scheduled jobs follow use already: almost every dispatcher job starts with one query on its own queue or table and ends when nothing is due (Fiken: src/server/fiken-sync.ts:525-533; eBay returns before any query, src/server/ebay.ts:478; so do Instagram without a key, the theme and domain purchase jobs without Stripe, and the hourly autopilot-effects job). Jobs of switched features check the switch in SQL (src/server/cart-reminders.ts:327, src/server/standing-orders.ts:644).",
+  "Order rules are loaded on demand: the store-events runner imports ./order-rules only when an order.paid event is processed (src/server/staff-alerts.ts:944).",
+  "Plan features only describe plans; they are not a second gating system (src/lib/plan-features.ts:4-6).",
+  "One event intake feeds Zapier/Make/Slack, owners' endpoints and workflows (commerce.queue_integration_event, src/server/webhook-endpoints.ts:21-22, src/server/workflows.ts:41-42). Staff alerts and order rules use a second queue, store_events (src/server/staff-alerts.ts:58-66): see FT-8.",
+  "Work reuses the shop's e-invoice primitives rather than copying them (src/lib/work-einvoice.ts:3).",
+  "Moving in from Wix, Squarespace, BigCommerce and Shopware exist as proposals in docs only; no file of those names is in src/lib or src/server.",
+  "The AI manager caps a round at 124 tools and loads the rest on request (src/lib/tool-budget.ts:15, 67-96).",
+  "The developer platform (Admin API, OAuth server, MCP, storefront API, UCP: 11 + 2 + 2 + 3 + 2 handlers and four .well-known answers) costs nothing until it is called: its only scheduled work is two prune jobs. Kaizen Life's assistant reaches the same MCP tools over the account link (src/server/store-mcp.ts:33, 71), so the code is not without a user. Whether the doors are open on opening day is a product and security choice, not bloat (was FT-6).",
+  "Fiken and Tripletex: the plan the auditor cited keeps both as the bridge and as 'kept and supported' (docs/own-books-and-sales.md:45, 324). Fiken's idle cost is one statement every five minutes. Their shared client is already step 3.12 of the code review (was FT-11).",
+  "The ten carrier adapters are 1,702 lines behind one index (src/server/carriers/index.ts); importing all of them is immaterial beside the 10.9 to 12.1 MB of chunks every server entry requires (was FT-14).",
+  "The theme cluster's tables that production has not written yet are all read and written by working code: template_activations (src/server/templates.ts:110, 151), store_home_takes (src/server/home-takes.ts:87, 198), page_theme_detaches (src/server/theme-detach.ts:127, 175), theme_submissions and theme_schedules. None is dead."
+ ],
+ "findings": [
+  {
+   "id": "FT-1",
+   "title": "Most features have no switch; adding more is a product choice, because a switch saves almost no running cost today",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/store-features.ts:16",
+    "/home/user/kaizen-store/src/lib/store-features.ts:8",
+    "/home/user/kaizen-store/src/lib/store-nav.ts:145",
+    "/home/user/kaizen-store/src/lib/store-nav.ts:336",
+    "/home/user/kaizen-store/src/lib/store-nav.ts:362",
+    "/home/user/kaizen-store/src/lib/owner-tool-features.ts:13",
+    "/home/user/kaizen-store/src/lib/admin-view.ts:14",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:733",
+    "/home/user/kaizen-store/src/server/affiliates.ts:85"
+   ],
+   "evidence": "The registry has 14 ids. Of 110 store links, 16 stand behind an optional switch, 1 behind shop-or-Deals, 40 behind 'shop' and 53 behind none. Of 254 AI tools, 20 stand behind an optional switch, 101 behind 'shop' and 133 behind none. I then measured what an unswitched feature costs a store that does not use it. Navigation: its links are in Advanced unless marked basic, and Basic is the default (29 links for a shop-only store). AI: nothing more per round, because a round is cut to 124 definitions either way. Scheduled work: one or a few statements per job for the whole platform, not per store (FT-3). Storefront: per-store cached reads (affiliates.ts:85-87, recommend-settings.ts:36-38). Build and CI: no switch changes them. The auditor's grouping of 31 'never-used' groups rests on empty tables, which the owner has said is not evidence.",
+   "cost": "For an owner in Advanced: 94 links in a shop-only store. In run time: close to nothing per store (see evidence). The build and CI carry every feature whatever is switched.",
+   "who_pays": "An owner's admin in Advanced view. Not the server, the database or the shopper in any measurable way.",
+   "fix": "Do not add a second tier of switches to remove bloat: it would not lower a running cost. If the owner wants a quieter first admin, that is Basic's job (FT-7), or a product decision feature by feature using the checklist in store-features.ts:8-10. Do not backfill by 'the store has a row': before opening that says nothing.",
+   "saving": "None in running cost (measured as in evidence). The earlier 'up to 100,406 lines, 41,575 test lines and 146 tables' is withdrawn: it argued from features being unused before opening.",
+   "effort": "L",
+   "risk": "More switches make the Features page longer and add one more thing to keep in step for every feature (navigation, admin map, tools, SQL check).",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "I re-parsed store-nav.ts and the tool registry. Counts hold except links 'behind none': 53, not 58 (five Orders links inherit the section's shop switch). I re-ran the file-name counts for seven groups and they reproduce, but they measure size only. The case for parking rested on empty tables and falls under the clarification. I checked each claimed running cost: the AI round is capped at 124 with or without the switch, the jobs are single due-queries, the storefront reads are cached. What is left is a product choice, not waste."
+  },
+  {
+   "id": "FT-2",
+   "title": "Nothing makes a new feature state what it costs a store that does not use it",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/docs/consolidation.md:3",
+    "/home/user/kaizen-store/docs/decisions.md:746",
+    "/home/user/kaizen-store/docs/decisions.md:903",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:218",
+    "/home/user/kaizen-store/src/lib/store-nav.test.ts:245",
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:5",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:128"
+   ],
+   "evidence": "Between 29 October and 11 November docs/decisions.md gained 158 rows (D406 to D572). Not all are features, and several say they were the owner's instruction, so this is not a pause that failed; it is the owner building towards opening. What is missing is a check on idle cost. Each feature added a job to the dispatcher (now 83), tools to the AI manager (254; tool-budget.ts:5 still says about 190), pages to the build (admin pages 437 to 449 in two days) and links (104 to 110 in a week). The only budget test covers Basic links (store-nav.test.ts:245-253). The repo already has the pattern: ratchet.scan.test.ts and cron-routes.scan.test.ts.",
+   "cost": "Each addition raises fixed costs that every store shares: statements every five minutes, definitions in each AI round up to the cap, pages in a build that peaks at 7.6 GB here, and one more line in CLAUDE.md that every agent session reads. None is stated when the feature is built.",
+   "who_pays": "The build, CI, the server every five minutes, an agent's session",
+   "fix": "A surface budget held by a scan test with a baseline file: dispatcher jobs, every-minute routes, tools offered to a shop-only store, store links in Basic and in all, page.tsx files, tables. A count may rise only with a decision line that says what the feature costs a store that does not use it: per request, per scheduled run, per AI round and per build. Correct tool-budget.ts:5.",
+   "saving": "No direct saving. It makes idle cost visible before it is built, which is when it is cheapest to avoid.",
+   "effort": "S",
+   "risk": "A baseline is easy to raise by habit; the decision line is what gives it meaning. It adds a step to features the owner asks for the same day.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "I counted the 158 rows and the page, link and tool counts: they hold. I removed 'the pause did not hold' as a failure and 'Production has 102 orders to show for it': the rows themselves record the owner's instructions, and the platform is not open. The budget now asks for a feature's idle cost, not for who asked for it or how often it is used."
+  },
+  {
+   "id": "FT-3",
+   "title": "Every dispatcher job runs every five minutes; nine of them only prune old rows and need to run once a day",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:128",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:117",
+    "/home/user/kaizen-store/src/db/client.ts:68",
+    "/home/user/kaizen-store/src/server/search.ts:431",
+    "/home/user/kaizen-store/src/server/api-idempotency.ts:73",
+    "/home/user/kaizen-store/src/server/oauth.ts:821",
+    "/home/user/kaizen-store/src/server/recommend-events.ts:59",
+    "/home/user/kaizen-store/src/server/autopilot-effects.ts:44",
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:525",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md:134"
+   ],
+   "evidence": "The dispatcher starts 78 jobs in one Promise.all and 5 after. I listed the first statements of all 83. Almost every one is a single 'is anything due' query on its own table (Fiken: one select on fiken_connections, then return). That query is the check; cost follows what is due, not the number of stores, and jobs of switched features test the switch in SQL. So the auditor's 'no check that any store has the feature on' and 'the switch does not reach it' do not hold. His '4.0 s of 12.1 s of database-bound time' is not database time: 78 jobs share 5 connections (client.ts:68), so a job's duration is mostly waiting. The two theme-update jobs that run alone do a four-table join in 4 to 5 ms; one-statement jobs inside the batch show 44 to 266 ms; the whole run took 1,341 ms. All 565,049 cron_jobs upserts since August cost 84 s. What is eager: nine jobs only delete rows older than 1 to 180 days (searches, cache, forms, chat, api-idempotency, oauth-tokens, recommendations, docs-counts, replications) and run 288 times a day.",
+   "cost": "83 x 288 = 23,904 job runs a day, each at least one statement and one cron_jobs upsert, whatever the number of stores. The nine prune jobs are 2,592 of those runs and about 23 statements a run (counted in their code), near 6,600 statements a day. This is a fixed cost that rises with each new feature's job, not with stores.",
+   "who_pays": "The database and one Vercel function run every five minutes",
+   "fix": "Do not build a per-feature gate with an hourly cache: it adds a statement and a cache to save a statement. Give the nine prune-only jobs a slower tier with the patterns already in the code: claimDay() (cron-runs.ts) for a daily run, or the minute test autopilot-effects.ts:44 uses for an hourly one (keep api-idempotency and oauth-tokens hourly: their rows are kept 24 hours). What will grow with stores is elsewhere: the per-store loops of the media, alt-text, knowledge and embedding jobs, and the nine every-minute routes; both belong to the scheduled-work dimension.",
+   "saving": "Estimate: about 2,500 job runs and 6,000 statements a day, and less queueing for the five connections. No visible change in function time. The auditor's 'one third of the dispatcher's job time' and '10,080 job runs for nobody' are withdrawn.",
+   "effort": "S",
+   "risk": "A pruned table grows for up to a day (or an hour) longer before it is cut; none of the nine is read for correctness within that time. Each job must still be recorded in commerce.cron_jobs with its new period, or the platform home will call it late.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "I read the dispatcher, cron-runs.ts, the pool setting and the first statements of every job (script jobs.mjs), and re-added the durations (the 4,012 ms sum is right as arithmetic). Two things changed. The list of 35 'jobs for never-used features' is an argument from empty tables and is dropped. The time claim is wrong: durations are waits on a pool of five, shown by the 4 to 5 ms of the jobs that run alone. 'Only eBay returns early' is also wrong: seven other jobs finish in 4 to 8 ms. The remaining idle cost is small and fixed; the finding is cut down to the nine prune jobs."
+  },
+  {
+   "id": "FT-4",
+   "title": "The AI manager sends up to 124 tool definitions a round whatever the store uses; gating tools by feature would not lower that",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/owner-tools.ts:253",
+    "/home/user/kaizen-store/src/lib/owner-tool-features.ts:13",
+    "/home/user/kaizen-store/src/server/offered-tools.ts:16",
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:15",
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:73",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:131",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:733",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:249"
+   ],
+   "evidence": "OWNER_TOOLS holds 254 tools with 101,537 characters of descriptions (mean 400, longest 1,183). 121 have a feature, 101 of them 'shop'; a shop-only store is offered 234, plus the manager's own 26. chooseTools() cuts a round to 124: 26 own and 98 store tools. With the auditor's fix a shop-only store would be offered about 155, which is still more than 98, so the round still sends 124. Up to 11 rounds a turn (MAX_STEPS = 10). The count of 'about 80 tools for never-used features' rests on empty tables and is dropped.",
+   "cost": "Estimate at 4 characters a token: 124 definitions of mean 400 characters is about 12,000 tokens of descriptions a round before their schemas, resent each round. Paid whatever features the store uses.",
+   "who_pays": "An agent's session (the owner's AI allowance, the platform's AI bill)",
+   "fix": "Do step 3.18 of the code review: a default set of about 40 store tools with load_tools for the rest, a stable prefix and cache markers. Give each tool its feature in the registry of step 3.21 only if the owner decides on more switches (FT-1); alone it changes which tools load_tools can reach, not the size of a round. Correct tool-budget.ts:5 (it says about 190 tools and 24 of the manager's own; there are 254 and 26).",
+   "saving": "From feature gating alone: no tokens per round today. From step 3.18 (estimate): 124 to about 66 definitions a round, near 5,800 tokens of descriptions a round, plus schemas and whatever the cache saves.",
+   "effort": "S",
+   "risk": "A changed prompt or tool list needs a new eval run and its recording (CLAUDE.md, Conventions).",
+   "confidence": "high",
+   "already_tracked": "docs/audits/code-review-2026-11.md FA1, step 3.18 'Cheaper, faster AI rounds' (Open) covers the 124, the default set and caching; FA6, step 3.21 (Open) covers the registry.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "I recounted the tools, the features and the description characters with my own script, and read chooseTools() and its caller. The counts hold. The saving does not: the cap of 124 binds at 234 offered and at 155 offered, so feature gating sends the same round. The running cost is the cap itself, which step 3.18 already tracks. The 'never-used' count is dropped."
+  },
+  {
+   "id": "FT-5",
+   "title": "Kaizena Flow's site is kept twice since the switch of 7 November",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:3",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:118",
+    "/home/user/kaizen-store/src/lib/platform-nav.ts:18",
+    "/home/user/kaizen-store/src/server/platform-theme-installs.ts:1",
+    "/home/user/kaizen-store/src/server/platform-roles.ts:1",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:1",
+    "/home/user/kaizen-store/src/components/platform-layout.tsx:1",
+    "/home/user/kaizen-store/src/app/(platform)/[slug]/page.tsx:1"
+   ],
+   "evidence": "kaizenaflow.com is served from Kaizena Flow's own store since 7 November (platform-parity-plan.md:3). The older copy remains. I measured: 11 platform admin folders for the site with 32 pages and 2,529 lines; the site-only routes in (platform) and (platform-nb) (front page, [slug], blog, category, tag, cookies) about 280 lines; their components in src/components/platform-routes (home, page, entry, blog, terms, cookies) 484 lines; five twin files (platform-theme-installs, platform-roles in server and lib, platform-navigation, platform-layout) 1,042 lines; plus the store_id is null branches in pages, menus, media and themes. The rest of the two route groups (sign-up, get-domain, report, status, themes, support, unsubscribe) stays by the plan's own list, so the auditor's 6,800 lines counted code that is not a copy.",
+   "cost": "About 4,300 lines and 32 admin pages in every build; 12 links in the operator's Website section, most of which edit a copy visitors no longer see; site code kept working on two paths.",
+   "who_pays": "The build, CI, the platform operator's admin, anyone changing site code",
+   "fix": "Do step 7 of the plan ('One copy') after step 6: the platform's Website section becomes one link to the store, the null-store site paths and routes go, the twin tables are retired. Before opening is the cheapest time: no real visitor depends on the way back.",
+   "saving": "Estimate by file: about 4,300 lines, 32 pages, about 10 navigation links (docs feedback and docs guide stay), and the twin tables platform_page_roles and platform_theme_installs with its updates. Not 6,800 lines.",
+   "effort": "M",
+   "risk": "The plan keeps the null rows as the way back if the switch misbehaves; removing them ends that. Some of the 32 pages may serve more than the site (the fonts page, media used by themes): check each before removing.",
+   "confidence": "medium",
+   "already_tracked": "docs/platform-parity-plan.md step 7 'One copy' (not built; step 6 before it)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "I re-measured every part. The admin folders (2,529 lines, 32 pages), the route groups (61 files, 1,402 lines) and platform-routes (1,531 lines) match the auditor's counts, but most of the route groups and of platform-routes are sign-up, status, themes, report and get-domain, which the plan keeps. Counting only the site's own files gives about 4,300 lines. The duplicate is real and already planned; this is not an argument from use."
+  },
+  {
+   "id": "FT-6",
+   "title": "The developer platform (API, OAuth server, MCP, apps, endpoints) costs nothing until it is called",
+   "kind": "speculative",
+   "where": [
+    "/home/user/kaizen-store/src/lib/store-nav.ts:362",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:136",
+    "/home/user/kaizen-store/src/server/api-idempotency.ts:73",
+    "/home/user/kaizen-store/src/server/oauth.ts:821",
+    "/home/user/kaizen-store/src/server/store-mcp.ts:33",
+    "/home/user/kaizen-store/src/server/store-mcp.ts:71"
+   ],
+   "evidence": "The counts hold: by file name the Admin API is 7,289 lines and OAuth, MCP and apps 5,657; the routes are api/storefront 11 handlers, api/admin 2, api/mcp 2, api/oauth 3, api/ucp 2 and four .well-known answers. But the finding's case was 'no user', which before opening is true of every feature. Its running cost is two prune jobs every five minutes (now in FT-3). A public route costs nothing until it is called. The MCP code is not without a user either: Kaizen Life's assistant reaches the same tools through callerOfLink() (store-mcp.ts:33, 71).",
+   "cost": "Two prune jobs, five statements every five minutes. Nothing per request or per store. The endpoints are a security surface, which is a matter for the security review, not a bloat cost.",
+   "who_pays": "The database, slightly",
+   "fix": "None as bloat. Whether the Admin API, OAuth and the app directory are open on opening day is a product and security choice for the owner. The two prune jobs move to the hourly tier in FT-3.",
+   "saving": "None.",
+   "effort": "S",
+   "risk": "Closing /api/mcp or the OAuth routes behind a flag, as proposed, would have to spare the path Kaizen Life uses.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "refuted",
+   "verify_note": "I recounted the handlers and the two largest line counts; they hold. I read the two prune jobs and store-mcp.ts. The finding argued for parking a feature because nobody uses it yet, which the clarification rules out, and it has no running cost beyond two prune jobs. Moved to the clean list."
+  },
+  {
+   "id": "FT-7",
+   "title": "What a new owner sees: 29 links in Basic, 94 in Advanced, 35 under Settings. A product question, mostly planned already",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/lib/store-nav.ts:58",
+    "/home/user/kaizen-store/src/lib/admin-view.ts:14",
+    "/home/user/kaizen-store/src/lib/store-nav.test.ts:245",
+    "/home/user/kaizen-store/docs/admin-navigation.md:148",
+    "/home/user/kaizen-store/docs/audits/admin-usability-2026-11.md:198",
+    "/home/user/kaizen-store/src/lib/platform-nav.ts:68"
+   ],
+   "evidence": "Parsed from store-nav.ts: 110 links, 42 marked for Basic. With only the shop on: 29 in Basic, which is every account's default, and 94 in Advanced (Marketing 13, Analytics 13, Website 13, Settings 35). Settings has 50 page files; shipping has 7 and automation 4. The doc still says 104 and 40 (admin-navigation.md:148). The cap test covers Basic only; the total has no ceiling. The platform has 52 links, 27 under Settings, and no Basic view. The auditor's point that Basic lists Campaigns and Broadcasts 'which no store has used' is dropped: nothing has been used before opening.",
+   "cost": "Reading time for an owner in Advanced, and for the platform's operator, on every visit. No server or shopper cost.",
+   "who_pays": "An owner's admin in Advanced view, and the platform operator's",
+   "fix": "This is the owner's choice of what Homer and Lisa see, not waste. The agreed work stands: the audit's phase 2 moves (settings into their sections, Campaigns and Coupons as one Discounts page, Workflows and Automation as one), Basic for the platform, and generating the navigation doc. One new, small step: extend the budget test to the total per section (part of FT-2).",
+   "saving": "Estimate from the planned moves: Advanced for a new shop from 94 to about 85, Settings from 35 links to about 20. No running-cost saving.",
+   "effort": "M",
+   "risk": "Moves need redirects and ADMIN_PAGES entries kept, as the audit says.",
+   "confidence": "high",
+   "already_tracked": "docs/audits/admin-usability-2026-11.md phase 2 and code review steps 2.3 (Basic for the platform, Open), 2.4 (phase 2 moves, Open), 2.5 (Money section, Open), 4.3 (generate the navigation doc, Open), 4.6 (measure Basic, Open). Only the ceiling on the total is new.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "All counts reproduce with my own parser (110, 42, 94, 29, 35 and 11; 50 settings pages; 52 and 27 for the platform). I added that Basic is the default view (admin-view.ts:14), so a new owner meets 29 links, not 94. I removed the step that took Campaigns and Broadcasts out of Basic because their tables are empty, and the saving that depended on FT-1's switches."
+  },
+  {
+   "id": "FT-8",
+   "title": "Order rules ('Automation') and Workflows are two engines for one job",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/order-rules.ts:1",
+    "/home/user/kaizen-store/src/lib/order-rules.ts:29",
+    "/home/user/kaizen-store/src/lib/order-rules.ts:46",
+    "/home/user/kaizen-store/src/lib/workflows.ts:133",
+    "/home/user/kaizen-store/src/lib/store-nav.ts:336",
+    "/home/user/kaizen-store/src/server/staff-alerts.ts:944",
+    "/home/user/kaizen-store/docs/wave-9-platform.md:92",
+    "/home/user/kaizen-store/docs/wave-9-platform.md:140",
+    "/home/user/kaizen-store/docs/audits/admin-usability-2026-11.md:199"
+   ],
+   "evidence": "Order rules (D238): when an order is paid and conditions hold, then tag, notify staff, hold or ask the AI manager (order-rules.ts:46), with 13 kinds of condition (:29). Workflows (D356): on any store event including order.paid, with conditions on the event's fields, then tag_order, note_order, tag_customer, email_staff, post_slack, send_request, ask_ai_manager (workflows.ts:133). Three of the four order-rule actions exist in Workflows; 'hold' and about nine order facts (first order, product, delivery, backorder, gift, source, tag, seller, risk) do not. The spec meant them to be one: 'order rules become workflows of the trigger order.paid' (wave-9-platform.md:92), and the build left them apart (:140). They also run on two queues: order rules on store_events with staff alerts, workflows on the integration events. By file name order rules are 1,910 lines and 528 test lines in 17 files, with 4 settings pages, 2 tables and 1 AI tool; store workflows are 1,316 lines (the auditor's 1,899 already included the platform's 583). Both are links in Settings (store-nav.ts:336-337).",
+   "cost": "Two editors, two logs, two links with near-identical words, and every change to order automation made in the right one of two places.",
+   "who_pays": "An owner's admin (a choice between two doors), CI, anyone changing automation",
+   "fix": "Add a hold_order action and the missing order facts to Workflows, then retire order rules: redirect /settings/automation, drop the order_rules tool, and a release later drop order_rules and order_rule_runs. Before opening there are no real rules to move, which makes this the cheapest time.",
+   "saving": "Estimate: about 1,900 lines, 528 test lines, 4 pages, 1 link, 1 tool and 2 tables removed, less what Workflows gains for the hold action and nine facts (perhaps 300 to 500 lines).",
+   "effort": "M",
+   "risk": "Order rules read their facts once before any rule runs, so rules never chain (order-rules.ts:3); keep that for the hold action. A workflow must be tested before it is switched on (workflows.ts:43); order rules have no such step, so the editor's first-run experience changes.",
+   "confidence": "high",
+   "already_tracked": "The page merge is audit phase 2 ('Workflows and Automation become one Automations', docs/audits/admin-usability-2026-11.md:199; code review step 2.4, Open). Merging the engines was the wave 9 spec's intent (docs/wave-9-platform.md:92) and was left undone at build (:140); it is on no open list.",
+   "owner_decision": true,
+   "verdict": "confirmed",
+   "verify_note": "I read both pure modules, the spec and the build note, and re-measured the lines. The duplicate is real and the spec agrees. Corrections: the Workflows figure of 1,899 lines already includes the platform twin (store 1,316, platform 583); more facts are missing from Workflows than 'some' (about nine of thirteen); order rules are imported on demand, so they add no idle work to the every-minute route. The case does not rest on the tables being empty; that only makes the merge cheap now."
+  },
+  {
+   "id": "FT-9",
+   "title": "Campaigns and discount codes overlap in three kinds and their scope; one page is planned, one engine is not worth it as bloat removal",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/campaigns.ts:8",
+    "/home/user/kaizen-store/src/lib/campaigns.ts:24",
+    "/home/user/kaizen-store/src/lib/campaigns.ts:178",
+    "/home/user/kaizen-store/src/lib/discounts.ts:23",
+    "/home/user/kaizen-store/src/lib/discounts.ts:380",
+    "/home/user/kaizen-store/src/components/admin/campaign-editor.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/discount-editor.tsx:1",
+    "/home/user/kaizen-store/docs/audits/admin-usability-2026-11.md:198"
+   ],
+   "evidence": "Campaigns (D114) have 7 kinds: percent, multi_buy, gift, amount, free_shipping, tiered, bxgy. Discount codes (D31) have 3: percent, fixed, free_shipping. The shared part is small: the three simple kinds, the product and category reach (a reaches() in each file), the start and end, and a status function. The bulk of each file is its own: campaigns hold multi-buy, tiers, buy X get Y and the choice of the best offer per unit (campaigns.ts:193-383); codes hold availability, once per customer, generated codes, stacking classes and subscriptions (discounts.ts:92-380). Files: campaigns 685 + 587 lines, discounts 577 + 849, editors 700 and 503. So these are two mechanisms with a shared edge, not one job built twice.",
+   "cost": "Two pages under one heading for the owner, and about 100 to 200 lines of parallel helpers.",
+   "who_pays": "An owner's admin; anyone changing pricing code",
+   "fix": "Do the page merge that is already planned (one Discounts page with Automatic and Code). Share the small helpers (reach, running, status) in one module. Leave the two engines: folding them is a large change to money rules for a small gain.",
+   "saving": "Estimate: one link, and 100 to 200 lines of shared helpers. The auditor's 'one editor and one table' does not follow: a merged editor needs the union of both sets of controls.",
+   "effort": "S",
+   "risk": "The order of pricing is a money rule (campaigns before the group discount before codes, campaigns.ts:15-21); shared helpers must not change it, with the money tests as the gate.",
+   "confidence": "medium",
+   "already_tracked": "The page merge is audit phase 2 ('Campaigns and Coupons become one Discounts page', docs/audits/admin-usability-2026-11.md:198; code review step 2.4, Open).",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "I read both pure modules and listed their exports, and confirmed the six file sizes. The overlap is real but narrow; most of each engine has no twin. I removed 'the campaigns table has never held a row' as a reason, cut the saving, and changed the fix from one engine (effort L) to the planned page merge plus shared helpers. Whether to go further is the owner's product choice."
+  },
+  {
+   "id": "FT-10",
+   "title": "Four store engines have a platform twin with its own tables and runner: about 2,100 lines, built by the owner's own rule",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:403",
+    "/home/user/kaizen-store/docs/decisions.md:855",
+    "/home/user/kaizen-store/docs/decisions.md:856",
+    "/home/user/kaizen-store/docs/decisions.md:858",
+    "/home/user/kaizen-store/src/server/platform-workflows.ts:1",
+    "/home/user/kaizen-store/src/server/platform-integrations.ts:22",
+    "/home/user/kaizen-store/src/server/platform-endpoints.ts:18",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:32"
+   ],
+   "evidence": "The parity rule (6 November) gives the platform every store feature. For events it was built as separate platform_* tables and runners: workflows (466 lines in lib and server), integrations (758), own endpoints (275), a read-only API with tokens (332) and ad conversions (259), about 2,090 lines. The decisions say why: the stores' tables hold store_id not null (D515, decisions.md:855), and each was the owner's instruction. The twins share what they can (the workflow kit, postSigned(), the address guard). The auditor's 6,648 lines is every platform-* module, most of which are the platform's own (navigation, language, legal, team, briefing, books), not twins. His case that the twins are unused rests on empty tables and is dropped: the operator has not opened either.",
+   "cost": "Each of these engines is kept and tested twice. At run time: four extra queue polls a minute for one tenant (integrations/route.ts:32-36, broadcasts/route.ts:38-39), which does not grow with stores.",
+   "who_pays": "CI and anyone changing these engines; the server slightly",
+   "fix": "The owner's choice, and not waste as it stands. If one engine is wanted: Kaizena Flow now has its own store (D466), so the platform's events could be delivered to that store's event intake and the store's workflows, endpoints and services would serve them, with no platform_* twin. That is a design to examine, not a verified change; before opening is the cheapest time to make it. Otherwise keep the twins and the rule.",
+   "saving": "Estimate if folded into the house store: about 2,100 lines, their tests and 8 tables. Nothing if kept.",
+   "effort": "L",
+   "risk": "It would change a rule the owner set on 6 November and four decisions made on his instruction. Platform events (a store requested, a plan started) are not store events today; the intake's closed list of events and its payloads would have to carry them for one store only.",
+   "confidence": "low",
+   "already_tracked": "no (docs/platform-parity.md tracks what the platform still lacks)",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "I listed every platform-* module with its lines (6,648 code lines confirmed; 3,834 test lines by my count) and read the imports of the four twins and decisions D465, D515, D516 and D518. The finding's process claim, that the rule builds twins nobody uses, rests on 12 empty platform tables and falls. What remains is a true but deliberate duplicate of about 2,100 lines, with a written reason. I changed the kind to duplicate, cut the numbers, and made the fix an option for the owner."
+  },
+  {
+   "id": "FT-11",
+   "title": "Fiken is kept on purpose as the bridge to the own books",
+   "kind": "speculative",
+   "where": [
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:520",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:175",
+    "/home/user/kaizen-store/docs/own-books-and-sales.md:45",
+    "/home/user/kaizen-store/docs/own-books-and-sales.md:324",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:275"
+   ],
+   "evidence": "Fiken (D460) is 3,225 lines in 15 files and 715 test lines by file name; confirmed. Its job is one select on fiken_connections every five minutes, then return (fiken-sync.ts:525-533). The finding's case was that no store is connected, which before opening says nothing. The plan it cites says the opposite of parking: 'Tripletex and Fiken stay, as the bridge' (own-books-and-sales.md:45) and 'Kept and supported' (:324); D460 chose Fiken because small Norwegian businesses keep their books there.",
+   "cost": "One statement every five minutes. 715 test lines in CI.",
+   "who_pays": "The database, slightly; CI",
+   "fix": "None. Keep Fiken. The shared client and sync runner for Tripletex and Fiken is step 3.12 of the code review.",
+   "saving": "None.",
+   "effort": "S",
+   "risk": "Parking it would close the door the plan names for Norwegian stores that keep their accountant's system.",
+   "confidence": "high",
+   "already_tracked": "Step 3.12 'One accounting adapter' (Open) covers the duplicate client.",
+   "owner_decision": true,
+   "verdict": "refuted",
+   "verify_note": "I re-measured the lines, read the job and read the plan. The case rested on an empty table, and the cited plan keeps Fiken in two places. The running cost is one statement per run. Moved to the clean list."
+  },
+  {
+   "id": "FT-12",
+   "title": "An owner's own look can be kept in two places: saved themes and the theme library",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/themes.ts:46",
+    "/home/user/kaizen-store/src/server/themes.ts:211",
+    "/home/user/kaizen-store/src/server/theme-installs.ts:343",
+    "/home/user/kaizen-store/src/components/admin/theme-editor.tsx:42",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/settings/design/actions.ts:88",
+    "/home/user/kaizen-store/src/server/brand-tools.ts:58",
+    "/home/user/kaizen-store/docs/themes-unified.md:12"
+   ],
+   "evidence": "'Save as new theme' in the theme editor writes named settings to store_themes (D60; themes.ts:46, 211). The theme library keeps an own look as an install through addOwnLook() (theme-installs.ts:343), which the Dream Factory and the brand tools use (brand-tools.ts:58). Both keep 'a look of my own under a name'. That is the one true overlap in the cluster, and it is small: themes.ts is 264 lines in all, of which the saved-theme functions are about 100. The rest of the finding does not hold. The tables it called never used are read and written by working code (templates.ts:110, home-takes.ts:87, theme-detach.ts:175), so nothing there is dead, and parking theme submissions and theme schedules because nobody has used them is ruled out by the clarification.",
+   "cost": "Two save paths and two lists in one editor for the owner; one table and about 100 to 250 lines.",
+   "who_pays": "An owner's admin; anyone changing the theme editor",
+   "fix": "Make 'Save as new theme' add an own look to the library with addOwnLook(), then retire store_themes and its list. Leave submissions, schedules, template activations and home takes as they are.",
+   "saving": "Estimate: 100 to 250 lines and 1 table (store_themes). Not 1,000 to 1,500 lines and 6 tables.",
+   "effort": "S",
+   "risk": "store_themes is named in a look's savedId and joined in design-presets.ts:1355 and theme-installs.ts:152; remove those first. The platform's theme workspace also saves themes (platform/themes/[presetId]/workspace-actions.ts:227). An own look in the library carries the header, footer and CSS too, which a saved theme does not: say so in the editor.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "I read both save paths and their callers, and grepped every table the finding named. All have readers and writers, so 'drop them with the code that only writes them' is wrong. themes.ts is 264 lines as a whole file, not 264 lines of saved-theme paths. The 27,000-line cluster figure I did not re-measure; it measures size, not waste. Only the two ways to keep an own look remain."
+  },
+  {
+   "id": "FT-13",
+   "title": "Bonus, referrals and creators are three reward models; whether to fold creators into referrals is a product choice",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/store-features.ts:168",
+    "/home/user/kaizen-store/src/lib/store-nav.ts:158",
+    "/home/user/kaizen-store/src/lib/store-nav.ts:164",
+    "/home/user/kaizen-store/src/server/affiliates.ts:85",
+    "/home/user/kaizen-store/src/server/bonus.ts:550",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:2364",
+    "/home/user/kaizen-store/docs/platform-parity.md:68"
+   ],
+   "evidence": "Bonus credits (D130) are a ledger. The referral programme (D131) pays in those credits and needs bonus on (store-features.ts:173), so it builds on bonus rather than copying it. Creators (D386) earn money commission with a code and have their own five tables; they share the referral link's capture cookie (affiliates.ts:89-101). The platform's own referral page already treats creators as referrers with a commission (platform-parity.md:68). Lines by file name: bonus 4,008 (3,060 test), referrals and affiliates 4,601 (4,029), creators 1,411 (362); 17 tables. The idle cost is small: the storefront reads one cached row for both programmes, and the bonus job is four due-queries for the whole platform (bonus_expire_due selects due lots, 2.1 ms mean). 'Every ledger is empty' is not evidence before opening.",
+   "cost": "Two attribution and payout models (referrals, creators) to keep correct in checkout and refunds. No measurable cost per request or per store.",
+   "who_pays": "Anyone changing checkout or refunds; CI",
+   "fix": "The owner's choice of model: keep creators as a programme of its own, or make a creator a kind of referrer whose reward is money, with one attribution table. It is not waste as it stands, and nothing needs gating.",
+   "saving": "If folded (estimate): up to 1,411 lines and 5 tables, less what the referral programme gains. No running-cost saving either way.",
+   "effort": "L",
+   "risk": "Credits and money commissions differ in tax and bookkeeping; a merge must keep both exact.",
+   "confidence": "low",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "I re-measured the three groups and counted the tables (17 by name, not 18), read the bonus job and its SQL, and read the cached storefront read. The referral programme reuses the bonus ledger, so 'four programmes with separate ledgers' overstates it; the platform's referrals are for plans and are another product surface. The interim step of gating the bonus job is dropped: it already runs on due rows only. What is left is a product-model choice."
+  },
+  {
+   "id": "FT-14",
+   "title": "Checkout's delivery code imports all ten carrier adapters, and it does not matter",
+   "kind": "speculative",
+   "where": [
+    "/home/user/kaizen-store/src/server/carriers/index.ts:5",
+    "/home/user/kaizen-store/src/server/delivery-options.ts:63",
+    "/home/user/kaizen-store/src/lib/shipping-carriers.ts:19",
+    "/home/user/kaizen-store/src/server/shipment-tracking.ts:294"
+   ],
+   "evidence": "The static imports are real: carriers/index.ts:5-14 imports ten adapters and nine server files import that index. The ten adapter files are 1,702 lines. I loaded built server entries in a bare node process: the checkout page requires 202 chunk files of 12.14 MB, and api/visit, which uses no carrier, 118 files of 10.91 MB. The server build puts source into shared chunks of 2.7 to 4.7 MB, so loading nine adapters on demand would change a cold start by a part too small to measure. 'None is connected' is true of every feature before opening. The tracking job is a due-query (shipment-tracking.ts:300-303).",
+   "cost": "Not measurable beside the 10.9 to 12.1 MB every server entry requires.",
+   "who_pays": "Nobody in a measurable way",
+   "fix": "None. The cold-start weight is a matter for the bundle dimensions (what the shared server chunks hold), not for the carriers.",
+   "saving": "None measurable. The auditor's 'nine of ten adapters not loaded on a checkout request' would be true and would save nothing that shows.",
+   "effort": "S",
+   "risk": "Making adapterFor() async would touch nine callers for no gain.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "refuted",
+   "verify_note": "I read the index and its importers, summed the adapter files, re-ran the cold-load script on three entries and found the adapters inside multi-megabyte shared chunks. The import is real but its cost is not, and the fix would not deliver a saving. The 'ten carriers, none connected' part argues from use before opening. Moved to the clean list."
+  }
+ ]
+}

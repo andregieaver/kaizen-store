@@ -1,0 +1,14 @@
+{
+ "id": "0.12",
+ "rating": "cheap",
+ "why": "The edits only add prefetch={false} to links named by file and line, and the lines match the code. Removing a prefetch cannot break where a link goes, so the worst outcome of a missed or extra link is a speed difference. The one weak point is the new e2e spec: if it misreads the prefetch header names it counts 0 prefetches and passes without testing anything. That only weakens a speed guard and touches nothing sensitive.",
+ "harm_if_wrong": "A link is still prefetched (wasted requests), or the new prefetch spec passes without measuring anything.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "In site-parts.tsx the brief says to find 'the withdrawal and legal links drawn in this file' with rg -n 'withdraw|legalPages|page\\.href' and give each the attribute. That rg leads to line 282-283, the platform's legalPages links, which the same paragraph says to leave alone (283, 287). In this file the store's withdrawal link is WithdrawalLink from store-layout.tsx (already covered), and no store legal-page link is drawn here, so the sentence should be deleted.",
+  "Case (4) of the spec (no stylesheet after load on four pages) tests something none of the edits change. If it fails for an unrelated reason, the cheap model stops."
+ ]
+}

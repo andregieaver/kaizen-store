@@ -1,0 +1,12 @@
+{
+ "id": "3.2",
+ "fixed": [
+  "Commit 2: the 'captured-at column' search replaced by the decision: payments has none and updated_at is not moved by every capture, so 'recent' reads order_events type 'order.paid' (order_events_order_idx); the int case and the ad_conversions part of commit 5 follow; stop_if rewritten.",
+  "Commit 4: the statement counter named (countStatements from src/db/statement-count.ts) and step 1.9 added to depends_on (it was used but not listed).",
+  "Commit 5: cron-due.int.test.ts is an edit with made_by 3.1 (what 3.1 leaves in it stated); cron_due()'s signature given and its body copied from 3.1's *_cron_tick.sql."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: writing the 18 parts' exists() predicates means reading each runner's claim and judging which index serves it, the judgement the step keeps for the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

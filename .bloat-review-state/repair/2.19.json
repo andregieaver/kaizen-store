@@ -1,0 +1,20 @@
+{
+ "id": "2.19",
+ "fixed": [
+  "Commit 4's self-contradicting getProduct() instruction is decided: getProduct keeps catalogTag(storeId) and gains productTag(id); because every store-wide writer refreshes catalogTag, none of the 57 refresh sites (five forms) changes, and catalogWideTag and refreshCatalog() are dropped; the docs line in commit 6 says the same.",
+  "The one-product case in saveProductAction is decided from the code: not a new product, handle unchanged (handleChanged moved before the refresh), and not a bundle component (a bundle's page shows its components through bundleItemsOf()); a small isBundleComponent() query is specified; no reach field.",
+  "The 'if vat_category can be null' branch is removed: the column is NOT NULL default 'standard'.",
+  "The speed samples take 'order by day desc limit 20000' (decided; speedRows() computes the percentiles in code).",
+  "Approvals are read by time: commerce.assistant_approvals has no message column; AiManagerChat is in src/components/admin/ai-manager.tsx (ai-manager-chat.tsx does not exist) and has no paging today.",
+  "scripts/server-budget.mjs is a plain path with made_by 1.11, and the statement log's hash is spelled out as an edit of src/db/statement-log.ts (step 1.11 logs text only)."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 5 depends on steps 0.22, 1.9, 1.11 and 2.13 whose shapes are assumed.",
+   "why": "Partly fixed (1.11's log shape is now stated from its brief); the rest is why commit 5 stays with the strong model, and depends_on names each step."
+  }
+ ],
+ "cheaper": "applied in part: commit 4's list of store-wide sites and its action's reach are settled and commit 2's speed-samples choice is fixed. Not applied: splitting the step into separate briefs would change the plan's steps.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

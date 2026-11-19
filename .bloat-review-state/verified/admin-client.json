@@ -1,0 +1,414 @@
+{
+ "headline": "The admin's browser load is moderately bloated, not runaway, and the worst of it is cheap to fix. I re-measured every number from the finished build and the sampled pages: all twelve findings are real, seven needed corrections, none is refuted. None argues for retiring a feature; the one sentence that leaned on an empty table (custom fields) is removed, and what is left there is an idle cost: a store with no custom fields still loads 0.69 MB for them on every order. A plain admin screen loads 1.15 MB of script (0.35 MB gzip), down from 3.0 MB on 31 October. 481 KB of the 1.12 MB every screen shares (43%) is Supabase's whole client, zod and the builder's English, brought in by three stray imports; 222 KB of that can go outright on about 290 routes and 260 KB can load after the page. 26 screens load an editor they never draw, the page builder is 3.3 MB, one Work screen ships the whole admin catalogue in both languages in a 1.7 MB chunk, and translated text is 36 to 85% of each page's HTML data (54 to 74% of the compressed document). Main corrections: the builder gains nothing from the shell fix (it needs zod, Supabase and its own English itself); the storefront text in the builder has four import sites, not two, and holds functions, so it cannot simply be passed as props; page lists keep about 0.2 MB after the split unless one more import is fixed; the budgets cover 9 of 449 admin routes, not 7; and link prefetching is now measured (23 to 46 background requests per screen). All of these costs are per admin screen view. Today only the team pays them; once the platform opens every owner pays them on every visit, and each deploy re-sends changed chunks to all of them. Nothing here touches stored data, so before opening is the cheapest time: a part that draws a moment late disturbs nobody yet.",
+ "metrics": [
+  {
+   "name": "First-load script per admin route (449 routes)",
+   "value": "median 1,152,953 raw / 347,554 gzip; mean 1.40 MB; 22 routes under 1.0 MB, 337 at 1.0-1.3 MB, 33 at 1.3-2 MB, 17 at 2-3 MB, 40 over 3 MB; largest 4,274,839 raw / 1,335,794 gzip. Confirmed.",
+   "how": "Re-read .next/diagnostics/route-bundle-stats.json (build exit=0), each chunk sized and gzipped with node zlib by my own script"
+  },
+  {
+   "name": "What the 22 chunks shared by 90%+ of admin routes hold",
+   "value": "1,123,681 bytes raw / 336,303 gzip. Removable from the first load: 481,045 bytes (Supabase 179,419 + realtime 57,349 + a Buffer polyfill module 22,701 that only the Supabase chunk and one lazy chunk require; zod 116,870; builderEn 71,508; schemas 33,198). Confirmed. Of this, 221,576 bytes can go outright on a plain screen; the 259,469 bytes of Supabase would still download, after the page.",
+   "how": "Chunk frequency over the 449 routes; each chunk opened and identified by its content; the Buffer module's id (79300) searched in every chunk; importers traced with my own static import graph of src (4,156 files, type-only imports dropped)"
+  },
+  {
+   "name": "Store home, as the server sends it",
+   "value": "22 scripts 1,185,364 raw / about 356,500 gzip, plus a 112,594-byte nomodule polyfill a modern browser never fetches (23 script tags, 1,297,958 in all); CSS 204,207 raw / 36,378 gzip; HTML 165,942 characters / 37,698 gzip. Confirmed.",
+   "how": "scratchpad m/html/admin-home.html: each script and stylesheet resolved to its file in .next/static and gzipped"
+  },
+  {
+   "name": "Translated text inside page HTML",
+   "value": "36% to 85% of the flight data: orders 34.0 of 94.1 KB, home 57.7 of 106.2 KB, pages list 86.8 of 160.3 KB, product editor 238.0 of 295.6 KB, page builder 311.0 of 364.8 KB (auditor estimated the builder; it is now measured). 34.0 KB is on every store screen (common 6,498, setup 6,895, shell 6,905, assistant 13,683). Compressed, the text is 12.5 of the orders page's 32.7 KB, 20.5 of the home's 37.7 KB, 77.6 of the product editor's 108.2 KB and 100.8 of the builder's 135.7 KB.",
+   "how": "Decoded self.__next_f.push rows of 14 sampled signed-in admin HTML files and measured each \"texts\" object by area; gzip of each document with and without those objects"
+  },
+  {
+   "name": "Page builder first load",
+   "value": "3.09 to 3.30 MB raw (a store's: 3,303,372 raw / 1,014,731 gzip) on 39 routes: 26 editors and 13 draft previews. Confirmed.",
+   "how": "route-bundle-stats.json; routes that carry chunk 1jj1xvz8qgfpw.js, listed one by one"
+  },
+  {
+   "name": "Rich text editor (Tiptap and ProseMirror) reach",
+   "value": "one 435,421-byte chunk (136,630 gzip) in the first load of 73 routes; 34 are not the builder (13 lists, 21 other screens). Confirmed. Four client modules import Tiptap, not one.",
+   "how": "Chunk 3lclkawi229rq.js identified by its strings and counted in route-bundle-stats.json; importers from the graph"
+  },
+  {
+   "name": "Largest single first-load chunk",
+   "value": "1,704,595 bytes raw / 526,391 gzip, on one route (the Work invoice screen): admin catalogue text in Norwegian and English. Confirmed.",
+   "how": "Chunk 3fqt1dd2f0p1k.js sized, gzipped and sampled at 7 offsets; the graph finds one route and two client modules with a path to lib/admin-text.ts"
+  },
+  {
+   "name": "Routes that need zod or Supabase beyond the shell",
+   "value": "zod: 160 of 449 by my count (auditor 163); Supabase: 83 of 449. Today 432 routes load both. The store home, orders list, products list, settings and platform home reach none of zod, Supabase or builder.en once the three imports are cut.",
+   "how": "Static import closure of each route's client modules (read from its page_client-reference-manifest.js, which matched my graph module for module on the route I compared), with the three shell imports cut"
+  },
+  {
+   "name": "Lazy boundaries in the admin",
+   "value": "6 files really load on demand among 332 client component files under src/components/admin (CSS editor, text styles' CSS editor, backdrop fields, Stripe Connect, AI chat, the English fallback). The auditor counted 7: domain-types.ts line 14 is a type expression, not a load.",
+   "how": "rg for next/dynamic and import( in src/components/admin, each hit opened; rg -l '^\"use client\"' counted 332"
+  },
+  {
+   "name": "Script budget coverage",
+   "value": "9 of 449 admin routes have a budget: 7 signed-in store screens and the signed-out sign-in and forgot-password pages. Counted as the spec counts (characters, every script tag): home 1,297,308 against a budget of 1,340,000 and 1,284,745 recorded on 10 November (+12.6 KB, 42.7 KB of room); the builder 3,399,666 against 3,480,000 and 3,341,746 (+57.9 KB in a day, 80 KB of room). 112,594 of each figure is the nomodule polyfill.",
+   "how": "e2e/signed-in/admin-scripts.spec.ts lines 18-46 and e2e/performance.spec.ts lines 40-49 read; the spec's own regex and .length applied to the sampled HTML and the chunk files"
+  },
+  {
+   "name": "AI manager chat chunk",
+   "value": "496,206 bytes raw / 143,978 gzip, fetched when the panel first opens; in the first load of the 2 assistant routes (2,056,681 and 2,064,667). Its import closure is 209 files, 2,940,924 bytes of source; without three imports it is 39 files, 302,638 bytes. Confirmed.",
+   "how": "Chunk 00rxgygh1f--7.js sized and searched for tool descriptions and the admin map; closure from my graph with and without the imports of manager-tools, admin-map and pages.nb"
+  },
+  {
+   "name": "Client code reachable from admin routes",
+   "value": "1,086 source files, 13,386,060 bytes (615 lib files 9.03 MB, 455 components 4.31 MB, 16 app files); 0 files from src/server. Confirmed. 137 of the files and 2.8 MB are there only through the Work invoice screen's leak (949 files, 10.6 MB without that route).",
+   "how": "Union of the static import closures of every admin route's client modules; \"use server\" files counted as stubs"
+  },
+  {
+   "name": "Link prefetches after an admin screen has loaded (new, from the browser run)",
+   "value": "23 to 46 prefetch requests per screen (two per link in view; home 28 for 13 targets, pages list 46, settings 44), 78 to 160 KB on the wire with the local server's gzip, 99 to 264 KB decoded; plus 9 to 14 scripts fetched after load (74 to 120 KB on the wire). On this local build 4 of the requests and 62 KB decoded are the storefront behind the View store link.",
+   "how": "afterLoad entries of the 15 admin pages in scratchpad m/routes.json (Chromium against pnpm start), requests whose address carries _rsc"
+  }
+ ],
+ "clean": [
+  "The CSS editor (CodeMirror, one 392,002-byte chunk), three and model-viewer (1,077,388), mediabunny (575,296) and Stripe Connect load only when used: none of those chunks is in any route's first load in route-bundle-stats.json (0 of 560 routes). Re-checked by content.",
+  "Icons are imported by name: lucide-react in 24 files, simple-icons marks by name in brand-icon.tsx, no namespace import of either. Re-checked.",
+  "No chart library is a dependency. Large tables do reach client code in one place only, the AI chat's closure (owner-tools.ts 208 KB, admin-map.ts 172 KB, replicate-grid.ts 114 KB, email-text.ts 105 KB, assistant-skills.ts 63 KB of source on the 2 assistant routes and in the on-demand chat chunk): that is AC-8, so the auditor's blanket 'no large constant table' needed this exception.",
+  "The per-area English fallback of 10 November (D540) holds: admin-text.tsx statically imports only common and sign-in.",
+  "The AI manager's chat is fetched when its panel opens (ai-manager-launcher.tsx:32), not with every screen.",
+  "web-vitals is loaded after the page with import() (speed-beacon.tsx:53).",
+  "The notice badge asks once a minute and only while the tab is visible (ai-notices.tsx:39-44, NOTICE_POLL_MS 60,000). It is not free: one small request per visible admin tab per minute, which grows with the number of owners who keep the admin open. It follows use, so it is not listed as bloat here.",
+  "No server-only module leaks into a client bundle: the import graph reaches 0 files under src/server from admin client code apart from server action stubs.",
+  "Sign-in, two-step and forgot-password load 0.50 MB and no Supabase client (sign-in: 501,816 raw, 11 chunks, none of the Supabase or zod chunks).",
+  "Page lists were split from the editor on 4 November (docs/performance.md lines 162-164); what is left of that pattern is AC-2.",
+  "Tiptap in the builder's canvas mounts only when a text is pressed (inline-edit/rich-text-inline.tsx takes the press point), so loading it late is possible; nothing forces it into the first paint.",
+  "No test or written rule pins the three shell imports of AC-1: docs/rules/admin/platform.md:51 only requires that SessionKeeper refreshes tokens in the browser; responsive-edit.test.ts imports typingIn from responsive-edit and would follow a re-export."
+ ],
+ "findings": [
+  {
+   "id": "AC-1",
+   "title": "Three stray imports put Supabase, zod and the builder's English on every admin screen",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/admin/(gated)/layout.tsx:47",
+    "/home/user/kaizen-store/src/app/admin/(gated)/layout.tsx:51",
+    "/home/user/kaizen-store/src/components/admin/session.tsx:8",
+    "/home/user/kaizen-store/src/lib/supabase/client.ts:1",
+    "/home/user/kaizen-store/src/lib/env.ts:1",
+    "/home/user/kaizen-store/src/components/admin/push-settings.tsx:6",
+    "/home/user/kaizen-store/src/components/admin/push-settings.tsx:155",
+    "/home/user/kaizen-store/src/components/admin/shortcut-sheet.tsx:19",
+    "/home/user/kaizen-store/src/components/admin/responsive-edit.tsx:20",
+    "/home/user/kaizen-store/src/components/admin/responsive-edit.tsx:306",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:51"
+   ],
+   "evidence": "Chunks present in 420 to 432 of 449 admin routes, each opened and identified: 2du16ociar189.js is supabase-js (179,419 raw / 44,575 gzip), 2i4juo9spco86.js is Supabase realtime (57,349 / 16,687), module 79300 inside 2zizbcwzl-te-.js is a Buffer polyfill (22,701) required only by the Supabase chunk and one lazy chunk, 1-5xy7dnrat0_.js is zod (116,870 / 32,996), 0pmozty218j-z.js is builderEn (71,508 / 23,861), 2-qbqk-gdin9b.js is schemas built on zod (33,198 / 11,526). My import graph gives the only paths from the signed-in layout: session.tsx to lib/supabase/client.ts to env.ts (zod); push-settings.tsx (which holds the 9-line AdminServiceWorker) to lib/push.ts (zod); shortcut-sheet.tsx to responsive-edit.tsx for the 4-line typingIn(), and responsive-edit imports builder.en and the responsive schemas. With those three imports cut, 160 routes still reach zod, 83 Supabase and 40 builder.en; the store home, orders, products, settings and platform home reach none of them. The sampled home HTML asks for all of these chunks.",
+   "cost": "481 KB raw / about 137 KB gzip in the first load of every signed-in admin screen: 43% of the 1.12 MB all screens share. It is downloaded once per browser until a deploy changes a chunk (the Supabase and zod chunks are library code and change rarely; builderEn changes whenever a builder word does), and parsed and run on every full page load.",
+   "who_pays": "An owner's browser on every full load of any admin screen, phones most. Today the team; every owner and staff member once the platform opens.",
+   "fix": "1) Move typingIn() to a small file of its own and import it from there in shortcut-sheet.tsx (re-export it from responsive-edit so its test still passes). 2) Move AdminServiceWorker out of push-settings.tsx into its own file. 3) In session.tsx load the Supabase client with import() inside the effect, and give the browser a public-env check that does not use zod. Add the three targets to an admin import guard (AC-11).",
+   "saving": "Estimate from measured chunks: a plain screen's first load from 1.19 MB to about 0.70 MB raw (357 to about 220 KB gzip). 222 KB raw (zod, builderEn, schemas) leaves about 290 routes outright; the 260 KB of Supabase still downloads on every screen, after the page. The builder, the product editor and the other 83 upload screens keep all of it (see AC-5).",
+   "effort": "S",
+   "risk": "Low. The token refresh starts a moment later than today; docs/rules/admin/platform.md:51 requires only that SessionKeeper refreshes in the browser, which stays true, and SessionRecovery still handles an expired token if the late chunk fails to load. Run the signed-in suite.",
+   "confidence": "high",
+   "already_tracked": "PSI PERF-01 (docs/audits/psi-followups.md:482, open) says to cut the shared scripts but names none of these imports. Not a step anywhere.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-opened all ten cited lines; they say what the auditor says. Re-sized and gzipped the five chunks and found the Buffer module's only requirers myself. Rebuilt the import graph (4,156 files) and re-ran the cut: zod 160 routes (auditor 163), Supabase 83, builder.en 40. Checked the home HTML asks for the chunks. Looked for a rule or test that pins the imports: none. Changed: the cost now says when it is paid (download once per changed chunk, parse on each full load) and the saving separates what leaves from what is only deferred. Nothing rests on unused features."
+  },
+  {
+   "id": "AC-2",
+   "title": "26 screens load an editor they never draw, because lists, previews and editors share one views file",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:7",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:277",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/[pageId]/preview/page.tsx:3",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/views.tsx:9",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/views.tsx:229",
+    "/home/user/kaizen-store/src/components/admin/content-views.tsx:6",
+    "/home/user/kaizen-store/src/components/admin/content-views.tsx:8",
+    "/home/user/kaizen-store/src/components/admin/pages-table.tsx:5",
+    "/home/user/kaizen-store/src/lib/page-roles.ts:1",
+    "/home/user/kaizen-store/e2e/signed-in/admin-scripts.spec.ts:43",
+    "/home/user/kaizen-store/docs/performance.md:162"
+   ],
+   "evidence": "route-bundle-stats.json: the 13 draft preview routes (7 of a store, 5 of the platform, 1 of the sandbox) are 3,220,818 to 3,303,372 bytes raw (about 1.0 MB gzip), the same as the editor, because StorePreviewPageView sits in editor-views.tsx beside PageEditor and DualPageEditor; the preview's client manifest lists page-editor.tsx and dual-page-editor.tsx. The 9 lists of pages, articles, headers, footers and product layouts are 2,002,798 or 2,007,577 bytes because views.tsx also imports TermsManager for the categories view. The 4 content lists are 1,953,143 or 1,961,129 because content-views.tsx imports ContentTypeEditor and EntryEditor. A plain list (Products) is 1,167,291. The sampled pages-list HTML asks for the Tiptap chunk. In the graph, dropping the two editor imports takes the preview's client closure from 444 files (4.54 MB of source) to 213 (1.36 MB); dropping TermsManager takes the pages list from 192 files (1.83 MB) to 137 (1.21 MB); dropping the two content editors takes the content list from 157 files (1.57 MB) to 85 (0.57 MB). docs/performance.md:162 records the same rule (a route loads every client component its server modules import, drawn or not) and the first split of 4 November.",
+   "cost": "About 1.7 to 1.9 MB raw (about 0.55 MB gzip) too much on each preview, and about 0.65 to 0.8 MB raw (about 0.2 to 0.25 MB gzip) on each of 13 list screens.",
+   "who_pays": "An owner's browser: every press of Preview in the builder and every visit to a list of pages, articles, headers, footers or content.",
+   "fix": "Move the preview views to a file of their own (a store's, the platform's and the sandbox's), the categories view out of views.tsx, and the list views out of content-views.tsx. For the page lists to reach the plain-list figure, also stop pages-table.tsx importing ROLE_COPY from page-roles.ts, which imports the 197 KB page-content.ts (a 75 KB chunk plus about 115 KB of what it pulls). Then lower the pages list budget and add a preview route to the budgets.",
+   "saving": "Estimate: previews 3.3 MB to about 1.4-1.6 MB raw; content lists 1.95 MB to about 1.15 MB; page lists 2.0 MB to about 1.35 MB, or about 1.15 MB with the pages-table import fixed too. Measure after the split.",
+   "effort": "S",
+   "risk": "Low: files move, no behaviour changes. The platform's twins must move in the same change.",
+   "confidence": "high",
+   "already_tracked": "no (the 4 November split under PSI PERF-01 fixed the lists against the editor only)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened editor-views.tsx, views.tsx, content-views.tsx and the preview page; listed all 39 builder-chunk routes and the 34 non-builder Tiptap routes one by one; diffed the pages list's chunks against Products (12 extra chunks, 864,111 bytes). The structure and counts hold. Changed: the saving for the 9 page lists was too high. After the split they still load page-content.ts and what it imports through pages-table.tsx to page-roles.ts (about 190 KB of chunks), so they land near 1.35 MB, not 1.2, unless that import is fixed too; I added it to the fix. The preview estimate is given as a range (1.36 MB of source remains, more than a plain list's 0.64 MB). Nothing rests on unused features."
+  },
+  {
+   "id": "AC-3",
+   "title": "Order, customer and deal screens load the rich text editor and the builder's schema for custom fields, whether or not the store has any",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/staff-fields-section.tsx:2",
+    "/home/user/kaizen-store/src/components/admin/staff-fields-section.tsx:31",
+    "/home/user/kaizen-store/src/components/admin/entity-fields-card.tsx:50",
+    "/home/user/kaizen-store/src/components/admin/fields-form.tsx:35",
+    "/home/user/kaizen-store/src/components/admin/fields-form.tsx:41",
+    "/home/user/kaizen-store/src/components/admin/fields-form.tsx:451",
+    "/home/user/kaizen-store/src/components/admin/term-page-fields.tsx:10",
+    "/home/user/kaizen-store/src/lib/custom-fields.ts:5",
+    "/home/user/kaizen-store/src/lib/custom-fields.ts:1",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx:39"
+   ],
+   "evidence": "The order screen is 1,998,644 bytes raw / 611,343 gzip, a customer 1,936,135, a deal 1,858,910. Against a plain list the order carries: Tiptap and ProseMirror 435,421, the page-content schema 74,836, the fields English 45,222, the fields form 41,652, a four-language text module 37,916, store parts and motion 33,933, the custom-fields schema 24,871: 693,851 raw in all. The graph shows one path on all three screens: StaffFieldsSection imports EntityFieldsCard, which imports entity-fields, fields-form and RichTextEditor (the only importer of Tiptap there), and custom-fields.ts imports two helpers from page-content.ts; fields-form.tsx also imports EMPTY_DOC from page-content.ts itself (line 35). StaffFieldsSection returns null when the store has no group for that kind of thing (line 31), but the route's client manifest carries the client module whether it is drawn or not.",
+   "cost": "About 0.69 MB raw / 217 KB gzip on every order, customer and deal screen of a store that has no custom fields for them; 435 KB raw of it on 21 screens outside the builder and the lists wherever no rich text field is shown.",
+   "who_pays": "An owner's browser, on the screens used most in daily work (an order, a customer). A store that never sets up custom fields pays the same as one that uses them: the cost does not follow use.",
+   "fix": "Draw EntityFieldsCard through a small client wrapper that loads it with next/dynamic, so its chunk arrives only when the server draws it (a group applies). That alone removes the whole 0.69 MB where there are no groups. For stores with groups but no rich text field: load RichTextEditor through a client-side next/dynamic wrapper in fields-form.tsx and term-page-fields.tsx, and move cleanRichText(), richTextPlain() and EMPTY_DOC to a small module so custom-fields.ts and fields-form.tsx stop importing page-content.ts.",
+   "saving": "Estimate from measured chunks: an order screen 2.00 MB to about 1.3 MB raw (611 to about 395 KB gzip) while the store has no fields for orders; 435 KB raw less wherever no rich text field is shown.",
+   "effort": "S",
+   "risk": "Low to medium: a rich text field appears a moment after its form; keep a placeholder of the same height and hold the value in the form's state so Save never loses it (the lesson docs/performance.md records for 31 October).",
+   "confidence": "high",
+   "already_tracked": "no (code review step 3.2 would split page-content into a folder, Open, but does not name this)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-opened fields-form.tsx, entity-fields-card.tsx, staff-fields-section.tsx and custom-fields.ts; diffed the order, customer and deal routes' chunks against Products (the seven chunks sum to exactly 693,851); traced the single path to Tiptap in the graph; counted the 21 other routes. The numbers hold. Changed under the owner's clarification: the title and evidence no longer cite the empty field_values table or 'no store has filled in'. That was not evidence of anything before opening. What stands is an idle cost: the screen loads the fields editor for a store that has none. Also added what the auditor missed: fields-form.tsx imports page-content.ts itself for EMPTY_DOC (line 35), so moving the two helpers alone would not free it; and the lazy card wrapper alone delivers the full saving where no group applies. Read Next's lazy-loading guide: next/dynamic splits only from a Client Component, so the wrapper must be one."
+  },
+  {
+   "id": "AC-4",
+   "title": "Pages hand whole text areas to the browser where their parts read a few branches; one area on every screen is read by nothing",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/app/admin/(gated)/layout.tsx:45",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/layout.tsx:114",
+    "/home/user/kaizen-store/src/lib/admin-text.ts:308",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/products/[productId]/page.tsx:45",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/page.tsx:117",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/editor-views.tsx:30",
+    "/home/user/kaizen-store/src/components/admin/admin-text.tsx:41",
+    "/home/user/kaizen-store/src/components/admin/store-drafts.tsx:1"
+   ],
+   "evidence": "Measured in 14 sampled pages: every store screen carries common 6,498 + setup 6,895 + shell 6,905 + assistant 13,683 = 34.0 KB of text. No file in src calls useAdminText(\"setup\") and no reader takes the area by a variable. The shell's parts read error, notFound, view, loading, push, rail, frame and switcher: 3,878 of shell's 6,905 characters. The launcher and notices need launcher 272 + notices 1,025 of assistant; 6,422 of it is the autopilot's words. The home hands the home area (23,695) and its one client reader takes home.drafts (1,219, 5%). The pages list hands schedules (5,668), which no client module of that route reads. The product editor hands 238 KB (81% of its flight data) including the whole builder area (74,732) for rich text and text styles. The builder hands 11 areas, 276.8 KB measured, 311 KB with the shell's: 85% of its flight data. Compressed, the handed text is 12.5 KB of the orders page's 32.7 KB document, 20.5 of the home's 37.7, 77.6 of the product editor's 108.2 and 100.8 of the builder's 135.7. It is not a cached script, and the script budget does not count it.",
+   "cost": "About 22 KB raw (about 8 KB compressed) of unread text in every store screen's document; at least 77 KB and likely about 160 KB raw on the product editor; about 58 KB on the pages list. The layout's part is sent on a full load and on every refresh after a save, not on a navigation inside the same layout; a page's own areas are sent on every navigation to it.",
+   "who_pays": "An owner's browser on every full load, every refresh after a save and every navigation to a page with its own areas; the server, which serialises it per request.",
+   "fix": "Stop handing setup. Split the largest areas so a page can hand what its parts read: builder (rich text and text styles apart), website (media, picker, picture maker apart), assistant (launcher and notices apart from chat and autopilot, the rest fetched with the chat), home.drafts. Splitting areas keeps D540's rule and its test (an area not handed is a noted fallback). Add an HTML size check for the budgeted screens.",
+   "saving": "Estimate from the measured slices: every store screen 22 KB raw less (about 8 KB compressed); home HTML 166 KB to about 134 KB; pages list 279 KB to about 220 KB; product editor 426 KB to about 270-350 KB. On the wire about a third of those figures.",
+   "effort": "M",
+   "risk": "Medium: a part that reads a branch not handed falls back to fetched English, which e2e/signed-in/admin-text-fallbacks.spec.ts fails on. Split by area, not by partial object, so that test keeps working.",
+   "confidence": "high",
+   "already_tracked": "no. D540 and PSI PERF-01 moved the English out of the scripts; the size of what is handed down is not measured or budgeted anywhere.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Decoded the flight data of 14 sampled pages with my own script and got the auditor's figures to the byte (34.0 KB per screen; 57.7 of 106 KB; 86.8 of 160 KB; 238 of 296 KB). Sized each branch by importing the catalogue files: home.drafts 1,219 of 23,695, the shell's read branches 3,878, assistant.autopilot 6,422. Scanned each route's client closure for readers: none for setup anywhere, none for schedules on the pages list. Changed: (1) the builder's handed text is measured, 277 KB for its 11 areas, not 'about 265 KB estimate'; (2) 'every navigation' was too broad, since Next does not re-send a shared layout's payload on a navigation inside it, so the 34 KB is paid on full loads and refreshes; (3) added compressed weights, which are about a third of the raw ones yet still 54 to 74% of each compressed document. Dropped three cited lines I could not tie to a claim (views.tsx:81, rich-text-editor.tsx:155, product-editor.tsx:872)."
+  },
+  {
+   "id": "AC-5",
+   "title": "The page builder loads everything at once: 3.3 MB of script before the first paint",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/page-builder.tsx:14",
+    "/home/user/kaizen-store/src/components/admin/page-builder.tsx:96",
+    "/home/user/kaizen-store/src/components/admin/block-fields.tsx:33",
+    "/home/user/kaizen-store/src/components/admin/block-fields.tsx:227",
+    "/home/user/kaizen-store/src/components/admin/modal-fields.tsx:38",
+    "/home/user/kaizen-store/src/components/inline-edit/rich-text-inline.tsx:3",
+    "/home/user/kaizen-store/src/components/admin/field-file-upload.ts:1",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:106",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:281"
+   ],
+   "evidence": "route-bundle-stats.json: 3,303,372 bytes raw / 1,014,731 gzip in 48 chunks on a store's editor routes; 26 editor routes in all between 3.09 and 3.30 MB, the visitor sandbox among them (3,088,676). Against a plain list the builder adds 24 chunks, 2,164,685 bytes: the builder's own chunk 460,704; Tiptap 435,421; the storefront's text in four languages 318,693 plus 49,242 (AC-6); components' fields 136,082 and 114,972; the page-content schema 74,836; dnd-kit 43,245; English copies of builder, blocks and fields about 150 KB while the same areas are also handed down in the HTML (AC-9). page-builder.tsx (6,658 lines) and block-fields.tsx (3,644) contain no import() or next/dynamic; all components' fields are imported up front (20 of 34 types through BLOCK_EDITORS, the rest hand-wired). The page's client closure is 444 files, 4.54 MB of source. Four modules import Tiptap (rich-text-editor, markup-input, inline-edit/markup-editor, inline-edit/rich-text-inline); the canvas mounts the inline editors only when a text is pressed.",
+   "cost": "3.30 MB raw / 1.0 MB gzip on the first open of the builder, and the changed chunks again after a deploy (23 and 52 commits touched code on 10 and 11 November; a push deploys). docs/audits/psi-followups.md:482 and code review FB8 name the editors for the admin's 3.93 s largest paint at p75, measured on the team's own use.",
+   "who_pays": "An owner's browser on every page, article, header, footer and layout edit; a prospect's browser in the sandbox.",
+   "fix": "Do step 3.4 as written (dialogs, templates, translation, theme panel, dual frame on demand). Add what its fix does not name: load Tiptap at idle or on the first text press, at all four import sites; take the storefront text out (AC-6); drop the static English copies once the areas are handed (AC-9). Loading each component's fields when its dialog opens needs one file per component first, which is step 3.2 (Open); plan it after that step, not inside 3.4. Add /admin/try to the budgets.",
+   "saving": "Estimate: first load from 3.3 MB to about 2.3 MB raw from the three named cuts (storefront text about 350 KB, Tiptap 435 KB deferred, English copies about 150 KB), lower once the dialogs load on demand. The shell fix (AC-1) saves nothing here: the builder itself imports zod (custom-fields, page-content), the Supabase client (file uploads) and its own English.",
+   "effort": "M",
+   "risk": "Medium: the signed-in builder specs must pass; a dialog or a text pressed before its chunk arrives needs a pending state that keeps the press.",
+   "confidence": "high",
+   "already_tracked": "docs/audits/code-review-2026-11.md step 3.4 (FB8), Open, after step 3.1 (split the builder, Open). FB8's finding names the rich text editor; its fix lists only dialogs and panels. The component registry is step 3.2, Open. The sandbox budget is not in either.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-counted lines (page-builder.tsx is 6,658 now), confirmed no import() in the two files, diffed the builder's chunks against a plain list, listed the 26 editor routes, traced Tiptap's four importers and read how the canvas mounts them. Changed: (1) the saving said 'about 2.0 MB with AC-1 and AC-6 included', but after the AC-1 cuts the builder routes still reach zod (38 routes through custom-fields), Supabase (39 through field-file-upload) and builder.en (39), so AC-1 saves nothing here; the three named cuts give about 2.3 MB; (2) Tiptap has four import sites, not one; (3) the lazy component registry depends on step 3.2 because all editors live in one 3,644-line file, and only 20 of 34 types are in the registry; (4) commit counts re-measured from git (the auditor's 27 and 74 were a moment in time and counted docs-only commits, which do not deploy). Nothing rests on unused features."
+  },
+  {
+   "id": "AC-6",
+   "title": "The builder and the draft order editor load the storefront's text in all four languages",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/block-fields.tsx:21",
+    "/home/user/kaizen-store/src/components/admin/block-fields.tsx:2684",
+    "/home/user/kaizen-store/src/components/admin/modal-preview.tsx:34",
+    "/home/user/kaizen-store/src/components/admin/page-builder-fields.tsx:1537",
+    "/home/user/kaizen-store/src/components/content-grid.tsx:63",
+    "/home/user/kaizen-store/src/components/admin/drafts/draft-summary.tsx:35",
+    "/home/user/kaizen-store/src/lib/i18n.ts:9",
+    "/home/user/kaizen-store/src/lib/messages/en.ts:285",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:14"
+   ],
+   "evidence": "Chunk 1u2592k6jkhim.js (318,693 raw / 103,098 gzip) holds messages/da, nb, sv and en with their exchange, review and quote texts; it is in the first load of 40 routes: the 39 builder routes and the draft order editor. Their returns texts sit in a second chunk (49,242 bytes on 39 routes). Any import of lib/i18n brings all four language modules (i18n.ts lines 9-12). In the builder four client-reachable modules import it as a value: block-fields.tsx (t(nb or en).form), modal-preview.tsx (t(lang).modal), page-builder-fields.tsx line 1537 and the shared storefront component content-grid.tsx line 63 (both t(data.lang) for the grid preview, which calls message functions such as listing.count). The draft order editor reads one branch (unitPrice.bases). Cutting lib/i18n from the builder's closure removes 21 files, 466 KB of source; the four languages' browser texts (24.8 KB built) stay, because lib/browser-text.ts imports them on its own. The storefront's scan test forbids lib/i18n in a visitor's scripts and says in its header that the admin is left out; D212 says a language's whole module is the server's and the admin's, a rule made for shoppers' pages that does not need the admin's browser to hold all four.",
+   "cost": "About 350 KB raw / about 113 KB gzip on 40 routes.",
+   "who_pays": "An owner's browser in the builder and on a draft order.",
+   "fix": "The messages hold functions, so the whole object cannot cross from the server as a prop. Either pass the plain strings each site needs (the form and modal branches, and the grid preview's few lines already worked out on the server), with content-grid.tsx taking its words as an argument; or load only the store's language module with import() in the four places. The draft order editor takes its one branch as a prop. Add lib/i18n to the admin import guard (AC-11).",
+   "saving": "Estimate: up to 350 KB raw / 113 KB gzip per builder open with strings passed; about 260 KB raw if one language module is still loaded on demand.",
+   "effort": "M",
+   "risk": "Low to medium. content-grid.tsx is drawn by the storefront too, where it is a server part; its signature changes for both. Check the builder specs in a Norwegian store.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Sized the chunk, confirmed its 40 routes, opened i18n.ts and every admin-side importer. Changed: (1) the auditor found two import sites in the builder ('to read two branches'); the graph finds four on all 39 builder routes, including page-builder-fields.tsx:1537 and the shared content-grid.tsx:63; (2) the proposed fix 'pass the two branches as props' cannot work as written, because Messages contains functions (messages/en.ts:285 and the grid's listing.count) that cannot be serialised across the server boundary; (3) the saving was 375 KB; the browser texts (24.8 KB) stay through lib/browser-text.ts, so the ceiling is about 350 KB; (4) effort is M, not S. Nothing rests on unused features."
+  },
+  {
+   "id": "AC-7",
+   "title": "The Work invoice screen ships the whole admin catalogue, both languages, in one 1.7 MB chunk",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/work/invoice-draft-editor.tsx:43",
+    "/home/user/kaizen-store/src/components/admin/work/invoice-draft-editor.tsx:44",
+    "/home/user/kaizen-store/src/components/admin/work/invoice-issue-dialog.tsx:12",
+    "/home/user/kaizen-store/src/components/admin/work/invoice-readiness.tsx:8",
+    "/home/user/kaizen-store/src/components/admin/work/invoice-totals.tsx:5",
+    "/home/user/kaizen-store/src/lib/work-text.ts:4",
+    "/home/user/kaizen-store/src/lib/work-text.ts:11",
+    "/home/user/kaizen-store/src/components/admin/admin-catalogues.scan.test.ts:44"
+   ],
+   "evidence": "/admin/account/work/s/[store]/invoices/[invoiceId] is the largest admin route: 4,274,839 bytes raw / 1,335,794 gzip. Its chunk 3fqt1dd2f0p1k.js is 1,704,595 bytes (526,391 gzip) and is on that one route; sampled at 7 offsets it is admin text in Norwegian and English from many areas (privacy, Work, payment providers, the builder's panel) around the editor's own code. The client editor imports invoice-readiness.tsx and invoice-totals.tsx, written for the server (no \"use client\"), which import lib/work-text.ts, which imports lib/admin-text.ts: every area in both languages. The graph finds exactly one route and two \"use client\" files in all of src with a path to admin-text.ts (invoice-draft-editor.tsx and invoice-issue-dialog.tsx). The scan test meant to stop this matches only a direct import of a .en file in a \"use client\" file. work-text.ts keeps the language in React's cache(), which only holds per request on the server, so in the browser these two parts read English whatever the account's language.",
+   "cost": "About 1.66 MB raw / about 520 KB gzip of text on each first open of a Work invoice, again after every deploy that changes any admin word (the chunk holds them all).",
+   "who_pays": "An owner's browser, on the Work invoice screen only; the cost already follows use, it is simply 1.7 MB too large.",
+   "fix": "Give ReadinessList and InvoiceTotalsView their words as props or through useAdminText(\"work\"), and stop importing work-text.ts from anything a client module imports. Add a guard: no module reachable from a client component may import lib/admin-text or lib/work-text as a value (AC-11).",
+   "saving": "Measured chunk: about 1.66 MB raw / about 520 KB gzip; the route falls from 4.27 MB to about 2.6 MB raw.",
+   "effort": "S",
+   "risk": "Low. Side effect to check: a Norwegian account likely sees these two parts in English today (or a mismatch on hydration); the fix corrects that.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-sized and gzipped the chunk, sampled it, confirmed it is on one route, opened all five files in the chain and re-ran the search for any client path to admin-text.ts over every admin route and every \"use client\" file: one route, two files, as claimed. Read work-text.ts to check the language point. Nothing changed except wording. This is an accidental import, not a feature judged by its use; the clarification does not touch it."
+  },
+  {
+   "id": "AC-8",
+   "title": "The AI manager's chat downloads every tool definition, the admin map and the Norwegian page names to label a tool call",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:9",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:11",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:13",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:328",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:392",
+    "/home/user/kaizen-store/src/lib/manager-tools.ts:3",
+    "/home/user/kaizen-store/src/lib/manager-tools.ts:318",
+    "/home/user/kaizen-store/src/components/admin/ai-manager-launcher.tsx:32"
+   ],
+   "evidence": "Chunk 00rxgygh1f--7.js is 496,206 bytes raw / 143,978 gzip. It holds tool descriptions written for the model (for example 'Finds the admin pages for what the person wants'), the admin map (697 keywords entries) and the prompt-safety wording. ai-manager.tsx imports one map, TOOL_WORDS, from manager-tools.ts (36 KB), which imports owner-tools.ts (208 KB) and through it product, site and setup tools; it imports matchPath from admin-map.ts (172 KB) and PAGES_NB (61 KB) to name the current page in one suggestion. The chat's import closure is 209 files, 2,940,924 bytes of source; without those three imports it is 39 files, 302,638 bytes (assistant-skills.ts, 63 KB, stays through the skills form).",
+   "cost": "496 KB raw / 144 KB gzip the first time the panel opens, again after each deploy that changes a tool's description or a page's name, and in the first load of the two assistant screens (2.06 MB).",
+   "who_pays": "An owner's browser, when the AI manager is opened. The cost follows use; the chunk is about five times larger than the chat needs.",
+   "fix": "Move TOOL_WORDS to a file of its own with no other import. Take admin-map.ts and pages.nb.ts out of the browser by giving the chat the current page's name from the server. The panel stays open across navigations and reads the path live, so the name has to come with each page (for example from the navigation items the layout already draws) or from a small action when the path changes, not once at start.",
+   "saving": "Estimate from source sizes: about 400 KB raw / 115 KB gzip of the 496 KB chunk.",
+   "effort": "S",
+   "risk": "Low. agent-eval.test.ts and the ai-manager-panel spec cover the tool names and the panel. The page-name suggestion must still follow a navigation made with the panel open.",
+   "confidence": "high",
+   "already_tracked": "docs/performance.md (lines 154-160) records the 0.48 MB chunk and made it load on opening (4 November); its size is not a step anywhere.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-sized the chunk, searched it for tool descriptions, map entries and the safety wording, opened the three imports and the two uses, and re-ran the closure with and without them (209 files to 39). Numbers hold. One addition to the fix: the auditor's 'resolve the page's name on the server at start' misses that the suggestion follows usePathname() while the panel stays open, so the name must arrive per page. The finding is about the size of a chunk, not about how much the AI manager is used."
+  },
+  {
+   "id": "AC-9",
+   "title": "English text for 23 areas is still compiled into client scripts and then handed down again in the HTML",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/field-group-editor.ts:31",
+    "/home/user/kaizen-store/src/lib/field-group-editor.ts:54",
+    "/home/user/kaizen-store/src/lib/work-ui.ts:22",
+    "/home/user/kaizen-store/src/lib/work-ui.ts:370",
+    "/home/user/kaizen-store/src/components/admin/templates-helpers.ts:1",
+    "/home/user/kaizen-store/src/components/admin/modal-fields.tsx:38",
+    "/home/user/kaizen-store/src/components/admin/responsive-edit.tsx:100",
+    "/home/user/kaizen-store/src/components/admin/admin-catalogues.scan.test.ts:19"
+   ],
+   "evidence": "Walking each admin route's client import closure (the Work invoice route of AC-7 left out) finds 23 areas' English files reachable besides common and sign-in, 18 of them on two or more routes: builder.en on 423 routes (AC-1), fields.en on 74 (a 45 KB chunk with the fields' words), blocks.en on 40, work.en on 15 (65.6 KB of source, through the Work timer's work-ui.ts), analytics in English and Norwegian on 6, home.en on the store home through demo-content-card.tsx while the home area is also in that page's HTML (23.7 KB). Most arrive through lib modules that take the English as a default argument (w = fieldsEn), which the scan test cannot see: it lists 14 direct importers and checks only \"use client\" files.",
+   "cost": "24 to 150 KB raw of English per affected screen that the page also hands down in the account's language; a Norwegian account downloads English it never shows.",
+   "who_pays": "An owner's browser on the affected screens (the builder most: about 150 KB).",
+   "fix": "In modules a client part imports, make the words a required argument and pass useAdminText()'s result; keep the English default only in a server-side wrapper. Shrink the scan test's list as each goes, and make the test walk imports (AC-11).",
+   "saving": "Estimate: about 150 KB raw on the builder, 65 KB on the 15 Work screens, 24 to 45 KB on 74 field screens, 22 KB on the home.",
+   "effort": "M",
+   "risk": "Low: types make a missing argument a compile error. A part drawn where its area is not handed would fetch English late, which the fallbacks spec fails on, so each move needs its page to hand the area.",
+   "confidence": "high",
+   "already_tracked": "Partly: admin-catalogues.scan.test.ts holds a list of 14 direct importers that may only shrink (PSI PERF-01). The indirect ones are not seen.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran the walk over all 449 routes and opened every cited line (each is an English import or an English default argument, as described). Counts for builder.en (423), fields.en (74), blocks.en (40), work.en (15), analytics (6) match. Changed: the auditor wrote '23 areas reachable on two or more routes'; it is 23 areas in all, 18 on two or more (5 are on one route: order, orders, home, settings, tax). The scan test's list has 14 entries, as said. Nothing rests on unused features."
+  },
+  {
+   "id": "AC-10",
+   "title": "The script budget covers 9 of 449 admin routes and none of the HTML",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/e2e/signed-in/admin-scripts.spec.ts:18",
+    "/home/user/kaizen-store/e2e/signed-in/admin-scripts.spec.ts:36",
+    "/home/user/kaizen-store/e2e/performance.spec.ts:40",
+    "/home/user/kaizen-store/docs/performance.md:139"
+   ],
+   "evidence": "BUDGETS holds 7 signed-in store routes; e2e/performance.spec.ts adds the signed-out sign-in and forgot-password pages. No platform, account, Work, preview, order or customer route has one. The four worst things found here sit outside them: the 4.27 MB Work invoice, 13 previews at 3.2 to 3.3 MB, the order screen at 2.0 MB, the sandbox at 3.09 MB. The pages list budget (2,180,000) was set from a measurement that already held the category editor. firstScripts() sums every script tag, including the 112,594-byte nomodule polyfill no modern browser fetches (9% of the home's figure), and counts no HTML, so text moved from scripts to props looks like a pure saving. Counted as the spec counts, today's home is 1,297,308 against 1,284,745 recorded on 10 November (42.7 KB of room left) and the builder 3,399,666 against 3,341,746 (+57.9 KB in a day, 80 KB left). The build already writes .next/diagnostics/route-bundle-stats.json with every route's first-load bytes and chunk list (731 KB, written by the ordinary build).",
+   "cost": "Growth outside 9 screens is unseen; about 13 KB was added to every plain screen and 58 KB to the builder in a day without a signal.",
+   "who_pays": "CI now; every owner's browser later.",
+   "fix": "After the build in CI, read route-bundle-stats.json: fail when the shared shell set grows past its budget, when any admin route passes a ceiling for its kind (plain screen, editor, builder), or when a route grows more than a set amount against a committed baseline that only falls (as ratchet.baseline.json works). Leave the nomodule file out. Add an HTML byte budget to the 7 screens the signed-in spec already opens.",
+   "saving": "No bytes by itself; it keeps the 0.5 to 2 MB found here from coming back and covers 440 more routes for a few seconds of CI.",
+   "effort": "S",
+   "risk": "Low. The file is a Next diagnostic, so pin its shape in the check and fail loudly if it is missing.",
+   "confidence": "high",
+   "already_tracked": "Partly: code review 3.4's done-when adds the page editor to the budgets (it is already there); PSI PERF-11 (done) budgets visitor routes. A budget for all admin routes or for HTML is not planned.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Read both spec files and applied the spec's own regex and .length to the sampled HTML and chunk files. Changed: (1) 9 admin routes have a budget, not 7 (sign-in and forgot-password are in e2e/performance.spec.ts:44-45); (2) the spec counts characters, so the home's figure 'measured the same way' is 1,297,308, not 1,297,958 (that is bytes); the growth and room barely move (12.6 KB, 42.7 KB); (3) added the builder's figures, where the growth in a day was larger. Confirmed route-bundle-stats.json is written by the ordinary build (timestamp of the build, 20 minutes before the analyzer ran). A process finding; the clarification does not touch it, and adding the check before opening means the first owners never see a regression."
+  },
+  {
+   "id": "AC-11",
+   "title": "The import guard that keeps zod and whole catalogues out of shoppers' scripts leaves the admin out",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:14",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:16",
+    "/home/user/kaizen-store/src/components/admin/admin-catalogues.scan.test.ts:44",
+    "/home/user/kaizen-store/src/components/admin/pages-table.tsx:5",
+    "/home/user/kaizen-store/src/lib/page-roles.ts:1",
+    "/home/user/kaizen-store/src/lib/custom-fields.ts:5"
+   ],
+   "evidence": "storefront-bundle.scan.test.ts walks every visitor component's static imports and fails on zod, lib/page-content, lib/i18n and whole language modules; its header (line 14) says the admin is left out. The admin's only bundle guard, among 46 scan tests, matches a direct .en import in a \"use client\" file. Every large finding here is one small import of a helper from a large module, which a walk catches: typingIn from responsive-edit (AC-1), ROLE_COPY from page-roles, which pulls the 197 KB page-content.ts into the page lists (a 74,836-byte chunk), two helpers from page-content in custom-fields.ts (AC-3), TOOL_WORDS (AC-8), work-text (AC-7), t() (AC-6). My own graph script (about 30 lines, under a second over 4,156 files) found each of them.",
+   "cost": "Nothing at run time; each miss costs 70 KB to 1.7 MB per screen until someone measures by hand.",
+   "who_pays": "CI (a unit test of under a second); an owner's browser pays for each miss.",
+   "fix": "Reuse the storefront walker for the admin with zones: the shell's client modules may not reach zod, @supabase, lib/page-content or any catalogue but common and sign-in; no client-reachable module may import lib/admin-text, lib/work-text or lib/i18n as a value; lib/page-content and @tiptap only from a named list of editor modules that may only shrink.",
+   "saving": "Prevents regressions of AC-1, AC-3, AC-6, AC-7 and AC-8 (about 0.5 MB on every screen and up to 1.7 MB on one).",
+   "effort": "S",
+   "risk": "Low. Start with today's offenders in an allow-list that may only shrink, as the catalogue test does.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Read the storefront guard's header and forbidden list, the admin catalogue test's matcher, and listed all 46 scan tests to check no other one walks the admin's client imports. Rebuilt the graph myself and reproduced each named path (shortcut-sheet, pages-table to page-roles to page-content, custom-fields, ai-manager, work-text, lib/i18n). Nothing changed. A process finding; the clarification does not touch it."
+  },
+  {
+   "id": "AC-12",
+   "title": "Every navigation link in view is prefetched one by one: 23 to 46 background requests per admin screen",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/store-admin-nav.tsx:94",
+    "/home/user/kaizen-store/src/components/admin/store-admin-nav.tsx:131",
+    "/home/user/kaizen-store/src/components/admin/store-admin-nav.tsx:195",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/layout.tsx:132",
+    "/home/user/kaizen-store/next.config.ts:42",
+    "/home/user/kaizen-store/docs/plan.md:120",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/02-guides/prefetching.md:27",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:14"
+   ],
+   "evidence": "The rail, tabs and sidebars use plain Link; only 4 places in the admin set prefetch={false}. Next's guide says each Link that enters the viewport is prefetched in production, and that without Partial Prefetching each link is prefetched separately instead of sharing one shell per route. The browser run in scratchpad m/routes.json measured it: after load the store home sent 28 prefetch requests for 13 targets (98 KB on the wire, 171 KB decoded), orders 32, products 38, the pages list 46 (160 KB on the wire, 264 KB decoded), settings 44; all answered 200. Each screen also fetched 9 to 14 scripts after load (74 to 120 KB on the wire). On this local build 4 of the requests and 62 KB decoded are the storefront behind the View store link; in production a store is on its own host, where that link is likely not prefetched. The build holds prerendered shell segments for the admin's routes (448 .segments folders), so a prefetch should not need a full render; whether Vercel answers these from its edge or a function was not measured. The production server's start log warns that cacheComponents is on without partialPrefetching, and docs/plan.md:120 named both for the stack.",
+   "cost": "Measured locally: 23 to 46 requests and 78 to 160 KB on the wire per admin screen view, on top of the page itself. In production each is a request to Vercel; whether it also wakes a function is unknown.",
+   "who_pays": "An owner's browser (network) and the hosting bill per request. Today the team's own clicks; it grows with every owner and every screen they open.",
+   "fix": "Set partialPrefetching: true as docs/plan.md intended and run the signed-in suite; Next's guide says links then share one shell per route. Before or after, read one admin session's request log in production to learn whether the prefetches reach a function. Record the figures in docs/performance.md.",
+   "saving": "Not known until tried: fewer and smaller prefetches per screen (one shell per route, not two requests per link). Measure the same pages again after the setting.",
+   "effort": "S",
+   "risk": "Medium: a framework setting that changes what every Link fetches, across the storefront too; Next's guide asks to review links that set prefetch={true} first. Turning prefetch off instead would make navigation feel slower.",
+   "confidence": "medium",
+   "already_tracked": "no. docs/plan.md:120 names partialPrefetching as part of the stack; the config never set it, and no decision says why.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "The auditor called the cost unmeasured and asked for a browser trace. The trace already exists: I counted the _rsc requests in the afterLoad entries of all 15 admin pages in routes.json, so the finding now carries numbers (23 to 46 requests, 78 to 160 KB on the wire per screen). Re-opened the three Link sites, the 4 prefetch={false} uses, next.config.ts (cacheComponents is at line 42, not 44), the start log and both Next guides. Changed: 'each answered by a function in Dublin' is unproven and likely wrong for most, since the build has prerendered shell segments for these routes; the title, cost and confidence now reflect a measured but modest cost; found that docs/plan.md already named partialPrefetching. The link counts differ by one from the auditor's (18 and 24 distinct admin links, not 17 and 23). Still an engineering setting, not a product choice."
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "id": "2.50",
+ "rating": "strong",
+ "why": "The work covers about 218 importers whose list only exists after step 2.25's codemod. Server files must use 2.25's area-module reader, whose name and shape the brief cannot give ('copy it from a converted file, do not invent one'). Each catalogue import also needs a choice: move the text into the catalogue or into a new <thing>-labels.ts, move a number to a leaf module or rewrite the sentence with a placeholder, and decide which server callers with no language get English. That is too entangled to specify file by file.",
+ "harm_if_wrong": "Admin screens or server emails show keys, undefined or the wrong language after a constant moves, or an import cycle appears between catalogues and code.",
+ "cheap_commits": [],
+ "make_it_cheaper": "After step 2.25 lands, re-issue the brief with the real importer list, the area reader's exact call, and a verdict (catalogue, label module or placeholder) for each of the 36 catalogue value imports.",
+ "brief_problems": [
+  "Commit 2's pattern file, src/lib/experiment-results.ts (the `input.words ?? experimentsEn` at 203 and 326), is already converted by step 2.26's fourth commit, as are work-ui, redirect-admin, campaigns, discounts and segments. The pattern will already be gone when this step starts.",
+  "Every count (218, 68, 150) is a projection after step 2.25, not today's figure."
+ ]
+}

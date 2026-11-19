@@ -1,0 +1,25 @@
+{
+ "id": "0.1",
+ "fixed": [
+  "Every 'Copy <scratch>/work/...' now names docs/audits/bloat-review-2026-11/scripts/sources/<dir>/<name>.txt.",
+  "149 replaced by 151 (46, 28, 50, 20, 7) in commit 3, done_when and stop_if.",
+  "Dropped the instruction to correct '134 steps' (section 5 already says 151).",
+  "Page-model scripts (work/pm/bench.mjs, work/pmsk/crm.mjs, work/pmsk/admin.mjs) are not copied; their mentions are reworded to 'the review's working files (not kept)'.",
+  "ai-round.mjs is specified as a new ~20-line esbuild wrapper; sources/plan-ai/build.mjs.txt is the findings writer, not a bundler (found on this check).",
+  "Added run checks for ai-round.mjs (lean Home round about 33,810 within 5%) and handed.mjs (three screen lines); handed.mjs's hard-coded /home/user path replaced by process.cwd().",
+  "rg checks exclude scripts/sources/ (raw copies keep /home/user and <scratch> paths) and plan/steps/ (briefs quote old names), which would otherwise always fail (found on this check)."
+ ],
+ "rejected": [
+  {
+   "problem": "Add a check that ai-round prints within 2% of 161,661 characters (judge's edit_brief).",
+   "why": "measure.ts does not print the default round; 161,661 is drawn by step 1.19's ai-round.scan.test.ts. The check uses the lean Home figure (33,810) that measure.ts does print."
+  },
+  {
+   "problem": "cut-simulation.mjs, meta-reader.mjs and words-in-entries.mjs get only a syntax check.",
+   "why": "They read the analyzer export or a build that this docs-only commit does not make; the brief says not to build. Left as a syntax check; the commit is reviewed."
+  }
+ ],
+ "cheaper": "applied: the judge's edit_brief (kept source paths, 151, no '134 steps', page-model scripts not copied), with the ai-round check on the figure measure.ts really prints.",
+ "executor_before": "strong",
+ "executor_after": "cheap-then-review"
+}

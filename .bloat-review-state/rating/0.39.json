@@ -1,0 +1,15 @@
+{
+ "id": "0.39",
+ "rating": "cheap-then-review",
+ "why": "Commit 1 gives the new config verbatim and the equal Test Files/Tests totals catch a lost file, and commit 3 is a fixed deps block. Commit 2 asks the model to repair tests that fail in a shared worker, where 'make it pass' (a blanket vi.restoreAllMocks, moving files to unit-isolated) is the tempting path, and commit 4 deletes test cases, including a VAT case and a GDPR retention check whose fate depends on reading docs/wave-1g-gdpr.md: a deleted or wrongly re-pointed assertion passes every check by definition.",
+ "harm_if_wrong": "A guard on VAT rates, the upload limit, returns error codes or the rule that GDPR SQL only anonymises disappears with all tests green.",
+ "cheap_commits": [
+  1,
+  3
+ ],
+ "make_it_cheaper": "Decide the retention-readers case in the brief (keep and re-point it at pg_get_functiondef with the exact function list) and give the re-pointed regexes for admin-api-routes and return-errors, so commit 4 has no judgement left.",
+ "brief_problems": [
+  "stop_if 5 ends 'keep or drop the setting as [an executor] decides', leaving the Drizzle optimizer choice open.",
+  "Done-when targets (setup under 10%, 0.15 s a file) have no stop or fallback if they are not met."
+ ]
+}

@@ -1,0 +1,135 @@
+{
+ "key": "ai-context",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/ai-context.json",
+ "validator": "OK: 14 findings, 0 refuted, 15 metrics",
+ "headline": "The shopper chat is lean (about 5,000 characters a call); the AI manager is the heavy part: about 161,700 characters a call (roughly 40,400 tokens, an estimate), 91% of it 124 tool definitions that do not depend on the question, on up to 11 calls a turn. A lean default drawn with the app's own functions is 48,600 characters on Home and 77,000 on an orders page; it is already code review step 3.18 (Open), and the eval meant to guard it does not test whether the model finds a tool (9 manager cases, none uses load_tools), so that check comes first. Around the AI, screens, polls and five-minute jobs fetch the AI connection and walk every site before knowing there is work (237,563 connection reads against 19,104 AI calls): small today, rising with every store, clearest in the alt-text job. The one quick, safe win is in the browser: the chat's script is 496 KB, of which about 370 KB (estimate) is the model's tool catalogue and admin map.",
+ "findings": [
+  {
+   "id": "AI-1",
+   "title": "Every AI manager call sends 124 tool definitions, whatever the question or screen",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Round 161,700 -> 48,600 chars on Home (-70%), 77,000 on orders (-52%), about 100,000 on products/settings (-36%); -36 to -41% a turn with a load round",
+   "verdict": "confirmed",
+   "owner_decision": true
+  },
+  {
+   "id": "AI-2",
+   "title": "The AI connection is fetched, key and month's cost included, by screens and polls that only draw a button",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Open support conversation: 4-30 provider reads a minute -> at most 1; builder page 3 -> 1. Seconds of DB time a day now; stops growing per owner",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-3",
+   "title": "Nothing asks for prompt caching or measures it, and the store is charged the full price either way",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Not measured. After AI-1 about 48,000 stable chars a round could be cached from round 2; allowance then counted at the cached price",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-4",
+   "title": "The owner's browser downloads the model's whole tool catalogue and admin map",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 370 KB raw of 496 KB (estimate from analyzer module sizes), roughly 100 KB of 144 KB gzip; measured floor 259 KB",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-5",
+   "title": "The knowledge, product and picture index jobs rescan per store to find nothing",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Product scan 12x less often; knowledge and picture jobs fall to one small query when idle. About 6 s of DB time a day now; stops growing per store",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-6",
+   "title": "The autopilot's, follow-ups' and saved-skills' tools ride on every AI manager round",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "15,384 characters a round (about 3,800 tokens, estimate) when the group is not loaded; none if the owner keeps them always present",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "AI-7",
+   "title": "One text model does every job, small ones included",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Not measured: the price gap between two models times the small jobs' tokens; small while the main model is gpt-5-mini",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-8",
+   "title": "Tool schemas say more than the model needs",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "After AI-1: 4,000-7,700 chars a round of string bounds, up to 1,610 of gate sentences; product tool split up to about 10,000 on product pages",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-9",
+   "title": "A turn does needless work before the first model call",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "One embeddings call a turn for a person with 8 or fewer memories; a whole-conversation read becomes one row. Latency gain not measured",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-10",
+   "title": "Nothing limits how large an AI call may grow",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No direct saving: stops regrowth after AI-1, AI-6, AI-8 and gives their checks a number (about 1,100 chars per new tool today, unseen)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-11",
+   "title": "The prompt lists every playbook and the admin map, whatever the store or the kind of turn",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Up to about 3,000 chars a round for a website with no shop; 2,700-6,400 a round in autopilot and Dream Factory turns; near nothing for a shop owner",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-12",
+   "title": "Every open admin tab asks for AI manager notices once a minute",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "With AD-9's back-off about two thirds of 60 calls an hour per idle owner tab, and half the statements per call",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-13",
+   "title": "The alt-text job walks every site that has an AI-written alt text, every five minutes, and retries a failed picture every day with no end",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Idle run: 2+ round trips per site with pictures -> one query in all; daily vision retries stop after five tries instead of never",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "AI-14",
+   "title": "The agents' eval cannot tell whether the model finds a tool, so the default tool set cannot be lowered safely",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "None by itself: unlocks AI-1 (-36% to -70% a round), AI-6 and AI-8 and keeps them from being undone unnoticed",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

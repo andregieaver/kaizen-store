@@ -1,0 +1,13 @@
+{
+ "id": "0.43",
+ "fixed": [],
+ "rejected": [
+  {
+   "problem": "The 'why' gives 43,361 bytes; the file is 43,292 characters.",
+   "why": "Not wrong: wc -c CLAUDE.md prints 43,361 bytes; 43,292 is the character count (some characters are multi-byte). The brief says bytes, and the test measures bytes outside the index (12,555, verified)."
+  }
+ ],
+ "cheaper": "not applied: the reviewer gave none; the step is already cheap",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

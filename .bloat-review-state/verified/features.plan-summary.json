@@ -1,0 +1,121 @@
+{
+ "key": "features",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/features.json",
+ "validator": "OK: 12 findings, 3 refuted, 13 metrics",
+ "headline": "The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables) but built with care: a new shop's default Basic view has 29 links, none of the 288 fixed-address admin screens is orphaned, and a feature a store does not use costs it close to nothing in navigation, an AI round or scheduled work. One place breaks that and is cheap to fix before shoppers arrive (added by the planner): the cart page works out the whole basket twice per view (at least 14 statements too many, a lower bound from reading the code), and every basket spends 5 statements learning that bonus, referrals and checkout rules are not in use. Two true duplicates are worth removing while there is no real data to move: order rules beside Workflows (about 1,900 lines) and the platform site's old copy (2,150 to 4,300 lines, already step 7 of its plan). The rest is the owner's product choice or already tracked; what is missing is a check that makes each new feature state what it costs a store that does not use it. Note: re-running the skeptic's two counting scripts wrote nav-items.json and tools.json into the repo root; I removed both and git status is clean again.",
+ "findings": [
+  {
+   "id": "FT-15",
+   "title": "The cart page works out the whole basket twice per view, and every basket asks the database about bonus, referrals and checkout rules whether or not the store uses them",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: one cart read and one summary fewer per cart view (14+ statements); 4 to 5 fewer per basket where bonus and referrals are off.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "FT-8",
+   "title": "Order rules ('Automation') and Workflows are two engines for one job",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "About 1,900 lines, 528 test lines, 4 pages, 1 link, 1 AI tool; 2 tables a release later; less 300-500 lines added to Workflows.",
+   "verdict": "confirmed",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-5",
+   "title": "Kaizena Flow's site is kept twice since the switch of 7 November",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: at least 2,150 lines, 23 admin pages, 12 site pages; up to about 4,300 lines and 32 admin pages. Not 6,800.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FT-2",
+   "title": "Nothing makes a new feature state what it costs a store that does not use it",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No direct saving; makes a feature's idle cost visible before it is built.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-4",
+   "title": "The AI manager sends up to 124 tool definitions a round whatever the store uses; gating tools by feature would not lower that",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Feature gating: nothing. Step 3.18 (estimate): 124 to about 66 definitions a round, near 5,800 description tokens a round.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FT-3",
+   "title": "Nine dispatcher jobs only prune old rows and run 288 times a day, and two run logs are pruned every minute",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 2,500 job runs and 6,400 statements a day from nine prune jobs, plus about 2,900 a day from two run-log deletes.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FT-12",
+   "title": "An owner's own look can be kept in two places: saved themes and the theme library",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Estimate: 100 to 250 lines and 1 table (store_themes).",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-7",
+   "title": "What a new owner sees: 29 links in Basic, 94 in Advanced, 35 under Settings. A product question, mostly planned already",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: Advanced for a new shop from 94 to about 85 links, Settings from 35 to about 20. No running-cost saving.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-1",
+   "title": "Most features have no switch; adding more is a product choice, because a switch saves almost no running cost",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "None in running cost; the earlier 100,406-line figure is withdrawn.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-9",
+   "title": "Campaigns and discount codes overlap at their edges; one page is planned, one engine is not worth it",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Estimate: one link and 100 to 200 lines of shared helpers.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-10",
+   "title": "Four store engines have a platform twin with its own tables and runner: about 2,100 lines, built by the owner's own rule",
+   "priority": "P3",
+   "effort": "L",
+   "saving": "If folded into the house store: about 2,100 lines, their tests and 8 tables. Nothing if kept.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "FT-13",
+   "title": "Bonus, referrals and creators are three reward models; whether to fold creators into referrals is a product choice",
+   "priority": "P3",
+   "effort": "L",
+   "saving": "If folded: up to 1,411 lines and 5 tables. No running-cost saving either way.",
+   "verdict": "corrected",
+   "owner_decision": true
+  }
+ ],
+ "refuted": [
+  "FT-6 The developer platform (API, OAuth server, MCP, apps, endpoints) is open with no user: argued from 'unused before opening'; idle cost is two prune jobs; a product and security choice",
+  "FT-11 Fiken is connected to no store: rested on an empty table; the cited plan keeps Fiken as the bridge; one statement per five minutes",
+  "FT-14 Checkout's delivery code imports all ten carrier adapters: import is real but its cost is not measurable beside 10.9 to 12.1 MB of shared server chunks"
+ ]
+}

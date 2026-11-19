@@ -1,0 +1,14 @@
+{
+ "id": "1.9",
+ "rating": "strong",
+ "why": "Three design points are left open. Waves are to be worked out 'from the records' start order and ms', but StatementRecord has no start time; the render counter API is muddled (statementsOf with a WeakMap, setRenderCounter, renderCounter), and once setRenderCounter is set at module load noteStatement is no longer null in the 'common case', so every production query in every route would allocate and call React's cache(). Moving five admin screens' reads into admin-screens.ts must keep the permission-conditional reads (waitingCount only with support:read) and is left to 'if it changes what it renders, leave it'. The wrapper also sits on every production query.",
+ "harm_if_wrong": "A client.query wrapper that mishandles a callback, a Submittable or 'this' breaks or slows every statement in production, or a refactored admin layout drops a permission condition on a read.",
+ "cheap_commits": [],
+ "make_it_cheaper": "Add a startedAt (performance.now()) to StatementRecord with an exact wave rule, define noteStatement as 'increment the render counter and return null when no countStatements store runs', and drop statementsOf; with that, commit 1 is cheap-then-review.",
+ "brief_problems": [
+  "StatementRecord has no start time, so 'waves' cannot be computed as described.",
+  "noteStatement 'returns null when no store is running and no render counter is set (the common case)' contradicts setRenderCounter being set globally at module load: the counter is then always set.",
+  "statementsOf(key) is described as a WeakMap counter and then as renderCounter(); the two names do not match one API.",
+  "The store layout's reads sit between other code and conditions (lines 74 to 88), not as four adjacent awaits."
+ ]
+}

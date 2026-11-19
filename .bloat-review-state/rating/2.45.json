@@ -1,0 +1,15 @@
+{
+ "id": "2.45",
+ "rating": "strong",
+ "why": "It is 'measure, then cut': commit 2 runs only if the Lighthouse table shows fonts as the largest wait, commit 3 only if a themed page fetches more than one woff2 per family, commit 4 only if a cart prefetch at load is found by a search the brief could not do, and stop_if 2 hands the choice of a script or stylesheet step to someone else. Which cut to make is decided by readings that do not exist yet.",
+ "harm_if_wrong": "A wrong font preload or subset cut slows the first paint or shows a fallback font on stores; a mis-delayed prefetch makes the cart slower to open.",
+ "cheap_commits": [
+  1,
+  5
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "stop_if 2 ends '[an executor] should choose it', a redacted placeholder.",
+  "Commit 4 creates/extends e2e/prefetch.spec.ts 'made by step 1.3' without knowing its shape, and does not name the prefetch to delay."
+ ]
+}

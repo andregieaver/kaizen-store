@@ -1,0 +1,18 @@
+{
+ "id": "3.6",
+ "fixed": [
+  "Commit 5 rewritten: reads product_translations.text_changed_at (step 0.28) with a new plain index product_translations_text_changed_idx; case B and the products column and trigger removed; product_terms changes caught by the daily hour-3 full check; migration notes updated (three files, none on a hot table).",
+  "Seller-details hook named: saveStoreDetails() in src/server/setup.ts (line 107, used by the Company page, setup, setup tools, Dream Factory) and saveInvoiceSettings() in src/server/invoice-settings.ts (line 63), with the exact after()/fallback call.",
+  "store_is_active() replacement: its body quoted from baseline_1_schema.sql line 18852 and the exact join and conditions given.",
+  "Decision number: sort -n before tail -1."
+ ],
+ "rejected": [
+  {
+   "problem": "Split the step into five briefs (judge's edit_brief).",
+   "why": "Real as advice but outside what a brief repair may do (it would create steps and change what this step closes); recorded as a stop_if and in executor_why, and the rating stays strong."
+  }
+ ],
+ "cheaper": "not applied: the split into separate briefs is a change to the plan, not to this brief; the exact parts (commit 5's statement, the seller-details function) were applied",
+ "executor_before": "cheap-then-review",
+ "executor_after": "strong"
+}

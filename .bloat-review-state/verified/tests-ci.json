@@ -1,0 +1,390 @@
+{
+ "headline": "Second check of the tests, CI and build dimension: 11 findings, 3 confirmed, 8 corrected, none refuted. None of them rests on whether a store uses a feature, so the owner's clarification changes no verdict here: these are costs paid per push, per build and per test run, whoever uses the platform. The tests are not the bloat (326,000 lines against 768,000 of source, no snapshots). The waste is in how the checks run: a push to main type-checks one commit five times and builds it four times; the type check is one 8,003-file program (183 s here, 70% of the build, 7 GB heap limit); every unit test file first loads 1.9 MB of admin English that 91% cannot use; and 229 server modules form one import cycle that 12 import lines close. All of that reproduced, the cycle on a stricter graph than the auditor's. What I corrected: the Drizzle-schema finding is already step 3.14 of the code review, not new; CI runs about 35 times a day by its own run numbers, not 75 to 88 (those are commits); the build wrote 3.9 GB, not 5.0 (1.1 GB is this review's analyzer output); cutting the cycle with lazy imports does nothing for the type check and saves the test runs only tens of seconds, so its real value is cold starts and boundaries; caching Vitest's transforms in CI is worth about 3 CPU-seconds; and the fix for the setup file must keep the second setup file, which 12 tests outside src/components need. CI cost follows commits, not shoppers, so it will not grow at opening; what will grow is the price of a deploy that is late or killed at the 8 GB edge once real stores wait on it. Before opening is the cheap time to cut the cycle and change the push rule: a route broken by a changed load order disturbs nobody today.",
+ "metrics": [
+  {
+   "name": "Test code against source",
+   "value": "325,579 lines in 1,771 test files (1,215 unit incl. 46 scans: 188,474 lines; 556 integration: 137,105 lines) against 768,202 lines in 4,139 source files: 0.42 to 1. Confirmed.",
+   "how": "find src -name '*.test.ts' with and without '*.int.test.ts', xargs cat | wc -l; the same for non-test .ts/.tsx"
+  },
+  {
+   "name": "Playwright",
+   "value": "223 spec files, 28,155 lines: 134 top-level (573 test() calls), 89 signed-in (208); the hosts job runs 4 files with 25 tests (7+3+11+4); e2e folder 2.1 MB. Confirmed.",
+   "how": "find e2e -name '*.spec.ts'; rg -c '^\\s*test\\(' per folder and per hosts file; du -sh"
+  },
+  {
+   "name": "Production build on this 4-CPU machine",
+   "value": "263 s wall; next-build span 262.0 s: TypeScript 182.9 s (70%), Turbopack 36.5 s, 1,426 pages prerendered in 29.0 s, static-check 9.9 s. Whole-machine memory peaked at 7.61 GB from 0.80 GB before (other agents' processes are in that number). Confirmed.",
+   "how": "scratchpad/m/build-summary.txt, build.log lines 20-34, and .next/trace-build aggregated by span name"
+  },
+  {
+   "name": "What the type check holds",
+   "value": "8,003 files: 4,145 src, 1,221 unit tests (6 under docs/), 556 integration tests, 232 e2e, 1,825 from node_modules. Tests and e2e are 579 MB of the 1,480 MB of syntax trees of the project's own files (39%). Corrected scope: the 1,825 definition files (556,829 lines, 25.3 MB of text) are not in that base; by characters tests and e2e are 24% of the whole program.",
+   "how": ".next/cache/.tsbuildinfo fileNames grouped by path; re-ran the auditor's parse-only script (901 + 288 + 248 + 43 MB); read the node_modules files the buildinfo lists and summed lines and bytes"
+  },
+  {
+   "name": "Type-check probes re-run (tsc 6.0.3 --extendedDiagnostics, one entry file each, niced)",
+   "value": "empty file 121 MB; schema.ts and imports 573 MB, 6.0 s check; admin-text.ts with all catalogues 537 MB, 4.6 s; page-content.ts 358 MB, 3.2 s; product-editor.tsx alone 3,026 files, 421,146 lines of TypeScript plus 395,218 of definitions, 2,599 MB, 33.9 s check, 39.3 s total. Auditor's figures hold within load noise.",
+   "how": "copied the auditor's small tsconfigs to scratchpad/work/sk-tc and ran tsc -p on each; nothing written to the repo"
+  },
+  {
+   "name": "CI work per push to main (no migration)",
+   "value": "9 runners; 8 pnpm installs; 6 database seeds; 3 db:check; 2 lints; 5 full type checks (static, quick gate, and inside the e2e, hosts and signed-in builds); 3 builds (4 with Vercel's); unit suite once plus 6 smoke files. On a push with a migration the gate is skipped, so 4 type checks. Confirmed.",
+   "how": "read .github/workflows/ci.yml lines 43-331 and counted steps; next.config.ts:46 skips the build's check only on Vercel"
+  },
+  {
+   "name": "CI runs per day",
+   "value": "About 35 a day, not 75 to 88: run 1176 released on 10 Nov 11:00 UTC and run 1222 ran on 11 Nov 18:20 UTC (46 runs in 31 hours); run 979 was on 4 Nov and 1141 on 9 Nov (about 32 a day). Commits: 89 on 11 Nov, 27 on 10 Nov; 17 of 91 commits with files are docs-only. A commit is not a push.",
+   "how": "run numbers and times in docs/decisions.md:869-897, docs/audits/code-review-2026-11.md:43-48 and ci.yml:121-122; git log --date on this 116-commit shallow clone"
+  },
+  {
+   "name": "Written wall times",
+   "value": "Unit run 5 min 34 s in an agent sandbox (was 7 min 35 s); the quick gate's lint, type check and smoke tests 5 min 11 s on CI run 1160; the integration suite passed 30 minutes before it was cut in 3 shards. Confirmed as written.",
+   "how": "docs/audits/code-review-2026-11.md:43 and :45; .github/workflows/ci.yml:81-82"
+  },
+  {
+   "name": "Unit-test setup file",
+   "value": "src/test/admin-english.ts loads 93 source modules, 1.90 MB, for 54 areas (auditor wrote 53), before each of 1,215 files: 112,995 module loads and 2,309 MB per run against 67,054 loads and 975 MB for the tests' own imports. As one bundle it evaluates in 87-107 ms and +28 MB. 114 unit files can reach admin-text.tsx (auditor: 112), all under src/components. The other setup file is needed by 43 unit tests, 12 of them outside src/components.",
+   "how": "own import graph (esbuild transform of all 5,909 files, so type-only and unused imports are gone; scratchpad/work/sk-tc/graph.mjs, reach.mjs); esbuild bundle of the setup file timed with node import, 3 runs"
+  },
+  {
+   "name": "Import reach of test files",
+   "value": "Unit: median 7 modules and 84 KB, 548 files load 5 or fewer, 18 load 1,000 or more. Integration: median 51 modules and 1.50 MB, 525 of 556 load schema.ts, 49 load 1,000 or more; 1,851 MB of source in all. Files loading 500 or more modules are 42% of the unit run's bytes and 54% of the integration run's. Matches the auditor within 2%.",
+   "how": "reach.mjs over every test file, vi.mock with a factory honoured, static imports only"
+  },
+  {
+   "name": "The import cycle",
+   "value": "One strongly connected component of 229 modules, all in src/server, 5.17 MB of source; 637 of 852 page, route and layout files reach it; catalog.ts, cart.ts, customers.ts, visibility.ts and checkout.ts each reach 1,305 modules (20.4 MB). With the auditor's 12 edges cut the largest cycle is 20 and catalog.ts reaches 417, cart.ts 351, the favicon route 373. Evaluating the cluster as one bundle takes 0.81-0.84 s and +180 MB. Reproduced on a graph that excludes type-only imports, so it is the run-time graph.",
+   "how": "Tarjan over the esbuild-derived static import graph (sk-tc/scc.mjs, with and without tc2/cuts12.txt); esbuild CJS bundle of src/server/customers.ts timed with require, 3 runs"
+  },
+  {
+   "name": "Build output",
+   "value": "The build wrote about 3.9 GB: 2.6 GB Turbopack cache, 1.3 GB server output (672 MB in 6,008 source maps, 275 MB in 6,842 JS files), 24 MB static. The 5.0 GB the auditor reported includes 1.1 GB in .next/diagnostics written by this review's own analyzer run at 22:37, after the build ended at 22:17. 18 server chunks of 4,175,868 bytes are identical but for the name in their sourceMappingURL line; each holds 697 modules (392 src/server, 286 src/lib).",
+   "how": "du -sh .next/*; find -printf sizes by extension; cmp -l on three pairs; sources list of one chunk's map"
+  },
+  {
+   "name": "Source-scanning tests",
+   "value": "46 files named *.scan.test.ts (3,813 lines); 84-86 unit test files read directories; 67 carry a recursive walker of their own (28 named sources, 12 files, 11 walk); about 43 walk all of src; no shared helper in src/test. One walk and read of src: 83-152 ms. Two tests parse all 4,139 source files with TypeScript, 4.5 s a pass here; a text test first would leave 475 and 78 files.",
+   "how": "find; rg readdirSync; a small node script that looks for a self-calling function around readdirSync; rg --pcre2 with each test's own patterns; timed node walk"
+  },
+  {
+   "name": "Test database for unit tests",
+   "value": "64 unit files use it; loading one copy takes 1.1-1.5 s and 550-680 MB RSS; the template is 12.6 MB and is kept in node_modules/.cache between local runs (not in CI). Build time of the template not re-timed.",
+   "how": "rg for imports of src/db/testing.ts; ran the auditor's pglite-load.mjs against the kept template, 3 loads"
+  },
+  {
+   "name": "The schema at run time",
+   "value": "A bundle of drizzle plus schema.ts evaluates in 135-147 ms and +55 MB; drizzle alone in 12-20 ms and +6 MB. So about 125 ms and 50 MB per process that opens the database. Only client.ts and one scan test import schema.ts; no query-builder or relational call exists outside tests.",
+   "how": "two esbuild bundles timed with node import, 4 runs each; esbuild-derived importer list; rg for .select(/.insert(/.update(/.delete(/.query. on db(), tx and database"
+  },
+  {
+   "name": "What 'vitest related' would select today",
+   "value": "For a change to one source file: median 1 unit test file, 75th percentile 82, 90th 108, 99th 313, most 651 (money.ts); catalog.ts selects 82. On top, 84 directory-reading tests import nothing and must always run. 1,822 source files are reached by no unit test.",
+   "how": "reverse reach over the esbuild-derived graph from all 1,215 unit test files"
+  }
+ ],
+ "clean": [
+  "Nothing in this dimension argues from 'no store uses it': every finding is a cost per push, per build or per test run. The owner's clarification changes no verdict here.",
+  "Test volume is healthy, not bloat: tests are 30% of src lines; no __snapshots__ folder, no .snap file and no toMatchSnapshot or toHaveScreenshot call; the largest test fixture is 39 KB and the agent-eval recording 20 KB (re-checked).",
+  "Very little tests dead code. My rough count of source files that only tests import came to about a dozen once test-support files, fixtures, Next entry files and next/dynamic targets are set aside, the same order as the auditor's 11 files and 1,774 lines.",
+  "The unit tests' database is well made: 4 baseline migration files, a template kept by a hash of the migration files, a copy per test file in 1.1-1.5 s (re-timed). Caching it in CI would save only the few seconds it takes to build.",
+  "A docs-only push runs nothing (ci.yml:10-14) and the content/** exception is deliberate; a run on main is never cancelled (ci.yml:27-32); the audit job needs no install (ci.yml:69-75).",
+  "The typing patterns the brief suspected are not what makes the type check heavy (probes re-run): schema.ts and its imports 573 MB, every admin catalogue 537 MB, page-content 358 MB, against 121 MB for an empty file and about 5 GB for the whole program. The catalogues are plain object literals: 9 'as const' in 8 of the 147 files under src/lib/admin-messages and no 'satisfies'. About three quarters of exported server functions state their return type on the signature line (3,485 of 4,568 by a one-line regex).",
+  "JSON inside the type program is small: 6 files, 295 KB. The 13 MB product taxonomy is read from disk and kept out (next.config.ts:66-69).",
+  "ESLint is the Next preset without type-aware rules (eslint.config.mjs), so lint builds no type program.",
+  "Browser budgets exist and run in CI: first scripts and page weight per route in e2e/performance.spec.ts (lines 21-57).",
+  "Three e2e specs (replicate-probe, replicate-calibrate, responsive-parity, 921 lines) skip unless a variable is set, and six tests under docs/ (1,373 lines) are outside Vitest's include; they cost only their share of the type check.",
+  "Server source maps (672 MB) are not traced into functions: the favicon route's trace lists 449 files, 47.5 MB and 0 .map files.",
+  "Only one test pins CI's configuration (src/lib/ci-playwright.scan.test.ts, the Playwright image tag). No scan test pins the build's type check, the Vitest setup files or the schema argument, so none of the fixes below fights an existing check.",
+  "src/lib is nearly a clean layer already: 1 of its 1,146 files has a run-time import out of lib and 10 import a type from server, components, app or db. That makes a separate type-check project for lib closer than the auditor assumed.",
+  "Not re-checked: the auditor's sample of three e2e specs against their unit and integration twins. I verified the e2e suite's size and its 16 conditional skips, not the overlap."
+ ],
+ "findings": [
+  {
+   "id": "TC-1",
+   "title": "One push type-checks the same commit five times; three of them hide inside CI's builds",
+   "kind": "duplicate",
+   "where": [
+    ".github/workflows/ci.yml:56",
+    ".github/workflows/ci.yml:152",
+    ".github/workflows/ci.yml:206",
+    ".github/workflows/ci.yml:249",
+    ".github/workflows/ci.yml:299-305",
+    ".github/workflows/ci.yml:110",
+    "next.config.ts:46",
+    "tsconfig.json:25-33",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/useTypeScriptCli.md:58",
+    "docs/build-memory.md:30"
+   ],
+   "evidence": "next.config.ts:46 skips the build's type check only on Vercel, so pnpm build in the e2e, hosts and signed-in jobs each runs it. The build's trace here: run-typescript 182.9 s of 262.0 s (70%). .next/cache/.tsbuildinfo lists 8,003 files in that check, among them 1,221 unit tests, 556 integration tests and 232 e2e files; Next's doc says the whole tsconfig project is checked, tests included. The static job (line 56) and the quick gate (line 302) run pnpm typecheck on the same tsconfig; next typegen gives them the same route types the build has. Lint runs twice (55, 299). db:check runs in each of the 3 integration shards (110, matrix at 86). On a push with a migration the gate is skipped, so the count is four.",
+   "cost": "About 9 runner-minutes of repeated type check in the three build jobs per push (3 x 183 s measured here; GitHub's runners differ), each with a 7 GB heap limit, and about 3 more where the gate and static both check. At about 35 CI runs a day that is 5 to 7 runner-hours a day (estimate). The e2e, hosts and signed-in jobs each end about 3 minutes later than needed, and release waits for all three, so every migration release is about 3 minutes later.",
+   "who_pays": "CI on every code push; the owner waits longer for a release with a migration",
+   "fix": "1. Set one variable (for example SKIP_BUILD_TYPECHECK=1) in the env of the e2e, hosts and signed-in jobs and read it beside ON_VERCEL at next.config.ts:46. 2. Run db:check in one shard only (if: matrix.shard == 1). 3. Optional and separate: check lint and types once per push. Mind that the gate's steps are skipped when a migration is pending (ci.yml:298-305), so either the gate's lint and type check run on every push, or static keeps them for migration pushes and pull requests.",
+   "saving": "Step 1: about 9 runner-minutes per push and about 3 minutes off the wall time of the three browser jobs (estimate from the 183 s measured here). Step 2: seconds. Step 3: about 3 more minutes and one lint.",
+   "effort": "S",
+   "risk": "Low for steps 1 and 2. The written rule says CI's builds still check (docs/build-memory.md:30, next.config.ts:44-45); its purpose, a type error caught before or beside the deploy, is kept because static and the gate check the same project. Step 3 touches the release logic: medium.",
+   "confidence": "high",
+   "already_tracked": "Partly. Code review FH10, step 1.8 (Open) tracks the three cold builds. The type check inside them and the doubled lint, type check and db:check are not tracked.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-read ci.yml 43-331, next.config.ts 34-46, scripts/next-build.mjs, docs/build-memory.md and Next's useTypeScriptCli and typescript docs. Re-aggregated .next/trace-build (182.9 s of 262.0 s) and regrouped .tsbuildinfo (8,003 files). Counts of runners, installs, seeds, lints and type checks hold. Added: four checks, not five, on a migration push; the caution on step 3; the daily figure uses about 35 CI runs a day from the run numbers in docs/decisions.md, not the commit count."
+  },
+  {
+   "id": "TC-2",
+   "title": "229 server modules import each other in one cycle; 12 import lines close it",
+   "kind": "eager",
+   "where": [
+    "src/server/customers.ts:17",
+    "src/server/pages.ts:43",
+    "src/server/seo.ts:4",
+    "src/server/seo.ts:7",
+    "src/server/seo.ts:48",
+    "src/server/seo.ts:55",
+    "src/server/shopper-emails.ts:38",
+    "src/server/taxonomy.ts:26",
+    "src/server/custom-fields.ts:57",
+    "src/server/orders.ts:22",
+    "src/server/design-presets.ts:64",
+    "src/server/design-presets.ts:69",
+    "scripts/await-deploy.mjs:12-14",
+    "docs/audits/code-review-2026-11.md:532",
+    "src/components/admin/product-editor.tsx:25-26"
+   ],
+   "evidence": "Tarjan over a run-time import graph of 4,138 source files (each file transformed with esbuild, so type-only and unused imports are gone): one strongly connected component of 229 modules, all in src/server, 5.17 MB. catalog.ts, cart.ts, customers.ts, visibility.ts and checkout.ts each reach 1,305 modules (20.4 MB of source). 637 of 852 page, route and layout files reach the cycle. With the 12 cited edges cut, the largest cycle is 20 modules and the reach is catalog.ts 417, cart.ts 351, customers.ts 317, visibility.ts 774, the favicon route 1,307 -> 373. In the build, 18 server chunks of 4,175,868 bytes are identical but for their source-map name and each holds 697 modules (392 src/server, 286 src/lib); the favicon route's function traces 449 files, 47.5 MB. scratchpad/m/chunks.md shows the storefront page route loading src/lib/owner-tools.ts and admin catalogues. An import cycle already broke a route in production once (await-deploy.mjs:12-14, D440).",
+   "cost": "Server: a function that imports any core server module evaluates the cluster; as one plain bundle that is 0.81-0.84 s and +180 MB (measured), paid per cold start (the server dimension sizes it; it will grow with traffic and with the number of functions kept warm once stores open). Tests: 18 unit and 49 integration files each load about 1,300 modules, about 55 CPU-seconds per run of both suites at the bundle's speed (estimate; Vitest's module runner is slower). The type check is not part of this cost: see the fix.",
+   "who_pays": "The server per cold start; CI and agent sessions for 67 test files; whoever next adds an import and deepens the cycle",
+   "fix": "Turn the 12 imports into await import() inside the functions that call them, or move the small helper to a module of its own. Then add a ratchet scan beside ratchet.scan.test.ts: the size of the largest import cycle and the reach of catalog.ts may only fall. Do not expect the type check to shrink: TypeScript follows dynamic imports, and product-editor.tsx reaches the cluster through the server actions it imports (lines 25-26), so its 3,026-file program stays. The line follow-ups.ts:14 (OwnerToolError from owner-tools.ts) is worth tidying but is not one of the 12: cutting it alone leaves the cycle at 228.",
+   "saving": "Static, reproduced: largest cycle 229 -> 20 modules; a route that reaches catalog.ts statically loads 417 modules, not 1,305. Source loaded by the unit run 975 -> 829 MB and by the integration run 1,851 -> 1,507 MB, which at the measured speed is about 6 and 15 CPU-seconds (estimate), so the test runs gain tens of seconds at most. The cold-start gain is roughly a half to two thirds of 0.8 s for routes in the cluster (estimate, not measured in a build). No saving in the type check.",
+   "effort": "M",
+   "risk": "Medium. A lazy import changes load order, which is what D440 was about; each of the 12 needs its own tests and one deploy check. Before opening, a route broken this way disturbs nobody, so this is the cheap moment.",
+   "confidence": "medium",
+   "already_tracked": "Partly. Code review FV4/FH6 step 3.13 (Domain folders, Open) and FH7 step 4.1 (lint for boundaries, Open) name the missing boundaries. Neither measures or cuts the cycle, and the review says circular imports were only spot-checked (line 532).",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Rebuilt the graph independently and more strictly than the auditor (esbuild output, not a regex over source): 229, 1,305 and the 12-cut result (20; 417) all reproduce, so the auditor's caveat about elided imports no longer applies. Re-checked the 18 chunks (identical but for the map name) and the favicon trace. Corrected three things: the claim that the cycle is why the type check cannot be split is removed from the cost, because lazy imports do not change what TypeScript loads; the test saving is small in seconds (cluster evaluation re-measured at 0.81-0.84 s, +180 MB against the auditor's 0.85 s, 231 MB); follow-ups.ts:14 is not among the 12 cuts and was dropped from where. Confidence is high on the measurement and medium on the saving."
+  },
+  {
+   "id": "TC-3",
+   "title": "Every unit test file loads all the admin's English first; 91% cannot use it",
+   "kind": "eager",
+   "where": [
+    "vitest.config.mts:15",
+    "src/test/admin-english.ts:1-7",
+    "src/test/eager-lazy-views.ts:17-48",
+    "src/components/admin/admin-text-later.ts:18-74",
+    "src/components/admin/admin-text-later.ts:99"
+   ],
+   "evidence": "vitest.config.mts:15 lists src/test/admin-english.ts as a setup file. Vitest 5.0.5 runs setup files before each test file; isolate defaults to true and the pool to forks (its type file). The file awaits all 54 areas of LATER_AREAS: 93 source modules, 1.90 MB. Only admin-text.tsx imports admin-text-later.ts, and only 114 of 1,215 unit test files can reach it, all under src/components. 548 unit files load 5 modules or fewer of their own; the median is 7 modules and 84 KB. The other setup file, eager-lazy-views.ts, only registers three lazy mock factories; 43 unit tests reach src/components/lazy, 12 of them outside src/components (2 in src/app, 10 in src/lib).",
+   "cost": "112,995 module loads and 2,309 MB of source per unit run for the setup, against 67,054 loads and 975 MB for everything the tests import themselves. As one bundle it evaluates in 87-107 ms and +28 MB, so a floor of about 110 CPU-seconds per run for the 1,101 files that cannot use it: about 27 s of wall time on 4 workers, 8% of the written 5 min 34 s. Vitest loads module by module, so likely more; not measured.",
+   "who_pays": "CI's static job and every agent session that runs pnpm test before a push",
+   "fix": "Split vitest.config.mts into two projects (test.projects exists in Vitest 5). src/components/** keeps both setup files. Everything else keeps src/test/eager-lazy-views.ts only, which costs nothing until a test imports a lazy part and which 12 tests outside src/components need. Then, as a separate trial, isolate: false on the second project: about 1,000 unit files never call vi.* (1,036 by rg; 966 also have no hooks, env or globalThis use).",
+   "saving": "A floor of about 110 CPU-seconds, about 27 s of wall time on 4 workers (measured as a bundle). The auditor's 10 to 20% of the unit run is unproven; one timed run before and after will say.",
+   "effort": "S",
+   "risk": "Low. A test outside src/components that draws an admin part would draw the fallback and fail visibly; my graph finds none today.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-read the three files and Vitest 5's types for isolate, pool, setupFiles and projects. Recomputed the closure (93 modules, 1,900,651 bytes), the areas (54, not 53), who can reach it (114, not 112, none outside src/components) and timed the bundle three times (87-107 ms). Changed: the fix as written ('everything else gets none') would break 12 tests that need the lazy-views setup; the saving is restated as a measured floor of 8% of wall time instead of 10 to 20%; the '443 files without mocks' figure did not reproduce, mine is about 1,000."
+  },
+  {
+   "id": "TC-4",
+   "title": "The type check is one 8,003-file program: 3 minutes and a 7 GB heap limit, with no single type to blame",
+   "kind": "oversize",
+   "where": [
+    "tsconfig.json:25-33",
+    ".github/workflows/ci.yml:35-37",
+    "scripts/next-build.mjs:1-9",
+    "next.config.ts:34-46",
+    "docs/build-memory.md:23",
+    "package.json:10",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/02-typescript.md:16-40",
+    "src/components/admin/product-editor.tsx:25-26"
+   ],
+   "evidence": "tsconfig.json includes **/*.ts, so tests, e2e, docs and scripts are in the one program. Probes re-run: an empty file needs 121 MB; schema.ts and its imports 573 MB; admin-text.ts with every catalogue 537 MB; page-content.ts 358 MB; one admin component, product-editor.tsx, 2,599 MB and 33.9 s of checking for 3,026 files and 421,146 lines, because it imports server actions and TypeScript follows them into the server code. That is about 4 to 6 MB per 1,000 lines; the program has about 1.12 million lines of its own plus 556,829 lines of definitions, which matches the documented 5 GB. Tests and e2e are 39% of the project's own syntax trees (579 of 1,480 MB, parse only) and 24% of the whole program by characters. Only 10 of src/lib's 1,146 files import anything from server, components, app or db.",
+   "cost": "182.9 s here and a heap limit of 7,168 MB each time it runs: 5 times per push in CI today (TC-1), once per push in each agent session. Vercel's 8 GB machine cannot run it (docs/build-memory.md), so the deployed build is never the checked one.",
+   "who_pays": "CI, every agent session, and the owner through the risk that an unchecked build deploys",
+   "fix": "In this order. 1. Run tsc --generateTrace once to see where check time goes. 2. Try the native compiler (TypeScript 7) for pnpm typecheck: Next 16.4's docs describe it and next build uses the project's tsc by default; typescript-eslint here accepts typescript below 6.1 only, so install 7 under an alias and keep 6 for lint. 3. Give the quick gate a tsconfig without tests, e2e, docs and scripts, and let static check everything; after TC-1 no CI build checks any more, so a build-only tsconfig would serve only local builds. 4. Later, make src/lib (266,547 lines, 35% of the source) a project of its own; 10 files need a type moved first. A full check does no less work then; the gain comes only with tsc -b and kept build info.",
+   "saving": "Step 3: a quarter to 39% less for the gate's check to hold (measured as parse trees and characters; check time not measured). Step 2: unmeasured; the vendor's published figures say several times faster. If it holds, the check fits Vercel's machine again. Step 4: none on a cold full check.",
+   "effort": "M",
+   "risk": "Medium. Two compilers must agree; the native one may report differences. Step 4 is large.",
+   "confidence": "medium",
+   "already_tracked": "No. FH10 step 1.8 (Open) gives the build room or builds in CI; nothing addresses the size of the check itself.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran five probes with tsc 6.0.3 (empty 121 MB; schema 573 MB against the auditor's 616; catalogues 537 MB; page-content 358 MB; product-editor 3,026 files, 421,146 lines, 2,599 MB, 33.9 s check) and the parse-only measure (901 + 288 + 248 + 43 MB). The core holds. Corrected: the 39% is of the project's own files, not of the program (24% by characters once definitions count); product-editor's reach comes through server actions, so cutting the import cycle does not shrink it; the build-only tsconfig is moot after TC-1 and is better used for the gate; src/lib is closer to a clean layer than stated (10 files, checked with rg)."
+  },
+  {
+   "id": "TC-5",
+   "title": "The 19,615-line Drizzle schema is loaded at run time for a query builder nobody calls",
+   "kind": "dead",
+   "where": [
+    "src/db/client.ts:11",
+    "src/db/client.ts:31",
+    "src/db/client.ts:78",
+    "drizzle.config.ts:7",
+    "src/server/store-export.scan.test.ts:4",
+    "docs/audits/code-review-2026-11.md:268",
+    "docs/audits/code-review-2026-11.md:116"
+   ],
+   "evidence": "client.ts imports * from ./schema and passes it to drizzle() and to NodePgDatabase<typeof schema>. Outside tests there is no .select(, .insert(, .update(, .delete( or .query. on db(), tx or database (rg, 0 matches) and no findMany or findFirst; there are 5,192 execute calls in 572 non-test files. The only run-time importers of schema.ts are client.ts and one scan test; drizzle-kit reads it through drizzle.config.ts:7 and scripts/lib/ratchet-count.mjs reads it as text. A bundle of drizzle with the schema evaluates in 135-147 ms and +55 MB; without it 12-20 ms and +6 MB. scratchpad/m/chunks.md lists src/db/schema.ts at 598 KB as the largest server module loaded with the storefront page route.",
+   "cost": "About 125 ms and 50 MB in every process that opens the database. 525 of 556 integration test files load it (1.06 MB of their median 1.50 MB of source) and 26 unit files. In the type check schema.ts and its imports are 573 MB as a lone probe. The same cost falls on each server cold start, which will be paid more often once stores have shoppers.",
+   "who_pays": "The server per cold start; CI's integration shards and agents running integration tests",
+   "fix": "Do the first half of step 3.14 now, alone: call drizzle({ client: pool }) without the schema and type Database as NodePgDatabase with no schema. Keep schema.ts as drizzle-kit's source; the split into files can wait.",
+   "saving": "About 66 CPU-seconds per full integration run at the bundle's speed (525 x 0.125 s; estimate, Vitest is slower) and 30 to 41% of the source the integration run loads (1,843 -> 1,091 MB by my graph, which also drops the 33 lib files only the schema pulls in). About 125 ms and 50 MB per cold start (measured in plain Node, not on Vercel).",
+   "effort": "S",
+   "risk": "Low. Nothing reads db().query or the schema object; the type check will say if something does.",
+   "confidence": "high",
+   "already_tracked": "Yes. Code review FD5, step 3.14 'Split schema.ts' (Open): its fix begins 'Drop the schema argument from drizzle()' and its done-when is that client.ts no longer imports the schema. What is new here is the measured cost and that the drop can ship alone as an S, ahead of the M split.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-read client.ts, drizzle.config.ts and the scan test; re-ran the searches for query-builder calls; rebuilt and timed both bundles four times (delta about 125 ms and 50 MB against the auditor's 150 ms and 45 MB). The finding is real, but the auditor's already_tracked 'no' is wrong: it is finding FD5 and step 3.14 of docs/audits/code-review-2026-11.md (lines 116, 268, 484). Saving restated from my own timing; the file has 19,615 lines."
+  },
+  {
+   "id": "TC-6",
+   "title": "Every push pays the full checks twice: once by the agent, again by CI",
+   "kind": "process",
+   "where": [
+    "CLAUDE.md:12",
+    ".github/workflows/ci.yml:266-269",
+    ".github/workflows/ci.yml:297-305",
+    ".github/workflows/ci.yml:40-42",
+    "package.json:12",
+    "docs/audits/code-review-2026-11.md:43",
+    "docs/audits/code-review-2026-11.md:45"
+   ],
+   "evidence": "CLAUDE.md asks for lint, type check and the tests before every push. Written times: unit run 5 min 34 s in a sandbox, the gate's lint, type check and smoke 5 min 11 s on CI; the type check measured 183 s here. The gate before the deploy runs lint, the type check and 6 smoke files (package.json:12); the full unit suite runs beside the deploy and does not hold it. There is no script for running only the tests a change touches, though vitest related exists in Vitest 5. By the import graph, a change to one source file selects a median of 1 unit test file, 108 at the 90th percentile and 651 at most (money.ts); 84 directory-reading tests import nothing and must always run.",
+   "cost": "About 9 to 10 minutes of machine time and about 5 GB of memory before each push (lint not measured), then lint and the type check run twice more in CI. This is a deliberate safety rule, not waste by itself: a push to main is a deploy.",
+   "who_pays": "Every agent session, and the owner in elapsed time per change",
+   "fix": "A choice for the owner. After TC-1 and TC-3 make the checks cheaper: put the whole unit suite in the gate so one place checks every push before it deploys, and change the local rule to the type check plus pnpm test:changed (vitest related on the changed files, plus the directory-reading tests). Know the price: the gate job is deliberately one runner (ci.yml:40-42), so the unit suite there adds its whole run time, 5 min 34 s today, to every deploy without a migration.",
+   "saving": "About 5 minutes per push per session (estimate): a related run is typically 85 to 200 test files instead of 1,215. One full duplicate run removed.",
+   "effort": "S",
+   "risk": "Every deploy waits for the unit run in the gate, and a failing unit test is found there, minutes after the push instead of before it. Nothing deploys either way. Before opening, a slower find hurts nobody; after opening, a slower deploy of a fix does.",
+   "confidence": "medium",
+   "already_tracked": "Partly. Step 0.2 (In progress) built the gate; widening it and the local rule are not tracked.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Re-read CLAUDE.md's workflow rule, ci.yml 260-331 and the two progress rows; confirmed vitest related in Vitest 5's CLI. Added a measurement the auditor lacked: what a related run would select (median 1, p90 108, max 651, plus 84 always-run scans), which shows the proposal works even before the cycle is cut. Corrected the risk: the wider gate lengthens every deploy by the unit run. The rate behind the cost is about 35 CI runs a day, not 88 commits. Plainly a product and process choice, not waste: owner_decision stays true."
+  },
+  {
+   "id": "TC-7",
+   "title": "Three cold builds per push; the hosts job builds the whole app for 25 tests",
+   "kind": "duplicate",
+   "where": [
+    ".github/workflows/ci.yml:116-166",
+    ".github/workflows/ci.yml:170-210",
+    ".github/workflows/ci.yml:215-258",
+    "playwright.config.ts:36-48",
+    "e2e/smoke.spec.ts:146-150",
+    "e2e/csp.spec.ts:69"
+   ],
+   "evidence": "e2e, hosts and signed-in each install, seed and run pnpm build. The hosts job then runs 4 spec files with 25 tests (7+3+11+4). The e2e and signed-in builds differ only in NEXT_PUBLIC_SUPABASE_URL and its key; E2E_SIGNED_IN is read by playwright.config.ts alone, not by the app. Playwright's config sets no shards and no workers; 573 plus 208 tests run in two unsharded jobs. The unsigned health test accepts 200 and 503 (smoke.spec.ts:148-149) and the CSP test matches parts, not the whole policy.",
+   "cost": "Each extra build is about 80 s once the type check is out (262 s minus 183 s here), plus an install of a 939 MB node_modules, a seed and a runner to wait for. Vercel then builds a fourth time, and that build is the only one never tested.",
+   "who_pays": "CI on every code push",
+   "fix": "Run the chromium, webkit and signed-in projects on one build made with the auth stand-in's address, in shards. Keep hosts apart (its variables change the routing built into the app), or run its 25 tests as a second build step in the same job so the install and the database are shared.",
+   "saving": "One build, one install and one seed per push: about 3 to 4 runner-minutes after TC-1 (estimate).",
+   "effort": "M",
+   "risk": "Medium. Several unsigned specs test the admin 'without a Supabase session'; whether they pass when Supabase is configured as the stand-in needs one trial run. Checked by search only.",
+   "confidence": "medium",
+   "already_tracked": "Yes. Code review FH10, step 1.8, Open: share one build, shard Playwright, CI builds the app twice at most. Only the 25-test count and the check of what differs between the builds are new.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-read the three jobs and playwright.config.ts; recounted the hosts tests (25) and the test() calls (573, 208); searched src for E2E_SIGNED_IN (none) and the top-level specs for Supabase-dependent assertions. Nothing to correct. It is an existing open step, not a new finding."
+  },
+  {
+   "id": "TC-8",
+   "title": "Nothing measures the build, the type check or the test run, and the build is at its limit",
+   "kind": "process",
+   "where": [
+    "docs/build-memory.md:40-46",
+    "next.config.ts:79-88",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/enablePrerenderSourceMaps.md:41",
+    "node_modules/next/dist/docs/01-app/02-guides/memory-usage.md:122-131",
+    "e2e/performance.spec.ts:21-57"
+   ],
+   "evidence": "docs/build-memory.md says the margin on Vercel is about 0.8 GB and was crossed on 11 November, while collecting page data with one worker. The build prerendered 850 pages on 27 October and 1,426 today; the prerender manifest holds 112 static admin routes and 338 admin route shells. Here the build's machine peaked at 7.61 GB (16 GB machine, 3 workers, other processes included) and wrote about 3.9 GB, of which 672 MB is server source maps in 6,008 files. Budgets exist for browser scripts and page weight only; no CI step records build seconds, peak memory, type-check seconds, unit seconds or how many modules a route reaches. Next's memory guide names two switches, experimental.serverSourceMaps: false and enablePrerenderSourceMaps: false (default true); next.config.ts sets neither.",
+   "cost": "A deploy that fails at random at the 8 GB edge, and growth nobody sees until it does: each new route and each new import adds to it. Today a killed deploy costs a retry; once stores are open it delays a fix that owners and shoppers wait for.",
+   "who_pays": "The build, and the owner when a deploy is killed",
+   "fix": "1. Record four numbers in CI's summary on every run: build seconds and peak memory (the 15-line /proc sampler used for this review does it), type-check seconds, unit-run seconds; fail above a set ceiling. 2. As an experiment under the 8 GB cap, as docs/build-memory.md did: the two source-map switches on Vercel only. The prerender switch acts after 'Generating static pages', and the kill on 11 November came earlier, while collecting page data, so it may not touch the phase that failed. 3. Add the import-reach ratchet of TC-2.",
+   "saving": "Unknown for the source-map switches until measured; Next's guide only says they can reduce build memory. The budget stops silent growth.",
+   "effort": "S",
+   "risk": "Low. Without server source maps an error on Vercel shows compiled positions; CI's builds would still show source.",
+   "confidence": "medium",
+   "already_tracked": "Partly. FH10 step 1.8 (Open) and its question 2 cover the 16 GB machine or a prebuilt deploy. Budgets for build, check and test time and the source-map switches are not tracked.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-read docs/build-memory.md, next.config.ts and both Next docs; read the prerender manifest (112 + 338 = 450 admin entries against the auditor's 448) and re-measured .next. Corrected: the build wrote about 3.9 GB, not 5.0 (1.1 GB is .next/diagnostics from this review's later analyzer run); the prerender source-map switch is aimed at a later phase than the one that was killed, so it is an experiment, not a likely fix; the guide's other switch, experimental.serverSourceMaps, is added."
+  },
+  {
+   "id": "TC-9",
+   "title": "CI keeps nothing between runs except pnpm's store",
+   "kind": "process",
+   "where": [
+    ".github/workflows/ci.yml:50-53",
+    "tsconfig.json:15",
+    ".gitignore:40",
+    "vitest.config.mts:8-18",
+    "docs/audits/code-review-2026-11.md:45"
+   ],
+   "evidence": "Each job's only cache is setup-node's cache: pnpm. tsconfig.json sets incremental, and the build wrote a 1.6 MB .tsbuildinfo under .next/cache, but *.tsbuildinfo is ignored by git and never restored in CI, so every type check starts cold. Vitest 5's fsModuleCache defaults to true and writes to node_modules/.vitest-cache locally; CI starts empty. Transforming all 5,909 source and test files with esbuild took 2.6 CPU-seconds here, so there is little for a transform cache to save.",
+   "cost": "Every type check starts from nothing on each of about 35 CI runs a day: 183 s here per check. The Vitest transforms cost a few CPU-seconds per run.",
+   "who_pays": "CI",
+   "fix": "One experiment only: restore and save tsconfig.tsbuildinfo (1.6 MB) with actions/cache in the static and pending jobs, keyed on the lockfile and tsconfig. Keep it only if the recorded check time (TC-8) falls. Skip Vitest's cache (seconds), .next/cache (2.6 GB) and the test-database template (seconds).",
+   "saving": "Not measured, and I could not measure it without running the type check. An incremental check still parses the whole program and then re-checks only changed files and what depends on their public shape, so the check phase, most of the 183 s, should shrink for a typical small commit. The Vitest part is worth about 3 CPU-seconds.",
+   "effort": "S",
+   "risk": "Low. A stale cache only costs time; tsc verifies file versions by content.",
+   "confidence": "low",
+   "already_tracked": "No. Step 0.4's note records 'nothing is cached between runs' for the test database only.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Confirmed the facts (one cache per job, incremental on, buildinfo ignored at .gitignore line 40, fsModuleCache default true in Vitest 5's types, a 5.2 MB local .vitest-cache). Corrected the weight: the Vitest half is nearly worthless (2.6 CPU-seconds to transform every file, measured), and '75 code pushes a day' is about 35 CI runs. The type-check half stays an untested experiment; after TC-1 it would serve two checks per push, not five."
+  },
+  {
+   "id": "TC-10",
+   "title": "86 test files read the source tree with 67 private walkers; two parse every file",
+   "kind": "duplicate",
+   "where": [
+    "src/lib/brand.scan.test.ts:15-50",
+    "src/lib/theme-words.scan.test.ts:15-63",
+    "src/lib/permissions.scan.test.ts:101-111",
+    "src/server/tax-reports.scan.test.ts:13-22",
+    "src/lib/payment-readers.scan.test.ts:94-103",
+    "docs/audits/code-review-2026-11.md:292"
+   ],
+   "evidence": "46 files are named *.scan.test.ts (3,813 lines); 86 unit test files call readdirSync; 67 define a recursive walker of their own (28 named sources, 12 files, 11 walk) and about 43 walk all of src; src/test holds no shared helper. brand.scan.test.ts and theme-words.scan.test.ts share their walker and visitor and differ in the word list and one filter: each parses all 4,139 source files with the TypeScript parser, 4.5 s a pass here. A text test with each file's own patterns first would leave 475 and 78 files.",
+   "cost": "Small. One walk and read of src is 83-152 ms, so about 7 CPU-seconds for all walks; the two parser scans about 9 CPU-seconds. About 600 lines of repeated walkers. The larger cost is that these rules report only in pnpm test, not in the editor.",
+   "who_pays": "CI's static job and agents' unit runs; whoever adds the next scan and copies a walker",
+   "fix": "One helper module in src/test for the file list and texts, used by every scan, and a regex pre-test in the two parser scans. Under isolate: true each test file has its own module state, so the helper removes lines, not walks; walks are only shared if the list is kept on disk or the scans run with isolate off. Move plain import and call bans to lint, as step 4.1 plans.",
+   "saving": "About 8 CPU-seconds per unit run from the pre-test (estimate from the measured parse time), about 2 s of wall time on 4 workers, and some 600 lines. Not the 10 to 15 s first claimed.",
+   "effort": "S",
+   "risk": "Low",
+   "confidence": "high",
+   "already_tracked": "Yes. Code review FH7/FH8, step 4.1, Open: move bans to lint and keep the whole-repo scans on one shared file walker.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Recounted with my own script: 46 named scans, 84-86 directory readers, 67 private walkers (auditor 68), about 43 whole-src walkers (auditor about 38), 3 files using the TypeScript parser of which 2 parse everything. Re-timed the walk (83-152 ms) and the parse (4.5 s) and re-ran the pre-filters (475 and 78 files). Corrected the fix and the saving: 'one walk per worker' does not happen under Vitest's default isolation, so the time saved is the parser pre-test only. Low priority and already an open step."
+  },
+  {
+   "id": "TC-11",
+   "title": "The same mocks and store-makers are written out in hundreds of test files",
+   "kind": "duplicate",
+   "where": [
+    "vitest.integration.config.mts:8-11",
+    "test/server-only.ts:1-3",
+    "src/lib/picture-sizes.test.ts:5",
+    "src/server/invoice-test-fixture.ts:1"
+   ],
+   "evidence": "vi.mock(\"server-only\", ...) appears in 579 test files; 448 are integration tests, where the config already aliases server-only to a stub (vitest.integration.config.mts:10). vi.mock(\"next/cache\", ...) is in 465 integration files in at least 6 shapes that grew as Next's API grew (318 share one line, 40 are multi-line); vi.mock(\"next/headers\", ...) is in 206. Local helpers: makeStore is defined in 52 test files, paidOrder in 29. About 89 integration files import a shared fixture or test-support module.",
+   "cost": "About 2,800 lines of 325,579, under 1%. No run-time cost worth naming. The real cost is that a change to Next's cache API or to what a store needs means editing hundreds of files.",
+   "who_pays": "Agents and reviewers, in edits and in context read",
+   "fix": "Put the next/cache, next/headers and next/server stand-ins in one setup file of the integration config and delete the 448 redundant server-only mocks. Move makeStore and paidOrder into one shared fixture module, starting with the largest identical groups.",
+   "saving": "About 2,000 to 2,800 lines, and one place to change when the mocked API changes.",
+   "effort": "M",
+   "risk": "Low to medium. A file-level vi.mock that differs on purpose (the 40 multi-line next/cache mocks, one that records tags) must keep its own; the 91 integration files that do not mock next/cache today would get the stand-in too.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Recounted with rg: 579 server-only mocks (448 in integration files), 465 integration files mocking next/cache with the 318-line majority, 206 mocking next/headers, makeStore in 52 files, paidOrder in 29 (auditor 28), shared-fixture importers 89 (auditor about 107). The alias at vitest.integration.config.mts:10 makes the 448 redundant. Numbers hold; it is real but the smallest finding here."
+  }
+ ]
+}

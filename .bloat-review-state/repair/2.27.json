@@ -1,0 +1,17 @@
+{
+ "id": "2.27",
+ "fixed": [
+  "Commit 1's conditional edits are named: responsive-edit.tsx switches only lines 429 and 450 (the other five reads use .sizes), picture-maker.tsx's three .pictureMaker reads and media-picker.tsx's two .picker reads switch.",
+  "header-stage-fields.tsx is dropped from commit 1: the brief said it reads builder.richText only, but its reads take .editor, .background and .richText, outside the cut.",
+  "Commit 5's baseline is an edit with made_by 1.28 at the path step 1.28 really uses, rewritten only with WRITE_ADMIN_WORDS_BASELINE=1 (never by hand); the claim that the scan prints the groups is corrected (the baseline holds byte totals; groups are found with rg by the scan's rules); a stop_if covers step 1.28 being absent."
+ ],
+ "rejected": [
+  {
+   "problem": "The executor markers in commit 4's first change and stop_if are placeholders.",
+   "why": "An artefact of the blanked copy: the real text says 'You are the cheap executor and reach commit 4' (a stop) and 'A stronger model does this commit', matching cheap_commits [1, 2, 3]."
+  }
+ ],
+ "cheaper": "not applied: the reviewer offered none; commits 4 and 5 are judgement by nature.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

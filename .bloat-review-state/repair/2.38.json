@@ -1,0 +1,17 @@
+{
+ "id": "2.38",
+ "fixed": [
+  "Commit 1: the conditional src/server/prompt-versions.ts change is removed; the fixed drawing is fixedManagerPrompt() in owner-assistant.ts with PROMPT_DAY, which stays stable.",
+  "Commit 1: agent-eval.ts gets an exact toolCall check (type field and scoring line) and the case 'manager-reminder-time' with its expected values worked out from PROMPT_DAY (2026-01-06 09:00 Europe/Oslo or in_hours 23 ± 0.5), plus a unit case in agent-eval.test.ts.",
+  "The recording may be committed as soon as commit 1 is live (commit 2 does not change the prompt), the owner is told before commit 1 that a red replay holds back pushes with migrations, and a stop_if covers an owner who cannot record within a day."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 2 and stop_if 2 and 5 carry '[an executor]' placeholders.",
+   "why": "An artefact of the blanked copy; the brief says a stronger model does commit 2."
+  }
+ ],
+ "cheaper": "applied in part: commit 1's eval check is now written out; the step is not split into two (that would change the plan's step list), and commit 2 stays with the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

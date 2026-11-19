@@ -1,0 +1,421 @@
+{
+ "headline": "Scheduled work is the platform's steadiest load, and almost all of it finds nothing to do. Supabase wakes a 47 to 125 MB Vercel function 13,250 times a day, and those runs send roughly 170,000 statements a day to the database; the call that wakes the cron routes is the most expensive statement the app's role runs (3,974 s in total). Two of the nine every-minute routes and 36 of the 83 five-minute jobs serve features whose tables have never held a row, and 31 jobs run every five minutes for work that is daily or slower. The parts are carefully built (claims, leases, a run ledger, alerts), so the bloat is in when things run, not how: one gated tick, a cadence per job and a handful of small fixes remove most of it.",
+ "metrics": [
+  {
+   "name": "Scheduled function calls a day",
+   "value": "13,250 (12,960 from nine every-minute routes, 288 dispatcher runs, 2 daily)",
+   "how": "Counted from the schedules in supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93-104; prod-db-stats.md lists the same jobs."
+  },
+  {
+   "name": "Statements per idle minute from the nine every-minute routes",
+   "value": "about 58 queries + 10 ledger upserts = 68 a minute, about 97,900 a day",
+   "how": "Read each route's idle path and counted its db calls: autopilot 13, broadcasts 15, integrations 14, theme-shots 8, cookie-scan 3, dream-factory 2, pack-pictures 1, page-jobs 1, page-looks 1; one cron_jobs upsert per route plus dream-factory.advance."
+  },
+  {
+   "name": "Dispatcher jobs and statements per idle run",
+   "value": "83 jobs (78 in runJobs + 5 tracked after it; the brief says 84); at least 163 queries + 84 ledger upserts + 1 delete = 248 statements, about 71,400 a day",
+   "how": "Extracted every job function with a scratch script (work/extract.mjs), read each body, counted the queries that run when nothing is due. A floor: per-store loops (knowledge, media, alt texts, invoices) add more."
+  },
+  {
+   "name": "Dispatcher jobs whose queue table has never held a row",
+   "value": "36 of 83 (43%)",
+   "how": "Cross-checked each job's tables against the 255 never-used tables in prod-db-stats.md (work/empty.mjs), then by hand for the jobs whose queries sit in helpers."
+  },
+  {
+   "name": "Jobs run every 300 s whose work is daily or slower",
+   "value": "31 of 83: 9 pure prunes (retention 24 hours to 180 days) and about 22 jobs tied to a day, an hour of the day or a week",
+   "how": "Read each job's comments and constants (e.g. SEARCH_LOG_DAYS = 90 in search.ts:428, SCAN/READ_EVERY constants, briefing at 07:00 Oslo)."
+  },
+  {
+   "name": "Size of the functions woken every minute",
+   "value": "47.3 to 52.7 MB traced for six routes; 125.4 MB each for cookie-scan, page-looks and theme-shots (77.9 MB of it Chromium); page-jobs loads 118 server chunks, 10.9 MB of JavaScript, for an idle path of one query",
+   "how": "Summed the files in .next/server/app/api/cron/*/route.js.nft.json of the finished build (work/nft.mjs) and the chunks each route.js requires at start."
+  },
+  {
+   "name": "Cron's share of pg_stat_statements",
+   "value": "net.http_post 352,514 calls, 3,974 s (no. 1 by total time); cron_jobs upserts 565,049; cookie-scan due check 49,338 calls, 192 s; theme snapshot read 35,101 calls, 101 s; issue_waiting_invoices 9,909 calls, 132 s for 0 invoices; knowledge delete 91,200 calls for 782 rows",
+   "how": "prod-db-stats.md, matched to the statements in the code that send them."
+  },
+  {
+   "name": "Dispatcher wall time against the sum of its jobs' recorded times",
+   "value": "1,341 ms against about 12.5 s",
+   "how": "prod-db-stats.md; runJobs starts all jobs with Promise.all (cron-runs.ts:117) over a pool of 5 connections (db/client.ts:68), so most of each job's recorded time is waiting for a connection, not work."
+  },
+  {
+   "name": "Outbound calls per idle dispatcher run",
+   "value": "3 for the status probes (own /admin/sign-in, Supabase auth health, Stripe balance) + 1 to 2 Stripe payouts.list for platformBooks: up to 1,440 a day, up to 576 of them for a table that never held a row",
+   "how": "Read status.ts:94-137 and platform-books.ts:238-245 with platform-payouts.ts:80-84."
+  },
+  {
+   "name": "status_checks at steady state",
+   "value": "about 131,000 rows (estimate about 20 MB); today 20,547 rows, 3.2 MB, about 14 days old",
+   "how": "1,440 rows a day (5 measured parts x 288 runs) x the 91-day prune in status.ts:266; today's figures from prod-db-stats.md."
+  },
+  {
+   "name": "pg_cron's own run log",
+   "value": "no cleanup anywhere in the repo; about 352,000+ rows, estimate about 190 MB (unmeasured)",
+   "how": "rg for job_run_details and cron.log_run over src, scripts, docs and supabase: 0 hits. Rows = recorded http_post runs; size = rows x about 530 bytes (the command text is about 420 characters)."
+  },
+  {
+   "name": "after() on requests",
+   "value": "40 files import it; 8 are cron routes, 32 are request-side kicks",
+   "how": "rg for the import from next/server in src, tests left out."
+  }
+ ],
+ "clean": [
+  "Claims and leases are sound: every queue is claimed with 'for update skip locked' and an expiry, so overlapping runs never do a piece of work twice (e.g. /home/user/kaizen-store/src/server/broadcasts.ts:465-482, /home/user/kaizen-store/src/server/integrations.ts:1031-1041, /home/user/kaizen-store/src/server/dream-factory.ts:463-472).",
+  "The run ledger and its alerts (/home/user/kaizen-store/src/server/cron-runs.ts, /home/user/kaizen-store/src/lib/cron-health.ts) are worth keeping: a late or failing job shows on the platform home and one failing job does not stop the others. Only how often it is written needs changing.",
+  "Chromium is imported lazily (/home/user/kaizen-store/src/server/browser.ts:11,15) and next.config.ts keeps it to four routes; an idle run of a Chromium route never starts or even loads the browser.",
+  "Network calls are mostly gated by a database check first: Tripletex and Fiken sync (tripletex-sync.ts:515-523), the ledger comparison (ledger-compare.ts:51-69), stores' payout reads (once a day per store, five stores a run, payouts.ts:184-189), parcel tracking caps.",
+  "Request-side after() is used well: 32 files outside cron kick work the request itself just created (page jobs in site-tools.ts:245,322,367; a broadcast in broadcasts/actions.ts:93; gift cards in shopper-emails.ts:422; inbound email in support-inbound.ts:148; embeddings after a product save in products/actions.ts:118). This is why most every-minute polls are only a safety net. The store admin layout adds two after() checks per full page load (/home/user/kaizen-store/src/app/admin/(gated)/[store]/layout.tsx:68-73); each is one cheap query when nothing is missing, so I left it out of the findings.",
+  "status_checks is not unpruned, as the brief assumed: /home/user/kaizen-store/src/server/status.ts:266 deletes checks older than 91 days. The table shows 0 deletes because it is only about 14 days old.",
+  "net._http_response prunes itself: pg_net keeps six hours. docs/decisions.md D263 counted 792 kept calls on 16 October, exactly six hours of the three jobs scheduled then, and the repo changes no setting.",
+  "The daily route (/home/user/kaizen-store/src/app/api/cron/subscription-reminders/route.ts) carries about 30 retention prunes, so most growing tables do have a rule, as docs/capacity.md:112 asks.",
+  "Cron auth is cheap and safe: the Vault secret is read at most every five minutes per instance and compared in constant time (/home/user/kaizen-store/src/server/cron-auth.ts:18-37).",
+  "The cadence patterns already exist inside the dispatcher: two jobs limit themselves to once an hour (autopilot-effects.ts:44, experiment-jobs.ts:50) and the nightly translation claims its day (cron-runs.ts:81-91). The fix for the other jobs is to use them, not to invent something."
+ ],
+ "findings": [
+  {
+   "id": "CR-1",
+   "title": "Nine routes are woken every minute whether or not anything waits",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:69-103",
+    "/home/user/kaizen-store/src/app/api/cron/autopilot/route.ts:18-33",
+    "/home/user/kaizen-store/src/app/api/cron/broadcasts/route.ts:24-46",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:24-41",
+    "/home/user/kaizen-store/src/app/api/cron/page-jobs/route.ts:16-25",
+    "/home/user/kaizen-store/src/app/api/cron/pack-pictures/route.ts:16-28",
+    "/home/user/kaizen-store/src/app/api/cron/page-looks/route.ts:19-37",
+    "/home/user/kaizen-store/src/app/api/cron/dream-factory/route.ts:17-34",
+    "/home/user/kaizen-store/src/server/autopilot-runner.ts:55-75",
+    "/home/user/kaizen-store/src/server/autopilot-events.ts:83-110",
+    "/home/user/kaizen-store/src/server/integrations.ts:1031-1062",
+    "/home/user/kaizen-store/src/db/client.ts:13-14",
+    "/home/user/kaizen-store/src/db/client.ts:68-77",
+    "/home/user/kaizen-store/next.config.ts:51-58",
+    "/home/user/kaizen-store/docs/capacity.md:200-203"
+   ],
+   "evidence": "pg_cron posts to nine routes every minute: 12,960 calls a day. cron_jobs says they last took 0 to 72 ms, and seven of them answer before working, so they found nothing. Reading each idle path: autopilot 13 queries, broadcasts 15, integrations 14, theme-shots 8, cookie-scan 3, dream-factory 2, the other three 1 each: 58 queries plus 10 ledger upserts a minute. integrations runs an update and a delete on integration_deliveries every minute (66,533 calls each) though the table never held a row. Each call loads a function of 47 to 125 MB (measured from the build's .nft.json); page-jobs requires 118 chunks, 10.9 MB of JavaScript, to run one claim query. Three of the nine carry Chromium (125.4 MB each). Most queues are already kicked by the request that fills them (site-tools.ts:245, broadcasts/actions.ts:93, support-inbound.ts:148, triggerLook in page-looks.ts:126-139), and every queue table already has a partial index on its waiting rows (e.g. page_ai_jobs_waiting_idx, integration_deliveries_due_idx, theme_shots_queue_idx, dream_runs_due_idx, store_events_due_idx).",
+   "cost": "12,960 function starts a day (about 394,000 a month) and about 97,900 statements a day for nothing. In the database, net.http_post is the most expensive statement of the app's role: 352,514 calls, 3,974 s. Estimate: each call also keeps an instance awake at least 5 s after its last query (attachDatabasePool with a 5 s idle timeout), so nine routes hold about 45 instance-seconds every minute.",
+   "who_pays": "The server per invocation (Vercel), the database, and the Supabase pooler (a fresh pool per call).",
+   "fix": "Keep the routes; change the trigger. Replace the nine every-minute schedules with one pg_cron job that runs a small SQL function each minute: for each route one cheap exists() on its queue, and net.http_post only when it is true; plus every route once every 15 minutes as a safety net for time-derived work. Gates: page-jobs = page_ai_jobs waiting; page-looks = page_looks queued; pack-pictures = store_starters.pictures_wanted_by set; dream-factory = dream_runs unfinished; theme-shots = theme_shots waiting or running; cookie-scan = cookie_scans queued; broadcasts = a broadcast scheduled or sending, or any automation, review setting, due gift card or ad connection on; autopilot = any autopilot_settings row, pending plan step or active goal; integrations = store_events due, deliveries pending, workflow runs pending, inbound emails pending, or an open support conversation. Raise the routes' everySeconds from 60 to 900 so cron-health does not call a skipped route late, and have the tick keep one ledger row of its own. First step (S): add 'where exists(...) or minute % 15 = 0' to each existing schedule's command in one migration. This keeps the rule in docs/capacity.md:202 (heavy work has a route of its own): the reason there is Chromium and time limits, and the routes stay apart.",
+   "saving": "Estimate: nearly all of the 12,960 daily calls and about 97,900 statements a day while the features are idle as today; with only the 15-minute safety net firing, 864 calls a day (minus 93%). pg_cron runs fall from 13,250 to about 1,730 a day. When a store really uses a feature, its route runs again each minute, so cost follows use.",
+   "effort": "M",
+   "risk": "A gate that forgets one kind of due work delays it to the 15-minute sweep; it is never lost. Promised timings read: the autopilot reacts to a waiting customer after 15 minutes by default (autopilot-events.ts:76), so its gate must stay true while any store has it on; automations, review requests and gift cards count in days; workflow schedules in hours. Add a scan test: every cron route names its gate.",
+   "confidence": "high",
+   "already_tracked": "Partly. The PSI audits advise 'Fold the every-minute routes into one' as PERF-10 (docs/audits/psi-2026-10-24.md:146, repeated on 28 Oct, 31 Oct and 1 Nov) but it never became an item in psi-followups.md and is not done. The open item REL-06 (psi-followups.md:477) would add a ledger write to seven of these routes each minute; do it inside this change so it is written only when work ran.",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-2",
+   "title": "The dispatcher runs all 83 jobs every five minutes: one cadence for everything, one ledger write per job",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:92",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:127-275",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:23-56",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:106-119",
+    "/home/user/kaizen-store/src/server/search.ts:428-439",
+    "/home/user/kaizen-store/src/server/api-idempotency.ts:73-81",
+    "/home/user/kaizen-store/src/server/oauth.ts:821-835",
+    "/home/user/kaizen-store/src/server/house-customers.ts:169-256",
+    "/home/user/kaizen-store/src/server/platform-briefing.ts:210-216",
+    "/home/user/kaizen-store/src/server/legal-sources.ts:195-228",
+    "/home/user/kaizen-store/src/server/autopilot-effects.ts:44",
+    "/home/user/kaizen-store/src/lib/cron-health.ts:26-28",
+    "/home/user/kaizen-store/docs/capacity.md:112"
+   ],
+   "evidence": "runJobs() starts 78 jobs at once and five more follow, all with EVERY = 300. Nine are pure prunes with retention of 24 hours to 180 days (searches 90 days, search cache 30, forms 30, docs reads 90, idempotency keys 24 hours, OAuth tokens, chat counts, recommendation events, page copies), although docs/capacity.md:112 says a prune belongs in the daily cron. About 22 more are tied to a day, an hour or a week: the platform briefing (07:00 Oslo), staff summaries, analytics alerts (after 20:00), report emails, autopilot reports and budgets, nightly translations, legal upkeep (daily per store), legal sources (weekly per source, checked 2,016 times a week), trials, business changes, recurring invoices, bonus birthdays, auto-archive, Instagram (hourly), platform books, and houseCustomers, which reconciles every account and request in one transaction of at least 14 statements each run. Every job also writes its own ledger row: 84 upserts a run, 565,049 upserts so far on a table of about 100 rows.",
+   "cost": "At least 248 statements per idle run, about 71,400 a day, through a pool of 5 connections. The jobs queue for those connections: the run takes 1.3 s but the jobs' recorded times add up to 12.5 s.",
+   "who_pays": "The database and the dispatcher's function, every five minutes, whatever the store count.",
+   "fix": "Give runJobs() a cadence per job: every 300, 3,600 or 86,400 seconds, decided from one read of cron_jobs at the start (last_started_at is already there). Move the nine prunes to the daily route. Run the day-and-hour jobs hourly (the two jobs that already test getUTCMinutes() show the pattern); keep at five minutes only what promises minutes: status, page schedules, cart and SMS reminders, support idle and summaries, follow-ups, Life hand-offs, activity pushes, live drills, the continuations (data jobs, store copies, shop moves, Pipedrive, legal writes), expiries, tracking, payments, invoices and the accounting syncs. Write the ledger once per run: one multi-row upsert at the end, and at once only for a failure.",
+   "saving": "Estimate: job runs fall from 23,904 to about 15,500 a day from cadence alone (31 jobs x 288 become about 540), and ledger writes from 84 to 1 per run (minus 24,000 round trips a day). Together with CR-3, statements fall from about 71,400 to about 25,000 a day.",
+   "effort": "M",
+   "risk": "An hourly job that fails is retried an hour later, not five minutes later. cron-health already scales its allowance with every_seconds, so 'late' still works. A ledger written at the end is lost when the function is killed mid-run; the job then reads as late, which is the truth.",
+   "confidence": "high",
+   "already_tracked": "No. PSI REL-06 (done) made the ledger; the earlier advice to split the dispatcher (psi-2026-10-24.md:158) was answered with maxDuration, not with cadences.",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-3",
+   "title": "Two every-minute routes and 36 dispatcher jobs poll features no store has ever used",
+   "kind": "speculative",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/autopilot/route.ts:22-28",
+    "/home/user/kaizen-store/src/server/autopilot-reviews.ts:70-122",
+    "/home/user/kaizen-store/src/server/autopilot-events.ts:176-206",
+    "/home/user/kaizen-store/src/app/api/cron/broadcasts/route.ts:28-41",
+    "/home/user/kaizen-store/src/server/broadcasts.ts:417-463",
+    "/home/user/kaizen-store/src/server/automations.ts:184-193",
+    "/home/user/kaizen-store/src/server/ad-conversions.ts:55-68",
+    "/home/user/kaizen-store/src/server/platform-ad-conversions.ts:35-58",
+    "/home/user/kaizen-store/src/server/kaizen-life-handoffs.ts:502-551",
+    "/home/user/kaizen-store/src/server/sms.ts:691-718",
+    "/home/user/kaizen-store/src/server/supplier-orders.ts:461-467",
+    "/home/user/kaizen-store/src/server/bonus.ts:550-576"
+   ],
+   "evidence": "The autopilot route's 13 queries a minute read autopilot_settings, assistant_plans, assistant_plan_steps, autopilot_events, autopilot_reviews and autopilot_event_checks: all six are in the list of tables that never held a row. The broadcasts route's 15 queries a minute read broadcasts, broadcast_recipients, automations, stock_requests, review_settings, gift_cards, ad_connections, ad_conversions and platform_ad_conversions: all never used. In the dispatcher, 36 of 83 jobs drive from a never-used table (cross-check script against prod-db-stats.md): for example carts, plans, calendars, commissions, SMS, bonus, affiliates, returns, supplier orders, eBay, Fiken, Pipedrive, Instagram, tracking, page schedules, follow-ups, Life hand-offs (6 queries a run), domains, report emails, staff summaries.",
+   "cost": "28 of the 58 idle queries a minute (about 40,000 statements and 2,880 function starts a day) and 36 job runs every five minutes (10,368 a day), for features with no user.",
+   "who_pays": "The database and the server per invocation. Nobody benefits yet.",
+   "fix": "One 'in use' statement at the start of each run: a single select of exists() per queue table (trivial on an empty table), cached for the run. A job whose table is empty is skipped and recorded as skipped, and a minute route whose features are all unused is not called (the gates of CR-1). The features stay switched on for owners; the first row makes the job run. Nothing is deleted.",
+   "saving": "Estimate, after CR-1 and CR-2: about 25 of the remaining five-minute jobs skipped each run (about 7,200 job runs a day), and the autopilot and broadcasts routes not called at all until a store uses them.",
+   "effort": "S",
+   "risk": "Low. The check must name the table that starts the work, not one that fills later; a wrong name means a feature's first job never runs. Hold it with a test that inserts a row and expects the job to run.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-4",
+   "title": "AI upkeep re-reads whole catalogues every five minutes to learn nothing changed",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/knowledge.ts:167-192",
+    "/home/user/kaizen-store/src/server/knowledge.ts:233-258",
+    "/home/user/kaizen-store/src/server/knowledge.ts:297-312",
+    "/home/user/kaizen-store/src/server/embeddings.ts:31-49",
+    "/home/user/kaizen-store/src/server/embeddings.ts:110-122",
+    "/home/user/kaizen-store/src/server/media-library.ts:798-830",
+    "/home/user/kaizen-store/src/server/media-library.ts:860-876",
+    "/home/user/kaizen-store/src/server/alt-texts.ts:224-246",
+    "/home/user/kaizen-store/src/server/ai.ts:206-222",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/products/actions.ts:118"
+   ],
+   "evidence": "knowledge: for each site with a chat agent it selects every published page with its whole 'published' JSON and compares versions in JavaScript. A page that yields no passages never gets a version, so it is cut again on every run: 91,200 'delete from knowledge_chunks where page_id' calls deleted 782 rows in all. embeddings: each run hashes title, terms and description of every active product translation of every store (10,201 calls, 148 s), though a product save already kicks the same work with after(). media: a loop over every store with media (aiFor, a delete, a select each), and every item is touched again daily ('updated_at < now() - 1 day'), which gives 13,414 updates on 468 rows and drives the 'where each picture is used' statement (1,831 calls at 145 ms, other shapes up to 925 ms). altTexts: its first query returns every site that has any AI-written alt, and the loop then runs three or more queries per site until five sites with real work are found, so with no work it walks them all. Each per-store step calls aiFor(), which reads ai_providers again (237,000 calls in the stats).",
+   "cost": "These are the dispatcher's four slowest database jobs after the status probes: alt-texts 604 ms, media 555, knowledge 542, embeddings 241. Measured database time is small (about 600 s in 78 days), but each run ships every chat site's pages as JSON, and the work grows with every store.",
+   "who_pays": "The database and the dispatcher every five minutes; it scales with stores times pages, products and pictures.",
+   "fix": "Find stale rows in SQL, and mark them when they change. knowledge: keep the cut version per page (a column or a small table) so the query returns only pages published since, and record the version even when a page has no passages; kick it from the publish action as chat settings already do. embeddings: keep the after() kick, make the sweep hourly. media: drop the daily re-touch; mark a picture stale when a page or product that uses it is saved, or re-check weekly; loop only over owners that have stale rows (one grouped query). altTexts: select only sites with a picture that is actually due. Resolve the AI connection once per run per store, not once per job.",
+   "saving": "Estimate: the four jobs fall from about 1.9 s of recorded time to a few queries per run; the 91,200 empty transactions and the daily 468-row touch stop; per-store cost becomes per-change cost.",
+   "effort": "M",
+   "risk": "A missed 'mark stale' leaves a vector or the chat's knowledge out of date until the hourly sweep. Search by meaning and the chat agent are affected, so keep the sweep.",
+   "confidence": "medium",
+   "already_tracked": "no (psi-2026-10-24.md:146 judged these 'incremental'; the stats show the knowledge loop and the media re-touch are not)",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-5",
+   "title": "pg_cron's own run log is never pruned",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93-114",
+    "/home/user/kaizen-store/docs/runbooks/restore.md:36"
+   ],
+   "evidence": "pg_cron writes one row to cron.job_run_details for every run and does not delete them. The baseline schedules 14 jobs; two are retention deletes for commerce tables, none for cron's own log. A search for job_run_details and cron.log_run over src, scripts, docs and supabase finds nothing. The stats count 352,514 http_post runs so far. The database is 731 MB and the commerce schema 124 MB, so about 600 MB lies outside the app's tables.",
+   "cost": "Estimate, not measured: about 352,000 rows x about 530 bytes (each row repeats the 420-character command) = about 190 MB today, growing by about 13,250 rows (7 MB) a day.",
+   "who_pays": "The database: disk, backups and every restore.",
+   "fix": "First measure it with one read-only query (count and pg_total_relation_size of cron.job_run_details). Then add one more schedule in a custom migration: a daily 'delete from cron.job_run_details where end_time < now() - interval 7 days'. CR-1 cuts new rows by about 87%.",
+   "saving": "Estimate: about 190 MB of 731 MB, and a floor of about 7 MB a day of growth removed.",
+   "effort": "S",
+   "risk": "Low. The log is only useful for recent debugging; cron_jobs already keeps each job's health. If the measurement shows a small table, the finding shrinks to the one-line schedule.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-6",
+   "title": "The cookie scan's due check runs per site every minute and is the database's largest source of sequential scans",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/cookie-scans.ts:33-35",
+    "/home/user/kaizen-store/src/server/cookie-scans.ts:72-112",
+    "/home/user/kaizen-store/src/app/api/cron/cookie-scan/route.ts:18-33",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:7577-7591",
+    "/home/user/kaizen-store/next.config.ts:54"
+   ],
+   "evidence": "Each minute claimScan() runs two updates and then a statement that lists every open site and, per site, runs two subselects on cookie_scans to find its last scan. Stats: 49,338 calls, 192 s, the fifth most expensive statement. cookie_scans has 1,101,927 sequential scans reading 962 M rows, the most of any table; 49,338 runs x about 22 per-site subselects is about 1.1 M, so this check, not the banner's 70,257 reads, explains it. There is no index on (store_id, status, finished_at). The schedule started 1,796 scans in about 46 days, about 39 a day, where 60 stores scanned weekly would give about 9: failed scans are retried every hour (RETRY_AFTER) and store templates and sandboxes are not excluded (lines 89-91). Each scan starts Chromium in a 125.4 MB function and opens up to twelve pages of our own site.",
+   "cost": "3 statements and 962 M rows read so far for a weekly task; about 39 Chromium runs a day, each up to 12 page renders of self-traffic.",
+   "who_pays": "The database every minute; the server and storefront functions for each scan.",
+   "fix": "Call the route only when a scan is queued (CR-1) and pick the weekly due site in the 15-minute sweep. Keep each site's next scan time in one row (or add the index) so the pick is one index read. Back off a failing site from one hour to one day after three failures. Leave out sandboxes and unpublished templates. Let the owner's 'Scan now' kick the route as triggerLook() does for looks.",
+   "saving": "Estimate: 1,440 calls and about 4,300 statements a day to under 100 calls; about 21 M rows of sequential reads a day gone; Chromium runs down from about 39 to about 9 a day if retries are the cause.",
+   "effort": "S",
+   "risk": "The cause of the extra scans is inferred (hourly retries or more sites than today); check with one query before changing the retry rule. A longer retry delays a site's first good scan after an outage by up to a day.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-7",
+   "title": "The theme-shots route rebuilds its whole wanted list every minute",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/theme-shots/route.ts:21-35",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:56-64",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:92-95",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:112-145",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:164-187",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:330-341",
+    "/home/user/kaizen-store/src/server/store-starters.ts:338"
+   ],
+   "evidence": "runThemeShots() starts each minute with queueThemeShots(): it reads every published theme with its whole snapshot JSON (35,101 calls, 101 s, 348,763 rows, about 10 themes a call), the themes' contents, the showcase stores and every theme_shots row (88,341 sequential scans), then one update, a claim inside a transaction under an advisory lock, and a prune read: 8 statements a minute. What is wanted changes only when a platform admin publishes a theme, a version or a demo store.",
+   "cost": "About 11,500 statements a day and every theme's snapshot shipped 1,440 times a day, in a 125.4 MB Chromium function.",
+   "who_pays": "The database and the server, every minute.",
+   "fix": "Call queueThemeShots() from the publish actions (theme, version, demo store) and from the 15-minute sweep. The minute run only claims a waiting unit, and with CR-1's gate it is not called while none waits.",
+   "saving": "8 statements a minute to 0 while idle (about 11,500 a day); the snapshot read falls from 1,440 to at most 96 a day.",
+   "effort": "S",
+   "risk": "A publish path that forgets to queue leaves a theme without new photographs for up to 15 minutes, until the sweep.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-8",
+   "title": "Kaizena Flow's own payouts are read from Stripe every five minutes",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/platform-books.ts:238-245",
+    "/home/user/kaizen-store/src/server/platform-payouts.ts:80-107",
+    "/home/user/kaizen-store/src/server/stripe.ts:58-60",
+    "/home/user/kaizen-store/src/server/payouts.ts:184-189",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:119",
+    "/home/user/kaizen-store/src/server/subscriptions.ts:791-810"
+   ],
+   "evidence": "runPlatformBooks() calls stripe.payouts.list for the last 40 days in every mode that has keys, on every dispatcher run, with no throttle. Payouts arrive at most daily and platform_payouts has never held a row. Stores' payouts, by contrast, are read once a day per store through payout_reads. Separately, invoiceJobs() calls ensureSubscriptionEvents for test and live; it remembers the answer only per server instance, so each cold instance asks Stripe for the webhook endpoint twice.",
+   "cost": "1 to 2 Stripe API calls per run for payouts: 288 to 576 a day, 226 ms of the run, for an empty table. Up to 2 more per cold start (how often the instance is cold is not known).",
+   "who_pays": "The server per run, and Kaizena Flow's Stripe rate limit.",
+   "fix": "Read the platform's payouts once a day (the payout_reads pattern), or on Stripe's payout.paid event, which the billing webhook already receives. Keep 'events checked' in the database with a date instead of in memory.",
+   "saving": "About 288 to 576 Stripe calls a day to 1 or 2.",
+   "effort": "S",
+   "risk": "A payout is posted to the books up to a day later than now. If someone watches the books the same day a payout lands, use the webhook.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-9",
+   "title": "The invoice job asks to issue the same waiting invoices every five minutes, and none has ever been issued",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:25-29",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:32-51",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:71-101",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:116-132"
+   ],
+   "evidence": "storesWithDocumentWork() returns every store with a paid order of the last 120 days that has no invoice, and the job then calls commerce.issue_waiting_invoices and issue_missing_credit_notes for each. Stats: 9,909 calls each, 132 s and 35 s in total (13.3 ms and 3.5 ms a call). The invoices and credit_notes tables have never held a row. So the same stores come back on every run, the functions do their work, and nothing is issued. There is no backoff and no note of why an order waits.",
+   "cost": "About 17 ms of database time per waiting store per run, for 120 days per order; 167 s so far. Small, but it is repeated work with no outcome.",
+   "who_pays": "The database every five minutes; and owners, if invoices are meant to exist.",
+   "fix": "Record why a store's invoices wait (the function already knows: seller's details incomplete, no rate, an error) and skip that store until its settings change or a day has passed; run it at once when the owner saves the seller's details. Separately, look at why production has paid orders and no invoice at all: it may be test-mode orders or missing details, or it may be a fault.",
+   "saving": "About 9,900 function calls per 78 days to a few per day; one clear answer on whether invoicing works.",
+   "effort": "S",
+   "risk": "A wrong 'skip until' would delay a real invoice; key it on the store's settings version so a fix is picked up at once.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": true
+  },
+  {
+   "id": "CR-10",
+   "title": "The docs search index is rewritten row by row on every docs change",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/docs-search.ts:76-81",
+    "/home/user/kaizen-store/src/server/docs-search.ts:94-127",
+    "/home/user/kaizen-store/src/server/docs-search.ts:174-186",
+    "/home/user/kaizen-store/next.config.ts:77"
+   ],
+   "evidence": "When the deployment's docs fingerprint differs, writeDocsIndex() upserts all rows with 'on conflict do update' and no condition, then deletes rows whose updated_at is older than the transaction. Every row is rewritten, vector and all, even when only one article changed. Stats: docs_index has 1,845 rows, 49,347 updates and is the largest table in the schema at 33 MB.",
+   "cost": "About 1,845 row versions (each with an embedding) written per docs-changing deploy; a 33 MB table where the live data is an estimated 13 MB.",
+   "who_pays": "The database on each deploy that touches content/docs or the contracts, which is often when work goes straight to main.",
+   "fix": "Add 'where docs_index.text_hash is distinct from excluded.text_hash' (plus the few metadata columns) to the upsert, and delete by key list instead of by updated_at. Unchanged rows are then not touched.",
+   "saving": "Estimate: writes per docs deploy from 1,845 rows to the rows that changed; the table settles near 13 MB after a vacuum.",
+   "effort": "S",
+   "risk": "Low; the fingerprint and the per-row hash already exist. A row whose metadata changed but text did not must still be updated, so compare those columns too.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-11",
+   "title": "Finished or orphaned scheduled pieces are still deployed and polled",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/cron/document-pdfs/route.ts:9-23",
+    "/home/user/kaizen-store/src/server/cron-routes.scan.test.ts:11-13",
+    "/home/user/kaizen-store/next.config.ts:66",
+    "/home/user/kaizen-store/src/server/ai-picture-marks.ts:15-20",
+    "/home/user/kaizen-store/src/server/ai-picture-marks.ts:43-53",
+    "/home/user/kaizen-store/docs/audits/psi-followups.md:216",
+    "/home/user/kaizen-store/src/server/stripe-endpoints.ts:38-63",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:101-116",
+    "/home/user/kaizen-store/src/server/secret-rotation.ts:72-77"
+   ],
+   "evidence": "/api/cron/document-pdfs has no schedule in the baseline migration and no caller in src (rg for 'document-pdfs' and 'pdfJob(' finds only the route and comments). The scan test excuses it as 'run by the dispatcher's invoice job and by staff', which the code does not do. It traces to 101.9 MB with Chromium. aiPictureMarks is a backfill its own comment and psi-followups mark as done on 31 October ('new pictures are marked when they are made and never come here'), yet it runs 288 times a day. keepStripeWebhooksCurrent was the fix for one domain move and reads platform_webhooks every run. secretRotation returns before any query unless a rotation is under way but still writes a ledger row. runJobs() deletes the one retired job's row on every run.",
+   "cost": "One unused 101.9 MB function in every deploy; about 1,150 pointless job runs a day; the 'Try again' promise on waiting PDFs ('the PDF job makes it on its next run') is not kept.",
+   "who_pays": "The build and deploy (function size), the database every five minutes, and an owner waiting for a PDF.",
+   "fix": "Decide document-pdfs: schedule it behind a gate (documents with no PDF) or delete the route and its tracing entry and correct the scan test's reason. Take aiPictureMarks out of the dispatcher and add it to RETIRED_JOBS. Run keepStripeWebhooksCurrent daily. Skip the ledger write for a job that had nothing to check. Delete retired rows once, in a migration, not on every run.",
+   "saving": "One Chromium function out of the deploy or put to use; about 1,150 job runs and 288 deletes a day.",
+   "effort": "S",
+   "risk": "Low. If a stored AI picture is still unmarked, the retired job no longer catches it: check 'ai_marked_at is null' is empty first.",
+   "confidence": "high",
+   "already_tracked": "no (psi-followups.md:216 marks the backfill done but does not retire the job)",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-12",
+   "title": "The daily job is scheduled twice, at the same minute",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/vercel.json:6-11",
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:102",
+    "/home/user/kaizen-store/src/app/api/cron/subscription-reminders/route.ts:53-55",
+    "/home/user/kaizen-store/src/server/cron-auth.ts:39-44",
+    "/home/user/kaizen-store/docs/security.md:264"
+   ],
+   "evidence": "vercel.json schedules /api/cron/subscription-reminders at '0 7 * * *' and pg_cron schedules the same route at '0 7 * * *'. The route's comment says both call it 'where CRON_SECRET is set'; docs/security.md lists CRON_SECRET as a Vercel secret. I could not read Vercel's environment, so whether the second call is accepted or answered 401 is not confirmed.",
+   "cost": "If the secret is set: about 45 daily jobs (retention, erasures, rates, domain renewals) run twice at once every day. If not: one refused call a day. Either way the second schedule adds nothing.",
+   "who_pays": "The server and the database once a day; and anyone debugging a daily job that ran twice.",
+   "fix": "Remove the crons block from vercel.json and keep pg_cron as the one scheduler (D33, D263).",
+   "saving": "One duplicate run of the whole daily job a day; one scheduler to reason about.",
+   "effort": "S",
+   "risk": "If pg_cron stops, Vercel's call no longer covers it; cron-health already reports the daily job as late after 30 hours.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-13",
+   "title": "Status checks are kept raw for 91 days though the page shows one bar a day",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/status.ts:238-275",
+    "/home/user/kaizen-store/src/server/status.ts:340-347",
+    "/home/user/kaizen-store/src/server/status.ts:375-383",
+    "/home/user/kaizen-store/src/server/status.ts:411-416",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:263",
+    "/home/user/kaizen-store/src/lib/status.ts:17"
+   ],
+   "evidence": "Each run inserts one row per measured part (five today): 1,440 rows a day. The prune keeps 91 days, so the table heads for about 131,000 rows; it has 20,547 after about 14 days and has had no delete yet. The page's read groups all 90 days into per-day counts each time its cache is refilled, and the dispatcher invalidates that cache every five minutes. So far: 1,072 sequential scans reading 10.5 M rows. Only two reads need raw rows: the last three checks for an alert, and seven days of timings for the Dublin measurement.",
+   "cost": "Estimate at steady state: about 131,000 rows and 20 MB, and a 131,000-row aggregate on each cache refill.",
+   "who_pays": "The database, and a visitor to /status after each five-minute refresh.",
+   "fix": "Keep a small table of per-day, per-part counts that the job upserts (ok and total), read the page from it, and keep raw checks for 8 days.",
+   "saving": "Estimate: about 131,000 rows to about 11,500 raw rows plus 540 day rows; the page's read from 131,000 rows to about 550.",
+   "effort": "S",
+   "risk": "Low. The SLO minutes are computed from day counts already (dayBars), so the numbers stay the same.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-14",
+   "title": "Nothing limits or measures scheduled work, so each feature adds a poll",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/server/cron-routes.scan.test.ts:43-48",
+    "/home/user/kaizen-store/docs/capacity.md:200-203",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:94-116",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:62-73",
+    "/home/user/kaizen-store/src/server/cron-runs.ts:139-149",
+    "/home/user/kaizen-store/docs/audits/psi-followups.md:477"
+   ],
+   "evidence": "The scan test asks only that a cron route has a maxDuration and is tracked. The written rule ('new heavy work gets a route of its own') has produced nine every-minute routes, from six on 24 October; each PSI audit since has noted it and none stopped it. A new job is one line in runJobs() with no cadence, no gate and no reason. The ledger cannot show the waste: for the seven routes that work after answering it records 0 to 1 ms (the answer only, REL-06 still open), and for dispatcher jobs it records time spent waiting for one of five connections (sum 12.5 s against a 1.3 s run). The dispatcher's description is a 4,212-character comment line in a 24 KB route file, repeated by the inline comments.",
+   "cost": "Unbounded growth: every wave added jobs (83 now) and nobody sees the idle cost. An agent reading the dispatcher pays about 6,000 tokens for the file.",
+   "who_pays": "Everyone later: the database, the server, and each agent session that opens these files.",
+   "fix": "Make a small registry the dispatcher and the tick both read: for each job its name, cadence (300, 3,600, 86,400), its 'in use' table and a one-line reason. A scan test fails a job without them and fails any new every-minute schedule without a gate. Record in the ledger whether a run found work (worked: true or false) and count idle runs per day on Usage and limits, with a budget (for example: under 2,000 idle job runs a day). Replace the long comment with the registry.",
+   "saving": "No direct saving; it keeps CR-1 to CR-3 from growing back and makes the next audit a query instead of a code read.",
+   "effort": "S",
+   "risk": "Low. The registry must not become a second place to forget; generate the runJobs() list from it.",
+   "confidence": "high",
+   "already_tracked": "Partly: REL-06 open item (psi-followups.md:477) covers recording the after-answer routes' real work; no plan sets a cadence, a gate or a budget.",
+   "owner_decision": false
+  }
+ ]
+}

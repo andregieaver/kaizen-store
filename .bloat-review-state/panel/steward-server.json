@@ -1,0 +1,669 @@
+{
+  "area": "server",
+  "title": "The server: what it loads and asks per request",
+  "grade_today": "D",
+  "grade_reasons": "559 of 562 pages, 181 of 268 route handlers and the proxy each load the same 10 to 12 MB of server code whatever their job: 0.84 to 1.3 s and 71 to 97 MB to start cold on the review machine, against 0.16 to 0.24 s and 14 to 26 MB for the health check. A product view asks the database about 18 times where one answer changes per view, every store page load makes one or two more function calls for nothing, and each admin shell render spends 125 ms building its menu. Nothing on the server side holds any of it (the one server budget, the first byte of two warm pages, cannot see these costs), which is the letter of a D. It is not an E: nothing hurts a person or costs real money before opening, and the caching design is sound (82 of 85 cached reads tagged, a warm cached page asks nothing of its own, the docs are static). The second reviewers' numbers confirm the first draft's D. The ladder counts the findings' work items only: they end at a strong B, and the A needs the three gap items and the owner's yes on store domains.",
+  "measures": [
+    {
+      "name": "Server code a cold function loads, by kind of entry",
+      "today": "By next analyze on the review's build: /api/visit 1,890 modules and 10,475 KB; /s/[store]/[market] 2,419 and 11,944 KB; /admin/[store]/orders 2,349 and 12,068 KB; the proxy 18 chunks and 9,729 KB (1,309 to 1,311 source files); /api/health 308 and 1,155 KB. One import cycle of 229 files in src/server is reached by 559 of 562 pages, 181 of 268 handlers and the proxy. 24 public handlers of 7 to 52 lines each load all of it. Cold load in a fresh process: 0.84 to 1.3 s for a fat entry, 0.16 to 0.24 s for /api/health. Source: digest/server-graph.md, digest/functions.md, m/chunks.md.",
+      "target_a": "A beacon (the four /api/visit routes, /api/recommendations/events): 1.0 MB and 500 modules or fewer, and a cold load within 100 ms of /api/health's on the same machine. The proxy: 1.2 MB of chunks and 120 source files or fewer, reaching none of auth.ts, pages.ts, catalog.ts, stores.ts, admin-text.ts or sharp. A storefront page: 4.0 MB and 1,500 modules or fewer, with no admin text, AI tools, theme-store code or sharp, and no Stripe SDK off the pay routes. An admin list page: 6.5 MB or fewer, with only the text areas it draws and no AI engine before the assistant is opened. The largest import cycle in src/server: 19 files or fewer. Every handler over 1,500 modules is on a named list with its reason (181 today; about 29 expected).",
+      "how_measured": "src/server/route-load.graph.test.ts with src/server/route-load.baseline.json on every pnpm test (source files reached per entry, forbidden modules, the largest cycle), and scripts/route-budget.mjs after pnpm build in CI's e2e job (the chunks each built entry names; today plus 4%, may only fall). Both are made by the guard item. The module and KB figures come from docs/audits/bloat-review-2026-11/scripts/server-graph.mjs over a next analyze export.",
+      "why_this_is_a": "The floors are measured. /api/health loads about 0.4 MB once the unused schema is out; Next's own runtime is about 544 modules and 0.5 MB on a page; the simulated end of every planned cut is 0.96 MB for the beacon, 0.8 MB for the proxy, 3.5 MB for a storefront page and about 6 MB for an admin page. The targets sit 4 to 50% above those floors, because the simulation removes whole edges and a real change keeps small parts. A B stops when the cycle is cut: beacon 1.9 MB, proxy 2.4 MB, admin 8.2 MB. Knowingly left in: all four storefront languages (0.4 MB) and every block's server component in the page renderer, because one function serves every store."
+    },
+    {
+      "name": "What every instance pays before its first request",
+      "today": "Start hook: 856 modules, 2,383 KB of chunks, 0.27 to 0.34 s and 26 to 43 MB before the first request of every function, lean ones included (383 source files; the reader alone needs about 50). Then one query, and one a minute per instance (278,393 runs in 78 days on an empty table). Server-reference manifest: 10,397,955 bytes and 81,027 route entries; 80 to 91 ms and 20 to 24 MB to read, parse and freeze. The unused Drizzle schema: 56 to 114 ms and about 7 MB per copy, in 6 built files. All from the review machine. Nothing times a cold start in production. Source: digest/server-graph.md, digest/functions.md.",
+      "target_a": "Start hook: 60 source files or fewer by static imports and under 0.7 MB of chunks, with no ai.ts, auth.ts or admin text. Schema: 0 built files hold table definitions. Manifest: under 5 MB and 40,000 entries, or a production reading that shows its load under 30 ms per cold start. A production figure exists and has a target: cold starts a day, and their p50 and p95 time to the first answer by kind of entry.",
+      "how_measured": "The graph test's baseline for src/instrumentation.ts. scripts/route-budget.mjs prints the hook's chunk bytes and the manifest's bytes and entry count on every CI build; each may only fall. rg -l -F '.table(\"theme_schedules\"' .next/server -g '*.js' prints nothing. In production: the instance.start log line proposed in the third gap.",
+      "why_this_is_a": "Every function pays these, the health check included, so they set the floor of every cold start: about 0.45 s of a lean route's 0.6 s today. The hook's floor is the database client and the reader (47 to 52 files). The manifest's floor is not known: Next keeps one list for all routes, and the planned cuts take it only to about 9.4 MB. That is a B. An A needs it halved, or shown cheap where it really runs."
+    },
+    {
+      "name": "Database statements per storefront view, warm",
+      "today": "An anonymous view of a prerendered product: about 18, 16 beyond the proxy's; stock is the one answer that changes per view and is read twice. Search 11 to 12, with search_rules read twice. Category about 2. Home and a store's own page 0 of their own. A shopper with a cart: 2 identical cart counts per page. A signed-in shopper on a product page: 2 to 4 session reads. A cart with lines and the checkout were never counted. Source: digest/storefront-data.md (pg_stat_database before and after one GET on the local production build).",
+      "target_a": "Product page: 3 or fewer beyond the proxy's, all on the inventory tables (4 for a store with producer schemes or price breaks). Category 2. Search 10 or fewer and no settings table read twice. Home and built pages 0. One cart count and one session read per request. A cart with three lines and the checkout: counted, read in at most two waves after the shopper is known, and under a budget.",
+      "how_measured": "scripts/server-budget.mjs in CI's e2e job, made by the storefront budget item: xact_commit and the table counters before and after one GET of each page, failing above a kept budget. The same counter as the admin's (AD-12) serves the integration tests.",
+      "why_this_is_a": "Stock is the one catalogue fact read per request by written rule (docs/rules/storefront.md), so the floor of a product view is one read. Everything else on the page changes only when an owner saves, and belongs in the prerendered page. 3 allows stock, one read for a store with schemes or breaks, and one for the minute poll's noise. A B is the 15 that sharing reads within one request gives. One read stays in front of every page by design: the proxy's store facts, once per store, instance and 10 seconds, which is what makes a private store private within seconds."
+    },
+    {
+      "name": "Function runs a store page view causes beyond its document",
+      "today": "/wishlist/saved on 12 of 12 store pages measured (twice on checkout), each also a proxy run. /api/shop/tiles with 3 statements on every page with a product grid, though both tile switches default to off. A render function on every view of 148 of 149 prerendered store routes: 97,919 of the demo home's 138,523 bytes are streamed per view to place two cart badges and a country hint. One Add to cart: 16 requests and 193 KB. 13 to 44 requests per page load pass the proxy, 18 of the cart page's 42 prefetches for pages a press cannot open. Crawlers on Next's bot list get a full render even of the 508 static pages. Source: m/routes.json, digest/caching.md.",
+      "target_a": "For a visitor with no cart, wishlist or account, on a store with tile stock off: 0 function calls after the document. Home, built, blog and info pages are 'static' in the prerender manifest and answer as cache hits (21 of the demo's 148 resuming routes). Product, listing, cart, checkout and account pages keep their one per-request part. One Add to cart: 1 request under 5 KB. A Bingbot request for a static page is a cache HIT. No prefetch through the proxy for a page a press cannot open.",
+      "how_measured": "scripts/render-modes.mjs with scripts/render-modes.baseline.json after the build in CI (compute mode and holes per route; made by CA-16's item). Request counts after load and after one Add to cart in e2e/performance.spec.ts. docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs for the 12 store pages.",
+      "why_this_is_a": "The floor is zero: Kaizena Flow's docs already answer with no function, and what differs per visitor on a home page is two badges and a hint. Product and listing pages keep a per-request part because stock and filters are per request by rule. That is the stated tolerance, with /themes, which keeps a function per view so its filter works without scripts. The proxy still runs once per page request: it carries each store's address rules and cannot go. A B stops at removing the wishlist and tile calls."
+    },
+    {
+      "name": "Statements before an admin screen shows its first content",
+      "today": "Store Home: 29 to 46 statements before its first content, plus 2 for the guard, one of them thrown away. Store shell on a hard load: 6 statements, 5 in a row, 2 more after every render, and one Supabase Auth call per request for a session without two-step. Products list: 16 or more for an editor, 12 unused. Orders list 9 to 11. Platform Home 18 plus 6 or 7 in the layout. Payments 9 in 5 waves. Five lists read everything: products, customers (after grouping every order), the platform's stores, pages and articles (two whole documents per page, 0.64 ms each). Source: digest/admin-data.md.",
+      "target_a": "Store Home: first content after 14 statements or fewer in at most 2 waves. Shell: 2 for the guard plus one wave, 0 after the response once a store's test account is known active, 0 Auth calls for an account with no factor. Products list 5 or fewer. Orders list 2 fewer than today. Platform Home 11 or fewer. Payments 7 or fewer in 2 waves. Every list reads one page of rows and no page document.",
+      "how_measured": "src/server/admin-statements.int.test.ts with src/server/admin-statements.baseline.json (five screens; a count may only fall) and, in production, the admin.render log line with a statements count per render. Both are made by AD-12's item.",
+      "why_this_is_a": "The guard's two reads are a security decision and stay per request. A home that shows eight figures needs about one statement per family of figures: 14 in two waves is what folding the count-only reads reaches with each figure's permission rule kept, and a pool of 5 connections runs them in three rounds. A B is the 22 the small steps give. Lists must be bounded before real catalogues exist: an unbounded read is free on 10 demo products and is the first thing to hurt at 2,000."
+    },
+    {
+      "name": "What one save, poll or redraw costs in the admin",
+      "today": "Menu build: 125 ms of blocking CPU per store shell render (220 permission lookups for 110 paths; 243 ms for a closed store). At least 39 save sites render the whole route twice, 6 more are mixed. 51 to 66 KB of unchanged shell JSON is re-sent per redraw. 8 progress polls redraw the whole route every 5 to 20 s, hidden tabs included. The notice poll: 4 statements, 60 times an hour per visible tab. 23 to 46 prefetch requests per screen. Source: digest/admin-data.md, m/routes.json.",
+      "target_a": "Menu: under 2 ms and 110 lookups per build. 0 saves that draw the route twice. Under 30 KB of shell JSON per redraw. No poll ticks in a hidden tab; a progress tick asks its job (2 or 3 statements), not the route; the notice poll asks 2 statements. At most 4 prefetch requests in the 3 s after a screen loads.",
+      "how_measured": "The count test in src/lib/store-nav.test.ts (AD-1). A scan test with a baseline of client router.refresh() calls (AD-13). The admin.render log line. The request count in e2e/signed-in (CA-5's test). A test that serialises the shell's props (AD-5).",
+      "why_this_is_a": "One redraw after a save is right; two are not, and a member's 110 menu answers do not change between renders. The floors are one render per save and about 0.1 ms for the memoised menu. 30 KB is what is left when the unread setup area, the closed assistant's words and the menu's repeated addresses go. A B stops at the memo and the double redraws."
+    },
+    {
+      "name": "What makes a cached store page draw again, and what a cold draw costs",
+      "today": "71 of 85 cached reads expire after an hour, though 82 carry a tag that every write refreshes. Home and All products redraw every 15 minutes (6 routes). 319 of 1,316 prerendered entries carry the platform-wide tag ai-providers, which any one owner's save refreshes. Every deploy empties every cache (up to 52 deploys on 11 November) and nothing warms it. A cold store page makes an estimated 30 to 35 statements with about 5 waits in a row before its first byte. listPublishedPages() reads 29 whole pages a call: 79,778 calls and 781 s in 78 days, the costliest statement of the app. Source: digest/storefront-data.md, digest/caching.md, m/prod-db-stats.md.",
+      "target_a": "0 storefront routes at 15 minutes. A read whose every writer refreshes a tag lives a week; only reads with a clock in them (the 30-day reference price, campaigns, VAT labels) stay hourly. 0 store entries carry a tag that one store's action can refresh for another. A cold store home: 20 statements or fewer and at most 3 waits in a row before the first byte. No caller reads every page to pick one (9 today). After each deploy the job, not a visitor, pays the first draw of Kaizena Flow's home and one store page.",
+      "how_measured": "scripts/render-modes.mjs baseline (revalidate seconds and tags that name no store, per route). src/server/use-cache.scan.test.ts (every cached read has a life and a tag; no store action refreshes a platform-wide tag). scripts/server-budget.mjs for the first request after a restart. The release job's log of page checks. Production's pg_stat_statements for the whole-pages statement.",
+      "why_this_is_a": "With tags on 82 of 85 reads the clock adds nothing but redraws: the floor is one draw per change. A deploy still empties every cache, because Next scopes them to a deployment. That cannot be removed, only made cheap (fewer statements, a slimmer cold start) and rarer (the owner's choice on deploys). 20 statements is stricter than the findings' own estimate of 22 to 27, so the cold-draw item must also fold the optional features into one read. A B keeps hourly lives."
+    },
+    {
+      "name": "What a deployment carries per store",
+      "today": "4 to 8 routing rules per store with its own domain, against Vercel's cap of 2,048 a deployment, of which the app's own routes take about 705: room for about 270 such stores. One full production deploy per domain change, which empties every cache. The list of store domains is parsed again 2 or 3 times for every link a page draws: at 1,000 stores with a domain about 64 ms per render of a page with 85 links. Source: digest/functions.md (SF-12, SF-13).",
+      "target_a": "0 routing rules and 0 deploys per store domain: .next/routes-manifest.json is the same with 0 or 300 active domains. 1 parse of the hosts list per instance. The count of routing rules is printed on every build and shown on Platform, Usage and limits.",
+      "how_measured": "The new case in src/lib/store-hosts.test.ts (1,000 marketPath() calls parse once). scripts/route-budget.mjs prints the rules in .next/routes-manifest.json. CI's hosts job with a domain activated after the build.",
+      "why_this_is_a": "Everything else in this area grows with traffic. This grows with the number of stores whether or not anyone visits, and it ends at a wall. The floor is zero per store: a host can be looked up when the request arrives, as the proxy already does for held domains. That replaces decision P8, so it needs the owner's word. Without it the area cannot be an A past a few hundred stores."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Page checks after each deploy: the job, not a visitor, meets the first cold page",
+      "finding_ids": ["SD-3"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The release job's log lists the page checks with status 200 after each deploy (Kaizena Flow's home and one page of the template store, from SMOKE_PAGES), and src/lib/await-deploy.test.ts shows that a page answering 500 fails the job.",
+      "moves": "Cold draw: the first draw of the named pages after each deploy is paid by the job. No statements saved. Do it first: every lazy-import item below changes the order modules load in, which is how D440 broke a route on Vercel only, and this check is what shows it at deploy. Warming the busy pages of real stores (SD-3 steps 2 and 3) waits until there are visitors to warm for.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "One guard for what a server entry loads: an import-graph test with a baseline, and a byte budget on the build",
+      "finding_ids": ["SG-14", "SF-7"],
+      "also_ids": ["DP-6", "AS-3", "FM-13", "TC-2"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "pnpm test runs src/server/route-load.graph.test.ts green against src/server/route-load.baseline.json (source files reached per entry, forbidden modules, the largest cycle: 229 today). A trial edit that adds import '@/server/chat-route' to src/app/api/visit/route.ts makes it fail. CI's e2e job prints the table of scripts/route-budget.mjs (chunks named by each built entry, the start hook, the manifest, repeated chunks, routing rules) and fails on a build made with that trial edit.",
+      "moves": "Creates the instrument for 'Server code a cold function loads' and 'What every instance pays'. No bytes by itself: each cut below becomes a number that may only fall. Build one test, not the five the reviewers name (route-load.graph, proxy.graph, server-reach.scan, the proxy ratchet, the reach script).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Count statements: one counter in the database client, a baseline for five admin screens and a log line per admin render",
+      "finding_ids": ["AD-12"],
+      "also_ids": ["DQ-11", "CR-14"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "pnpm test:int runs src/server/admin-statements.int.test.ts with five screens in its baseline (store shell, store Home, orders list, products list for an editor, platform Home), and one admin page load in a local production build writes one admin.render log line with a statements count.",
+      "moves": "Creates the instrument for 'Statements before an admin screen shows' at today's numbers, and the first production figure per screen. The database area's budget (DQ-11) and the storefront's (SD-13) read the same counter: build one.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Storefront server budgets: statements per page in CI, and a scan of every cached read's life and tag",
+      "finding_ids": ["SD-13"],
+      "also_ids": ["PM-14", "PL-13", "DQ-11"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "CI runs src/server/use-cache.scan.test.ts in pnpm test and scripts/server-budget.mjs in the e2e job (home, a product, All products, a category, search, and home with a cart cookie; first budgets are today's numbers plus 2: product 21, search 14, category 5, home 3), and a branch that adds three statements to the product page fails the job.",
+      "moves": "Creates the instrument for 'Database statements per storefront view', and holds every cached read's life and tag for 'What makes a cached store page draw again'. The graph-test step of SD-13 is the guard item above.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Hold what is static: a render-mode baseline read from the build",
+      "finding_ids": ["CA-16"],
+      "also_ids": ["SC-6", "PL-13", "PF-10"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "node scripts/render-modes.mjs passes on CI's build against scripts/render-modes.baseline.json (about twelve routes), and a trial change that adds one cookies() read to the store's footer makes it fail, naming /s/demo/no and its holes going from 3 to 4.",
+      "moves": "Creates the instrument for 'Function runs a store page view causes' and 'What makes a cached store page draw again': compute mode, holes, tags that name no store and revalidate seconds per route, plus request counts after load in e2e/performance.spec.ts. Land it before the static-pages item so that gain is recorded and then held.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Beacons and small public routes import their helpers from where they are defined, not through the chat module",
+      "finding_ids": ["SG-3", "SF-4"],
+      "also_ids": ["DP-10", "FM-2", "FM-14"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The graph test holds each of the four /api/visit routes and /api/recommendations/events under 160 source files (1,306 to 1,309 today) and none reaches chat-route.ts. A next analyze export shows /api/visit at or under 710 modules and 1.9 MB (1,890 and 10,475 KB today). rg -n sameSite src/server/chat-route.ts prints nothing.",
+      "moves": "Server code a cold function loads: the beacon from 10.5 MB to 1.9 MB, and to 1.17 MB with the schema item. Ten handlers leave the over-1,500-modules group on this change alone. An estimated 0.65 to 0.75 s off each cold beacon on the review machine. The largest saving per line changed in the area.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Take the unused Drizzle schema out of the database client",
+      "finding_ids": ["SG-6", "SF-6"],
+      "also_ids": ["DP-1", "DS-1", "TC-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After pnpm build, rg -l -F '.table(\"theme_schedules\"' .next/server -g '*.js' | wc -l prints 0 (6 today), and pnpm db:check exits 0.",
+      "moves": "What every instance pays: 56 to 114 ms and about 7 MB per copy off every cold start of every function that touches the database (256 of 268 handlers, every page, the proxy). /api/health from 1,155 KB to about 400 KB, which becomes the floor the other targets are read against. Three lines; the split of the file stays with code review step 3.14.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Cut the import cycle where shoppers' pages enter it: six lazy imports",
+      "finding_ids": ["SG-1", "SF-1"],
+      "also_ids": ["TC-2", "PM-12"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "The graph test passes with the largest import cycle in src/server at 19 files or fewer (229 today) and src/app/s/[store]/[market]/page.tsx at 760 source files or fewer (1,419). A next analyze export shows /s/[store]/[market] at or under 1,800 modules and 8.2 MB (2,419 and 11,944 KB), and no storefront route nor /api/shop/tiles lists src/server/owner-tools.ts.",
+      "moves": "Server code a cold function loads: a storefront page from 11.9 to about 7.7 MB, /api/shop/tiles from 10.4 to about 6.3 MB, and with the other 'now' cuts the handlers over 1,500 modules from 181 to about 29. Four of the six edits are on order and payment paths: do them before opening, while no real order runs.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Start hook: split the interface-text reader from the translating tools",
+      "finding_ids": ["SG-5", "SF-3", "SD-7"],
+      "also_ids": ["TX-12", "DQ-12", "DS-2"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The graph test holds src/instrumentation.ts, following its import(), to 60 source files or fewer by static value imports (383 today) with no src/server/ai.ts, auth.ts or admin text. After a build the chunk files named in .next/server/instrumentation.js.nft.json sum to under 700 KB (4 files, 2,383 KB today).",
+      "moves": "What every instance pays: the hook from 0.27 to 0.34 s and 26 to 43 MB to an estimated 0.05 to 0.1 s, on every function, lean ones included. The start query and the minute poll stay; the poll is its own item.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The admin's words leave shoppers' routes: an area module for each importer outside the admin",
+      "finding_ids": ["SF-5"],
+      "also_ids": ["FM-1", "TX-1"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "The graph test passes with src/proxy.ts, the four /api/visit routes and src/app/s/[store]/[market]/layout.tsx not reaching src/lib/admin-text.ts (all reach it today), no value import of it outside src/app/admin and src/components/admin (35 files today, a list that may only shrink), and 30 or fewer route handlers reaching it (240 of 265).",
+      "moves": "Server code a cold function loads: a storefront page from about 7.7 to 4.35 MB with the schema out, the proxy from 5.2 to 2.4 MB. About 100 to 130 ms and 13 to 15 MB per cold start of the roughly 740 entries that load the registry today. This is SG-4's small step, widened from 8 files to all 35.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "sharp and the font parser load when a picture or a font is made",
+      "finding_ids": ["SG-7", "SF-9"],
+      "also_ids": ["DP-2", "AS-1"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "src/server/lazy-packages.scan.test.ts passes: 0 static value imports of sharp or opentype.js under src outside tests and src/server/sharp-load.ts (13 today). A fresh-process load of the built /api/shop/tiles route leaves no .node file in require.cache (1 today).",
+      "moves": "Server code a cold function loads: about 45 to 60 ms and 21 to 28 MB of resident memory per cold instance on about 740 entries. The 18.9 MB stays in each package until an entry has no path to an importer. SF-9's Stripe step is the later store-reader item; its Supabase step is optional.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The AI manager's engine loads when the assistant is first used, not with every admin page",
+      "finding_ids": ["SG-15"],
+      "also_ids": ["DP-11"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A next analyze export shows /admin/[store]/orders without src/server/owner-tools.ts among its sync modules, at or under 2,050 modules and at least 2.0 MB under today's 12,068 KB (2,349 modules today). The graph test asserts that the admin's root, gated, store and platform layouts reach no src/lib/owner-tools.ts.",
+      "moves": "Server code a cold function loads: an admin page from 11.0 to 8.8 MB, and 8.2 MB with the schema out; admin pages that reach the AI tools from 384 of 449 to about 60. The launcher stays on every page; only the engine waits for the first use.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Two more edges off every store page: the key reader that brings Stripe, and the theme store section that brings sharp",
+      "finding_ids": ["SG-18", "SG-17"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -n 'export function encryptionKey' src/server/settings.ts prints nothing. A next analyze export shows /s/[store]/[market] with no stripe module, no src/server/theme-store.ts and no sharp among its sync modules, at or under 1,600 modules and 4.2 MB with the other 'now' cuts in (2,419 and 11,944 KB today).",
+      "moves": "Server code a cold function loads: a storefront page from 4.35 to about 3.6 MB. The Stripe SDK off 26 of 59 storefront pages and 60 of 155 handlers; sharp off 56 of 58 storefront pages even before the sharp item.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Look a store's slug up once, and stop asking three tiny facts 11,000 times a day",
+      "finding_ids": ["SD-10", "CA-9"],
+      "also_ids": ["DQ-9", "CP-2"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -c 'select slug from commerce.stores where id' over src without tests gives at most 3 lines (27 in 21 files today) and none in src/server/content-grid.ts. One warm GET of the search page shows no read of commerce.stores by id beyond the proxy's. On production a week after the deploy that statement grows by fewer than 500 calls a day (about 7,180 today).",
+      "moves": "Database statements per storefront view: 1 to 3 fewer on pages with grids, working parts or search. About 11,000 statements a day from jobs and cold renders (the slug, the AI provider row read whole, the AI pause flag).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Read a shopper's cart count, session and stock once per request",
+      "finding_ids": ["SD-11"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "With a cart cookie, one GET of a store's home page reads commerce.cart_lines once (twice today). With a session cookie a product page reads commerce.customer_sessions once (2 to 4 times today). The product page's budget in scripts/server-budget.mjs is lowered from 21 to 17.",
+      "moves": "Database statements per storefront view: 1 fewer per view for a shopper with a cart, 2 to 4 for a signed-in shopper. SD-2's first step rides along (stock, the checkout's look and its facts shared within one request): the anonymous product view from about 18 to about 15.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Product tiles ask for stock only where a store or a grid shows it",
+      "finding_ids": ["SD-14"],
+      "also_ids": ["SC-12", "PL-8"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On a store with both tile switches off, loading its home page and All products in a browser makes 0 requests to /api/shop/tiles (1 each today), asserted in e2e/shop-components.spec.ts; with tile stock on, exactly 1.",
+      "moves": "Function runs a store page view causes: 1 function call and 3 statements per load of a page with a product grid go for every store on the default settings. A store that shows tile stock pays as now.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "No wishlist call for a visitor who has none: a marker cookie, not a part in the page's stream",
+      "finding_ids": ["SD-15"],
+      "also_ids": ["SC-10", "PL-7"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "measure-routes.mjs shows 0 requests to /wishlist/saved on all 12 store pages for a visitor without the marker (1 on each today, 2 on checkout) and exactly 1 with it. The marker cookie is listed in KNOWN_COOKIES with its purpose in four languages. e2e/wishlist.spec.ts passes.",
+      "moves": "Function runs a store page view causes: 1 function call and 1 proxy run per page load go for every visitor with nothing saved. SD-15's planned seed in the page's stream is not taken: it would add a per-request part to every page and block the static-pages item. The marker is the first step of that item (CA-1 step 2).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A store's AI settings refresh that store's tag, not every store's",
+      "finding_ids": ["SD-16", "CA-11"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After a build, grep -rl 'ai-providers' .next/server/app --include='*.meta' | wc -l prints 0 (319 today) and store pages carry the store's own AI tag and the platform's. rg -n 'AI_TAG' 'src/app/admin/(gated)/[store]' returns nothing (3 lines today). The use-cache scan fails when a store's action names a platform-wide tag.",
+      "moves": "What makes a cached store page draw again: entries that one owner's save can expire for every store, from 319 to 0. Free before opening; after lives are lengthened it would be the main cause of platform-wide redraws.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Read one page, not all of them: a page by id and a page index",
+      "finding_ids": ["CA-3", "SD-4"],
+      "also_ids": ["DQ-2", "PM-2"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "rg -c 'listPublishedPages(' over src without tests gives at most 20 lines (35 today) and no caller picks one page by id after it (9 today). src/server/legal-links.ts and src/server/platform-navigation.ts no longer import it. On production a week after the deploy the whole-content statement has fewer than a quarter of the calls of the new index statement.",
+      "moves": "Cold draw: a cold fill reads 1 to 3 pages where it read 29, and the all-pages read leaves the path to the first byte. The costliest statement of the app (781 s in 78 days) falls by over 90%. Each built store page's kept data loses the list (4,275 bytes on the demo).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Language and currency links stop prefetching a page their press never opens",
+      "finding_ids": ["CA-4"],
+      "also_ids": ["SC-1", "PL-3", "PF-2"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A cold phone load of /s/demo/no/cart on pnpm start makes 0 prefetch requests to /s/demo/no-sv, -da, -en, -sek, -dkk or -eur in the 3 s after load (18 today, 104,635 bytes on the wire), held by a test in e2e/performance.spec.ts.",
+      "moves": "Function runs a store page view causes: 18 of the cart page's 42 prefetches, 57% of their wire bytes, and 18 proxy runs per such page load, for stores that offer several languages or currencies.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Admin links are fetched on intent, and View store never",
+      "finding_ids": ["CA-5"],
+      "also_ids": ["AC-12", "PF-5", "PL-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "Signed in as the test owner, /admin/{store}/orders makes at most 4 prefetch requests in the 3 s after load (32 today, 111,733 bytes on the wire), held by a new test in e2e/signed-in/.",
+      "moves": "What one save, poll or redraw costs in the admin: 23 to 46 prefetch requests and 77 to 160 KB per screen to at most 4, and as many function runs, again after most saves.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "End the prefetch loop on /s/ addresses and hold it with a test",
+      "finding_ids": ["CA-6"],
+      "also_ids": ["PF-1", "SC-9"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "The new test in e2e/performance.spec.ts passes without test.fail(): under 100 requests in the 3 s after load on /s/demo/no/category/belysning and on /s/demo/no/search?q=lampe (about 1,200 to 1,500 today).",
+      "moves": "About 350 requests a second, each through the proxy, for as long as a listing or search page is open at an /s/ address. CI's end-to-end jobs pay it on every run today; whether any production address does is not known.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Write partialPrefetching down as a recorded choice",
+      "finding_ids": ["CA-7"],
+      "also_ids": ["PF-9", "PL-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "pnpm build no longer prints the partialPrefetching warning, and next.config.ts names the value with its reason. Whether to adopt it is decided by the shopper-browser area's trial (PF-9), not here.",
+      "moves": "No request saved by itself. It ends a warning on every build and start and records the choice before the next major Next release makes it for the app.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A theme's neighbours read the cached list of cards",
+      "finding_ids": ["CA-13"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -n 'loadCards(' src/server/theme-store.ts shows two call sites, in themeStoreCards and themeStoreCardsNow (three today).",
+      "moves": "One read of every theme's snapshot per cold instance where today there is one per theme preview (the snapshot statement ran 10,851 times and returned 107,917 rows in 78 days). Making /themes a static file is left as stated tolerance: one page of Kaizena Flow's own site keeps a function per view so its filter works without scripts.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Memoise the store menu's permission answers",
+      "finding_ids": ["AD-1"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The count test in src/lib/store-nav.test.ts passes: 110 permission lookups per menu build (220 today), and a build takes under 2 ms on the review machine (125 ms; 243 ms for a closed store).",
+      "moves": "What one save, poll or redraw costs in the admin: 100 to 125 ms of blocking CPU per store shell render to about 0.1 ms, 64 ms per hub page, and about 130 ms per AI manager pass. Do it before the other shell items: each of them is multiplied by it.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "One redraw per save: remove the client refresh where the action already refreshed",
+      "finding_ids": ["AD-13"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A scan test holds the client router.refresh() calls in the admin at a baseline of about 50 (90 in 50 files today), with 0 that follow an action that always refreshes and 0 mixed (36 and 6 by the planner's script, whose logic the test takes over). The signed-in e2e job passes.",
+      "moves": "What one save, poll or redraw costs in the admin: one whole-route render fewer per save at 39 or more save sites, two fewer on four editors. Each render saved is the guard's statements, the shell, the page and 51 to 66 KB of JSON.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Polls stop in hidden tabs, a progress tick asks its job, and the notice poll asks two statements",
+      "finding_ids": ["AD-9"],
+      "also_ids": ["AC-13", "PL-11", "AI-12"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -n 'setInterval' src/components/admin/refresh-while.tsx src/components/admin/pack-pictures.tsx shows each tick guarded by visibilityState, and the counter (or a count in assistant-notices.int.test.ts) shows the count=1 notice feed at 2 statements (4 today).",
+      "moves": "What one save, poll or redraw costs in the admin: a hidden tab costs nothing; a Dream Factory run stops redrawing the whole route 10 times a minute per watching tab; the notice poll from 4 statements to 2, 60 times an hour per visible tab.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The products list reads what it shows",
+      "finding_ids": ["AD-7"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -c getEditorContext 'src/app/admin/(gated)/[store]/products/page.tsx' prints nothing (1 today), and the counter shows the products list at 5 statements or fewer for an editor on the default view (16 or more today).",
+      "moves": "Statements before an admin screen shows: the products list from 16 or more to about 4, with three waits in a row gone, on one of the most opened pages of a selling store.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Parse the list of store domains once per instance",
+      "finding_ids": ["SF-12"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The new case in src/lib/store-hosts.test.ts passes: 1,000 calls of marketPath() with a 1,000-store hosts list call JSON.parse once (2,000 or more today).",
+      "moves": "What a deployment carries per store: at 1,000 stores with a domain, about 64 ms per render of a page with 85 links and 1.1 ms per proxied request become one 0.4 ms parse per instance. Nothing today; ten lines before opening. Worth having whichever way the owner decides on store domains.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The proxy's readers become leaf modules, with one file of tag names and one short-memory helper",
+      "finding_ids": ["SD-1", "SD-6", "SG-2", "SF-2", "SG-8"],
+      "also_ids": ["PM-12"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The graph test passes with src/proxy.ts at 120 source files or fewer by static value imports (1,309 to 1,311 today), reaching none of auth.ts, pages.ts, catalog.ts, stores.ts, seo.ts, stripe.ts or src/lib/admin-text.ts, and the market layout at 900 or fewer (1,466). The chunks named in .next/server/middleware.js sum to 1.2 MB or less (18 chunks, 9,729 KB today). A unit test shows 20 concurrent remembered() calls for one key run the loader once, and src/server holds one definition of that helper (three today). docs/performance.md names the reader and writer rule.",
+      "moves": "Server code a cold function loads: the proxy from 2.4 MB after the 'now' cuts to about 0.8 MB, and a cold proxy from 0.84 to 1.04 s toward 0.25 s on the review machine, in front of every page of every store. Moves only; every old import path keeps working. The reader and writer rule (SG-8) is written and enforced by the graph test; moving every feature file waits for code review step 3.13.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A product view asks for stock only: what an owner sets is read once per store and carried in the prerendered page",
+      "finding_ids": ["SD-2"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "One anonymous GET of a prerendered goods product on a warm production build commits 3 statements or fewer beyond the proxy's (about 16 today) and reads only the inventory tables, by scripts/server-budget.mjs with its budget at 4. src/server/buy-writers.scan.test.ts passes: each of the 12 files that write the facts' tables refreshes the store's buy tag.",
+      "moves": "Database statements per storefront view: the product page from about 15 after the 'now' items to 1 to 3, and the buy button no longer waits for payment facts. It grows one for one with shopper traffic on the page where the buy button is. The press itself keeps its live checks.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Store pages with nothing per visitor become static files, and Add to cart answers a number",
+      "finding_ids": ["CA-1", "CA-17"],
+      "also_ids": ["PF-12"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "After pnpm build, .next/prerender-manifest.json gives compute 'static' for /s/demo/no, /s/demo/no/om-oss and the blog routes (all 'resuming' today), held in the render-mode baseline. On pnpm start, curl -sD - http://localhost:3000/s/demo/no shows x-nextjs-cache: HIT with an s-maxage Cache-Control (private, no-cache, no-store today). After one Add to cart on the demo product page the browser makes 1 request in 3 s with an answer under 5 KB (16 requests and 193,042 bytes today) and the cart link reads 'Handlekurv (1)'.",
+      "moves": "Function runs a store page view causes: the render function per view goes on home, built, blog and info pages (21 of the demo's 148 resuming routes), for a visitor with nothing of their own; others make one small call. One Add to cart: 15 of 16 requests and one page render fewer. The cart count and the country hint move to one per-visitor answer asked only with the marker cookie.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Tagged reads live until their tag is refreshed, not for an hour",
+      "finding_ids": ["SD-8", "CA-10"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "pnpm build's route table shows no storefront route at 15m (6 today). In .next/prerender-manifest.json the docs routes at 3600 (251 today) and a store's own pages (/s/[store]/[market]/[slug]) show 604800. The writer scans for commerce.pages, commerce.platform_settings and commerce.menus pass.",
+      "moves": "What makes a cached store page draw again: background redraws from one an hour (96 a day for home and All products) to one per change, and a quiet page is kept 30 days, not 1. The scans come first: a writer that misses its tag would leave a page old for a week. Reads with a clock in them stay hourly.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A cold store page: one wave before the first byte, and one read for the optional features",
+      "finding_ids": ["SD-5", "SD-9"],
+      "also_ids": ["DQ-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "scripts/server-budget.mjs counts the first request for a store's home after a restart of a local production server, and the count is 20 or fewer (an estimated 30 to 35 today). src/app/s/[store]/[market]/layout.tsx has one awaited Promise.all before <html> and no await inside its JSX. src/server/experiments.ts holds 2 'use cache' reads (5 today). A search reads its rules once.",
+      "moves": "Cold draw: waits in a row before the first byte from about 5 to 3, consent's reads from 8 in a row to one wave, and statements from 30 to 35 to 20 or fewer. The findings' own steps reach an estimated 22 to 27, so this item also folds the per-feature questions (chat, modals, affiliate, recommendations, cookie notes, tests) into one site-facts read, as DQ-7 plans. Search: 1 to 2 statements fewer.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Crawlers on Next's bot list get the cached page",
+      "finding_ids": ["CA-15"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "On pnpm start, curl -sD - -A 'Mozilla/5.0 (compatible; bingbot/2.0)' http://localhost:3000/docs shows x-nextjs-cache: HIT (private, no-cache, no-store today). The new no-script crawler test passes: the demo home, a product, a category and a blog article each hold title, description, canonical, og:title, the product's name and price and its JSON-LD in the HTML. After the deploy, Bing's URL inspection shows a product's price and availability.",
+      "moves": "Function runs a store page view causes: one full render per crawler request becomes a cache hit on the 508 static pages and a resume on the others. The total is not known before opening: count it in Vercel's logs first, and stop if the share is small.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The admin's words by area on admin routes too: the one registry goes",
+      "finding_ids": ["SG-4"],
+      "also_ids": ["FM-1", "TX-1"],
+      "phase": "next",
+      "effort": "L",
+      "done_when": "A next analyze export shows /admin/[store]/orders listing only the text areas it draws, at or under 6.5 MB of server code (12,068 KB today; 8.2 MB after the 'now' cuts). CATALOGUES, adminText() and adminTexts() have no run-time importer left.",
+      "moves": "Server code a cold function loads: up to 2.2 MB and about 50 ms off each admin page's cold start, which is what takes an admin page from a B figure (8.2 MB) to the A target. A codemod over 605 calling files, one admin folder at a time. SG-4's small step for shoppers is the 'now' item.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Read the server-reference manifest's cost in production and hold its size",
+      "finding_ids": ["SG-16"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "scripts/route-budget.mjs prints the manifest's bytes and entry count on every CI build and fails when either rises. After the cycle, beacon and AI-engine cuts the file is under 9.4 MB and 73,000 entries (10.4 MB and 81,027 today). One production reading of Next's span 'load route manifests' on a cold request is written into docs/performance.md.",
+      "moves": "What every instance pays: about 10 to 12 ms and 3 MB per cold start from the cuts already planned. About 70 ms and 20 MB stay, which is short of the A target; the third gap says what is missing.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Store Home: first content after 14 statements",
+      "finding_ids": ["AD-2"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The statement baseline holds controlCenter() for one store at 14 statements or fewer for an owner of a shop (22 or more today). The setup checklist and the demo card are behind Suspense in src/app/admin/(gated)/[store]/page.tsx. No usageRows() call runs when onlyStore is set.",
+      "moves": "Statements before an admin screen shows: the store Home from 29 to 46 down to about 14 before its first content, with nothing a person sees changed. Each figure keeps its permission rule; security-review.int.test.ts and control-center.int.test.ts are the checks. The first three steps are small and may ship with the 'now' work.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The admin shell reads in one wave, memberships once, and no Stripe check on every render",
+      "finding_ids": ["AD-4", "AD-8"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The store layout has one await after the member besides the Promise.all. The counter shows the store shell at 2 statements for the guard plus one wave, and 0 statements after the response on the second render in one instance for a store whose test account is active (2 today). The owner level's shell is at 4 statements or fewer after the guard (5 or 6 today), and rg -n 'listStores(' src/app shows no call outside storesOf().",
+      "moves": "Statements before an admin screen shows: 3 fewer waits in a row before the frame paints on a hard load, 2 fewer statements per shell render (every save and poll tick), and 2 to 3 fewer per owner-level hard load.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "No Supabase Auth call per request for an account without a second factor",
+      "finding_ids": ["AD-3"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "With trust-fixtures, an aal1 account with no factor makes 0 getUser calls across two readSession() runs (1 each today), an aal1 account with a factor is still held at the challenge, and step 3.8 in the code review's Progress table reads Done.",
+      "moves": "Statements before an admin screen shows: one HTTP round trip per admin request for sessions without two-step, two per save, one per notice poll. Security-sensitive: the tests must cover enrol, remove, reset and re-enrol. First a person with access checks in the Supabase dashboard whether tokens are still signed with the shared secret; if so, every session pays one more call until the signing key is moved.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A redraw sends the shell's words once, and only the ones a part reads",
+      "finding_ids": ["AD-5"],
+      "also_ids": ["AC-4", "TX-2", "PL-1", "TX-4"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "A test that serialises the store shell's props (the planner's words script, moved into the repo) shows under 30 KB of JSON in English (51 to 54 KB today; 63 to 66 KB in Norwegian). e2e/signed-in/admin-text-fallbacks.spec.ts and ai-manager-panel.spec.ts pass.",
+      "moves": "What one save, poll or redraw costs in the admin: about half of the 51 to 66 KB re-sent per shell redraw, and about 20 KB less on each Home view. Its first step (stop handing down the setup area, which nothing reads) is one line and may ship now.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Products, customers and the platform's stores are read a page at a time",
+      "finding_ids": ["AD-10"],
+      "also_ids": ["AC-14", "DQ-14"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The code review's done-when for steps 1.13 and 2.10 holds (a store with 150 customers shows '100 of 150' and a next page; the platform's Stores list searches and pages), and an integration test shows listCustomers() for a store with 150 customers reading the orders of 100 emails only.",
+      "moves": "Statements before an admin screen shows: three views bounded at a fixed page as stores grow. Nothing to measure on demo data; per view today it is 6 sub-selects and a function call per product, and one pass over every order of the store. Cheapest before opening, while no owner's bulk habits depend on one long page.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The pages and articles lists read columns, not documents, and page",
+      "finding_ids": ["AD-14"],
+      "also_ids": ["PM-5", "DS-4", "PM-6", "DQ-10"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "rg -n 'select id, slug, draft, published' src/server/pages.ts shows the statement only in getPageForEdit(). The new case in src/server/pages.int.test.ts passes. The counter shows the pages list view in at most 3 waves of statements (6 or more waits in a row today).",
+      "moves": "Statements before an admin screen shows: for 30 pages about 19 ms of CPU and 500 KB of JSON less per view; for 200 articles about 128 ms and 3.3 MB. Paging articles is the part that is cheapest before opening: a blog moved in from another shop has hundreds of posts.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A store's own domain answers without a deployment",
+      "finding_ids": ["SF-13"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "L",
+      "done_when": "Platform, Usage and limits shows the count of routing rules beside what is left under 2,048, and scripts/route-budget.mjs prints the app's own count (needs no decision). Then, with the owner's yes: in CI's hosts job a domain activated after the build serves its store's front page, and .next/routes-manifest.json holds the same number of redirects and rewrites whether the database has 0 or 300 active store domains.",
+      "moves": "What a deployment carries per store: 4 to 8 routing rules and one full production deploy per domain change become none, and the ceiling near 270 stores with a domain goes. It replaces decision P8 for own domains, and it is every store's front door: a mistake takes stores off the air where today it is caught at build. If the owner keeps P8, the ceiling still needs an answer before about 250 stores have a domain.",
+      "serves": "server",
+      "owner_decision": true
+    },
+    {
+      "title": "Wake the every-minute routes only when work waits",
+      "finding_ids": ["SF-10"],
+      "also_ids": ["CR-1", "DQ-1", "DP-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "CR-1's own check holds: in production, select count(*) from cron.job where schedule = '* * * * *' returns 1 (9 today), and the tick route is in src/server/route-load.baseline.json at 120 source files or fewer.",
+      "moves": "12,960 calls a day of nine full-application functions become 1,440 calls of one light route while the queues are empty. The scheduled-work area owns the change (CR-1); this entry only asks that the tick route be a lean entry held by the graph test.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Ask for translated texts when they can have changed, and prune the search cache daily",
+      "finding_ids": ["CA-12"],
+      "also_ids": ["DQ-12", "DS-2", "TX-6", "FT-3"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The dispatcher's job list has no 'cache' entry (rg -n 'pruneSearchCache' src/app/api/cron shows it only in the daily route), and on production the ui_translations statement grows by fewer than 200 calls a day per instance with no translation edited (about 1,440 today).",
+      "moves": "What every instance pays: about 3,500 polls and 288 prunes a day go. Tiny in database time; it is here so the poll is changed once, with the database and text areas' items on the same lines.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Three screens read less when next opened: the platform Home, the orders list and Payments",
+      "finding_ids": ["AD-6", "AD-11", "AD-15"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The statement baseline holds the platform Home's loaders at 11 or fewer (18 today), the orders list's first page at 2 fewer than today's 9 to 11, and the Payments page at 7 or fewer in 2 waves for a Stripe store with an active test account (9 in 5 waves). rg finds one definition of pending access requests in src/server (two today). The Payments page has a Suspense around each call to Stripe or Mollie.",
+      "moves": "Statements before an admin screen shows: the last three screens reach their targets. The platform Home is here by the parity rule: the platform must not lag the stores.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A store is read without the Stripe SDK and without the whole page model",
+      "finding_ids": ["SG-9"],
+      "also_ids": ["DP-3", "DP-12"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "A next analyze export shows /api/visit with no stripe module (189 modules and 212 KB today) at or under 500 modules and 1.0 MB, the graph test shows src/server/stores.ts reaching no file that defines a block schema, a fresh-process load of the built /api/visit is within 100 ms of /api/health's, and pnpm test:int passes.",
+      "moves": "Server code a cold function loads: the beacon from 1.17 MB to 0.96 MB and under, and up to 45 ms and 20 to 26 MB of resident memory off every route that reads a store and draws no page (beacons, tiles, cart APIs, webhooks, cron). The planners ranked it low because 113 test files mock the payment modes; it is in the plan because the beacon's A target needs it. Do the page-model half inside code review step 3.2.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The AI manager's tool catalogue is built when it is first listed",
+      "finding_ids": ["SG-10"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "rg -n 'MCP_TOOLS' src prints nothing, and a per-factory profile of a route that reaches src/lib/mcp-catalogue.ts without listing tools shows no mcp-catalogue entry above 1 ms (42 ms on /api/visit today).",
+      "moves": "Server code a cold function loads: about 42 ms per cold start of a route that loads the catalogue without using it. Few routes do once the cycle and the AI-engine items are in. Do it when mcp-catalogue.ts is next touched (code review step 3.21).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The taxonomy rides only with routes that can read it, and a product stores what the shop shows",
+      "finding_ids": ["SF-8", "SG-13"],
+      "also_ids": ["AS-2"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "After pnpm build, .next/server/app/api/health/route.js.nft.json and .next/server/app/api/visit/route.js.nft.json list no file under src/data/product-taxonomy (6 files, 12.7 MB each today), and the graph test fails when a listed route is given an import of src/server/product-taxonomy.ts. Then, with the product editor: src/server/catalog.ts and src/server/listing.ts no longer open the taxonomy files.",
+      "moves": "12.7 MB off 87 function packages now and more after the proxy's split: package size only, nothing at run time. The second half is the one that runs: 35 to 45 ms and 16 to 22 MB of heap once per storefront instance that draws a product with a standard category. Not before the cycle is cut: until then the list of routes would be the whole app.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Report repeated server chunks and re-measure the build after the cuts",
+      "finding_ids": ["SG-11", "SF-11"],
+      "also_ids": ["TC-8", "AS-10"],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "scripts/route-budget.mjs reports under 40 MiB of repeated server chunk bytes on a CI build (123.6 MiB of 195.5 MiB today), and docs/build-memory.md holds the measured build peak with and without server source maps.",
+      "moves": "No code of its own: the copies are three large chunks (the application blob 18 times, the admin catalogue 10 times, a page chunk 5 times), and the cycle and admin-text items shrink exactly those. An estimated 80 to 100 MiB of chunks and about 300 MiB of maps off the build output. Its effect on the build's memory is not known until measured.",
+      "serves": "build",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "SD-12",
+      "why": "Every one of these reads is cached and tagged, and together they cost about 1.5 s of database time a day. The part that is not cached, the AI provider row read whole 237,563 times, is closed by the slug-and-tiny-facts item and by AI-2. The modal scan over every page's JSON falls with longer cache lives and with the page columns the database area plans. Stated tolerance: a cached, tagged read may fetch a row wider than it shows while the row is under about 10 KB."
+    },
+    {
+      "finding_id": "SG-12",
+      "why": "About 290 KB and 10 ms per cold instance, and the only cut in the set that could show a shopper the wrong language. Stated tolerance: all four hand-written storefront languages load with a page, 0.4 MB of its 4 MB budget. Look again when a fifth hand-written language is added."
+    },
+    {
+      "finding_id": "CA-8",
+      "why": "A crawler asks for each store's robots.txt, sitemap, llms.txt and feed about once a day, so a one-hour CDN window would save almost nothing. What a cold sitemap costs is what it reads, and the page-list item removes most of that. Add the header when the handlers are next opened."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": ["CA-2"],
+      "question": "Once stores are open, may a CI run skip its deploy when a newer commit is already on main, so a burst of pushes shares one deploy? Each deploy empties every store's cached pages and starts every function cold (up to 52 deploys on 11 November). It changes D5's 'at once' by a few minutes."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "Reads that grow with a store's catalogue, and the cart and checkout, are in no finding",
+      "evidence": "The front page reads every active product of the store on each cold draw, to list every product's address in its JSON-LD: src/app/s/[store]/[market]/page.tsx:68 calls listProducts(), which has no limit (src/server/catalog.ts:284-340). A product page's metadata loads the store's whole index, with every product's texts and pictures, to learn one product's markets: p/[handle]/page.tsx:73 and src/server/seo.ts:229. One catalogue tag covers a store, so one price change expires every product page and listing of it (cacheTag(CATALOG_TAG, catalogTag(storeId)) in catalog.ts). The cart reads in a row: eight awaits one after another in cart/cart-contents.tsx:72-198. These are code review steps 3.8, 3.9 and 3.10, all Open (docs/audits/code-review-2026-11.md:110-112). The storefront-data report says they 'are not repeated here', so no step of this plan closes them. The review counted an empty cart only (m/routes.md), and the demo store has 10 products, so none of this shows in any figure. At 2,000 products each cold home page builds 2,000 summaries and each cold product page parses the whole index.",
+      "proposed_work_item": "Phase next, effort M. Bring code review steps 3.8 to 3.10 into this plan with numbers. Front page: its JSON-LD from a small cached read of handles, never the summaries. Product metadata: the market codes from getProduct(). Tags: a tag per product on single-product reads and a lists tag, the store's tag kept for store-wide changes. Cart and checkout: the independent reads in one wave. Add a cart with three lines and the checkout to scripts/server-budget.mjs, and seed one test store with 500 products so a read that grows with the catalogue fails a budget. Done when: the budget holds cart and checkout at their counted figures, read in at most two waves after the shopper is known; a cold home page and a cold product page of the 500-product store read no more rows than those of a 10-product store, the listing's own page aside; saving one product refreshes its own tag and the lists tag only."
+    },
+    {
+      "title": "Kaizena Flow's own front page was measured in a form production no longer serves, and it is cold after every deploy",
+      "evidence": "Since D484 the proxy serves kaizenaflow.com from the store 'kaizenaflow' (src/proxy.ts:66-80, src/server/house-switch.ts:30-43); docs/platform-parity.md:21 says the switch is on in production. Production's front page is a 338 KB document with a 244 KB payload (m/prod-pages.md). The review's figures for '/' (one static file of 39,845 bytes, a cache HIT, 'truly static') come from the local build, where the switch is off. In production the page is a store page: a render function on every view, and not built ahead, because prerenderedShops() returns the template store's markets only (src/server/shop.ts:94-101). So after each deploy its first visitor waits for a blocking cold draw, and no budget or baseline names the page every prospective owner lands on at opening.",
+      "proposed_work_item": "Phase now, effort S. prerenderedShops() also returns the house store's markets while the switch is on, so its pages are built with each deploy. CI seeds a house store with the switch on, and scripts/render-modes.mjs and scripts/server-budget.mjs hold its home in their baselines. The deploy job's page checks log the cache header and the document's bytes for Kaizena Flow's home. Measure production's front page again with measure-routes.mjs before and after the static-pages item. Done when: the first request for Kaizena Flow's home after a deploy answers from a prerendered shell, its compute mode is in the baseline (static once CA-1 is in), and its document has a budget (338 KB today)."
+    },
+    {
+      "title": "No production figure for a cold start, and the largest fixed cost left after the cuts has no plan",
+      "evidence": "Every cold-start number in this area is from the review machine; the draft's section 6 says real cold starts on Vercel were not measured at all. src/instrumentation.ts times nothing, rg finds no cold-start line in src/server/log.ts, docs/capacity.md or docs/performance.md, and the one server budget is the first byte of two warm pages (e2e/performance.spec.ts:127-130). How often instances start cold after opening, with many quiet stores and dozens of deploys a day, is unknown. After every planned cut each function still reads the 10.4 MB server-reference manifest before its first request: 80 to 91 ms and 20 to 24 MB locally, about a third of a lean route's start. SG-16's own done-when stops at 9.4 MB. By its model 547 of the 807 listed routes are admin routes and hold about 62,800 of the entries, because each lists nearly every cached reader, and no step takes them out.",
+      "proposed_work_item": "Phase now for the figure, next for the manifest; effort M together. Log one line per instance through log(): instance.start, with the kind of entry, milliseconds from process start to the end of register() and to the first answer, and resident memory; no request data. Show cold starts a day and their p50 and p95 by kind on Platform, Usage and limits, with a target (a beacon within 150 ms of the health check). If the production reading puts the manifest above 30 ms, give the cached readers that 700 or more routes list their own reader files (SG-8's fourth step, first for the readers the admin shell reaches) until the manifest is under 5 MB and 40,000 entries, and report the per-route cost to Next. Done when: the page shows a week of cold-start figures, and the manifest is under 5 MB or shown to cost under 30 ms per cold start in production."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

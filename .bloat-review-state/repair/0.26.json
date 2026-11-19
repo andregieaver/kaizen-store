@@ -1,0 +1,8 @@
+{
+ "id": "0.26",
+ "fixed": [],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer gave none, and the single commit is a hot-table migration that stays under review",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}
