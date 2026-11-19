@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { sameSite } from "@/lib/same-site";
 import { getAccount, platformCan } from "@/server/auth";
 import { exportResponses } from "@/server/forms-admin";
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   if (!account || !platformCan(account, "website", "read")) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   try {
-    const file = await exportResponses({ accountId: account.id, storeId: null }, (await params).formId, "Europe/Oslo");
+    const file = await exportResponses({ accountId: account.id, storeId: null }, (await params).formId, PLATFORM_TIME_ZONE);
     if (!file) return new NextResponse("Not found", { status: 404 });
     return new NextResponse(file.csv, {
       headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${file.name}"`, "Cache-Control": "no-store" },

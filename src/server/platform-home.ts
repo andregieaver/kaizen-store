@@ -4,13 +4,14 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { col, typedRow, typedRows } from "./typed-rows";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 
 /**
  * What Kaizena Flow's own Home draws beyond the briefing's snapshot (admin redesign round 1, step 3): recurring revenue month by month, the
  * people waiting for a store, and how owners move from asking to paying. Counted from the platform's rows in Stripe's live mode.
  */
 
-const OSLO = "Europe/Oslo";
+const OSLO = PLATFORM_TIME_ZONE;
 
 const MOVE_ROW = z.object({ month: col.text, moved: col.minor });
 

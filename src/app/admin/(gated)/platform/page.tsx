@@ -6,6 +6,7 @@ import { AskCard } from "@/components/admin/home/ask-card";
 import { DotChip, HomeCard, HomeColumns, HomeHeader, Initials, LinkRow, NextUp } from "@/components/admin/home/home-parts";
 import type { AttentionItem } from "@/components/admin/overview-parts";
 import { CARD_CLASS } from "@/components/admin/ui/card";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { firstName, partOfDay, whenWords } from "@/lib/home";
 import { mrrByMonth, signUpFunnel, waitingRequests } from "@/server/platform-home";
 import { ShareBar } from "@/components/admin/ui/bars";
@@ -48,7 +49,7 @@ export default async function PlatformOverviewPage() {
   const attention: AttentionItem[] = [];
   if (o.requests.waiting > 0) {
     attention.push({
-      text: `${countWords(o.requests.waiting, w.requests)}${o.requests.oldest ? fillWords(w.oldest, { date: o.requests.oldest.slice(0, 10) }) : ""}.`,
+      text: `${countWords(o.requests.waiting, w.requests)}${o.requests.oldest ? fillWords(w.oldest, { date: adminDate(PLATFORM_TIME_ZONE, o.requests.oldest, "day", lang) }) : ""}.`,
       href: "/admin/platform/requests",
       action: w.review,
       urgent: true,
@@ -75,7 +76,7 @@ export default async function PlatformOverviewPage() {
   const t = w.today;
   const home = adminText(lang, "home").today;
   const now = new Date();
-  const zone = "Europe/Oslo";
+  const zone = PLATFORM_TIME_ZONE;
   const [requests, months, funnel] = await Promise.all([
     o.requests.waiting > 0 ? waitingRequests(4) : Promise.resolve([]),
     mrr ? mrrByMonth(mrr.currency, mrr.minor, 6, now) : Promise.resolve([]),

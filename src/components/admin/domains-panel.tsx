@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import type { DomainsMessages } from "@/lib/admin-messages/domains.en";
 import { dnsRecords, MAX_DOMAINS } from "@/lib/custom-domains";
 import type { StoreDomain } from "@/server/domains";
@@ -125,6 +126,7 @@ export function DomainsPanel({
   words,
   locale = "en-GB",
   actions,
+  timeZone,
 }: {
   /** The store's address in this deployment. */
   address: string;
@@ -145,6 +147,8 @@ export function DomainsPanel({
   /** The admin's date format (D312 A11). */
   locale?: string;
   actions: { add: Action; check: Action; primary: Action; remove: Action; language: Action; country?: Action };
+  /** The store's time zone: when a domain was last checked, on the store's clock (D786). */
+  timeZone: string;
 }) {
   const primary = domains.find((d) => d.isPrimary);
   const nameOf = (lang: string) => languages.find((l) => l.lang === lang)?.name ?? lang;
@@ -274,7 +278,7 @@ export function DomainsPanel({
                     {domain.checks.problem && <p className="text-sm text-danger-text">{domain.checks.problem}</p>}
                     <p className="text-xs text-muted">
                       {domain.checkedAt
-                        ? named(words.lastChecked, new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(domain.checkedAt)), "date")
+                        ? named(words.lastChecked, adminDate(timeZone, domain.checkedAt, "dayTime", locale), "date")
                         : ""}
                       {words.checkedAgain}
                     </p>

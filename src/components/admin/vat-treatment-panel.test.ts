@@ -30,6 +30,7 @@ const reverse: OrderVatTreatment = {
 const panel = (treatment: OrderVatTreatment | null, extra: Partial<Parameters<typeof VatTreatmentPanel>[0]> = {}) =>
   html(
     h(VatTreatmentPanel, {
+      timeZone: "Europe/Oslo",
       treatment,
       kind: treatment?.kind ?? "standard",
       reliefMinor: 0,

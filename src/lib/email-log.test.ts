@@ -25,7 +25,7 @@ describe("the platform's email list (round 16)", () => {
   });
 
   it("groups by the day in Norway: today, yesterday, then the date", () => {
-    const days = emailDays(rows, now, { today: "Today", yesterday: "Yesterday" });
+    const days = emailDays(rows, now, { today: "Today", yesterday: "Yesterday" }, "Europe/Oslo");
     expect(days.map((d) => d.label)).toEqual(["Today", "Yesterday", "1 November 2026"]);
     expect(days[0].rows).toHaveLength(2);
   });

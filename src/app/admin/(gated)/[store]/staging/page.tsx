@@ -4,7 +4,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { SiteStaging, type StagingActions, type StagingView } from "@/components/admin/site-staging";
 import { PageHeader } from "@/components/admin/ui";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminDate } from "@/lib/admin-date";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { lastStaging, stagingOverview } from "@/server/site-staging";
@@ -27,7 +28,7 @@ export default async function StagingPage({ params }: PageProps<"/admin/[store]/
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "website").staging;
-  const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
+  const when = (iso: string) => adminDate(store, iso, "dayTime", lang);
   const [overview, last] = await Promise.all([stagingOverview(store.id), lastStaging(store.id)]);
   const base = `/admin/${store.slug}`;
   const view: StagingView = {

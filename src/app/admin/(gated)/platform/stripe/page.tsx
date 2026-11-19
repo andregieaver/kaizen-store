@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { PAYMENT_MODES } from "@/lib/stripe-account";
 import { getCheckoutUi, getSaleFeeBps, listPlatformWebhooks } from "@/server/connect";
 import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
@@ -21,7 +22,8 @@ export default async function PlatformStripePage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
-  const w = adminText(adminLangOf(account.adminLocale), "platform").stripe;
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").stripe;
   const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
     listPlatformWebhooks(),
     getSaleFeeBps(),
@@ -57,7 +59,7 @@ export default async function PlatformStripePage() {
               <p>{configured ? w.keysSet : w.keysNotSet}</p>
               <p className={connected ? "" : "text-muted"}>
                 {connected
-                  ? fillWords(w.connected, { date: hooks[0].updatedAt.slice(0, 10), host: new URL(hooks[0].url).host })
+                  ? fillWords(w.connected, { date: adminDate(PLATFORM_TIME_ZONE, hooks[0].updatedAt, "day", lang), host: new URL(hooks[0].url).host })
                   : hooks.length > 0
                     ? w.reconnectNeeded
                     : w.notConnected}

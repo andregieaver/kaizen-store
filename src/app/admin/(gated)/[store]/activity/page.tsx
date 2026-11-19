@@ -1,3 +1,4 @@
+import { zoneOf } from "@/lib/admin-date";
 import { CHIP_ITEM, CHIP_STRIP, chosenFirst } from "@/lib/chip-strip";
 import type { Metadata } from "next";
 
@@ -29,7 +30,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
   const values = valuesFromQuery(query);
   const before = typeof query.before === "string" && /^\d{1,15}$/.test(query.before) ? Number(query.before) : null;
   const problem = typeof query.problem === "string" ? query.problem.slice(0, 300) : "";
-  const zone = member.store.timeZone || "Europe/Oslo";
+  const zone = zoneOf(member.store);
   const lang = adminLangOf(member.account.adminLocale);
   const words = adminText(lang, "staff");
   const w = words.activity;

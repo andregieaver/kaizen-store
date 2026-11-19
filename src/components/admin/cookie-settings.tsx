@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import { toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
 import { CODE_CATEGORIES, CODE_MAX_LENGTH, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
 import { fillWords } from "@/lib/admin-fill";
@@ -178,18 +179,20 @@ export function ConsentLog({
   consents,
   words = legalEn,
   locale = "en-GB",
+  timeZone,
 }: {
   consents: { id: string; visitor: string; choices: Record<string, boolean>; version: string; createdAt: string }[];
   /** The words, in the account's language (D312 A8); English unless given. */
   words?: LegalMessages;
   /** How dates are written; en-GB unless given. */
   locale?: string;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
 }) {
   const w = words.cookies.consents;
   const lower: Record<string, string> = words.cookies.categoriesLower;
   /** A category id as it reads in the list; one not known (an older version's) as written. */
   const categoryWord = (id: string) => lower[id] ?? id;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   return (
     <section aria-labelledby="consents-heading" className={card}>
       <div>
@@ -216,7 +219,7 @@ export function ConsentLog({
                 const allowed = Object.entries(consent.choices).filter(([, on]) => on).map(([c]) => c);
                 return (
                   <tr key={consent.id} className="border-b border-line last:border-0">
-                    <td className="py-2 pr-4 whitespace-nowrap">{date.format(new Date(consent.createdAt))}</td>
+                    <td className="py-2 pr-4 whitespace-nowrap">{adminDate(timeZone, consent.createdAt, "dayTime", locale)}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{consent.visitor.slice(0, 8)}</td>
                     <td className="py-2 pr-4">{consent.version.split("+").filter(Boolean).map(categoryWord).join(", ") || w.nothing}</td>
                     <td className="py-2">{allowed.length > 0 ? allowed.map(categoryWord).join(", ") : w.onlyNecessary}</td>

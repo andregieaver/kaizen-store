@@ -12,6 +12,7 @@ import {
   type OpeningHours,
   type WeekHours,
 } from "@/lib/opening-hours";
+import { todayIn } from "@/lib/work-dates";
 
 import { useAdminText } from "./admin-text";
 
@@ -44,7 +45,8 @@ export function HoursEditor({
   const removeException = (index: number) =>
     setHours((h) => ({ ...h, exceptions: h.exceptions.filter((_, i) => i !== index) }));
   const add = (exception: HoursException) => setHours((h) => ({ ...h, exceptions: [...h.exceptions, exception] }));
-  const today = new Date().toISOString().slice(0, 10);
+  // A new exception's first day: today on the clock of the person editing (only read on a press, in the browser; D786).
+  const today = () => todayIn(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,11 +83,11 @@ export function HoursEditor({
                 <button
                   type="button"
                   className={small}
-                  onClick={() => add({ kind: "season", label: "", from: today, to: today, week: { ...hours.week } })}
+                  onClick={() => add({ kind: "season", label: "", from: today(), to: today(), week: { ...hours.week } })}
                 >
                   {w.addSeason}
                 </button>
-                <button type="button" className={small} onClick={() => add({ kind: "date", label: "", date: today, hours: null })}>
+                <button type="button" className={small} onClick={() => add({ kind: "date", label: "", date: today(), hours: null })}>
                   {w.addDate}
                 </button>
               </div>

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { sameSite } from "@/lib/same-site";
+import { todayIn } from "@/lib/work-dates";
 import { subscribersCsv } from "@/server/marketing-subscribers";
 import { checkOwnerRole } from "@/server/permissions";
 
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/admi
   if (!member) return new NextResponse("Not found", { status: 404 });
   if (!sameSite(request)) return new NextResponse("Forbidden", { status: 403 });
   const { csv } = await subscribersCsv(member.store.id, member.account.id);
-  const day = new Date().toISOString().slice(0, 10);
+  const day = todayIn(member.store.timeZone);
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { NORWAY_TIME_ZONE } from "@/lib/admin-date";
 import { todayIn } from "@/lib/analytics-period";
 import { CARD_FEE_ACCOUNT, PAYMENT_ACCOUNTS, type LedgerEntryInput } from "@/lib/ledger";
 import { entryOfPlatformCredit, entryOfPlatformPayout, entryOfPlatformSale, PLATFORM_INCOME, PLATFORM_STRIPE_ACCOUNT, type BookedSale } from "@/lib/platform-books";
@@ -142,7 +143,7 @@ export async function postPlatformMoney(options: { deadline?: number; stripe?: S
   for (const number of [PLATFORM_STRIPE_ACCOUNT, PLATFORM_INCOME.norway.account, PLATFORM_INCOME.norway.vatAccount, PLATFORM_INCOME.abroad.account, CARD_FEE_ACCOUNT, PAYMENT_ACCOUNTS.bank]) {
     if (!have.has(number)) await addLedgerAccount(storeId, bookId, { number });
   }
-  const today = todayIn(options.now ?? new Date(), "Europe/Oslo");
+  const today = todayIn(options.now ?? new Date(), NORWAY_TIME_ZONE);
   const post = async (entry: LedgerEntryInput): Promise<boolean> => {
     const posted = await postLedgerEntry(bookId, entry, null);
     if (!posted.ok) {

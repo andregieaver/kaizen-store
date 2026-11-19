@@ -22,7 +22,7 @@ export default async function StoreEmailsPage({ params }: PageProps<"/admin/[sto
     <div className="flex flex-col gap-6">
       <PageHeader title={words.log.title} />
       <Card compact>
-        <EmailLog emails={emails} base={`/admin/${store.slug}/emails`} locale={ADMIN_LANG_FACTS[lang].locale} words={words} now={drawnAt.getTime()} />
+        <EmailLog timeZone={store.timeZone} emails={emails} base={`/admin/${store.slug}/emails`} locale={ADMIN_LANG_FACTS[lang].locale} words={words} now={drawnAt.getTime()} />
       </Card>
     </div>
   );

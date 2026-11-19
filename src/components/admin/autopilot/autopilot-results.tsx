@@ -18,7 +18,7 @@ const toolWords = (tool: string) => {
   return words.charAt(0).toUpperCase() + words.slice(1);
 };
 
-export function AutopilotResults({ effects, words: a }: { effects: NonNullable<AutopilotOverview["effects"]>; words: Words }) {
+export function AutopilotResults({ effects, words: a, date }: { effects: NonNullable<AutopilotOverview["effects"]>; words: Words; date: (iso: string) => string }) {
   const r = a.results;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, effects.locale);
   const signed = (minor: number, currency: string) => signedMoney(minor, (m) => money(m, currency));
@@ -76,7 +76,7 @@ export function AutopilotResults({ effects, words: a }: { effects: NonNullable<A
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{toolWords(e.tool)}</span>
                     <Chip>{e.targetKind === "product" ? `${r.product}: ${e.targetLabel}` : r.store}</Chip>
-                    <span className="text-muted">{e.actedAt.slice(0, 10)}</span>
+                    <span className="text-muted">{date(e.actedAt)}</span>
                   </span>
                   <span>
                     {money(e.beforeMinor, e.currency)} → {money(e.afterMinor, e.currency)} <span className="text-muted">({fillWords(r.days, { days: EFFECT_DAYS })})</span>

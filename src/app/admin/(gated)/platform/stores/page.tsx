@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { adminDate } from "@/lib/admin-date";
 import { formatBps, priceLabel } from "@/lib/plans";
 import { countStoreBilling, listStoreBilling } from "@/server/billing";
 import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
@@ -101,7 +102,7 @@ export default async function PlatformStoresPage({ searchParams }: PageProps<"/a
                   store.status ? (billingWords.statuses[store.status] ?? store.status) : null,
                   store.cancelAtPeriodEnd && w.endsAtPeriodEnd,
                   store.mode === "test" && w.testMode,
-                  store.currentPeriodEnd && !store.cancelAtPeriodEnd && store.status !== "canceled" && fillWords(w.nextInvoice, { date: store.currentPeriodEnd.slice(0, 10) }),
+                  store.currentPeriodEnd && !store.cancelAtPeriodEnd && store.status !== "canceled" && fillWords(w.nextInvoice, { date: adminDate(store, store.currentPeriodEnd, "day", lang) }),
                 ]
                   .filter(Boolean)
                   .join(" · ")}

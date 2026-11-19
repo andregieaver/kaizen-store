@@ -9,8 +9,9 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { PLATFORM_EVENTS } from "@/lib/platform-integrations";
@@ -42,8 +43,7 @@ export default async function PlatformIntegrationPage({ params, searchParams }: 
   const w = all.integrations.provider;
   const own = adminText(lang, "platform").integrations;
   const [integration, deliveries] = await Promise.all([getPlatformIntegration(provider), listPlatformDeliveries(provider)]);
-  const locale = ADMIN_LANG_FACTS[lang].locale;
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const when = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "dayTime", lang);
   const chosen = new Set<string>(integration?.events ?? platformDefaultEvents());
   const slack = provider === "slack";
   // *Add to Slack* (C4, D515): through Kaizena Flow's own Slack app (D101), for a platform owner, when the app is set up here.

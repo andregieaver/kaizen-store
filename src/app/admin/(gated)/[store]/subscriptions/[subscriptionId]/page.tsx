@@ -7,6 +7,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { SubscriptionActions, type StaffChange } from "@/components/admin/subscription-actions";
 import { SubscriptionContentsForm } from "@/components/subscription-contents-form";
+import { adminDate } from "@/lib/admin-date";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
@@ -44,7 +45,7 @@ export default async function SubscriptionPage({
   const statuses = adminText(lang, "common").orderStatus;
   const locale = store.markets[0]?.locale ?? subscription.locale;
   const money = (minor: number) => formatMoney(minor, subscription.currency, locale);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  const date = (iso: string) => adminDate(store, iso, "day", lang === "en" ? locale : ADMIN_LANG_FACTS[lang].locale);
   const live = ["active", "past_due", "paused"].includes(subscription.status);
   const allowed = allowedChanges(subscription);
   const choices = allowed.contents ? await swapChoices(store.id, subscription.id) : null;

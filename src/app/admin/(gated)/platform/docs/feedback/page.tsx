@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { docsPageAt } from "@/lib/docs-content";
@@ -18,7 +19,6 @@ import { removeDocsCommentAction, removeDocsMissAction } from "./actions";
 export const metadata: Metadata = { title: "Docs feedback" };
 
 const PATH = /^[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*){0,4}$/;
-const when = (at: string) => at.slice(0, 16).replace("T", " ");
 const control = "min-h-10 rounded-lg border border-edge bg-card px-3 text-sm";
 
 /**
@@ -29,7 +29,9 @@ const control = "min-h-10 rounded-lg border border-edge bg-card px-3 text-sm";
 export default async function DocsFeedbackPage({ searchParams }: PageProps<"/admin/platform/docs/feedback">) {
   await connection();
   const admin = await requirePlatformReader();
-  const w = adminText(adminLangOf(admin.adminLocale), "platform").docsFeedback;
+  const lang = adminLangOf(admin.adminLocale);
+  const w = adminText(lang, "platform").docsFeedback;
+  const when = (at: string) => adminDate(PLATFORM_TIME_ZONE, at, "dayTime", lang);
   const query = await searchParams;
   const path = typeof query.page === "string" && PATH.test(query.page) ? query.page : null;
   const helpful = query.helpful === "yes" ? true : query.helpful === "no" ? false : null;

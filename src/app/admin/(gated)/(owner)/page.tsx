@@ -7,6 +7,7 @@ import { storesOf } from "@/components/admin/admin-shell-parts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { StoreCard } from "@/components/admin/store-card";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -97,7 +98,8 @@ export default async function ControlCenterPage() {
                 </RowText>
                 <Chip>{statuses[order.status as keyof typeof statuses] ?? order.status}</Chip>
                 <RowDate>
-                  <time dateTime={order.placedAt}>{order.placedAt.slice(0, 10)}</time>
+                  {/* Each order on its own store's day (D786): the control center spans stores, and their zones. */}
+                  <time dateTime={order.placedAt}>{adminDate(order, order.placedAt, "day", lang)}</time>
                 </RowDate>
                 <RowAmount>{money(order.totalMinor, order.currency, locale)}</RowAmount>
               </ListRow>

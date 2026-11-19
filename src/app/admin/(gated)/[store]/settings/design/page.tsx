@@ -126,6 +126,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
       <PhoneRows className="max-sm:order-2">
         <PhoneRow title={p.otherThemes} sub={countWords(others, p.installed)} change={p.change} done={p.done} flat>
           <ThemeLibrary
+            timeZone={store.timeZone}
             installs={installs.map((install) => ({ ...install, charge: install.presetId ? charges.get(install.presetId) : undefined }))}
             base={`/admin/${store.slug}/settings/design`}
             switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
@@ -137,6 +138,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         {hasUpdates && (
           <PhoneRow title={all.updates.title} sub={updates.available.length > 0 ? countWords(updates.available.length, p.updatesSub) : p.upToDate} change={p.change} done={p.done} flat>
             <ThemeUpdates
+              timeZone={store.timeZone}
               available={updates.available}
               made={updates.made}
               installs={updates.installs}
@@ -150,6 +152,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         )}
         <PhoneRow title={all.follow.title} sub={p.followSub} change={p.change} done={p.done} flat>
           <ThemeFollow
+            timeZone={store.timeZone}
             runs={runs}
             keepDays={THEME_DETACH_KEEP_DAYS}
             count={canChange ? countThemeFollowAction.bind(null, store.slug) : null}
@@ -160,6 +163,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         </PhoneRow>
         <PhoneRow title={p.addTheme} sub={p.addThemeSub} change={p.change} done={p.done} flat last>
           <DesignProfilePanel
+            timeZone={store.timeZone}
             designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id), charge: charges.get(d.id), thumbs: thumbs.get(d.id) }))}
             latest={latest}
             apply={canChange ? applyDesignAction.bind(null, store.slug) : null}

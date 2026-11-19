@@ -7,6 +7,7 @@ import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
 import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-text";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -14,6 +15,7 @@ import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
+import { todayIn } from "@/lib/work-dates";
 import { listStores, passMembership, requireAccount } from "@/server/auth";
 import { memberCan } from "@/server/permissions";
 import { pushDevicesOf, pushPublicKey } from "@/server/push";
@@ -204,7 +206,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
               recoveryAvailable={twoStep.recoveryAvailable}
               setUpHref="/admin/sign-in/two-step/set-up?next=/admin/account"
               account={account.email}
-              madeOn={new Date().toISOString().slice(0, 10)}
+              madeOn={todayIn(PLATFORM_TIME_ZONE)}
               regenerate={regenerateRecoveryCodesAction}
               remove={removeTwoStepAction}
             />

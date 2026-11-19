@@ -1,3 +1,4 @@
+import { adminDate } from "@/lib/admin-date";
 import type { DomainsMessages } from "@/lib/admin-messages/domains.en";
 import type { Signal } from "@/lib/admin-schemes";
 import { findingText, worstSeverity, type Finding, type Severity } from "@/lib/domain-health";
@@ -17,9 +18,9 @@ export type HealthRow = {
 const SIGNAL: Record<Severity, Signal> = { error: "danger", warning: "warning", advice: "insight", info: "neutral" };
 
 /** One card with each domain's findings, the worst first; a healthy domain is one line. */
-export function DomainHealthCard({ rows, words, locale }: { rows: HealthRow[]; words: DomainsMessages; locale: string }) {
+export function DomainHealthCard({ rows, words, locale, timeZone }: { rows: HealthRow[]; words: DomainsMessages; locale: string; timeZone: string }) {
   if (rows.length === 0) return null;
-  const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }).format(new Date(iso));
+  const date = (iso: string) => adminDate(timeZone, iso, "day", locale);
   return (
     <Card title={words.healthTitle} description={words.healthChecking}>
       <ul className="flex flex-col divide-y divide-line">

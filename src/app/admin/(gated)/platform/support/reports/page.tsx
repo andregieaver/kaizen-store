@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Support reports" };
 
-/** Kaizen's own desk's report (D216, step 14): its visitors' and owners' conversations, in Europe/Oslo's days. */
+/** Kaizen's own desk's report (D216, step 14): its visitors' and owners' conversations, in the platform's days (`PLATFORM_TIME_ZONE`). */
 export default async function KaizenSupportReportsPage({
   searchParams,
 }: PageProps<"/admin/platform/support/reports">) {

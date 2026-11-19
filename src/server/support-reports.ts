@@ -3,6 +3,7 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { AnalyticsPeriod } from "@/lib/analytics-period";
 import { supportReport, type ReportConversation, type ReportRequest, type SupportReport } from "@/lib/support-reports";
 import type { SupportMode } from "@/lib/support-rules";
@@ -15,10 +16,10 @@ type Row = Record<string, unknown>;
 /**
  * The rows support's report counts (D216, step 14; `docs/analytics.md`, Support): one per conversation started in the period, with
  * its times, the mode it started in, its handover reason, rating, tone and its summary's outcome and topics, and never its words,
- * names or customer. The figures themselves are `supportReport()`'s. Kaizen's desk counts in Europe/Oslo's days.
+ * names or customer. The figures themselves are `supportReport()`'s. Kaizen's desk counts in the platform's days (`PLATFORM_TIME_ZONE`).
  */
 
-export const KAIZEN_TIME_ZONE = "Europe/Oslo";
+export const KAIZEN_TIME_ZONE = PLATFORM_TIME_ZONE;
 /** The most conversations one report reads; a period with more says the report is cut. */
 export const REPORT_ROWS_MAX = 50_000;
 
@@ -56,7 +57,7 @@ export const ROW_COLUMNS = sql`c.store_id, c.desk_mode, c.status, c.created_at, 
 
 export type DeskReport = { report: SupportReport; cut: boolean; timeZone: string };
 
-/** A desk's report for a period of whole days in the desk's time zone (the store's; Europe/Oslo for Kaizen's). */
+/** A desk's report for a period of whole days in the desk's time zone (the store's; the platform's for Kaizen's). */
 export async function deskReport(desk: Desk, period: Pick<AnalyticsPeriod, "from" | "to">, timeZone: string): Promise<DeskReport> {
   const where = sql`${deskIs(desk)} and ${startedIn(period, timeZone)}`;
   const [rows, requests, drafts] = await Promise.all([

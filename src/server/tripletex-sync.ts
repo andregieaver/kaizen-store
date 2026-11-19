@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
+import { NORWAY_TIME_ZONE } from "@/lib/admin-date";
 import { todayIn } from "@/lib/analytics-period";
 import { minorOf } from "@/lib/tripletex";
 import { type TripletexFailure } from "@/lib/tripletex-errors";
@@ -307,7 +308,7 @@ export async function adoptTripletexCustomers(storeId: string, session: Triplete
   const run: TripletexRun = { stores: 0, sent: 0, adopted: 0, failed: 0, blocked: 0, waiting: 0, attached: 0, alerted: 0 };
   const ctx: Ctx = {
     storeId,
-    connection: { ...connection, settings: connection.settings, syncFrom: connection.syncFrom ?? todayIn(new Date(), "Europe/Oslo") },
+    connection: { ...connection, settings: connection.settings, syncFrom: connection.syncFrom ?? todayIn(new Date(), NORWAY_TIME_ZONE) },
     session,
     ids: null,
     chart: null,

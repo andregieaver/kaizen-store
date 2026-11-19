@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-buttons";
 import { PreviewLink } from "@/components/admin/preview-link";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { deleteBlocker } from "@/lib/lifecycle";
 import { formatMoney } from "@/lib/money";
 import { featureSummary } from "@/lib/onboarding";
@@ -52,7 +53,7 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
     const demo = await getDemoStore(starterId);
     if (!demo) notFound();
     const [query, preset] = await Promise.all([searchParams, presetCheck(demo)]);
-    return <DemoStoreView demo={demo} preset={preset.ok ? { ok: true } : preset} unthemed={Boolean(query.unthemed)} w={w} />;
+    return <DemoStoreView demo={demo} preset={preset.ok ? { ok: true } : preset} unthemed={Boolean(query.unthemed)} w={w} lang={lang} />;
   }
   const shown = shownDetails(starter);
   const facts = starterLifecycle(starter);
@@ -72,7 +73,7 @@ export default async function DemoStorePage({ params, searchParams }: PageProps<
         status={<LifecycleBadge facts={facts} words={w.lifecycle} />}
         meta={[
           fillWords(t.itsStore, { slug: starter.storeSlug }),
-          starter.publishedAt && fillWords(t.lastPublished, { date: starter.publishedAt.slice(0, 10) }),
+          starter.publishedAt && fillWords(t.lastPublished, { date: adminDate(PLATFORM_TIME_ZONE, starter.publishedAt, "day", lang) }),
           starter.publishedSlug && fillWords(t.copiedFrom, { slug: starter.publishedSlug }),
           countWords(starter.storesMade, t.made),
         ]}

@@ -8,6 +8,7 @@ import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { THEME_UPDATE_KEEP_DAYS, listOfferedDesigns, platformThemeUpdates } from "@/server/design-presets";
 import { listPlatformInstalls } from "@/server/platform-theme-installs";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { adminTexts } from "@/lib/admin-text";
 import { platformSiteWords } from "@/server/platform-site-words";
@@ -48,7 +49,7 @@ export default async function PlatformThemesPage() {
                   <>
                     {install.live && <Chip signal="positive">{d.live}</Chip>}
                     {install.version !== null && <span className="ml-2">{fillWords(d.version, { version: install.version })}</span>}
-                    <span className="ml-2">{fillWords(d.added, { date: install.installedAt.slice(0, 10) })}</span>
+                    <span className="ml-2">{fillWords(d.added, { date: adminDate(PLATFORM_TIME_ZONE, install.installedAt, "day", lang) })}</span>
                   </>
                 }
               />
@@ -79,6 +80,7 @@ export default async function PlatformThemesPage() {
         </List>
       </Card>
       <ThemeUpdates
+        timeZone={PLATFORM_TIME_ZONE}
         available={updates.available}
         made={updates.made}
         installs={updates.installs}

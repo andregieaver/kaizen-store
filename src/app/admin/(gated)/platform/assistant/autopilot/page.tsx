@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AUTOPILOT_TABS, AutopilotPage, type AutopilotTab } from "@/components/admin/autopilot/autopilot-page";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminTexts } from "@/lib/admin-text";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -20,6 +21,7 @@ export default async function PlatformAutopilotPage({ searchParams }: PageProps<
   return (
     <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
       <AutopilotPage
+        timeZone={PLATFORM_TIME_ZONE}
         overview={overview}
         base="/admin/platform/assistant/autopilot"
         assistantHref="/admin/platform/assistant"

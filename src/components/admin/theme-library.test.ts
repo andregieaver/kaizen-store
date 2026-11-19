@@ -9,7 +9,7 @@ const LIVE: LibraryInstall = { id: "a", title: "Nordic calm", version: 2, live: 
 const KEPT: LibraryInstall = { id: "b", title: "Custom", version: null, live: false, installedAt: "2026-01-02T10:00:00.000Z", switchedAt: "2026-10-15T10:00:00.000Z" };
 const act = async () => ({ status: "ok" as const, messages: [] });
 const draw = (props: Partial<Parameters<typeof ThemeLibrary>[0]> = {}) =>
-  renderToStaticMarkup(createElement(ThemeLibrary, { installs: [LIVE, KEPT], switchTo: act, remove: act, ...props })).replaceAll("<!-- -->", "");
+  renderToStaticMarkup(createElement(ThemeLibrary, { timeZone: "Europe/Oslo", installs: [LIVE, KEPT], switchTo: act, remove: act, ...props })).replaceAll("<!-- -->", "");
 
 describe("the theme library (D241)", () => {
   it("marks the live theme and offers the others to switch to or remove, with the removal confirmed first", () => {

@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { domainPrice } from "@/lib/domain-prices";
@@ -38,7 +39,7 @@ export default async function PlatformDomainsPage() {
     purchasesInReview(),
     domainLeads(),
   ]);
-  const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }).format(new Date(iso));
+  const date = (iso: string) => adminDate(PLATFORM_TIME_ZONE, iso, "day", lang);
 
   return (
     <div className="flex flex-col gap-6">

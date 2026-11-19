@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { taxReportsEn, type TaxReportsMessages } from "@/lib/admin-messages/tax-reports.en";
 import { formatCount, MINUS, NO_FIGURE } from "@/lib/analytics-core";
@@ -50,6 +51,8 @@ export type OssViewProps = {
   drift: string | null;
   /** When the return data of this period and mode was last exported (ISO), else null. */
   lastExportedAt: string | null;
+  /** The store's time zone: the day of the last export is the store's (D786). */
+  timeZone: string;
   /** A fixed sentence the export route sent the person back with. */
   exportProblem: string | null;
   /** The rate forms' actions; null for a member who is not an owner. */
@@ -62,7 +65,7 @@ const PART_ORDER: ReturnPart[] = ["2a", "2b", "2d", "NU", "IOSS"];
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
-export function OssView({ base, locale, scheme, mode, view, periods, canExport, isOwner, drift, lastExportedAt, exportProblem, actions, words = taxReportsEn }: OssViewProps) {
+export function OssView({ base, locale, scheme, mode, view, periods, canExport, isOwner, drift, lastExportedAt, timeZone, exportProblem, actions, words = taxReportsEn }: OssViewProps) {
   const w = words;
   const o = w.oss;
   const { data } = view;
@@ -319,7 +322,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               <ExportsNeedWrite words={w} />
             )}
             {data.incomplete && canExport ? <p className="text-sm text-muted">{o.incompleteExport}</p> : null}
-            {lastExportedAt ? <p className="text-sm text-muted">{fillWords(o.lastExported, { date: longDateIn(lastExportedAt.slice(0, 10), w) })}</p> : null}
+            {lastExportedAt ? <p className="text-sm text-muted">{fillWords(o.lastExported, { date: longDateIn(adminDate(timeZone, lastExportedAt, "iso", "en"), w) })}</p> : null}
             {drift ? (
               <Note tone="warning" title={w.parts.changedSinceExport}>
                 {drift}

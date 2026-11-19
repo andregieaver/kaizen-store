@@ -1,6 +1,8 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import type { VatCategoryRow } from "@/lib/vat";
+import { todayIn } from "@/lib/work-dates";
 
 import { card, hint, input, label, VAT_EN, type VatWords } from "./styles";
 
@@ -24,7 +26,7 @@ export function RateForm({
   words?: VatWords;
 }) {
   const r = w.rateForm;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn(PLATFORM_TIME_ZONE);
   return (
     <section aria-labelledby="set-rate" className={card}>
       <div>

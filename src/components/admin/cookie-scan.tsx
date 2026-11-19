@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
 import { CODE_CATEGORIES } from "@/lib/custom-code";
@@ -102,6 +103,7 @@ export function CookieScanPanel({
   words = legalEn,
   locale = "en-GB",
   purposeLang = "en",
+  timeZone,
 }: {
   scans: CookieScan[];
   lastDone: CookieScan | null;
@@ -114,9 +116,10 @@ export function CookieScanPanel({
   locale?: string;
   /** The language a known cookie's purpose is shown in; English unless given. */
   purposeLang?: PurposeLang;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
 }) {
   const w = words.cookies.scan;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const latest = scans[0] ?? null;
   const active = latest && (latest.status === "queued" || latest.status === "running") ? latest : null;
   const early = findings.filter((item) => item.problem === "early");
@@ -140,7 +143,7 @@ export function CookieScanPanel({
         {lastDone ? (
           <p>
             {fillWords(w.last, {
-              date: date.format(new Date(lastDone.finishedAt ?? lastDone.createdAt)),
+              date: adminDate(timeZone, lastDone.finishedAt ?? lastDone.createdAt, "dayTime", locale),
               pages: countWords(lastDone.pages.length, w.pages),
               items: countWords(lastDone.items.length, w.items),
             })}

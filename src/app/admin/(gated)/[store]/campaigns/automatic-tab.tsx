@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -28,7 +29,6 @@ export async function automaticTab(store: Store, lang: AdminLang): Promise<{ lea
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);
   const money = (minor: number, marketCode: string) => formatMoney(minor, currencyOf(marketCode), locale);
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}/campaigns`;
   const running = campaigns.filter((c) => campaignStatus(c) === "active").length;
   // Whole amounts in the main currency, as a person says them ("800 kr"), for the ready sales.
@@ -88,9 +88,9 @@ export async function automaticTab(store: Store, lang: AdminLang): Promise<{ lea
                   />
                   <RowFact
                     className="hidden md:block"
-                    sub={c.startsAt || c.endsAt ? (c.endsAt ? fillWords(w.to, { date: when.format(new Date(c.endsAt)) }) : w.toNoEnd) : undefined}
+                    sub={c.startsAt || c.endsAt ? (c.endsAt ? fillWords(w.to, { date: adminDate(store, c.endsAt, "dayTime", lang) }) : w.toNoEnd) : undefined}
                   >
-                    {c.startsAt || c.endsAt ? (c.startsAt ? fillWords(w.from, { date: when.format(new Date(c.startsAt)) }) : w.fromNow) : w.noDates}
+                    {c.startsAt || c.endsAt ? (c.startsAt ? fillWords(w.from, { date: adminDate(store, c.startsAt, "dayTime", lang) }) : w.fromNow) : w.noDates}
                   </RowFact>
                   <RowFact
                     className="hidden sm:block"

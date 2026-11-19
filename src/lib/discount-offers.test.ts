@@ -12,6 +12,8 @@ describe("ready offers", () => {
     expect(isOfferKey(undefined)).toBe(false);
   });
   it("ends two weeks later in Oslo time", () => {
-    expect(endsAtLocal(14, new Date("2026-11-15T12:00:00Z"))).toBe("2026-11-29T23:59");
+    expect(endsAtLocal(14, "Europe/Oslo", new Date("2026-11-15T12:00:00Z"))).toBe("2026-11-29T23:59");
+    // On the store's own clock (D786): 02:00 UTC on 15 November is still the 14th in Los Angeles.
+    expect(endsAtLocal(14, "America/Los_Angeles", new Date("2026-11-15T02:00:00Z"))).toBe("2026-11-28T23:59");
   });
 });

@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { connection } from "next/server";
 
 import { db } from "@/db/client";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { withoutVat } from "@/lib/b2b";
 import { cartSubtotal } from "@/lib/cart";
 import { mainCurrency } from "@/lib/markets";
@@ -26,7 +27,7 @@ import { getOpenStore, type Store } from "./stores";
 type Row = Record<string, unknown>;
 
 /** Kaizen's own pages keep the time of the place it is run from; stores keep their own (`stores.time_zone`). */
-const KAIZEN_TIME_ZONE = "Europe/Oslo";
+const KAIZEN_TIME_ZONE = PLATFORM_TIME_ZONE;
 
 const CUSTOMER_FACTS: readonly Fact[] = ["customerGroup", "company", "boughtBefore"];
 const CART_FACTS: readonly Fact[] = ["cartValue", "cartProduct", "cartCategory"];

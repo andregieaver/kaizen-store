@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
+import { adminDate, PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { providerInfo } from "@/lib/ai-provider";
 import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
@@ -142,7 +143,7 @@ export default async function PlatformAiPage() {
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {agentRuns.map((run) => (
                     <li key={run.id} className={run.passed < run.total ? "text-danger-text" : "text-ink-2"}>
-                      {fillWords(shared.agentsRun, { date: run.ranAt.slice(0, 16).replace("T", " "), model: run.model, passed: run.passed, total: run.total })}
+                      {fillWords(shared.agentsRun, { date: adminDate(PLATFORM_TIME_ZONE, run.ranAt, "dayTime", lang), model: run.model, passed: run.passed, total: run.total })}
                       {run.prompts && (
                         <span className="text-muted">
                           {" · "}
@@ -213,7 +214,7 @@ export default async function PlatformAiPage() {
                 {/* A test run is watched here (D419): its store belongs to the test address, so its own page is not a platform admin's. */}
                 <Link href={run.test && run.kind === "build" ? `/admin/platform/ai/dream/${run.id}` : `/admin/${run.storeSlug}/dream-factory`} className="underline">
                   {fillWords(w.dreamRun, {
-                    date: run.createdAt.toISOString().slice(0, 16).replace("T", " "),
+                    date: adminDate(PLATFORM_TIME_ZONE, run.createdAt, "dayTime", lang),
                     store: run.storeName,
                     status: run.status,
                     done: run.score.done,

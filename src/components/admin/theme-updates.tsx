@@ -1,6 +1,7 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, List, ListRow, RowActions, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -27,6 +28,7 @@ export function ThemeUpdates({
   follow,
   description,
   lang = "en",
+  timeZone,
 }: {
   available: UpdateWaiting[];
   made: UpdateMade[];
@@ -40,6 +42,8 @@ export function ThemeUpdates({
   description?: string;
   /** The admin's language (D312 A7); English unless given. */
   lang?: AdminLang;
+  /** The time zone its dates are read in: the store's, or the platform's on Kaizena Flow's own pages (D786). */
+  timeZone: string;
 }) {
   if (available.length === 0 && made.length === 0 && installs.length === 0) return null;
   const { common: c, updates: w } = adminText(lang, "design");
@@ -109,7 +113,7 @@ export function ThemeUpdates({
                 <RowLead
                   title={fillWords(w.madeTitle, { name: item.title, from: version(item.from), to: version(item.to) })}
                   sub={[
-                    fillWords(w.madeWhen, { date: item.at.slice(0, 10), how: item.automatic ? w.automatic : w.byHand }),
+                    fillWords(w.madeWhen, { date: adminDate(timeZone, item.at, "day", lang), how: item.automatic ? w.automatic : w.byHand }),
                     item.own > 0 ? countWords(item.own, w.ownKept) : null,
                     item.layoutsKept.length > 0 ? fillWords(w.layoutsKept, { layouts: item.layoutsKept.map((kind) => w.layouts[kind] ?? kind).join(w.and) }) : null,
                   ]
@@ -117,7 +121,7 @@ export function ThemeUpdates({
                     .join(" · ")}
                 />
                 {item.undoneAt ? (
-                  <Chip signal="neutral">{fillWords(c.undone, { date: item.undoneAt.slice(0, 10) })}</Chip>
+                  <Chip signal="neutral">{fillWords(c.undone, { date: adminDate(timeZone, item.undoneAt, "day", lang) })}</Chip>
                 ) : (
                   undo && (
                     <RowActions>

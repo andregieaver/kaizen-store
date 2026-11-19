@@ -1,3 +1,6 @@
+import { adminDate } from "./admin-date";
+import { addCalendarDays } from "./work-dates";
+
 /**
  * The platform's Emails page as rows to read (round 16, D650): which emails a chip shows, how many each has, and the list grouped by the
  * day it was made (Today, Yesterday, then the date, in Norwegian time). Pure: rows come from `listEmails()`.
@@ -35,25 +38,23 @@ export function emailWeek(rows: readonly EmailRowLike[], now: number): { sent: n
   return { sent: recent.filter((row) => row.status === "sent" || row.status === "delivered").length, failed: recent.filter(isFailedEmail).length };
 }
 
-const osloDay = (time: number) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date(time));
-
-/** The rows by day, newest first as given: Today, Yesterday, else the date in `locale`. */
+/** The rows by day in a time zone (the store's, or the platform's, D786), newest first as given: Today, Yesterday, else the date in `locale`. */
 export function emailDays<T extends EmailRowLike>(
   rows: readonly T[],
   now: number,
   words: { today: string; yesterday: string },
+  timeZone: string,
   locale = "en-GB",
 ): { label: string; rows: T[] }[] {
-  const today = osloDay(now);
-  const yesterday = osloDay(now - 86_400_000);
+  const today = adminDate(timeZone, now, "iso", locale);
+  const yesterday = addCalendarDays(today, -1);
   const days: { key: string; label: string; rows: T[] }[] = [];
   for (const row of rows) {
     const time = new Date(row.createdAt).getTime();
-    const key = osloDay(time);
+    const key = adminDate(timeZone, time, "iso", locale);
     let day = days.find((d) => d.key === key);
     if (!day) {
-      const label =
-        key === today ? words.today : key === yesterday ? words.yesterday : new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" }).format(new Date(time));
+      const label = key === today ? words.today : key === yesterday ? words.yesterday : adminDate(timeZone, time, "long", locale);
       day = { key, label, rows: [] };
       days.push(day);
     }

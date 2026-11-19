@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { adminDate } from "@/lib/admin-date";
 import { money } from "@/lib/control-center";
 import { requireAccount } from "@/server/auth";
 import {
@@ -45,8 +46,9 @@ export default async function OwnerBillingPage({ searchParams }: PageProps<"/adm
   const { checkout } = await searchParams;
   if (own && typeof checkout === "string") await completeAccountCheckout(own.id, checkout);
   const billedByAccount = own ? await getAccountBilling(own.id) : null;
-  const b = adminText(adminLangOf(account.adminLocale), "billing");
-  const w = adminText(adminLangOf(account.adminLocale), "screens").ownerBilling;
+  const lang = adminLangOf(account.adminLocale);
+  const b = adminText(lang, "billing");
+  const w = adminText(lang, "screens").ownerBilling;
   const per = (price: NonNullable<StoreBilling["price"]>) =>
     fillWords(w.per, { price: money(price.amountMinor, price.currency), interval: b.intervals[price.interval as keyof typeof b.intervals] ?? price.interval });
   const owned = await ownedStores(account.id);
@@ -82,7 +84,7 @@ export default async function OwnerBillingPage({ searchParams }: PageProps<"/adm
                   </span>
                   <span className={row.status && ["past_due", "unpaid"].includes(row.status) ? "font-medium text-danger-text" : "text-muted"}>{row.status ? (b.statuses[row.status] ?? row.status) : w.noPlan}</span>
                   <span className="text-muted">
-                    {row.currentPeriodEnd ? fillWords(row.cancelAtPeriodEnd ? w.ends : w.renews, { date: row.currentPeriodEnd.slice(0, 10) }) : ""}
+                    {row.currentPeriodEnd ? fillWords(row.cancelAtPeriodEnd ? w.ends : w.renews, { date: adminDate(row, row.currentPeriodEnd, "day", lang) }) : ""}
                   </span>
                   <span className="text-muted">{fillWords(w.fee, { fee: (row.feeBps / 100).toFixed(row.feeBps % 100 === 0 ? 0 : 1) })}</span>
                   {!row.byAccount && (

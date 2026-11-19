@@ -1,6 +1,7 @@
 import { DIALECTS, DIALECT_IDS, type DialectId } from "@/lib/csv";
 import { ORDER_SELECTION_MAX } from "@/lib/data-limits";
 import { adminText, type AdminAreaMessages } from "@/lib/admin-text";
+import { addCalendarDays } from "@/lib/work-dates";
 
 import { PhoneRow } from "@/components/admin/phone-row";
 
@@ -96,11 +97,7 @@ export function ProductExportForm({ slug, terms, words: w = EN }: { slug: string
 
 export function OrderExportForm({ slug, defaultNumbers, today, words: w = EN }: { slug: string; defaultNumbers: string; today: string; words?: ExportWords }) {
   const startWithNumbers = defaultNumbers.trim() !== "";
-  const monthAgo = (() => {
-    const d = new Date(`${today}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - 30);
-    return d.toISOString().slice(0, 10);
-  })();
+  const monthAgo = addCalendarDays(today, -30);
   const p = w.phone;
   // On a phone (round 39, D731) the choices with a default are rows; a row's line names what is chosen now, read from the form by CSS (`:has`), so
   // it is right without a script and after a change.

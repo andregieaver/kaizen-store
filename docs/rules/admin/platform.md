@@ -98,6 +98,19 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   at the sections' stroke). The platform and the owner's level have no views. The rail shows its sections' names on screens
   `RAIL_NAMES_WIDE` and wider until the person narrows it, which is kept.
 
+## Dates in the admin (code review 1.14, D786, `src/lib/admin-date.ts`)
+
+- An instant (a `timestamptz`) is shown with `adminDate(zone, at, style, lang)`: the store's zone on a store's screens (`adminDate(store, …)`),
+  each row's own store where a screen spans stores (the control center's latest orders, the platform's lists of stores, an account's
+  stores), and `PLATFORM_TIME_ZONE` for Kaizena Flow's own figures and records and an account's own. Styles: `day`, `long`, `short`,
+  `dayMonth`, `dayTime`, `time`, `iso`.
+- A calendar day (a `date` column, or a `YYYY-MM-DD` already worked out in its zone) is shown with `adminDay(day, style, lang)` and never
+  moved; `adminDate` shows a bare day as that day too.
+- Norway-only features whose days the law or the partner sets (Tripletex, Fiken, Kaizena Flow's own books) use `NORWAY_TIME_ZONE`.
+- A store's today for a field or a file name is `todayIn(store.timeZone)` (`src/lib/work-dates.ts`); a typed `datetime-local` is read on
+  the store's clock (`storeLocalTime()`, `src/server/discounts.ts`) and written back with `wallClock()`.
+- Admin code writes no zone and cuts no date from a UTC string: `src/lib/admin-dates.scan.test.ts`.
+
 ## `/admin` has its own root layout
 
 - `/admin` has its own root layout. People sign in with email and password, or

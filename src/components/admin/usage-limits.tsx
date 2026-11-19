@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { adminDate } from "@/lib/admin-date";
 import type { CapacityMessages } from "@/lib/admin-messages/capacity.en";
 import { fillWords } from "@/lib/admin-fill";
 import { formatLimit, formatUsage, type AiMoney } from "@/lib/usage-format";
@@ -96,7 +97,7 @@ export function PeaksForm({
           {peaks.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-panel bg-sunken px-3 py-2">
               <span>
-                {p.startsAt.slice(0, 10)} – {p.endsAt.slice(0, 10)} · {p.expected === "very_busy" ? w.peaks.veryBusy : w.peaks.busy}
+                {adminDate("UTC", p.startsAt, "iso", "en")} – {adminDate("UTC", p.endsAt, "iso", "en")} · {p.expected === "very_busy" ? w.peaks.veryBusy : w.peaks.busy}
                 {p.note ? ` · ${p.note}` : ""}
               </span>
               <ActionForm action={remove(p.id)}>

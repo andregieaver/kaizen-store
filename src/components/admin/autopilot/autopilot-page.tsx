@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, type FormState } from "@/components/admin/action-form";
 import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { adminDate } from "@/lib/admin-date";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
@@ -40,6 +41,7 @@ export function AutopilotPage({
   actions,
   links,
   wallet,
+  timeZone,
 }: {
   overview: AutopilotOverview;
   /** The page's own address. */
@@ -53,9 +55,12 @@ export function AutopilotPage({
   links: { payments?: string; plan?: string; tests?: string };
   /** The AI wallet (D599), shown under the settings: the store's page passes its own card. */
   wallet?: React.ReactNode;
+  /** The store's time zone, or the platform's for Kaizena Flow's own autopilot (D786). */
+  timeZone: string;
 }) {
   const w = adminText(lang, "assistant");
   const a = w.autopilot;
+  const date = (iso: string) => adminDate(timeZone, iso, "day", lang);
   // Kaizena Flow's own site (E5.3, D757): a server area, so these words are not handed to the browser with the assistant's.
   const house = adminText(lang, "houseAutopilot");
   const waiting = overview.calls.length + overview.questions.length + overview.ownerOnly.length;
@@ -88,11 +93,11 @@ export function AutopilotPage({
       {/* Kaizena Flow's own Autopilot: its site's store's tests of the site's pages (D484, D757), each opening the test there. */}
       {tab === "decisions" && overview.site && overview.site.tests.length > 0 && <Tests tests={overview.site.tests} words={a} base={`/admin/${overview.site.slug}/experiments`} />}
       {tab === "decisions" && overview.report && <Report report={overview.report} words={a} />}
-      {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} />}
+      {tab === "decisions" && overview.events && overview.events.length > 0 && <Events events={overview.events} words={a} date={date} />}
       {tab === "plans" && <Plans plans={overview.plans} words={a} action={actions.plan} assistantHref={assistantHref} />}
       {tab === "goals" && overview.signups && <SignupGoal signups={overview.signups} words={house.signups} action={actions.setSignupGoal} locale={ADMIN_LANG_FACTS[lang].locale} />}
-      {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} />}
-      {tab === "results" && overview.effects && <AutopilotResults effects={overview.effects} words={a} />}
+      {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} date={date} />}
+      {tab === "results" && overview.effects && <AutopilotResults effects={overview.effects} words={a} date={date} />}
       {tab === "settings" && <Settings overview={overview} words={a} siteWords={house.siteTests} action={actions.settings} />}
       {tab === "settings" && wallet}
     </div>
@@ -320,7 +325,7 @@ function Tests({ tests, words: a, base }: { tests: NonNullable<AutopilotOverview
   );
 }
 
-function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["events"]>; words: Words }) {
+function Events({ events, words: a, date }: { events: NonNullable<AutopilotOverview["events"]>; words: Words; date: (iso: string) => string }) {
   const e = a.events;
   return (
     <Card title={e.title}>
@@ -338,7 +343,7 @@ function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["e
                 ) : undefined
               }
             />
-            <RowFact>{event.at.slice(0, 10)}</RowFact>
+            <RowFact>{date(event.at)}</RowFact>
             <Chip signal={event.status === "done" ? "positive" : event.status === "failed" ? "danger" : "neutral"}>{e.statuses[event.status as keyof typeof e.statuses] ?? event.status}</Chip>
           </ListRow>
         ))}
@@ -380,7 +385,7 @@ function SignupGoal({ signups, words: w, action, locale }: { signups: NonNullabl
   );
 }
 
-function Goals({ goals, reviews, words: a, action }: { goals: AutopilotOverview["goals"]; reviews: AutopilotOverview["reviews"]; words: Words; action: Action }) {
+function Goals({ goals, reviews, words: a, action, date }: { goals: AutopilotOverview["goals"]; reviews: AutopilotOverview["reviews"]; words: Words; action: Action; date: (iso: string) => string }) {
   const g = a.goals;
   if (goals.length === 0) return <Card><p className="text-body text-muted">{g.empty}</p></Card>;
   return (
@@ -395,7 +400,7 @@ function Goals({ goals, reviews, words: a, action }: { goals: AutopilotOverview[
           {goal.vision && <p className="mb-3 text-body text-ink-2">{goal.vision}</p>}
           {(() => {
             const review = reviews.find((r) => r.goalId === goal.id);
-            return review?.outcome ? <p className="mb-3 text-caption text-muted">{fillWords(g.lastReview, { date: review.at.slice(0, 10), outcome: review.outcome })}</p> : null;
+            return review?.outcome ? <p className="mb-3 text-caption text-muted">{fillWords(g.lastReview, { date: date(review.at), outcome: review.outcome })}</p> : null;
           })()}
           <ul className="flex flex-col divide-y divide-line">
             {goal.progress.map((t, i) => (

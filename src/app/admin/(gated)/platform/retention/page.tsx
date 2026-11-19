@@ -3,8 +3,10 @@ import { connection } from "next/server";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { RetentionView } from "@/components/admin/privacy/retention-view";
+import { PLATFORM_TIME_ZONE } from "@/lib/admin-date";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { todayIn } from "@/lib/work-dates";
 import { requirePlatformReader } from "@/server/auth";
 import { retentionOverview } from "@/server/retention";
 
@@ -28,7 +30,7 @@ export default async function PlatformRetentionPage() {
         overview={overview}
         verify={(id) => verifyRetentionRuleAction.bind(null, id)}
         change={changeRetentionRuleAction}
-        today={new Date().toISOString().slice(0, 10)}
+        today={todayIn(PLATFORM_TIME_ZONE)}
         words={adminText(lang, "privacy")}
         locale={ADMIN_LANG_FACTS[lang].locale}
       />
