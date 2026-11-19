@@ -589,6 +589,15 @@ export const settingsNb: SettingsMessages = {
       "Når du stenger, stopper salget og butikken tas av nettet. Ingenting slettes: bestillinger, fakturaer og kundeopplysninger blir liggende her så du kan lese og laste dem ned, oppbevares i oppbevaringsperioden for regnskap i selgerens land og anonymiseres deretter. Du kan selv åpne butikken igjen i {days} dager.",
     before: "Før du kan stenge den",
     what: "Hva det betyr å stenge",
+    /** Round 58 (D814): siden på en telefon. */
+    phone: {
+      lead: "Stopper salget og tar butikken av nettet. Ingenting slettes; du kan åpne igjen i {days} dager.",
+      seeOrders: "Se bestillingene",
+      whatSub: "Hva som fortsetter og hva som stopper",
+      takeSub: "Butikken som fil, produkter, bestillinger, kunder",
+      open: "Åpne",
+      close: "Lukk",
+    },
     signInTitle: "Logg inn på nytt først",
     signInText: "For å stenge en butikk må du ha logget inn i løpet av de siste ti minuttene. Du kommer tilbake til denne siden etterpå.",
     signIn: "Logg inn på nytt",

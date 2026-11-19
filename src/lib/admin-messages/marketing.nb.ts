@@ -777,6 +777,7 @@ export const marketingNb: MarketingMessages = {
     everyone: "Alle som får SMS-ene dine",
     message: "Melding",
     messageHint: "Butikkens navn settes først og en lenke for å stoppe SMS til slutt.",
+    phoneGets: "De får «{store}: …» og en lenke for å stoppe SMS.",
     parts: { one: "{n} SMS", many: "{n} SMS-er hver" },
     preview: "Det de får",
     saveDraft: "Lagre utkast",

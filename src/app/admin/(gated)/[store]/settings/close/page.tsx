@@ -11,6 +11,7 @@ import { REOPEN_DAYS, closureBlockers, closureWarnings, ownerMayReopen, reopenDe
 import { signedInRecently } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
 import { storeObligations, storeState } from "@/server/store-closure";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./actions";
@@ -78,7 +79,15 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
   const fresh = await signedInRecently();
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <PageHeader title={w.title} description={<>{fillWords(w.description, { days: REOPEN_DAYS })}</>} />
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="sm:hidden">{fillWords(w.phone.lead, { days: REOPEN_DAYS })}</span>
+            <span className="max-sm:hidden">{fillWords(w.description, { days: REOPEN_DAYS })}</span>
+          </>
+        }
+      />
 
       {blockers.length > 0 && (
         <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-panel bg-sunken p-4">
@@ -90,19 +99,32 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
               <li key={b}>{b}</li>
             ))}
           </ul>
+          <Link href={`/admin/${store.slug}/orders`} className="self-start text-sm underline underline-offset-2 sm:hidden">
+            {w.phone.seeOrders}
+          </Link>
         </section>
       )}
 
-      <section aria-labelledby="warnings" className="flex flex-col gap-2">
-        <h2 id="warnings" className="text-title text-ink">
-          {w.what}
-        </h2>
-        <ul className="list-disc pl-5 text-sm text-muted">
-          {warnings.map((w) => (
-            <li key={w}>{w}</li>
-          ))}
-        </ul>
-      </section>
+      {/* Round 58: on a phone what closing does and the downloads are two rows of one card under the close; from sm up as before. */}
+      <PhoneRows className="max-sm:order-last sm:contents">
+        <PhoneRow title={w.what} sub={w.phone.whatSub} change={w.phone.open} done={w.phone.close}>
+        <section aria-labelledby="warnings" className="flex flex-col gap-2">
+          <h2 id="warnings" className="text-title text-ink max-sm:sr-only">
+            {w.what}
+          </h2>
+          <ul className="list-disc pl-5 text-sm text-muted">
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </section>
+        </PhoneRow>
+        <div className="sm:order-last">
+          <PhoneRow flat last title={w.takeTitle} sub={w.phone.takeSub} change={w.phone.open} done={w.phone.close}>
+            <TakeAway slug={store.slug} w={w} />
+          </PhoneRow>
+        </div>
+      </PhoneRows>
 
       {blockers.length === 0 && !fresh && (
         <section aria-labelledby="signin" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
@@ -127,8 +149,6 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
           </div>
         </ActionForm>
       )}
-
-      <TakeAway slug={store.slug} w={w} />
     </div>
   );
 }

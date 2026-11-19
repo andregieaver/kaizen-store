@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { adminText } from "@/lib/admin-text";
 import { flowFromAutomation, ownFlow, RECIPES, type RecipeKey } from "@/lib/flow-recipes";
+import { checkWords, flowChecks } from "@/lib/flow-checks";
 import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "@/lib/flow-triggers";
 import { PICK_KINDS } from "@/lib/automation-kinds";
 import { insertStep, moveStep, newStep, removeStep, withCondition, withEmailWords, withStepPicks, withWaitDays, type FlowCondition, type FlowStep } from "@/lib/flows";
@@ -61,6 +62,13 @@ export async function testFlowAction(storeSlug: string, flowId: string): Promise
 export async function switchFlowAction(storeSlug: string, flowId: string, on: boolean): Promise<FormState> {
   return storeAction({ store: storeSlug, key: "marketing:write", action: on ? "marketing.flow_on" : "marketing.flow_off", answer: refusal, extension: "email_automation" }, async (member, lang) => {
     const w = adminText(lang, "flows");
+    // The checks before switching on (M3.6): a blocking one keeps the flow off, said in the same words as on the page.
+    if (on) {
+      const flow = await getFlow(member.store.id, flowId);
+      const main = member.store.localization.locales[0] ?? "en-GB";
+      const blocking = flow ? flowChecks(flow.steps, main).filter((c) => c.blocking) : [];
+      if (blocking.length > 0) return { status: "error", messages: blocking.map((c) => checkWords(w, c)) };
+    }
     const switched = await switchFlow(member.store.id, member.account.id, flowId, on);
     if (switched === "untested" || switched === "missing") return refusal(switched === "untested" ? w.problems.untested : w.problems.missing);
     refresh();

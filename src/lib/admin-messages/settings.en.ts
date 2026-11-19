@@ -596,6 +596,15 @@ export const settingsEn = {
       "Closing stops sales and takes the shop off the web. Nothing is deleted: orders, invoices and customer data stay here for you to read and download, kept for the bookkeeping period of the seller's country and then made anonymous. You can reopen the store yourself for {days} days.",
     before: "Before you can close it",
     what: "What closing does",
+    /** Round 58 (D814): the page on a phone. */
+    phone: {
+      lead: "Stops sales and takes the shop off the web. Nothing is deleted; you can reopen for {days} days.",
+      seeOrders: "See the orders",
+      whatSub: "What carries on and what stops",
+      takeSub: "The store as a file, products, orders, customers",
+      open: "Open",
+      close: "Close",
+    },
     signInTitle: "Sign in again first",
     signInText: "Closing a store needs a sign-in from the last ten minutes. You come back to this page afterwards.",
     signIn: "Sign in again",

@@ -60,7 +60,15 @@ export default async function DreamFactoryPage({ params, searchParams }: { param
       return (
         <AdminTextScope texts={adminTexts(lang, ["home"])}>
           <div className="flex max-w-2xl flex-col gap-6">
-            <PageHeader title={w.rework.title} description={<>{w.rework.description}</>} />
+            <PageHeader
+              title={w.rework.title}
+              description={
+                <>
+                  <span className="sm:hidden">{w.rework.phone.lead}</span>
+                  <span className="max-sm:hidden">{w.rework.description}</span>
+                </>
+              }
+            />
             {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
             <ReworkStart slug={slug} storeId={store.id} words={w} wish={wish} />
           </div>

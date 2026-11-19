@@ -688,6 +688,15 @@ export const homeEn = {
       startLabel: "What would you like to change?",
       startHint: "For example: a warmer look with rounder buttons, a centred header, a front page that leads with the bestsellers, a new FAQ page, livelier product descriptions. 20 to 2,000 characters.",
       start: "Plan my changes",
+      /** Round 58 (D814): the start on a phone. */
+      phone: {
+        lead: "Say what you want changed. Nothing goes live until you say so.",
+        hint: "For example: a warmer look with rounder buttons.",
+        look: "Let the AI look at your site first",
+        lookSub: "Design, copy and images; it suggests what to ask for",
+        open: "Open",
+        close: "Close",
+      },
       instead: "Built this store yourself? Change it as it is instead",
       another: "Change something else",
       building: "Changing {store}",

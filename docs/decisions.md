@@ -816,6 +816,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D811 | **Tests for the shopper's payment session, the Stripe payment provider and billing (code review 1.9's next, FH9)** | 2026-11-19 | [text](decisions/D811.md) |
 | D812 | **The dates left after D796: A/B results, the platform activity filter and the admin's zoneless dates** | 2026-11-19 | [text](decisions/D812.md) |
 | D813 | **Admin redesign round 57: customer import, old shop's links and a new gift card on a phone** | 2026-11-19 | [text](decisions/D813.md) |
+| D814 | **Admin redesign round 58: new text message, close store and change your store on a phone** | 2026-11-19 | [text](decisions/D814.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

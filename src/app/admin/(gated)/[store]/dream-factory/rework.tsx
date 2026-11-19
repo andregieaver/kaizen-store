@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DreamProgress, DreamTimeline } from "@/components/admin/dream/dream-showcase";
 import { RefreshWhile } from "@/components/admin/refresh-while";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { VersionDifferences } from "@/components/admin/version-differences";
 import { fillWords } from "@/lib/admin-fill";
@@ -37,6 +38,9 @@ export async function ReworkStart({ slug, storeId, words: w, title, wish }: { sl
   return (
     <div className="flex flex-col gap-5">
       {working && <RefreshWhile seconds={REFRESH_SECONDS} />}
+      {/* Round 58: on a phone the request comes first and the look at the site is a row under it, open while it works or failed. */}
+      <div className="max-sm:order-last max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow last title={r.phone.look} sub={r.phone.lookSub} change={r.phone.open} done={r.phone.close} defaultOpen={working || analysis?.status === "failed"}>
       <div className="flex flex-col gap-2">
         {working ? (
           <p role="status" className="flex items-start gap-3 text-body text-ink">
@@ -63,8 +67,10 @@ export async function ReworkStart({ slug, storeId, words: w, title, wish }: { sl
         )}
         {analysis?.status === "failed" && <p className="text-body text-danger-text">{analysis.problem ?? a.failed}</p>}
       </div>
+      </PhoneRow>
+      </div>
       {seen && (
-        <section aria-labelledby="dream-analysis" className="flex flex-col gap-3 rounded-lg border border-line bg-card p-5">
+        <section aria-labelledby="dream-analysis" className="flex flex-col gap-3 rounded-lg border border-line bg-card p-5 max-sm:order-last">
           <h2 id="dream-analysis" className="text-title text-ink">
             {a.title}
           </h2>
@@ -101,7 +107,14 @@ export async function ReworkStart({ slug, storeId, words: w, title, wish }: { sl
           {title ?? r.startLabel}
           {/* Keyed by the analysis, so its suggestion fills the field when it arrives; the owner changes it before using it. */}
           <textarea key={seen ? analysis?.id : "own"} name="prompt" required minLength={PROMPT_MIN} maxLength={PROMPT_MAX} rows={seen ? 9 : 5} defaultValue={wish || seen?.suggestion || ""} className={`${control} py-2`} />
-          <span className="font-normal text-ink-2">{seen ? a.suggested : r.startHint}</span>
+          {seen ? (
+            <span className="font-normal text-ink-2">{a.suggested}</span>
+          ) : (
+            <span className="font-normal text-ink-2">
+              <span className="sm:hidden">{r.phone.hint}</span>
+              <span className="max-sm:hidden">{r.startHint}</span>
+            </span>
+          )}
         </label>
         <div>
           <SubmitButton>{r.start}</SubmitButton>
