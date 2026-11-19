@@ -706,6 +706,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** What holds a challenge store up (`docs/100-day-challenge.md` A6), to platform admins: the store's name, the kind and a count, never a customer. */
   "platform.challenge_stall": "staff",
   "referral.credit_applied": "staff",
+  /** An owner told their stores now share one plan (D748 E4): the plan's name and the stores' names. */
+  "billing.account_moved": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",
   "privacy.owners_notice": "staff",

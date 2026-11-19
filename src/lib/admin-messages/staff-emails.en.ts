@@ -288,6 +288,14 @@ export const staffEmailsEn = {
     customer: "Customer: {customer}\nOrder {order}",
     button: "See the order",
   },
+  /** The email to an owner whose account was moved to one plan (D748 E4). */
+  accountMoved: {
+    subject: "Your stores now share one plan",
+    plan: "From today every store in your account is on one plan: {plan}. You pay for it once, on one invoice.",
+    noPlan: "From today your stores share one plan, chosen in one place. Your account has no plan yet.",
+    ended: "The plans of {stores} have ended, and the time you had paid for and not used is credited.",
+    limits: "What your plan includes, such as products and storage, now counts for your stores together. Change your plan here:",
+  },
   planReminder: {
     line: "Kaizena Flow {plan}, paid {interval}",
     yearly: "yearly",

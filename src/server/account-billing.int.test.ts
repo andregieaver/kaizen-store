@@ -262,3 +262,71 @@ describe("an account's one subscription (D748 E4 part two)", () => {
     expect(calls("portal.sessions.create").at(-1)?.params).toMatchObject({ customer_account: String(store.account_id) });
   });
 });
+
+describe("the move to one plan (D748 E4 part four)", () => {
+  it("keeps the highest plan's subscription for the account, ends the others with credit, and tells the owner", async () => {
+    const moves = await import("./account-move");
+    const tag = `${run}m`;
+    const [request] = await db().execute<Row>(sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`move-${tag}@example.com`}, 'Mover', 'Move one') returning id`);
+    const [a] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`move-a-${tag}`}, 'Move one', null) as id`);
+    const storeA = String(a.id);
+    const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where lower(email) = ${`move-${tag}@example.com`}`);
+    const [b] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, created_by) values (${`move-b-${tag}`}, 'Move two', ${String(owner.id)}::uuid) returning id`);
+    const storeB = String(b.id);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${storeB}::uuid, ${String(owner.id)}::uuid, 'owner')`);
+    await db().execute(sql`update commerce.stores set country = 'NO', status = 'active' where id in (${storeA}::uuid, ${storeB}::uuid)`);
+    const [org] = await db().execute<Row>(sql`select organisation_id from commerce.stores where id = ${storeB}::uuid`);
+    const moved = String(org.organisation_id);
+    const plan = async (name: string, position: number, amount: number) => {
+      const [p] = await db().execute<Row>(sql`insert into commerce.plans (name, position) values (${`${name} ${tag}`}, ${position}) returning id`);
+      const [pp] = await db().execute<Row>(sql`insert into commerce.plan_prices (plan_id, currency, interval, amount_minor) values (${String(p.id)}::uuid, 'NOK', 'month', ${amount}) returning id`);
+      return { plan: String(p.id), price: String(pp.id) };
+    };
+    const basic = await plan("Basic", 0, 30000);
+    const grow = await plan("Grow", 1, 99000);
+    for (const [store, p, sub] of [[storeA, basic, `sub_a_${tag}`], [storeB, grow, `sub_b_${tag}`]] as const) {
+      fake.subscriptions.set(sub, { id: sub, items: [{ id: `si_${sub}`, price: `price_${sub}` }], status: "active", cancel: false, metadata: { kaizen_store_id: store } });
+      await db().execute(sql`
+        insert into commerce.store_billing (store_id, plan_id, price_id, mode, subscription_id, status)
+        values (${store}::uuid, ${p.plan}::uuid, ${p.price}::uuid, 'test', ${sub}, 'active')`);
+    }
+    await db().execute(sql`insert into commerce.stripe_accounts (store_id, mode, account_id) values (${storeB}::uuid, 'test', ${`acct_B${tag}`})`);
+
+    const [preview] = await moves.movePreviews(moved);
+    expect(preview).toMatchObject({
+      billed: false,
+      kept: { storeId: storeB, subscriptionId: `sub_b_${tag}` },
+      ending: [{ storeId: storeA, subscriptionId: `sub_a_${tag}` }],
+      before: [{ currency: "NOK", minor: 129000 }],
+      after: [{ currency: "NOK", minor: 99000 }],
+    });
+
+    const [{ since }] = await db().execute<Row>(sql`select now() as since`);
+    expect(await moves.moveAccount(admin, moved)).toEqual({ ok: true });
+    expect(await accounts.getAccountBilling(moved)).toMatchObject({
+      planId: grow.plan,
+      subscriptionId: `sub_b_${tag}`,
+      status: "active",
+      customerAccount: `acct_B${tag}`,
+    });
+    expect(calls("subscriptions.update").at(-1)?.params).toMatchObject({ id: `sub_b_${tag}`, metadata: { kaizen_organisation_id: moved, kaizen_store_id: storeB } });
+    expect(calls("subscriptions.cancel").at(-1)?.params).toMatchObject({ id: `sub_a_${tag}`, prorate: true, invoice_now: true });
+    const own = await db().execute<Row>(sql`select store_id, subscription_id, status from commerce.store_billing where store_id in (${storeA}::uuid, ${storeB}::uuid) order by store_id = ${storeB}::uuid`);
+    expect(own).toEqual([
+      { store_id: storeA, subscription_id: `sub_a_${tag}`, status: "canceled" },
+      { store_id: storeB, subscription_id: null, status: null },
+    ]);
+    // Both stores read the account's plan; the plan's history holds the ended plan only, not the kept one handed over.
+    const plans = await db().execute<Row>(sql`select plan_id, by_account from commerce.store_plans where store_id in (${storeA}::uuid, ${storeB}::uuid)`);
+    expect(plans).toEqual([
+      { plan_id: grow.plan, by_account: true },
+      { plan_id: grow.plan, by_account: true },
+    ]);
+    const after = await db().execute<Row>(sql`select kind, plan_id from commerce.plan_moves where at > ${String(since)}::timestamptz and store_id in (${storeA}::uuid, ${storeB}::uuid)`);
+    expect(after).toEqual([{ kind: "cancelled", plan_id: basic.plan }]);
+    const [mail] = await db().execute<Row>(sql`select count(*)::int as n from commerce.email_messages where kind = 'billing.account_moved' and lower(to_address) = ${`move-${tag}@example.com`}`);
+    expect(mail.n).toBe(1);
+    expect(await moves.moveAccount(admin, moved)).toEqual({ ok: false, problems: ["That account is billed through its account already."] });
+  });
+});

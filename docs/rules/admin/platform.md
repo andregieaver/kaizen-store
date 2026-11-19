@@ -213,35 +213,27 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
 
 ## Accounts that own stores (D748, `docs/extensions.md`)
 
-- **Accounts that own stores (D748, `docs/extensions.md`)**: plans, billing and paid extensions move from the store to the account that
-  owns it, `commerce.organisations` (built in steps E1 to E11; E1 to E3 and part one of E4 are built). Every store has `stores.organisation_id`, set by the database
-  when its transaction commits (`commerce.place_store()`, deferred triggers on `stores` and on owners in `store_members`): Kaizena Flow's own
-  stores (template, store templates, sandboxes, the house store) in the one `platform` organisation, every other in the organisation its
-  creator owns (`commerce.account_organisation()`, made on first need, named after the store, never after a person). A sandbox kept by its
-  visitor moves to theirs; a placed store otherwise stays. No code writes `organisation_id` by hand, and the screens say "account", never
-  "organisation". `src/db/organisations.test.ts` holds the rules.
-- The catalogue (E2, `src/lib/extensions.ts` pure, `src/server/extensions.ts`, Platform → Plans → Extensions): the extension ids are fixed in
-  `EXTENSION_IDS` (the database checks them); words, sizes with allowances (`ALLOWANCES_OF`), prices, bundles and plan grants are rows. A price
-  is never changed in place: `replacePrices()` switches the old row off and adds a new one, as for plans; the editor shows every currency
-  the plans or the catalogue have a price in (`extensionCurrencies()`), so a save never drops a price it did not show. An account's standing is
-  `extensionState()` over `organisationExtensionStandings()`: the platform always; every account until `platform_settings.extensions_launched_at`;
-  then its plan's grants (its account's plan once billed through its account, else any of its stores' plans), then its own `organisation_extensions` row. The store read carries the facts (`Store.extensionFacts`); what works is read against the clock (`storeExtensionsOn()`).
-- The gates (E3): a page, item or tool of an extension carries `extension` (navigation, `ADMIN_PAGES`, `TOOL_EXTENSIONS`); every page under an
-  extension's folders calls `requireExtension(member, id)` and every action or route there passes the extension to `checkPermission()`,
-  `requirePermission()` or `storeAction()` (`extension-gates.scan.test.ts`). A job asks `commerce.extension_on(store, id)`. A writer of an
-  account's extension rows, a plan's grants or the launch date calls `refreshExtensionFacts()` after it commits.
-- Deals on another screen are `dealsOn(store)` (the feature `sales` and the Deals extension), never `featureOn(store, "sales")`; a
-  membership's `store.workOn` already includes the Work extension (`liveStore()` in `auth.ts`); a desk whose account lacks the support
-  desk reads as mode `off`.
-- Billed through the account (E4, `docs/extensions.md` 13): an account with a row in `commerce.organisation_billing` has one plan,
-  subscription and trial for all its stores; one without is billed store by store (`store_billing`). A store's plan, price, status, trial
-  and fee are read from the view `commerce.store_plans` (`by_account` says which), never from either table alone (a job the query budget
-  holds that already reads the store's row writes the view's rule out beside it, as `house-customers.ts` does); a count of revenue takes
-  one line per subscription. An account's limits are its plan's against its stores' use together (`StoreLimits.account`). A store billed
-  through its account refuses its own plan actions (`ACCOUNT_BILLED`). Writers of a store's own row (`applySubscription()`, the trial
-  pause mark) stay on `store_billing`. The account's one subscription is `src/server/account-billing.ts` (items: the plan and each
-  extension bought on its own; `applyAccountSubscription()` is the only writer of an account's row and its bought extension rows from
-  Stripe); a subscription's metadata `kaizen_organisation_id` sends its events there, any other to the store's path.
+- **Accounts (E1)**: plans, billing and paid extensions belong to the account that owns a store, `commerce.organisations` (steps E1 to E11;
+  E1 to E4 built). `stores.organisation_id` is set by the database at commit (`commerce.place_store()`): Kaizena Flow's own stores in the
+  one `platform` organisation, every other in its creator's (`commerce.account_organisation()`, named after the store, never a person). No
+  code writes it by hand; screens say "account", never "organisation". `src/db/organisations.test.ts` holds the rules.
+- **The catalogue (E2, `src/lib/extensions.ts`, `src/server/extensions.ts`, Platform → Plans → Extensions)**: ids are fixed in
+  `EXTENSION_IDS`; words, sizes, prices, bundles and grants are rows, a price never changed in place (`replacePrices()`). An account's
+  standing is `extensionState()`: the platform always; every account until `platform_settings.extensions_launched_at`; then its plan's
+  grants (the account's plan once billed through it, else its stores'), then its own `organisation_extensions` row. The store read carries
+  the facts, read against the clock (`storeExtensionsOn()`).
+- **The gates (E3)**: an extension's page, item or tool carries `extension`; its pages call `requireExtension()`, its actions and routes
+  pass the extension to `checkPermission()`, `requirePermission()` or `storeAction()` (`extension-gates.scan.test.ts`); a job asks
+  `commerce.extension_on()`; a writer of extension rows, grants or the launch date calls `refreshExtensionFacts()`. Deals elsewhere are
+  `dealsOn(store)`, never `featureOn(store, "sales")`; `store.workOn` includes the Work extension; a desk without its extension is `off`.
+- **Billed through the account (E4)**: an account with a row in `commerce.organisation_billing` has one plan, subscription and trial for
+  all its stores; one without is billed store by store (`store_billing`). A store's plan, price, status, trial and fee are read from the
+  view `commerce.store_plans`, never from either table alone (a budgeted job that already holds the store's row writes the view's rule out
+  beside it, as `house-customers.ts` does); revenue counts one line per subscription; limits are the account's plan against its stores'
+  use together. A store billed through its account refuses its own plan actions (`ACCOUNT_BILLED`). The account's subscription is
+  `src/server/account-billing.ts` (`applyAccountSubscription()` alone writes the account's row and bought extensions from Stripe; metadata
+  `kaizen_organisation_id` routes the webhook there). The move to one plan is `moveAccount()` (`src/server/account-move.ts`) alone, under
+  `accountLock()`; it alone sets `commerce.billing_move`, which the plan's history and events skip.
 
 ## Free trials and their end (D420, `src/server/store-trial.ts`)
 

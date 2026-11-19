@@ -16,7 +16,7 @@
     "settings": 36
   },
   "basicLinks": 45,
-  "platformLinks": 56,
+  "platformLinks": 57,
   "storeTools": 294,
   "shopOnlyTools": 264,
   "managerTools": 26,
@@ -158,6 +158,12 @@
       "count": "tables",
       "from": 537,
       "to": 538,
+      "decision": "D748"
+    },
+    {
+      "count": "platformLinks",
+      "from": 56,
+      "to": 57,
       "decision": "D748"
     }
   ]

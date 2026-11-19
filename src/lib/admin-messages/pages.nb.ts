@@ -835,6 +835,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Utvidelser",
     keywords: ["utvidelser", "tillegg", "pakker", "a/b-testing", "kundestøtte", "e-postautomatisering", "work", "avtaler", "priser"],
   },
+  "platform:plan-accounts": {
+    title: "Kontoer",
+    keywords: ["kontoer", "organisasjoner", "kontofakturering", "ett abonnement", "flytte"],
+  },
   "platform:plan-analytics": {
     title: "Abonnementsanalyse",
     keywords: ["mrr", "månedlige inntekter", "frafall", "inntekter", "trakt", "konvertering", "prøveperioder", "salg", "mva", "utbetalinger", "regnskap"],

@@ -43,6 +43,31 @@ export const screensEn = {
     plain: "The plain ranking is doing better than the AI's order on this measure: consider switching the AI off for recommendations.",
     ai: "The AI's order is doing clearly better than the plain ranking on this measure: keep it on.",
   },
+  /** Platform → Plans → Accounts (D748 E4): each account's move from store-by-store billing to one plan. */
+  platformAccounts: {
+    plans: "Plans",
+    title: "Accounts",
+    description:
+      "Each account's billing. At launch every account still billed store by store moves to one plan: the plan of its store on the highest plan, kept as it is; the other stores' plans end with credit for the time not used, and the owner gets an email. Move one account first to try it.",
+    list: "Accounts",
+    none: "No account has an open store.",
+    owner: "Owner: {email}",
+    stores: { one: "{n} store", many: "{n} stores" },
+    oneSince: "One plan since {date}",
+    oneFromStart: "One plan",
+    storeByStore: "Store by store",
+    keeps: "Keeps {plan} from {store}",
+    keepsNone: "No plan runs: the account starts without one",
+    ends: { one: "{n} other plan ends with credit", many: "{n} other plans end with credit" },
+    trial: "Trial until {date}",
+    trialEnded: "Trial ended {date}",
+    money: "{before} a month now, {after} after",
+    overLimit: "Owns {n} stores, and {plan} allows {limit}: it keeps them all, and adds one only on a bigger plan.",
+    understand: "I understand the other stores' plans end now",
+    move: "Move this account",
+    moved: "Moved to one plan.",
+    pick: "Tick the box first.",
+  },
   /** The owner's Billing (D107): the plans of every store they own. */
   ownerBilling: {
     title: "Billing",

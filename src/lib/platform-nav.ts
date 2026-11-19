@@ -52,6 +52,7 @@ export const PLAN_ITEMS: SectionItem[] = [
   // Named apart from the store's own pages (ecosystem plan E3.7, D718): a store's Features switch them, its Analytics are its figures.
   item("/plans/features", "Plan features", "Every feature with a tick for each plan that includes it: the comparison stores see.", "toggle"),
   item("/plans/extensions", "Extensions", "The paid extensions: their sizes and prices, the bundles, and what each plan includes.", "blocks"),
+  item("/plans/accounts", "Accounts", "Each account's billing, and the move of accounts billed store by store to one plan.", "users"),
   item("/plans/analytics", "Plan analytics", "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.", "chart-column"),
   item("/plan-reminders", "Reminders", "Emails to owners who left a plan checkout.", "bell"),
   item("/discounts", "Discounts", "Discount codes for stores' plans.", "ticket"),
