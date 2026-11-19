@@ -344,3 +344,8 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 19 Nov ~10:45: 2.4 REVERTED on main (4fb09512c): store-pages.spec:8 footer->om-oss client nav = global error (React 412), chromium+webkit. Prod never had it (c0d23751b). Opus debugger a0a1d6a93174c32f8 in kz-b (cherry-picks 397da1b5e,46ce6bd76,48627c2b8 + fix). 2.5 WIP saved at branch wip-2.5 (717ef3d66) - depends on 2.4.
 - E4 (other session, organisation_extension_facts reads organisation_billing/store_billing) broke shop journey (all stops) + query-budget house-customers 1418->1880: accepting via FIRST run on kzfix_e4 (bash bloxyfqtp), keep only those keys.
 - kz-c 2.26 (ad9d83271bbd34604), kz-d 2.44->2.40->2.41 (a8170e090b363d1fd).
+- E4 accepted (shop journey billing tables, house-customers rows) pushed.
+- 2.44 (In progress), 2.40 D790 Done, 2.41 D791 Done pushed (3fcc3d4e3, fa28ff54e). New decision layout works (other session already claimed D792). kz-d: 2.31.
+- 19 Nov ~13: PRODUCTION FROZEN on c0d23751b: release needs agent-eval replay green; other session's AI prompt (ff3c235dc plan-extensions) + tools (1ea4c6956 D785 etc.) changed since recording 8a407b36f; pending migration account_plan_moves at head blocks quick-gate deploys. Other session is iterating (ffbcf1fd1 held signup_rate_30d out). I tried reverting ff3c235dc: prompt matched but tools still mismatch -> dropped. Owner/other session must resolve.
+- 1b3774aca run all green; release applied E4's 2 migrations then timed out.
+- 2.26 (kz-c, 6 commits, rebased) full unit test running (bash bwr1ic2er), then push.
