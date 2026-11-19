@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { NOTICE_POLL_MS, noticeText, noticeWordKey, type NoticeKind } from "@/lib/assistant-notices";
+import { NOTICE_PATH_MS, noticeText, noticeWait, noticeWordKey, type NoticeKind } from "@/lib/assistant-notices";
 
 import { useAdminText } from "./admin-text";
 
@@ -23,34 +24,73 @@ type NoticeItem = {
 };
 
 /**
- * How many notices wait in a place: asked when the admin opens, every minute while the tab is shown and at once when it is shown again.
- * Polling only, as the support inbox's safety net: nothing new to set up, and a missed answer is caught by the next.
+ * How many notices wait in a place: asked when the admin opens, when the tab is shown again and when the path changes (at most once a minute);
+ * every ten minutes in a tab nobody touches; every minute for ten minutes after the count was above zero or the assistant was used, and while
+ * an approval waits (`noticeWait()`). Polling only, as the support inbox's safety net: nothing new to set up, and a missed answer is caught by the next.
  */
 export function useNoticeCount(place: string): [number, () => void] {
   const [unread, setUnread] = useState(0);
+  const pathname = usePathname();
+  const activeAt = useRef<number | null>(null);
+  const waiting = useRef(false);
+  const askedAt = useRef(0);
+  const timer = useRef<number | undefined>(undefined);
+  const mounted = useRef(true);
+  const again = useRef<() => void>(() => undefined);
+
   const ask = useCallback(() => {
+    askedAt.current = Date.now();
     fetch(`${FEED}?place=${encodeURIComponent(place)}&count=1`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((body: { unread?: number } | null) => {
-        if (typeof body?.unread === "number") setUnread(body.unread);
+      .then((body: { unread?: number; waiting?: boolean } | null) => {
+        if (typeof body?.unread === "number") {
+          setUnread(body.unread);
+          if (body.unread > 0) activeAt.current = Date.now();
+          waiting.current = body.waiting === true;
+        }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!mounted.current) return;
+        window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => {
+          if (document.visibilityState === "visible") again.current();
+        }, noticeWait({ now: Date.now(), activeAt: activeAt.current, waiting: waiting.current }));
+      });
   }, [place]);
+
   useEffect(() => {
+    again.current = ask;
+  }, [ask]);
+
+  useEffect(() => {
+    mounted.current = true;
     ask();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") ask();
-    }, NOTICE_POLL_MS);
     const onShow = () => {
       if (document.visibilityState === "visible") ask();
     };
     document.addEventListener("visibilitychange", onShow);
     return () => {
-      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onShow);
+      mounted.current = false;
+      window.clearTimeout(timer.current);
     };
   }, [ask]);
-  return [unread, ask];
+
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (Date.now() - askedAt.current >= NOTICE_PATH_MS) ask();
+  }, [pathname, ask]);
+
+  const recount = useCallback(() => {
+    activeAt.current = Date.now();
+    ask();
+  }, [ask]);
+  return [unread, recount];
 }
 
 /** The count on a button: nothing at zero, else the number with its words for screen readers. */

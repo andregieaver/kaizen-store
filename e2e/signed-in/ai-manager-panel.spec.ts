@@ -64,3 +64,48 @@ test("the AI manager's first suggestion names the page the owner is on, and foll
     await sql.end();
   }
 });
+
+/** How often an open tab asks for the notice count (bloat review step 2.34): a clock drives the timers, the feed's count answer is made up. */
+async function watchFeed(page: import("@playwright/test").Page, body: { unread: number; waiting: boolean }) {
+  const asked: number[] = [];
+  await page.route("**/admin/account/notices/feed?*", (route) => {
+    if (route.request().method() === "GET" && route.request().url().includes("count=1")) {
+      asked.push(Date.now());
+      return route.fulfill({ json: body });
+    }
+    return route.continue();
+  });
+  await page.clock.install();
+  await page.goto(`/admin/${E2E_STORE}/products`);
+  await expect(page.locator("main").first()).toBeVisible();
+  const minutes = async (n: number) => {
+    for (let i = 0; i < n; i += 1) {
+      await page.clock.runFor(60_000);
+      await page.waitForTimeout(50);
+    }
+  };
+  return { asked, minutes };
+}
+
+test("an untouched tab asks for notices at most twice in ten minutes and six times in an hour", async ({ page }) => {
+  const { asked, minutes } = await watchFeed(page, { unread: 0, waiting: false });
+  await minutes(10);
+  expect(asked.length).toBeGreaterThanOrEqual(1);
+  expect(asked.length).toBeLessThanOrEqual(2);
+  await minutes(49);
+  expect(asked.length).toBeLessThanOrEqual(6);
+});
+
+test("while an approval waits the tab asks every minute", async ({ page }) => {
+  const { asked, minutes } = await watchFeed(page, { unread: 0, waiting: true });
+  await minutes(10);
+  expect(asked.length).toBeGreaterThanOrEqual(9);
+});
+
+test("the next click asks at once", async ({ page }) => {
+  const { asked, minutes } = await watchFeed(page, { unread: 0, waiting: false });
+  await minutes(3);
+  const before = asked.length;
+  await page.getByRole("navigation", { name: "Main sections" }).getByRole("link", { name: "Orders", exact: true }).click();
+  await expect.poll(() => asked.length, { timeout: 2000 }).toBe(before + 1);
+});

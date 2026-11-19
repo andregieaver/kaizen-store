@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { sameSite } from "@/lib/same-site";
-import { listNotices, markNoticesRead, unreadNotices, type NoticePlace } from "@/server/assistant-notices";
+import { listNotices, markNoticesRead, noticeCount, type NoticePlace } from "@/server/assistant-notices";
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const place = await placeOf(request.nextUrl.searchParams.get("place"));
   if (place === undefined) return NextResponse.json({ unread: 0, items: [] }, { headers: NO_STORE });
   const count = request.nextUrl.searchParams.get("count") === "1";
-  if (count) return NextResponse.json({ unread: await unreadNotices(account.id, place) }, { headers: NO_STORE });
+  if (count) return NextResponse.json(await noticeCount(account.id, place), { headers: NO_STORE });
   return NextResponse.json(await listNotices(account.id, place, 30), { headers: NO_STORE });
 }
 

@@ -113,6 +113,7 @@ export function AiManagerLauncher({
       openRef.current = value;
       setOpen(value);
       if (value) {
+        recount();
         setChatFailed(false);
         loadChat().then(
           (chat) => setChat(() => chat),
@@ -128,7 +129,7 @@ export function AiManagerLauncher({
           });
       }
     },
-    [start],
+    [start, recount],
   );
 
   useEffect(() => {

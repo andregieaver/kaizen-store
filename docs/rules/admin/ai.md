@@ -252,7 +252,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   throwing; the field is `notice`, so the email-kind scan never takes it for an email), so a new background job that finishes work for a person
   calls it with a kind of `NOTICE_KINDS` (and the table's check) and words in the `assistant` catalogues' `notices.kinds`; a gated call kept in a
   turn nobody is in calls `noticeApproval()`. Counts and lists are only `/admin/account/notices/feed` (`useNoticeCount()`, polling, never a
-  socket). A person's saved skills are `commerce.assistant_skills`, written only by `src/server/assistant-saved-skills.ts` after
+  socket): asked on opening, when the tab is shown and when the path changes; every ten minutes in a tab nobody touches, every minute for ten
+  minutes after the count was above zero or the assistant was used and while an approval waits (`noticeWait()` in
+  `src/lib/assistant-notices.ts`; the count's answer carries `waiting`). A person's saved skills are `commerce.assistant_skills`, written only by `src/server/assistant-saved-skills.ts` after
   `skillProblem()` (`src/lib/saved-skills.ts`); `use_skill` loads one as words only, after the built-ins, so a skill never grants a tool or
   skips a gate.
 

@@ -192,7 +192,7 @@ commit as the fix.
 | 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | Open | |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | In progress | 19 Nov, 00d7bddd, D781: mirror set at sign-in and for all; commit 2 waits for the owner. |
-| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | Open | |
+| 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | In progress | Local: untouched tab asks at most 2 in ten minutes, 6 an hour (10, 60 before); count still one statement, now with `waiting`. Awaiting review. |
 | 2.35 | Answer a store's own domain without a deployment | SF-13 | L | strong | 2.20, 1.8, 1.29 | Open | |
 | 2.36 | Send the AI manager a lean default round | AI-1, AI-9, AI-11, FT-4, AI-6, GAP-ai-s1, GAP-ai-2 | M | strong | 1.19, 0.5, 0.11 | Open | |
 | 2.37 | Slim the tool schemas, so no first round is over 56,000 characters | AI-8 | M | strong | 1.19, 2.36 | Open | |
