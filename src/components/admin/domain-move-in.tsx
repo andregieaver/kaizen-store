@@ -8,6 +8,7 @@ import type { RegistrantPrefill } from "@/lib/domain-registrant";
 import { formatMoney } from "@/lib/money";
 
 import { ActionForm, SubmitButton } from "./action-form";
+import { PhoneRow, PhoneRows } from "./phone-row";
 import { RegistrantFields } from "./domain-buyer";
 import type { MoveInActions, MoveInLookShape, MoveInStartShape, TransferQuoteShape } from "./domain-types";
 import { Button, Card, Chip } from "./ui";
@@ -53,8 +54,15 @@ export function DomainMoveIn({
   return (
     <div className="flex flex-col gap-6">
       {arriving.length > 0 && <Arriving arriving={arriving} words={words.dns} actions={actions} />}
-      <DnsMove domains={domains} words={words.dns} actions={actions} />
-      <Transfer canBuy={canBuy} closedWhy={closedWhy} registrant={registrant} words={words.transfer} getWords={getWords} locale={locale} actions={actions} />
+      {/* Round 59 (D819): on a phone the two moves are rows of one card, each saying what it waits for; one that can start opens. */}
+      <PhoneRows>
+        <PhoneRow flat title={words.phone.dns} sub={domains.length > 0 ? words.phone.dnsReady : words.phone.dnsWaits} change={words.phone.open} done={words.phone.close} defaultOpen={domains.length > 0}>
+          <DnsMove domains={domains} words={words.dns} actions={actions} />
+        </PhoneRow>
+        <PhoneRow flat last title={words.phone.transfer} sub={canBuy ? words.phone.transferReady : words.phone.transferWaits} change={words.phone.open} done={words.phone.close} defaultOpen={canBuy}>
+          <Transfer canBuy={canBuy} closedWhy={closedWhy} registrant={registrant} words={words.transfer} getWords={getWords} locale={locale} actions={actions} />
+        </PhoneRow>
+      </PhoneRows>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import type { RecordingsMessages } from "./recordings.en";
 export const recordingsNb: RecordingsMessages = {
   title: "Opptak",
   description: "Se besøk på butikkens sider for å finne ut hvor besøkende står fast. Bare du kan se dem.",
+  /** Runde 59 (D819): linjen under tittelen på en telefon. */
+  phoneLead: "Se besøk for å finne ut hvor besøkende står fast. Bare du kan.",
   lead: "{n} opptak lagret, de mest frustrerte først.",
   leadNewest: "{n} opptak lagret, de nyeste først.",
   empty: "Ingen opptak ennå. De vises her når besøkende som tillater opptak, har sett seg rundt.",

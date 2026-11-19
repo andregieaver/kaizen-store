@@ -377,6 +377,18 @@ export const domainsNb: DomainsMessages = {
     title: "Flytt et domene hit",
     intro: "Flytt et domene du har et annet sted til Kaizena Flow: DNS-en, så postene kan endres her og av KI-assistenten, registreringen, så det fornyes med butikken, eller begge deler.",
     back: "Domener",
+    /** Runde 59 (D819): siden på en telefon. */
+    phone: {
+      lead: "Flytt DNS-en, registreringen eller begge til Kaizena Flow.",
+      dns: "Flytt DNS-en hit",
+      dnsReady: "E-post og nettsted virker hele tiden",
+      dnsWaits: "Koble et domene til butikken først",
+      transfer: "Flytt registreringen hit",
+      transferReady: "Da fornyes det med butikken din",
+      transferWaits: "Åpner snart",
+      open: "Åpne",
+      close: "Lukk",
+    },
     dns: {
       title: "Flytt DNS-en hit",
       intro: "Kaizena Flow kopierer alle postene den finner, sjekker dem mot det internett ser i dag, og først da endrer du navnetjenerne. E-posten og nettstedet virker hele tiden.",

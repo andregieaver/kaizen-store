@@ -5,6 +5,8 @@
 export const recordingsEn = {
   title: "Recordings",
   description: "Watch visits to your store's pages to see where visitors get stuck. Only you can watch them.",
+  /** Round 59 (D819): the line under the title on a phone. */
+  phoneLead: "Watch visits to see where visitors get stuck. Only you can.",
   lead: "{n} recordings kept, the most frustrated first.",
   leadNewest: "{n} recordings kept, the newest first.",
   empty: "No recordings yet. They appear here once visitors who allow recordings have looked around.",

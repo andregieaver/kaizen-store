@@ -46,7 +46,14 @@ export default async function MoveInPage({ params }: PageProps<"/admin/[store]/s
     .sort();
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader back={{ href: `/admin/${slug}/settings/domains`, label: words.back }} title={words.title} description={words.intro} />
+      <PageHeader back={{ href: `/admin/${slug}/settings/domains`, label: words.back }} title={words.title}
+        description={
+          <>
+            <span className="sm:hidden">{words.phone.lead}</span>
+            <span className="max-sm:hidden">{words.intro}</span>
+          </>
+        }
+      />
       <DomainMoveIn
         domains={movable}
         arriving={arriving.map((z) => ({ apex: z.apex, nameservers: VERCEL_NAMESERVERS }))}

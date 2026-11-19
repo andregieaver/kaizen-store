@@ -579,6 +579,7 @@ export const customersEn = {
     newPage: {
       title: "Add a customer",
       description: "The customer gets an account without a password. They sign in with a code sent to their email; nothing is sent now.",
+      phoneLead: "They sign in with a code to their email. Nothing is sent now.",
       back: "Customers",
       details: "Details",
     },

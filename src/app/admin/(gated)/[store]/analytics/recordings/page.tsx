@@ -57,7 +57,12 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
           ctx={ctx}
           path="/analytics/recordings"
           title={words.title}
-          description={words.description}
+          description={
+            <>
+              <span className="sm:hidden">{words.phoneLead}</span>
+              <span className="max-sm:hidden">{words.description}</span>
+            </>
+          }
           picker={false}
           showCompare={false}
           lead={counts.all > 0 ? fillWords(filters.sort === "newest" ? words.leadNewest : words.lead, { n: formatCount(counts.all) }) : undefined}
