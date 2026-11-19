@@ -19,7 +19,7 @@ vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublish
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const { closeDb, db } = await import("@/db/client");
-const { closeSide, side } = await import("./query-budget-test-support");
+const { closeSide, settled, side } = await import("./query-budget-test-support");
 const { measureTables, readKey, writeKey } = await import("./table-stats-test-support");
 const { fxStore, NO } = await import("./fulfilment-test-fixture");
 const { cartOf } = await import("./shipping-test-fixture");
@@ -64,17 +64,27 @@ let store: Awaited<ReturnType<typeof fxStore>>;
 let skus: string[] = [];
 const measured: Held = {};
 
-beforeAll(async () => {
-  store = await fxStore("order-writes");
-  // A store with only the shop on (D178), counting visits, its flat rate the template's (99 kr, free over 999 kr).
-  await db().execute(sql`update commerce.stores set features = array['shop'], visit_counting = true, time_zone = 'Europe/Oslo' where id = ${store.storeId}::uuid`);
+/** A store with only the shop on (D178), counting visits, its flat rate the template's (99 kr, free over 999 kr). */
+async function shopOnlyStore(label: string) {
+  const made = await fxStore(label);
+  await db().execute(sql`update commerce.stores set features = array['shop'], visit_counting = true, time_zone = 'Europe/Oslo' where id = ${made.storeId}::uuid`);
+  return made;
+}
+
+/** The store's active physical variants by SKU: of simple products (one variant each), or of any product with `simple` false. */
+async function simpleSkus(storeId: string, simple = true): Promise<string[]> {
   const rows = await db().execute<{ sku: string }>(sql`
     select v.sku from commerce.product_variants v join commerce.products p on p.id = v.product_id and p.store_id = v.store_id
-    where v.store_id = ${store.storeId}::uuid and v.active and p.status = 'active' and v.delivery = 'physical'
-      and (select count(*) from commerce.product_variants w where w.product_id = v.product_id) = 1
-    order by v.sku limit 3
+    where v.store_id = ${storeId}::uuid and v.active and p.status = 'active' and v.delivery = 'physical'
+      and (not ${simple}::boolean or (select count(*) from commerce.product_variants w where w.product_id = v.product_id) = 1)
+    order by v.sku
   `);
-  skus = rows.map((r) => r.sku);
+  return rows.map((r) => r.sku);
+}
+
+beforeAll(async () => {
+  store = await shopOnlyStore("order-writes");
+  skus = (await simpleSkus(store.storeId)).slice(0, 3);
 }, 120_000);
 
 afterAll(async () => {
@@ -144,5 +154,169 @@ describe("what one order and one visit write", () => {
     } finally {
       await side().unsafe("drop trigger if exists order_probe on commerce.orders; drop function if exists commerce.order_probe_fn(); drop table if exists commerce.order_probe;");
     }
+  }, 120_000);
+});
+
+const NEVER_RAISE = "lower the cost or do code review step 3.7 for that part; never raise the ceiling";
+
+/** Statements an order sends for each line past its first: today's figure (17 November 2026), so one more per line fails case 2. */
+const PER_LINE = 2;
+
+/**
+ * A visitor's first page view of the day (as the file counts it): the store, whether the visitor is known today, the two rate-limit upserts
+ * of takeNewVisit() (the address's ten minutes and the store's day, which protect the counts against a script and stay) and the visit's
+ * upsert. Today's figure held, the owner's rule from step 0.43 (reviewer's decision for step 2.48): 5 statements, 3 rows written (3 inserted,
+ * or 2 and 1 updated once the store's day counter exists, as after the case above). A repeat page view sends 3 and writes 1.
+ */
+const VISIT = { statements: 5, rows: 3 };
+
+type FunctionTime = { calls: number; ms: number };
+
+/** Trigger functions of `commerce` with the calls and total time Postgres has counted for them (track_functions on). */
+async function triggerTimes(): Promise<Record<string, FunctionTime>> {
+  await side()`select pg_stat_clear_snapshot()`;
+  const rows = await side()`
+    select f.funcname, f.calls, f.total_time from pg_stat_user_functions f join pg_proc p on p.oid = f.funcid
+    where f.schemaname = 'commerce' and p.prorettype = 'pg_catalog.trigger'::regtype
+  `;
+  return Object.fromEntries(rows.map((r) => [String(r.funcname), { calls: Number(r.calls), ms: Number(r.total_time) }]));
+}
+
+/** What `run` sent and wrote (measureTables()), and each trigger function that ran during it with its calls and milliseconds. */
+async function measureTriggers(run: () => Promise<unknown>): Promise<{ m: Measured; moved: Record<string, FunctionTime> }> {
+  const before = await settled(triggerTimes);
+  const m = await measureTables(run);
+  const after = await settled(triggerTimes);
+  const moved: Record<string, FunctionTime> = {};
+  for (const [name, now] of Object.entries(after)) {
+    const was = before[name] ?? { calls: 0, ms: 0 };
+    if (now.calls > was.calls) moved[name] = { calls: now.calls - was.calls, ms: now.ms - was.ms };
+  }
+  return { m, moved };
+}
+
+const sumMs = (times: { ms: number }[]) => times.reduce((sum, t) => sum + t.ms, 0);
+const round = (ms: number) => Math.round(ms * 1000) / 1000;
+
+/**
+ * A placed order's ceilings (bloat review step 2.48, `docs/performance.md` What one placed order costs). The fifth, optional features'
+ * triggers under 2 ms of a shop-only store's paid order, is measured there and not asserted yet: see that section.
+ */
+describe("a placed order's ceilings", () => {
+  // track_functions is a superuser setting, and the app's pool is another connection: set for the database, and the pool reconnects.
+  let canTime = true;
+  let whyNot = "";
+
+  beforeAll(async () => {
+    try {
+      await side().unsafe(`alter database ${await currentDatabase()} set track_functions = 'all'`);
+    } catch (error) {
+      canTime = false;
+      whyNot = `track_functions could not be set: ${(error as Error).message}`;
+    }
+    await closeDb();
+  }, 60_000);
+
+  afterAll(async () => {
+    if (canTime) await side().unsafe(`alter database ${await currentDatabase()} reset track_functions`);
+    await closeDb();
+  }, 60_000);
+
+  const currentDatabase = async () => {
+    const [row] = await side()`select quote_ident(current_database()) as name`;
+    return String(row.name);
+  };
+
+  /** Places an order of one of each SKU, inside measureTables() when `measured` is true. */
+  const order = async (shop: Awaited<ReturnType<typeof fxStore>>, lineSkus: string[]) => {
+    const cartId = await cartOf(shop, lineSkus.map((sku) => [sku, 1]));
+    let placed: Awaited<ReturnType<typeof placeOrder>> | undefined;
+    const m = await measureTables(async () => {
+      placed = await placeOrder({ storeId: shop.storeId, market: NO }, cartId, {});
+    });
+    if (!placed?.ok) throw new Error(`the order was not placed: ${JSON.stringify(placed)}`);
+    return { m, orderId: placed.order.orderId };
+  };
+
+  it("(1) sends the same statements with 10 and with 2,000 earlier orders", async () => {
+    const [a, b] = await Promise.all([shopOnlyStore("ceiling-a"), shopOnlyStore("ceiling-b")]);
+    const [skuA] = await simpleSkus(a.storeId);
+    const [skuB] = await simpleSkus(b.storeId);
+    const firstA = await order(a, [skuA]);
+    const firstB = await order(b, [skuB]);
+    // Copies of the first order, numbered 'C-…' outside the gap-free series as copied orders are (D384).
+    const [cols] = await side()`
+      select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as cols from information_schema.columns
+      where table_schema = 'commerce' and table_name = 'orders' and is_generated = 'NEVER' and identity_generation is null
+    `;
+    const copy = async (orderId: string, count: number) => {
+      await side().unsafe(
+        `insert into commerce.orders (${cols.cols}) select ${cols.cols} from (
+           select (jsonb_populate_record(null::commerce.orders, to_jsonb(o) || jsonb_build_object('id', gen_random_uuid(), 'number', 'C-' || n))).*
+           from commerce.orders o, generate_series(1, $2::int) n where o.id = $1::uuid) x`,
+        [orderId, count],
+      );
+    };
+    await copy(firstA.orderId, 9);
+    await copy(firstB.orderId, 1_999);
+    const tenth = await order(a, [skuA]);
+    const twoThousandth = await order(b, [skuB]);
+    const differing = (x: Measured, y: Measured) => {
+      const texts = (r: Measured) => r.records.filter((s) => !s.control).map((s) => s.text.replace(/\s+/g, " ").slice(0, 120));
+      const left = texts(x);
+      const right = texts(y);
+      return [...left.filter((t) => !right.includes(t)), ...right.filter((t) => !left.includes(t))];
+    };
+    expect(
+      twoThousandth.m.statements,
+      `one order sends ${twoThousandth.m.statements} statements in a store with 2,000 earlier orders and ${tenth.m.statements} with 10 (${JSON.stringify(differing(tenth.m, twoThousandth.m))}): ${NEVER_RAISE}`,
+    ).toBe(tenth.m.statements);
+  }, 300_000);
+
+  it("(2) sends at most 2 statements more for each added line", async () => {
+    const shop = await shopOnlyStore("ceiling-lines");
+    const lineSkus = (await simpleSkus(shop.storeId, false)).slice(0, 5);
+    expect(lineSkus).toHaveLength(5);
+    const one = await order(shop, lineSkus.slice(0, 1));
+    for (const n of [2, 5]) {
+      const more = await order(shop, lineSkus.slice(0, n));
+      const added = more.m.statements - one.m.statements;
+      expect(added, `an order of ${n} lines sends ${added} statements more than one of 1 line, ceiling ${PER_LINE * (n - 1)}: ${NEVER_RAISE}`).toBeLessThanOrEqual(PER_LINE * (n - 1));
+    }
+  }, 300_000);
+
+  it("(3) spends under a fifth of the order's database time in triggers", async (ctx) => {
+    if (!canTime) ctx.skip(whyNot);
+    const shop = await shopOnlyStore("ceiling-triggers");
+    const cartId = await cartOf(shop, (await simpleSkus(shop.storeId)).slice(0, 3).map((sku) => [sku, 1]));
+    let placed: Awaited<ReturnType<typeof placeOrder>> | undefined;
+    const { m, moved } = await measureTriggers(async () => {
+      placed = await placeOrder({ storeId: shop.storeId, market: NO }, cartId, {});
+    });
+    expect(placed?.ok, JSON.stringify(placed)).toBe(true);
+    const orderMs = sumMs(m.records);
+    const triggerMs = sumMs(Object.values(moved));
+    expect(
+      triggerMs,
+      `triggers took ${round(triggerMs)} ms of the order's ${round(orderMs)} ms (${JSON.stringify(moved)}), ceiling a fifth: ${NEVER_RAISE}`,
+    ).toBeLessThan(orderMs / 5);
+  }, 300_000);
+
+  it("(4) counts a visitor's first page view of the day in at most 5 statements and 3 rows", async () => {
+    const headers = new Headers({
+      "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+      "x-forwarded-for": "203.0.113.10",
+      host: "localhost:3000",
+      origin: "http://localhost:3000",
+      referer: `http://localhost:3000/s/${store.slug}/no`,
+    });
+    let outcome: Awaited<ReturnType<typeof recordVisit>> | undefined;
+    const m = await measureTables(async () => {
+      outcome = await recordVisit({ headers, body: { store: store.slug, path: `/s/${store.slug}/no` } });
+    });
+    expect(outcome).toEqual({ recorded: true });
+    const w = writesOf(m);
+    expect(m.statements, `a counted visit sends ${m.statements} statements, ceiling ${VISIT.statements}: ${NEVER_RAISE}`).toBeLessThanOrEqual(VISIT.statements);
+    expect(w.rowsInserted + w.rowsUpdated, `a counted visit writes ${w.rowsInserted + w.rowsUpdated} rows (${w.tables.join(", ")}), ceiling ${VISIT.rows}: ${NEVER_RAISE}`).toBeLessThanOrEqual(VISIT.rows);
   }, 120_000);
 });
