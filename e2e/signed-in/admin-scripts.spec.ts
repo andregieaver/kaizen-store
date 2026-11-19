@@ -356,8 +356,11 @@ test.describe("what a save answers with", () => {
     }
     const held = baseline.saves[name];
     for (const key of ["answer", "words", "menu"] as const) {
+      // The shell redraw's answer is the whole Pages list, which grows with every page the specs before it (and other changes) add, so
+      // it gets 15 % of room; its words and its menu, which this budget is about, keep 4 %.
+      const room = name === "shell" && key === "answer" ? 1.15 : 1.04;
       expect(figures[key], `the ${name} ${key} is ${figures[key]} bytes, baseline ${held[key]}; lower the baseline in the same change when a figure falls: E2E_MEASURE=1 prints them`).toBeLessThanOrEqual(
-        held[key] * 1.04,
+        held[key] * room,
       );
     }
   }
