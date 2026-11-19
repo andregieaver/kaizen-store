@@ -254,4 +254,31 @@ describe("flows (D767)", () => {
     ]);
     await fl.switchFlow(storeId, owner, saved.id, false);
   });
+
+  it("enters a signed-in subscriber the browse flow's days after their latest view, not after an order, and keeps views only while it is on (slice 4)", async () => {
+    const { browseReminder } = await import("@/lib/flow-recipes");
+    const DAY = 24 * HOUR;
+    const now = new Date();
+    const address = `browse-eva-${run}@example.com`;
+    const eva = await subscriber(address);
+    const [customer] = await db().execute<Row>(sql`insert into commerce.customers (store_id, email) values (${storeId}::uuid, ${address}) returning id`);
+    const [product] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid limit 1`);
+    const saved = await fl.saveFlow(storeId, owner, null, browseReminder("nb-NO"));
+    if (!saved.ok) throw new Error(saved.problem);
+    await fl.testFlow(storeId, saved.id);
+    await fl.switchFlow(storeId, owner, saved.id, true);
+    await db().execute(sql`update commerce.flows set enabled_at = ${new Date(now.getTime() - 3 * DAY).toISOString()}::timestamptz where id = ${saved.id}::uuid`);
+    if (product) {
+      await db().execute(sql`insert into commerce.customer_product_views (store_id, customer_id, product_id, viewed_at)
+        values (${storeId}::uuid, ${String(customer.id)}::uuid, ${String(product.id)}::uuid, ${new Date(now.getTime() - 1.5 * DAY).toISOString()}::timestamptz)`);
+      expect(await fl.enterBrowsed(now)).toBe(1);
+      expect(await fl.enterBrowsed(now)).toBe(0);
+      const [entered] = await db().execute<Row>(sql`select subscriber_id from commerce.flow_runs where flow_id = ${saved.id}::uuid`);
+      expect(String(entered.subscriber_id)).toBe(eva);
+    }
+    // Switched off with no browse automation on: the views go (D691).
+    await fl.switchFlow(storeId, owner, saved.id, false);
+    const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.customer_product_views where store_id = ${storeId}::uuid`);
+    expect(left.n).toBe(0);
+  });
 });

@@ -6,6 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { StockExportForm } from "@/components/admin/inventory/stock-export-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -39,7 +40,12 @@ export default async function StockExportPage({ params, searchParams }: Props) {
         slug={store.slug}
         active="export"
         title={w.title}
-        intro={fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
+        intro={
+          <>
+            <span className="sm:hidden">{adminText(lang, "inventory").phone.exportLead}</span>
+            <span className="max-sm:hidden">{fillWords(w.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}</span>
+          </>
+        }
         lang={lang}
       />
       <Suspense fallback={<DataSkeleton />}>
@@ -58,11 +64,15 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const base = inventoryPaths(member.store.slug);
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "inventory").export;
+  const pw = adminText(lang, "inventory").phone;
   const a = w.about;
   return (
     <>
       <ProblemAlert text={problem} />
       <StockExportForm slug={member.store.slug} lang={lang} />
+      {/* Round 54 (D802): on a phone what the file holds is a row after the button; from `sm` up as before. */}
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={w.aboutTitle} sub={pw.aboutSub} change={pw.open} done={pw.close}>
       <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>
@@ -79,6 +89,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           <li>{a.negative}</li>
         </ul>
       </Notice>
+      </PhoneRow>
+      </div>
       <ExportSection member={member} kind="inventory_export" jobId={first(query.job)} base={base.export} now={new Date()} />
     </>
   );

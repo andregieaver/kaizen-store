@@ -180,6 +180,16 @@ describe("the checks", () => {
     expect(check((d) => ((d[0].blocks[0] as { cites: { passage: string }[] }).cites[0].passage = "art_16"))).toEqual(expect.arrayContaining([expect.stringContaining("not offered for this section")]));
   });
 
+  it("take a quote longer than the prompt asks for while it is word for word, and refuse one too long or too short (19 November 2026)", () => {
+    const cite = (d: DraftSection[]) => (d[0].blocks[0] as { cites: { source: string; passage: string; quote: string }[] }).cites[0];
+    const first = cite(goodReturns());
+    const text = plan.offered.get(`${first.source}|${first.passage}`)!.text;
+    expect(text.length).toBeGreaterThan(400);
+    expect(check((d) => (cite(d).quote = text.slice(0, 400)))).toEqual([]);
+    expect(check((d) => (cite(d).quote = text.slice(0, 1300).padEnd(1300, " x")))).toEqual(expect.arrayContaining([expect.stringContaining("a quote must be")]));
+    expect(check((d) => (cite(d).quote = text.slice(0, 10)))).toEqual(expect.arrayContaining([expect.stringContaining("a quote must be")]));
+  });
+
   it("refuse a number no cited quote holds, in digits or in words", () => {
     expect(check((d) => ((d[0].blocks[0] as { text: string }).text = "You may withdraw within 30 days."))).toEqual(expect.arrayContaining([expect.stringContaining("the number 30")]));
     expect(check((d) => ((d[0].blocks[0] as { text: string }).text = "You may withdraw within thirty days."))).toEqual(expect.arrayContaining([expect.stringContaining("the number 30")]));

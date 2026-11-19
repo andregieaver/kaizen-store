@@ -806,6 +806,11 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D801 | **The session is kept by Supabase's auth client alone** | 2026-11-19 | [text](decisions/D801.md) |
 | D802 | **Admin redesign round 54: export stock, speed and heatmaps on a phone** | 2026-11-19 | [text](decisions/D802.md) |
 | D803 | **When main is red: CI keeps a ci-red issue naming the failing tests and the sessions since the last green run** | 2026-11-19 | [text](decisions/D803.md) |
+| D804 | **In the challenge a money-free order change and a market price rule run by themselves (100-day A2)** | 2026-11-19 | [text](decisions/D804.md) |
+| D805 | **Store pages with nothing per visitor are static files** | 2026-11-19 | [text](decisions/D805.md) |
+| D806 | **Admin redesign round 55: product feeds, order history import and redirect export on a phone** | 2026-11-19 | [text](decisions/D806.md) |
+| D807 | **Invoices' and credit notes' PDFs are made ahead: the dispatcher asks the PDF route when a document waits** | 2026-11-19 | [text](decisions/D807.md) |
+| D808 | **A/B tests: the platform's page leads to Kaizena Flow's own site's tests** | 2026-11-19 | [text](decisions/D808.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AUTOMATION_KINDS, PICK_KINDS, type PickKind } from "./automation-kinds";
 import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
-import { FLOW_TRIGGERS, LAPSE_DAYS } from "./flow-triggers";
+import { DATE_TRIGGER_DAYS, FLOW_TRIGGERS, isDateTrigger } from "./flow-triggers";
 
 /**
  * Flows (D767, `docs/flows.md`, email plan M2.1): a trigger, a tree of steps a person moves along, and goals that end it early. This file is
@@ -55,10 +55,14 @@ export const flowInputSchema = z.object({
   /** The automation a recipe does the work of (slice 3): set when the flow is made, kept through every save. */
   replaces: z.enum(AUTOMATION_KINDS).nullish(),
   /** A lapse trigger's days (slice 4): required for `customer.lapsed`, refused for any other trigger. */
-  triggerDays: z.number().int().min(LAPSE_DAYS.min).max(LAPSE_DAYS.max).nullish(),
-}).refine((f) => (f.trigger === "customer.lapsed") === (f.triggerDays != null), {
-  message: `Choose from ${LAPSE_DAYS.min} to ${LAPSE_DAYS.max} days without an order.`,
-  path: ["triggerDays"],
+  triggerDays: z.number().int().nullish(),
+}).superRefine((f, ctx) => {
+  // A date trigger's days in its range (DATE_TRIGGER_DAYS), and none for any other trigger.
+  const range = isDateTrigger(f.trigger) ? DATE_TRIGGER_DAYS[f.trigger] : null;
+  const days = f.triggerDays ?? null;
+  if (range ? days === null || days < range.min || days > range.max : days !== null) {
+    ctx.addIssue({ code: "custom", path: ["triggerDays"], message: range ? `Choose from ${range.min} to ${range.max} days.` : "Only a date trigger has days." });
+  }
 });
 export type FlowInput = z.infer<typeof flowInputSchema>;
 

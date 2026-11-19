@@ -94,7 +94,8 @@ export function planDerivations(rule: MarketPriceRule, facts: readonly Facts[], 
 async function factsFor(runner: Runner, storeId: string, rule: MarketPriceRule, productIds: readonly string[] | null): Promise<Facts[]> {
   const rows = await runner.execute<Row>(sql`
     select v.id as variant_id, base.amount_minor as base_minor,
-           commerce.vat_rate(${rule.base}, p.vat_category) as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) as vat,
+           -- In percent, as derivedPrice() takes it: commerce.vat_rate() gives a fraction (0.25).
+           commerce.vat_rate(${rule.base}, p.vat_category) * 100 as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) * 100 as vat,
            cur.amount_minor as current_minor, coalesce(cur.derived, false) as derived
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -198,7 +199,7 @@ export async function previewRule(storeId: string, rule: MarketPriceRule, locale
   if (!base || !market) return [];
   const rows = await db().execute<Row>(sql`
     select v.id as variant_id, v.sku, coalesce(t.title, p.handle) as title, base.amount_minor as base_minor,
-           commerce.vat_rate(${rule.base}, p.vat_category) as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) as vat,
+           commerce.vat_rate(${rule.base}, p.vat_category) * 100 as base_vat, commerce.vat_rate(${rule.market}, p.vat_category) * 100 as vat,
            cur.amount_minor as current_minor, coalesce(cur.derived, false) as derived
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'

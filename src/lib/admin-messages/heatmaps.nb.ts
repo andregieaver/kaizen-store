@@ -48,6 +48,13 @@ export const heatmapsNb: HeatmapsMessages = {
     noneStuck: "Ingen side har nok visninger ennå til å si hvor besøkende står fast.",
     frontPage: "Forsiden",
     watch: "Se opptak",
+    phone: {
+      lead: "Hvor besøkende klikker, ruller og ser, side for side.",
+      recordings: "Opptak",
+      stuck: "stod fast",
+      reached: "nådde halvveis",
+      views: "visninger",
+    },
   },
   map: {
     back: "Varmekart",

@@ -1,4 +1,8 @@
-import type { ContractSnapshot, FilledBlock, SnapshotSigner } from "@/lib/contract-fields";
+import type {
+  ContractSnapshot,
+  FilledBlock,
+  SnapshotSigner,
+} from "@/lib/contract-fields";
 import { contractText, type ContractText } from "@/lib/contract-text";
 
 /**
@@ -10,27 +14,59 @@ import { contractText, type ContractText } from "@/lib/contract-text";
 export const CONTRACT_CSS = `
 @page { size: A4; margin: 18mm; }
 .kc, .kc * { box-sizing: border-box; }
-.kc { color: #111; max-width: 210mm; margin: 0 auto; font: 10.5pt/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+.kc { color: #18181b; max-width: 210mm; margin: 0 auto; font: 10.5pt/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
 .kc h1, .kc .kc-title { font-size: 18pt; line-height: 1.25; margin: 0 0 6mm; font-weight: 700; }
-.kc h2 { font-size: 11.5pt; margin: 6mm 0 1.5mm; font-weight: 650; }
+.kc h2 { font-size: 11.5pt; margin: 6mm 0 1.5mm; font-weight: 650; break-after: avoid; }
 .kc p { margin: 0 0 3mm; white-space: pre-wrap; }
 .kc .kc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin: 0 0 6mm; padding: 4mm; border: 1px solid #d4d4d8; border-radius: 2mm; }
-.kc .kc-label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .04em; color: #52525b; margin: 0 0 1mm; }
+.kc .kc-label { font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; color: #71717a; margin: 0 0 1mm; }
 .kc .kc-party p { margin: 0; }
-.kc table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 10pt; }
-.kc th { text-align: left; font-weight: 600; border-bottom: 1px solid #a1a1aa; padding: 1.5mm 2mm; }
-.kc td { border-bottom: 1px solid #e4e4e7; padding: 1.5mm 2mm; vertical-align: top; }
-.kc .kc-num { text-align: right; white-space: nowrap; }
-.kc tfoot td { font-weight: 650; border-bottom: none; }
+.kc table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 2mm 0 5mm; font-size: 9.5pt; }
+.kc thead { display: table-header-group; }
+.kc tr { break-inside: avoid; }
+.kc th { text-align: left; font-weight: 600; font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; color: #52525b;
+  background: #f4f4f5; border-top: 1px solid #d4d4d8; border-bottom: 1px solid #d4d4d8; padding: 2mm 2.5mm; }
+.kc td { border-bottom: 1px solid #e4e4e7; padding: 2mm 2.5mm; vertical-align: top; overflow-wrap: anywhere; }
+.kc .kc-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kc tfoot td { font-weight: 650; border-top: 1px solid #a1a1aa; border-bottom: none; }
+.kc .kc-quote th:nth-child(1) { width: 49%; }
+.kc .kc-quote th:nth-child(2) { width: 11%; }
+.kc .kc-quote th:nth-child(3), .kc .kc-quote th:nth-child(4) { width: 20%; }
 .kc .kc-signatures { margin-top: 10mm; break-inside: avoid; }
 .kc .kc-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
-.kc .kc-box { border-top: 1px solid #111; padding-top: 2mm; min-height: 22mm; }
+.kc .kc-box { border-top: 1px solid #18181b; padding-top: 2mm; min-height: 22mm; }
 .kc .kc-box p { margin: 0; }
-.kc .kc-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8.5pt; word-break: break-all; }
-.kc-audit th { width: 32%; vertical-align: top; }
+.kc .kc-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 7.5pt; letter-spacing: 0; word-break: break-all; }
+.kc .kc-nowrap { white-space: nowrap; }
+.kc .kc-muted { color: #71717a; }
+.kc-audit .kc-facts { border: 1px solid #e4e4e7; border-radius: 2mm; padding: .6mm 4mm; margin: 0 0 4mm; }
+.kc-audit .kc-fact { display: grid; grid-template-columns: 28% 72%; gap: 3mm; padding: 1.2mm 0; border-bottom: 1px solid #f0f0f2; break-inside: avoid; }
+.kc-audit .kc-fact:last-child { border-bottom: none; }
+.kc-audit .kc-fact dt { margin: 0; font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; color: #71717a; padding-top: .4mm; }
+.kc-audit .kc-fact dd { margin: 0; }
+.kc-audit .kc-signers { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin: 0 0 5mm; }
+.kc-audit .kc-signer { border: 1px solid #e4e4e7; border-radius: 2mm; padding: 3mm 4mm; break-inside: avoid; }
+.kc-audit .kc-signer-head { margin: 0 0 2mm; padding-bottom: 2mm; border-bottom: 1px solid #f0f0f2; }
+.kc-audit .kc-signer-head strong { font-weight: 650; }
+.kc-audit .kc-signer dl { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4mm 4mm; margin: 0; }
+.kc-audit .kc-signer .kc-wide { grid-column: 1 / -1; }
+.kc-audit td { padding: 1.5mm 2.5mm; }
+.kc-audit h1 { margin-bottom: 4mm; }
+.kc-audit h2 { margin-top: 5mm; }
+.kc-audit .kc-signer dt { font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; color: #71717a; margin: 0; }
+.kc-audit .kc-signer dd { margin: 0; }
+.kc-audit .kc-note { margin: 3mm 0 0; font-size: 8.5pt; color: #71717a; }
 `;
 
-function Party({ label, party, words }: { label: string; party: ContractSnapshot["parties"]["store"]; words: ContractText }) {
+function Party({
+  label,
+  party,
+  words,
+}: {
+  label: string;
+  party: ContractSnapshot["parties"]["store"];
+  words: ContractText;
+}) {
   return (
     <div className="kc-party">
       <p className="kc-label">{label}</p>
@@ -47,7 +83,15 @@ function Party({ label, party, words }: { label: string; party: ContractSnapshot
   );
 }
 
-function Block({ block, signers, words }: { block: FilledBlock; signers: readonly SnapshotSigner[]; words: ContractText }) {
+function Block({
+  block,
+  signers,
+  words,
+}: {
+  block: FilledBlock;
+  signers: readonly SnapshotSigner[];
+  words: ContractText;
+}) {
   switch (block.type) {
     case "heading":
       return <h2>{block.text}</h2>;
@@ -62,7 +106,7 @@ function Block({ block, signers, words }: { block: FilledBlock; signers: readonl
       );
     case "quote_lines":
       return (
-        <table>
+        <table className="kc-quote">
           <thead>
             <tr>
               <th>{words.item}</th>
@@ -96,7 +140,9 @@ function Block({ block, signers, words }: { block: FilledBlock; signers: readonl
           <div className="kc-boxes">
             {signers.map((signer, i) => (
               <div className="kc-box" key={i}>
-                <p className="kc-label">{signer.role === "store" ? words.forStore : words.forCustomer}</p>
+                <p className="kc-label">
+                  {signer.role === "store" ? words.forStore : words.forCustomer}
+                </p>
                 <p>{signer.name}</p>
               </div>
             ))}
@@ -107,7 +153,13 @@ function Block({ block, signers, words }: { block: FilledBlock; signers: readonl
 }
 
 /** The contract; `level` is its title's heading: 1 in the PDF, 2 on a page that has its own title (the signing page, the admin's preview). */
-export function ContractDocumentView({ snapshot, level = 1 }: { snapshot: ContractSnapshot; level?: 1 | 2 }) {
+export function ContractDocumentView({
+  snapshot,
+  level = 1,
+}: {
+  snapshot: ContractSnapshot;
+  level?: 1 | 2;
+}) {
   const Title = level === 1 ? "h1" : "h2";
   const words = contractText(snapshot.language);
   // The first heading of the owner's own blocks is the document's title when it opens with one; else the contract's title is.
@@ -115,10 +167,20 @@ export function ContractDocumentView({ snapshot, level = 1 }: { snapshot: Contra
   const opensWithHeading = first?.type === "heading";
   return (
     <article className="kc" lang={snapshot.language}>
-      <Title className="kc-title">{opensWithHeading ? first.text : snapshot.title}</Title>
+      <Title className="kc-title">
+        {opensWithHeading ? first.text : snapshot.title}
+      </Title>
       <div className="kc-parties" aria-label={words.between}>
-        <Party label={words.supplier} party={snapshot.parties.store} words={words} />
-        <Party label={words.customer} party={snapshot.parties.customer} words={words} />
+        <Party
+          label={words.supplier}
+          party={snapshot.parties.store}
+          words={words}
+        />
+        <Party
+          label={words.customer}
+          party={snapshot.parties.customer}
+          words={words}
+        />
       </div>
       {(opensWithHeading ? rest : snapshot.blocks).map((block, i) => (
         <Block key={i} block={block} signers={snapshot.signers} words={words} />
@@ -136,8 +198,21 @@ export type ContractAudit = {
   sentAt: string;
   completedAt: string;
   timeZone: string;
-  signers: { role: "store" | "customer" | "other"; name: string; email: string; signedName: string; signedAt: string; method: "email_code" | "admin_session"; ip: string | null }[];
-  events: { kind: keyof ContractText["audit"]["kinds"]; at: string; who: string | null; ip: string | null }[];
+  signers: {
+    role: "store" | "customer" | "other";
+    name: string;
+    email: string;
+    signedName: string;
+    signedAt: string;
+    method: "email_code" | "admin_session";
+    ip: string | null;
+  }[];
+  events: {
+    kind: keyof ContractText["audit"]["kinds"];
+    at: string;
+    who: string | null;
+    ip: string | null;
+  }[];
   sealFingerprint: string;
 };
 
@@ -146,83 +221,108 @@ export function ContractAuditView({ audit }: { audit: ContractAudit }) {
   const words = contractText(audit.language);
   const a = words.audit;
   const locale = audit.language === "nb" ? "nb-NO" : "en-GB";
-  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "long", timeZone: audit.timeZone });
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString(locale, {
+      dateStyle: "medium",
+      timeStyle: "long",
+      timeZone: audit.timeZone,
+    });
   return (
     <article className="kc kc-audit" lang={audit.language}>
       <h1>{a.title}</h1>
       <p>{a.intro}</p>
-      <table>
-        <tbody>
-          <tr>
-            <th>{a.contract}</th>
-            <td>
-              {audit.title} <span className="kc-mono">({audit.contractId})</span>
-            </td>
-          </tr>
-          <tr>
-            <th>{a.document}</th>
-            <td className="kc-mono">{audit.documentSha256}</td>
-          </tr>
-          <tr>
-            <th>{a.sentAt}</th>
-            <td>{when(audit.sentAt)}</td>
-          </tr>
-          <tr>
-            <th>{a.completedAt}</th>
-            <td>{when(audit.completedAt)}</td>
-          </tr>
-        </tbody>
-      </table>
+      <dl className="kc-facts">
+        <div className="kc-fact">
+          <dt>{a.contract}</dt>
+          <dd>{audit.title}</dd>
+        </div>
+        <div className="kc-fact">
+          <dt>{a.contractId}</dt>
+          <dd className="kc-mono">{audit.contractId}</dd>
+        </div>
+        <div className="kc-fact">
+          <dt>{a.document}</dt>
+          <dd className="kc-mono">{audit.documentSha256}</dd>
+        </div>
+        <div className="kc-fact">
+          <dt>{a.sentAt}</dt>
+          <dd>{when(audit.sentAt)}</dd>
+        </div>
+        <div className="kc-fact">
+          <dt>{a.completedAt}</dt>
+          <dd>{when(audit.completedAt)}</dd>
+        </div>
+        <div className="kc-fact">
+          <dt>{a.sealTitle}</dt>
+          <dd className="kc-mono">{audit.sealFingerprint}</dd>
+        </div>
+      </dl>
       <h2>{a.signers}</h2>
+      <div className="kc-signers">
+        {audit.signers.map((s, i) => (
+          <section className="kc-signer" key={i}>
+            <p className="kc-signer-head">
+              <span className="kc-label">
+                {s.role === "store" ? words.forStore : words.forCustomer}
+              </span>
+              <br />
+              <strong>{s.name}</strong>
+            </p>
+            <dl>
+              <div className={s.ip ? undefined : "kc-wide"}>
+                <dt>{a.signedName}</dt>
+                <dd>{s.signedName}</dd>
+              </div>
+              {s.ip ? (
+                <div>
+                  <dt>{a.ip}</dt>
+                  <dd className="kc-nowrap">{s.ip}</dd>
+                </div>
+              ) : null}
+              <div className="kc-wide">
+                <dt>{a.signedAt}</dt>
+                <dd>{when(s.signedAt)}</dd>
+              </div>
+              <div className="kc-wide">
+                <dt>{a.method}</dt>
+                <dd>{a.methods[s.method]}</dd>
+              </div>
+              <div className="kc-wide">
+                <dt>{a.email}</dt>
+                <dd>{s.email}</dd>
+              </div>
+            </dl>
+          </section>
+        ))}
+      </div>
+      <h2>{a.events}</h2>
       <table>
+        <colgroup>
+          <col style={{ width: "30%" }} />
+          <col style={{ width: "24%" }} />
+          <col style={{ width: "28%" }} />
+          <col style={{ width: "18%" }} />
+        </colgroup>
         <thead>
           <tr>
-            <th>{words.name}</th>
-            <th>{a.signedName}</th>
-            <th>{a.signedAt}</th>
-            <th>{a.method}</th>
+            <th scope="col">{a.signedAt}</th>
+            <th scope="col">{a.event}</th>
+            <th scope="col">{a.by}</th>
+            <th scope="col">{a.ip}</th>
           </tr>
         </thead>
         <tbody>
-          {audit.signers.map((s, i) => (
-            <tr key={i}>
-              <td>
-                {s.role === "store" ? words.forStore : words.forCustomer}: {s.name}
-                <br />
-                <span className="kc-mono">{s.email}</span>
-              </td>
-              <td>{s.signedName}</td>
-              <td>{when(s.signedAt)}</td>
-              <td>
-                {a.methods[s.method]}
-                {s.ip ? (
-                  <>
-                    <br />
-                    <span className="kc-mono">
-                      {a.from} {s.ip}
-                    </span>
-                  </>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <h2>{a.events}</h2>
-      <table>
-        <tbody>
           {audit.events.map((e, i) => (
             <tr key={i}>
-              <td>{when(e.at)}</td>
+              <td className="kc-nowrap">{when(e.at)}</td>
               <td>{a.kinds[e.kind]}</td>
               <td>{e.who ?? ""}</td>
-              <td className="kc-mono">{e.ip ?? ""}</td>
+              <td className="kc-nowrap">{e.ip ?? ""}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p>{a.seal}</p>
-      <p className="kc-mono">{audit.sealFingerprint}</p>
+      <p className="kc-note">{a.sealNote}</p>
     </article>
   );
 }

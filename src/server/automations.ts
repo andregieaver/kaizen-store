@@ -46,7 +46,7 @@ import { inStockNow, OFFERED } from "./product-conditions";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
 import { PRODUCT_VIEW_DAYS } from "@/lib/automation-kinds";
 import { col, typedRows } from "./typed-rows";
-import { flowReplacing } from "./flows";
+import { dropProductViewsUnlessBrowsing, flowReplacing } from "./flows";
 import { isPaused } from "./sending-guard";
 
 type Row = Record<string, unknown>;
@@ -186,7 +186,8 @@ export async function switchAutomation(store: Pick<EmailStore, "id" | "localizat
   `);
   refreshBuyFacts(store.id);
   // Browse off (D691): the product views kept for it go at once; nothing is kept for an email that will not go.
-  if (kind === "browse" && !on) await db().execute(sql`delete from commerce.customer_product_views where store_id = ${store.id}::uuid`);
+  // ... unless a flow still starts from them (D767 slice 4).
+  if (kind === "browse" && !on) await dropProductViewsUnlessBrowsing(store.id);
   await audit(accountId, store.id, "marketing_automation.switched", { kind, on }, { target: { type: "automation", id: kind } });
   return { ok: true };
 }

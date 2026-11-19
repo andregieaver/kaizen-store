@@ -191,6 +191,8 @@ export async function switchFlow(storeId: string, accountId: string | null, id: 
     return { replaced: off.length > 0 ? replaces : null };
   });
   if (!outcome) return (await getFlow(storeId, id)) ? "untested" : "missing";
+  // Product views are kept only while a browse email is on (D691): the last one off, they go.
+  if (!on) await dropProductViewsUnlessBrowsing(storeId);
   // An automation switched off changes what the buy facts say the store sends (as switchAutomation() refreshes them).
   if (outcome.replaced) refreshBuyFacts(storeId);
   await audit(accountId, storeId, on ? "marketing.flow_on" : "marketing.flow_off", { flow: id, ...(outcome.replaced ? { automationOff: outcome.replaced } : {}) });
@@ -505,6 +507,32 @@ export async function enterLapsed(now = new Date()): Promise<number> {
 }
 
 /**
+ * Enters the people a browse flow is for (slice 4, D691's browse abandonment): a subscribed customer whose latest product view is the
+ * flow's days old with nothing paid since, once per day of viewing (`browse:{customer}:{day}`); only views since the flow was switched on,
+ * at most `LAPSE_CATCH_UP_DAYS` back. Views exist only for signed-in subscribers who allowed marketing cookies (`recordProductView()`).
+ */
+export async function enterBrowsed(now = new Date()): Promise<number> {
+  const at = now.toISOString();
+  const due = sql`(v.last_at + make_interval(days => f.trigger_days))`;
+  const rows = await db().execute(sql`
+    insert into commerce.flow_runs (store_id, flow_id, version, subscriber_id, entry_key, path)
+    select f.store_id, f.id, f.version, m.id, 'browse:' || c.id || ':' || to_char(v.last_at at time zone 'UTC', 'YYYY-MM-DD'), '0'
+      from commerce.flows f
+      join lateral (
+        select cv.customer_id, max(cv.viewed_at) as last_at from commerce.customer_product_views cv where cv.store_id = f.store_id group by cv.customer_id
+      ) v on true
+      join commerce.customers c on c.store_id = f.store_id and c.id = v.customer_id
+      join commerce.marketing_subscribers m on m.store_id = c.store_id and lower(m.email) = lower(c.email) and m.status = 'subscribed'
+     where f.enabled and f.trigger = 'customer.browsed' and f.store_id is not null
+       and ${due} <= ${at}::timestamptz and ${due} >= f.enabled_at and ${due} > ${at}::timestamptz - make_interval(days => ${LAPSE_CATCH_UP_DAYS})
+       and not exists (select 1 from commerce.orders o where o.store_id = c.store_id and lower(o.email) = lower(c.email)
+                        and o.placed_at > v.last_at and o.restricted_at is null and ${PAID})
+    on conflict do nothing
+    returning id`);
+  return rows.length;
+}
+
+/**
  * The every-minute job's turn: while no flow is switched on anywhere (one read), nothing more; else people enter from the event log and the
  * due runs move on, whose runs may still be going after their flow was switched off. Never throws.
  */
@@ -517,6 +545,7 @@ export async function tickFlows(): Promise<void> {
     if (!any?.on) return;
     await enterFlows();
     await enterLapsed();
+    await enterBrowsed();
     await runFlows();
   } catch (error) {
     log("error", "flows.tick_failed", {}, error);
@@ -536,4 +565,14 @@ export async function flowRunsOf(storeId: string, addresses: string[], customerI
          order by r.entered_at`,
   );
   return rows.map((r) => ({ flow: r.flow, enteredAt: r.entered_at, status: r.status, endedAt: r.ended_at }));
+}
+
+/** Whether the store sends a browse email now: its browse automation, or a switched-on flow that starts from product views (D691). */
+export const BROWSE_ON = (store: ReturnType<typeof sql>) => sql`(
+  exists (select 1 from commerce.automations a where a.store_id = ${store} and a.kind = 'browse' and a.enabled)
+  or exists (select 1 from commerce.flows f where f.store_id = ${store} and f.trigger = 'customer.browsed' and f.enabled))`;
+
+/** Deletes the store's product views when no browse email is on any more (D691: nothing kept for an email that will not go). */
+export async function dropProductViewsUnlessBrowsing(storeId: string): Promise<void> {
+  await db().execute(sql`delete from commerce.customer_product_views where store_id = ${storeId}::uuid and not ${BROWSE_ON(sql`${storeId}::uuid`)}`);
 }
