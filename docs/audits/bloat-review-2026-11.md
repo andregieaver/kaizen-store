@@ -219,8 +219,8 @@ commit as the fix.
 | 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | |
 | 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 | Open | |
 | 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2, 3.4 | Open | |
-| 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Open | |
-| 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | Part 2026-11-19 (D807): the dispatcher asks the route; commit 1 done; left: cron_due() and its indexes, commit 3 |
+| 3.6 | Indexes that fit the document jobs' windows |  | S | review |  | Done | 19 Nov, migration 20261119202909_document_job_indexes: the eight and step 3.7's two PDF-waiting indexes; EXPLAIN uses each for its job's statement. |
+| 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | Part 2026-11-19 (D807): the dispatcher asks the route; commit 1 done; its two indexes in 3.6's migration; left: cron_due(), commit 3 |
 | 3.8 | Drop the duplicate idempotency table and the leftover schema, after a verified dump | DS-14 | S | review | 0.2 | Open | |
 | 3.9 | Keep one kaizenaflow.com | FM-3, FT-5, DS-6 | L | strong |  | Open | |
 | 3.10 | Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope | CP-4, FM-4, FM-5 | M | strong | 1.17 | Open | |

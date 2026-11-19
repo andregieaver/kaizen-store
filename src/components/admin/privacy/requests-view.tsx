@@ -3,6 +3,7 @@ import Link from "next/link";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { privacyEn, type PrivacyMessages } from "@/lib/admin-messages/privacy.en";
 import type { RequestView } from "@/server/privacy-requests";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 import { alertText, buttonPrimary, card, clockWords, dayText } from "./styles";
@@ -51,7 +52,15 @@ export function RequestsView({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader title={c.privacyRequests} description={<>{w.description}</>} />
+        <PageHeader
+          title={c.privacyRequests}
+          description={
+            <>
+              <span className="sm:hidden">{w.phoneLead}</span>
+              <span className="max-sm:hidden">{w.description}</span>
+            </>
+          }
+        />
         {canWrite && (
           <Link href={`${base}/privacy/new`} className={buttonPrimary}>
             {w.logRequest}
@@ -78,7 +87,8 @@ export function RequestsView({
         ))}
       </nav>
 
-      <section aria-labelledby="request-list" className={card}>
+      {/* Round 61 (D822): on a phone an empty list is a line and how the month is counted is a row. */}
+      <section aria-labelledby="request-list" className={`${card} ${shown.length === 0 ? "max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none" : ""}`}>
         <h2 id="request-list" className="sr-only">
           {fillWords(w.filterHeading, { filter: w.filters[filter] })}
         </h2>
@@ -114,7 +124,11 @@ export function RequestsView({
           </List>
         )}
       </section>
-      <p className="max-w-2xl text-sm text-muted">{words.staff.clock}</p>
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+        <PhoneRow last title={w.phoneClock} sub={w.phoneClockSub} change={w.phoneRead} done={w.phoneClose}>
+          <p className="max-w-2xl text-sm text-muted">{words.staff.clock}</p>
+        </PhoneRow>
+      </div>
     </div>
   );
 }

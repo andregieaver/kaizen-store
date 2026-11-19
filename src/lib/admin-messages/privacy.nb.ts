@@ -82,6 +82,12 @@ export const privacyNb: PrivacyMessages = {
   list: {
     description:
       "Folk kan spørre hva butikken har om dem, eller be om at det slettes. Registrer en forespørsel når den kommer inn, og svar innen én måned. Dette er ikke juridisk rådgivning.",
+    /** Runde 61 (D822): listen på en telefon. */
+    phoneLead: "Logg en forespørsel når den kommer, og svar innen en måned.",
+    phoneClock: "Slik telles måneden",
+    phoneClockSub: "Til samme dato; inntil to til hvis den er sammensatt",
+    phoneRead: "Les",
+    phoneClose: "Lukk",
     logRequest: "Registrer en forespørsel",
     overdue: { one: "{n} forespørsel har passert fristen.", many: "{n} forespørsler har passert fristen." },
     lawAsks: "Loven krever svar innen én måned.",
