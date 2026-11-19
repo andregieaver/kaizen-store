@@ -4,7 +4,7 @@ import { ChevronDown, MessageSquare, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { TAB_WORDS, durationWords, topicWords } from "@/lib/support-inbox-text";
+import { durationWords, topicWords } from "@/lib/support-inbox-text";
 import { topicsFor } from "@/lib/support-summary";
 import { TONE_BANDS } from "@/lib/support-tone";
 import { TYPING_SHOWN_MS, staffDelay } from "@/lib/support-realtime";
@@ -473,7 +473,7 @@ export function Inbox({
               aria-label={w.whichConversations}
               className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]"
             >
-              {(Object.keys(TAB_WORDS) as InboxTab[]).map((key) => (
+              {(Object.keys(t.lib.tabs) as InboxTab[]).map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -528,9 +528,9 @@ export function Inbox({
                 className="rounded-md border border-line bg-card px-2 py-1 text-sm"
               >
                 <option value="">{w.anyTopic}</option>
-                {topicsFor(context.level === "platform").map((t) => (
-                  <option key={t} value={t}>
-                    {topicWords(t)}
+                {topicsFor(context.level === "platform").map((topic) => (
+                  <option key={topic} value={topic}>
+                    {topicWords(topic, t.lib)}
                   </option>
                 ))}
               </select>

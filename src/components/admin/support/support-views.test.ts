@@ -83,29 +83,29 @@ const conversation = (over: Partial<StaffConversation> = {}): StaffConversation 
 
 describe("the inbox's words (D216, 2.4)", () => {
   it("says how long ago in the shortest words", () => {
-    expect(agoWords("2026-10-13T12:00:00Z", now)).toBe("just now");
-    expect(agoWords("2026-10-13T11:57:00Z", now)).toBe("3 min");
-    expect(agoWords("2026-10-13T10:00:00Z", now)).toBe("2 h");
-    expect(agoWords("2026-10-10T12:00:00Z", now)).toBe("3 d");
+    expect(agoWords("2026-10-13T12:00:00Z", now, supportEn.lib)).toBe("just now");
+    expect(agoWords("2026-10-13T11:57:00Z", now, supportEn.lib)).toBe("3 min");
+    expect(agoWords("2026-10-13T10:00:00Z", now, supportEn.lib)).toBe("2 h");
+    expect(agoWords("2026-10-10T12:00:00Z", now, supportEn.lib)).toBe("3 d");
   });
 
   it("says who answers: the AI, waiting and for how long, the person who has it, or ended", () => {
-    expect(handlerWords(row(), now)).toBe("Waiting 5 min");
-    expect(handlerWords(row({ handler: "ai" }), now)).toBe("AI");
-    expect(handlerWords(row({ handler: "human", assignee: { id: "a", name: "Ola" } }), now)).toBe("Ola");
-    expect(handlerWords(row({ status: "ended" }), now)).toBe("Ended");
+    expect(handlerWords(row(), now, supportEn.lib)).toBe("Waiting 5 min");
+    expect(handlerWords(row({ handler: "ai" }), now, supportEn.lib)).toBe("AI");
+    expect(handlerWords(row({ handler: "human", assignee: { id: "a", name: "Ola" } }), now, supportEn.lib)).toBe("Ola");
+    expect(handlerWords(row({ status: "ended" }), now, supportEn.lib)).toBe("Ended");
   });
 
   it("words system lines, and says nothing of a kind it does not know", () => {
-    expect(systemWords("joined", { name: "Ola" })).toBe("Ola joined the conversation");
-    expect(systemWords("queued", null)).toBe("Waiting for a person");
-    expect(systemWords("something_new", null)).toBeNull();
+    expect(systemWords("joined", { name: "Ola" }, supportEn.lib)).toBe("Ola joined the conversation");
+    expect(systemWords("queued", null, supportEn.lib)).toBe("Waiting for a person");
+    expect(systemWords("something_new", null, supportEn.lib)).toBeNull();
   });
 
   it("gives a tone its band in words and its score, never colour alone", () => {
-    expect(toneWords(-45)).toEqual({ band: "bad", words: "Bad (-45)", level: 2 });
-    expect(toneWords(70)).toEqual({ band: "very_good", words: "Very good (+70)", level: 5 });
-    expect(toneWords(null)).toBeNull();
+    expect(toneWords(-45, supportEn.lib)).toEqual({ band: "bad", words: "Bad (-45)", level: 2 });
+    expect(toneWords(70, supportEn.lib)).toEqual({ band: "very_good", words: "Very good (+70)", level: 5 });
+    expect(toneWords(null, supportEn.lib)).toBeNull();
   });
 
   it("opens a conversation through its own store at the owner's level", () => {

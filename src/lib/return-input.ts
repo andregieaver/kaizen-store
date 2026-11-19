@@ -190,7 +190,6 @@ export const returnStep = z.object({
 });
 
 export const RETURN_CONDITIONS = ["as_new", "opened", "used", "damaged"] as const;
-export type ReturnCondition = (typeof RETURN_CONDITIONS)[number];
 
 /**
  * Inspect the goods, per line: what condition they came back in, whether they go back into stock, and a deduction for

@@ -8,14 +8,10 @@ import {
 } from "./store-copy";
 import { slugProblem, suggestSlug } from "./slug";
 import { fillWords } from "./admin-fill";
-import {
-  platformEn,
-  type PlatformMessages,
-} from "./admin-messages/platform.en";
+import type { PlatformMessages } from "./admin-messages/platform.en";
 
-/** The words the wizard's rules write (D312 A11, `platform.copyWizard.lib`); English unless given. */
+/** The words the wizard's rules write (D312 A11, `platform.copyWizard.lib`), in the admin's language. */
 export type CopyWizardWords = PlatformMessages["copyWizard"]["lib"];
-const EN: CopyWizardWords = platformEn.copyWizard.lib;
 
 /**
  * The duplicate-a-store wizard's own rules (D129), pure so the browser and the tests share them: what is chosen, what
@@ -46,7 +42,7 @@ const count = (
 /** The wizard as it opens: everything but people and orders, named "Copy of {store}". */
 export function initialWizard(
   sourceName: string,
-  words: CopyWizardWords = EN,
+  words: CopyWizardWords,
 ): WizardState {
   return {
     name: fillWords(words.copyOf, { name: sourceName })
@@ -158,7 +154,7 @@ export function filterRows<T>(
 /** A product's status in plain words ("active" is Active). */
 export const statusLabel = (
   status: string,
-  words: CopyWizardWords = EN,
+  words: CopyWizardWords,
 ): string =>
   words.productStatuses[status] ??
   (status
@@ -169,7 +165,7 @@ export const statusLabel = (
 export const selectedLine = (
   selected: number,
   total: number,
-  words: CopyWizardWords = EN,
+  words: CopyWizardWords,
   locale = "en",
 ): string =>
   fillWords(words.selected, {
@@ -189,7 +185,7 @@ export type WizardProblem = {
 
 export function wizardProblems(
   state: WizardState,
-  words: CopyWizardWords = EN,
+  words: CopyWizardWords,
   locale = "en",
 ): WizardProblem[] {
   const w = words.problems;
@@ -265,7 +261,7 @@ export function summarySentence(
     CopyChoices,
     "pages" | "products" | "posts" | "customers" | "orders"
   >,
-  words: CopyWizardWords = EN,
+  words: CopyWizardWords,
   locale = "en",
 ): string {
   const w = words.summary;

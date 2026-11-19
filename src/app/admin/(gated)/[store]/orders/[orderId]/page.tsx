@@ -116,6 +116,7 @@ import { einvoiceLines } from "@/server/einvoice-sending";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 import { dealsOn } from "@/lib/extensions";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -1119,7 +1120,7 @@ function EventLine({ event, money, currency, base, locationNames, words }: { eve
   if (isReturnEvent(event.type)) {
     return (
       <>
-        {eventSentence(event.type, data, currency)}
+        {eventSentence(event.type, data, currency, undefined, returnsEn)}
         {typeof data.returnId === "string" && typeof data.number === "string" && (
           <>
             {" · "}

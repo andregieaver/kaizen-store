@@ -14,6 +14,7 @@ import { AffiliateSettingsForm, AffiliateSettingsView, type AffiliateSettingsVie
 import { AttributionsTable, ReferrersTable } from "./affiliate-tables";
 import { CustomerAffiliateSection, showsAffiliate } from "./customer-affiliate";
 import { OrderAttributionCard, ReferralDiscountRow } from "./order-affiliate";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 /** What a person reads before any script runs: tags out of the way, entities and no-break spaces made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -79,7 +80,7 @@ describe("the referral settings form", () => {
 
   it("says what is wrong beside each field, and what the server refused", () => {
     const values = { ...formFromSettings(settings(), "NOK"), friendPercent: "ten", cookieDays: "91" };
-    const read = readAffiliateForm(values, "NOK");
+    const read = readAffiliateForm(values, "NOK", loyaltyEn.affiliate.errors);
     expect(read.ok).toBe(false);
     if (read.ok) return;
     const props: AffiliateSettingsViewProps = {

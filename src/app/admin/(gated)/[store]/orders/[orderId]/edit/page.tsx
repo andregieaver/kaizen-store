@@ -15,7 +15,8 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { blockTextWords, editProblemText, fillWords } from "@/lib/drafts-words";
+import { fillWords } from "@/lib/drafts-words";
+import { blockTextWords, editProblemText } from "@/lib/drafts-words-english";
 
 import {
   applyOrderEditAction,

@@ -20,7 +20,8 @@ import { checkPermission } from "@/server/permissions";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { editProblemText, fillWords, type DraftsWords } from "@/lib/drafts-words";
+import { fillWords, type DraftsWords } from "@/lib/drafts-words";
+import { editProblemText } from "@/lib/drafts-words-english";
 
 /**
  * The actions of changing an order after purchase (wave 3, run 3, D174, `docs/wave-3-fulfilment.md` 2.2 and 4.5). Each asks `orders:write` itself and takes the store slug

@@ -9,6 +9,7 @@ import { choicesOf, idOf } from "@/lib/store-copy-test-support";
 import { addIds, initialWizard, setMode, type WizardState } from "@/lib/store-copy-wizard";
 
 import { StoreCopyWizard } from "./store-copy-wizard";
+import { platformEn } from "@/lib/admin-messages/platform.en";
 
 /** Drawn on the server: what a person sees before any script runs. */
 const html = (props: Partial<Parameters<typeof StoreCopyWizard>[0]> = {}) =>
@@ -22,7 +23,7 @@ const html = (props: Partial<Parameters<typeof StoreCopyWizard>[0]> = {}) =>
     .replace(/<!-- -->/g, "")
     .replace(/&#x27;/g, "'");
 
-const base = (): WizardState => initialWizard("Kaffe & Co");
+const base = (): WizardState => initialWizard("Kaffe & Co", platformEn.copyWizard.lib);
 
 describe("the duplicate wizard", () => {
   it("opens with the name, All for the lists, and the fixed lists collapsed", () => {

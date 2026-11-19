@@ -9,7 +9,6 @@ import { IMPORT_MAX_BYTES, REDIRECT_IMPORT_MAX_ROWS } from "@/lib/data-limits";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { existingChoiceWords, importConfirmation, type ExistingChoice } from "@/lib/redirect-admin";
-import { redirectProblems } from "@/lib/redirect-words";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 
 import { useAdminLang, useAdminText } from "../admin-text";
@@ -61,7 +60,7 @@ export function RedirectUpload({
     try {
       const started = await start(file.name);
       if (!started.ok) {
-        setProblems(redirectProblems([started.problem], w));
+        setProblems([started.problem]);
         return;
       }
       const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv", cacheControl: "0" });
@@ -71,7 +70,7 @@ export function RedirectUpload({
       }
       const registered = await register({ path: started.path, name: file.name });
       if (!registered.ok) {
-        setProblems(redirectProblems(registered.problems, w));
+        setProblems(registered.problems);
         return;
       }
       router.push(`/admin/${slug}/redirects/import/${registered.jobId}`);
@@ -134,7 +133,7 @@ export function RedirectImportOptions({ initial, check, checked }: { initial: Ex
         start(async () => {
           setProblem(null);
           const result = await check({ existing });
-          if (!result.ok) setProblem(redirectProblems([result.problem], w)[0]);
+          if (!result.ok) setProblem(result.problem);
         });
       }}
     >
@@ -186,7 +185,7 @@ export function RedirectImportApply({
     start(async () => {
       setProblem(null);
       const result = await step();
-      if (!result.ok) setProblem(redirectProblems([result.problem], w)[0]);
+      if (!result.ok) setProblem(result.problem);
     });
   return (
     <section aria-label={a.label} className={`${card} flex flex-col gap-3`} aria-busy={pending}>

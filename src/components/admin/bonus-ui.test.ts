@@ -13,6 +13,7 @@ import { BonusOverviewCard } from "./bonus-overview";
 import { BonusSettingsForm, BonusSettingsView, type BonusSettingsViewProps } from "./bonus-settings-form";
 import { CustomerBonus, showsBonus } from "./customer-bonus";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "./order-bonus";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 /** What a person reads before any script runs: tags out of the way, entities and no-break spaces made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -130,7 +131,7 @@ const view = (over: Partial<BonusSettingsViewProps> = {}) => {
 describe("the bonus settings form after a try", () => {
   it("puts each problem beside its field and in the live region, and marks the fields", () => {
     const values = { ...formFromSettings(settings({ enabled: true }), "NOK"), earnPercent: "60", pendingDays: "soon" };
-    const read = readBonusForm(values, "NOK");
+    const read = readBonusForm(values, "NOK", loyaltyEn.bonus.errors);
     expect(read.ok).toBe(false);
     if (read.ok) return;
     const out = view({ values, errors: read.errors, complete: false });

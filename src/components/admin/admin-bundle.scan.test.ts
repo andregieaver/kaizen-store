@@ -92,27 +92,16 @@ const ends = (line: string) => `${line.split(" -> ")[0]} -> ${line.split(" -> ")
 const zodReach = () => clientsReaching("zod");
 
 /**
- * 3. Catalogues (bloat review step 2.26): every `importer -> catalogue` by which an admin client module reaches an area's catalogue file
- *    (`src/lib/admin-messages/{area}.{en,nb}.ts`) through value imports, a lib module on the way too. `common.en` and `sign-in.en` are
- *    allowed, and `admin-text-later.ts`, whose `import()` per area is the designed late fetch. CATALOGUE_SITES is what the code held when
- *    the rule came in; it only shrinks, and step 2.26 works it down to empty.
+ * 3. Catalogues (bloat review step 2.26): no admin client module reaches an area's catalogue file (`src/lib/admin-messages/{area}.{en,nb}.ts`)
+ *    or an English twin of a helper (`src/lib/*-english.ts`, for the server and the tests) through value imports, a lib module on the way
+ *    too. `common.en` and `sign-in.en` are allowed, and `admin-text-later.ts`, whose `import()` per area is the designed late fetch. A part
+ *    takes its words as an argument or reads them with `useAdminText()`; English the server writes is said in the account's language on the
+ *    server (`docs/platform-admin-i18n.md` 3.3).
  */
 const SITE_CATALOGUE = /admin-messages\/([\w-]+\.(?:en|nb))$/;
+const ENGLISH_TWIN = /^lib\/[\w-]+-english\.ts$/;
 const ALLOWED_CATALOGUES = ["common.en", "sign-in.en"];
 const LATE_FETCH = "components/admin/admin-text-later.ts";
-const CATALOGUE_SITES: string[] = [
-  "src/lib/affiliate-admin.ts -> loyalty.en",
-  "src/lib/analytics-words.ts -> analytics.en",
-  "src/lib/analytics-words.ts -> analytics.nb",
-  "src/lib/bonus-admin.ts -> loyalty.en",
-  "src/lib/drafts-words.ts -> drafts.en",
-  "src/lib/experiment-words.ts -> experiments.en",
-  "src/lib/redirect-words.ts -> redirects.en",
-  "src/lib/return-admin.ts -> returns.en",
-  "src/lib/store-copy-wizard.ts -> platform.en",
-  "src/lib/support-inbox-text.ts -> support.en",
-  "src/lib/tax-profile.ts -> tax.en",
-];
 
 function catalogueSites(planted?: Map<string, string[]>): string[] {
   const walked = new Set<string>();
@@ -126,6 +115,8 @@ function catalogueSites(planted?: Map<string, string[]>): string[] {
     for (const specifier of specifiers) {
       const catalogue = SITE_CATALOGUE.exec(specifier)?.[1];
       if (catalogue && !ALLOWED_CATALOGUES.includes(catalogue)) sites.add(`src/${rel(file)} -> ${catalogue}`);
+      const target = resolve(file, specifier);
+      if (target && !PACKAGES.includes(target) && ENGLISH_TWIN.test(rel(target))) sites.add(`src/${rel(file)} -> src/${rel(target)}`);
     }
   }
   return [...sites].sort();
@@ -162,15 +153,16 @@ describe.skipIf(WRITE)("the admin's browser scripts (bloat review step 1.4)", ()
     expect(gone, "These no longer reach zod: take them off with WRITE_ADMIN_BUNDLE_BASELINE=1 pnpm exec vitest run src/components/admin/admin-bundle.scan.test.ts").toEqual([]);
   });
 
-  it("no client module reaches an area's catalogue that is not on the list, and the list only shrinks", () => {
-    const now = catalogueSites();
-    const known = new Set(CATALOGUE_SITES);
-    expect(
-      now.filter((site) => !known.has(site)),
-      "An admin client module reaches an area's catalogue: pass the words as an argument or read them with useAdminText(); see docs/platform-admin-i18n.md 3.3",
-    ).toEqual([]);
-    const live = new Set(now);
-    expect(CATALOGUE_SITES.filter((site) => !live.has(site)), "These no longer reach their catalogue: take them off CATALOGUE_SITES").toEqual([]);
+  it("no client module reaches an area's catalogue or an English twin", () => {
+    expect(catalogueSites(), "pass the words as an argument or read them with useAdminText(); see docs/platform-admin-i18n.md 3.3").toEqual([]);
+  });
+
+  it("would notice: a catalogue and an English twin planted on a lib module a client part reads", () => {
+    const helper = join(SRC, "lib/admin-fill.ts");
+    const planted = new Map([[helper, ["@/lib/admin-messages/home.en", "@/lib/return-admin-english"]]]);
+    const sites = catalogueSites(planted);
+    expect(sites).toContain("src/lib/admin-fill.ts -> home.en");
+    expect(sites).toContain("src/lib/admin-fill.ts -> src/lib/return-admin-english.ts");
   });
 
   it("would notice: zod planted on a part of the frame", () => {

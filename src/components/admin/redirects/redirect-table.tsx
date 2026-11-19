@@ -8,7 +8,6 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { deleteSelectedWords, kindWords, madeByWords, usedWords } from "@/lib/redirect-admin";
 import { redirectStatusWords, type RedirectKind, type RedirectStatus } from "@/lib/redirects";
-import { redirectProblems } from "@/lib/redirect-words";
 
 import { useAdminLang, useAdminText } from "../admin-text";
 
@@ -86,7 +85,7 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
       setNotice(null);
       const result = await actions.remove(ids);
       if (!result.ok) {
-        setProblems(redirectProblems(result.problems, w));
+        setProblems(result.problems);
         return;
       }
       setAsking(null);

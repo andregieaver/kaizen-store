@@ -1,4 +1,5 @@
 import { formatPercent, safeRatio } from "./analytics-core";
+import { RFM_SEGMENTS, type RfmSegment } from "./rfm-segments";
 
 /**
  * Customer analytics (D152, docs/analytics.md): new and returning customers,
@@ -439,8 +440,7 @@ export const RFM_MIN_CUSTOMERS = 20;
 /** A customer with one order, the last of them within this many days, is New. */
 export const NEW_CUSTOMER_DAYS = 30;
 
-export const RFM_SEGMENTS = ["VIP", "Loyal", "Promising", "New", "At risk", "Lost"] as const;
-export type RfmSegment = (typeof RFM_SEGMENTS)[number];
+export { RFM_SEGMENTS, type RfmSegment };
 
 export type RfmRow = {
   key: string;

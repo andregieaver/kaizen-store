@@ -21,6 +21,7 @@ import {
   signedMoney,
   waitWords,
 } from "./bonus-admin";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 /** Intl puts a no-break space after the currency; tests compare plain spaces. */
 const flat = (text: string) => text.replace(/\u00a0/g, " ");
@@ -52,13 +53,13 @@ describe("percent and basis points", () => {
 
 describe("the example beside the percentage", () => {
   it("shows what 1,000 earns, rounded down like the program", () => {
-    expect(flat(earnExample(500, "NOK", "en-GB").sentence)).toBe("A NOK 1,000.00 order earns NOK 50.00 in credits.");
-    expect(flat(earnExample(275, "NOK", "en-GB").earnLabel)).toBe("NOK 27.50");
-    expect(flat(earnExample(0, "NOK", "en-GB").earnLabel)).toBe("NOK 0.00");
+    expect(flat(earnExample(500, "NOK", "en-GB", undefined, loyaltyEn.bonus.example).sentence)).toBe("A NOK 1,000.00 order earns NOK 50.00 in credits.");
+    expect(flat(earnExample(275, "NOK", "en-GB", undefined, loyaltyEn.bonus.example).earnLabel)).toBe("NOK 27.50");
+    expect(flat(earnExample(0, "NOK", "en-GB", undefined, loyaltyEn.bonus.example).earnLabel)).toBe("NOK 0.00");
   });
 
   it("works for currencies with no decimals", () => {
-    expect(earnExample(500, "HUF", "en-GB").earnLabel).toContain("50");
+    expect(earnExample(500, "HUF", "en-GB", undefined, loyaltyEn.bonus.example).earnLabel).toContain("50");
   });
 });
 
@@ -92,14 +93,14 @@ describe("the settings form", () => {
       signupMinor: 5_000,
       birthdayMinor: 2_500,
     };
-    expect(readBonusForm(formFromSettings(settings, "NOK"), "NOK")).toEqual({ ok: true, settings });
-    expect(readBonusForm(formFromSettings(on, "NOK"), "NOK")).toEqual({ ok: true, settings: on });
+    expect(readBonusForm(formFromSettings(settings, "NOK"), "NOK", loyaltyEn.bonus.errors)).toEqual({ ok: true, settings });
+    expect(readBonusForm(formFromSettings(on, "NOK"), "NOK", loyaltyEn.bonus.errors)).toEqual({ ok: true, settings: on });
   });
 
   it("ignores the months when credits do not expire, and needs them when they do", () => {
     const values = { ...formFromSettings(on, "NOK"), expiresMonths: "nonsense" };
-    expect(readBonusForm(values, "NOK")).toMatchObject({ ok: true, settings: { expiresMonths: null } });
-    expect(readBonusForm({ ...values, expires: true }, "NOK")).toMatchObject({
+    expect(readBonusForm(values, "NOK", loyaltyEn.bonus.errors)).toMatchObject({ ok: true, settings: { expiresMonths: null } });
+    expect(readBonusForm({ ...values, expires: true }, "NOK", loyaltyEn.bonus.errors)).toMatchObject({
       ok: false,
       errors: { expiresMonths: expect.any(String) },
     });
@@ -119,7 +120,7 @@ describe("the settings form", () => {
         signup: "free",
         birthday: "",
       },
-      "NOK",
+      "NOK", loyaltyEn.bonus.errors
     );
     expect(read.ok).toBe(false);
     if (read.ok) return;
@@ -145,7 +146,7 @@ describe("the settings form", () => {
   it("explains unreadable numbers", () => {
     const read = readBonusForm(
       { ...formFromSettings(on, "NOK"), earnPercent: "five", pendingDays: "", maxRedeemPercent: "a lot" },
-      "NOK",
+      "NOK", loyaltyEn.bonus.errors
     );
     expect(read).toMatchObject({
       ok: false,
@@ -158,10 +159,10 @@ describe("the settings form", () => {
   });
 
   it("allows 0% credits back and no wait, and needs at least 1% usable", () => {
-    expect(readBonusForm({ ...formFromSettings(on, "NOK"), earnPercent: "0", pendingDays: "0" }, "NOK")).toMatchObject({
+    expect(readBonusForm({ ...formFromSettings(on, "NOK"), earnPercent: "0", pendingDays: "0" }, "NOK", loyaltyEn.bonus.errors)).toMatchObject({
       ok: true,
     });
-    expect(readBonusForm({ ...formFromSettings(on, "NOK"), maxRedeemPercent: "0" }, "NOK")).toMatchObject({
+    expect(readBonusForm({ ...formFromSettings(on, "NOK"), maxRedeemPercent: "0" }, "NOK", loyaltyEn.bonus.errors)).toMatchObject({
       ok: false,
       errors: { maxRedeemPercent: "Allow at least 1% of an order." },
     });
@@ -170,7 +171,7 @@ describe("the settings form", () => {
 
 describe("the rules in words", () => {
   it("says each rule the way a shopper reads it, then the store's own limits", () => {
-    expect(rulesSummary({ ...on, minRedeemMinor: 5000, expiresMonths: 12 }, NOK, "NOK").map(flat)).toEqual([
+    expect(rulesSummary({ ...on, minRedeemMinor: 5000, expiresMonths: 12 }, NOK, "NOK", loyaltyEn.bonusRules).map(flat)).toEqual([
       "You earn 5% back in bonus credits on what you pay for goods, and the credits are usable 14 days after you pay.",
       "Credits come off the price of goods at checkout, up to the store's limit on each order; you pay shipping yourself. Credits you do not use expire 12 months after you earn them, the oldest first.",
       "The store's limit: credits can pay for up to 50% of an order's goods. At least NOK 50.00 is used at a time. 1 credit is worth 1 NOK.",
@@ -185,7 +186,7 @@ describe("the rules in words", () => {
       [250, 0, 12],
       [275, 1, 1],
     ] as const) {
-      const lines = rulesSummary({ ...on, earnBps, pendingDays, expiresMonths }, NOK, "NOK");
+      const lines = rulesSummary({ ...on, earnBps, pendingDays, expiresMonths }, NOK, "NOK", loyaltyEn.bonusRules);
       const wait = pendingDays === 0 ? en.rightAfterPay : en.afterPay(en.dayCount(pendingDays));
       expect(lines[0]).toBe(en.howEarn(bpsToPercentText(earnBps), wait));
       expect(lines[1]).toBe(expiresMonths === null ? en.howUse : en.howUseExpires(en.monthCount(expiresMonths)));
@@ -193,12 +194,12 @@ describe("the rules in words", () => {
   });
 
   it("covers the plain cases", () => {
-    const lines = rulesSummary({ ...on, earnBps: 0, pendingDays: 0 }, NOK, "NOK");
+    const lines = rulesSummary({ ...on, earnBps: 0, pendingDays: 0 }, NOK, "NOK", loyaltyEn.bonusRules);
     expect(lines[0]).toContain("earn no bonus credits");
     expect(lines).toHaveLength(3);
-    expect(waitWords(0)).toBe("right after you pay");
-    expect(waitWords(1)).toBe("1 day after you pay");
-    expect(rulesSummary({ ...on, expiresMonths: 1 }, NOK, "NOK")[1]).toContain("expire 1 month after");
+    expect(waitWords(0, loyaltyEn.bonusRules)).toBe("right after you pay");
+    expect(waitWords(1, loyaltyEn.bonusRules)).toBe("1 day after you pay");
+    expect(rulesSummary({ ...on, expiresMonths: 1 }, NOK, "NOK", loyaltyEn.bonusRules)[1]).toContain("expire 1 month after");
   });
 
   it("lays out the overview's figures", () => {
@@ -212,7 +213,7 @@ describe("the rules in words", () => {
         expired30dMinor: 0,
         customersWithCredits: 12,
       },
-      NOK,
+      NOK, loyaltyEn.bonusOverview
     );
     expect(rows.map((r) => r.label)).toEqual([
       "Outstanding credits",
@@ -245,38 +246,38 @@ describe("a customer's credits", () => {
 
 describe("an adjustment", () => {
   it("adds with a plain or plus-signed amount and takes away with a minus", () => {
-    expect(readAdjustment("50", "Goodwill after a late parcel", "NOK")).toEqual({
+    expect(readAdjustment("50", "Goodwill after a late parcel", "NOK", loyaltyEn.adjust)).toEqual({
       ok: true,
       amountMinor: 5000,
       note: "Goodwill after a late parcel",
     });
-    expect(readAdjustment("+49,50", "  Correction ", "NOK")).toEqual({
+    expect(readAdjustment("+49,50", "  Correction ", "NOK", loyaltyEn.adjust)).toEqual({
       ok: true,
       amountMinor: 4950,
       note: "Correction",
     });
-    expect(readAdjustment("-20", "Wrong order", "NOK")).toMatchObject({ ok: true, amountMinor: -2000 });
-    expect(readAdjustment("−20,5", "Wrong order", "NOK")).toMatchObject({ ok: true, amountMinor: -2050 });
+    expect(readAdjustment("-20", "Wrong order", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: true, amountMinor: -2000 });
+    expect(readAdjustment("−20,5", "Wrong order", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: true, amountMinor: -2050 });
   });
 
   it("refuses an empty, unreadable or zero amount, and a missing or long reason", () => {
-    expect(readAdjustment("", "Because", "NOK")).toMatchObject({ ok: false, field: "amount" });
-    expect(readAdjustment("lots", "Because", "NOK")).toMatchObject({ ok: false, field: "amount" });
-    expect(readAdjustment("-", "Because", "NOK")).toMatchObject({ ok: false, field: "amount" });
-    expect(readAdjustment("0", "Because", "NOK")).toMatchObject({
+    expect(readAdjustment("", "Because", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: false, field: "amount" });
+    expect(readAdjustment("lots", "Because", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: false, field: "amount" });
+    expect(readAdjustment("-", "Because", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: false, field: "amount" });
+    expect(readAdjustment("0", "Because", "NOK", loyaltyEn.adjust)).toMatchObject({
       ok: false,
       field: "amount",
       problem: "The amount cannot be 0.",
     });
-    expect(readAdjustment("10", "ab", "NOK")).toMatchObject({ ok: false, field: "note" });
-    expect(readAdjustment("10", "   ", "NOK")).toMatchObject({ ok: false, field: "note" });
-    expect(readAdjustment("10", "x".repeat(201), "NOK")).toMatchObject({ ok: false, field: "note" });
-    expect(readAdjustment("10", "x".repeat(200), "NOK")).toMatchObject({ ok: true });
+    expect(readAdjustment("10", "ab", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: false, field: "note" });
+    expect(readAdjustment("10", "   ", "NOK", loyaltyEn.adjust)).toMatchObject({ ok: false, field: "note" });
+    expect(readAdjustment("10", "x".repeat(201), "NOK", loyaltyEn.adjust)).toMatchObject({ ok: false, field: "note" });
+    expect(readAdjustment("10", "x".repeat(200), "NOK", loyaltyEn.adjust)).toMatchObject({ ok: true });
   });
 
   it("asks the right question", () => {
-    expect(adjustmentQuestion(5000, "Ann", NOK)).toBe("Add NOK 50.00 in credits to Ann?");
-    expect(adjustmentQuestion(-2000, "Ann", NOK)).toBe("Take NOK 20.00 in credits from Ann?");
+    expect(adjustmentQuestion(5000, "Ann", NOK, loyaltyEn.adjust)).toBe("Add NOK 50.00 in credits to Ann?");
+    expect(adjustmentQuestion(-2000, "Ann", NOK, loyaltyEn.adjust)).toBe("Take NOK 20.00 in credits from Ann?");
     expect(adjustmentPhrase("50", "ann@example.com")).toBe("Add 50 in bonus credits to ann@example.com");
     expect(adjustmentPhrase("-20", "ann@example.com")).toBe("Take 20 in bonus credits from ann@example.com");
   });
@@ -304,14 +305,14 @@ describe("what a refund does to an order's credits", () => {
 describe("levels in the settings form (D392)", () => {
   it("reads levels as amounts and percentages, drops an empty row, and refuses a level that is not a step up", () => {
     const base = { ...formFromSettings(on, "NOK"), earnPercent: "5" };
-    const read = readBonusForm({ ...base, levels: [{ name: "Silver", from: "2000", percent: "6" }, { name: "", from: "", percent: "" }, { name: "Gold", from: "5000,50", percent: "7,5" }], signup: "50" }, "NOK");
+    const read = readBonusForm({ ...base, levels: [{ name: "Silver", from: "2000", percent: "6" }, { name: "", from: "", percent: "" }, { name: "Gold", from: "5000,50", percent: "7,5" }], signup: "50" }, "NOK", loyaltyEn.bonus.errors);
     expect(read).toMatchObject({ ok: true, settings: { levels: [{ name: "Silver", fromMinor: 200_000, earnBps: 600 }, { name: "Gold", fromMinor: 500_050, earnBps: 750 }], signupMinor: 5_000 } });
-    expect(readBonusForm({ ...base, levels: [{ name: "Silver", from: "5000", percent: "6" }, { name: "Gold", from: "2000", percent: "7" }] }, "NOK")).toMatchObject({ ok: false, errors: { levels: expect.any(String) } });
-    expect(readBonusForm({ ...base, levels: [{ name: "Silver", from: "2000", percent: "4" }] }, "NOK")).toMatchObject({ ok: false, errors: { levels: expect.any(String) } });
+    expect(readBonusForm({ ...base, levels: [{ name: "Silver", from: "5000", percent: "6" }, { name: "Gold", from: "2000", percent: "7" }] }, "NOK", loyaltyEn.bonus.errors)).toMatchObject({ ok: false, errors: { levels: expect.any(String) } });
+    expect(readBonusForm({ ...base, levels: [{ name: "Silver", from: "2000", percent: "4" }] }, "NOK", loyaltyEn.bonus.errors)).toMatchObject({ ok: false, errors: { levels: expect.any(String) } });
   });
 
   it("says the levels and the account credit in the summary", () => {
-    const lines = rulesSummary({ ...on, levels: [{ name: "Gold", fromMinor: 500_000, earnBps: 750 }], signupMinor: 5_000 }, (m) => `${m / 100} kr`, "NOK");
+    const lines = rulesSummary({ ...on, levels: [{ name: "Gold", fromMinor: 500_000, earnBps: 750 }], signupMinor: 5_000 }, (m) => `${m / 100} kr`, "NOK", loyaltyEn.bonusRules);
     expect(lines).toContain("Gold: from 5000 kr paid for goods in the last 12 months, less refunds, customers earn 7.5% back.");
     expect(lines).toContain("A customer who opens an account gets 50 kr in bonus credits once, usable at once.");
   });

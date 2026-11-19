@@ -1,5 +1,5 @@
 import { EXCHANGE_STATUS_LABELS, type ExchangeStatus } from "./exchange-status";
-import { STATUS_LABELS } from "./return-admin";
+import { STATUS_LABELS } from "./return-admin-english";
 import { canMove, type ReturnKind, type ReturnStatus } from "./return-status";
 import { CARRIERS } from "./shipping-carriers";
 

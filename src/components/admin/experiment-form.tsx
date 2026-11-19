@@ -7,7 +7,6 @@ import { DEVICES, GOAL_WORDS, MAX_RUN_DAYS, MIN_DAYS, type Device, type Goal } f
 import { isTestedPlace, type TargetKind } from "@/lib/ab-site";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { experimentProblems } from "@/lib/experiment-words";
 import { CHANGES, eligiblePerDay, findableChange, goalEstimate, isCountedGoal, recommendedGoal, weeksOf, type TrafficFacts } from "@/lib/experiment-traffic";
 import type { PartInfo } from "@/lib/experiment-parts";
 import { Button, Card, Chip, CARD_CLASS } from "@/components/admin/ui";
@@ -155,7 +154,7 @@ export function ExperimentForm({
         },
       });
       if (result.ok) router.push(`${base}/${result.id}`);
-      else setProblems(experimentProblems(result.problems, w));
+      else setProblems(result.problems);
     });
   };
 

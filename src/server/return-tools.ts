@@ -6,7 +6,8 @@ import { db } from "@/db/client";
 import { findClaims } from "@/lib/claims";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
-import { ACTION_LABELS, KIND_HINTS, KIND_LABELS, REASON_LABELS, STATUS_HINTS, STATUS_LABELS, WORKING_LABELS, CAPPED_WORDS, countsSentence, dayText, dueMark, eventSentence } from "@/lib/return-admin";
+import { countsSentence, dayText, dueMark, eventSentence } from "@/lib/return-admin";
+import { ACTION_LABELS, KIND_HINTS, KIND_LABELS, REASON_LABELS, STATUS_HINTS, STATUS_LABELS, WORKING_LABELS, CAPPED_WORDS } from "@/lib/return-admin-english";
 import { EXCHANGE_MARK_WORDS, EXCHANGE_ON_SCREEN, REFUND_ON_SCREEN, approveProblem, declineProblem, exchangeFacts, labelFacts } from "@/lib/return-tools";
 import { isReturnKind, isReturnStatus, type ReturnKind, type ReturnStatus } from "@/lib/return-status";
 import { isReturnReason } from "@/lib/withdrawal";
@@ -15,6 +16,7 @@ import type { Account } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";
 import { approveReturn, declineReturn, getReturn, listReturns, returnCounts } from "./returns";
 import type { Store } from "./stores";
+import { returnsEn } from "@/lib/admin-messages/returns.en";
 
 type Row = Record<string, unknown>;
 type Ctx = { account: Account; store: Store; invalidate: (tag: string) => void };
@@ -91,7 +93,7 @@ export async function listReturnsTool(ctx: Ctx, { which, kind, search, limit }: 
       to_answer: counts.requested,
       past_refund_deadline: counts.overdue,
       acknowledgement_not_sent: counts.acknowledgementPending,
-      summary: countsSentence(counts),
+      summary: countsSentence(counts, returnsEn),
     },
     returns: queue.rows.map((r) => ({
       number: r.number,
@@ -101,7 +103,7 @@ export async function listReturnsTool(ctx: Ctx, { which, kind, search, limit }: 
       customer: r.name ? `${r.name} <${r.email}>` : r.email,
       units: r.units,
       made: day(store, r.createdAt),
-      refund: r.refundMinor !== null ? `Refunded ${money(store, r.refundMinor, r.currency)}` : (dueMark(r.due, store.timeZone)?.text ?? null),
+      refund: r.refundMinor !== null ? `Refunded ${money(store, r.refundMinor, r.currency)}` : (dueMark(r.due, store.timeZone, returnsEn)?.text ?? null),
       past_refund_deadline: r.overdue,
       acknowledgement_not_sent: r.acknowledgementPending || undefined,
       exchange: r.exchange ? EXCHANGE_MARK_WORDS[r.exchange] : undefined,
@@ -161,11 +163,11 @@ export async function explainReturnTool(ctx: Ctx, { return: ref }: OwnerToolInpu
             left_to_refund_on_the_order: m(d.order.refundableMinor),
           }
         : null,
-    refund_due: dueMark(d.due, store.timeZone)?.text ?? null,
+    refund_due: dueMark(d.due, store.timeZone, returnsEn)?.text ?? null,
     past_refund_deadline: d.due.state === "overdue" || d.due.state === "waiting_late",
     refund_deadline: day(store, d.refundDeadline),
     acknowledgement: d.request ? (d.request.acknowledgement === "sent" ? `Sent ${day(store, d.request.acknowledgedAt)}` : "Not sent: send it again on the return's page") : undefined,
-    history: d.events.slice(-12).map((e) => `${day(store, e.at)}: ${eventSentence(e.type, e.data, d.currency, mainLocale(store))}`),
+    history: d.events.slice(-12).map((e) => `${day(store, e.at)}: ${eventSentence(e.type, e.data, d.currency, mainLocale(store), returnsEn)}`),
     exchange_wish: d.exchangeWish ? { asked: day(store, d.exchangeWish.at), words: d.exchangeWish.note ?? undefined } : undefined,
     exchange: d.exchange ? exchangeFacts(d.exchange, m, (at) => day(store, at)) : undefined,
     return_label: labelFacts(d.label, d.whoPaysReturn, m, (at) => day(store, at)),

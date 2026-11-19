@@ -180,28 +180,14 @@ import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
 import { BONUS_DEFAULTS, type BonusSettings } from "@/lib/bonus";
 import { bonusSettingsInput } from "@/lib/bonus-schema";
-import {
-  BONUS_ACCOUNTING_NOTE,
-  BONUS_EXPLANATION,
-  bpsToPercentText,
-  moneyIn,
-  overviewRows,
-  percentTextToBps,
-  readAdjustment,
-  rulesSummary,
-} from "@/lib/bonus-admin";
+import { bpsToPercentText, moneyIn, overviewRows, percentTextToBps, readAdjustment, rulesSummary } from "@/lib/bonus-admin";
+import { BONUS_ACCOUNTING_NOTE, BONUS_EXPLANATION } from "@/lib/bonus-admin-english";
 import { mainCurrency } from "@/lib/markets";
 import { adjustBonus, bonusOverview, customerBonus, getBonusSettings, saveBonusSettings } from "./bonus";
 import { AFFILIATE_DEFAULTS, type AffiliateSettings } from "@/lib/affiliates";
 import { affiliateSettingsInput } from "@/lib/affiliates-schema";
-import {
-  AFFILIATE_EXPLANATION,
-  AFFILIATE_NEEDS_BONUS,
-  attributionStatus,
-  example as affiliateExample,
-  overviewRows as affiliateOverviewRows,
-  rulesSummary as affiliateRulesSummary,
-} from "@/lib/affiliate-admin";
+import { attributionStatus, example as affiliateExample, overviewRows as affiliateOverviewRows, rulesSummary as affiliateRulesSummary } from "@/lib/affiliate-admin";
+import { AFFILIATE_EXPLANATION, AFFILIATE_NEEDS_BONUS } from "@/lib/affiliate-admin-english";
 import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool, copyAdTool, preflightCopyAd } from "./ad-budget-tools";
 import { cancelPurchaseTool, listPurchasesTool, preflightRequestPurchase, requestPurchaseTool, walletStatusTool } from "./purchase-tools";
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
@@ -297,6 +283,7 @@ import {
 } from "./site-tools";
 import { draftStore } from "./store-drafts";
 import { discountsEn } from "@/lib/admin-messages/discounts.en";
+import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
 
 type Row = Record<string, unknown>;
 
@@ -1497,8 +1484,8 @@ async function getBonusProgramTool({ store }: OwnerToolContext, { customer }: Ow
     most_percent_of_order_goods: settings.maxRedeemPercent,
     least_to_use: settings.minRedeemMinor > 0 ? format(settings.minRedeemMinor) : "no minimum",
     expires_after_months: settings.expiresMonths ?? "never",
-    rules_for_shoppers: rulesSummary(settings, format, currency),
-    store_owes: Object.fromEntries(overviewRows(overview, format).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
+    rules_for_shoppers: rulesSummary(settings, format, currency, loyaltyEn.bonusRules),
+    store_owes: Object.fromEntries(overviewRows(overview, format, loyaltyEn.bonusOverview).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
     accounting: BONUS_ACCOUNTING_NOTE,
     ...(who && credits && {
       customer: {
@@ -1564,7 +1551,7 @@ async function setBonusProgramTool(ctx: OwnerToolContext, input: OwnerToolInput<
   const currency = mainCurrency(store);
   return {
     done: settings.enabled ? "The bonus program is on with these rules." : "The bonus program is off. Balances are kept.",
-    rules_for_shoppers: rulesSummary(settings, moneyIn(currency, mainLocale(store)), currency),
+    rules_for_shoppers: rulesSummary(settings, moneyIn(currency, mainLocale(store)), currency, loyaltyEn.bonusRules),
     admin: adminLink(store, "/bonus"),
   };
 }
@@ -1687,7 +1674,7 @@ async function checkRecommendationsTool({ store }: OwnerToolContext) {
 /** What an adjustment asks, with the customer found and the amount read, or the reason it cannot be done. */
 async function adjustmentFor(store: Store, input: OwnerToolInput<"adjust_customer_credits">) {
   const who = await findBonusCustomer(store, input.customer);
-  const read = readAdjustment(input.amount, input.reason, mainCurrency(store));
+  const read = readAdjustment(input.amount, input.reason, mainCurrency(store), loyaltyEn.adjust);
   if (!read.ok) return fail(read.problem);
   return { who, ...read };
 }
@@ -1728,9 +1715,9 @@ async function getAffiliateProgramTool({ store }: OwnerToolContext, { customer }
     orders_that_earn: program.rewardOrders ?? "every order",
     monthly_limit_per_referrer: program.monthlyCapMinor === null ? "no limit" : format(program.monthlyCapMinor),
     link_remembered_days: program.cookieDays,
-    rules_for_shoppers: affiliateRulesSummary(program, format, bonus.pendingDays),
-    example: affiliateExample(program, program.currency, locale),
-    lately: Object.fromEntries(affiliateOverviewRows(overview, format).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
+    rules_for_shoppers: affiliateRulesSummary(program, format, bonus.pendingDays, loyaltyEn.affiliateRules),
+    example: affiliateExample(program, program.currency, locale, undefined, loyaltyEn.affiliateRules.example),
+    lately: Object.fromEntries(affiliateOverviewRows(overview, format, loyaltyEn.affiliateOverview).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
     ...(who && mine && {
       customer: {
         email: who.email,
@@ -1788,7 +1775,7 @@ async function setAffiliateProgramTool(ctx: OwnerToolContext, input: OwnerToolIn
   const bonus = await getBonusSettings(store.id);
   return {
     done: settings.enabled ? "The referral program is on with these rules." : "The referral program is off. Credits already earned are kept.",
-    rules_for_shoppers: affiliateRulesSummary(settings, moneyIn(program.currency, mainLocale(store)), bonus.pendingDays),
+    rules_for_shoppers: affiliateRulesSummary(settings, moneyIn(program.currency, mainLocale(store)), bonus.pendingDays, loyaltyEn.affiliateRules),
     ...(settings.enabled && { note: "Visitors are asked about marketing cookies, because a friend's link is remembered only with their consent." }),
     admin: adminLink(store, "/affiliates"),
   };

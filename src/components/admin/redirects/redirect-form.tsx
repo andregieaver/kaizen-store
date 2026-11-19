@@ -7,7 +7,6 @@ import { card, field, hint, label, primary, secondary } from "@/components/admin
 import type { Finding } from "@/lib/data-job";
 import { fillWords } from "@/lib/admin-fill";
 import { existingWords, hasError, helpLine, splitFindings, type FieldFindings } from "@/lib/redirect-admin";
-import { redirectFindings, redirectProblems } from "@/lib/redirect-words";
 
 import { useAdminText } from "../admin-text";
 
@@ -29,11 +28,10 @@ const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text"
 
 /** The findings of one field, one sentence each, under it. The sentence names only addresses (`finding()` never quotes another cell). */
 export function FindingList({ findings, id }: { findings: readonly Finding[]; id?: string }) {
-  const w = useAdminText("redirects");
   if (findings.length === 0) return null;
   return (
     <ul id={id} className="flex flex-col gap-0.5 text-xs">
-      {redirectFindings(findings, w).map((f, i) => (
+      {findings.map((f, i) => (
         <li key={`${f.code}-${i}`} className={SEVERITY_STYLE[f.severity]}>
           {f.text}
         </li>
@@ -86,7 +84,7 @@ export function RedirectForm({
       const result = await actions.check({ from: nextFrom, to: nextTo });
       if (ticket !== latest.current) return;
       if (!result.ok) {
-        setProblems(redirectProblems(result.problems, w));
+        setProblems(result.problems);
         return;
       }
       setProblems([]);
@@ -100,7 +98,7 @@ export function RedirectForm({
       setSaved(null);
       const result = await actions.save({ from, to }, editing?.id);
       if (!result.ok) {
-        setProblems(redirectProblems(result.problems, w));
+        setProblems(result.problems);
         setChecked((c) => ({ source: c?.source ?? null, target: c?.target ?? null, existing: c?.existing ?? null, saveable: false, findings: result.findings }));
         return;
       }

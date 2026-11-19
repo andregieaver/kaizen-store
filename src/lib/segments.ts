@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { countWords, fillWords } from "./admin-fill";
 import type { MarketingMessages } from "./admin-messages/marketing.en";
-import { RFM_SEGMENTS, type RfmSegment } from "./analytics-customers";
+import { RFM_SEGMENTS, type RfmSegment } from "./rfm-segments";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "./marketing-consent";
 import { tagKey } from "./order-tags";
 import type { SmsSubscriberStatus } from "./sms";

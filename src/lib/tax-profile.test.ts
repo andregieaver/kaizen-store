@@ -1,20 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  DEFAULT_TAX_PROFILE,
-  OSS_SCHEMES,
-  TAX_WARNINGS,
-  checkupFindings,
-  effectiveDispatch,
-  formOf,
-  normaliseSellerVatNumber,
-  parseTaxProfile,
-  readiness,
-  sellerFacts,
-  vatNumberChanged,
-  type TaxProfile,
-  type TaxProfileForm,
-} from "./tax-profile";
+import { DEFAULT_TAX_PROFILE, OSS_SCHEMES, checkupFindings, effectiveDispatch, formOf, normaliseSellerVatNumber, parseTaxProfile, readiness, sellerFacts, vatNumberChanged, type TaxProfile, type TaxProfileForm } from "./tax-profile";
+import { taxEn } from "@/lib/admin-messages/tax.en";
 
 const blank = (): TaxProfileForm => formOf(DEFAULT_TAX_PROFILE);
 const form = (over: Partial<TaxProfileForm> = {}): TaxProfileForm => ({ ...blank(), ...over });
@@ -158,7 +145,7 @@ describe("where goods are sent from", () => {
 });
 
 describe("readiness", () => {
-  const line = (p: TaxProfile, key: string, country: string | null = "SE") => readiness(p, country).find((l) => l.key === key)!;
+  const line = (p: TaxProfile, key: string, country: string | null = "SE") => readiness(p, country, taxEn.readiness).find((l) => l.key === key)!;
 
   it("says reverse charge is off and what it needs", () => {
     expect(line(profile(), "reverse_charge")).toMatchObject({ on: false, needs: ["registration for VAT", "a VAT number"] });
@@ -234,7 +221,7 @@ describe("the store checkup", () => {
 
 describe("the warnings", () => {
   it("say the things the screen has to say", () => {
-    const all = TAX_WARNINGS.join(" ");
+    const all = taxEn.warnings.items.join(" ");
     expect(all).toMatch(/Destination VAT/);
     expect(all).toMatch(/10,000 EUR/);
     expect(all).toMatch(/origin-country/);

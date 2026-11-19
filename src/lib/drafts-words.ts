@@ -1,28 +1,13 @@
 /**
  * The words of draft orders and order changes as the admin shows them (D312 A4): the libraries and the server write their problems in English (`DRAFT_PROBLEMS`,
  * `ORDER_EDIT_PROBLEMS`, `EDIT_BLOCKS`, read by the AI manager's tools too); the screens say them in the person's language from the `drafts` catalogue. Pure.
+ * Matching the server's English to a code is in `drafts-words-english.ts`, for the server (bloat review step 2.26).
  */
 import { countWords, fillWords } from "./admin-fill";
-import { draftsEn, type DraftsMessages } from "./admin-messages/drafts.en";
+import type { DraftsMessages } from "./admin-messages/drafts.en";
 import { CASH_RULES } from "./cash-limits";
 
 export type DraftsWords = DraftsMessages;
-
-/**
- * A change's problem in the person's language: the catalogue's words for its code when the server's text is the code's own English (the server writes a few problems
- * of code `invalid` with words of their own: those stay as written).
- */
-export function editProblemText(code: string, text: string, words: DraftsWords["edit"]): string {
-  const english: Record<string, string> = { ...draftsEn.edit.problems, ...draftsEn.edit.blocks };
-  const local: Record<string, string> = { ...words.problems, ...words.blocks };
-  return english[code] === text && local[code] ? local[code] : text;
-}
-
-/** Why an order cannot be changed, given in the code's English words (`orderEditProblemText()`), in the person's language; other text stays as written. */
-export function blockTextWords(text: string, words: DraftsWords["edit"]): string {
-  const code = Object.entries(draftsEn.edit.blocks).find(([, english]) => english === text)?.[0];
-  return code ? ((words.blocks as Record<string, string>)[code] ?? text) : text;
-}
 
 /** The cash rules as one sentence each, in the catalogue's words and the language's own number format (`cashRuleWords()` in English). */
 export function cashRulesText(words: DraftsWords["cash"], locale: string): string {

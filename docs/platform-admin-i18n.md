@@ -227,6 +227,10 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   every admin screen's first scripts, so an area only server pages read is listed in `SERVER_AREAS` (`src/lib/admin-text.ts`; the
   carriers' own words, `carriers`, the page builder's sandbox, `sandbox`, and the Fiken page's, `fiken`, since 5 November 2026): the fallback
   leaves it out and `useAdminText()` refuses it.
+  A helper never defaults to an English catalogue: it takes the words as an argument, and English that only the server and the tests
+  read lives in a `-english.ts` twin (`return-admin-english.ts`), which no admin client module may reach (`admin-bundle.scan.test.ts`,
+  bloat review step 2.26). Where the server writes English sentences (a saver's refusal, a check's finding), they are turned into the
+  account's language on the server, in the page or the action's answer (`redirectAnswer()`, `experimentAnswer()`), never in the browser.
 - **Outside the admin:** code that is not under `src/app/admin` or `src/components/admin` (emails, cron jobs, routes, `src/lib`) never
   imports `src/lib/admin-text.ts`, which loads every area in both languages. It reads its area from `src/lib/admin-words/{stem}.ts`
   (`STAFF_EMAILS_WORDS[lang]`); a new area read outside the admin gets such a module and its `CATALOGUES` entry becomes that pair.

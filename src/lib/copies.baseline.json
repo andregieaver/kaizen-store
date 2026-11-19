@@ -1,9 +1,9 @@
 {
-  "exactAcrossFiles": 4108,
+  "exactAcrossFiles": 4107,
   "exactInsideFiles": 630,
   "nearLines": 22550,
-  "repeatedHelperNames": 98,
-  "repeatedHelperDeclarations": 483,
+  "repeatedHelperNames": 97,
+  "repeatedHelperDeclarations": 480,
   "twins": {
     "src/app/admin/(gated)/(owner)/account/domains/move/[domain]/page.tsx|src/app/admin/(gated)/[store]/settings/domains/move/[domain]/page.tsx": {
       "reason": "copied; step 4.2 folds it"
@@ -43,6 +43,9 @@
     },
     "src/components/admin/customer-import-flow.tsx|src/components/admin/inventory/stock-import-flow.tsx": {
       "reason": "copied; step 4.2 folds it"
+    },
+    "src/components/admin/customer-import-flow.tsx|src/components/admin/redirects/redirect-import-flow.tsx": {
+      "reason": "The redirect import and the customer import share the upload, check and apply flow; step 3.13 gives the five file imports one core"
     },
     "src/components/admin/customer-import-views.tsx|src/components/admin/inventory/stock-import-views.tsx": {
       "reason": "copied; step 4.2 folds it"

@@ -7,7 +7,7 @@
  * Nothing here is legal or tax advice; the admin's English warnings (`TAX_WARNINGS`) are written for an accountant's
  * eyes and *need review*.
  */
-import { taxEn, type TaxMessages } from "./admin-messages/tax.en";
+import type { TaxMessages } from "./admin-messages/tax.en";
 import { organisationNumber } from "./b2b";
 import { IOSS_NUMBER, normaliseIossNumber, normaliseOssNumber } from "./ioss";
 import type { VatTreatmentInput } from "./vat-treatment";
@@ -15,8 +15,6 @@ import { isEuMemberCountry, normaliseVatNumber, vatPrefixOf } from "./vat-number
 
 export const OSS_SCHEMES = ["none", "union", "non_union"] as const;
 export type OssScheme = (typeof OSS_SCHEMES)[number];
-
-export const OSS_SCHEME_LABELS: Record<OssScheme, { label: string; hint: string }> = taxEn.schemes;
 
 /** What the table holds, as the server reads it (dates as `yyyy-mm-dd`, times as ISO strings). */
 export type TaxProfile = {
@@ -294,8 +292,8 @@ const line = (w: TaxMessages["readiness"], key: ReadinessKey, needs: string[]): 
       : w.lineOff.replace("{name}", w.names[key]).replace("{needs}", needs.join(w.joiner)),
 });
 
-/** One line per thing the tax screen says is on or off, under the form, in `words` (English, as the AI manager reads it, unless given). */
-export function readiness(profile: TaxProfile, storeCountry: string | null, words: TaxMessages["readiness"] = taxEn.readiness): ReadinessLine[] {
+/** One line per thing the tax screen says is on or off, under the form, in `words` (the AI manager passes the English). */
+export function readiness(profile: TaxProfile, storeCountry: string | null, words: TaxMessages["readiness"]): ReadinessLine[] {
   const lines: ReadinessLine[] = [];
   const n = words.needs;
 
@@ -357,5 +355,3 @@ export function checkupFindings(profile: TaxProfile): CheckupFinding[] {
   return found;
 }
 
-/** The warnings the tax screen shows, in plain English for an accountant's eyes. Needs review. */
-export const TAX_WARNINGS: readonly string[] = taxEn.warnings.items;
