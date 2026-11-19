@@ -51,7 +51,13 @@ vi.mock("./stripe", async (importActual) => {
           hook("thin", `/api/stripe/connect/${mode}/accounts`),
           hook("billing", `/api/stripe/billing/${mode}`),
         ],
+        // The endpoints a reconnect replaces: retired only after the new secrets are saved (D815).
+        earlier: { endpoints: [`we_old_${mode}`], destinations: [`ed_old_${mode}`] },
       };
+    },
+    retirePlatformWebhooks: async (mode: string, which: { endpoints: string[]; destinations: string[] }) => {
+      stripe.calls.push({ method: "retirePlatformWebhooks", args: [mode, which], mode });
+      return 0;
     },
   };
 });
@@ -944,7 +950,11 @@ describe("the platform's own Stripe settings", () => {
   it("connects the platform's webhooks, keeping their secrets encrypted, and the account webhook then checks with the new one", async () => {
     const mark = stripe.calls.length;
     expect(await connect.connectPlatformWebhooks(platformAdmin, "live", "https://kaizenaflow.test")).toEqual({ ok: true });
-    expect(callsSince(mark).map((call) => [call.method, ...call.args])).toEqual([["createPlatformWebhooks", "live", "https://kaizenaflow.test"]]);
+    // New first (D815): the earlier endpoints are retired after the new ones are made and their secrets saved.
+    expect(callsSince(mark).map((call) => [call.method, ...call.args])).toEqual([
+      ["createPlatformWebhooks", "live", "https://kaizenaflow.test"],
+      ["retirePlatformWebhooks", "live", { endpoints: ["we_old_live"], destinations: ["ed_old_live"] }],
+    ]);
 
     const rows = await db().execute<Row>(sql`
       select kind, url, secret_ciphertext, updated_by from commerce.platform_webhooks where provider = 'stripe' and mode = 'live' order by kind
@@ -1049,7 +1059,10 @@ describe("the platform's own Stripe settings", () => {
 
     session.account = platformAdmin;
     expect(await platformActions.connectWebhooksAction(idle, data)).toEqual({ status: "ok", messages: ["Stripe sends test events to Kaizena Flow now."] });
-    expect(callsSince(mark).map((call) => call.args)).toEqual([["test", request.origin]]);
+    expect(callsSince(mark).map((call) => call.args)).toEqual([
+      ["test", request.origin],
+      ["test", { endpoints: ["we_old_test"], destinations: ["ed_old_test"] }],
+    ]);
     session.account = null;
   });
 });
