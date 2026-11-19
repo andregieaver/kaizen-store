@@ -731,7 +731,7 @@
       },
       "dispatcher.house-customers": {
         "statements": 12,
-        "rowsRead": 3
+        "rowsRead": 2
       },
       "dispatcher.instagram": {
         "statements": 1,
@@ -930,7 +930,7 @@
         "rowsRead": 1
       },
       "route.subscription-reminders": {
-        "statements": 175,
+        "statements": 177,
         "rowsRead": 2746
       },
       "route.theme-shots": {
@@ -1109,7 +1109,7 @@
       },
       "dispatcher.house-customers": {
         "statements": 14,
-        "rowsRead": 1880
+        "rowsRead": 1000
       },
       "dispatcher.instagram": {
         "statements": 1,
@@ -1308,7 +1308,7 @@
         "rowsRead": 1
       },
       "route.subscription-reminders": {
-        "statements": 315,
+        "statements": 317,
         "rowsRead": 5566
       },
       "route.theme-shots": {
@@ -1487,7 +1487,7 @@
       },
       "dispatcher.house-customers": {
         "statements": 2,
-        "rowsRead": 1877
+        "rowsRead": 998
       },
       "dispatcher.instagram": {
         "statements": 0,
@@ -1687,7 +1687,7 @@
       },
       "route.subscription-reminders": {
         "statements": 140,
-        "rowsRead": 2820
+        "rowsRead": 2800
       },
       "route.theme-shots": {
         "statements": 0,
