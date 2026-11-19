@@ -79,8 +79,10 @@ heading unique and the map naming every rule file.
 
 ## Decisions and the rules' names (step 0.41)
 
-src/lib/decisions.scan.test.ts fails when a decision number stands twice, when a row stands outside the one Settled table, or when
-a stub row from `node scripts/claim-decision.mjs` is left without its text for over 14 days.
+src/lib/decisions.scan.test.ts fails when a decision number stands twice, when a row stands outside the one index between the two
+markers of docs/decisions.md, or when a claimed decision's file (`node scripts/claim-decision.mjs`) is left without its text for over
+14 days. Each decision is a file docs/decisions/D{n}.md, none over 200,000 bytes and no line over 500 characters, and the index is
+written by `node scripts/decisions.mjs write` (step 2.40); the test fails with that command when the index or a file is off.
 The name check in src/lib/docs-budget.scan.test.ts fails when CLAUDE.md or a file under docs/rules cites a function or component
 that no code defines.
 

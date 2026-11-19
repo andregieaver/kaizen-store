@@ -192,9 +192,18 @@ export function withIndex(text, files) {
   return `${text.slice(0, a)}${indexBlock(files)}${text.slice(b + CLOSE.length)}`;
 }
 
+/** The message for rows written the old way: what to run instead, and that `write` would drop them. */
+export function oldRowMessage(rows) {
+  const ids = rows.map(({ line }) => ROW.exec(line)[1]).join(", ");
+  return `${ids} ${rows.length === 1 ? "is" : "are"} written into docs/decisions.md as a whole row: run node scripts/decisions.mjs fold, which makes docs/decisions/<id>.md from each row word for word and rewrites the index (write would drop the row, so it refuses)`;
+}
+
 export function write(root = ROOT) {
   const files = readFiles(root);
-  writeFileSync(indexPath(root), withIndex(readFileSync(indexPath(root), "utf8"), files));
+  const text = readFileSync(indexPath(root), "utf8");
+  const old = oldRows(text);
+  if (old.length > 0) throw new Error(oldRowMessage(old));
+  writeFileSync(indexPath(root), withIndex(text, files));
   return `index written: ${files.length} decisions`;
 }
 
@@ -264,13 +273,15 @@ export function check(root = ROOT) {
   }
   const ids = [...indexText.matchAll(/^\| (D\d+) \|/gm)].map((m) => m[1]);
   for (const id of new Set(ids.filter((id, i) => ids.indexOf(id) !== i))) problems.push(`${id} stands twice in docs/decisions.md`);
+  const old = oldRows(indexText);
+  if (old.length > 0) problems.push(oldRowMessage(old));
   let expected = null;
   try {
     expected = withIndex(indexText, files);
   } catch (error) {
     problems.push(error.message);
   }
-  if (expected !== null && expected !== indexText) {
+  if (expected !== null && expected !== indexText && old.length === 0) {
     const have = indexText.split("\n");
     const want = expected.split("\n");
     let at = 0;

@@ -69,8 +69,7 @@ app's sign-in for a test: the stand-in (`e2e/fixtures/auth-stub.mjs`) is the onl
   `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand
   first**: CI would apply the file again. After the deploy, check the security and performance advisors
-  (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration
-  versions). A migration must keep the code that is still running working until the deploy finishes (add,
+  (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions/migration-versions.md`. A migration must keep the code that is still running working until the deploy finishes (add,
   never rename or drop in the same change).
 - `src/db/commerce.test.ts` applies every migration to PGlite and tests the
   invariants. Add a test with any new rule.
