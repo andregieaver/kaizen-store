@@ -30,7 +30,7 @@ import {
 } from "@/lib/inbound-email";
 import { homeMarket, inView } from "@/lib/markets";
 import { NO_SIGNALS } from "@/lib/recommendations";
-import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
+import { CONVERSATION_MESSAGES_MAX } from "@/lib/support-rules";
 
 import { takeChatTurn, type ChatSite } from "./chat-agent";
 import { chatContext, type ChatPlace } from "./chat-route";
@@ -431,7 +431,8 @@ export function inEmailLanguage(site: ChatSite, text: string): ChatSite {
 
 /**
  * The conversation a reply address names, when the email may continue it: from the conversation's own address (the address its
- * answers went to), open, or ended within `REOPEN_HOURS` (reopened), and not full. Anything else starts a new conversation.
+ * answers went to), open, or ended however long ago (reopened: an email thread is the same conversation for as long as it goes on, where the
+ * chat's `REOPEN_HOURS` does not apply), and not full. Anything else starts a new conversation.
  */
 async function existingThread(desk: Desk, conversationId: string, from: string): Promise<string | null> {
   const [row] = await db().execute<Row>(sql`
@@ -442,8 +443,6 @@ async function existingThread(desk: Desk, conversationId: string, from: string):
   `);
   if (!row || row.address !== from || Number(row.message_seq) >= CONVERSATION_MESSAGES_MAX) return null;
   if (row.status === "open") return conversationId;
-  const endedAt = row.ended_at ? Date.parse(String(row.ended_at)) : 0;
-  if (Date.now() - endedAt >= REOPEN_HOURS * 3_600_000) return null;
   try {
     await transition(desk, conversationId, "reopen", { kind: "customer" });
     return conversationId;
@@ -505,7 +504,7 @@ async function newConversation(
  * for is kept with its words. With people only, or a store that handles sensitive information (PSI REG-11), nothing: the message waits
  * in the queue for a person.
  */
-async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conversationId: string, from: string, deps: InboundDeps): Promise<void> {
+export async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conversationId: string, from: string, deps: InboundDeps = {}): Promise<void> {
   if (settings.mode !== "ai_first") return;
   const [current] = await db().execute<Row>(sql`select status, handler from commerce.support_conversations where id = ${conversationId}::uuid`);
   if (current?.status !== "open" || current.handler !== "ai") return;
@@ -536,14 +535,19 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
  * desk's *Answer emails about orders* is on, or the store is in the challenge, and only the one customer of the store whose address is the
  * conversation's own. That address is safe to answer about: an email reaches the AI only when its DMARC check did not fail and, in a thread,
  * only from the conversation's address, and every answer goes to that address alone (`sendReplyEmails()`), so whoever sent it, only the
- * address's owner reads what the orders say.
+ * address's owner reads what the orders say. A form's conversation (B2, D797) counts only once the customer wrote in it by email: a form's
+ * address is only typed, a reply from it passed the same checks.
  */
 export async function emailCustomer(desk: Desk, settings: DeskSettings, conversationId: string): Promise<SupportCustomer> {
   if (!desk.storeId || settings.sensitive) return null;
   if (!settings.emailOrders && !(await autonomyFor(desk.storeId)).challenge) return null;
   const conversation = await typedRow(
     z.object({ contact_email: col.textOrNull }),
-    sql`select contact_email from commerce.support_conversations where id = ${conversationId}::uuid and store_id = ${desk.storeId}::uuid and source = 'email'`,
+    sql`select c.contact_email from commerce.support_conversations c
+        where c.id = ${conversationId}::uuid and c.store_id = ${desk.storeId}::uuid
+          and (c.source = 'email' or (c.source = 'form' and exists (
+            select 1 from commerce.support_messages m
+            where m.conversation_id = c.id and m.store_id = c.store_id and m.author = 'customer' and m.data ? 'email')))`,
   );
   const address = conversation?.contact_email ? normaliseEmail(conversation.contact_email) : "";
   if (!address) return null;

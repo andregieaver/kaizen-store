@@ -6,6 +6,24 @@ import { newPageContent, pageInput } from "@/lib/page-content";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, getAll: () => [], set: () => {}, delete: () => {} }) }));
+// The AI's answer runs after the form's response (D797): kept here and run by the test. The store has a text model while `ai.on`.
+const background = vi.hoisted(() => ({ tasks: [] as (() => unknown)[], on: false }));
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  connection: async () => {},
+  after: (task: () => unknown) => background.tasks.push(task),
+}));
+vi.mock("./ai", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./ai")>();
+  return {
+    ...real,
+    aiFor: async (storeId: string | null, ...rest: unknown[]) =>
+      background.on
+        ? ({ provider: "openai", source: "store", apiUrl: "https://ai.example.com/v1", apiKey: "sk-test", textModel: "text-model", embeddingModel: null, space: null } as never)
+        : (real.aiFor as (...args: unknown[]) => unknown)(storeId, ...rest),
+  };
+});
 
 // Email is only kept (`logged`), never sent, without Resend's settings.
 delete process.env.RESEND_API_KEY;
@@ -15,6 +33,8 @@ const { formMessageParts, formToInbox } = await import("./support-forms");
 const support = await import("./support");
 const { systemDesk } = await import("./support-desk");
 const { sendReplyEmails } = await import("./support-email");
+const { emailCustomer } = await import("./support-inbound");
+type Turn = NonNullable<import("./support-inbound").InboundDeps["turn"]>;
 
 type Row = Record<string, unknown>;
 
@@ -173,6 +193,70 @@ describe("contact form messages in the support inbox (D382)", () => {
     expect(String(email.text)).toContain("Ja, vi sender til hele landet.");
     await support.transition(desk, id, "end", { kind: "agent", id: owner, name: "Kari" });
     expect((await latest()).summary_status).toBe("skipped");
+  });
+
+  // D797 (100-day B2): with the desk's form_ai on, or in the challenge, a form's message starts with the AI and is answered as an email's.
+  it("starts with the AI when the desk lets it answer forms, answers by email with no customer, and stays with people otherwise", async () => {
+    const turns: { email?: boolean; customer: unknown }[] = [];
+    const turn: Turn = async (desk, _context, conversationId, _input, customer, _admin, channel) => {
+      turns.push({ email: channel?.email, customer });
+      await support.addMessage(desk, conversationId, "ai", null, "Ja, vi sender til Tromsø.");
+      return { reply: null };
+    };
+    const answers = [{ label: "Melding", value: "Sender dere til Tromsø?" }];
+    const form = { blockId: block, subject: "Spørsmål", path, lang: "nb", inbox: "inbox" as const };
+    const run2 = async (email: string | null) => {
+      const kept = await formToInbox(storeId, form, answers, { email, name: "Mona" }, { turn });
+      for (const task of background.tasks.splice(0)) await task();
+      return kept;
+    };
+    background.on = true;
+    await db().execute(sql`insert into commerce.chat_agents (store_id, enabled, name) values (${storeId}::uuid, true, 'Ingrid') on conflict do nothing`);
+    await setDesk("ai_first", "inbox");
+    await db().execute(sql`update commerce.support_settings set form_ai = true where store_id = ${storeId}::uuid`);
+    try {
+      const kept = await run2(`mona-${run}@example.com`);
+      expect(kept).toMatchObject({ kept: true });
+      expect(turns).toEqual([{ email: true, customer: null }]);
+      expect(await latest()).toMatchObject({ handler: "ai", status: "open", contact_email: `mona-${run}@example.com` });
+      const said = await db().execute<Row>(sql`select author, body from commerce.support_messages where conversation_id = ${String((await latest()).id)}::uuid and author = 'ai'`);
+      expect(said.map((m) => m.body)).toEqual(["Ja, vi sender til Tromsø."]);
+
+      // Without an address to answer, with people only, or for a store with sensitive information: people answer.
+      await run2(null);
+      expect(await latest()).toMatchObject({ handler: "queue" });
+      await setDesk("people", "inbox");
+      await run2(`mona-${run}@example.com`);
+      expect(await latest()).toMatchObject({ handler: "queue" });
+      await setDesk("ai_first", "inbox");
+      await db().execute(sql`update commerce.support_settings set form_ai = false where store_id = ${storeId}::uuid`);
+      await run2(`mona-${run}@example.com`);
+      expect(await latest()).toMatchObject({ handler: "queue" });
+      expect(turns).toHaveLength(1);
+    } finally {
+      background.on = false;
+      await db().execute(sql`update commerce.support_settings set form_ai = false where store_id = ${storeId}::uuid`);
+    }
+  });
+
+  it("lets the AI read the orders of a form's address only once the customer wrote in it by email (D797)", async () => {
+    await setDesk("people", "inbox");
+    const address = `reader-${run}@example.com`;
+    await db().execute(sql`insert into commerce.customers (store_id, email, name) values (${storeId}::uuid, ${address}, 'Reader')`);
+    await db().execute(sql`update commerce.support_settings set email_orders = true where store_id = ${storeId}::uuid`);
+    try {
+      const kept = await formToInbox(storeId, { blockId: block, subject: "S", path, lang: "nb", inbox: "inbox" }, [{ label: "Melding", value: "Hvor er pakken?" }], { email: address, name: null });
+      if (!kept.kept) throw new Error("not kept");
+      const desk = systemDesk(storeId);
+      const settings = (await support.deskSettings(desk))!;
+      // Only typed in a form: no customer.
+      expect(await emailCustomer(desk, settings, kept.conversationId)).toBeNull();
+      // A reply by email from the address (its DMARC check passed on the way in) proves it.
+      await support.addMessage(desk, kept.conversationId, "customer", null, "Ordre 1001", { data: { email: { attachments: 0, cut: false } } });
+      expect(await emailCustomer(desk, settings, kept.conversationId)).toMatchObject({ email: address });
+    } finally {
+      await db().execute(sql`update commerce.support_settings set email_orders = false where store_id = ${storeId}::uuid`);
+    }
   });
 
   it("shows a customer with the address, never tying the conversation to them", async () => {

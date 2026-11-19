@@ -33,6 +33,13 @@ export type ContractText = {
     method: string;
     methods: { email_code: string; admin_session: string };
     from: string;
+    email: string;
+    ip: string;
+    contractId: string;
+    event: string;
+    by: string;
+    sealTitle: string;
+    sealNote: string;
     events: string;
     kinds: Record<"sent" | "viewed" | "code_sent" | "code_checked" | "signed" | "declined" | "reminded" | "completed" | "expired" | "cancelled", string>;
     seal: string;
@@ -68,6 +75,13 @@ const nb: ContractText = {
     method: "Hvordan",
     methods: { email_code: "Kode sendt til e-post", admin_session: "Pålogget i butikkens administrasjon" },
     from: "Fra",
+    email: "E-post",
+    ip: "IP-adresse",
+    contractId: "Kontrakt-ID",
+    event: "Hendelse",
+    by: "Av",
+    sealTitle: "Seglets fingeravtrykk",
+    sealNote: "Filen er beseglet av Kaizena Flow etter siste signatur, slik at en endring vises når den åpnes.",
     events: "Hendelser",
     kinds: {
       sent: "Sendt",
@@ -114,6 +128,13 @@ const en: ContractText = {
     method: "How",
     methods: { email_code: "A code sent to their email", admin_session: "Signed in to the store's admin" },
     from: "From",
+    email: "Email",
+    ip: "IP address",
+    contractId: "Contract ID",
+    event: "Event",
+    by: "By",
+    sealTitle: "Seal fingerprint",
+    sealNote: "The file is sealed by Kaizena Flow after the last signature, so any change shows when it is opened.",
     events: "Events",
     kinds: {
       sent: "Sent",

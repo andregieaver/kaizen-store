@@ -579,7 +579,11 @@ export const supportEn = {
         inbox: "In this inbox only",
         email: "Emailed to the form's recipients only",
       },
-      note: "While support is on, a message sent through a contact form on your site becomes a conversation here that your people answer by email. The AI never reads or answers it.",
+      note: "While support is on, a message sent through a contact form on your site becomes a conversation here, answered by email.",
+      ai: {
+        title: "Let the AI answer messages from your contact forms first.",
+        text: "As in the chat on your site, it reads no orders: anyone can type an address into a form. If the customer writes back by email from that address, it may read their orders as with emails. Off, people answer them. Only while the AI answers first; always on during the 100-day challenge; never for a store with sensitive information.",
+      },
       /** Ecosystem plan E1.4: with the inbox only, replies to the store's emails about orders come to the desk's address. */
       replies:
         "With In this inbox only, customers' replies to your emails about their orders, returns, exchanges and bookings come here too, to this inbox's own address.",

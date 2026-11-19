@@ -861,6 +861,15 @@ export const analyticsEn = {
     screen: "Screen",
     tooFew: "{n} of {min} page loads",
     notMeasured: "What this report cannot measure",
+    phone: {
+      lead: "How fast your pages load for the people who open them.",
+      offSub: "Speed is measured only while it is on",
+      figures: "What the three figures mean",
+      limits: "What it cannot measure",
+      limitsSub: "Quiet pages, checkout, visitors who opt out",
+      open: "Open",
+      done: "Done",
+    },
     notMeasuredItems: [
       "Pages with fewer than 20 page loads in 28 days: their figure is left out, never guessed.",
       "The cart, checkout and order pages: nothing extra runs where a shopper pays.",

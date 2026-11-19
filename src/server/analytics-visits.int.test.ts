@@ -294,7 +294,7 @@ describe("recording a page view", () => {
 
   it("limits the new rows a store takes in a day", async () => {
     await db().execute(sql`
-      insert into commerce.chat_usage (store_id, bucket, "window", count) values (${storeId}::uuid, 'visits', date_trunc('day', now()), ${NEW_VISITS_PER_STORE_DAY})
+      insert into commerce.chat_usage (store_id, bucket, "window", count) values (${storeId}::uuid, 'visits', date_trunc('day', ${EVENING.toISOString()}::timestamptz), ${NEW_VISITS_PER_STORE_DAY})
       on conflict (store_id, bucket, "window") do update set count = ${NEW_VISITS_PER_STORE_DAY}
     `);
     expect(await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING })).toEqual({ recorded: false, reason: "store_full" });

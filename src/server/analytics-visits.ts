@@ -88,8 +88,12 @@ function ownHostsOf(slug: string, requestHost: string | null): string[] {
  */
 const burstKey = (secret: string, day: string, address: string): string => createHmac("sha256", secret).update(`visit-burst|${day}|${address}`).digest("hex").slice(0, 24);
 
-/** Counts a new visitor-day row against the address's and the store's limits, before it is written. */
-async function takeNewVisit(storeId: string, address: string): Promise<"ok" | "burst" | "store_full"> {
+/**
+ * Counts a new visitor-day row against the address's and the store's limits, before it is written. The windows are binned on the
+ * request's own time (`at`), the clock the row's day is read from, never the database's: a run of requests that straddles a
+ * ten-minute boundary of the database clock would otherwise start a fresh window mid-run.
+ */
+async function takeNewVisit(storeId: string, address: string, at: string): Promise<"ok" | "burst" | "store_full"> {
   const count = async (bucket: string, window: ReturnType<typeof sql>) => {
     const [row] = await db().execute<Row>(sql`
       insert into commerce.chat_usage (store_id, bucket, "window", count)
@@ -99,8 +103,8 @@ async function takeNewVisit(storeId: string, address: string): Promise<"ok" | "b
     `);
     return Number(row.count);
   };
-  if ((await count(`vn:${address}`, sql`date_bin('10 minutes', now(), '2000-01-01')`)) > NEW_VISITS_PER_ADDRESS_WINDOW) return "burst";
-  if ((await count("visits", sql`date_trunc('day', now())`)) > NEW_VISITS_PER_STORE_DAY) return "store_full";
+  if ((await count(`vn:${address}`, sql`date_bin('10 minutes', ${at}::timestamptz, '2000-01-01')`)) > NEW_VISITS_PER_ADDRESS_WINDOW) return "burst";
+  if ((await count("visits", sql`date_trunc('day', ${at}::timestamptz)`)) > NEW_VISITS_PER_STORE_DAY) return "store_full";
   return "ok";
 }
 
@@ -161,7 +165,7 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
   // A visitor's first page view of the day starts a row, and rows are what a script could multiply by changing its user agent.
   const [known] = await db().execute<Row>(sql`select 1 as one from commerce.visits where store_id = ${store.id}::uuid and day = ${day}::date and visitor = ${visitor}`);
   if (!known) {
-    const verdict = await takeNewVisit(store.id, burstKey(secret, day, address));
+    const verdict = await takeNewVisit(store.id, burstKey(secret, day, address), at);
     if (verdict !== "ok") return { recorded: false, reason: verdict };
   }
   const product = place.kind === "product" && place.handle !== null;

@@ -81,28 +81,31 @@ export function HeatmapsHub({ base, on, owner, pages, words }: HeatmapsHubProps)
       {!on ? <Note title={w.off}>{owner ? <Link href={`${base}/analytics/settings#signals`} className="underline">{w.turnOn}</Link> : null}</Note> : null}
       {measured.length === 0 ? <p className="text-sm text-muted">{fillWords(w.collecting, { n: MIN_MAP_VIEWS })}</p> : null}
 
-      <AnalyticsSection id="stuck" title={w.stuckTitle} description={w.stuckDescription}>
+      <AnalyticsSection id="stuck" title={w.stuckTitle} description={<span className="max-sm:hidden">{w.stuckDescription}</span>}>
         <div className={card}>
           {stuck.length === 0 ? (
             <p className="text-sm text-muted">{w.noneStuck}</p>
           ) : (
             <ol className="flex flex-col divide-y divide-line">
               {stuck.map((p, i) => (
-                <li key={p.page} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <li key={p.page} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 max-sm:flex-nowrap max-sm:gap-2">
                   <div className="min-w-0">
                     <p className="break-all font-medium">{name(p.page)}</p>
                     <p className="text-sm text-muted">
-                      {formatCount(p.views)} {w.colViews.toLowerCase()} · {formatPercent(p.frustration)} {w.colStuck.toLowerCase()}
+                      {formatCount(p.views)} <span className="max-sm:hidden">{w.colViews.toLowerCase()}</span>
+                      <span className="sm:hidden">{w.phone.views}</span> · {formatPercent(p.frustration)} {w.colStuck.toLowerCase()}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 max-sm:shrink-0 max-sm:flex-nowrap max-sm:gap-2">
                     {owner ? (
                       <Link href={recordingsOfPage(base, p.page)} className="text-sm underline">
-                        {w.watch}
+                        <span className="sm:hidden">{w.phone.recordings}</span>
+                        <span className="max-sm:hidden">{w.watch}</span>
                       </Link>
                     ) : null}
-                    <Link href={mapHref(base, p.page)} className={i === 0 ? primary : "inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm"}>
-                      {i === 0 ? w.seeMap : w.map}
+                    <Link href={mapHref(base, p.page)} className={`${i === 0 ? primary : "inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm"} max-sm:px-3`}>
+                      <span className="sm:hidden">{w.map}</span>
+                      <span className="max-sm:hidden">{i === 0 ? w.seeMap : w.map}</span>
                     </Link>
                   </div>
                 </li>
@@ -112,7 +115,26 @@ export function HeatmapsHub({ base, on, owner, pages, words }: HeatmapsHubProps)
         </div>
       </AnalyticsSection>
 
-      <AnalyticsSection id="pages" title={w.mostTitle} description={w.mostDescription}>
+      <AnalyticsSection id="pages" title={w.mostTitle} description={<span className="max-sm:hidden">{w.mostDescription}</span>}>
+        {/* Round 54 (D802): on a phone each page is a line with its figures and Map, in place of the table. */}
+        <ul className="flex flex-col overflow-hidden rounded-panel bg-card sm:hidden" aria-label={w.mostTitle}>
+          {pages.map((r) => (
+            <li key={r.page} className="flex min-h-14 items-center gap-3 border-b border-line px-4 py-2 last:border-0">
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-body break-all text-ink">{name(r.page)}</span>
+                <span className="text-caption text-ink-2">
+                  {formatCount(r.views)} {w.phone.views} · {formatPercent(r.views > 0 ? r.frustratedViews / r.views : 0)} {w.phone.stuck} · {formatPercent(r.reachedHalf)} {w.phone.reached}
+                </span>
+              </span>
+              {r.views >= MIN_MAP_VIEWS ? (
+                <Link href={mapHref(base, r.page)} className="shrink-0 text-sm underline">
+                  {w.map}
+                </Link>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        <div className="max-sm:hidden">
         <DataTable
           caption={w.mostTitle}
           columns={[...columns, { key: "map", label: w.map, cell: (r) => (r.views >= MIN_MAP_VIEWS ? <Link href={mapHref(base, r.page)} className="underline">{w.map}</Link> : "—") }]}
@@ -121,6 +143,7 @@ export function HeatmapsHub({ base, on, owner, pages, words }: HeatmapsHubProps)
           exportable={false}
           exportReason="heatmaps.pages"
         />
+        </div>
       </AnalyticsSection>
     </div>
   );
