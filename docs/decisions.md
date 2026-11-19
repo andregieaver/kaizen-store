@@ -805,6 +805,7 @@ Each decision's text is its own file in docs/decisions/; this table is written b
 | D800 | **The builder paints before the rich text editor and a store language** | 2026-11-19 | [text](decisions/D800.md) |
 | D801 | **The session is kept by Supabase's auth client alone** | 2026-11-19 | [text](decisions/D801.md) |
 | D802 | **Admin redesign round 54: export stock, speed and heatmaps on a phone** | 2026-11-19 | [text](decisions/D802.md) |
+| D803 | **When main is red: CI keeps a ci-red issue naming the failing tests and the sessions since the last green run** | 2026-11-19 | [text](decisions/D803.md) |
 <!-- /decisions:index -->
 
 ### Selling from Norway to Sweden and Denmark
