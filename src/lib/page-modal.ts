@@ -129,6 +129,43 @@ export function modalProblems(modal: RowModal): string[] {
   return problems;
 }
 
+/**
+ * The refusals above as codes, for the builder to say in the admin's language (`blocks.modal.problems[code]`, bloat review step 2.26): the
+ * same conditions in the same order as the sentences, which the page's own check and the AI manager's tools read.
+ */
+export type ModalProblemCode = "noName" | "tooLong" | "badKey" | "spaces" | "badClass" | "noOpen" | "days" | "noClose";
+
+/** `keyProblem()` as a code, or null. */
+export function keyProblemCode(key: string): ModalProblemCode | null {
+  if (key.length === 0) return "noName";
+  if (key.length > MODAL_KEY_MAX) return "tooLong";
+  if (!KEY.test(key)) return "badKey";
+  return null;
+}
+
+/** `classProblem()` as a code, or null. */
+export function classProblemCode(name: string): ModalProblemCode | null {
+  if (name.length === 0) return null;
+  if (/\s/.test(name)) return "spaces";
+  if (!CLASS_TOKEN.test(name)) return "badClass";
+  return null;
+}
+
+/** `modalProblems()` as codes, in the same order. */
+export function modalProblemCodes(modal: RowModal): ModalProblemCode[] {
+  const codes: ModalProblemCode[] = [];
+  const key = keyProblemCode(modal.key);
+  if (key) codes.push(key);
+  if (modal.triggers.className) {
+    const name = classProblemCode(modal.triggers.className);
+    if (name) codes.push(name);
+  }
+  if (!hasTrigger(modal.triggers)) codes.push("noOpen");
+  if (modal.frequency === "days" && !(modal.days && modal.days >= MODAL_DAYS_MIN && modal.days <= MODAL_DAYS_MAX)) codes.push("days");
+  if (modal.closeButton === false && modal.closeOnOverlay === false) codes.push("noClose");
+  return codes;
+}
+
 /** A new modal setting: opened by a button or link, once per visit when it opens by itself. */
 export const newModal = (key: string): RowModal => ({
   key,

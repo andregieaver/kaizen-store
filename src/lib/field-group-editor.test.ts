@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { fieldsEn } from "@/lib/admin-messages/fields.en";
+
 import { emptyGroup, fieldGroupInput, newField, type FieldDef } from "./custom-fields";
 import {
   SUB_FIELD_TYPES,
@@ -43,9 +45,9 @@ describe("the field group generator's helpers (D118)", () => {
   });
 
   it("offers each location param once, for the kinds chosen", () => {
-    const params = locationParamsFor(["product", "page"]).map((p) => p.param);
+    const params = locationParamsFor(["product", "page"], fieldsEn).map((p) => p.param);
     expect(params).toEqual(["kind", "category", "tag", "audience", "role"]);
-    expect(locationParamsFor(["article"]).map((p) => p.param)).toEqual(["category", "tag"]);
+    expect(locationParamsFor(["article"], fieldsEn).map((p) => p.param)).toEqual(["category", "tag"]);
   });
 
   it("knows a rule that asks about something the kinds do not have", () => {
@@ -70,11 +72,11 @@ describe("the field group generator's helpers (D118)", () => {
           [{ param: "role", operator: "==", value: "blog" }],
           [{ param: "tag", operator: "==", value: "gone" }],
         ],
-        lookup,
+        lookup, fieldsEn
       ),
     ).toBe("Kind of product is Goods and Category is not Shoes or Special page is Blog page or Tag is a removed one");
-    expect(entitiesText(["product", "page", "article"])).toBe("Products, pages and articles");
-    expect(entitiesText(["page"])).toBe("Pages");
+    expect(entitiesText(["product", "page", "article"], fieldsEn)).toBe("Products, pages and articles");
+    expect(entitiesText(["page"], fieldsEn)).toBe("Pages");
   });
 
   it("makes choice keys from labels, never twice", () => {
@@ -178,15 +180,15 @@ describe("the field group generator's helpers (D118)", () => {
       when: [[{ field: a.id, operator: "==" as const, value: "1" }]],
     };
     const draft = { ...emptyGroup("product"), name: "Box", slug: "box", fields: [a, b] };
-    expect(draftProblems(draft)).toEqual([]);
+    expect(draftProblems(draft, fieldsEn)).toEqual([]);
     expect(fieldGroupInput.safeParse(draft).success).toBe(true);
-    expect(draftProblems({ ...draft, fields: [b, a] })).toHaveLength(1);
+    expect(draftProblems({ ...draft, fields: [b, a] }, fieldsEn)).toHaveLength(1);
     expect([...fieldsWithBrokenLogic([b, a])]).toEqual([b.id]);
     expect(fieldsWithBrokenLogic([a, b]).size).toBe(0);
-    expect(draftProblems({ ...draft, location: [[{ param: "role", operator: "==", value: "blog" }]] })[0]).toMatch(
+    expect(draftProblems({ ...draft, location: [[{ param: "role", operator: "==", value: "blog" }]] }, fieldsEn)[0]).toMatch(
       /do not have/,
     );
-    expect(draftProblems({ ...draft, location: [[{ param: "category", operator: "==", value: "" }]] })).toEqual([
+    expect(draftProblems({ ...draft, location: [[{ param: "category", operator: "==", value: "" }]] }, fieldsEn)).toEqual([
       "Choose what each location rule compares with.",
     ]);
   });
@@ -328,8 +330,8 @@ describe("the field group generator's helpers (D118)", () => {
       const broken = { ...parent, subFields: [parent.subFields?.[1] as FieldDef, parent.subFields?.[0] as FieldDef] };
       expect([...fieldsWithBrokenLogic([broken])].sort()).toEqual([broken.id, why.id].sort());
       const draft = { ...emptyGroup("product"), name: "Box", slug: "box", fields: [broken] };
-      expect(draftProblems(draft)).toHaveLength(1);
-      expect(draftProblems({ ...draft, fields: [parent] })).toEqual([]);
+      expect(draftProblems(draft, fieldsEn)).toHaveLength(1);
+      expect(draftProblems({ ...draft, fields: [parent] }, fieldsEn)).toEqual([]);
       expect(fieldGroupInput.safeParse({ ...draft, fields: [parent] }).success).toBe(true);
       expect(fieldGroupInput.safeParse(draft).success).toBe(false);
     });
@@ -337,36 +339,36 @@ describe("the field group generator's helpers (D118)", () => {
     it("asks for fields in an empty group or repeater", () => {
       const empty = { ...field("group", "Size"), subFields: [] };
       const draft = { ...emptyGroup("product"), name: "Box", slug: "box", fields: [empty] };
-      expect(draftProblems(draft)).toEqual(["Add fields to Size."]);
+      expect(draftProblems(draft, fieldsEn)).toEqual(["Add fields to Size."]);
     });
 
     it("says what a group or repeater holds", () => {
       const { parent } = repeaterWith();
-      expect(subFieldsSummary(parent)).toBe("3 fields: Special, Reason, Other");
-      expect(subFieldsSummary({ type: "group", subFields: [] })).toBe("No fields yet");
-      expect(subFieldsSummary({ type: "text" })).toBe("No fields yet");
+      expect(subFieldsSummary(parent, fieldsEn)).toBe("3 fields: Special, Reason, Other");
+      expect(subFieldsSummary({ type: "group", subFields: [] }, fieldsEn)).toBe("No fields yet");
+      expect(subFieldsSummary({ type: "text" }, fieldsEn)).toBe("No fields yet");
       const many = { ...parent, subFields: [...(parent.subFields ?? []), field("text", "Fourth", ["a", "b", "c"])] };
-      expect(subFieldsSummary(many)).toBe("4 fields: Special, Reason, Other …");
+      expect(subFieldsSummary(many, fieldsEn)).toBe("4 fields: Special, Reason, Other …");
     });
   });
 
   describe("what is wrong with a field before Apply", () => {
     it("checks a field's label, name and choices", () => {
       const a = field("select", "Fit");
-      expect(fieldProblems(a, [], [])).toEqual([]);
-      expect(fieldProblems({ ...a, label: " " }, [], [])).toEqual(["Give the field a label."]);
-      expect(fieldProblems({ ...a, name: "Bad Name" }, [], [])[0]).toMatch(/lowercase/);
-      expect(fieldProblems(a, [a.name], [])).toEqual([`Another field is already named ${a.name}.`]);
-      expect(fieldProblems({ ...a, choices: [] }, [], [])).toEqual(["Add at least one choice."]);
-      expect(fieldProblems({ ...a, min: 5, max: 1 }, [], [])).toEqual(["The least is more than the most."]);
+      expect(fieldProblems(a, [], [], fieldsEn)).toEqual([]);
+      expect(fieldProblems({ ...a, label: " " }, [], [], fieldsEn)).toEqual(["Give the field a label."]);
+      expect(fieldProblems({ ...a, name: "Bad Name" }, [], [], fieldsEn)[0]).toMatch(/lowercase/);
+      expect(fieldProblems(a, [a.name], [], fieldsEn)).toEqual([`Another field is already named ${a.name}.`]);
+      expect(fieldProblems({ ...a, choices: [] }, [], [], fieldsEn)).toEqual(["Add at least one choice."]);
+      expect(fieldProblems({ ...a, min: 5, max: 1 }, [], [], fieldsEn)).toEqual(["The least is more than the most."]);
     });
 
     it("checks the fields inside a group or repeater, and names the one at fault", () => {
       const inner = { ...field("select", "Kind"), choices: [] };
       const parent = { ...field("repeater", "Rows"), subFields: [field("text", "Title"), inner] };
-      expect(fieldProblems(parent, [], [])).toEqual(["Kind: Add at least one choice."]);
-      expect(fieldProblems({ ...parent, subFields: [] }, [], [])).toEqual(["Add at least one field to the repeater."]);
-      expect(fieldProblems({ ...field("group", "G"), subFields: [] }, [], [])).toEqual([
+      expect(fieldProblems(parent, [], [], fieldsEn)).toEqual(["Kind: Add at least one choice."]);
+      expect(fieldProblems({ ...parent, subFields: [] }, [], [], fieldsEn)).toEqual(["Add at least one field to the repeater."]);
+      expect(fieldProblems({ ...field("group", "G"), subFields: [] }, [], [], fieldsEn)).toEqual([
         "Add at least one field to the group.",
       ]);
       const twins = {
@@ -376,7 +378,7 @@ describe("the field group generator's helpers (D118)", () => {
           { ...field("text", "B"), name: "same" },
         ],
       };
-      expect(fieldProblems(twins, [], [])).toEqual([
+      expect(fieldProblems(twins, [], [], fieldsEn)).toEqual([
         "A: Another field is already named same.",
         "B: Another field is already named same.",
       ]);
@@ -384,8 +386,8 @@ describe("the field group generator's helpers (D118)", () => {
 
     it("checks a repeater's fewest and most rows", () => {
       const parent = { ...field("repeater", "Rows"), minRows: 5, maxRows: 2 };
-      expect(fieldProblems(parent, [], [])).toEqual(["The fewest rows is more than the most."]);
-      expect(fieldProblems({ ...parent, minRows: 1, maxRows: 2 }, [], [])).toEqual([]);
+      expect(fieldProblems(parent, [], [], fieldsEn)).toEqual(["The fewest rows is more than the most."]);
+      expect(fieldProblems({ ...parent, minRows: 1, maxRows: 2 }, [], [], fieldsEn)).toEqual([]);
     });
 
     it("finds logic that looks at a field that is no longer above", () => {
@@ -394,8 +396,8 @@ describe("the field group generator's helpers (D118)", () => {
         ...field("text", "Shy", [trigger.name]),
         when: [[{ field: trigger.id, operator: "has" as const }]],
       };
-      expect(fieldProblems(shy, [], [trigger])).toEqual([]);
-      expect(fieldProblems(shy, [], [])).toEqual(["The logic looks at a field that is no longer above this one."]);
+      expect(fieldProblems(shy, [], [trigger], fieldsEn)).toEqual([]);
+      expect(fieldProblems(shy, [], [], fieldsEn)).toEqual(["The logic looks at a field that is no longer above this one."]);
     });
 
     it("knows which types have settings of their own", () => {

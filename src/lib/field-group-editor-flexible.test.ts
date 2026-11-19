@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { fieldsEn } from "@/lib/admin-messages/fields.en";
+
 import { MAX_LAYOUTS, newField, type FieldDef } from "./custom-fields";
 import {
   addLayout,
@@ -93,12 +95,12 @@ describe("editing the layouts of flexible content", () => {
   });
 
   it("duplicates a layout next to itself with new field ids and a key and label of its own", () => {
-    const result = duplicateLayout([flexible()], "f_flexible0001", "text");
+    const result = duplicateLayout([flexible()], "f_flexible0001", "text", fieldsEn.text.copyOf);
     expect(result?.copy).toMatchObject({ key: "text-copy", label: "Text (copy)" });
     expect(result?.fields[0].layouts?.map((l) => l.key)).toEqual(["text", "text-copy", "quote"]);
     const ids = result?.fields[0].layouts?.flatMap((l) => l.subFields.map((s) => s.id)) ?? [];
     expect(new Set(ids).size).toBe(ids.length);
-    expect(duplicateLayout([flexible()], "f_flexible0001", "missing")).toBeNull();
+    expect(duplicateLayout([flexible()], "f_flexible0001", "missing", fieldsEn.text.copyOf)).toBeNull();
   });
 
   it("edits the fields inside a layout with the same functions as a group's, through a stand-in group", () => {
@@ -143,15 +145,15 @@ describe("editing the layouts of flexible content", () => {
 
 describe("what the dialog says about flexible content", () => {
   it("lists its layouts in a line", () => {
-    expect(layoutsSummary(flexible())).toBe("2 layouts: Text, Quote");
-    expect(layoutsSummary({ layouts: [] })).toBe("No layouts yet");
-    expect(subFieldsSummary(flexible())).toBe("2 layouts: Text, Quote");
-    expect(subFieldsSummary(newField("group"))).toMatch(/^1 field: Text$/);
+    expect(layoutsSummary(flexible(), fieldsEn)).toBe("2 layouts: Text, Quote");
+    expect(layoutsSummary({ layouts: [] }, fieldsEn)).toBe("No layouts yet");
+    expect(subFieldsSummary(flexible(), fieldsEn)).toBe("2 layouts: Text, Quote");
+    expect(subFieldsSummary(newField("group"), fieldsEn)).toMatch(/^1 field: Text$/);
   });
 
   it("says what is wrong before the field is applied", () => {
-    expect(fieldProblems(flexible(), [], [])).toEqual([]);
-    expect(fieldProblems({ ...flexible(), layouts: [] }, [], [])).toContain("Add at least one layout.");
+    expect(fieldProblems(flexible(), [], [], fieldsEn)).toEqual([]);
+    expect(fieldProblems({ ...flexible(), layouts: [] }, [], [], fieldsEn)).toContain("Add at least one layout.");
     const twice: FieldDef = {
       ...flexible(),
       layouts: [
@@ -159,17 +161,17 @@ describe("what the dialog says about flexible content", () => {
         { key: "a", label: "", subFields: [] },
       ],
     };
-    const problems = fieldProblems(twice, [], []);
+    const problems = fieldProblems(twice, [], [], fieldsEn);
     expect(problems).toContain("Two layouts have the same key.");
     expect(problems).toContain("Give each layout a label.");
     expect(problems).toContain("Add at least one field to the layout a.");
-    expect(fieldProblems({ ...flexible(), minRows: 3, maxRows: 2 }, [], [])).toContain(
+    expect(fieldProblems({ ...flexible(), minRows: 3, maxRows: 2 }, [], [], fieldsEn)).toContain(
       "The fewest rows is more than the most.",
     );
     // A problem inside a layout's field names the layout and the field.
     const bad = flexible();
     bad.layouts![0].subFields[0] = sub("f_head00000001", "", {});
-    expect(fieldProblems(bad, [], []).join(" ")).toMatch(/Text, a field inside: Give the field a label\./);
+    expect(fieldProblems(bad, [], [], fieldsEn).join(" ")).toMatch(/Text, a field inside: Give the field a label\./);
   });
 
   it("is checked with the group before it is saved", () => {
@@ -185,7 +187,7 @@ describe("what the dialog says about flexible content", () => {
       ],
       position: "main",
       active: true,
-    });
+    }, fieldsEn);
     expect(problems).toContain("Add layouts to Content.");
     expect(problems).toContain("Add fields to every layout of Content.");
   });
