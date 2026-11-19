@@ -4,7 +4,7 @@ import { FLOW_TRIGGERS } from "@/lib/flow-triggers";
 import type { FlowCondition, FlowStep } from "@/lib/flows";
 import type { FlowsMessages } from "@/lib/admin-messages/flows.en";
 
-import { addFlowStepAction, changeFlowConditionAction, changeFlowTriggerAction, removeFlowStepAction } from "../actions";
+import { addFlowStepAction, changeFlowConditionAction, changeFlowPicksAction, changeFlowTriggerAction, removeFlowStepAction } from "../actions";
 
 type Props = {
   storeSlug: string;
@@ -44,7 +44,10 @@ const conditions = ({ w, segments }: Props) => [
 function stepTitle(step: FlowStep, p: Props): string {
   const { w } = p;
   if (step.kind === "if") return `${w.canvas.kinds.if}: ${conditions(p).find((c) => c.value === conditionValue(step.condition))?.label ?? ""}`;
-  if (step.kind === "email") return `${w.canvas.kinds.email}: ${Object.values(step.content)[0]?.subject ?? ""}`;
+  if (step.kind === "email") {
+    const subject = `${w.canvas.kinds.email}: ${Object.values(step.content)[0]?.subject ?? ""}`;
+    return step.picks ? `${subject} (${w.canvas.pickKinds[step.picks]})` : subject;
+  }
   if (step.kind === "wait") return `${w.canvas.kinds.wait}: ${waitWords(step.hours, w.story)}`;
   return w.canvas.kinds[step.kind];
 }
@@ -65,6 +68,20 @@ function StepList({ steps, p, depth }: { steps: readonly FlowStep[]; p: Props; d
                     .map((c) => (
                       <SubmitButton key={c.value} variant="secondary" name="condition" value={c.value}>
                         {c.label}
+                      </SubmitButton>
+                    ))}
+                </div>
+              </ActionForm>
+            )}
+            {/* Products picked for each reader (slice 4, D653): one press each; the one it has is said, not offered. */}
+            {step.kind === "email" && (
+              <ActionForm action={changeFlowPicksAction.bind(null, p.storeSlug, p.flowId, step.id)}>
+                <div role="group" aria-label={w.canvas.picks} className="flex flex-wrap items-center gap-2">
+                  {(["none", "cross_sell", "replenish", "browse"] as const)
+                    .filter((k) => k !== (step.picks ?? "none"))
+                    .map((k) => (
+                      <SubmitButton key={k} variant="secondary" name="picks" value={k}>
+                        {w.canvas.pickKinds[k]}
                       </SubmitButton>
                     ))}
                 </div>
