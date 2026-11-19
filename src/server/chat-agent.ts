@@ -197,7 +197,8 @@ export type ChatEmbed = { id: string; host: string; privacyUrl: string | null };
  * Where the agent talks: a store in one of its countries, or Kaizen's site; with `embed`, in the chat that desk shows on a site of its
  * own (D582), where only the knowledge base is searched and nothing of the shop, its pages or a customer's orders is offered.
  */
-export type ChatSite = { kind: "store"; store: Store; market: Market; embed?: ChatEmbed } | { kind: "kaizen"; embed?: ChatEmbed };
+/** Kaizena Flow's own site answers in English unless `lang` says another of its languages (an email written in it, D332). */
+export type ChatSite = { kind: "store"; store: Store; market: Market; embed?: ChatEmbed } | { kind: "kaizen"; embed?: ChatEmbed; lang?: string };
 
 /** Rounds of tools before the model must answer. */
 const ROUNDS = 4;
@@ -574,7 +575,7 @@ export async function runChat(
     onText?: (shown: string) => void;
   } = {},
 ): Promise<ChatReply> {
-  const lang = site.kind === "store" ? site.market.lang : "en";
+  const lang = site.kind === "store" ? site.market.lang : (site.lang ?? "en");
   const m = t(lang);
   const messages: ToolChatMessage[] = [
     {

@@ -355,6 +355,15 @@ describe("email into the desk", () => {
       const platformAddress = (await inbound.deskEmailAddress(systemDesk(null), env))!;
       const { row: platform } = await receive(platformAddress, "owner.kari@inbound.example", { subject: "My plan" });
       expect(await inbound.emailAccount(systemDesk(null), settings, String(platform.conversation_id))).toEqual(expected);
+      // An email in Norwegian is kept in Norwegian, so the answer and the email around it are; one in English stays English.
+      expect((await conversation(platform.conversation_id)).locale).toBe("en-GB");
+      const { row: norsk } = await receive(platformAddress, "owner.kari@inbound.example", {
+        subject: "Nettsider",
+        text: "Hei!\n\nHvor mange nettsider har jeg registrert hos dere?\n\nVennlig hilsen Kari",
+      });
+      expect((await conversation(norsk.conversation_id)).locale).toBe("nb-NO");
+      expect(inbound.inEmailLanguage({ kind: "kaizen" }, "Hei, vil du svare på denne eposten?")).toEqual({ kind: "kaizen", lang: "nb" });
+      expect(inbound.inEmailLanguage({ kind: "kaizen" }, "Hi, would you answer this email?")).toEqual({ kind: "kaizen" });
     } finally {
       await db().execute(sql`update commerce.support_settings set mode = ${before.mode}, tone_on = ${before.tone_on}, summaries_on = ${before.summaries_on} where store_id is null`);
     }

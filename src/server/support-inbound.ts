@@ -52,6 +52,8 @@ import { owned } from "./owned";
 import { textList } from "./sql-arrays";
 import { z } from "zod";
 import { normaliseEmail } from "@/lib/email-address";
+import { emailLanguage } from "@/lib/email-language";
+import { PLATFORM_LANG_FACTS, PLATFORM_LANGS, isPlatformLang } from "@/lib/platform-lang";
 
 type Row = Record<string, unknown>;
 
@@ -337,18 +339,20 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   const message = messageOf({ text: email.text ?? null, html: email.html ?? null, subject: email.subject ?? (row.subject ? String(row.subject) : null) }, { withSubject: thread === null });
   if (!message.body) return refused("empty");
 
-  const conversationId = thread ?? (await newConversation(desk, settings, site, { from, name: displayName(email.from ?? ""), subject: cleanSubject(email.subject ?? (row.subject ? String(row.subject) : null)), messageId }));
+  const spoken = inEmailLanguage(site, message.body);
+  const conversationId = thread ?? (await newConversation(desk, settings, spoken, { from, name: displayName(email.from ?? ""), subject: cleanSubject(email.subject ?? (row.subject ? String(row.subject) : null)), messageId }));
   if (thread) {
     await db().execute(sql`
       update commerce.support_conversations set email_message_id = coalesce(${messageId}, email_message_id),
-        email_subject = coalesce(email_subject, ${cleanSubject(email.subject)}), reply_key = coalesce(reply_key, ${newKey()})
+        email_subject = coalesce(email_subject, ${cleanSubject(email.subject)}), reply_key = coalesce(reply_key, ${newKey()}),
+        locale = ${placeOf(spoken).locale.slice(0, 16)}, market = ${placeOf(spoken).market}
       where id = ${thread}::uuid
     `);
   }
   const attachments = Array.isArray(email.attachments) ? email.attachments.length : 0;
   const added = await addMessage(desk, conversationId, "customer", null, message.body, { data: { email: { attachments, cut: message.cut } } });
   if (added && scoresTone(settings)) await scoreTone(desk, conversationId, added.seq).catch((error) => log("warn", "support.inbound_tone_failed", { conversationId }, error));
-  await answer(desk, settings, site, conversationId, from, deps);
+  await answer(desk, settings, spoken, conversationId, from, deps);
   return { status: "done", conversationId };
 }
 
@@ -364,7 +368,24 @@ async function siteOf(storeId: string | null): Promise<ChatSite | null> {
 const placeOf = (site: ChatSite): ChatPlace =>
   site.kind === "store"
     ? { site, storeId: site.store.id, lang: site.market.lang, locale: site.market.locale, market: site.market.slug }
-    : { site, storeId: null, lang: "en", locale: "en-GB", market: null };
+    : isPlatformLang(site.lang) && site.lang !== "en"
+      ? { site, storeId: null, lang: site.lang, locale: PLATFORM_LANG_FACTS[site.lang].locale, market: null }
+      : { site, storeId: null, lang: "en", locale: "en-GB", market: null };
+
+/**
+ * The site in the language an email is written in (D332, `emailLanguage()`): a store's market in that language, or Kaizena Flow's site in
+ * one of its languages; the site as it is when the email does not say clearly or the site has no such language. The conversation keeps
+ * that language, so the AI's answer and the email around it are written in it.
+ */
+export function inEmailLanguage(site: ChatSite, text: string): ChatSite {
+  if (site.kind === "store") {
+    const lang = emailLanguage(text, site.store.markets.map((market) => market.lang));
+    const market = lang && lang !== site.market.lang ? site.store.markets.find((candidate) => candidate.lang === lang) : undefined;
+    return market ? { ...site, market } : site;
+  }
+  const lang = emailLanguage(text, PLATFORM_LANGS);
+  return lang && lang !== (site.lang ?? "en") ? { ...site, lang } : site;
+}
 
 /**
  * The conversation a reply address names, when the email may continue it: from the conversation's own address (the address its

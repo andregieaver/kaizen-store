@@ -1310,7 +1310,10 @@ a Kaizena Flow account gives the AI `my_stores` and `store_status` for that acco
 tools by `joinTools()`), so "how many websites do I have?" is answered instead of handed over. Only one account may have the address, never
 on a desk for sensitive information; as with the orders of B1, the email reached the AI only with a DMARC check that did not fail, the
 answer goes to that address alone and the tools only read. `find_admin_page` is left out by email (its links are buttons). Every email
-answer is written in the language of the customer's last email, whatever the site's language.
+answer is written in the language of the customer's email: `emailLanguage()` (`src/lib/email-language.ts`, common words of the
+languages the chat's prompt names) picks it among the site's languages, and `inEmailLanguage()` runs the conversation in it, a store's
+market in that language or Kaizena Flow's site in Norwegian, so the conversation's locale, the AI's answer and the email around it
+("Svar fra KI") agree. An email too short to tell, or in a language the site does not have, keeps the site's own.
 
 **Receiving.** Resend's `email.received` event reaches the signed webhook that already takes delivery events
 (`/api/resend/webhook`, `RESEND_WEBHOOK_SECRET`). The event is kept at once as a row of `commerce.support_inbound_emails` (Resend's id
