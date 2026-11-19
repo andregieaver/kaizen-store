@@ -28,176 +28,33 @@ vi.mock("server-only", () => ({}));
 type Capability = { status: string; status_details?: { code: string; resolution: string }[] };
 type Entry = { awaiting_action_from: "user" | "stripe"; description: string; minimum_deadline: { status: string }; errors?: { code: string }[] };
 type Side = { capabilities: Record<string, Capability>; entries: Entry[] };
-type Call = { method: string; args: unknown[] };
-type CreateParams = { dashboard?: string; configuration?: { merchant?: { capabilities?: Record<string, unknown> } } };
 
-/** The stand-in for Kaizena Flow's own Stripe account (the Connect platform), in both modes. */
-const stripe = vi.hoisted(() => {
-  const tag = Date.now().toString(36);
-  let next = 0;
-  const id = (prefix: string) => `${prefix}_cn${tag}x${++next}`;
-  const calls: Call[] = [];
-  /** Stripe's side of each account: what a retrieve answers. */
-  const accounts = new Map<string, Side>();
-  const byKey = new Map<string, string>();
-  const domains = new Map<string, Set<string>>();
-  /** A method's next call throws this, once. */
-  const failNext = new Map<string, unknown>();
-  /** Every secret Stripe handed out, so the log and the activity log can be searched for them. */
-  const secrets: string[] = [];
-  const refusedCapabilities = new Set<string>();
-  const refusedMethods = new Set<string>();
-  const refuseIdentity = { error: null as unknown };
-  const configs = new Map<string, { id: string; is_default: boolean }[]>();
-  let methodStates: Record<string, unknown> = {};
-  const modes = new Set<string>(["test", "live"]);
-
-  const answer = (method: string, args: unknown[]) => {
-    calls.push({ method, args });
-    if (failNext.has(method)) {
-      const error = failNext.get(method);
-      failNext.delete(method);
-      throw error;
-    }
-  };
-  const view = (accountId: string) => {
-    const side = accounts.get(accountId);
-    if (!side) throw new Error(`No such account: '${accountId}'`);
-    return {
-      id: accountId,
-      object: "v2.core.account",
-      configuration: { merchant: { capabilities: structuredClone(side.capabilities) } },
-      requirements: { entries: structuredClone(side.entries) },
-    };
-  };
-  const webhooks = {
-    answer: null as null | { ok: false; problem: string },
-  };
-
-  const client = {
-    v2: {
-      core: {
-        accounts: {
-          create: async (params: CreateParams, options: { idempotencyKey: string }) => {
-            answer("accounts.create", [params, options]);
-            const known = byKey.get(options.idempotencyKey);
-            if (known) return view(known);
-            const accountId = id("acct");
-            const requested = Object.keys(params.configuration?.merchant?.capabilities ?? {});
-            accounts.set(accountId, {
-              capabilities: Object.fromEntries(requested.map((capability) => [capability, { status: "pending" }])),
-              // An account the owner runs (full Dashboard) waits for their details; one Kaizena Flow filled in is being checked.
-              entries:
-                params.dashboard === "full"
-                  ? [{ awaiting_action_from: "user", description: "identity.individual.address", minimum_deadline: { status: "currently_due" } }]
-                  : [],
-            });
-            byKey.set(options.idempotencyKey, accountId);
-            return view(accountId);
-          },
-          retrieve: async (accountId: string, params: unknown) => {
-            answer("accounts.retrieve", [accountId, params]);
-            return view(accountId);
-          },
-          update: async (accountId: string, params: { identity?: unknown; configuration?: { merchant?: { capabilities?: Record<string, unknown> } } }) => {
-            answer("accounts.update", [accountId, params]);
-            if (params.identity && refuseIdentity.error) throw refuseIdentity.error;
-            const asked = Object.keys(params.configuration?.merchant?.capabilities ?? {});
-            if (asked.some((capability) => refusedCapabilities.has(capability))) throw new Error("A capability is not offered to this account.");
-            const side = accounts.get(accountId);
-            if (side) for (const capability of asked) side.capabilities[capability] ??= { status: "pending" };
-            return view(accountId);
-          },
-        },
-      },
-    },
-    accounts: {
-      createExternalAccount: async (accountId: string, params: unknown, options: unknown) => {
-        answer("accounts.createExternalAccount", [accountId, params, options]);
-        return { id: id("ba"), object: "bank_account" };
-      },
-    },
-    accountSessions: {
-      create: async (params: { account: string }) => {
-        answer("accountSessions.create", [params]);
-        const secret = `${id("accs")}_secret_${tag}`;
-        secrets.push(secret);
-        return { object: "account_session", account: params.account, client_secret: secret };
-      },
-    },
-    paymentMethodDomains: {
-      create: async (params: { domain_name: string }, options: { stripeAccount: string }) => {
-        answer("paymentMethodDomains.create", [params, options]);
-        const known = domains.get(options.stripeAccount) ?? new Set<string>();
-        if (known.has(params.domain_name)) throw new Error("This domain is already registered.");
-        known.add(params.domain_name);
-        domains.set(options.stripeAccount, known);
-        return { id: id("pmd"), domain_name: params.domain_name };
-      },
-      list: async (params: { domain_name: string }, options: { stripeAccount: string }) => {
-        answer("paymentMethodDomains.list", [params, options]);
-        return { data: domains.get(options.stripeAccount)?.has(params.domain_name) ? [{ id: id("pmd"), domain_name: params.domain_name }] : [] };
-      },
-    },
-    paymentMethodConfigurations: {
-      list: async (params: unknown, options: { stripeAccount: string }) => {
-        answer("pmc.list", [params, options]);
-        return { data: configs.get(options.stripeAccount) ?? [] };
-      },
-      update: async (configId: string, params: Record<string, unknown>, options: { stripeAccount: string }) => {
-        answer("pmc.update", [configId, params, options]);
-        if (Object.keys(params).some((method) => refusedMethods.has(method))) throw new Error("A payment method is not offered to this account.");
-        return { id: configId, ...structuredClone(methodStates) };
-      },
-    },
-    /** Checked with Stripe's own code below: a signature is verified as in production. */
-    parseEventNotification: (() => {
-      throw new Error("set after the imports");
-    }) as (body: string, signature: string, secret: string) => unknown,
-  };
-
+// The stand-in for Kaizena Flow's own Stripe account (the Connect platform), in both modes (`stripe-test-support.ts`).
+vi.mock("./stripe", async (importActual) => {
+  const { stripe } = await import("./stripe-test-support");
   return {
-    tag,
-    id,
-    calls,
-    accounts,
-    domains,
-    failNext,
-    secrets,
-    refusedCapabilities,
-    refusedMethods,
-    refuseIdentity,
-    configs,
-    setMethodStates: (states: Record<string, unknown>) => void (methodStates = states),
-    modes,
-    webhooks,
-    client,
-    callsOf: (method: string) => calls.filter((call) => call.method === method),
+    ...(await importActual<typeof import("./stripe")>()),
+    platformStripe: (mode: string) => (stripe.modes.has(mode) ? stripe.client : null),
+    // The platform's three webhook endpoints, as Stripe answers their creation (`createPlatformWebhooks()` is Stripe's side of this).
+    createPlatformWebhooks: async (mode: string, origin: string) => {
+      stripe.calls.push({ method: "createPlatformWebhooks", args: [mode, origin], mode });
+      if (stripe.webhooks.answer) return stripe.webhooks.answer;
+      const hook = (kind: string, path: string) => {
+        const secret = `whsec_${kind}_${mode}_${stripe.id("s")}`;
+        stripe.secrets.push(secret);
+        return { kind, endpointId: stripe.id(kind === "thin" ? "ed" : "we"), url: `${origin}${path}`, secret };
+      };
+      return {
+        ok: true,
+        webhooks: [
+          hook("snapshot", `/api/stripe/connect/${mode}`),
+          hook("thin", `/api/stripe/connect/${mode}/accounts`),
+          hook("billing", `/api/stripe/billing/${mode}`),
+        ],
+      };
+    },
   };
 });
-
-vi.mock("./stripe", async (importActual) => ({
-  ...(await importActual<typeof import("./stripe")>()),
-  platformStripe: (mode: string) => (stripe.modes.has(mode) ? stripe.client : null),
-  // The platform's three webhook endpoints, as Stripe answers their creation (`createPlatformWebhooks()` is Stripe's side of this).
-  createPlatformWebhooks: async (mode: string, origin: string) => {
-    stripe.calls.push({ method: "createPlatformWebhooks", args: [mode, origin] });
-    if (stripe.webhooks.answer) return stripe.webhooks.answer;
-    const hook = (kind: string, path: string) => {
-      const secret = `whsec_${kind}_${mode}_${stripe.id("s")}`;
-      stripe.secrets.push(secret);
-      return { kind, endpointId: stripe.id(kind === "thin" ? "ed" : "we"), url: `${origin}${path}`, secret };
-    };
-    return {
-      ok: true,
-      webhooks: [
-        hook("snapshot", `/api/stripe/connect/${mode}`),
-        hook("thin", `/api/stripe/connect/${mode}/accounts`),
-        hook("billing", `/api/stripe/billing/${mode}`),
-      ],
-    };
-  },
-}));
 // No platform key at all: the stand-in above is the only Stripe there is.
 vi.mock("./stripe-keys", () => ({
   platformModes: () => ["test", "live"],
@@ -254,6 +111,7 @@ vi.mock("@/server/auth", async (importOriginal) => {
   };
 });
 
+const { stripe } = await import("./stripe-test-support");
 const connect = await import("./connect");
 const { POST: accountsWebhook } = await import("@/app/api/stripe/connect/[mode]/accounts/route");
 const actions = await import("../app/admin/(gated)/actions");

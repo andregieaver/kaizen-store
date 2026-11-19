@@ -122,7 +122,9 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   the pages' `requireOwnerRole`), go only through the Staff and Billing pages' own functions (`inviteStaff()`,
   `inviteCollaborator()`, `assignRole()`, `disableStaff()`, `choosePlan()` for a running plan only, `cancelPlan()` at the period's
   end or undone, never at once) and read the membership again when they run (`passMembership()`), so a yes never outlives the
-  person's ownership. The first plan is never chosen by a tool: it is paid by card on Stripe's page. A new gate category is a
+  person's ownership. The first plan is never chosen by a tool: it is paid by card on Stripe's page. On Kaizena Flow's own store,
+  which has no plan (D466), `billing_overview` leads to Platform, Plans and `change_plan`, `end_plan` refuse in words (D811,
+  `billing-tools.int.test.ts`). A new gate category is a
   value of `GateCategory`, the `assistant_approvals_category` check widened in a migration and its words in the `assistant`
   catalogues' `gates`.
 

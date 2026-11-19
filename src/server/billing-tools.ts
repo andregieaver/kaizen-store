@@ -14,7 +14,8 @@ import type { Store } from "./stores";
 /**
  * The AI manager's plan tools (PSI AGT-01; D18): the store's plan with Kaizena Flow, the plans offered, and changing or ending the plan,
  * each through the Billing page's own function (`choosePlan()`, `cancelPlan()`), on the owner's yes (`spend`) and with their membership
- * read again. The first plan is never chosen here: it is paid by card on Stripe's page, which only the owner can fill in.
+ * read again. The first plan is never chosen here: it is paid by card on Stripe's page, which only the owner can fill in. Kaizena Flow's
+ * own store has no plan (D466): the overview leads to the plans it sells and a change or end is refused in words (D811).
  */
 
 type Ctx = { account: Account; store: Store };
@@ -24,6 +25,9 @@ const fail = (message: string): never => {
 };
 
 const billingLink = (store: Store) => `/admin/${store.slug}/billing`;
+/** Kaizena Flow's own store has no plan and no Billing page (D466): the platform is what bills. */
+const HOUSE = "Kaizena Flow's own store needs no plan: the plans it sells to stores are edited under Platform, Plans.";
+const notHouse = (ctx: Ctx) => (ctx.store.house ? fail(HOUSE) : undefined);
 const locale = (store: Store) => store.markets[0]?.locale ?? "en";
 const priceWords = (store: Store, p: { amountMinor: number; currency: string; interval: string }) =>
   `${formatMoney(p.amountMinor, p.currency, locale(store))} a ${p.interval} (without VAT)`;
@@ -59,6 +63,14 @@ export async function billingOverviewTool(ctx: Ctx) {
   const [billing, plans] = await Promise.all([getStoreBilling(ctx.store.id), listPlans()]);
   const offered = plans.filter((plan) => plan.active && plan.prices.some((p) => p.active));
   const currency = shownCurrency(ctx.store, offered);
+  const offers = offered.map((plan) => ({
+    name: plan.name,
+    fee_on_sales: formatBps(plan.saleFeeBps),
+    prices: plan.prices.filter((p) => p.active && p.currency === currency).map((p) => priceWords(ctx.store, p)),
+    current: plan.id === billing?.planId && onPlan(billing),
+  }));
+  // Kaizena Flow's own store: the plans it sells, and no plan or fee of its own to tell.
+  if (ctx.store.house) return { plan: null, offered: offers, note: HOUSE, link: "/admin/platform/plans" };
   return {
     plan: onPlan(billing)
       ? {
@@ -70,12 +82,7 @@ export async function billingOverviewTool(ctx: Ctx) {
         }
       : null,
     fee_on_sales: formatBps(billing?.feeBps ?? 0),
-    offered: offered.map((plan) => ({
-      name: plan.name,
-      fee_on_sales: formatBps(plan.saleFeeBps),
-      prices: plan.prices.filter((p) => p.active && p.currency === currency).map((p) => priceWords(ctx.store, p)),
-      current: plan.id === billing?.planId && onPlan(billing),
-    })),
+    offered: offers,
     note: onPlan(billing) ? "A change of plan applies at once with a prorated charge or credit." : "The store has no plan yet: the first one is chosen and paid by card on the Billing page.",
     link: billingLink(ctx.store),
   };
@@ -85,6 +92,7 @@ type ChangeInput = { plan: string; interval: "month" | "year" };
 
 /** The price a plan named by the owner has for the interval, in the Billing page's currency; a refusal names what is offered. */
 async function priceFor(ctx: Ctx, input: ChangeInput) {
+  notHouse(ctx);
   const [billing, plans] = await Promise.all([getStoreBilling(ctx.store.id), listPlans()]);
   if (!onPlan(billing)) return fail("The store has no plan yet: the first one is chosen and paid by card on the Billing page, which only the owner can do.");
   const offered = plans.filter((plan) => plan.active && plan.prices.some((p) => p.active));
@@ -124,6 +132,7 @@ type EndInput = { when: "period_end" | "undo" };
 
 export async function preflightEndPlan(ctx: Ctx, { when }: EndInput): Promise<void> {
   await owner(ctx);
+  notHouse(ctx);
   const billing = await getStoreBilling(ctx.store.id);
   if (!onPlan(billing)) fail("The store has no plan to end.");
   if (when === "period_end" && billing!.cancelAtPeriodEnd) fail("The plan already ends at the end of its period.");
@@ -133,6 +142,7 @@ export async function preflightEndPlan(ctx: Ctx, { when }: EndInput): Promise<vo
 /** `end_plan`: ends the plan when the period paid for runs out, or keeps it after all; never at once (that is Kaizena Flow's). */
 export async function endPlanTool(ctx: Ctx, { when }: EndInput) {
   const member = await owner(ctx);
+  notHouse(ctx);
   const result = await cancelPlan(member.account, ctx.store.id, when);
   if (!result.ok) return fail(result.problems.join(" "));
   const billing = await getStoreBilling(ctx.store.id);
