@@ -431,6 +431,10 @@ describe("a store's own Stripe account (createStripeAccount)", () => {
     const rows = await db().execute<Row>(sql`select account_id from commerce.stripe_accounts where store_id = ${other.id}::uuid`);
     expect(rows).toHaveLength(1);
     expect(stripe.accounts.has(String(rows[0].account_id))).toBe(true);
+    // And the activity log says it was made once: the press whose row was already there records nothing.
+    expect(await audits(other.id, "payments.stripe_account_created")).toEqual([
+      { action: "payments.stripe_account_created", account_id: other.owner.id, details: { mode: "live", accountId: rows[0].account_id } },
+    ]);
   });
 
   it("says what Stripe refused, or that Stripe could not be reached, and records nothing", async () => {
