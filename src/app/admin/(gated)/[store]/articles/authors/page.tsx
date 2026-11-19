@@ -29,7 +29,7 @@ export default async function AuthorsPage({ params, searchParams }: PageProps<"/
   const base = `/admin/${store.slug}/articles`;
 
   return (
-    <AdminTextScope texts={adminTexts(lang, ["blog", "website"])}>
+    <AdminTextScope texts={adminTexts(lang, ["blog", "websitePick"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: `${base}/blogs`, label: w.links.blogs }}

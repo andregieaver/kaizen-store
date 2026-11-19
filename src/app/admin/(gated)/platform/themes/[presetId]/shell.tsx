@@ -16,6 +16,12 @@ import { PLATFORM_SITE_AREAS, platformSiteWords } from "@/server/platform-site-w
 import { archiveDesignAction, deleteDesignAction, publishDesignAction, unarchiveDesignAction, unpublishDesignAction } from "../actions";
 
 /**
+ * The words the shell hands its tabs' editors: the platform site's areas. The editors are its children, drawn by each tab's page, which the
+ * words scan (`admin-words-handed.scan.test.ts`) cannot see from here, so this is a hand-down site of its own (bloat review step 2.27).
+ */
+const DESIGN_SHELL_AREAS = [...PLATFORM_SITE_AREAS] as const;
+
+/**
  * A design profile's own pages (D177): its title and state, Publish / Unpublish / Archive / Restore / Delete, the previews (as published,
  * and the draft), and the tabs where its whole look is edited (details, theme, header, footer, product page, CSS). Each page checks the
  * platform admin itself before it draws this.
@@ -35,7 +41,7 @@ export async function DesignShell({
   const { lang, w } = await platformSiteWords();
   const s = w.shell;
   return (
-    <AdminTextScope texts={adminTexts(lang, PLATFORM_SITE_AREAS)}>
+    <AdminTextScope texts={adminTexts(lang, DESIGN_SHELL_AREAS)}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: facts.archivedAt ? "/admin/platform/themes?show=archived" : "/admin/platform/themes", label: s.back }}

@@ -24,24 +24,24 @@
       ]
     },
     "product": {
-      "document": 431497,
-      "handed": 246259,
+      "document": 301606,
+      "handed": 126075,
       "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
         "assistant",
-        "builder",
+        "builderText",
         "common",
         "fields",
         "product",
         "products",
         "shell",
-        "website"
+        "websitePick"
       ]
     },
     "builder": {
-      "document": 606658,
-      "handed": 319551,
+      "document": 558409,
+      "handed": 274030,
       "scriptByIdle": 2747092,
       "named": null,
       "areas": [
@@ -51,6 +51,7 @@
         "blocks",
         "blog",
         "builder",
+        "builderText",
         "common",
         "design",
         "fields",
@@ -58,7 +59,7 @@
         "schedules",
         "shell",
         "storeParts",
-        "website"
+        "websitePick"
       ]
     },
     "platform": {
@@ -98,24 +99,24 @@
       ]
     },
     "product": {
-      "document": 452922,
-      "handed": 268145,
+      "document": 318993,
+      "handed": 142626,
       "scriptByIdle": 1238644,
       "named": 64530,
       "areas": [
         "assistant",
-        "builder",
+        "builderText",
         "common",
         "fields",
         "product",
         "products",
         "shell",
-        "website"
+        "websitePick"
       ]
     },
     "builder": {
-      "document": 633031,
-      "handed": 346127,
+      "document": 582298,
+      "handed": 298628,
       "scriptByIdle": 2747092,
       "named": null,
       "areas": [
@@ -125,6 +126,7 @@
         "blocks",
         "blog",
         "builder",
+        "builderText",
         "common",
         "design",
         "fields",
@@ -132,7 +134,7 @@
         "schedules",
         "shell",
         "storeParts",
-        "website"
+        "websitePick"
       ]
     },
     "platform": {
@@ -148,7 +150,7 @@
     }
   },
   "saves": {
-    "product": 311274,
+    "product": 190938,
     "builder": 1122
   }
 }

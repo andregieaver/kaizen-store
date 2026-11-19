@@ -993,7 +993,7 @@ function MediaSection({
   languageNames: Record<string, string>;
 }) {
   const w = useAdminText("product");
-  const made = useAdminText("website").pictureMaker;
+  const made = useAdminText("websitePick").pictureMaker;
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState("");

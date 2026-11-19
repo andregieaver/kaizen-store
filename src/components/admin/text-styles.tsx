@@ -171,7 +171,7 @@ function StyleSwatch({ style, label }: { style: Pick<TextStyle, "slug" | "name">
  */
 export function StyleMenu({ active, hasSelection, apply }: { active: string | null; hasSelection: boolean; apply: (slug: string | null) => void }) {
   const library = useTextStyles();
-  const w = useAdminText("builder").textStyles;
+  const w = useAdminText("builderText").textStyles;
   const [open, setOpen] = useState(false);
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
@@ -291,7 +291,7 @@ function StyleDialog({
   save: (input: { slug?: string; name: string; kind: TextStyleKind; settings: TextStyleSettings; css: string | null }) => Promise<{ problems: string[]; dropped: string[] }>;
   applies: boolean;
 }) {
-  const w = useAdminText("builder").textStyles;
+  const w = useAdminText("builderText").textStyles;
   const [kind, setKind] = useState<TextStyleKind>(style?.kind ?? "gradient");
   const [settings, setSettings] = useState<TextStyleSettings>(style?.settings ?? starterSettings("gradient", starter));
   const [name, setName] = useState(style?.name ?? w.kinds.gradient);
@@ -479,7 +479,7 @@ function StyleDialog({
 
 /** A gallery look's settings, each a field a person knows: colours, a direction, a thickness, a line. */
 function LookFields({ kind, settings, set, colors }: { kind: TextStyleKind; settings: TextStyleSettings; set: (patch: TextStyleSettings) => void; colors: string[] }) {
-  const w = useAdminText("builder").textStyles;
+  const w = useAdminText("builderText").textStyles;
   const number = (label: string, key: "angle" | "size" | "spacing", min: number, max: number, fallback: number) => (
     <label className="flex flex-col gap-1 text-sm font-medium">
       {label}
@@ -596,7 +596,7 @@ function StyleLibrary({
   onNew: () => void;
   remove: (slug: string, confirmed: boolean) => Promise<{ problems: string[]; uses: string[] } | null>;
 }) {
-  const w = useAdminText("builder").textStyles;
+  const w = useAdminText("builderText").textStyles;
   const [asked, setAsked] = useState<{ slug: string; problems: string[]; uses: string[] } | null>(null);
   return (
     <Modal

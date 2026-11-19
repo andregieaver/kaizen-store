@@ -39,7 +39,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "website").mediaPage;
   return (
-    <AdminTextScope texts={adminTexts(lang, ["website"])}>
+    <AdminTextScope texts={adminTexts(lang, ["website", "websitePick"])}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={<><span className="sm:hidden">{fillWords(w.lead, { store: store.name })}</span><span className="max-sm:hidden">{fillWords(w.description, { store: store.name })}</span></>} />
       {/* The search in the address is read per request. */}
