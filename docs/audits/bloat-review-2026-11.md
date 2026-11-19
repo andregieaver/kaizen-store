@@ -202,7 +202,7 @@ commit as the fix.
 | 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | Open | |
 | 2.42 | Shorten the gate's type check | TC-4, TC-9 | M | review | 0.38, 1.20 | In progress | Commit 1: native TS 7 trial in static until 25 Nov. Local: TS 7 via dlx 27 s, 11 errors tsc 6.0.3 lacks; tsc 0. |
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
-| 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | Open | |
+| 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | In progress | 19 Nov, local: components isolate off fails 6 to 9 of 214 files a run (16 in all), kept isolated; sample 12.1 s to 6.4-8.4 s. Commit 2 (db) next. |
 | 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
 | 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |

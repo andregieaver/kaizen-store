@@ -150,6 +150,12 @@ describe("the unit tests load only what they use (bloat review 0.39)", async () 
     expect(existsSync(join(root, "vitest.config.mts"))).toBe(true);
   });
 
+  it("keeps a fresh worker per file where a trial showed it needed (bloat review 2.44)", () => {
+    // Flip one of these only with a new timed trial: three runs, one shuffled, every file green.
+    expect(named("components")?.isolate).toBeUndefined();
+    expect(named("unit")?.isolate).toBeUndefined();
+  });
+
   it("has no test that reads the archived migrations", () => {
     expect(existsSync(join(root, "src/db/migration-files.ts"))).toBe(false);
     for (const file of walk("src", ".test.ts")) {
