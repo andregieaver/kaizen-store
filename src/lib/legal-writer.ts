@@ -439,6 +439,31 @@ function numbersIn(text: string, language: LegalLanguage | "any"): number[] {
   return out;
 }
 
+/** Shortest piece of a quote shortened with "…" that counts: shorter ones match almost anywhere. */
+const QUOTE_PIECE_MIN = 15;
+
+/**
+ * A quote as the passage holds it, or null. Word for word, except that the model's own marks around it are let go: quotation marks, a
+ * full stop or other mark it ended on where the law goes on (`personalised.` for `personalised;`), and a shortening (`… ` or `...`) where
+ * each piece is word for word in the passage, in order. Returns the words found, for the block's numbers check.
+ */
+export function quoteIn(passage: string, quote: string): string | null {
+  if (passage.includes(quote)) return quote;
+  const pieces = quote
+    .replace(/^["']+|["']+$/g, "")
+    .split(/\s*(?:\.{3}|…)\s*/)
+    .map((piece) => piece.trim().replace(/[.;,:!?]+$/, "").trim())
+    .filter(Boolean);
+  if (pieces.length === 0 || pieces.some((piece) => piece.length < QUOTE_PIECE_MIN)) return null;
+  let from = 0;
+  for (const piece of pieces) {
+    const at = passage.indexOf(piece, from);
+    if (at < 0) return null;
+    from = at + piece.length;
+  }
+  return pieces.join(" … ");
+}
+
 /** What is wrong with a piece of the model's own words (tokens taken out). */
 function wordsProblems(text: string, where: string, offered: ReadonlySet<string>, quotes: readonly string[], language: LegalLanguage, max: number): string[] {
   const problems: string[] = [];
@@ -485,8 +510,11 @@ export function checkLegalDraft(sections: readonly DraftSection[], plan: LegalPl
         }
         const quote = normalisedLegalText(c.quote);
         if (quote.length < QUOTE_MIN || quote.length > QUOTE_MAX) problems.push(`${at}: a quote must be ${QUOTE_MIN} to ${QUOTE_MAX} characters.`);
-        else if (!offered.text.includes(quote)) problems.push(`${at}: the quote "${quote.slice(0, 80)}" is not word for word in ${c.source} ${c.passage}.`);
-        else quotes.push(quote);
+        else {
+          const found = quoteIn(offered.text, quote);
+          if (found === null) problems.push(`${at}: the quote "${quote.slice(0, 80)}" is not word for word in ${c.source} ${c.passage}.`);
+          else quotes.push(found);
+        }
       }
       if (b.kind === "statement" && (b.cites ?? []).length === 0) problems.push(`${at}: a statement must cite a passage.`);
       if (b.kind === "practical") {

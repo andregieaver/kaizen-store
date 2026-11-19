@@ -12,6 +12,7 @@ import {
   checkLegalDraft,
   factSheet,
   planLegalPage,
+  quoteIn,
   readWriterAnswer,
   renderLegalPage,
   writerMessages,
@@ -127,6 +128,17 @@ describe("reading the answer", () => {
   it("takes JSON in a code fence, and says when there is none or its shape is wrong", () => {
     expect(readWriterAnswer('```json\n{"sections":[{"topic":"window","blocks":[{"kind":"practical","text":"x"}]}]}\n```')).toMatchObject({ ok: true });
     expect(readWriterAnswer("I cannot help")).toEqual({ ok: false, problem: "The answer is not JSON." });
+  });
+
+  it("finds a quote that ends on its own mark or is shortened, piece by piece, and nothing the law does not say (19 November 2026)", () => {
+    const law = "(b) the supply of goods for which the price is dependent on fluctuations; (c) the supply of goods made to the consumer's specifications or clearly personalised; (d) the supply of goods which are liable to deteriorate or expire rapidly;";
+    expect(quoteIn(law, "the supply of goods made to the consumer's specifications or clearly personalised.")).toBe("the supply of goods made to the consumer's specifications or clearly personalised");
+    expect(quoteIn(law, '"the supply of goods made to the consumer\'s specifications"')).toBe("the supply of goods made to the consumer's specifications");
+    expect(quoteIn(law, "the supply of goods made to the consumer's specifications ... liable to deteriorate or expire rapidly")).toBe("the supply of goods made to the consumer's specifications … liable to deteriorate or expire rapidly");
+    // Words the law does not hold, pieces out of order, and pieces too short to mean anything are refused.
+    expect(quoteIn(law, "the supply of goods made to the trader's specifications")).toBeNull();
+    expect(quoteIn(law, "liable to deteriorate or expire rapidly … the supply of goods made to the consumer's")).toBeNull();
+    expect(quoteIn(law, "the supply of goods made … or …")).toBeNull();
   });
 
   it("reads a cite's keys out of the heading or text the model wrote after them, as production's answers did (19 November 2026)", () => {

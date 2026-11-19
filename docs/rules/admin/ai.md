@@ -344,7 +344,7 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   reference is a passage the text as read holds. Never cite from a model's memory or a person's typing: pages read
   `currentLegalTexts()`. The writer (`src/lib/legal-writer.ts` pure, `src/server/legal-writer.ts`, the only writer of
   `commerce.legal_ai_writes`) plans a page's topics and passages in code, the model writes sentences only with tokens for every
-  fact, link and body, `readWriterAnswer()` reads a cite's keys out of what the model writes after them (its heading or text), `checkLegalDraft()` refuses a quote not word for word, a number in no cited quote, an address written out,
+  fact, link and body, `readWriterAnswer()` reads a cite's keys out of what the model writes after them (its heading or text), `checkLegalDraft()` refuses a quote not word for word (`quoteIn()` lets go of the model's own end mark and a shortening whose pieces are each word for word, in order), a number in no cited quote, an address written out,
   a missing needed token, the ODR platform and claims, and code fills the tokens from `starterFactWords()` (the starters' own
   words), copies the model form from the law and adds Sources; a page is saved only by `savePageOf()` without the review notice
   (L3, 8.12): into the kind's page only while it is the AI's and unchanged since (`saved_hash`) or handed back, else a draft
