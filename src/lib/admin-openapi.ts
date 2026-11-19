@@ -97,6 +97,7 @@ const TAGS = [
   { name: "Reports", description: "Saved reports (D345), run on the data as it is now." },
   { name: "A/B tests", description: "The store's A/B tests (D148), each as its page reads it: worked out by the store, read-only." },
   { name: "Webhook endpoints", description: "The owner's own endpoints (D354) and their deliveries, with `webhooks:write`." },
+  { name: "Contracts", description: "Contracts for deals (D695): read with `customers:read`, with their signers in order; never a signer's email or the words." },
   { name: "Forms", description: "The store's forms (D705): read, made and changed with `forms:write`; their responses read with the right to read customers." },
   { name: "Bulk jobs", description: "The product file of the Data page (D165): exported, and imported with a dry run first." },
   { name: "Inventory", description: "Stock per variant and location, adjusted or counted as the Inventory page does." },

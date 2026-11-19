@@ -8,6 +8,7 @@ import { CATALOGUE_API } from "./admin-api-catalogue";
 import { CONTENT_API } from "./admin-api-content";
 import { CUSTOMERS_API } from "./admin-api-customers";
 import { FORMS_API } from "./admin-api-forms";
+import { CONTRACTS_API } from "./admin-api-contracts";
 import { ORDERS_API } from "./admin-api-orders";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
 import { CHECKOUT_FIELD_KINDS } from "./checkout-rules";
@@ -698,7 +699,7 @@ const CORE_API = [
   }),
 ] as const;
 
-export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API, ...CUSTOMERS_API, ...CONTENT_API, ...FORMS_API] as const;
+export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API, ...CUSTOMERS_API, ...CONTENT_API, ...FORMS_API, ...CONTRACTS_API] as const;
 
 export type AdminOperation = (typeof ADMIN_API)[number];
 export type AdminApiName = AdminOperation["name"];
