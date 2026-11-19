@@ -36,6 +36,7 @@ const PACKAGES: Record<string, { why: string; loads: Loads }> = {
   "@stripe/react-connect-js": { why: "The React wrapper of the embedded Connect components.", loads: "browser" },
   "@stripe/react-stripe-js": { why: "Stripe's payment elements in the checkout.", loads: "browser" },
   "@stripe/stripe-js": { why: "Stripe.js and its types (checkout-appearance.ts).", loads: "browser" },
+  "@supabase/auth-js": { why: "Supabase's auth client alone, which keeps the admin's session fresh in the browser (lib/supabase/auth-client.ts, step 2.31); pinned to the version supabase-js carries.", loads: "browser" },
   "@supabase/realtime-js": { why: "The support desk's live channel (use-support-channel.ts).", loads: "browser" },
   "@supabase/ssr": { why: "The sign-in session in cookies, for the server and the browser (lib/supabase).", loads: "both" },
   "@supabase/supabase-js": { why: "Supabase Auth and Storage calls (lib/supabase).", loads: "both" },
