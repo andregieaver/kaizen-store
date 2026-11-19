@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db, readDb } from "@/db/client";
 import { TEXT_STYLES_MAX, TEXT_STYLE_KINDS, slugFor, styleCssBody, styleCssProblem, stylesInMarkup, textStylesCss, type TextStyle, type TextStyleSettings } from "@/lib/text-styles";
 import { textStyleInput } from "@/lib/text-styles-schema";
+import { textStylesTag } from "@/lib/cache-tags";
 
 import { audit, type Account } from "./auth";
 import { log } from "./log";
@@ -19,7 +20,7 @@ import { col, typedRows } from "./typed-rows";
  * changes, so renaming a style never breaks a word that wears it. Deleting one leaves the words, unstyled.
  */
 
-export const textStylesTag = (owner: string | null) => `text-styles:${owner ?? "kaizen"}`;
+export { textStylesTag } from "@/lib/cache-tags";
 
 const ownerIs = (owner: string | null) => (owner === null ? sql`store_id is null` : sql`store_id = ${owner}::uuid`);
 

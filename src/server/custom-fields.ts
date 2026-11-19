@@ -48,6 +48,7 @@ import { t } from "@/lib/i18n";
 import type { PageContent } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { fieldsTag } from "@/lib/cache-tags";
 
 import { audit, type Membership } from "./auth";
 import { isOwnFieldFile } from "./media";
@@ -70,7 +71,7 @@ type Runner = Pick<ReturnType<typeof db>, "execute">;
  * under one tag, refreshed whenever a group or a thing's values change.
  */
 
-export const fieldsTag = (storeId: string) => `fields:${storeId}`;
+export { fieldsTag } from "@/lib/cache-tags";
 
 // ---------------------------------------------------------------------------
 // Groups

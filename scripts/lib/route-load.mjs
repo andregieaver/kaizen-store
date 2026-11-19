@@ -60,6 +60,23 @@ const PROXY_LIST = [
   "src/server/dream-factory.ts",
   "playwright-core",
 ];
+/**
+ * The proxy runs before every page and prefetch, and imports six leaf readers (bloat review step 2.20): none of the server's heavy
+ * modules, the page model, the schema, an admin catalogue, sharp or Stripe.
+ */
+const PROXY_LEAF_LIST = [
+  ...PROXY_LIST,
+  "src/server/catalog.ts",
+  "src/server/stores.ts",
+  "src/server/stripe.ts",
+  "src/server/permissions.ts",
+  "src/server/customers.ts",
+  "src/lib/page-content.ts",
+  "sharp",
+  "stripe",
+];
+/** The most files the proxy may reach by static value imports (bloat review step 2.20; 1,309 when the review began, 321 before the step). */
+export const PROXY_FILES_MAX = 120;
 const STORE_LIST = [
   "src/server/owner-tools.ts",
   "src/server/owner-assistant.ts",
@@ -79,7 +96,7 @@ const SITE_LIST = ["src/server/owner-tools.ts", "src/server/owner-assistant.ts",
  * a package name. A rule that fails today is on the baseline's exceptions; the steps of phases 0 and 2 empty it.
  */
 export const FORBIDDEN = {
-  proxy: PROXY_LIST,
+  proxy: PROXY_LEAF_LIST,
   "start-hook": PROXY_LIST,
   health: [...BEACON_LIST, "src/server/stores.ts"],
   ...Object.fromEntries(BEACONS.map((name) => [name, BEACON_LIST])),

@@ -35,20 +35,21 @@ describe("the tables of redirects and of the 404 report", () => {
   it("are written only by the redirect service (commerce.redirects) and the 404 report's module (the report's tables)", () => {
     const offenders = (table: string, allowed: string[]) =>
       files.filter((f) => writes(table).test(read(f)) && !allowed.includes(rel(f)));
-    expect(offenders("redirects", ["src/server/redirects.ts"])).toEqual([]);
+    // redirect-live.ts writes only a redirect's hit count (`countHit()`, bloat review step 2.20); every other change is the redirect service's.
+    expect(offenders("redirects", ["src/server/redirects.ts", "src/server/redirect-live.ts"])).toEqual([]);
     expect(offenders("not_found_hits", ["src/server/not-found.ts"])).toEqual([]);
     expect(offenders("not_found_ignored", ["src/server/not-found.ts"])).toEqual([]);
     expect(offenders("old_shops", ["src/server/old-shop.ts"])).toEqual([]);
   });
 
-  it("call `commerce.record_not_found()` from the report's module only", () => {
+  it("call `commerce.record_not_found()` from the report's recorder only", () => {
     const callers = files.filter((f) => /record_not_found\s*\(/.test(code(f)));
-    expect(callers.map(rel)).toEqual(["src/server/not-found.ts"]);
+    expect(callers.map(rel)).toEqual(["src/server/not-found-record.ts"]);
   });
 });
 
 describe("the redirect and report modules", () => {
-  const mine = files.filter((f) => /src\/(?:server|lib)\/(?:redirect[a-z-]*|not-found|legacy-path|term-seo)\.ts$/.test(f) && !/redirect-test-support/.test(f));
+  const mine = files.filter((f) => /src\/(?:server|lib)\/(?:redirect[a-z-]*|not-found|not-found-record|store-facts|legacy-path|term-seo)\.ts$/.test(f) && !/redirect-test-support/.test(f));
 
   it("are found by the scan", () => {
     expect(mine.map(rel)).toEqual(
@@ -61,11 +62,13 @@ describe("the redirect and report modules", () => {
         "src/lib/redirects.ts",
         "src/lib/term-seo.ts",
         "src/server/not-found.ts",
+        "src/server/not-found-record.ts",
         "src/server/redirect-export.ts",
         "src/server/redirect-import.ts",
         "src/server/redirect-live.ts",
         "src/server/redirect-resolve.ts",
         "src/server/redirects.ts",
+        "src/server/store-facts.ts",
       ]),
     );
   });
@@ -127,8 +130,8 @@ describe("the proxy", () => {
     expect(imports).toEqual(
       // Held domains (D317 8) answer from the proxy too: `holdingFor()`, read for a host that is no one else's. Private mode (D339) reads
       // the visitor's pass with the key it was signed with. Kaizena Flow's site served from its own store (D484) reads the switch. An A/B
-      // test's preview link (D148 phase 20) is read with its own key, as the private pass is. The first answer of an instance is noted once (bloat review step 1.16).
-      ["@/lib/ab-preview", "@/lib/ab-preview-sign", "@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/house-routing", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments", "@/server/holding", "@/server/house-switch", "@/server/instance-start", "@/server/not-found", "@/server/private-secret", "@/server/redirect-resolve", "next/server"].sort(),
+      // test's preview link (D148 phase 20) is read with its own key, as the private pass is. The first answer of an instance is noted once (bloat review step 1.16). Its readers are leaf files that import no writer (bloat review step 2.20).
+      ["@/lib/ab-preview", "@/lib/ab-preview-sign", "@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/house-routing", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments-running", "@/server/holding-read", "@/server/instance-start", "@/server/not-found-record", "@/server/private-secret", "@/server/redirect-resolve", "@/server/site-switch-read", "@/server/store-facts", "next/server"].sort(),
     );
   });
 

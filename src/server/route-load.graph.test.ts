@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { importsOf, largestCycle, packageOf, reach } from "../../scripts/lib/import-walk.mjs";
-import { BEACONS, ENTRIES, FORBIDDEN, HEAVY, chainTo, routeLoadCounts, walkOf } from "../../scripts/lib/route-load.mjs";
+import { BEACONS, ENTRIES, FORBIDDEN, HEAVY, PROXY_FILES_MAX, chainTo, routeLoadCounts, walkOf } from "../../scripts/lib/route-load.mjs";
 import baseline from "./route-load.baseline.json";
 
 /**
@@ -53,6 +53,14 @@ describe("what a server entry loads (bloat review 1.8)", () => {
           `${name}: reaches ${now.entries[name]} files, baseline ${recorded.entries[name] ?? 0} with room ${roomFor(recorded.entries[name] ?? 0)}. Import the helper from the file that defines it, or load the module with import() where it is used; a rise on purpose is written with node scripts/route-load.mjs --first and shows in the diff.`,
       );
     expect(raised).toEqual([]);
+  });
+
+  it(`the proxy reaches at most ${PROXY_FILES_MAX} files: it imports leaf readers only (bloat review step 2.20)`, () => {
+    console.info(`route-load: the proxy reaches ${now.entries.proxy} files (at most ${PROXY_FILES_MAX})`);
+    expect(
+      now.entries.proxy,
+      "src/proxy.ts imports a reader that reaches the server's heavy modules: a reader imports the database client, typed-rows, the log, the short memory and pure src/lib code, never its feature's writers",
+    ).toBeLessThanOrEqual(PROXY_FILES_MAX);
   });
 
   it("the largest import cycle in src/server does not grow", () => {

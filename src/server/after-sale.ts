@@ -8,6 +8,7 @@ import { storeZoneOf } from "@/lib/dates";
 import { RETURN_STATUSES, isEnded } from "@/lib/return-status";
 import { afterSaleIsOpen, type AfterSale } from "@/lib/store-features";
 import { MAX_WINDOW_DAYS, lineEligibility, type WithdrawalOrder } from "@/lib/withdrawal";
+import { afterSaleTag } from "@/lib/cache-tags";
 
 import { GIFT_CARD_LINE_FACTS, giftCardFactsOf, SERVICE_LINE_FACTS, serviceFactsOf } from "./return-facts";
 import { toSettings } from "./return-settings";
@@ -96,7 +97,7 @@ export async function afterSaleOpen(storeId: string, now: Date = new Date()): Pr
   return afterSaleIsOpen(await afterSaleOf(storeId, now));
 }
 
-export const afterSaleTag = (storeId: string) => `after-sale:${storeId}`;
+export { afterSaleTag } from "@/lib/cache-tags";
 
 /**
  * The same for the storefront's footer and legal links while the shop is off (D178 step 5): cached for an hour (a window closes at a store

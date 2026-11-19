@@ -55,7 +55,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   // Design profiles (D176): the Standard store a preview is drawn on, and the default template named among the stores a snapshot is taken from.
   "src/server/design-presets.ts": "template",
   "src/server/cookie-scans.ts": "real",
-  "src/server/experiments.ts": "real",
+  "src/server/experiments-running.ts": "real",
   // Usage and limits (D314): templates and demo stores are never limited, and only real stores count towards an owner's stores.
   "src/server/limits.ts": "real",
   // An account's first open store: its Stripe account is the account's customer (D748 E4).
@@ -77,7 +77,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/platform.ts": "real",
   // Private mode (D339): a template or demo store is never private.
   "src/server/private-mode.ts": "real",
-  "src/server/redirect-resolve.ts": "real",
+  "src/server/store-facts.ts": "real",
   "src/app/admin/(gated)/[store]/settings/private/page.tsx": "real",
   "src/server/referrals.ts": "real",
   "src/server/seo.ts": "real",
@@ -197,7 +197,7 @@ const SANDBOX_KEPT: Record<string, string> = {
   "src/server/autopilot-goals.ts": "Counts stores that finished setting up, which a sandbox never does.",
   "src/server/cookie-scans.ts": "Scans stores that finished setting up, which a sandbox never does.",
   "src/server/private-mode.ts": "A sandbox is private as a real store may be; the database keeps it so (`stores.sandbox_private`).",
-  "src/server/redirect-resolve.ts": "Reads a private store's version: a sandbox is private as a real store may be.",
+  "src/server/store-facts.ts": "Reads a private store's version: a sandbox is private as a real store may be.",
   "src/server/seo.ts": "A sandbox is private and never finishes setting up, so it is never indexable.",
   "src/server/setup-tools.ts": "The AI manager's setup tools, never offered in a sandbox.",
   "src/server/page-looks.ts": "The AI manager's eyes, never offered in a sandbox.",
@@ -250,7 +250,7 @@ const HOUSE_COUNTS: Record<string, string> = {
   "src/server/api-tokens.ts": "Its own Admin API tokens (D355), as any store's.",
   "src/server/auth.ts": "The stores a person works in: Kaizena Flow's store is in the platform admins' switcher.",
   "src/server/design-presets.ts": "Theme updates reach its installed themes as any store's (D245).",
-  "src/server/experiments.ts": "The proxy's store for A/B tests: Kaizena Flow tests its own pages (step 5).",
+  "src/server/experiments-running.ts": "The proxy's store for A/B tests: Kaizena Flow tests its own pages (step 5).",
   "src/server/platform-unit-tests.ts": AS_ANY_STORE,
   "src/server/store-features.ts": "Deals open for it as a pilot, as for any store (D464).",
   "src/server/style-reading.ts": "The style text its own store adds is read as any store's (step 1.23); Kaizena Flow's site is the row besides.",

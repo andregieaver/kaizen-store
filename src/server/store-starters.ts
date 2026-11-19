@@ -28,6 +28,7 @@ import {
 import { contentPack, packSlots, picturesMissing } from "@/lib/content-packs";
 import { isPack, type ThemeContent } from "@/lib/theme-store";
 import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
+import { STARTERS_TAG } from "@/lib/cache-tags";
 
 import { audit, platformCan, type Account } from "./auth";
 import { log } from "./log";
@@ -45,8 +46,7 @@ import { askForThemeShots } from "./theme-shots";
 
 type Row = Record<string, unknown>;
 
-/** The cache tag of what owners and the sign-up page are offered: every change to a template's details, order or publishing updates it. */
-export const STARTERS_TAG = "store-starters";
+export { STARTERS_TAG } from "@/lib/cache-tags";
 
 export type StarterResult<T = Record<never, never>> = ({ ok: true } & T) | { ok: false; problems: string[] };
 

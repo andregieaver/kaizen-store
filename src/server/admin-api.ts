@@ -12,6 +12,7 @@ import { answerCatalogue, CATALOGUE_NAMES, type CatalogueRoute } from "./admin-a
 import { answerContent, CONTENT_NAMES, type ContentRoute } from "./admin-api-content";
 import { answerCustomers, CUSTOMERS_NAMES, type CustomersRoute } from "./admin-api-customers";
 import { answerForms, FORMS_NAMES, type FormsRoute } from "./admin-api-forms";
+import { answerContracts, CONTRACTS_NAMES, type ContractsRoute } from "./admin-api-contracts";
 import { answerOrders, ORDERS_NAMES, type OrdersRoute } from "./admin-api-orders";
 import {
   asTool,
@@ -184,8 +185,9 @@ const isOrders = (route: ApiRoute): route is OrdersRoute => (ORDERS_NAMES as rea
 const isCustomers = (route: ApiRoute): route is CustomersRoute => (CUSTOMERS_NAMES as readonly string[]).includes(route.name);
 const isContent = (route: ApiRoute): route is ContentRoute => (CONTENT_NAMES as readonly string[]).includes(route.name);
 const isForms = (route: ApiRoute): route is FormsRoute => (FORMS_NAMES as readonly string[]).includes(route.name);
+const isContracts = (route: ApiRoute): route is ContractsRoute => (CONTRACTS_NAMES as readonly string[]).includes(route.name);
 /** The operations of unit A and before, answered here; each slice of wave 14 unit C answers its own (D440). */
-type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute | FormsRoute>;
+type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute | FormsRoute | ContractsRoute>;
 
 async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
   if (isCatalogue(route)) return answerCatalogue(caller, route, request);
@@ -193,6 +195,7 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
   if (isCustomers(route)) return answerCustomers(caller, route, request);
   if (isContent(route)) return answerContent(caller, route, request);
   if (isForms(route)) return answerForms(caller, route, request);
+  if (isContracts(route)) return answerContracts(caller, route, request);
   return answerCore(caller, route as CoreRoute, request);
 }
 

@@ -488,25 +488,5 @@ export async function redirectsForExport(storeId: string, o: { automatic: boolea
   };
 }
 
-// ---------------------------------------------------------------------------
-// Counting a request
-// ---------------------------------------------------------------------------
-
-const hitWritten = new Map<string, number>();
-
-/**
- * Counts a request an existing redirect answered (`hits` and `last_hit_at`, the only change anyone but the manager makes to a redirect row): a lower bound,
- * throttled to one write a second per redirect and instance, never for the build's prerender; never throws. The cached lookup calls it in its fill.
- */
-export async function countHit(storeId: string, redirectId: string, now: number = Date.now()): Promise<void> {
-  try {
-    if (process.env.NEXT_PHASE === "phase-production-build") return;
-    const before = hitWritten.get(redirectId);
-    if (before !== undefined && now - before < 1_000) return;
-    if (hitWritten.size > 5_000) hitWritten.clear();
-    hitWritten.set(redirectId, now);
-    await db().execute(sql`update commerce.redirects set hits = hits + 1, last_hit_at = now() where store_id = ${storeId}::uuid and id = ${redirectId}::uuid`);
-  } catch (error) {
-    log("error", "redirects.hit_count_failed", {}, error);
-  }
-}
+// Counting a request: `countHit()` lives in redirect-live.ts (bloat review step 2.20), the one other writer of commerce.redirects.
+export { countHit } from "./redirect-live";

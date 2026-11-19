@@ -76,3 +76,11 @@ an `if` opening into its Yes and No columns. A card is dragged onto a place betw
 (`moveStep()`, never into its own branch), a kind is dragged from the palette onto a place (or added by a place's + from the keyboard),
 and a card pressed opens its settings beside the chart (words, picks, days, condition, what starts it, Remove). Each change is a new
 version, off until tested; the story above is drawn from the same tree.
+
+## Presses in a flow's emails (19 November 2026)
+
+A flow's email's links go through the broadcasts' click route (`/api/marketing/c/{flow}/{step}~{link}`, `flowClickUrl()`,
+`recordFlowClick()`), looked up in the flow's own saved words; a press by a reader still on the list is kept as theirs in `email_clicks`
+(`flow_id`, `step_id`; a broadcast's or a flow's, never both: `email_clicks_source`), 180 days, in their export and erased with them
+(D754). The condition "if they pressed a link" holds once they pressed a link of this flow since they entered. An email with picks
+keeps its links plain: the picks move its blocks, so a link's key would not name the same block.

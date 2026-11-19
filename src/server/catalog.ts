@@ -20,6 +20,7 @@ import type { ShownMeasure } from "@/lib/unit-price";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 import type { MediaItemKind, VideoSource } from "@/lib/product-media";
+import { CATALOG_TAG, catalogTag } from "@/lib/cache-tags";
 
 import { taxonomy, taxonomyWords } from "./product-taxonomy";
 import { shownRegistrationNumbers, type ShownRegistration } from "./producer-registrations";
@@ -29,12 +30,7 @@ import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./p
 import { perRequest } from "./request-memo";
 import { col, typedRow, typedRows } from "./typed-rows";
 
-/**
- * Cache tags. Revalidate a store's catalogue tag after any product or price
- * change in it; `catalog` covers every store.
- */
-export const CATALOG_TAG = "catalog";
-export const catalogTag = (storeId: string) => `catalog:${storeId}`;
+export { CATALOG_TAG, catalogTag } from "@/lib/cache-tags";
 
 /**
  * A combined listing (D566) a product is in, as a shopper sees it: the shared option's name and each offered product's value, colour and

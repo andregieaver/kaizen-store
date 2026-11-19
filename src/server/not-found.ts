@@ -7,15 +7,13 @@ import { areaOfAction } from "@/lib/audit";
 import { writeCsv, type Cell } from "@/lib/csv";
 import {
   NOT_FOUND_CSV_ROWS,
-  NOT_FOUND_DAY_CAP,
   NOT_FOUND_IGNORED_MAX,
   NOT_FOUND_KEEP_DAYS,
   NOT_FOUND_SCREEN_ROWS,
   NOT_FOUND_SUGGESTIONS,
-  NOT_FOUND_THROTTLE_MS,
   NOT_FOUND_WINDOWS,
 } from "@/lib/data-limits";
-import { lastPartOf, recordablePath, suggestTargets, wordsOf, type Candidate, type Suggestion } from "@/lib/not-found";
+import { lastPartOf, suggestTargets, wordsOf, type Candidate, type Suggestion } from "@/lib/not-found";
 import { normalisePath } from "@/lib/redirect-path";
 
 import { type Membership } from "./auth";
@@ -47,37 +45,7 @@ export const CRAWLER_NOTE = "Robots are counted only for addresses without a cou
 // Recording
 // ---------------------------------------------------------------------------
 
-const lastWritten = new Map<string, number>();
-const THROTTLE_MAX = 5_000;
-
-/** Whether this build's database must not be written to: a prerender at build time is not a visitor. */
-const building = (): boolean => process.env.NEXT_PHASE === "phase-production-build";
-
-/**
- * Counts one request for a missing address (`path` in the normal form, no query: the caller reads nothing else of the request). Refused addresses are not
- * recorded (`recordablePath()`); a flood of one address is written once a second at most per server instance; any failure is logged and dropped. Never throws.
- * `crawler` is a flag taken from the request by the caller, never stored as text. True when a row was written.
- */
-export async function recordNotFound(storeId: string, path: string, crawler = false, now: number = Date.now()): Promise<boolean> {
-  try {
-    if (building()) return false;
-    const normal = normalisePath(path, 200);
-    if (normal === null || !recordablePath(normal)) return false;
-    const key = `${storeId}|${normal}`;
-    const before = lastWritten.get(key);
-    if (before !== undefined && now - before < NOT_FOUND_THROTTLE_MS) return false;
-    if (lastWritten.size >= THROTTLE_MAX) lastWritten.clear();
-    lastWritten.set(key, now);
-    await db().execute(sql`select commerce.record_not_found(${storeId}::uuid, ${normal}, ${crawler === true}, ${NOT_FOUND_DAY_CAP})`);
-    return true;
-  } catch (error) {
-    log("error", "not_found.record_failed", {}, error);
-    return false;
-  }
-}
-
-/** Forgets the throttle (tests). */
-export const resetNotFoundThrottle = (): void => lastWritten.clear();
+export { recordNotFound, resetNotFoundThrottle } from "./not-found-record";
 
 // ---------------------------------------------------------------------------
 // The report

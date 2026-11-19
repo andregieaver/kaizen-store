@@ -31,6 +31,7 @@ import { localized, type LanguageSettings } from "@/lib/store-localized";
 import { isPriceDecimals, type PriceDecimals } from "@/lib/money";
 import { parseWordsByLocale, type WordsByLocale } from "@/lib/price-words";
 import { isQuantityPicker, type QuantityPicker } from "@/lib/quantity-stepper";
+import { storeTag } from "@/lib/cache-tags";
 
 export type StoreStatus = "active" | "suspended" | "closed";
 
@@ -193,8 +194,7 @@ export type StoreDetails = {
 
 export type Country = { code: string; name: string; currency: string; inEu: boolean };
 
-/** Revalidate after changing a store's name, status, markets or payment switch. */
-export const storeTag = (slug: string) => `store:${slug}`;
+export { storeTag } from "@/lib/cache-tags";
 /** The tag of a store's address by its id (`storeSlugOf()`); a kept sandbox is the one time an address changes, and it marks this stale. */
 export const storeIdTag = (storeId: string) => `store-id:${storeId}`;
 export const TEMPLATE_TAG = "template-store";

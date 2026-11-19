@@ -9,12 +9,22 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-17
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694, D695, D705, D712, D713, D715, D718, D730, D732, D757, D785, D810]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.46 — 2026-11-19
+
+Contracts for deals in the Admin API (D810), read only, with `customers:read`; behind Deals and its extension (`feature_off` without them).
+
+- `GET /contracts`: the store's contracts, newest first, a page at a time; `status`, `deal_id` and `updated_after` narrow them.
+- `GET /contracts/{id}`: one contract.
+- Each carries its `id`, `title`, `status` (draft too), `language`, `deal_id`, `template`, its `signers` in order (`role`, `name`,
+  `viewed_at`, `signed_at`, `declined_at`), `sent_at`, `expires_at`, `completed_at`, `signed_pdf`, `created_at`, `updated_at` and
+  `admin_url`: the `contract.*` webhooks' fields. Never a signer's email, the reason a signer gave for declining or the contract's words.
 
 ## 1.45 — 2026-11-19
 
