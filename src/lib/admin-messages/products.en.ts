@@ -380,6 +380,13 @@ export const productsEn = {
     backToProducts: "Back to the products",
   },
   exportPage: {
+    /** Round 51 (D784): what a phone shows. */
+    phone: {
+      lead: "A row for each variant, with prices, stock and pictures.",
+      notCarriedSub: "Subscriptions, downloads, bookings",
+      open: "Open",
+      close: "Close",
+    },
     back: "Products",
     title: "Export products",
     intro:

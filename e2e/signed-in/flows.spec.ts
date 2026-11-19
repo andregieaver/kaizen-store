@@ -131,3 +131,26 @@ test("an email's words are written in each of the store's languages side by side
   await page.reload();
   await expect(page.getByLabel("Email: Welcome!")).not.toContainText("Not written in");
 });
+
+test("a goal whose automation the owner already wrote starts from their words, days and follow-ups", async ({ page }) => {
+  const sql = testDb();
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
+    const words = (subject: string, text: string) => ({ "en-GB": { subject, preview: "", blocks: [{ type: "paragraph", text }] } });
+    await sql`
+      insert into commerce.automations (store_id, kind, enabled, delay_days, content)
+      values (${store.id}, 'after_purchase', false, 5, ${sql.json(words("How was it?", "Tell us how your order went."))})
+      on conflict (store_id, kind) do update set delay_days = 5, content = excluded.content`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/${STORE}/flows`);
+  const goal = page.getByRole("group", { name: "Follow up after a purchase" });
+  await expect(goal).toContainText("Starts from the email you already send for this, with its days and follow-ups.");
+  await goal.getByRole("button", { name: "Start" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/flows/[0-9a-f-]{36}$`));
+  const story = page.locator("[data-flow-story]");
+  await expect(story).toContainText("When someone pays for an order:");
+  await expect(story).toContainText("5 days later:");
+  await expect(story.getByLabel("Email: How was it?")).toContainText("Tell us how your order went.");
+});

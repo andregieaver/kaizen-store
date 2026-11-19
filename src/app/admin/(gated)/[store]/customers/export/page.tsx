@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PhoneRow } from "@/components/admin/phone-row";
 import { Suspense } from "react";
 
 import { requireFeature } from "@/components/admin/feature-off";
@@ -39,8 +40,19 @@ export default async function CustomerExportPage({ params, searchParams }: Props
         backHref={`/admin/${store.slug}/customers`}
         backLabel={words.back}
         title={words.title}
-        intro={fillWords(words.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
+        intro={
+          <>
+            <span className="sm:hidden">{words.phone.lead}</span>
+            <span className="max-sm:hidden">{fillWords(words.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}</span>
+          </>
+        }
       />
+      {/* Round 51 (D784): on a phone the form comes first (CSS order), personal data is one line under it, and both notes are a row. */}
+      <div className="flex flex-col gap-6 max-sm:order-1">
+      <p className="text-caption text-muted sm:hidden">{fillWords(words.phone.personal, { days: EXPORT_KEEP_DAYS })}</p>
+      <div className="max-sm:overflow-hidden max-sm:rounded-panel">
+      <PhoneRow flat last title={words.phone.about} sub={words.phone.aboutSub} change={words.phone.open} done={words.phone.close}>
+      <div className="flex flex-col gap-6">
       <Notice title={words.personal} tone="warning">
         <p>{fillWords(notes.personalData, { days: EXPORT_KEEP_DAYS })}</p>
         <p className="mt-1">{notes.neverEmailed}</p>
@@ -51,6 +63,10 @@ export default async function CustomerExportPage({ params, searchParams }: Props
           {words.columns}
         </p>
       </Notice>
+      </div>
+      </PhoneRow>
+      </div>
+      </div>
       <Suspense fallback={<DataSkeleton />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>

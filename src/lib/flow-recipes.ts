@@ -1,3 +1,4 @@
+import type { BroadcastContent } from "./broadcasts";
 import type { FlowInput } from "./flows";
 
 type Words = {
@@ -84,3 +85,23 @@ export function afterPurchase(locale: string): Recipe {
 /** The goals a flow starts from on the flows page (M3.1), each with its recipe; in the order shown. */
 export const RECIPES = { welcome: welcomeSeries, after_purchase: afterPurchase } as const;
 export type RecipeKey = keyof typeof RECIPES;
+
+/** An automation as saved (D298, D653): its days, words and follow-ups, as `getAutomation()` gives them. */
+export type SavedAutomation = { delayDays: number | null; content: BroadcastContent | null; followUps: readonly { position: number; delayDays: number; content: BroadcastContent }[] };
+
+/**
+ * A goal's flow from the owner's own automation (D767 slice 3, M2.2: today's automations moved onto the engine): its first email after its
+ * days, then each follow-up its days after the one before, ended by an order as follow-ups are (D653), replacing that automation. The
+ * owner's words and days as they are; the recipe's name. Null when the automation has no words.
+ */
+export function flowFromAutomation(key: RecipeKey, automation: SavedAutomation, locale: string): Recipe | null {
+  if (!automation.content || Object.keys(automation.content).length === 0) return null;
+  const recipe = RECIPES[key](locale);
+  const wait = (id: string, days: number | null): FlowInput["steps"] => (days && days > 0 ? [{ id, kind: "wait", hours: days * 24 }] : []);
+  const steps: FlowInput["steps"] = [
+    ...wait("wait-1", automation.delayDays),
+    { id: "email-1", kind: "email", content: automation.content },
+    ...automation.followUps.flatMap((f) => [...wait(`wait-${f.position}`, f.delayDays), { id: `email-${f.position}`, kind: "email" as const, content: f.content }]),
+  ];
+  return { name: recipe.name, trigger: recipe.trigger, replaces: recipe.replaces, steps, goals: automation.followUps.length > 0 ? [{ kind: "ordered" }] : [] };
+}

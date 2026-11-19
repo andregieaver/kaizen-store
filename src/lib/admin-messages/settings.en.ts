@@ -204,6 +204,8 @@ export const settingsEn = {
     },
   },
   company: {
+    /** Round 51 (D784): a new place's optional fields as one row on a phone. */
+    phone: { more: "Phone, directions and hours", open: "Open", close: "Close" },
     title: "Company",
     /** The page drawn for Homer (round 10, D633): what the law still needs first, then what shoppers see, one row each. */
     missing: { one: "One thing the law needs is missing.", many: "{n} things the law needs are missing." },
