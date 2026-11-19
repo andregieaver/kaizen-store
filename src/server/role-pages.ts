@@ -4,7 +4,7 @@ import { isTestedPlace, type TestedPlace } from "@/lib/ab-site";
 import type { PageRole } from "@/lib/page-roles";
 
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
-import { pageForRole, type PublishedPage } from "./pages";
+import { pageForRole, type PublishedPage } from "./page-reads";
 
 /**
  * A page a store chose for a place of its own, as this visitor sees it (D148, phases 9 and 10): the page, or, while a test of it runs

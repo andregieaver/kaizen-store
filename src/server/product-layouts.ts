@@ -10,7 +10,7 @@ import { audit, type Account } from "./auth";
 import { CATALOG_TAG, catalogTag } from "./catalog";
 import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
 import { withPageAlts } from "./media-alts";
-import { pagesTag } from "./pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { refreshStoreById } from "./stores";
 import { termsTag } from "./taxonomy";
 

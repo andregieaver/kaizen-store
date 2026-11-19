@@ -75,6 +75,11 @@ export const screensEn = {
     title: "Accounts",
     description:
       "Each account's billing. At launch every account still billed store by store moves to one plan: the plan of its store on the highest plan, kept as it is; the other stores' plans end with credit for the time not used, and the owner gets an email. Move one account first to try it.",
+    /** Round 62 (D823): the accounts on a phone, each one a row. */
+    phoneLead: "At launch each account moves to one plan; move one first to try it.",
+    phoneLeft: { one: "{n} account still billed store by store", many: "{n} accounts still billed store by store" },
+    phoneLeftSub: "Each owner gets an email and credit for the time not used",
+    phoneMove: "Move",
     list: "Accounts",
     none: "No account has an open store.",
     owner: "Owner: {email}",

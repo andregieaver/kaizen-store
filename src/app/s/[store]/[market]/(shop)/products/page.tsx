@@ -11,7 +11,7 @@ import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath } from "@/lib/paths";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
-import { productsPageOf } from "@/server/pages";
+import { productsPageOf } from "@/server/page-reads";
 import { placePageForVisitor } from "@/server/role-pages";
 import { storeShareImage, storeShareTags } from "@/server/seo";
 import { marketMoved, resolveShop, sellingPageOr404 } from "@/server/shop";

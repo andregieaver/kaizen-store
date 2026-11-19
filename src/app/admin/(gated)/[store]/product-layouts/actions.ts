@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
-import { pagesTag } from "@/server/pages";
+import { pagesTag } from "@/lib/cache-tags";
 import { assignLayout } from "@/server/product-layouts";
 import { termsTag } from "@/server/taxonomy";
 import { adminLangOf } from "@/lib/admin-lang";

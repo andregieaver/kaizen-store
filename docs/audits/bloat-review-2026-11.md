@@ -163,8 +163,8 @@ commit as the fix.
 | 2.2 | Send the store's layout once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, GAP-page-model-s6 | M | review | 0.1, 1.3 | Done | 18 Nov, b3a90442, D776: home 135,935 to 105,599 bytes; duplicate rows 27,226 to 1,768. |
 | 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Done | 18 Nov, d0aa131f, D777: breakpoint sheet once; six-row page's part sheets 6 to 1. |
 | 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | In progress | D805: store pages static, live 19 Nov, payloads complete; an add 1 request, 104 B. Commit 4 in its own deploy. |
-| 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | In progress | Local: manifest names facebookexternalhit, not Bingbot; crawlers.spec 6 pass; render-modes 0 misses. Waits: deploy, tool checks, log sample. |
-| 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | Local, 5 of 5: phone router requests 3-5 (18-20), first add 7 (32), money cart 7 (15); 8 admin screens 0 at rest; next/link imports 396 to 384. |
+| 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | In progress | D825: Bingbot gets the cached page (HIT, title in head), link previews keep the render; live 19 Nov. Owner: Rich Results, Bing Webmaster; log sample. |
+| 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | In progress | D826: router requests front 19 to 3, product 18 to 3, cart 20 to 5, first add 32 to 7; admin at rest 0; next/link 396 to 384. Phone and 1280 px checks due. |
 | 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Open | |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Open | |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
@@ -179,7 +179,7 @@ commit as the fix.
 | 2.18 | Read a cold store page's frame in one wave | SD-5, SD-9, DQ-7 | M | strong | 2.16, 0.24, 1.10, 1.11, 1.12, 2.2 | Done | 19 Nov, 38759d01, D780: platform frame 17 to 11 statements, cookie scan 14 to 7. |
 | 2.19 | Read nothing that grows with the catalogue, and read the cart and checkout in one wave | GAP-server-1, GAP-server-s7, DQ-14, DQ-16 | M | strong | 1.11, 1.9, 0.22, 2.13, 2.17, 2.15 | Open | |
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | In progress | D816: proxy files 321 to 57, chunk 2,253,770 to 585,983 B, trace 60.7 to 2.1 MB; live 19 Nov, smoke clean. Cold-start p50 reading due. |
-| 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Open | |
+| 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | In progress | D824: page reader 72 files, no path to pages.ts; article 467 to 431. Pages, menus and blog on production to check. |
 | 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | Open | |
 | 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
 | 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
@@ -350,6 +350,8 @@ Change log:
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 - 19 Nov 2026: step 2.20 carried out locally in five commits (the tag leaf, the shared short memory, the leaf readers, the proxy on
   them, the docs): the proxy 321 to 57 source files and 2,200.9 to 572.2 KB of chunks; waiting for review, the D-row and the hosts job.
+- 19 Nov 2026: step 2.21 carried out locally in three commits (the reads to page-reads.ts, the importers split, the renderer held):
+  reading a page 183 to 72 source files, the renderer 467 to 430 with no path to pages.ts; waiting for review and the D-row.
 
 
 **Notes on the steps**

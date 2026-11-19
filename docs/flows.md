@@ -98,4 +98,5 @@ page shows the same warnings before sending (`contentChecks()`); what blocks a s
 Above Test, the flow says about how many people would start it in the next 30 days, judged from the last 30 (`flowReach()`, read only):
 for an event, the people on the list behind its events of the last 30 days (the event log keeps 90); for a lapse, the customers whose
 lapse falls in the next 30; for browsing, the signed-in subscribers with views kept now. Test walks the newest subscriber through it,
-sending nothing. Still to come: the reach of each step, and each email drawn for the person tested.
+sending nothing. See the emails (`?see=1`, `drawFlowEmails()`) draws each email the newest subscriber would get, in their language and
+market with their picks and plain links, only when asked; nothing is sent, entered or marked tested. Still to come: each step's reach.

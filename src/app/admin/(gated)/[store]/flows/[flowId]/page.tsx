@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireExtension } from "@/components/admin/extension-off";
-import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { AdminLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { checkWords, flowChecks } from "@/lib/flow-checks";
@@ -11,7 +11,7 @@ import { DATE_TRIGGER_DAYS, isDateTrigger } from "@/lib/flow-triggers";
 import { languageName } from "@/lib/localization";
 import { storyLead, storyLines } from "@/lib/flow-story";
 import type { FlowStep } from "@/lib/flows";
-import { flowReach, getFlow } from "@/server/flows";
+import { drawFlowEmails, flowReach, getFlow } from "@/server/flows";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 
@@ -39,8 +39,9 @@ function emailsOf(steps: readonly FlowStep[], into = new Map<string, Extract<Flo
  * not ordered*) with the email itself drawn as a small picture of its subject and first words. Test it, then switch it on; Homer needs
  * nothing else. Change edits an email where it is; Customise opens the canvas (`flow-board.tsx`), the flow drawn as a chart and dragged and dropped.
  */
-export default async function FlowPage({ params }: PageProps<"/admin/[store]/flows/[flowId]">) {
+export default async function FlowPage({ params, searchParams }: PageProps<"/admin/[store]/flows/[flowId]">) {
   const { store: slug, flowId } = await params;
+  const see = (await searchParams).see === "1";
   const member = await requirePermission(slug, "marketing:read");
   const notInAccount = requireExtension(member, "email_automation");
   if (notInAccount) return notInAccount;
@@ -57,6 +58,8 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
   const languages = store.localization.locales.length > 0 ? store.localization.locales : ["en-GB"];
   const checks = flowChecks(flow.steps, languages[0]);
   const reach = mayWrite ? await flowReach(store.id, flow.trigger, flow.triggerDays) : 0;
+  // The emails drawn for the person tested (M3.5), only when asked for: each is a full email to draw.
+  const drawn = mayWrite && see ? await drawFlowEmails(store.id, flow.id) : null;
   const firstLocale = Object.keys([...emails.values()][0]?.content ?? {})[0] ?? store.localization.locales[0] ?? "en-GB";
   return (
     <div className="flex flex-col gap-6">
@@ -198,12 +201,27 @@ export default async function FlowPage({ params }: PageProps<"/admin/[store]/flo
           </div>
         </Card>
       )}
+      {drawn && (
+        <Card compact>
+          <div className="flex flex-col gap-4" data-flow-drawn>
+            <p className="text-body-strong text-ink">{drawn.person ? w.seeingEmails.replace("{person}", drawn.person) : w.noPerson}</p>
+            {drawn.emails.map((e) => (
+              <iframe key={e.stepId} title={w.frame.replace("{subject}", e.subject)} srcDoc={e.html} sandbox="" className="h-[60vh] w-full rounded-panel border border-line bg-white" />
+            ))}
+          </div>
+        </Card>
+      )}
       {mayWrite && (
         <div className="flex flex-wrap items-start gap-3">
           {/* The dry run's reach (M3.5): from real data, nothing sent; Test below walks one real person through it. */}
           <p className="w-full text-body text-ink-2" data-flow-reach>
             {reach === 0 ? w.reach.none : reach === 1 ? w.reach.one : w.reach.many.replace("{n}", String(reach))}
           </p>
+          {!drawn && (
+            <AdminLink href={`/admin/${store.slug}/flows/${flow.id}?see=1`} className="w-full text-sm font-medium text-ink underline underline-offset-2">
+              {w.seeEmails.replace("{person}", w.newestPerson)}
+            </AdminLink>
+          )}
           {!flow.enabled && !flow.tested && <p className="w-full text-body text-ink-2">{w.untested}</p>}
           <ActionForm action={testFlowAction.bind(null, store.slug, flow.id)} className="flex flex-col gap-2">
             <SubmitButton variant={flow.tested ? "secondary" : "primary"}>{w.test}</SubmitButton>

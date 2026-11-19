@@ -6,7 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { db, readDb } from "@/db/client";
-import { DESIGNS_TAG } from "@/lib/cache-tags";
+import { DESIGNS_TAG, pagesTag } from "@/lib/cache-tags";
 import { cssProblem } from "@/lib/custom-css";
 import { canonicalJson, deleteBlocker, type ListFilter } from "@/lib/lifecycle";
 import {
@@ -57,7 +57,6 @@ import { log } from "./log";
 import { copyStoredFile } from "./media";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
 import { pageRulesProblem } from "./page-rules";
-import { pagesTag } from "./pages";
 import { STARTERS_TAG, publishStarter, publishedContents, themeContentOf } from "./store-starters";
 import { storeTag } from "./stores";
 import { INSTALLS_FULL, INSTALLS_MAX, InstallRefused, installCount, makeLive, putAwayLive } from "./theme-installs";

@@ -333,6 +333,14 @@ export const privacyNb: PrivacyMessages = {
     title: "Oppbevaring av opplysninger",
     description:
       "Hvor lenge hver type personopplysninger oppbevares, og hva den daglige jobben fjerner når tiden er ute. Periodene for bokføring kommer fra hvert lands lov og må gjennomgås av en regnskapsfører; resten er Kaizena Flows eget valg. Dette er ikke juridisk rådgivning.",
+    /** Runde 62 (D823): planen på en telefon, hver type opplysninger en rad. */
+    phone: {
+      lead: "Hvor lenge hver type personopplysninger oppbevares før den daglige jobben fjerner dem.",
+      kindSub: "{n} gjelder · {m} å gjennomgå",
+      kindSubDone: "{n} gjelder · alle gjennomgått",
+      open: "Åpne",
+      close: "Lukk",
+    },
     kinds: {
       bookkeeping: "Bestillinger, fakturaer og betalinger (bokføring)",
       host_bookkeeping: "Verters bestillinger (bokføring)",
