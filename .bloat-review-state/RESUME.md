@@ -375,3 +375,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - kz-b: 2.7 Opus abbd54cbcd592655d, brief $S/run/kz-b-2.7.md.
 - 20:5x 2.27 commit 5 pushed (ef0b030e5..04943ed0e) + ratchet fix for round-60 domains/move page (8445130cb). D821 written (daaab104c, bcb61616a); 2.27 In progress (3 sites left; CI reading). pgrep fix: builds are "next-build (v16)" -> use pgrep -f "next.build" (templates updated, kz-b/kz-d told).
 - kz-c: 2.28 Opus aeec07520aa191701, brief $S/run/kz-c-2.28.md.
+- 21:0x 2.21 pushed 732da16a8..fdc7d193a (lint/tc/full unit 1398 pass). D824 written cd0a21d95; In progress: pages/menus/blog on prod to check (fold into 21:06 check).
+- kz-d: 2.22 Opus (brief $S/run/kz-d-2.22.md).
