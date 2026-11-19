@@ -32,6 +32,7 @@ import { InstagramSection } from "./instagram-section";
 import { PageBlockView } from "./page-block";
 import { PageModal } from "./lazy/blocks";
 import { DomainSearchSection } from "./domain-search-section";
+import { ExtensionsSection } from "./extensions-section";
 import { PlansSection } from "./plans-section";
 import { TableSection } from "./table-section";
 import { themePartDraws } from "@/lib/theme-store-parts";
@@ -388,6 +389,8 @@ function RowMarkup({
                 <SearchSection place={place} results={block.results !== false} />
               ) : block.type === "plans" ? (
                 <PlansSection block={block} place={place} />
+              ) : block.type === "extensions" ? (
+                <ExtensionsSection block={block} place={place} />
               ) : block.type === "table" ? (
                 <TableSection block={block} place={place} />
               ) : block.type === "domainSearch" ? (

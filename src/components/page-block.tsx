@@ -114,6 +114,9 @@ export function PageBlockView({
     case "plans":
       // Kaizen's plans are looked up where the page is shown (`PlansSection`, D142); the editor shows a stand-in.
       return null;
+    case "extensions":
+      // Kaizena Flow's extensions are looked up where the page is shown (`ExtensionsSection`, D748 E8); the editor shows a stand-in.
+      return null;
     case "domainSearch":
       // Names and prices are asked as the visitor searches (`DomainSearchSection`, D315); the editor shows a stand-in.
       return null;

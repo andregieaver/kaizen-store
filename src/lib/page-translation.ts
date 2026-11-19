@@ -107,7 +107,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         ctaLabel: str("ctaLabel", b.ctaLabel, 100, "Free name's button"),
       };
     case "plans":
-      // Plans' names, descriptions and prices are the platform's own; only the button's words are the page's.
+    case "extensions":
+      // Plans' and extensions' names, lines and prices are the platform's own (`plansIn()`, `extensionsIn()`); only the button's words are the page's.
       return { ...b, buttonLabel: str("buttonLabel", b.buttonLabel, 100, "Button text") };
     case "themeStore":
       // The themes' names and words are the platform's own (D285); only the part's heading and line are the page's.

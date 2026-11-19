@@ -99,3 +99,12 @@ describe("Kaizena Flow's own store, which serves its site (D484)", () => {
     expect(pageRulesProblem(store, "header", withBlock(signUp))).toBe("A store's site has no Start your store button.");
   });
 });
+
+describe("where an extensions component may be (D748 E8)", () => {
+  const extensions: PageBlock = { id: "ex", type: "extensions", buttonLabel: "", buttonHref: "" };
+
+  it("belongs on Kaizena Flow's own pages and is refused on a store's", () => {
+    expect(pageRulesProblem(null, "page", withBlock(extensions))).toBeNull();
+    expect(pageRulesProblem(store, "page", withBlock(extensions))).toMatch(/Kaizena Flow's extensions belong on Kaizena Flow's own pages/);
+  });
+});

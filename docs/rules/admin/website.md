@@ -678,6 +678,15 @@ CLAUDE.md names this file in its map; find a rule by searching for the path, com
   The AI a plan includes is in euros and shown in the block's currency at the ECB's latest rate (`euroRates`), carried through
   `plansIn()`.
 
+## Kaizena Flow's extensions on its own pages (D748 E8, `src/lib/extension-offer.ts` pure, `src/server/public-extensions.ts`, `ExtensionsView`/`ExtensionsSection`, block `extensions`)
+
+- The Extensions block draws each extension on offer (its smallest size's price, the founding price while offered, what it includes,
+  the plans that include it, sold on its own) and the bundles with what each saves, read where the page is shown through
+  `getPublicExtensions()` (public data only), cached under `EXTENSIONS_TAG` and `PLANS_TAG`: every writer of the catalogue, plan grants
+  or the founding offer refreshes it. An ended offer is left out by the cached read (read again within the hour it ends, by the
+  database's clock), so the view reads no clock. Only Kaizena Flow's pages hold it (`pageRulesProblem()`); its words are
+  `platformText(lang).extensions`, the catalogue's through `extensionsIn()` (`EXTENSION_WORDS_NB`, by the English); amounts exclude VAT.
+
 ## Kaizen's own front page, blog and 404 page (D143, `src/lib/platform-roles.ts`, `src/server/platform-roles.ts`, `commerce.platform_page_roles`,…
 
 - Kaizen's own front page, blog and 404 page (D143, `src/lib/platform-roles.ts`, `src/server/platform-roles.ts`,

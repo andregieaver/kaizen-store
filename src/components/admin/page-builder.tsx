@@ -53,7 +53,7 @@ import { ShopPartIcon } from "./shop-part-icons";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import { menuHoverStyle } from "@/lib/menu-hover";
 import { findPart as findPagePart } from "@/lib/experiment-parts";
-import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type FormBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType, type MenuDrawer, MENU_TYPES, MENU_SIDES } from "@/lib/page-content";
+import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type FormBlock, type PlansBlock, type ExtensionsBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType, type MenuDrawer, MENU_TYPES, MENU_SIDES } from "@/lib/page-content";
 import { DRAWER_PARTS, isDrawerPart, menuLook, ownDrawer, type DrawerPart } from "@/lib/menu-drawer";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { hasMotion, type EnterMotion } from "@/lib/motion";
@@ -82,6 +82,7 @@ import { partFromRows, partRows } from "@/lib/saved-part-canvas";
 import { type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
+import { ExtensionsFields, ExtensionsStandIn } from "./extensions-block-fields";
 import { BindBadge, BindEntitiesContext, BindFields, Check, Choices, ColorField, editorFor, FieldGroupsContext, FormsContext, FieldsSettingsFields, FieldsStandIn, LoopSettingsFields, LoopStandIn, TextAlignFields } from "./block-fields";
 import { type InstallFont } from "./font-picker";
 import { TypographyFields } from "./typography-fields";
@@ -2084,7 +2085,7 @@ function Sidebar({
                 <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.more}</h3>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans", "domainSearch"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
+                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans", "extensions", "domainSearch"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -3352,6 +3353,8 @@ function BlockItem({
           <SearchStandIn block={block} />
         ) : block.type === "plans" ? (
           <PlansStandIn block={block} />
+        ) : block.type === "extensions" ? (
+          <ExtensionsStandIn block={block} />
         ) : block.type === "domainSearch" ? (
           <DomainSearchStandIn block={block} />
         ) : block.type === "themeStore" ? (
@@ -4181,6 +4184,26 @@ function Dialogs({
                 block={block}
                 plans={grid.plans ?? []}
                 onChange={(patch) => onRows((current) => patchBlock<PlansBlock>(current, block.id, patch))}
+              />),
+            font: dw.fonts.site,
+          })
+        )}
+      </SettingsPanel>
+
+      <SettingsPanel
+        open={block?.type === "extensions"}
+        onClose={onClose}
+        title={w.blockNames.extensions}
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
+        wide
+      >
+        {block?.type === "extensions" && (
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<ExtensionsFields
+                block={block}
+                currencies={planCurrencies(grid.plans ?? [])}
+                labelMax={BUTTON_LABEL_MAX}
+                onChange={(patch) => onRows((current) => patchBlock<ExtensionsBlock>(current, block.id, patch))}
               />),
             font: dw.fonts.site,
           })
@@ -5277,6 +5300,7 @@ function SavedPartDialog({
                     ) : block.type === "menu" ||
                       block.type === "search" ||
                       block.type === "plans" ||
+                      block.type === "extensions" ||
                       block.type === "domainSearch" ||
                       block.type === "themeStore" ||
                       block.type === "customField" ||

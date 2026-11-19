@@ -23,6 +23,7 @@ import type { PlanInterval } from "@/lib/plans";
 
 import { audit, type Account } from "./auth";
 import { planCurrencies } from "./billing";
+import { EXTENSIONS_TAG } from "./public-extensions";
 import { refreshTag } from "./refresh";
 import { experimentsTag } from "./experiments";
 import { storeTag } from "./stores";
@@ -248,6 +249,7 @@ export async function saveExtension(actor: Account, id: ExtensionId, input: Exte
     }
   });
   await audit(actor.id, null, "platform.extension_updated", { extension: id, sizes: input.sizes.length, active: input.active });
+  refreshTag(EXTENSIONS_TAG);
   return { ok: true };
 }
 
@@ -283,6 +285,7 @@ export async function saveBundle(actor: Account, bundleId: string | null, input:
     return id;
   });
   await audit(actor.id, null, bundleId ? "platform.extension_bundle_updated" : "platform.extension_bundle_created", { bundleId: id, members: input.members });
+  refreshTag(EXTENSIONS_TAG);
   return { ok: true };
 }
 
@@ -301,6 +304,7 @@ export async function savePlanGrants(actor: Account, planIds: readonly string[],
   });
   await audit(actor.id, null, "platform.extension_grants_updated", { plans: planIds.length, grants: grants.length });
   await refreshExtensionFacts({ planIds });
+  refreshTag(EXTENSIONS_TAG);
   return { ok: true };
 }
 
@@ -327,6 +331,7 @@ export async function saveExtensionFounding(actor: Account, until: string | null
            extension_founding_months = ${months}, updated_by = ${actor.id}::uuid
   `);
   await audit(actor.id, null, "platform.extension_founding_updated", { until, months });
+  refreshTag(EXTENSIONS_TAG);
   return { ok: true };
 }
 

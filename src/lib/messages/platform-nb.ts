@@ -10,6 +10,21 @@ export const platformNb: PlatformMessages = {
       "Nettbutikker for Norge og EU: priser, merverdiavgift, produktsikkerhet og forbrukerregler på plass fra starten, og sider som lastes på under et halvt sekund.",
     orgNumber: (number) => `Org.nr. ${number}`,
   },
+  /** Kaizena Flows betalte utvidelser på sidene (D748 E8): Utvidelser-blokkens egne ord; katalogens ord er `extensionsIn()` sine. */
+  extensions: {
+    perMonth: "per måned",
+    exVat: "ekskl. mva.",
+    foundingThen: (months: number, price: string): string => `I ${months} måneder, deretter ${price}`,
+    foundingUntil: (date: string): string => `Grunnleggerpriser til ${date}`,
+    wasPrice: "Ordinær pris",
+    includedFrom: (plan: string): string => `Inkludert i ${plan} og opp`,
+    includedIn: (plans: string): string => `Inkludert i ${plans}`,
+    standalone: "Selges også alene",
+    trial: "Prøv gratis",
+    bundles: "Pakker",
+    holds: (names: string): string => `Inneholder ${names}`,
+    saves: (amount: string): string => `${amount} mindre i måneden enn hver for seg`,
+  },
   nav: { home: "Hjem", signUp: "Start nettbutikken din", signIn: "Logg inn", blog: "Blogg", menu: "Meny" },
   menuNames: { "Main menu": "Hovedmeny", "Footer menu": "Bunnmeny", "Useful links": "Nyttige lenker" },
   home: {

@@ -408,6 +408,7 @@ export function textRoles(part: TypedPart): RoleDef[] {
         role("price", "Prices", marked("price")),
       ];
     case "plans":
+    case "extensions":
       return [
         TEXT,
         role("name", "Plan names", marked("name")),
@@ -504,6 +505,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   themeStore: { heading: "title", text: "text" },
   domainSearch: { heading: "title", placeholder: "input", buttonLabel: "button", ctaLabel: "button", "names": "name", "prices": "price" },
   plans: { buttonLabel: "button", "plan names": "name", "prices": "price", "what each includes": "meta", "fees and descriptions": "text" },
+  extensions: { buttonLabel: "button", "extension and bundle names": "name", "prices": "price", "what each includes": "meta", "lines": "text" },
   product: { heading: "heading", "the product's words": "text" },
   customField: { heading: "heading", "field labels": "label", "field values": "text" },
   fieldLoop: { heading: "heading", "slot title": "title", "slot text": "excerpt", "slot badge": "badge", "slot link": "button" },

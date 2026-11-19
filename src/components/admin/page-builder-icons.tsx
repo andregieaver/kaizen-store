@@ -1,6 +1,7 @@
 "use client";
 
 import { ROW_LAYOUTS, type BlockType, type RowLayout } from "@/lib/page-content";
+import { ExtensionsIcon } from "./extensions-block-fields";
 import { ThemeStoreIcon } from "./theme-store-fields";
 
 /**
@@ -36,6 +37,8 @@ export function BlockIcon({ type }: { type: BlockType }) {
       return <SearchIcon />;
     case "plans":
       return <PlansIcon />;
+    case "extensions":
+      return <ExtensionsIcon />;
     case "domainSearch":
       return <DomainSearchIcon />;
     case "themeStore":

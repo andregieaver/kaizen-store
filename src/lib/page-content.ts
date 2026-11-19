@@ -1063,6 +1063,27 @@ export type PlansBlock = PartBase & {
 };
 
 /**
+ * Kaizena Flow's paid extensions (D748 E8, `docs/extensions.md` 11): a card for each extension on offer with its line, its price (and its
+ * founding price while founding prices are offered), what its smallest size includes, which plans include it, whether it is sold on its own,
+ * and a free trial; then the bundles with what each saves. The catalogue is the platform's (`commerce.extensions`, their sizes, prices and
+ * bundles, `plan_extension_grants`), read where the page is shown (`ExtensionsSection`), so a price changed shows with no edit to the page.
+ * Kaizena Flow's own pages only, as plans are.
+ */
+export type ExtensionsBlock = PartBase & {
+  id: string;
+  type: "extensions";
+  /** The currency the prices show in; none: the one most prices are in. */
+  currency?: string;
+  /** `hide_whole` leaves the decimals off whole amounts, as on the Plans block. */
+  decimals?: "hide_whole";
+  /** The bundles under the extensions; shown unless set false. */
+  bundles?: boolean;
+  /** The words on each card's button, and where it leads (sign-up unless chosen). */
+  buttonLabel: string;
+  buttonHref: string;
+};
+
+/**
  * A domain search (D315, `docs/domains.md` 16): a visitor types a name and sees which endings are free and what each costs a year with a
  * store on Kaizena Flow, from the same search and prices the admin uses, read as they search. Kaizena Flow's own pages only. The words are the
  * page's own; empty ones take the language's (`DOMAIN_SEARCH_WORDS`).
@@ -1966,6 +1987,7 @@ export type PageBlock =
   | MenuBlock
   | SearchBlock
   | PlansBlock
+  | ExtensionsBlock
   | DomainSearchBlock
   | ThemeStoreBlock
   | CustomFieldBlock
@@ -2176,6 +2198,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "plans":
       // The platform's plans decide: with none on offer it draws nothing (D142).
       return true;
+    case "extensions":
+      // The platform's extensions decide: with none priced it draws nothing (D748 E8).
+      return true;
     case "domainSearch":
       // The search box always shows (D315).
       return true;
@@ -2296,6 +2321,7 @@ export function blockText(block: PageBlock): string {
     case "menu":
     case "search":
     case "plans":
+    case "extensions":
     case "domainSearch":
     case "themeStore":
     case "storePart":
@@ -3297,6 +3323,21 @@ const plansBlock = z.object({
   ...partBase,
 });
 
+const extensionsBlock = z.object({
+  id: itemId,
+  type: z.literal("extensions"),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/, "Choose a currency such as NOK or EUR.").optional(),
+  decimals: z.literal("hide_whole").optional(),
+  bundles: z.boolean().optional(),
+  buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
+  buttonHref: z
+    .string()
+    .trim()
+    .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
+    .default(""),
+  ...partBase,
+});
+
 /** At most this many endings a domain search suggests first (D315). */
 export const DOMAIN_SEARCH_TLDS_MAX = 8;
 
@@ -3863,6 +3904,7 @@ const BLOCK_KINDS = [
   menuBlock,
   searchBlock,
   plansBlock,
+  extensionsBlock,
   themeStoreBlock,
   domainSearchBlock,
   customFieldBlock,

@@ -251,7 +251,7 @@ Each step leaves production working and changes nothing an owner sees until step
 | E5 | **Trials, grace, read-only, markers**; the Extensions page; existing accounts' `legacy` turned into 60-day trials with reminders | Launch day for extensions. **Built 19 November 2026** (parts one and two below); the launch is the owner's press on Platform → Plans → Extensions |
 | E6 | **Bundles, the cheapest way, founding prices** | The checkout never charges twice |
 | E7 | **Standalone**: workspaces, the product landing pages and the combined sign-up, Add to your account | A support-desk-only sign-up sees no store feature |
-| E8 | **The pricing table block** on Kaizena Flow's pages and the admin | On the plans page and the landing pages |
+| E8 | **The pricing table block** on Kaizena Flow's pages and the admin | On the plans page and the landing pages. **Built 19 November 2026** (the block; below) |
 | E9 | **The AI manager**: suggestions (section 6) and price tuning on both sides (section 9), with eval cases and a new recording | Run on Platform → AI |
 | E10 | **Email**: account sending domains, SES in Ireland for bulk, the send allowance | A standalone account sends from its own domain |
 | E11 | **Metering**: AI-handled conversations, extra people, contacts, reported to Stripe | Use beyond allowances is billed |
@@ -410,6 +410,16 @@ the account keeps; `resolveItems()` refuses any other. Stripe's word sets `organ
 starts (a running one keeps its end), and `daily.extension-founding` (`endFoundingPrices()`) moves an ended one to the list price
 without proration, the period paid staying paid. Account → Extensions shows the founding price and until when it is kept; Account → Billing
 says until when one is paid.
+
+**E8 as built (19 November 2026).** A page block `extensions` beside Plans (`ExtensionsBlock`; the builder's Extensions, on Kaizena Flow's
+own pages only, refused on a store's): a card per extension on offer with its smallest size's monthly price, the founding price for how
+long and the price after while founding prices are offered, what the size includes, "Included in Grow and up" (or the plans named) from
+the grants, "Also sold on its own" and **Start free trial** (sign-up unless another address is set); then the bundles with what each saves
+against its extensions one by one (founding against founding). Settings: currency (else the one most prices are in), whole amounts, the
+bundles on or off, the button. Read where shown (`getPublicExtensions()`, cached under `EXTENSIONS_TAG` and `PLANS_TAG`, refreshed by every
+catalogue writer), in the page's language: the block's words in `platformText(lang).extensions`, the catalogue's through `extensionsIn()`.
+The admin's Extensions page keeps its own list for now (its rows carry the account's standing and actions); drawing it with the same cards
+is left for when it is redesigned.
 
 **Migration versions and the advisors after each release** (the decision, D748, points here):
 

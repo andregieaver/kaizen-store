@@ -10,6 +10,22 @@ export const platformEn = {
       "Online stores for Norway and the EU: prices, VAT, product safety and consumer rules handled from the start, and pages that load in under half a second.",
     orgNumber: (number: string) => `Org. ${number}`,
   },
+  /** Kaizena Flow's paid extensions on its pages (D748 E8): the Extensions block's own words; the catalogue's are `extensionsIn()`'s. */
+  extensions: {
+    perMonth: "per month",
+    exVat: "excl. VAT",
+    /** A founding price (E6): the price after it, and for how long it is kept. */
+    foundingThen: (months: number, price: string): string => `For ${months} months, then ${price}`,
+    foundingUntil: (date: string): string => `Founding prices until ${date}`,
+    wasPrice: "Regular price",
+    includedFrom: (plan: string): string => `Included in ${plan} and up`,
+    includedIn: (plans: string): string => `Included in ${plans}`,
+    standalone: "Also sold on its own",
+    trial: "Start free trial",
+    bundles: "Bundles",
+    holds: (names: string): string => `Holds ${names}`,
+    saves: (amount: string): string => `${amount} less a month than one by one`,
+  },
   nav: { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog", menu: "Menu" },
   /** The platform's menus' names (D85) in another language, by the name they were given; English says the name as given. */
   menuNames: {} as Record<string, string>,

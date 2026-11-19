@@ -64,6 +64,7 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "separator":
       return { id: id(), type };
     case "plans":
+    case "extensions":
       return { id: id(), type, buttonLabel: "", buttonHref: "" };
     case "domainSearch":
       return { id: id(), type, buttonLabel: "", ctaLabel: "", ctaHref: "" };
@@ -747,6 +748,8 @@ export type BlockPatch<T extends PageBlock = PageBlock> = Partial<Omit<T, "id" |
  * `false` that reads the same.
  */
 export const ON_UNLESS_OFF: ReadonlySet<string> = new Set([
+  // The Extensions block's bundles (D748 E8): shown unless unticked.
+  "bundles",
   // A brands component's names, a gallery's captions and lightbox: their `false` was dropped, so unticking them did nothing.
   "showNames",
   "showCaptions",

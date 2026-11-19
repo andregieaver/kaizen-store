@@ -29,6 +29,9 @@ import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom,
 
 import { PixelRange } from "./pixel-range";
 import { Field, fieldClass as kitFieldClass, TextArea, TextInput } from "./ui/field";
+import { Check } from "./check-field";
+
+export { Check };
 import { ColorField } from "./colour-field";
 import { GradientText } from "./typography-fields";
 import { inlinePlain } from "@/lib/inline-text";
@@ -506,37 +509,6 @@ export function Choices<T extends string>({
         ))}
       </div>
     </fieldset>
-  );
-}
-
-
-export function Check({
-  label,
-  hint,
-  checked,
-  disabled = false,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className={`flex items-start gap-3 text-sm ${disabled ? "opacity-50" : ""}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 size-4 shrink-0"
-      />
-      <span className="flex flex-col gap-0.5">
-        <span className="font-medium">{label}</span>
-        {hint && <span className="text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
   );
 }
 

@@ -46,6 +46,7 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
 /** Kaizen's plans (D142) are the platform's to sell: only Kaizen's own pages hold the component. */
 function plansProblem(owner: PageOwner, content: PageContent): string | null {
   if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizena Flow's plans belong on Kaizena Flow's own pages.";
+  if (owner !== null && pageBlocks(content).some((block) => block.type === "extensions")) return "Kaizena Flow's extensions belong on Kaizena Flow's own pages.";
   return null;
 }
 
