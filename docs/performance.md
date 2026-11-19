@@ -23,6 +23,16 @@ with its processor slowed four times, and a computer.
 
 ## The rules
 
+- **Only link-preview fetchers get a blocking per-request render** (bloat review step 2.5). Next renders a page per request, a static one
+  included, for a user agent on its `htmlLimitedBots` list, so that the metadata is in the head. The default list held Bing, Apple, Yandex,
+  Google's shop and ads fetchers and Meta's catalogue, so each of them cost a render that was not kept. The pattern in `next.config.ts`
+  keeps only the fetchers that run no scripts and come once per shared link (Facebook, Twitter, LinkedIn, Slack, Discord and the like); the
+  others get the cached page, as Googlebot always did. That is safe because `scripts/render-modes.mjs` holds that every prerendered public
+  page has its title in the head of its static file, and `e2e/crawlers.spec.ts` reads a home, product, category and article page as a crawler
+  without scripts and holds the head tags, the price and the JSON-LD. A crawler whose tool later shows a missing price or availability is put
+  back on the list by adding its name to the pattern.
+  Share of page runs by listed crawlers: to be measured after opening
+
 - **The footer is pinned only near the page's end** (`FooterRevealGuard`): only after a scroll that brings the end within a screen,
   never at the first paint. Pinned while the end is still below the screen, the switch cannot be seen.
 - **Pictures that may be on the first screen load at once.** A row is `eager` when it is the first of a page or a header (never a

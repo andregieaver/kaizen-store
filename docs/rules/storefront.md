@@ -677,6 +677,7 @@ the path, component or table you change, or list the rules with a search for lin
   content is plain HTML; stock and add-to-cart stream in and need JavaScript.
   Keep the details outside a `<Suspense>` boundary: React moves a finished
   boundary out of line (shown only by script) once the page passes ~12 kB.
+  A crawler that runs no scripts finds stock and add-to-cart at the end of the document in hidden containers, as Googlebot does; only link-preview fetchers get a blocking render (`htmlLimitedBots` in `next.config.ts`, `e2e/crawlers.spec.ts`).
 - `prerenderedShops()` (`src/server/shop.ts`) also returns the markets of Kaizena Flow's own store while its site is served from it (`Store.onSite`, D484), so kaizenaflow.com's pages are built with each deploy (bloat review step 0.3). It reads the store through `getOpenStore()`, never through `house-switch.ts`.
 
 ## The cart (`src/server/cart.ts`) is per store and market, identified by an httpOnly cookie
