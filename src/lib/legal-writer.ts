@@ -412,6 +412,11 @@ const BLOCKS_MAX = 12;
 const ITEMS_MAX = 15;
 const QUOTE_MIN = 20;
 const QUOTE_MAX = 300;
+/**
+ * The longest quote taken: the prompt asks for 300 characters at most, but the model quotes a whole list where the law gives one (the goods
+ * withdrawal does not cover, 19 November 2026); a longer quote that is word for word in the passage is as grounded, so it is taken.
+ */
+const QUOTE_TAKEN_MAX = 1200;
 
 /** The online dispute resolution platform, repealed in 2025, in the four languages. */
 const ODR = /\bODR\b|online dispute resolution|tvisteløsningsplattform|plattform(en)? for (online )?tvisteløsning|tvistlösning online|onlinetvistlösning|onlinetvistbilæggelse|platform for online tvistbilæggelse/i;
@@ -509,7 +514,7 @@ export function checkLegalDraft(sections: readonly DraftSection[], plan: LegalPl
           continue;
         }
         const quote = normalisedLegalText(c.quote);
-        if (quote.length < QUOTE_MIN || quote.length > QUOTE_MAX) problems.push(`${at}: a quote must be ${QUOTE_MIN} to ${QUOTE_MAX} characters.`);
+        if (quote.length < QUOTE_MIN || quote.length > QUOTE_TAKEN_MAX) problems.push(`${at}: a quote must be ${QUOTE_MIN} to ${QUOTE_MAX} characters.`);
         else {
           const found = quoteIn(offered.text, quote);
           if (found === null) problems.push(`${at}: the quote "${quote.slice(0, 80)}" is not word for word in ${c.source} ${c.passage}.`);
